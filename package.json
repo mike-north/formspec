@@ -1,0 +1,42 @@
+{
+  "name": "formspec-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript monorepo workspace",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "clean": "pnpm -r run clean",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "api-extractor": "pnpm -r run api-extractor",
+    "api-extractor:local": "pnpm -r run api-extractor:local",
+    "api-documenter": "pnpm -r run api-documenter"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.24.0",
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@microsoft/api-documenter": "^7.26.10",
+    "@microsoft/api-extractor": "^7.55.2",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.2.9",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.5.0",
+    "react": "^19.2.3",
+    "tsd": "^0.31.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0",
+    "zod": "^3.24.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

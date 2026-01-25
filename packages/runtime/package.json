@@ -1,0 +1,35 @@
+{
+  "name": "@formspec/runtime",
+  "version": "0.0.0",
+  "description": "Runtime helpers for FormSpec - resolvers and data fetching",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/runtime.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist temp",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "api-extractor": "api-extractor run",
+    "api-extractor:local": "api-extractor run --local",
+    "api-documenter": "api-documenter markdown -i temp -o docs"
+  },
+  "dependencies": {
+    "@formspec/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@formspec/dsl": "workspace:*",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [],
+  "license": "UNLICENSED"
+}

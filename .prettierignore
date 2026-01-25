@@ -1,0 +1,6 @@
+node_modules
+dist
+temp
+coverage
+pnpm-lock.yaml
+api-report

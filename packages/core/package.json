@@ -1,0 +1,27 @@
+{
+  "name": "@formspec/core",
+  "version": "0.0.0",
+  "description": "Core utilities for formspec",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/core.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist temp",
+    "typecheck": "tsc --noEmit",
+    "api-extractor": "api-extractor run",
+    "api-extractor:local": "api-extractor run --local",
+    "api-documenter": "api-documenter markdown -i temp -o docs"
+  },
+  "keywords": [],
+  "license": "UNLICENSED"
+}

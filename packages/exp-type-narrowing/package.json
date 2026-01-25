@@ -1,0 +1,19 @@
+{
+  "name": "@formspec/exp-type-narrowing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Experiment: Type parameter narrowing for fetchOptions",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test:types": "tsd"
+  },
+  "license": "UNLICENSED",
+  "tsd": {
+    "directory": "src"
+  }
+}
