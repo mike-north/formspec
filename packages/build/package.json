@@ -1,6 +1,6 @@
 {
   "name": "@formspec/build",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Build tools to compile FormSpec forms to JSON Schema and UI Schema",
   "type": "module",
   "main": "./dist/index.js",

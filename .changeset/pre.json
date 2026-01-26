@@ -1,0 +1,16 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@formspec/exp-form-first": "0.0.0",
+    "@formspec/exp-path-safety": "0.0.0",
+    "@formspec/exp-schema-first": "0.0.0",
+    "@formspec/exp-type-narrowing": "0.0.0",
+    "@formspec/build": "0.0.1",
+    "@formspec/core": "0.0.1",
+    "@formspec/dsl": "0.0.1",
+    "formspec": "0.0.1",
+    "@formspec/runtime": "0.0.1"
+  },
+  "changesets": []
+}
