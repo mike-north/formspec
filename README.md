@@ -75,12 +75,10 @@ field.enum("status", ["draft", "published", "archived"] as const, { label: "Stat
 ```typescript
 // Dynamic enum - options fetched at runtime
 // Second argument is the resolver identifier (maps to a resolver defined with defineResolvers)
-field.dynamicEnum("country", "countries", { label: "Country" })
-//                            ↑ resolver identifier
+field.dynamicEnum("country", "fetch_countries", { label: "Country" })
 
 // Dynamic enum with dependencies
-field.dynamicEnum("city", "cities", {
-//                        ↑ resolver identifier
+field.dynamicEnum("city", "fetch_cities", {
   label: "City",
   params: ["country"], // city options depend on selected country
 })
@@ -168,7 +166,7 @@ Define resolvers for dynamic enum fields:
 import { defineResolvers } from "formspec";
 
 const resolvers = defineResolvers(ContactForm, {
-  countries: async () => ({
+  fetch_countries: async () => ({
     options: [
       { value: "us", label: "United States" },
       { value: "ca", label: "Canada" },
@@ -177,7 +175,7 @@ const resolvers = defineResolvers(ContactForm, {
     validity: "valid",
   }),
 
-  cities: async (params) => {
+  fetch_cities: async (params) => {
     const country = params.country;
     const cities = await fetchCitiesForCountry(country);
     return {
@@ -235,7 +233,7 @@ Added to dynamic enum fields. Indicates the data source key for fetching options
 ```json
 {
   "type": "string",
-  "x-formspec-source": "countries"
+  "x-formspec-source": "fetch_countries"
 }
 ```
 
@@ -246,7 +244,7 @@ Added to dynamic enum fields with dependencies. Lists field names whose values a
 ```json
 {
   "type": "string",
-  "x-formspec-source": "cities",
+  "x-formspec-source": "fetch_cities",
   "x-formspec-params": ["country", "state"]
 }
 ```
