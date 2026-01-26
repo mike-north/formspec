@@ -15,13 +15,18 @@
     "typecheck": "pnpm -r run typecheck",
     "api-extractor": "pnpm -r run api-extractor",
     "api-extractor:local": "pnpm -r run api-extractor:local",
-    "api-documenter": "pnpm -r run api-documenter"
+    "api-documenter": "pnpm -r run api-documenter",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm run build && changeset publish"
   },
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
     "@eslint/js": "^9.18.0",
     "@microsoft/api-documenter": "^7.26.10",
     "@microsoft/api-extractor": "^7.55.2",
