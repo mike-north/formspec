@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { formspec, formspecWithValidation, field, group, when, validateForm } from "../index.js";
+import { formspecWithValidation, field, group, when, is, validateForm } from "../index.js";
 
 describe("validateForm", () => {
   describe("duplicate field detection", () => {
@@ -43,8 +43,7 @@ describe("validateForm", () => {
         field.enum("type", ["a", "b"] as const),
         field.text("value"),
         when(
-          "type",
-          "a",
+          is("type", "a"),
           field.text("value"), // duplicate
         ),
       ] as const;
@@ -90,8 +89,7 @@ describe("validateForm", () => {
       const elements = [
         field.text("name"),
         when(
-          "status",
-          "draft", // "status" doesn't exist!
+          is("status", "draft"), // "status" doesn't exist!
           field.text("notes"),
         ),
       ] as const;
@@ -108,8 +106,7 @@ describe("validateForm", () => {
       const elements = [
         field.enum("status", ["draft", "sent"] as const),
         when(
-          "status",
-          "draft",
+          is("status", "draft"),
           field.text("notes"),
         ),
       ] as const;
@@ -124,11 +121,9 @@ describe("validateForm", () => {
       const elements = [
         field.enum("type", ["a", "b"] as const),
         when(
-          "type",
-          "a",
+          is("type", "a"),
           when(
-            "subtype",
-            "x", // "subtype" doesn't exist!
+            is("subtype", "x"), // "subtype" doesn't exist!
             field.text("extra"),
           ),
         ),
@@ -144,8 +139,7 @@ describe("validateForm", () => {
       // This is valid - the conditional references a field that's defined later
       const elements = [
         when(
-          "status",
-          "draft",
+          is("status", "draft"),
           field.text("notes"),
         ),
         field.enum("status", ["draft", "sent"] as const),
@@ -163,8 +157,7 @@ describe("validateForm", () => {
         field.text("name"),
         field.text("name"), // duplicate
         when(
-          "nonExistent",
-          "value", // reference error
+          is("nonExistent", "value"), // reference error
           field.text("extra"),
         ),
       ] as const;
@@ -197,7 +190,7 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: false },
       field.text("name"),
-      when("nonExistent", "value", field.text("notes")),
+      when(is("nonExistent", "value"), field.text("notes")),
     );
 
     expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -218,7 +211,7 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: true },
       field.text("name"),
-      when("nonExistent", "value", field.text("notes")),
+      when(is("nonExistent", "value"), field.text("notes")),
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -241,7 +234,7 @@ describe("formspecWithValidation", () => {
       formspecWithValidation(
         { validate: "throw" },
         field.text("name"),
-        when("nonExistent", "value", field.text("notes")),
+        when(is("nonExistent", "value"), field.text("notes")),
       ),
     ).toThrow("Form validation failed");
   });
@@ -303,14 +296,12 @@ describe("validation with complex structures", () => {
           "Inner",
           field.enum("type", ["a", "b"] as const),
           when(
-            "type",
-            "a",
+            is("type", "a"),
             field.object(
               "details",
               field.text("name"),
               when(
-                "missing",
-                "value", // doesn't exist!
+                is("missing", "value"), // doesn't exist!
                 field.text("extra"),
               ),
             ),

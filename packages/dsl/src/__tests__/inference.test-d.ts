@@ -6,7 +6,7 @@
  */
 
 import { expectType, expectNotType } from "tsd";
-import { field, group, when, formspec } from "../index.js";
+import { field, group, when, is, formspec } from "../index.js";
 import type { InferSchema, InferFormSchema, InferFieldValue } from "../index.js";
 import type {
   TextField,
@@ -100,7 +100,7 @@ expectType<{ name: string; email: string; amount: number }>({} as GroupSchema);
 // Test fields inside conditionals
 const conditionalForm = formspec(
   field.enum("type", ["personal", "business"] as const),
-  when("type", "business",
+  when(is("type", "business"),
     field.text("company"),
   ),
 );

@@ -29,3 +29,5 @@ export type {
   FormElement,
   FormSpec,
 } from "./elements.js";
+
+export type { EqualsPredicate, Predicate } from "./predicate.js";

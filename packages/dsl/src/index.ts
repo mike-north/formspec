@@ -4,22 +4,22 @@
  * This package provides the builder functions for creating form specifications:
  * - `field.*` - Field builders (text, number, boolean, enum, dynamicEnum)
  * - `group()` - Visual grouping
- * - `when()` - Conditional visibility
+ * - `when()` + `is()` - Conditional visibility
  * - `formspec()` - Top-level form definition
  *
  * @example
  * ```typescript
- * import { formspec, field, group, when } from "@formspec/dsl";
+ * import { formspec, field, group, when, is } from "@formspec/dsl";
  *
  * const InvoiceForm = formspec(
  *   group("Customer",
  *     field.text("customerName", { label: "Customer Name" }),
- *     field.dynamicEnum("country", "countries", { label: "Country" }),
+ *     field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
  *   ),
  *   group("Invoice Details",
  *     field.number("amount", { label: "Amount", min: 0 }),
  *     field.enum("status", ["draft", "sent", "paid"] as const),
- *     when("status", "draft",
+ *     when(is("status", "draft"),
  *       field.text("internalNotes", { label: "Internal Notes" }),
  *     ),
  *   ),
@@ -31,6 +31,9 @@
 
 // Field builders
 export { field } from "./field.js";
+
+// Predicate builders
+export { is } from "./predicate.js";
 
 // Structure builders
 export { group, when, formspec, formspecWithValidation } from "./structure.js";

@@ -1,6 +1,6 @@
 {
   "name": "@formspec/core",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Core utilities for formspec",
   "type": "module",
   "main": "./dist/index.js",

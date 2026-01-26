@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas, generateJsonSchema, generateUiSchema } from "../index.js";
-import { formspec, field, group, when } from "@formspec/dsl";
+import { formspec, field, group, when, is } from "@formspec/dsl";
 
 describe("Edge cases: Empty and minimal forms", () => {
   it("should handle form with no fields", () => {
@@ -41,7 +41,7 @@ describe("Edge cases: Empty and minimal forms", () => {
   it("should handle empty conditional", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const),
-      when("type", "a"),
+      when(is("type", "a")),
     );
 
     const { jsonSchema, uiSchema } = buildFormSchemas(form);
@@ -189,7 +189,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle boolean conditional value", () => {
     const form = formspec(
       field.boolean("enabled"),
-      when("enabled", true,
+      when(is("enabled", true),
         field.text("config"),
       ),
     );
@@ -207,7 +207,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle null conditional value", () => {
     const form = formspec(
       field.text("optional"),
-      when("optional", null,
+      when(is("optional", null),
         field.text("fallback"),
       ),
     );
@@ -225,7 +225,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle number conditional value", () => {
     const form = formspec(
       field.number("quantity"),
-      when("quantity", 0,
+      when(is("quantity", 0),
         field.text("zeroReason", { label: "Why zero?" }),
       ),
     );
@@ -311,10 +311,10 @@ describe("Edge cases: Deeply nested structures", () => {
   it("should handle conditionals inside groups inside conditionals", () => {
     const form = formspec(
       field.enum("outer", ["a", "b"] as const),
-      when("outer", "a",
+      when(is("outer", "a"),
         group("Inner Group",
           field.enum("inner", ["x", "y"] as const),
-          when("inner", "x",
+          when(is("inner", "x"),
             field.text("deepest"),
           ),
         ),

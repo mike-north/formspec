@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas, generateJsonSchema, generateUiSchema } from "../index.js";
-import { formspec, field, group, when } from "@formspec/dsl";
+import { formspec, field, group, when, is } from "@formspec/dsl";
 
 describe("generateJsonSchema", () => {
   it("should generate schema for basic fields", () => {
@@ -62,7 +62,7 @@ describe("generateJsonSchema", () => {
   it("should extract fields from conditionals", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const),
-      when("type", "a",
+      when(is("type", "a"),
         field.text("extra"),
       ),
     );
@@ -159,7 +159,7 @@ describe("generateUiSchema", () => {
   it("should generate rules for conditionals", () => {
     const form = formspec(
       field.enum("status", ["draft", "sent"] as const),
-      when("status", "draft",
+      when(is("status", "draft"),
         field.text("notes", { label: "Notes" }),
       ),
     );
@@ -287,8 +287,8 @@ describe("generateUiSchema - nested conditionals", () => {
     const form = formspec(
       field.enum("country", ["US", "CA"] as const),
       field.enum("paymentMethod", ["card", "bank"] as const),
-      when("country", "US",
-        when("paymentMethod", "bank",
+      when(is("country", "US"),
+        when(is("paymentMethod", "bank"),
           field.text("routingNumber", { label: "Routing Number" }),
         ),
       ),

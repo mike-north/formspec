@@ -7,7 +7,7 @@
  * - `formspec()` - Top-level form specification
  */
 
-import type { FormElement, Group, Conditional, FormSpec } from "@formspec/core";
+import type { FormElement, Group, Conditional, FormSpec, Predicate } from "@formspec/core";
 import { validateForm, logValidationIssues } from "./validation.js";
 
 /**
@@ -56,21 +56,22 @@ export function group<const Elements extends readonly FormElement[]>(
 }
 
 /**
- * Creates a conditional wrapper that shows elements based on another field's value.
+ * Creates a conditional wrapper that shows elements based on a predicate.
  *
- * When the specified field has the specified value, the contained elements are shown.
+ * When the predicate evaluates to true, the contained elements are shown.
  * Otherwise, they are hidden (but still part of the schema).
  *
  * @example
  * ```typescript
+ * import { is } from "@formspec/dsl";
+ *
  * field.enum("status", ["draft", "sent", "paid"] as const),
- * when("status", "draft",
+ * when(is("status", "draft"),
  *   field.text("internalNotes", { label: "Internal Notes" }),
  * )
  * ```
  *
- * @param fieldName - The field to check
- * @param value - The value that triggers the condition
+ * @param predicate - The condition to evaluate (use `is()` to create)
  * @param elements - The form elements to show when condition is met
  * @returns A Conditional descriptor
  */
@@ -79,14 +80,13 @@ export function when<
   const V,
   const Elements extends readonly FormElement[],
 >(
-  fieldName: K,
-  value: V,
+  predicate: Predicate<K, V>,
   ...elements: Elements
 ): Conditional<K, V, Elements> {
   return {
     _type: "conditional",
-    field: fieldName,
-    value,
+    field: predicate.field,
+    value: predicate.value,
     elements,
   };
 }
@@ -107,12 +107,12 @@ export function when<
  * const InvoiceForm = formspec(
  *   group("Customer",
  *     field.text("customerName", { label: "Customer Name" }),
- *     field.dynamicEnum("country", "countries", { label: "Country" }),
+ *     field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
  *   ),
  *   group("Invoice Details",
  *     field.number("amount", { label: "Amount", min: 0 }),
  *     field.enum("status", ["draft", "sent", "paid"] as const),
- *     when("status", "draft",
+ *     when(is("status", "draft"),
  *       field.text("internalNotes", { label: "Internal Notes" }),
  *     ),
  *   ),
@@ -137,7 +137,7 @@ export function formspec<const Elements extends readonly FormElement[]>(
  *   { validate: true, name: "MyForm" },
  *   field.text("name"),
  *   field.enum("status", ["draft", "sent"] as const),
- *   when("status", "draft",
+ *   when(is("status", "draft"),
  *     field.text("notes"),
  *   ),
  * );

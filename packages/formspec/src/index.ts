@@ -8,7 +8,7 @@
  * ```typescript
  * import {
  *   // DSL functions
- *   formspec, field, group, when,
+ *   formspec, field, group, when, is,
  *   // Type inference
  *   type InferSchema,
  *   // Schema generation
@@ -23,11 +23,14 @@
  * const InvoiceForm = formspec(
  *   group("Customer",
  *     field.text("name", { label: "Name", required: true }),
- *     field.dynamicEnum("country", "countries", { label: "Country" }),
+ *     field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
  *   ),
  *   group("Details",
  *     field.number("amount", { label: "Amount", min: 0 }),
  *     field.enum("status", ["draft", "sent", "paid"] as const),
+ *     when(is("status", "draft"),
+ *       field.text("notes", { label: "Internal Notes" }),
+ *     ),
  *   ),
  * );
  *
@@ -39,7 +42,7 @@
  *
  * // Define resolvers for dynamic data
  * const resolvers = defineResolvers(InvoiceForm, {
- *   countries: async () => ({
+ *   fetch_countries: async () => ({
  *     options: [{ value: "us", label: "United States" }],
  *     validity: "valid",
  *   }),
@@ -83,6 +86,10 @@ export type {
   Conditional,
   FormElement,
   FormSpec,
+
+  // Predicates
+  EqualsPredicate,
+  Predicate,
 } from "@formspec/core";
 
 export { createInitialFieldState } from "@formspec/core";
@@ -91,7 +98,7 @@ export { createInitialFieldState } from "@formspec/core";
 // DSL functions
 // =============================================================================
 
-export { field, group, when, formspec, formspecWithValidation, validateForm, logValidationIssues } from "@formspec/dsl";
+export { field, group, when, is, formspec, formspecWithValidation, validateForm, logValidationIssues } from "@formspec/dsl";
 
 export type {
   // Type inference

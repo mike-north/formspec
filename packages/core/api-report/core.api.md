@@ -77,6 +77,13 @@ export interface DynamicSchemaField<N extends string> {
 }
 
 // @public
+export interface EqualsPredicate<K extends string, V> {
+    readonly field: K;
+    readonly _predicate: "equals";
+    readonly value: V;
+}
+
+// @public
 export interface FetchOptionsResponse<T = unknown> {
     readonly message?: string;
     readonly options: readonly DataSourceOption<T>[];
@@ -137,6 +144,9 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
     readonly required?: boolean;
     readonly _type: "field";
 }
+
+// @public
+export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly string[]> {

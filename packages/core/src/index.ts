@@ -40,6 +40,10 @@ export type {
   Conditional,
   FormElement,
   FormSpec,
+
+  // Predicates
+  EqualsPredicate,
+  Predicate,
 } from "./types/index.js";
 
 // Re-export functions

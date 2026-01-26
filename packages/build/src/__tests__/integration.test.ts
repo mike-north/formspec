@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "../index.js";
-import { formspec, field, group, when } from "@formspec/dsl";
+import { formspec, field, group, when, is } from "@formspec/dsl";
 import type { InferFormSchema } from "@formspec/dsl";
 
 describe("Integration: Complete form workflow", () => {
@@ -36,7 +36,7 @@ describe("Integration: Complete form workflow", () => {
           field.number("unitPrice", { label: "Unit Price", min: 0 }),
         ),
       ),
-      when("status", "draft",
+      when(is("status", "draft"),
         field.text("internalNotes", { label: "Internal Notes" }),
       ),
     );
@@ -134,14 +134,14 @@ describe("Integration: Complete form workflow", () => {
         label: "Payment Method",
         required: true,
       }),
-      when("country", "US",
+      when(is("country", "US"),
         field.text("ssn", { label: "SSN (last 4)" }),
-        when("paymentMethod", "bank",
+        when(is("paymentMethod", "bank"),
           field.text("routingNumber", { label: "Routing Number" }),
           field.text("accountNumber", { label: "Account Number" }),
         ),
       ),
-      when("country", "GB",
+      when(is("country", "GB"),
         field.text("sortCode", { label: "Sort Code" }),
       ),
     );

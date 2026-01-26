@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { defineResolvers } from "../index.js";
-import { formspec, field, group, when } from "@formspec/dsl";
+import { formspec, field, group, when, is } from "@formspec/dsl";
 
 // Note: In real usage, you would augment DataSourceRegistry.
 // For tests, we work with the generic types.
@@ -65,7 +65,7 @@ describe("defineResolvers", () => {
   it("should extract sources from conditionals", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const),
-      when("type", "a",
+      when(is("type", "a"),
         field.dynamicEnum("extra", "extras"),
       ),
     );
