@@ -48,6 +48,40 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
 
+  experiments/exp-form-first:
+    dependencies:
+      '@formspec/exp-path-safety':
+        specifier: workspace:*
+        version: link:../exp-path-safety
+    devDependencies:
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+
+  experiments/exp-path-safety:
+    devDependencies:
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
+
+  experiments/exp-schema-first:
+    dependencies:
+      '@formspec/exp-path-safety':
+        specifier: workspace:*
+        version: link:../exp-path-safety
+    devDependencies:
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+
+  experiments/exp-type-narrowing: {}
+
   packages/build:
     dependencies:
       '@formspec/core':
@@ -75,40 +109,6 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)
-
-  packages/exp-form-first:
-    dependencies:
-      '@formspec/exp-path-safety':
-        specifier: workspace:*
-        version: link:../exp-path-safety
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-      zod:
-        specifier: ^3.24.0
-        version: 3.25.76
-
-  packages/exp-path-safety:
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-
-  packages/exp-schema-first:
-    dependencies:
-      '@formspec/exp-path-safety':
-        specifier: workspace:*
-        version: link:../exp-path-safety
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-      zod:
-        specifier: ^3.24.0
-        version: 3.25.76
-
-  packages/exp-type-narrowing: {}
 
   packages/formspec:
     dependencies:
