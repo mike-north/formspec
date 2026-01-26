@@ -12,5 +12,7 @@
     "formspec": "0.0.1",
     "@formspec/runtime": "0.0.1"
   },
-  "changesets": []
+  "changesets": [
+    "predicate-when-api"
+  ]
 }
