@@ -74,17 +74,15 @@ field.enum("status", ["draft", "published", "archived"] as const, { label: "Stat
 
 ```typescript
 // Dynamic enum - options fetched at runtime
+// Second argument is the resolver identifier (maps to a resolver defined with defineResolvers)
 field.dynamicEnum("country", "countries", { label: "Country" })
+//                            ↑ resolver identifier
 
 // Dynamic enum with dependencies
 field.dynamicEnum("city", "cities", {
+//                        ↑ resolver identifier
   label: "City",
   params: ["country"], // city options depend on selected country
-})
-
-// Dynamic schema - schema loaded at runtime
-field.dynamicSchema("extensionConfig", "payment-extension-schema", {
-  label: "Extension Configuration",
 })
 ```
 
@@ -253,18 +251,6 @@ Added to dynamic enum fields with dependencies. Lists field names whose values a
 }
 ```
 
-### `x-formspec-schemaSource`
-
-Added to dynamic schema fields. Indicates the identifier for loading the schema at runtime.
-
-```json
-{
-  "type": "object",
-  "additionalProperties": true,
-  "x-formspec-schemaSource": "payment-extension-schema"
-}
-```
-
 ## Package Structure
 
 FormSpec is organized as a monorepo with the following packages:
@@ -292,8 +278,7 @@ import { formspec, field, group, when, buildFormSchemas, defineResolvers } from 
 - `field.number(name, config?)` - Number input field
 - `field.boolean(name, config?)` - Boolean checkbox field
 - `field.enum(name, options, config?)` - Static enum field
-- `field.dynamicEnum(name, source, config?)` - Dynamic enum field
-- `field.dynamicSchema(name, schemaSource, config?)` - Dynamic schema field
+- `field.dynamicEnum(name, source, config?)` - Dynamic enum field (source is the resolver identifier)
 - `field.array(name, ...items)` - Array field
 - `field.arrayWithConfig(name, config, ...items)` - Array field with constraints
 - `field.object(name, ...properties)` - Object field
