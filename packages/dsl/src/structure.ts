@@ -7,7 +7,7 @@
  * - `formspec()` - Top-level form specification
  */
 
-import type { FormElement, Group, Conditional, FormSpec, EqualsPredicate } from "@formspec/core";
+import type { FormElement, Group, Conditional, FormSpec, Predicate } from "@formspec/core";
 import { validateForm, logValidationIssues } from "./validation.js";
 
 /**
@@ -80,7 +80,7 @@ export function when<
   const V,
   const Elements extends readonly FormElement[],
 >(
-  predicate: EqualsPredicate<K, V>,
+  predicate: Predicate<K, V>,
   ...elements: Elements
 ): Conditional<K, V, Elements> {
   return {

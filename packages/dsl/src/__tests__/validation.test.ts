@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { formspec, formspecWithValidation, field, group, when, is, validateForm } from "../index.js";
+import { formspecWithValidation, field, group, when, is, validateForm } from "../index.js";
 
 describe("validateForm", () => {
   describe("duplicate field detection", () => {
