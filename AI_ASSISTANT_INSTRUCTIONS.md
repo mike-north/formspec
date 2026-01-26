@@ -20,7 +20,7 @@ FormSpec is a TypeScript library for defining type-safe forms that compile to JS
 When a user wants to create a new form, guide them through these steps:
 
 ```typescript
-import { formspec, field, group, when, buildFormSchemas } from "formspec";
+import { formspec, field, group, when, is, buildFormSchemas } from "formspec";
 import type { InferFormSchema } from "formspec";
 
 // Step 1: Define the form structure
@@ -170,7 +170,7 @@ const form = formspec(
 
 ### Flow 6: Conditional Field Visibility
 
-Use `when` to show/hide fields based on another field's value:
+Use `when` with the `is()` predicate to show/hide fields based on another field's value:
 
 ```typescript
 const form = formspec(
@@ -179,13 +179,13 @@ const form = formspec(
   }),
 
   // Only show when employed
-  when("employmentStatus", "employed",
+  when(is("employmentStatus", "employed"),
     field.text("employerName", { label: "Employer Name" }),
     field.text("jobTitle", { label: "Job Title" }),
   ),
 
   // Only show when self-employed
-  when("employmentStatus", "self-employed",
+  when(is("employmentStatus", "self-employed"),
     field.text("businessName", { label: "Business Name" }),
     field.text("businessType", { label: "Business Type" }),
   ),
@@ -206,17 +206,17 @@ const form = formspec(
   field.enum("country", ["US", "CA", "GB"] as const),
   field.enum("paymentMethod", ["card", "bank"] as const),
 
-  when("country", "US",
+  when(is("country", "US"),
     field.text("ssn", { label: "SSN (last 4 digits)" }),
 
     // Nested: only show when country=US AND paymentMethod=bank
-    when("paymentMethod", "bank",
+    when(is("paymentMethod", "bank"),
       field.text("routingNumber", { label: "Routing Number" }),
       field.text("accountNumber", { label: "Account Number" }),
     ),
   ),
 
-  when("country", "GB",
+  when(is("country", "GB"),
     field.text("sortCode", { label: "Sort Code" }),
   ),
 );
@@ -383,7 +383,7 @@ const form = formspec(
   // Optional section with toggle
   field.boolean("hasProfile", { label: "Add profile information?" }),
 
-  when("hasProfile", true,
+  when(is("hasProfile", true),
     group("Profile (Optional)",
       field.text("displayName", { label: "Display Name" }),
       field.text("bio", { label: "Bio" }),
@@ -432,14 +432,14 @@ const form = formspec(
   field.text("email", { label: "Email", required: true }),
 
   // Individual-specific
-  when("userType", "individual",
+  when(is("userType", "individual"),
     field.text("firstName", { label: "First Name", required: true }),
     field.text("lastName", { label: "Last Name", required: true }),
     field.text("ssn", { label: "SSN (last 4)" }),
   ),
 
   // Business-specific
-  when("userType", "business",
+  when(is("userType", "business"),
     field.text("companyName", { label: "Company Name", required: true }),
     field.text("taxId", { label: "Tax ID", required: true }),
     field.text("duns", { label: "DUNS Number" }),
@@ -466,7 +466,7 @@ const form = formspecWithValidation(
   { validate: true, name: "MyForm" },
   field.text("name"),
   field.enum("status", ["draft", "sent"] as const),
-  when("status", "draft",
+  when(is("status", "draft"),
     field.text("notes"),
   ),
 );
@@ -474,7 +474,7 @@ const form = formspecWithValidation(
 // Option 2: Validate separately
 const form = formspec(
   field.text("name"),
-  when("nonExistent", "value", field.text("extra")), // Error!
+  when(is("nonExistent", "value"), field.text("extra")), // Error!
 );
 const result = validateForm(form.elements);
 // result.valid === false
@@ -564,7 +564,7 @@ when("nonExistent", "value", ...) // Runtime: field doesn't exist
 Ensure the condition field is defined before or at the same level as the `when`:
 ```typescript
 field.enum("myField", ["a", "b"] as const),
-when("myField", "a", ...),
+when(is("myField", "a"), ...),
 ```
 
 ### Issue: Nested object vs Group confusion
@@ -594,7 +594,7 @@ field.object("contact",
 For most users, recommend the main package:
 
 ```typescript
-import { formspec, field, group, when, buildFormSchemas, defineResolvers } from "formspec";
+import { formspec, field, group, when, is, buildFormSchemas, defineResolvers } from "formspec";
 import type { InferFormSchema, JSONSchema7, UISchema } from "formspec";
 ```
 
@@ -605,7 +605,7 @@ For advanced users needing specific packages:
 import type { FormElement, AnyField, Group, Conditional } from "@formspec/core";
 
 // DSL only
-import { field, group, when, formspec } from "@formspec/dsl";
+import { field, group, when, is, formspec } from "@formspec/dsl";
 import type { InferSchema } from "@formspec/dsl";
 
 // Build only

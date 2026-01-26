@@ -25,7 +25,7 @@ yarn add formspec
 ## Quick Start
 
 ```typescript
-import { formspec, field, group, when, buildFormSchemas } from "formspec";
+import { formspec, field, group, when, is, buildFormSchemas } from "formspec";
 import type { InferFormSchema } from "formspec";
 
 // Define your form
@@ -38,7 +38,7 @@ const ContactForm = formspec(
     field.enum("contactMethod", ["email", "phone", "mail"] as const, {
       label: "Preferred Contact Method",
     }),
-    when("contactMethod", "phone",
+    when(is("contactMethod", "phone"),
       field.text("phoneNumber", { label: "Phone Number" }),
     ),
   ),
@@ -135,12 +135,12 @@ Show/hide fields based on other field values:
 const form = formspec(
   field.enum("paymentMethod", ["card", "bank", "crypto"] as const),
 
-  when("paymentMethod", "card",
+  when(is("paymentMethod", "card"),
     field.text("cardNumber", { label: "Card Number" }),
     field.text("cvv", { label: "CVV" }),
   ),
 
-  when("paymentMethod", "bank",
+  when(is("paymentMethod", "bank"),
     field.text("accountNumber", { label: "Account Number" }),
     field.text("routingNumber", { label: "Routing Number" }),
   ),
@@ -150,9 +150,9 @@ const form = formspec(
 Conditionals can be nested for complex logic:
 
 ```typescript
-when("country", "US",
+when(is("country", "US"),
   field.text("ssn", { label: "SSN" }),
-  when("paymentMethod", "bank",
+  when(is("paymentMethod", "bank"),
     field.text("routingNumber", { label: "Routing Number" }),
   ),
 )
@@ -264,7 +264,7 @@ FormSpec is organized as a monorepo with the following packages:
 For most use cases, just import from `formspec`:
 
 ```typescript
-import { formspec, field, group, when, buildFormSchemas, defineResolvers } from "formspec";
+import { formspec, field, group, when, is, buildFormSchemas, defineResolvers } from "formspec";
 ```
 
 ## API Reference
@@ -282,7 +282,8 @@ import { formspec, field, group, when, buildFormSchemas, defineResolvers } from 
 - `field.object(name, ...properties)` - Object field
 - `field.objectWithConfig(name, config, ...properties)` - Object field with config
 - `group(label, ...elements)` - Visual grouping
-- `when(fieldName, value, ...elements)` - Conditional visibility
+- `is(fieldName, value)` - Create an equality predicate
+- `when(predicate, ...elements)` - Conditional visibility based on predicate
 
 ### Build Functions
 
@@ -306,7 +307,7 @@ import { formspecWithValidation, validateForm } from "formspec";
 const form = formspecWithValidation(
   { validate: true, name: "MyForm" },
   field.text("name"),
-  when("status", "draft", field.text("notes")), // Error: "status" doesn't exist
+  when(is("status", "draft"), field.text("notes")), // Error: "status" doesn't exist
 );
 
 // Or validate separately

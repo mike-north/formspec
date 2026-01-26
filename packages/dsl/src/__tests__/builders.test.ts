@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { field, group, when, formspec } from "../index.js";
+import { field, group, when, is, formspec } from "../index.js";
 
 describe("field builders", () => {
   describe("field.text", () => {
@@ -179,10 +179,9 @@ describe("structure builders", () => {
   });
 
   describe("when", () => {
-    it("should create a conditional with field, value, and elements", () => {
+    it("should create a conditional with predicate and elements", () => {
       const c = when(
-        "country",
-        "US",
+        is("country", "US"),
         field.text("state"),
       );
 
@@ -193,7 +192,7 @@ describe("structure builders", () => {
     });
 
     it("should support non-string values", () => {
-      const c = when("active", true, field.text("notes"));
+      const c = when(is("active", true), field.text("notes"));
 
       expect(c.value).toBe(true);
     });
@@ -214,7 +213,7 @@ describe("structure builders", () => {
         group("Basic",
           field.text("name"),
         ),
-        when("type", "business",
+        when(is("type", "business"),
           field.text("company"),
         ),
       );
@@ -236,7 +235,7 @@ describe("complex compositions", () => {
           field.text("city"),
         ),
       ),
-      when("type", "business",
+      when(is("type", "business"),
         group("Business Info",
           field.text("company"),
           field.array("contacts",
