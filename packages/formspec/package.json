@@ -28,6 +28,9 @@
     "@formspec/build": "workspace:*",
     "@formspec/runtime": "workspace:*"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "form",
     "forms",

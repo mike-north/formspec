@@ -34,6 +34,9 @@
   "tsd": {
     "directory": "src/__tests__"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [],
   "license": "UNLICENSED"
 }
