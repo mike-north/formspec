@@ -10,6 +10,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: npm-publish
 
     steps:
       - name: Checkout
