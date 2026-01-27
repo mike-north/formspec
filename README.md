@@ -35,7 +35,7 @@ const ContactForm = formspec(
     field.text("email", { label: "Email", required: true }),
   ),
   group("Preferences",
-    field.enum("contactMethod", ["email", "phone", "mail"] as const, {
+    field.enum("contactMethod", ["email", "phone", "mail"], {
       label: "Preferred Contact Method",
     }),
     when(is("contactMethod", "phone"),
@@ -67,7 +67,7 @@ field.number("age", { label: "Age", min: 0, max: 150 })
 field.boolean("subscribe", { label: "Subscribe to newsletter" })
 
 // Static enum (dropdown/radio)
-field.enum("status", ["draft", "published", "archived"] as const, { label: "Status" })
+field.enum("status", ["draft", "published", "archived"], { label: "Status" })
 ```
 
 ### Dynamic Fields
@@ -133,7 +133,7 @@ Show/hide fields based on other field values:
 
 ```typescript
 const form = formspec(
-  field.enum("paymentMethod", ["card", "bank", "crypto"] as const),
+  field.enum("paymentMethod", ["card", "bank", "crypto"]),
 
   when(is("paymentMethod", "card"),
     field.text("cardNumber", { label: "Card Number" }),
@@ -196,7 +196,7 @@ import type { InferSchema, InferFormSchema } from "formspec";
 const form = formspec(
   field.text("name"),
   field.number("age"),
-  field.enum("role", ["admin", "user"] as const),
+  field.enum("role", ["admin", "user"]),
   field.object("address",
     field.text("city"),
     field.text("country"),
@@ -290,6 +290,7 @@ import { formspec, field, group, when, is, buildFormSchemas, defineResolvers } f
 - `buildFormSchemas(form)` - Generate both JSON Schema and UI Schema
 - `generateJsonSchema(form)` - Generate only JSON Schema
 - `generateUiSchema(form)` - Generate only UI Schema
+- `writeSchemas(form, options)` - Build and write schemas to disk
 
 ### Runtime Functions
 
@@ -322,6 +323,111 @@ if (!result.valid) {
 - `InferSchema<Elements>` - Infer schema type from form elements
 - `InferFormSchema<Form>` - Infer schema type from FormSpec
 - `InferFieldValue<Field>` - Infer value type from a single field
+
+## Build Integration
+
+FormSpec can generate JSON Schema and UI Schema artifacts as part of your build process.
+
+### Using writeSchemas()
+
+The simplest approach is using the `writeSchemas()` helper:
+
+```typescript
+// scripts/generate-schemas.ts
+import { formspec, field, group, writeSchemas } from "formspec";
+
+const ProductForm = formspec(
+  group("Product",
+    field.text("name", { required: true }),
+    field.enum("status", ["draft", "active", "archived"]),
+    field.number("price", { min: 0 }),
+  ),
+);
+
+// Write schemas to ./generated/product-schema.json and ./generated/product-uischema.json
+writeSchemas(ProductForm, {
+  outDir: "./generated",
+  name: "product",
+});
+```
+
+### Adding to package.json
+
+Add a script to generate schemas during build:
+
+```json
+{
+  "scripts": {
+    "generate:schemas": "npx tsx scripts/generate-schemas.ts",
+    "build": "npm run generate:schemas && your-build-command"
+  }
+}
+```
+
+### Multiple Forms
+
+For multiple forms, create a generation script:
+
+```typescript
+// scripts/generate-schemas.ts
+import { writeSchemas } from "formspec";
+import { ProductForm } from "../src/forms/product.js";
+import { CustomerForm } from "../src/forms/customer.js";
+import { OrderForm } from "../src/forms/order.js";
+
+const forms = [
+  { form: ProductForm, name: "product" },
+  { form: CustomerForm, name: "customer" },
+  { form: OrderForm, name: "order" },
+];
+
+for (const { form, name } of forms) {
+  const { jsonSchemaPath, uiSchemaPath } = writeSchemas(form, {
+    outDir: "./generated",
+    name,
+  });
+  console.log(`Generated: ${jsonSchemaPath}, ${uiSchemaPath}`);
+}
+```
+
+### Using the CLI
+
+For quick generation without writing a script, use the CLI:
+
+```bash
+# Install @formspec/build (provides the formspec-build command)
+npm install -D @formspec/build
+
+# Generate schemas from a file that exports a FormSpec
+npx formspec-build src/forms/product.ts -o ./schemas -n product
+```
+
+The input file should export the form as default or named `form`:
+
+```typescript
+// src/forms/product.ts
+import { formspec, field } from "formspec";
+
+export default formspec(
+  field.text("name", { required: true }),
+  field.enum("status", ["draft", "active"]),
+);
+```
+
+### Programmatic Control
+
+For more control, use `buildFormSchemas()` directly:
+
+```typescript
+import { buildFormSchemas } from "formspec";
+import * as fs from "node:fs";
+
+const { jsonSchema, uiSchema } = buildFormSchemas(ProductForm);
+
+// Custom file naming or additional processing
+fs.writeFileSync("schemas/product.schema.json", JSON.stringify(jsonSchema, null, 2));
+fs.writeFileSync("schemas/product.ui.json", JSON.stringify(uiSchema, null, 2));
+```
 
 ## License
 
