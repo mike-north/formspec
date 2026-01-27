@@ -15,6 +15,7 @@
  */
 
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 
 interface CliOptions {
   inputFile: string;
@@ -124,7 +125,9 @@ async function main(): Promise<void> {
 
   try {
     // Dynamically import the input file
-    const module = (await import(absoluteInput)) as Record<string, unknown>;
+    // Use file URL for cross-platform compatibility (Windows paths need file:// URLs)
+    const fileUrl = pathToFileURL(absoluteInput).href;
+    const module = (await import(fileUrl)) as Record<string, unknown>;
 
     // Look for the form export
     const form = module["default"] ?? module["form"];
