@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/build.d.ts",
+  "bin": {
+    "formspec-build": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/build.d.ts",

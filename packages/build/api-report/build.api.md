@@ -160,4 +160,20 @@ export interface VerticalLayout extends UISchemaElementBase {
     type: "VerticalLayout";
 }
 
+// @public
+export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
+
+// @public
+export interface WriteSchemasOptions {
+    readonly indent?: number;
+    readonly name?: string;
+    readonly outDir: string;
+}
+
+// @public
+export interface WriteSchemasResult {
+    readonly jsonSchemaPath: string;
+    readonly uiSchemaPath: string;
+}
+
 ```

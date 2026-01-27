@@ -26,7 +26,7 @@ import type {
  *
  * field.text("name", { label: "Full Name" });
  * field.number("age", { min: 0, max: 150 });
- * field.enum("status", ["draft", "sent", "paid"] as const);
+ * field.enum("status", ["draft", "sent", "paid"]);
  * field.dynamicEnum("country", "countries", { label: "Country" });
  * ```
  */
@@ -85,9 +85,9 @@ export const field = {
   /**
    * Creates a field with static enum options (known at compile time).
    *
-   * Use `as const` on the options array to preserve literal types:
+   * Literal types are automatically inferred - no `as const` needed:
    * ```typescript
-   * field.enum("status", ["draft", "sent", "paid"] as const)
+   * field.enum("status", ["draft", "sent", "paid"])
    * // Schema type: "draft" | "sent" | "paid"
    * ```
    *

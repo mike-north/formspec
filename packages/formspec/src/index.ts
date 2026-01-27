@@ -27,7 +27,7 @@
  *   ),
  *   group("Details",
  *     field.number("amount", { label: "Amount", min: 0 }),
- *     field.enum("status", ["draft", "sent", "paid"] as const),
+ *     field.enum("status", ["draft", "sent", "paid"]),
  *     when(is("status", "draft"),
  *       field.text("notes", { label: "Internal Notes" }),
  *     ),
@@ -123,6 +123,7 @@ export {
   generateJsonSchema,
   generateUiSchema,
   buildFormSchemas,
+  writeSchemas,
 } from "@formspec/build";
 
 export type {
@@ -139,6 +140,8 @@ export type {
   RuleEffect,
   SchemaBasedCondition,
   BuildResult,
+  WriteSchemasOptions,
+  WriteSchemasResult,
 } from "@formspec/build";
 
 // =============================================================================

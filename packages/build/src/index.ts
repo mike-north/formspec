@@ -28,6 +28,8 @@ import { generateJsonSchema } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
 import type { JSONSchema7 } from "./json-schema/types.js";
 import type { UISchema } from "./ui-schema/types.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 // Re-export types
 export type {
@@ -96,4 +98,79 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
     jsonSchema: generateJsonSchema(form),
     uiSchema: generateUiSchema(form),
   };
+}
+
+/**
+ * Options for writing schemas to disk.
+ */
+export interface WriteSchemasOptions {
+  /** Output directory for the schema files */
+  readonly outDir: string;
+  /** Base name for the output files (without extension). Defaults to "schema" */
+  readonly name?: string;
+  /** Number of spaces for JSON indentation. Defaults to 2 */
+  readonly indent?: number;
+}
+
+/**
+ * Result of writing schemas to disk.
+ */
+export interface WriteSchemasResult {
+  /** Path to the generated JSON Schema file */
+  readonly jsonSchemaPath: string;
+  /** Path to the generated UI Schema file */
+  readonly uiSchemaPath: string;
+}
+
+/**
+ * Builds and writes both JSON Schema and UI Schema files to disk.
+ *
+ * This is a convenience function for build-time schema generation.
+ * It creates the output directory if it doesn't exist.
+ *
+ * @example
+ * ```typescript
+ * import { formspec, field } from "formspec";
+ * import { writeSchemas } from "@formspec/build";
+ *
+ * const ProductForm = formspec(
+ *   field.text("name", { required: true }),
+ *   field.enum("status", ["draft", "active"]),
+ * );
+ *
+ * // Write schemas to ./generated/product-schema.json and ./generated/product-uischema.json
+ * const { jsonSchemaPath, uiSchemaPath } = writeSchemas(ProductForm, {
+ *   outDir: "./generated",
+ *   name: "product",
+ * });
+ *
+ * console.log(`Generated: ${jsonSchemaPath}, ${uiSchemaPath}`);
+ * ```
+ *
+ * @param form - The FormSpec to build schemas from
+ * @param options - Output options (directory, file name, indentation)
+ * @returns Object containing paths to the generated files
+ */
+export function writeSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options: WriteSchemasOptions
+): WriteSchemasResult {
+  const { outDir, name = "schema", indent = 2 } = options;
+
+  // Build schemas
+  const { jsonSchema, uiSchema } = buildFormSchemas(form);
+
+  // Ensure output directory exists
+  if (!fs.existsSync(outDir)) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
+
+  // Write files
+  const jsonSchemaPath = path.join(outDir, `${name}-schema.json`);
+  const uiSchemaPath = path.join(outDir, `${name}-uischema.json`);
+
+  fs.writeFileSync(jsonSchemaPath, JSON.stringify(jsonSchema, null, indent));
+  fs.writeFileSync(uiSchemaPath, JSON.stringify(uiSchema, null, indent));
+
+  return { jsonSchemaPath, uiSchemaPath };
 }
