@@ -13,6 +13,7 @@
     "@formspec/runtime": "0.0.1"
   },
   "changesets": [
+    "build-integration-tools",
     "predicate-when-api"
   ]
 }
