@@ -92,6 +92,34 @@ export function Optional(): FieldDecoratorFunction {
 }
 
 /**
+ * Marks a field as a boolean (checkbox) field.
+ *
+ * Use this decorator to explicitly set the field type to boolean.
+ * This is necessary because TypeScript type annotations are not available at runtime.
+ *
+ * @example
+ * ```typescript
+ * @FormClass()
+ * class SettingsForm {
+ *   @Label("Subscribe to newsletter")
+ *   @Boolean()
+ *   @Optional()
+ *   newsletter?: boolean;
+ * }
+ * ```
+ */
+export function Boolean(): FieldDecoratorFunction {
+  return <T, V>(_target: undefined, context: ClassFieldDecoratorContext<T, V>) => {
+    context.addInitializer(function (this: T) {
+      const prototype = Object.getPrototypeOf(this) as Record<string | symbol, unknown>;
+      setFieldMetadata(prototype, context.name, {
+        fieldType: "boolean",
+      });
+    });
+  };
+}
+
+/**
  * Sets placeholder text for a text field.
  *
  * @param text - The placeholder text to show when field is empty

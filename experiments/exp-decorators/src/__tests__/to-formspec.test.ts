@@ -13,6 +13,7 @@ import {
   FormClass,
   Label,
   Optional,
+  Boolean,
   Placeholder,
   Min,
   Max,
@@ -74,6 +75,26 @@ describe("toFormSpec", () => {
       expect(field.min).toBe(0);
       expect(field.max).toBe(120);
       expect(field.required).toBe(true);
+    });
+
+    it("should convert form with boolean field", () => {
+      @FormClass()
+      class SimpleForm {
+        @Label("Subscribe to newsletter")
+        @Boolean()
+        @Optional()
+        newsletter?: boolean;
+      }
+
+      const spec = toFormSpec(SimpleForm);
+
+      expect(spec.elements).toHaveLength(1);
+      const field = spec.elements[0] as TestField;
+      expect(field._type).toBe("field");
+      expect(field._field).toBe("boolean");
+      expect(field.name).toBe("newsletter");
+      expect(field.label).toBe("Subscribe to newsletter");
+      expect(field.required).toBe(false);
     });
 
     it("should convert form with optional field", () => {
@@ -495,6 +516,7 @@ describe("toFormSpec", () => {
         country!: string;
 
         @Label("Subscribe to Newsletter")
+        @Boolean()
         subscribe!: boolean;
 
         @Label("Email")
