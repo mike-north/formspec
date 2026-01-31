@@ -14,6 +14,7 @@
   },
   "changesets": [
     "build-integration-tools",
+    "enum-object-options",
     "predicate-when-api"
   ]
 }
