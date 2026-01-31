@@ -70,12 +70,29 @@ export interface BooleanField<N extends string> {
 }
 
 /**
+ * An enum option with a separate ID and display label.
+ *
+ * Use this when the stored value (id) should differ from the display text (label).
+ */
+export interface EnumOption {
+  readonly id: string;
+  readonly label: string;
+}
+
+/**
+ * Valid enum option types: either plain strings or objects with id/label.
+ */
+export type EnumOptionValue = string | EnumOption;
+
+/**
  * A field with static enum options (known at compile time).
  *
+ * Options can be plain strings or objects with `id` and `label` properties.
+ *
  * @typeParam N - The field name (string literal type)
- * @typeParam O - Tuple of option string literals
+ * @typeParam O - Tuple of option values (strings or EnumOption objects)
  */
-export interface StaticEnumField<N extends string, O extends readonly string[]> {
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
   /** Type discriminator for form elements */
   readonly _type: "field";
   /** Field type discriminator - identifies this as an enum field */
@@ -190,7 +207,7 @@ export type AnyField =
   | TextField<string>
   | NumberField<string>
   | BooleanField<string>
-  | StaticEnumField<string, readonly string[]>
+  | StaticEnumField<string, readonly EnumOptionValue[]>
   | DynamicEnumField<string, string>
   | DynamicSchemaField<string>
   | ArrayField<string, readonly FormElement[]>

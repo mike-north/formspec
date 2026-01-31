@@ -35,6 +35,15 @@ expectType<"draft" | "sent" | "paid">(
   {} as InferFieldValue<StaticEnumField<"status", readonly ["draft", "sent", "paid"]>>
 );
 
+// StaticEnumField with object options should infer to union of id values
+import type { EnumOption } from "@formspec/core";
+expectType<"low" | "high">(
+  {} as InferFieldValue<StaticEnumField<"priority", readonly [
+    { readonly id: "low"; readonly label: "Low Priority" },
+    { readonly id: "high"; readonly label: "High Priority" },
+  ]>>
+);
+
 // ArrayField should infer to array of nested schema
 type AddressItems = readonly [TextField<"street">, TextField<"city">];
 expectType<{ street: string; city: string }[]>(
@@ -77,6 +86,16 @@ const enumForm = formspec(
 );
 type EnumSchema = InferSchema<typeof enumForm.elements>;
 expectType<{ status: "draft" | "sent" | "paid" }>({} as EnumSchema);
+
+// Test static enum field with object options
+const objectEnumForm = formspec(
+  field.enum("priority", [
+    { id: "low", label: "Low Priority" },
+    { id: "high", label: "High Priority" },
+  ] as const),
+);
+type ObjectEnumSchema = InferSchema<typeof objectEnumForm.elements>;
+expectType<{ priority: "low" | "high" }>({} as ObjectEnumSchema);
 
 // =============================================================================
 // InferSchema tests - Groups

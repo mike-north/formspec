@@ -171,6 +171,19 @@ describe("Edge cases: Enum options", () => {
     });
   });
 
+  it("should handle single object option enum", () => {
+    const form = formspec(
+      field.enum("singleObj", [{ id: "only", label: "Only Option" }] as const),
+    );
+
+    const { jsonSchema } = buildFormSchemas(form);
+
+    expect(jsonSchema.properties?.["singleObj"]).toMatchObject({
+      type: "string",
+      oneOf: [{ const: "only", title: "Only Option" }],
+    });
+  });
+
   it("should handle enum with empty string option", () => {
     const form = formspec(
       field.enum("withEmpty", ["", "value"] as const),

@@ -18,6 +18,8 @@ export type {
   TextField,
   NumberField,
   BooleanField,
+  EnumOption,
+  EnumOptionValue,
   StaticEnumField,
   DynamicEnumField,
   DynamicSchemaField,

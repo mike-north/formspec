@@ -35,6 +35,28 @@ describe("generateJsonSchema", () => {
     });
   });
 
+  it("should generate schema for enum fields with object options", () => {
+    const form = formspec(
+      field.enum("priority", [
+        { id: "low", label: "Low Priority" },
+        { id: "medium", label: "Medium Priority" },
+        { id: "high", label: "High Priority" },
+      ] as const, { label: "Priority" }),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties?.["priority"]).toEqual({
+      type: "string",
+      title: "Priority",
+      oneOf: [
+        { const: "low", title: "Low Priority" },
+        { const: "medium", title: "Medium Priority" },
+        { const: "high", title: "High Priority" },
+      ],
+    });
+  });
+
   it("should handle required fields", () => {
     const form = formspec(
       field.text("name", { required: true }),

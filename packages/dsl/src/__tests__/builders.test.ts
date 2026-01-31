@@ -70,6 +70,36 @@ describe("field builders", () => {
       expect(f.label).toBe("Status");
       expect(f.required).toBe(true);
     });
+
+    it("should create an enum field with object options", () => {
+      const f = field.enum("priority", [
+        { id: "low", label: "Low Priority" },
+        { id: "medium", label: "Medium Priority" },
+        { id: "high", label: "High Priority" },
+      ] as const);
+
+      expect(f._type).toBe("field");
+      expect(f._field).toBe("enum");
+      expect(f.name).toBe("priority");
+      expect(f.options).toEqual([
+        { id: "low", label: "Low Priority" },
+        { id: "medium", label: "Medium Priority" },
+        { id: "high", label: "High Priority" },
+      ]);
+    });
+
+    it("should include optional config with object options", () => {
+      const f = field.enum("priority", [
+        { id: "low", label: "Low" },
+        { id: "high", label: "High" },
+      ] as const, {
+        label: "Priority",
+        required: true,
+      });
+
+      expect(f.label).toBe("Priority");
+      expect(f.required).toBe(true);
+    });
   });
 
   describe("field.dynamicEnum", () => {
