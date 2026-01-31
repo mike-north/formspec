@@ -1,3 +1,6 @@
 packages:
-  - "packages/*"
-  - "experiments/*"
+  - packages/*
+  - experiments/*
+
+onlyBuiltDependencies:
+  - esbuild
