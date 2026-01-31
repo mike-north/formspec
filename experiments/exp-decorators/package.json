@@ -1,0 +1,22 @@
+{
+  "name": "@formspec/exp-decorators",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Experiment: Decorator-based FormSpec DSL",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test:types": "tsd"
+  },
+  "dependencies": {
+    "@formspec/core": "workspace:*"
+  },
+  "license": "UNLICENSED",
+  "tsd": {
+    "directory": "src"
+  }
+}
