@@ -228,7 +228,6 @@ For cases where you need to represent your form schema as a TypeScript class, Fo
 
 ```typescript
 import { FormClass, Label, Optional, Min, EnumOptions, toFormSpec, InferClassSchema } from "@formspec/exp-decorators";
-import { is } from "@formspec/dsl";
 
 @FormClass()
 class InvoiceForm {
@@ -267,7 +266,7 @@ type InvoiceSchema = InferClassSchema<InvoiceForm>;
 | Required default | Explicit via config | All required by default |
 | Optional fields | `required: false` | `@Optional()` decorator |
 | TypeScript `?` | Not used | Indicates data shape only |
-| Conditionals | `when(is(...), ...)` | `@ShowWhen(is(...))` |
+| Conditionals | `when(is(...), ...)` | `@ShowWhen({ _predicate: "equals", field, value })` |
 
 ### When to Use Each
 

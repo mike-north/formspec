@@ -41,7 +41,7 @@
  */
 export type InferClassSchema<T> = {
   // Only include non-function properties
-  [K in keyof T as T[K] extends Function ? never : K]: T[K] extends (infer U)[]
+  [K in keyof T as T[K] extends (...args: unknown[]) => unknown ? never : K]: T[K] extends (infer U)[]
     ? // Array type: recursively infer the item type
       InferArrayItemSchema<U>[]
     : T[K] extends object

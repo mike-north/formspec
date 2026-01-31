@@ -92,6 +92,15 @@ export function setFieldMetadata(
   }
 
   const existing = fieldsMap.get(propertyKey) ?? {};
+
+  // Validate for conflicting field type hints
+  if (existing.fieldType && metadata.fieldType && existing.fieldType !== metadata.fieldType) {
+    console.warn(
+      `[FormSpec] Field has conflicting type hints: ${existing.fieldType} vs ${metadata.fieldType}. ` +
+      `Using ${metadata.fieldType}.`
+    );
+  }
+
   fieldsMap.set(propertyKey, { ...existing, ...metadata });
 }
 
@@ -119,7 +128,7 @@ function finalizeClassMetadata(
       tempMetadataStore.delete(key);
 
       // Clean up the decoration key
-      delete prototype[DECORATING_KEY];
+      Reflect.deleteProperty(prototype, DECORATING_KEY);
     }
   }
 }
@@ -143,7 +152,8 @@ export function getClassMetadata(
     metadata = classMetadataStore.get(constructor);
   }
 
-  return metadata ?? new Map();
+  // Explicit return type assertion for unsafe-return
+  return (metadata ?? new Map()) as Map<string | symbol, FieldMetadata>;
 }
 
 /**
@@ -158,6 +168,7 @@ export function getFieldMetadata(
   constructor: new (...args: any[]) => any,
   propertyKey: string | symbol
 ): FieldMetadata {
-  const classMetadata = classMetadataStore.get(constructor);
-  return classMetadata?.get(propertyKey) ?? {};
+  // Use getClassMetadata to ensure metadata is finalized
+  const classMetadata = getClassMetadata(constructor);
+  return classMetadata.get(propertyKey) ?? {};
 }

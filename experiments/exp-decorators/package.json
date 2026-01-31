@@ -10,10 +10,14 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "test:types": "tsd"
   },
   "dependencies": {
     "@formspec/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   },
   "license": "UNLICENSED",
   "tsd": {

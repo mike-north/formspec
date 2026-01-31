@@ -59,6 +59,10 @@ importers:
       '@formspec/core':
         specifier: workspace:*
         version: link:../../packages/core
+    devDependencies:
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.7)
 
   experiments/exp-form-first:
     dependencies:

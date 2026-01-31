@@ -43,8 +43,9 @@ import { getClassMetadata, type FieldMetadata } from "./metadata.js";
  * - Nested objects and arrays need additional decorator support
  * - Groups are collected but rendered flat (no nested group structure)
  */
-export function toFormSpec<T extends new (...args: unknown[]) => unknown>(
-  cls: T
+export function toFormSpec(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cls: new (...args: any[]) => any
 ): FormSpec<FormElement[]> {
   // Check if metadata is already finalized
   let metadata = getClassMetadata(cls);
@@ -59,9 +60,15 @@ export function toFormSpec<T extends new (...args: unknown[]) => unknown>(
 
       // Metadata should now be on the prototype, read it again
       metadata = getClassMetadata(cls);
-    } catch {
+    } catch (error) {
       // If construction fails, we'll just work with empty metadata
       // This might happen if the constructor requires arguments
+      console.warn(
+        `[FormSpec] Failed to instantiate ${cls.name} for metadata extraction. ` +
+        `If your class requires constructor arguments, ensure decorators are applied correctly. ` +
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+      metadata = getClassMetadata(cls);
     }
   }
 
@@ -75,6 +82,9 @@ export function toFormSpec<T extends new (...args: unknown[]) => unknown>(
   for (const [propertyKey, fieldMeta] of metadata.entries()) {
     // Skip symbol keys for now (rare in practice)
     if (typeof propertyKey === "symbol") {
+      console.warn(
+        `[FormSpec] Skipping symbol-keyed property ${String(propertyKey)} - FormSpec only supports string keys`
+      );
       continue;
     }
 
@@ -107,6 +117,14 @@ export function toFormSpec<T extends new (...args: unknown[]) => unknown>(
   // Add ungrouped fields
   elements.push(...ungroupedFields);
 
+  // Validate that we generated at least one element
+  if (elements.length === 0) {
+    console.warn(
+      `[FormSpec] Generated FormSpec for ${cls.name} has no elements. ` +
+      `Ensure class properties are decorated with field decorators like @Label().`
+    );
+  }
+
   return { elements };
 }
 
@@ -131,7 +149,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         ...(meta.label !== undefined && { label: meta.label }),
         ...(meta.min !== undefined && { min: meta.min }),
         ...(meta.max !== undefined && { max: meta.max }),
-        ...(required !== undefined && { required }),
+        required,
       };
 
     case "boolean":
@@ -140,7 +158,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         _field: "boolean" as const,
         name,
         ...(meta.label !== undefined && { label: meta.label }),
-        ...(required !== undefined && { required }),
+        required,
       };
 
     case "enum":
@@ -153,7 +171,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         name,
         options: meta.enumOptions,
         ...(meta.label !== undefined && { label: meta.label }),
-        ...(required !== undefined && { required }),
+        required,
       };
 
     case "array":
@@ -165,7 +183,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         name,
         items: [], // TODO: Support nested item schemas
         ...(meta.label !== undefined && { label: meta.label }),
-        ...(required !== undefined && { required }),
+        required,
         ...(meta.minItems !== undefined && { minItems: meta.minItems }),
         ...(meta.maxItems !== undefined && { maxItems: meta.maxItems }),
       };
@@ -178,7 +196,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         name,
         properties: [], // TODO: Support nested property schemas
         ...(meta.label !== undefined && { label: meta.label }),
-        ...(required !== undefined && { required }),
+        required,
       };
 
     case "text":
@@ -190,7 +208,7 @@ function createField(name: string, meta: FieldMetadata): AnyField {
         name,
         ...(meta.label !== undefined && { label: meta.label }),
         ...(meta.placeholder !== undefined && { placeholder: meta.placeholder }),
-        ...(required !== undefined && { required }),
+        required,
       };
   }
 }

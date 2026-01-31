@@ -26,10 +26,30 @@ import { setFieldMetadata } from "./metadata.js";
 /**
  * Class decorator that marks a class as a FormSpec definition.
  *
- * This decorator is currently a marker - metadata finalization happens
- * lazily when metadata is first accessed via getClassMetadata().
+ * Apply this decorator to classes that define form schemas using field decorators.
+ * Use `toFormSpec()` to convert the decorated class to a FormSpec at runtime.
+ *
+ * @example
+ * ```typescript
+ * @FormClass()
+ * class ContactForm {
+ *   @Label("Full Name")
+ *   name!: string;
+ *
+ *   @Label("Email Address")
+ *   @Placeholder("user@example.com")
+ *   email!: string;
+ *
+ *   @Label("Phone Number")
+ *   @Optional()
+ *   phone?: string;
+ * }
+ *
+ * const spec = toFormSpec(ContactForm);
+ * ```
  */
 export function FormClass(): ClassDecoratorFunction {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   return (_target: Function, _context: ClassDecoratorContext) => {
     // Currently just a marker decorator
     // Metadata finalization happens lazily in getClassMetadata()
@@ -129,8 +149,8 @@ export function Max(value: number): FieldDecoratorFunction {
  *
  * @param options - Array of enum options (strings or {id, label} objects)
  */
-export function EnumOptions<T extends readonly (string | { id: string; label: string })[]>(
-  options: T
+export function EnumOptions(
+  options: readonly (string | { id: string; label: string })[]
 ): FieldDecoratorFunction {
   return <C, V>(_target: undefined, context: ClassFieldDecoratorContext<C, V>) => {
     context.addInitializer(function (this: C) {
@@ -149,6 +169,28 @@ export function EnumOptions<T extends readonly (string | { id: string; label: st
  * Fields with the same group name will be rendered together.
  *
  * @param name - The group name
+ *
+ * @example
+ * ```typescript
+ * @FormClass()
+ * class AddressForm {
+ *   @Group("Billing Address")
+ *   @Label("Street")
+ *   billingStreet!: string;
+ *
+ *   @Group("Billing Address")
+ *   @Label("City")
+ *   billingCity!: string;
+ *
+ *   @Group("Shipping Address")
+ *   @Label("Street")
+ *   shippingStreet!: string;
+ *
+ *   @Group("Shipping Address")
+ *   @Label("City")
+ *   shippingCity!: string;
+ * }
+ * ```
  */
 export function Group(name: string): FieldDecoratorFunction {
   return <T, V>(_target: undefined, context: ClassFieldDecoratorContext<T, V>) => {
@@ -168,10 +210,10 @@ export function Group(name: string): FieldDecoratorFunction {
  *
  * @param predicate - Equality predicate with field name and value
  */
-export function ShowWhen<K extends string, V>(predicate: {
+export function ShowWhen(predicate: {
   _predicate: "equals";
-  field: K;
-  value: V;
+  field: string;
+  value: unknown;
 }): FieldDecoratorFunction {
   return <T, Val>(_target: undefined, context: ClassFieldDecoratorContext<T, Val>) => {
     context.addInitializer(function (this: T) {
@@ -225,7 +267,7 @@ export function MaxItems(count: number): FieldDecoratorFunction {
  * Type alias for class constructors used in metadata storage.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ClassConstructor = new (...args: any[]) => any;
+type _ClassConstructor = new (...args: any[]) => any;
 
 /**
  * Type alias for field decorator functions.
@@ -242,4 +284,5 @@ type FieldDecoratorFunction = <T, V>(
 /**
  * Type alias for class decorator functions.
  */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 type ClassDecoratorFunction = (target: Function, context: ClassDecoratorContext) => void;

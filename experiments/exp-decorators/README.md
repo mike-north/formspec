@@ -2,6 +2,21 @@
 
 This experiment provides a decorator-based alternative to the FormSpec DSL that allows defining forms by annotating TypeScript class properties.
 
+## Prerequisites
+
+- TypeScript 5.0 or later
+- Node.js 20 or later (for TC39 Stage 3 decorator support)
+- `experimentalDecorators` must NOT be enabled in tsconfig.json
+
+## Installation
+
+This is an experimental package in the formspec workspace:
+
+```bash
+# From workspace root
+pnpm install
+```
+
 ## Features
 
 - **TC39 Stage 3 Decorators**: Uses modern JavaScript decorators (TypeScript 5.0+)
@@ -117,6 +132,8 @@ class PaymentForm {
   cardNumber?: string;
 }
 ```
+
+> **Note**: The `@ShowWhen` decorator accepts a predicate object directly, not the `is()` helper function used in the builder DSL.
 
 ## Type Inference
 
