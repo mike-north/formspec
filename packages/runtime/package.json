@@ -1,6 +1,6 @@
 {
   "name": "@formspec/runtime",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.2",
   "description": "Runtime helpers for FormSpec - resolvers and data fetching",
   "type": "module",
   "main": "./dist/index.js",
