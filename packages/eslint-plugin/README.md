@@ -214,4 +214,4 @@ export default [
 
 ## License
 
-MIT
+UNLICENSED

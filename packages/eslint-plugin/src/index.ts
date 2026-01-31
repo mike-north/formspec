@@ -37,7 +37,6 @@ const rules = {
  */
 const meta = {
   name: "@formspec/eslint-plugin",
-  version: "0.1.0",
 };
 
 /**

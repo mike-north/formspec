@@ -7,7 +7,7 @@ Add experimental decorator-based FormSpec DSL
 This experiment explores an alternative way to define forms using TypeScript class decorators (TC39 Stage 3). Instead of the builder pattern, you can annotate class properties:
 
 ```typescript
-import { FormClass, Label, Optional, EnumOptions } from "@formspec/exp-decorators";
+import { FormClass, Label, Optional, EnumOptions, Min } from "@formspec/exp-decorators";
 
 @FormClass()
 class InvoiceForm {
