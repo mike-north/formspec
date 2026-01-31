@@ -36,6 +36,7 @@ export {
   FormClass,
   Label,
   Optional,
+  Boolean,
   Placeholder,
   Min,
   Max,

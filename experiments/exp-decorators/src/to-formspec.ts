@@ -96,8 +96,16 @@ export function toFormSpec(
 
     // Group or add directly
     if (fieldMeta.group) {
+      // Note: @ShowWhen on grouped fields is not supported in this POC
+      // The conditional wrapper is intentionally not applied to grouped fields
+      if (fieldMeta.showWhen) {
+        console.warn(
+          `[FormSpec] Field "${propertyKey}" has both @Group() and @ShowWhen(). ` +
+          `Combining groups with conditionals is not supported in this POC - @ShowWhen will be ignored.`
+        );
+      }
       const groupFields = groupedFields.get(fieldMeta.group) ?? [];
-      groupFields.push(field); // Note: conditionals around grouped fields not fully supported in POC
+      groupFields.push(field);
       groupedFields.set(fieldMeta.group, groupFields);
     } else {
       ungroupedFields.push(element);

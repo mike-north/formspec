@@ -60,6 +60,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)
