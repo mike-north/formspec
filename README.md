@@ -222,6 +222,59 @@ type Schema2 = InferFormSchema<typeof form>;
 // }
 ```
 
+## Alternative: Decorator-Based Class DSL (Experimental)
+
+For cases where you need to represent your form schema as a TypeScript class, FormSpec provides an experimental decorator-based DSL:
+
+```typescript
+import { FormClass, Label, Optional, Min, EnumOptions, toFormSpec, InferClassSchema } from "@formspec/exp-decorators";
+
+@FormClass()
+class InvoiceForm {
+  @Label("Customer Name")
+  name: string;
+
+  @Label("Invoice Amount")
+  @Min(0)
+  amount: number;
+
+  @Label("Status")
+  @EnumOptions([
+    { id: "draft", label: "Draft" },
+    { id: "sent", label: "Sent" },
+    { id: "paid", label: "Paid" },
+  ])
+  status: "draft" | "sent" | "paid";
+
+  @Label("Notes")
+  @Optional()
+  notes?: string;
+}
+
+// Convert to FormSpec
+const form = toFormSpec(InvoiceForm);
+
+// Type is inferred from class properties
+type InvoiceSchema = InferClassSchema<InvoiceForm>;
+```
+
+### Key Differences from Builder DSL
+
+| Aspect | Builder DSL | Decorator DSL |
+|--------|-------------|---------------|
+| Field types | Inferred from builders | Inferred from property types |
+| Required default | Explicit via config | All required by default |
+| Optional fields | `required: false` | `@Optional()` decorator |
+| TypeScript `?` | Not used | Indicates data shape only |
+| Conditionals | `when(is(...), ...)` | `@ShowWhen({ _predicate: "equals", field, value })` |
+
+### When to Use Each
+
+- **Builder DSL**: When you want maximum type inference and a functional style
+- **Decorator DSL**: When integrating with existing class-based domain models
+
+> **Note**: The decorator DSL is experimental and requires TypeScript 5.0+ with TC39 Stage 3 decorator support.
+
 ## JSON Schema Extensions
 
 FormSpec adds custom extensions to JSON Schema for dynamic fields. These use the `x-formspec-` prefix following JSON Schema extension conventions.
