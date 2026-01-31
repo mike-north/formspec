@@ -57,7 +57,11 @@ export type InferFieldValue<F> = F extends TextField<string>
     : F extends BooleanField<string>
       ? boolean
       : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
-        ? O[number] extends EnumOption ? O[number]["id"] : O[number]
+        ? O extends readonly EnumOption[]
+          ? O[number]["id"]
+          : O extends readonly string[]
+            ? O[number]
+            : never
         : F extends DynamicEnumField<string, infer Source>
           ? DataSourceValueType<Source>
           : F extends DynamicSchemaField<string>

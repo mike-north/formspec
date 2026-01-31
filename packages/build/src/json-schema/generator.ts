@@ -56,12 +56,18 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
 
     case "enum": {
       const opts = field.options;
-      if (opts.length > 0 && typeof opts[0] === "object") {
+      const isObjectOptions =
+        opts.length > 0 &&
+        opts.every(
+          (opt): opt is { id: string; label: string } =>
+            typeof opt === "object" && opt !== null && "id" in opt && "label" in opt
+        );
+      if (isObjectOptions) {
         // Object options with id/label: use oneOf with const/title
         return {
           ...base,
           type: "string",
-          oneOf: (opts as readonly { id: string; label: string }[]).map((o) => ({
+          oneOf: opts.map((o) => ({
             const: o.id,
             title: o.label,
           })),
