@@ -10,6 +10,7 @@ import type {
   NumberField,
   BooleanField,
   StaticEnumField,
+  EnumOptionValue,
   DynamicEnumField,
   DynamicSchemaField,
   ArrayField,
@@ -96,7 +97,7 @@ export const field = {
    * @param config - Optional configuration for label, etc.
    * @returns A StaticEnumField descriptor
    */
-  enum: <const N extends string, const O extends readonly string[]>(
+  enum: <const N extends string, const O extends readonly EnumOptionValue[]>(
     name: N,
     options: O,
     config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">

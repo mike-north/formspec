@@ -54,8 +54,27 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
     case "boolean":
       return { ...base, type: "boolean" };
 
-    case "enum":
-      return { ...base, type: "string", enum: field.options };
+    case "enum": {
+      const opts = field.options;
+      const isObjectOptions =
+        opts.length > 0 &&
+        opts.every(
+          (opt): opt is { id: string; label: string } =>
+            typeof opt === "object" && opt !== null && "id" in opt && "label" in opt
+        );
+      if (isObjectOptions) {
+        // Object options with id/label: use oneOf with const/title
+        return {
+          ...base,
+          type: "string",
+          oneOf: opts.map((o) => ({
+            const: o.id,
+            title: o.label,
+          })),
+        };
+      }
+      return { ...base, type: "string", enum: opts as readonly string[] };
+    }
 
     case "dynamic_enum":
       // Dynamic enums are strings at the schema level

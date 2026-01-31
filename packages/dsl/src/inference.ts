@@ -10,6 +10,8 @@ import type {
   NumberField,
   BooleanField,
   StaticEnumField,
+  EnumOption,
+  EnumOptionValue,
   DynamicEnumField,
   DynamicSchemaField,
   ArrayField,
@@ -54,8 +56,12 @@ export type InferFieldValue<F> = F extends TextField<string>
     ? number
     : F extends BooleanField<string>
       ? boolean
-      : F extends StaticEnumField<string, infer O>
-        ? O[number]
+      : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
+        ? O extends readonly EnumOption[]
+          ? O[number]["id"]
+          : O extends readonly string[]
+            ? O[number]
+            : never
         : F extends DynamicEnumField<string, infer Source>
           ? DataSourceValueType<Source>
           : F extends DynamicSchemaField<string>

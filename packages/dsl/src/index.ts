@@ -56,3 +56,6 @@ export type {
   InferSchema,
   InferFormSchema,
 } from "./inference.js";
+
+// Re-export enum option types from core for convenience
+export type { EnumOption, EnumOptionValue } from "@formspec/core";

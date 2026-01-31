@@ -5,7 +5,7 @@
 ```ts
 
 // @public
-export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly string[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
@@ -75,6 +75,17 @@ export interface DynamicSchemaField<N extends string> {
     readonly schemaSource: string;
     readonly _type: "field";
 }
+
+// @public
+export interface EnumOption {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly label: string;
+}
+
+// @public
+export type EnumOptionValue = string | EnumOption;
 
 // @public
 export interface EqualsPredicate<K extends string, V> {
@@ -149,7 +160,7 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
 
 // @public
-export interface StaticEnumField<N extends string, O extends readonly string[]> {
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
     readonly _field: "enum";
     readonly label?: string;
     readonly name: N;
