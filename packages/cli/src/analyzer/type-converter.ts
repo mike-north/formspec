@@ -56,6 +56,7 @@ export interface FormSpecField {
   options?: Array<string | { id: string; label: string }>;
   showWhen?: object;
   group?: string;
+  fields?: FormSpecField[];  // Nested fields for object types
 }
 
 /**
@@ -304,6 +305,30 @@ export function createFormSpecField(
   // Apply optionality
   if (!optional) {
     field.required = true;
+  }
+
+  // For object types, recursively add nested fields
+  if (formSpecFieldType === "object" && type.flags & ts.TypeFlags.Object) {
+    const objectType = type as ts.ObjectType;
+    const nestedFields: FormSpecField[] = [];
+
+    for (const prop of objectType.getProperties()) {
+      const propType = checker.getTypeOfSymbolAtLocation(
+        prop,
+        prop.valueDeclaration ?? prop.declarations?.[0] ?? ({} as ts.Node)
+      );
+      const propOptional = !!(prop.flags & ts.SymbolFlags.Optional);
+
+      // Note: We don't have access to decorators on nested class properties here
+      // since we're analyzing the type, not the class declaration
+      nestedFields.push(
+        createFormSpecField(prop.name, propType, [], propOptional, checker)
+      );
+    }
+
+    if (nestedFields.length > 0) {
+      field.fields = nestedFields;
+    }
   }
 
   // Apply decorator values

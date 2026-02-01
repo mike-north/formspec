@@ -58,84 +58,19 @@ The CLI recognizes decorators by name through static analysis. You don't need a 
 | `@ShowWhen(cond)` | Conditional visibility | `@ShowWhen({ field: "type", value: "other" })` |
 | `@Group(name)` | Group fields together | `@Group("Contact Info")` |
 
-#### Complete Decorator Stubs
+#### Using Decorators
 
-Since the CLI uses static analysis, you can create simple decorator stubs. Copy this complete file to get started:
+Install the `@formspec/decorators` package:
 
-```typescript
-// decorators.ts - Copy this entire file to your project
-
-// Field metadata decorators
-export function Label(text: string) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function Placeholder(text: string) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function Description(text: string) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// Numeric constraints
-export function Min(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function Max(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function Step(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// String constraints
-export function MinLength(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function MaxLength(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function Pattern(regex: string) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// Array constraints
-export function MinItems(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-export function MaxItems(value: number) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// Enum options (for custom labels)
-export function EnumOptions(options: Array<string | { id: string; label: string }>) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// Conditional visibility
-export function ShowWhen(condition: { field: string; value: unknown }) {
-  return function (_target: any, _propertyKey: string) {};
-}
-
-// Grouping
-export function Group(name: string) {
-  return function (_target: any, _propertyKey: string) {};
-}
+```bash
+npm install @formspec/decorators
 ```
 
-> **Note**: These decorators are no-ops at runtime. The CLI reads them through static analysis of your TypeScript source code, so they have zero runtime overhead.
-
-Then use them in your class:
+Then use the decorators in your class:
 
 ```typescript
 // user-registration.ts
-import { Label, Min, Max, EnumOptions } from "./decorators";
+import { Label, Min, Max, EnumOptions } from "@formspec/decorators";
 
 class UserRegistration {
   @Label("Full Name")
@@ -164,6 +99,8 @@ Run the CLI:
 ```bash
 formspec generate ./src/user-registration.ts UserRegistration -o ./generated
 ```
+
+> **Note**: The decorators are no-ops at runtime with zero overhead. The CLI reads them through static analysis of your TypeScript source code.
 
 ### FormSpec Chain DSL Support
 
@@ -228,6 +165,76 @@ generated/
         └── ux_spec.json
 ```
 
+## Example Output
+
+Given this TypeScript class:
+
+```typescript
+import { Label, Min, Max, EnumOptions } from "@formspec/decorators";
+
+class ContactForm {
+  @Label("Full Name")
+  name!: string;
+
+  @Label("Email Address")
+  email!: string;
+
+  @Label("Age")
+  @Min(18)
+  @Max(120)
+  age?: number;
+
+  @Label("Country")
+  @EnumOptions([
+    { id: "us", label: "United States" },
+    { id: "ca", label: "Canada" }
+  ])
+  country!: "us" | "ca";
+}
+```
+
+Running `formspec generate ./contact-form.ts ContactForm` produces:
+
+**schema.json:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "title": "Full Name" },
+    "email": { "type": "string", "title": "Email Address" },
+    "age": { "type": "number", "title": "Age", "minimum": 18, "maximum": 120 },
+    "country": {
+      "oneOf": [
+        { "const": "us", "title": "United States" },
+        { "const": "ca", "title": "Canada" }
+      ]
+    }
+  },
+  "required": ["name", "email", "country"]
+}
+```
+
+**ux_spec.json:**
+```json
+{
+  "elements": [
+    { "_field": "text", "id": "name", "label": "Full Name", "required": true },
+    { "_field": "text", "id": "email", "label": "Email Address", "required": true },
+    { "_field": "number", "id": "age", "label": "Age", "min": 18, "max": 120 },
+    {
+      "_field": "enum",
+      "id": "country",
+      "label": "Country",
+      "required": true,
+      "options": [
+        { "id": "us", "label": "United States" },
+        { "id": "ca", "label": "Canada" }
+      ]
+    }
+  ]
+}
+```
+
 ## CLI Reference
 
 ```
@@ -253,13 +260,12 @@ For decorator support, ensure your `tsconfig.json` includes:
 ```json
 {
   "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "experimentalDecorators": true
   }
 }
 ```
 
-Note: The CLI performs static analysis, so decorators work even without these flags. However, your editor and TypeScript compiler will require them for decorator syntax support.
+> **Note**: The `emitDecoratorMetadata` flag is not required. The CLI performs static analysis and reads decorators directly from the AST without using reflection.
 
 ## Troubleshooting
 

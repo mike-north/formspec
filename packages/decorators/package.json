@@ -1,0 +1,33 @@
+{
+  "name": "@formspec/decorators",
+  "version": "0.1.0-alpha.0",
+  "description": "Decorator stubs for FormSpec CLI static analysis",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "formspec",
+    "decorators",
+    "typescript",
+    "forms",
+    "schema"
+  ],
+  "license": "UNLICENSED"
+}

@@ -135,6 +135,8 @@ importers:
 
   packages/core: {}
 
+  packages/decorators: {}
+
   packages/dsl:
     dependencies:
       '@formspec/core':
