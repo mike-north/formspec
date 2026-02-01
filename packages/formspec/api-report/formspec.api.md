@@ -19,6 +19,8 @@ import { DataSourceValueType } from '@formspec/core';
 import { defineResolvers } from '@formspec/runtime';
 import { DynamicEnumField } from '@formspec/core';
 import { DynamicSchemaField } from '@formspec/core';
+import { EnumOption } from '@formspec/dsl';
+import { EnumOptionValue } from '@formspec/dsl';
 import { EqualsPredicate } from '@formspec/core';
 import { ExtractFields } from '@formspec/dsl';
 import { ExtractFieldsFromArray } from '@formspec/dsl';
@@ -98,6 +100,10 @@ export { defineResolvers }
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
+
+export { EnumOption }
+
+export { EnumOptionValue }
 
 export { EqualsPredicate }
 

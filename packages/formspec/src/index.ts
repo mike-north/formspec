@@ -100,6 +100,9 @@ export { createInitialFieldState } from "@formspec/core";
 
 export { field, group, when, is, formspec, formspecWithValidation, validateForm, logValidationIssues } from "@formspec/dsl";
 
+// Re-export enum option types (commonly used)
+export type { EnumOption, EnumOptionValue } from "@formspec/dsl";
+
 export type {
   // Type inference
   InferFieldValue,
