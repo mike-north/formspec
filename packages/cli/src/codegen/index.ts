@@ -248,10 +248,11 @@ function convertTypeToMetadata(
   if (type.flags & ts.TypeFlags.Object) {
     const properties: Record<string, TypeMetadata> = {};
     for (const prop of type.getProperties()) {
-      const propType = checker.getTypeOfSymbolAtLocation(
-        prop,
-        prop.valueDeclaration ?? prop.declarations?.[0] ?? ({} as ts.Node)
-      );
+      // Skip properties without declarations (can't determine type safely)
+      const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
+      if (!declaration) continue;
+
+      const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
       const propOptional = !!(prop.flags & ts.SymbolFlags.Optional);
       const propMeta = convertTypeToMetadata(propType, checker, visited);
       if (propOptional) propMeta.optional = true;
@@ -368,7 +369,14 @@ function metadataToTypeString(metadata: TypeMetadata): string {
 }
 
 /**
- * Checks if a property key needs to be quoted in TypeScript.
+ * Checks if a property key needs to be quoted in TypeScript object types.
+ *
+ * Property keys need quoting if they:
+ * - Contain characters invalid in JavaScript identifiers (spaces, hyphens, etc.)
+ * - Are reserved JavaScript/TypeScript keywords (class, function, etc.)
+ *
+ * @param key - The property name to check
+ * @returns true if the key requires quotes, false otherwise
  */
 function needsPropertyQuoting(key: string): boolean {
   // Valid JS identifier: starts with letter/underscore/$, followed by alphanumeric/_/$
@@ -376,24 +384,39 @@ function needsPropertyQuoting(key: string): boolean {
   if (!validIdentifier.test(key)) {
     return true;
   }
-  // Reserved words that need quoting
+  // Reserved words that need quoting (comprehensive list including ES6+)
   const reservedWords = new Set([
+    // Keywords
     "break", "case", "catch", "continue", "debugger", "default", "delete",
     "do", "else", "finally", "for", "function", "if", "in", "instanceof",
     "new", "return", "switch", "this", "throw", "try", "typeof", "var",
     "void", "while", "with", "class", "const", "enum", "export", "extends",
     "import", "super", "implements", "interface", "let", "package", "private",
     "protected", "public", "static", "yield",
+    // ES6+ keywords
+    "async", "await",
+    // Literal values (not technically keywords but best to quote)
+    "null", "true", "false",
+    // Accessor keywords
+    "get", "set",
+    // Strict mode reserved
+    "arguments", "eval",
   ]);
   return reservedWords.has(key);
 }
 
 /**
- * Escapes a property key for use in TypeScript type definitions.
+ * Escapes a property key for safe use in TypeScript type definitions.
+ *
+ * Wraps keys in double quotes if they need quoting, using JSON.stringify
+ * for robust escaping of special characters.
+ *
+ * @param key - The property name to escape
+ * @returns The escaped key, quoted if necessary
  */
 function escapePropertyKey(key: string): string {
   if (needsPropertyQuoting(key)) {
-    return `"${key.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+    return JSON.stringify(key);
   }
   return key;
 }
@@ -412,7 +435,7 @@ function metadataToBaseTypeString(metadata: TypeMetadata): string {
     case "enum":
       if (metadata.values && metadata.values.length > 0) {
         return metadata.values
-          .map((v) => (typeof v === "string" ? `"${v}"` : String(v)))
+          .map((v) => (typeof v === "string" ? JSON.stringify(v) : String(v)))
           .join(" | ");
       }
       return "string";
@@ -458,7 +481,13 @@ function generateSchemaType(cls: DecoratedClassInfo): string {
 }
 
 /**
- * Maps metadata type to FormSpec field type.
+ * Maps TypeMetadata type strings to FormSpec field type strings.
+ *
+ * TypeMetadata uses generic type names (string, number), while FormSpec
+ * uses more specific field type names (text, number, enum).
+ *
+ * @param type - The TypeMetadata type string
+ * @returns The corresponding FormSpec field type
  */
 function metadataTypeToFieldType(type: string): string {
   switch (type) {
@@ -481,6 +510,18 @@ function metadataTypeToFieldType(type: string): string {
 
 /**
  * Generates typed FormSpec accessor for a class.
+ *
+ * Creates three exports:
+ * 1. Element tuple type (e.g., UserFormElements) - Exact readonly array type
+ *    representing each field with its literal types preserved
+ * 2. FormSpec result type (e.g., UserFormFormSpec) - Type alias wrapping the elements
+ * 3. Accessor function (e.g., getUserFormFormSpec()) - Returns FormSpec with full
+ *    type information for autocomplete and type checking
+ *
+ * These types enable the same level of type inference as the Chain DSL.
+ *
+ * @param cls - The decorated class information
+ * @returns TypeScript code defining the accessor function and types
  */
 function generateTypedAccessor(cls: DecoratedClassInfo): string {
   const lines: string[] = [];
@@ -496,7 +537,7 @@ function generateTypedAccessor(cls: DecoratedClassInfo): string {
       // Add options for enum types
       if (metadata.type === "enum" && metadata.values) {
         const optionValues = metadata.values
-          .map((v) => (typeof v === "string" ? `"${v}"` : String(v)))
+          .map((v) => (typeof v === "string" ? JSON.stringify(v) : String(v)))
           .join(", ");
         elementType += `; readonly options: readonly [${optionValues}]`;
       }
