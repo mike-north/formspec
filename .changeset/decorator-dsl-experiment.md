@@ -4,7 +4,7 @@
 
 Add decorator-based FormSpec DSL
 
-This provides an alternative way to define forms using TypeScript class decorators (TC39 Stage 3). Instead of the builder pattern, you can annotate class properties:
+This provides an alternative way to define forms using TypeScript class decorators. Instead of the builder pattern, you can annotate class properties:
 
 ```typescript
 import { Label, Min, EnumOptions, toFormSpec } from "@formspec/decorators";
