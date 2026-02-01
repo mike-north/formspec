@@ -1,0 +1,39 @@
+{
+  "name": "@formspec/decorators",
+  "version": "0.1.0-alpha.0",
+  "description": "Decorator stubs for FormSpec CLI static analysis",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && esbuild dist/index.js --bundle --platform=node --format=cjs --outfile=dist/index.cjs --packages=external",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2",
+    "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "formspec",
+    "decorators",
+    "typescript",
+    "forms",
+    "schema"
+  ],
+  "license": "UNLICENSED"
+}

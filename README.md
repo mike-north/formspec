@@ -222,58 +222,72 @@ type Schema2 = InferFormSchema<typeof form>;
 // }
 ```
 
-## Alternative: Decorator-Based Class DSL (Experimental)
+## Choosing a DSL
 
-For cases where you need to represent your form schema as a TypeScript class, FormSpec provides an experimental decorator-based DSL:
+FormSpec offers two ways to define forms:
+
+### Chain DSL (Recommended)
+
+The builder-based Chain DSL is the primary approach:
 
 ```typescript
-import { FormClass, Label, Optional, Min, EnumOptions, toFormSpec, InferClassSchema } from "@formspec/exp-decorators";
+import { formspec, field, group, buildFormSchemas } from "formspec";
 
-@FormClass()
+const form = formspec(
+  field.text("name", { label: "Full Name" }),
+  field.enum("country", ["us", "ca"], { label: "Country" }),
+);
+
+// Works at build-time
+const { jsonSchema, uiSchema } = buildFormSchemas(form);
+
+// Also works at runtime - no codegen needed
+```
+
+**Use the Chain DSL when:**
+- You're working with dynamically fetched schema data (the only option for this)
+- You want JSON Schema or UI Schema at runtime without a codegen step
+- You want type information available without extra build steps
+
+### Decorator DSL
+
+The class-based Decorator DSL uses TypeScript decorators:
+
+```typescript
+import { Label, Min, EnumOptions } from "@formspec/decorators";
+
 class InvoiceForm {
   @Label("Customer Name")
-  name: string;
+  name!: string;
 
-  @Label("Invoice Amount")
+  @Label("Amount")
   @Min(0)
-  amount: number;
+  amount!: number;
 
   @Label("Status")
   @EnumOptions([
     { id: "draft", label: "Draft" },
-    { id: "sent", label: "Sent" },
     { id: "paid", label: "Paid" },
   ])
-  status: "draft" | "sent" | "paid";
-
-  @Label("Notes")
-  @Optional()
-  notes?: string;
+  status!: "draft" | "paid";
 }
-
-// Convert to FormSpec
-const form = toFormSpec(InvoiceForm);
-
-// Type is inferred from class properties
-type InvoiceSchema = InferClassSchema<InvoiceForm>;
 ```
 
-### Key Differences from Builder DSL
+**Use the Decorator DSL when:**
+- You prefer class-based domain models
+- Your types are known at build-time (not dynamically fetched)
+- You only need schemas at build-time (no codegen), or you're willing to run `formspec codegen` for runtime access
 
-| Aspect | Builder DSL | Decorator DSL |
-|--------|-------------|---------------|
-| Field types | Inferred from builders | Inferred from property types |
-| Required default | Explicit via config | All required by default |
-| Optional fields | `required: false` | `@Optional()` decorator |
-| TypeScript `?` | Not used | Indicates data shape only |
-| Conditionals | `when(is(...), ...)` | `@ShowWhen({ _predicate: "equals", field, value })` |
+See [@formspec/decorators](./packages/decorators/README.md) for usage details.
 
-### When to Use Each
+### Comparison
 
-- **Builder DSL**: When you want maximum type inference and a functional style
-- **Decorator DSL**: When integrating with existing class-based domain models
-
-> **Note**: The decorator DSL is experimental and requires TypeScript 5.0+ with TC39 Stage 3 decorator support.
+| Aspect | Chain DSL | Decorator DSL |
+|--------|-----------|---------------|
+| Runtime schemas | Works directly | Requires `formspec codegen` |
+| Build-time schemas | Works directly | Works directly |
+| Dynamic data | Native support | N/A |
+| Type source | Builder methods | TypeScript types |
 
 ## JSON Schema Extensions
 

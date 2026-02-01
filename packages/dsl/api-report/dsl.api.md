@@ -11,11 +11,15 @@ import type { Conditional } from '@formspec/core';
 import type { DataSourceValueType } from '@formspec/core';
 import type { DynamicEnumField } from '@formspec/core';
 import type { DynamicSchemaField } from '@formspec/core';
+import { EnumOption } from '@formspec/core';
+import { EnumOptionValue } from '@formspec/core';
+import type { EqualsPredicate } from '@formspec/core';
 import type { FormElement } from '@formspec/core';
 import type { FormSpec } from '@formspec/core';
 import type { Group } from '@formspec/core';
 import type { NumberField } from '@formspec/core';
 import type { ObjectField } from '@formspec/core';
+import type { Predicate } from '@formspec/core';
 import type { StaticEnumField } from '@formspec/core';
 import type { TextField } from '@formspec/core';
 
@@ -25,6 +29,10 @@ export type BuildSchema<Fields> = {
         name: infer N extends string;
     } ? N : never]: F extends AnyField ? InferFieldValue<F> : never;
 };
+
+export { EnumOption }
+
+export { EnumOptionValue }
 
 // @public
 export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
@@ -40,7 +48,7 @@ export const field: {
     text: <const N extends string>(name: N, config?: Omit<TextField<N>, "_type" | "_field" | "name">) => TextField<N>;
     number: <const N extends string>(name: N, config?: Omit<NumberField<N>, "_type" | "_field" | "name">) => NumberField<N>;
     boolean: <const N extends string>(name: N, config?: Omit<BooleanField<N>, "_type" | "_field" | "name">) => BooleanField<N>;
-    enum: <const N extends string, const O extends readonly string[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">) => StaticEnumField<N, O>;
+    enum: <const N extends string, const O extends readonly EnumOptionValue[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">) => StaticEnumField<N, O>;
     dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">) => DynamicEnumField<N, Source>;
     dynamicSchema: <const N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">) => DynamicSchemaField<N>;
     array: <const N extends string, const Items extends readonly FormElement[]>(name: N, ...items: Items) => ArrayField<N, Items>;
@@ -65,13 +73,16 @@ export function formspecWithValidation<const Elements extends readonly FormEleme
 export function group<const Elements extends readonly FormElement[]>(label: string, ...elements: Elements): Group<Elements>;
 
 // @public
-export type InferFieldValue<F> = F extends TextField<string> ? string : F extends NumberField<string> ? number : F extends BooleanField<string> ? boolean : F extends StaticEnumField<string, infer O> ? O[number] : F extends DynamicEnumField<string, infer Source> ? DataSourceValueType<Source> : F extends DynamicSchemaField<string> ? Record<string, unknown> : F extends ArrayField<string, infer Items extends readonly FormElement[]> ? InferSchema<Items>[] : F extends ObjectField<string, infer Properties extends readonly FormElement[]> ? InferSchema<Properties> : never;
+export type InferFieldValue<F> = F extends TextField<string> ? string : F extends NumberField<string> ? number : F extends BooleanField<string> ? boolean : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]> ? O extends readonly EnumOption[] ? O[number]["id"] : O extends readonly string[] ? O[number] : never : F extends DynamicEnumField<string, infer Source> ? DataSourceValueType<Source> : F extends DynamicSchemaField<string> ? Record<string, unknown> : F extends ArrayField<string, infer Items extends readonly FormElement[]> ? InferSchema<Items>[] : F extends ObjectField<string, infer Properties extends readonly FormElement[]> ? InferSchema<Properties> : never;
 
 // @public
 export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 
 // @public
 export type InferSchema<Elements extends readonly FormElement[]> = BuildSchema<ExtractFieldsFromArray<Elements>>;
+
+// @public
+export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
 
 // @public
 export function logValidationIssues(result: ValidationResult, formName?: string): void;
@@ -96,6 +107,6 @@ export interface ValidationResult {
 export type ValidationSeverity = "error" | "warning";
 
 // @public
-export function when<const K extends string, const V, const Elements extends readonly FormElement[]>(fieldName: K, value: V, ...elements: Elements): Conditional<K, V, Elements>;
+export function when<const K extends string, const V, const Elements extends readonly FormElement[]>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements>;
 
 ```

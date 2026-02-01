@@ -19,6 +19,7 @@ import { DataSourceValueType } from '@formspec/core';
 import { defineResolvers } from '@formspec/runtime';
 import { DynamicEnumField } from '@formspec/core';
 import { DynamicSchemaField } from '@formspec/core';
+import { EqualsPredicate } from '@formspec/core';
 import { ExtractFields } from '@formspec/dsl';
 import { ExtractFieldsFromArray } from '@formspec/dsl';
 import { FetchOptionsResponse } from '@formspec/core';
@@ -39,11 +40,13 @@ import { HorizontalLayout } from '@formspec/build';
 import { InferFieldValue } from '@formspec/dsl';
 import { InferFormSchema } from '@formspec/dsl';
 import { InferSchema } from '@formspec/dsl';
+import { is } from '@formspec/dsl';
 import { JSONSchema7 } from '@formspec/build';
 import { JSONSchemaType } from '@formspec/build';
 import { logValidationIssues } from '@formspec/dsl';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
+import { Predicate } from '@formspec/core';
 import { Resolver } from '@formspec/runtime';
 import { ResolverMap } from '@formspec/runtime';
 import { ResolverRegistry } from '@formspec/runtime';
@@ -62,6 +65,9 @@ import { ValidationSeverity } from '@formspec/dsl';
 import { Validity } from '@formspec/core';
 import { VerticalLayout } from '@formspec/build';
 import { when } from '@formspec/dsl';
+import { writeSchemas } from '@formspec/build';
+import { WriteSchemasOptions } from '@formspec/build';
+import { WriteSchemasResult } from '@formspec/build';
 
 export { AnyField }
 
@@ -92,6 +98,8 @@ export { defineResolvers }
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
+
+export { EqualsPredicate }
 
 export { ExtractFields }
 
@@ -133,6 +141,8 @@ export { InferFormSchema }
 
 export { InferSchema }
 
+export { is }
+
 export { JSONSchema7 }
 
 export { JSONSchemaType }
@@ -142,6 +152,8 @@ export { logValidationIssues }
 export { NumberField }
 
 export { ObjectField }
+
+export { Predicate }
 
 export { Resolver }
 
@@ -178,5 +190,11 @@ export { Validity }
 export { VerticalLayout }
 
 export { when }
+
+export { writeSchemas }
+
+export { WriteSchemasOptions }
+
+export { WriteSchemasResult }
 
 ```

@@ -114,7 +114,35 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)
 
+  packages/cli:
+    dependencies:
+      '@formspec/build':
+        specifier: workspace:*
+        version: link:../build
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+    devDependencies:
+      '@formspec/core':
+        specifier: workspace:*
+        version: link:../core
+      '@formspec/dsl':
+        specifier: workspace:*
+        version: link:../dsl
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)
+
   packages/core: {}
+
+  packages/decorators:
+    devDependencies:
+      esbuild:
+        specifier: ^0.27.2
+        version: 0.27.2
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)
 
   packages/dsl:
     dependencies:
@@ -172,6 +200,15 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../dsl
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)
+
+  packages/transformer:
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)
