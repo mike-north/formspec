@@ -13,11 +13,11 @@ pnpm add @formspec/cli
 ## Quick Start
 
 ```bash
-# Analyze a TypeScript class
-formspec analyze ./src/forms.ts MyClass -o ./generated
+# Generate schemas from a TypeScript class
+formspec generate ./src/forms.ts MyClass -o ./generated
 
-# Analyze all FormSpec exports in a file (chain DSL)
-formspec analyze ./src/forms.ts -o ./generated
+# Generate schemas from all FormSpec exports in a file (chain DSL)
+formspec generate ./src/forms.ts -o ./generated
 ```
 
 ## Features
@@ -162,7 +162,7 @@ class UserRegistration {
 Run the CLI:
 
 ```bash
-formspec analyze ./src/user-registration.ts UserRegistration -o ./generated
+formspec generate ./src/user-registration.ts UserRegistration -o ./generated
 ```
 
 ### FormSpec Chain DSL Support
@@ -181,7 +181,7 @@ export const ContactForm = formspec(
 ```
 
 ```bash
-formspec analyze ./src/forms.ts -o ./generated
+formspec generate ./src/forms.ts -o ./generated
 ```
 
 ### Method Parameter Analysis
@@ -231,16 +231,19 @@ generated/
 ## CLI Reference
 
 ```
-formspec analyze <file> [className] [options]
+formspec generate <file> [className] [options]
 
 Arguments:
   <file>        Path to TypeScript source file
-  [className]   Optional class name to analyze (if omitted, analyzes FormSpec exports)
+  [className]   Optional class name (if omitted, generates from FormSpec exports only)
 
 Options:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
   -h, --help            Show help message
+
+Aliases:
+  formspec analyze      Same as 'generate' (backwards compatibility)
 ```
 
 ## TypeScript Configuration
@@ -270,7 +273,7 @@ To suppress this warning, compile your TypeScript first:
 
 ```bash
 tsc
-formspec analyze ./src/forms.ts MyClass -o ./generated
+formspec generate ./src/forms.ts MyClass -o ./generated
 ```
 
 ### Decorators Not Being Recognized

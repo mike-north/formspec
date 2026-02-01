@@ -3,17 +3,17 @@
  * FormSpec CLI - Generate JSON Schema and FormSpec from TypeScript
  *
  * Usage:
- *   formspec analyze <file> [className] [-o <outDir>]
+ *   formspec generate <file> [className] [-o <outDir>]
  *
  * Examples:
- *   # Analyze a class with decorators
- *   formspec analyze ./src/forms.ts InstallmentPlan -o ./generated
+ *   # Generate schemas from a class with decorators
+ *   formspec generate ./src/forms.ts InstallmentPlan -o ./generated
  *
- *   # Analyze all FormSpec exports in a file (chain DSL)
- *   formspec analyze ./src/forms.ts -o ./generated
+ *   # Generate schemas from all FormSpec exports in a file (chain DSL)
+ *   formspec generate ./src/forms.ts -o ./generated
  *
- *   # Analyze both classes and FormSpec exports
- *   formspec analyze ./src/forms.ts MyClass -o ./generated
+ *   # Generate schemas from both classes and FormSpec exports
+ *   formspec generate ./src/forms.ts MyClass -o ./generated
  */
 
 import { createProgramContext, findClassByName } from "./analyzer/program.js";
@@ -55,9 +55,10 @@ function parseArgs(args: string[]): CliOptions {
     process.exit(0);
   }
 
-  if (command !== "analyze") {
+  // Accept both "generate" (primary) and "analyze" (alias for backwards compatibility)
+  if (command !== "generate" && command !== "analyze") {
     console.error(`Unknown command: ${command}`);
-    console.error('Use "formspec analyze" to generate schemas');
+    console.error('Use "formspec generate" to generate schemas');
     process.exit(1);
   }
 
@@ -88,7 +89,7 @@ function parseArgs(args: string[]): CliOptions {
 
   if (!filePath) {
     console.error("Error: No file path provided");
-    console.error('Usage: formspec analyze <file> [className] [-o <outDir>]');
+    console.error('Usage: formspec generate <file> [className] [-o <outDir>]');
     process.exit(1);
   }
 
@@ -109,26 +110,29 @@ function printHelp(): void {
 FormSpec CLI - Generate JSON Schema and FormSpec from TypeScript
 
 USAGE:
-  formspec analyze <file> [className] [options]
+  formspec generate <file> [className] [options]
 
 ARGUMENTS:
   <file>        Path to TypeScript source file
-  [className]   Optional class name to analyze (if omitted, analyzes FormSpec exports)
+  [className]   Optional class name (if omitted, generates from FormSpec exports only)
 
 OPTIONS:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
   -h, --help            Show this help message
 
+ALIASES:
+  formspec analyze      Same as 'generate' (for backwards compatibility)
+
 EXAMPLES:
-  # Analyze a class with decorators
-  formspec analyze ./src/forms.ts InstallmentPlan -o ./generated
+  # Generate schemas from a class with decorators
+  formspec generate ./src/forms.ts InstallmentPlan -o ./generated
 
-  # Analyze all FormSpec exports (chain DSL)
-  formspec analyze ./src/forms.ts -o ./generated
+  # Generate schemas from all FormSpec exports (chain DSL)
+  formspec generate ./src/forms.ts -o ./generated
 
-  # Analyze both a class and FormSpec exports
-  formspec analyze ./src/forms.ts MyClass -o ./generated
+  # Generate schemas from both a class and FormSpec exports
+  formspec generate ./src/forms.ts MyClass -o ./generated
 
 OUTPUT STRUCTURE:
   For a class:
@@ -158,7 +162,7 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
-  console.log(`Analyzing: ${options.filePath}`);
+  console.log(`Generating schemas from: ${options.filePath}`);
   if (options.className) {
     console.log(`Class: ${options.className}`);
   }
