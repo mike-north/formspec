@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && declaration-file-normalizer dist/index.d.ts && api-extractor run --local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "api-extractor": "api-extractor run",

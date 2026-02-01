@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@api-extractor-tools/declaration-file-normalizer':
+        specifier: ^0.1.0-alpha.6
+        version: 0.1.0-alpha.6
       '@changesets/changelog-github':
         specifier: ^0.5.2
         version: 0.5.2
@@ -158,6 +161,10 @@ importers:
         version: 3.2.4(@types/node@22.19.7)
 
 packages:
+
+  '@api-extractor-tools/declaration-file-normalizer@0.1.0-alpha.6':
+    resolution: {integrity: sha512-7qK2KDoEBEnkY81W3ZlgIWQw5YWzabSshFy2GuyvIsjB5JdNy3tjZP2yNy+HQ4M+DOFJbMbDIy2IxabZZXIqTw==}
+    hasBin: true
 
   '@babel/code-frame@7.28.6':
     resolution: {integrity: sha512-JYgintcMjRiCvS8mMECzaEn+m3PfoQiyqukOMCCVQtoJGYJw8j/8LBJEiqkHLkfwCcs74E3pbAUFNg7d9VNJ+Q==}
@@ -1839,6 +1846,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -1969,6 +1981,10 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
+
+  '@api-extractor-tools/declaration-file-normalizer@0.1.0-alpha.6':
+    dependencies:
+      typescript: 5.8.3
 
   '@babel/code-frame@7.28.6':
     dependencies:
@@ -3667,6 +3683,8 @@ snapshots:
       - supports-color
 
   typescript@5.8.2: {}
+
+  typescript@5.8.3: {}
 
   typescript@5.9.3: {}
 
