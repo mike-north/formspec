@@ -1,0 +1,46 @@
+{
+  "name": "@formspec/cli",
+  "version": "0.1.0-alpha.0",
+  "description": "CLI tool for generating JSON Schema and FormSpec from TypeScript classes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "formspec": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "typescript": "^5.0.0",
+    "@formspec/build": "workspace:*"
+  },
+  "devDependencies": {
+    "@formspec/core": "workspace:*",
+    "@formspec/dsl": "workspace:*",
+    "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "UNLICENSED",
+  "keywords": [
+    "formspec",
+    "cli",
+    "typescript",
+    "json-schema",
+    "code-generation"
+  ]
+}
