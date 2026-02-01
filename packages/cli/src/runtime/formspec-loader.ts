@@ -61,9 +61,12 @@ export function isFormSpec(value: unknown): value is FormSpecLike {
     return false;
   }
 
-  // Each element should have a _type property
+  // Each element should have a _type property with a string value
   return elements.every(
-    (el) => el !== null && typeof el === "object" && "_type" in el
+    (el) =>
+      el !== null &&
+      typeof el === "object" &&
+      typeof (el as { _type?: unknown })._type === "string"
   );
 }
 
@@ -195,10 +198,11 @@ export function resolveCompiledPath(tsPath: string, outDir?: string): string {
     const dirName = path.dirname(absolutePath);
 
     // Try to find 'src' in the path and replace with outDir
-    const srcIndex = dirName.lastIndexOf(path.sep + "src");
+    const srcPattern = path.sep + "src";
+    const srcIndex = dirName.lastIndexOf(srcPattern);
     if (srcIndex !== -1) {
       const baseDir = dirName.substring(0, srcIndex);
-      const subPath = dirName.substring(srcIndex + 4); // +4 for '/src'
+      const subPath = dirName.substring(srcIndex + srcPattern.length);
       return path.join(baseDir, outDir, subPath, fileName);
     }
 

@@ -66,6 +66,8 @@ export interface ParameterInfo {
   type: ts.Type;
   /** If this is InferSchema<typeof X>, the export name X */
   formSpecExportName: string | null;
+  /** Whether the parameter is optional (has ? or default value) */
+  optional: boolean;
 }
 
 /**
@@ -187,12 +189,16 @@ function analyzeParameter(
   const typeNode = param.type;
   const type = checker.getTypeAtLocation(param);
   const formSpecExportName = detectFormSpecReference(typeNode);
+  // Parameter is optional if it has a question token or a default value
+  const optional =
+    param.questionToken !== undefined || param.initializer !== undefined;
 
   return {
     name,
     typeNode,
     type,
     formSpecExportName,
+    optional,
   };
 }
 

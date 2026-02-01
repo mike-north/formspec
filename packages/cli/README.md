@@ -228,12 +228,7 @@ Running `formspec generate ./contact-form.ts ContactForm` produces:
     "name": { "type": "string", "title": "Full Name" },
     "email": { "type": "string", "title": "Email Address" },
     "age": { "type": "number", "title": "Age", "minimum": 18, "maximum": 120 },
-    "country": {
-      "oneOf": [
-        { "const": "us", "title": "United States" },
-        { "const": "ca", "title": "Canada" }
-      ]
-    }
+    "country": { "enum": ["us", "ca"], "title": "Country" }
   },
   "required": ["name", "email", "country"]
 }

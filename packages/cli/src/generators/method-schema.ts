@@ -118,7 +118,10 @@ function generateParamsSchemas(
   for (const param of parameters) {
     const paramSchema = convertType(param.type, checker).jsonSchema;
     properties[param.name] = paramSchema;
-    required.push(param.name);
+    // Only non-optional parameters should be marked as required
+    if (!param.optional) {
+      required.push(param.name);
+    }
   }
 
   return {

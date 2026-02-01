@@ -19,11 +19,11 @@ This new package provides a CLI tool that generates JSON Schema and JSON Forms U
 
 **Usage:**
 ```bash
-# Analyze a class with decorators
-formspec analyze ./src/forms.ts MyClass -o ./generated
+# Generate schemas from a class with decorators
+formspec generate ./src/forms.ts MyClass -o ./generated
 
-# Analyze all FormSpec exports (chain DSL)
-formspec analyze ./src/forms.ts -o ./generated
+# Generate schemas from all FormSpec exports (chain DSL)
+formspec generate ./src/forms.ts -o ./generated
 ```
 
 **Output Structure:**

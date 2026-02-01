@@ -346,7 +346,4 @@ async function main(): Promise<void> {
 }
 
 // Run CLI
-main().catch((error) => {
-  console.error("Unexpected error:", error);
-  process.exit(1);
-});
+void main();

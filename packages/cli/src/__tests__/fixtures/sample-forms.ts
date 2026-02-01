@@ -6,7 +6,7 @@
  * - FormSpec exports (chain DSL)
  */
 
-import { formspec, field, group } from "@formspec/dsl";
+import { formspec, field } from "@formspec/dsl";
 import type { InferFormSchema } from "@formspec/dsl";
 
 // ============================================================================
