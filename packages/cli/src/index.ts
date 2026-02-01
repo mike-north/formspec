@@ -178,7 +178,7 @@ GENERATE COMMAND:
 
 CODEGEN COMMAND:
   Generate a TypeScript file that patches decorated classes with type metadata.
-  This enables runtime schema generation without needing a TypeScript transformer.
+  This enables runtime schema generation with toFormSpec() from @formspec/decorators.
 
   Arguments:
     <files...>    TypeScript source files to analyze
