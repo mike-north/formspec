@@ -1,44 +1,40 @@
 ---
-"@formspec/exp-decorators": minor
+"@formspec/decorators": minor
 ---
 
-Add experimental decorator-based FormSpec DSL
+Add decorator-based FormSpec DSL
 
-This experiment explores an alternative way to define forms using TypeScript class decorators (TC39 Stage 3). Instead of the builder pattern, you can annotate class properties:
+This provides an alternative way to define forms using TypeScript class decorators (TC39 Stage 3). Instead of the builder pattern, you can annotate class properties:
 
 ```typescript
-import { FormClass, Label, Optional, Boolean, EnumOptions, Min } from "@formspec/exp-decorators";
+import { Label, Min, EnumOptions, toFormSpec } from "@formspec/decorators";
 
-@FormClass()
 class InvoiceForm {
   @Label("Customer Name")
-  name: string;
+  name!: string;
 
   @Label("Amount")
   @Min(0)
-  amount: number;
+  amount!: number;
 
   @Label("Status")
   @EnumOptions(["draft", "sent", "paid"])
-  status: "draft" | "sent" | "paid";
+  status!: "draft" | "sent" | "paid";
 
   @Label("Archived")
-  @Boolean()
-  @Optional()
   archived?: boolean;
 
   @Label("Notes")
-  @Optional()
   notes?: string;
 }
 
-const form = toFormSpec(InvoiceForm);
+// Use CLI codegen for runtime access:
+// formspec codegen ./forms.ts -o ./__formspec_types__.ts
 ```
 
 Key features:
 - Property types define the schema shape
 - Decorators add form metadata (labels, validation, etc.)
-- All fields required by default; use `@Optional()` to allow empty
-- Use `@Boolean()` to mark boolean/checkbox fields
-- TypeScript `?` indicates data shape, not form validation
+- TypeScript `?` indicates optional fields
+- Use `@formspec/cli` codegen for runtime schema access
 - Supports groups via `@Group("name")` and conditionals via `@ShowWhen(predicate)`

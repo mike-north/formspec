@@ -2,15 +2,14 @@
   "mode": "pre",
   "tag": "alpha",
   "initialVersions": {
-    "@formspec/exp-form-first": "0.0.0",
-    "@formspec/exp-path-safety": "0.0.0",
-    "@formspec/exp-schema-first": "0.0.0",
-    "@formspec/exp-type-narrowing": "0.0.0",
     "@formspec/build": "0.0.1",
+    "@formspec/cli": "0.0.0",
     "@formspec/core": "0.0.1",
+    "@formspec/decorators": "0.0.0",
     "@formspec/dsl": "0.0.1",
-    "formspec": "0.0.1",
-    "@formspec/runtime": "0.0.1"
+    "@formspec/eslint-plugin": "0.0.0",
+    "@formspec/runtime": "0.0.1",
+    "formspec": "0.0.1"
   },
   "changesets": [
     "build-integration-tools",

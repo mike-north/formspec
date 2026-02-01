@@ -54,53 +54,6 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
 
-  experiments/exp-decorators:
-    dependencies:
-      '@formspec/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.19.7)
-
-  experiments/exp-form-first:
-    dependencies:
-      '@formspec/exp-path-safety':
-        specifier: workspace:*
-        version: link:../exp-path-safety
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-      zod:
-        specifier: ^3.24.0
-        version: 3.25.76
-
-  experiments/exp-path-safety:
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-
-  experiments/exp-schema-first:
-    dependencies:
-      '@formspec/exp-path-safety':
-        specifier: workspace:*
-        version: link:../exp-path-safety
-    devDependencies:
-      tsd:
-        specifier: ^0.31.0
-        version: 0.31.2
-      zod:
-        specifier: ^3.24.0
-        version: 3.25.76
-
-  experiments/exp-type-narrowing: {}
-
   packages/build:
     dependencies:
       '@formspec/core':
@@ -200,15 +153,6 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../dsl
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@22.19.7)
-
-  packages/transformer:
-    devDependencies:
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)
