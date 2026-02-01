@@ -354,13 +354,48 @@ export function generateCodegenOutput(
 function metadataToTypeString(metadata: TypeMetadata): string {
   const baseType = metadataToBaseTypeString(metadata);
 
+  // Handle nullable and optional modifiers
   if (metadata.nullable && metadata.optional) {
-    return `${baseType} | null`;
+    return `${baseType} | null | undefined`;
   }
   if (metadata.nullable) {
     return `${baseType} | null`;
   }
+  if (metadata.optional) {
+    return `${baseType} | undefined`;
+  }
   return baseType;
+}
+
+/**
+ * Checks if a property key needs to be quoted in TypeScript.
+ */
+function needsPropertyQuoting(key: string): boolean {
+  // Valid JS identifier: starts with letter/underscore/$, followed by alphanumeric/_/$
+  const validIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+  if (!validIdentifier.test(key)) {
+    return true;
+  }
+  // Reserved words that need quoting
+  const reservedWords = new Set([
+    "break", "case", "catch", "continue", "debugger", "default", "delete",
+    "do", "else", "finally", "for", "function", "if", "in", "instanceof",
+    "new", "return", "switch", "this", "throw", "try", "typeof", "var",
+    "void", "while", "with", "class", "const", "enum", "export", "extends",
+    "import", "super", "implements", "interface", "let", "package", "private",
+    "protected", "public", "static", "yield",
+  ]);
+  return reservedWords.has(key);
+}
+
+/**
+ * Escapes a property key for use in TypeScript type definitions.
+ */
+function escapePropertyKey(key: string): string {
+  if (needsPropertyQuoting(key)) {
+    return `"${key.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  return key;
 }
 
 /**
@@ -396,7 +431,7 @@ function metadataToBaseTypeString(metadata: TypeMetadata): string {
         const props = Object.entries(metadata.properties)
           .map(([key, propMeta]) => {
             const optional = propMeta.optional ? "?" : "";
-            return `${key}${optional}: ${metadataToTypeString(propMeta)}`;
+            return `${escapePropertyKey(key)}${optional}: ${metadataToTypeString(propMeta)}`;
           })
           .join("; ");
         return `{ ${props} }`;
@@ -415,7 +450,7 @@ function generateSchemaType(cls: DecoratedClassInfo): string {
     .map(([fieldName, metadata]) => {
       const optional = metadata.optional ? "?" : "";
       const typeStr = metadataToTypeString(metadata);
-      return `  ${fieldName}${optional}: ${typeStr};`;
+      return `  ${escapePropertyKey(fieldName)}${optional}: ${typeStr};`;
     })
     .join("\n");
 
@@ -460,12 +495,10 @@ function generateTypedAccessor(cls: DecoratedClassInfo): string {
 
       // Add options for enum types
       if (metadata.type === "enum" && metadata.values) {
-        const optionsType = metadata.values
+        const optionValues = metadata.values
           .map((v) => (typeof v === "string" ? `"${v}"` : String(v)))
-          .join(" | ");
-        elementType += `; readonly options: readonly [${metadata.values
-          .map((v) => (typeof v === "string" ? `"${v}"` : String(v)))
-          .join(", ")}]`;
+          .join(", ");
+        elementType += `; readonly options: readonly [${optionValues}]`;
       }
 
       elementType += " }";
