@@ -24,7 +24,7 @@ import {
   type TypeMetadata,
 } from "../index.js";
 
-// Helper to simulate transformer output by adding __formspec_types__ to a class
+// Helper to simulate codegen output by adding __formspec_types__ to a class
 function withTypeMetadata<T extends new (...args: unknown[]) => unknown>(
   ctor: T,
   metadata: Record<string, TypeMetadata>
@@ -415,7 +415,7 @@ describe("getTypeMetadata", () => {
     expect(metadata).toEqual({ name: { type: "string" } });
   });
 
-  it("should return empty object for class without transformer", () => {
+  it("should return empty object for class without codegen", () => {
     class TestForm {
       name!: string;
     }

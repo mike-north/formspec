@@ -3,7 +3,7 @@
  *
  * Generates a TypeScript file that patches decorated classes with
  * their extracted type metadata, enabling runtime schema generation
- * without requiring a TypeScript transformer.
+ * as an alternative to a TypeScript transformer.
  *
  * Usage:
  *   formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
@@ -20,7 +20,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 /**
- * Type metadata format (matches @formspec/transformer output).
+ * Type metadata format used by @formspec/decorators.
  *
  * Represents the runtime type information for a field that TypeScript
  * normally erases at compile time.
