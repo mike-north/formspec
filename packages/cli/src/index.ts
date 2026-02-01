@@ -180,12 +180,11 @@ async function main(): Promise<void> {
       const { formSpecs } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
       console.log(`✓ Loaded ${formSpecs.size} FormSpec export(s) from module`);
-    } catch (error) {
-      console.warn(
-        `⚠ Could not load compiled module (${compiledPath}):`,
-        error instanceof Error ? error.message : error
-      );
-      console.warn("  Method parameter FormSpecs will use static analysis only");
+    } catch {
+      // This is not an error - runtime loading is only needed for:
+      // 1. Chain DSL FormSpec exports (formspec(...))
+      // 2. Method parameters using InferSchema<typeof X>
+      // Static class analysis works without compiled output
     }
 
     // Step 4: If className specified, analyze the class

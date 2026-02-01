@@ -1,0 +1,285 @@
+# @formspec/cli
+
+CLI tool for generating JSON Schema and FormSpec UX specs from TypeScript source files.
+
+## Installation
+
+```bash
+npm install @formspec/cli
+# or
+pnpm add @formspec/cli
+```
+
+## Quick Start
+
+```bash
+# Analyze a TypeScript class
+formspec analyze ./src/forms.ts MyClass -o ./generated
+
+# Analyze all FormSpec exports in a file (chain DSL)
+formspec analyze ./src/forms.ts -o ./generated
+```
+
+## Features
+
+### Static Type Analysis
+
+The CLI uses the TypeScript Compiler API to statically analyze your source files. It automatically infers:
+
+| TypeScript Type | JSON Schema | FormSpec Field |
+|-----------------|-------------|----------------|
+| `string` | `{ "type": "string" }` | `{ "_field": "text" }` |
+| `number` | `{ "type": "number" }` | `{ "_field": "number" }` |
+| `boolean` | `{ "type": "boolean" }` | `{ "_field": "boolean" }` |
+| `"a" \| "b" \| "c"` | `{ "enum": ["a", "b", "c"] }` | `{ "_field": "enum", "options": [...] }` |
+| `string[]` | `{ "type": "array", "items": {...} }` | `{ "_field": "array" }` |
+| `{ a: string }` | `{ "type": "object", "properties": {...} }` | `{ "_field": "object" }` |
+| `field?: T` | not in `required` array | `{ "required": false }` |
+
+### Decorator Recognition
+
+The CLI recognizes decorators by name through static analysis. You don't need a specific decorator library - any decorator with a recognized name will work.
+
+#### Supported Decorators
+
+| Decorator | Purpose | Example |
+|-----------|---------|---------|
+| `@Label(text)` | Set field label | `@Label("Full Name")` |
+| `@Placeholder(text)` | Set placeholder text | `@Placeholder("Enter name...")` |
+| `@Description(text)` | Set field description | `@Description("Your legal name")` |
+| `@Min(n)` | Set minimum value | `@Min(0)` |
+| `@Max(n)` | Set maximum value | `@Max(100)` |
+| `@MinLength(n)` | Set minimum string length | `@MinLength(1)` |
+| `@MaxLength(n)` | Set maximum string length | `@MaxLength(255)` |
+| `@MinItems(n)` | Set minimum array items | `@MinItems(1)` |
+| `@MaxItems(n)` | Set maximum array items | `@MaxItems(10)` |
+| `@Pattern(regex)` | Set validation pattern | `@Pattern("^[a-z]+$")` |
+| `@EnumOptions(opts)` | Override enum options | `@EnumOptions([{id: "us", label: "United States"}])` |
+| `@ShowWhen(cond)` | Conditional visibility | `@ShowWhen({ field: "type", value: "other" })` |
+| `@Group(name)` | Group fields together | `@Group("Contact Info")` |
+
+#### Complete Decorator Stubs
+
+Since the CLI uses static analysis, you can create simple decorator stubs. Copy this complete file to get started:
+
+```typescript
+// decorators.ts - Copy this entire file to your project
+
+// Field metadata decorators
+export function Label(text: string) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function Placeholder(text: string) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function Description(text: string) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// Numeric constraints
+export function Min(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function Max(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function Step(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// String constraints
+export function MinLength(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function MaxLength(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function Pattern(regex: string) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// Array constraints
+export function MinItems(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+export function MaxItems(value: number) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// Enum options (for custom labels)
+export function EnumOptions(options: Array<string | { id: string; label: string }>) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// Conditional visibility
+export function ShowWhen(condition: { field: string; value: unknown }) {
+  return function (_target: any, _propertyKey: string) {};
+}
+
+// Grouping
+export function Group(name: string) {
+  return function (_target: any, _propertyKey: string) {};
+}
+```
+
+> **Note**: These decorators are no-ops at runtime. The CLI reads them through static analysis of your TypeScript source code, so they have zero runtime overhead.
+
+Then use them in your class:
+
+```typescript
+// user-registration.ts
+import { Label, Min, Max, EnumOptions } from "./decorators";
+
+class UserRegistration {
+  @Label("Full Name")
+  name!: string;
+
+  @Label("Email Address")
+  email!: string;
+
+  @Label("Age")
+  @Min(18)
+  @Max(120)
+  age?: number;
+
+  @Label("Country")
+  @EnumOptions([
+    { id: "us", label: "United States" },
+    { id: "ca", label: "Canada" },
+    { id: "uk", label: "United Kingdom" },
+  ])
+  country!: "us" | "ca" | "uk";
+}
+```
+
+Run the CLI:
+
+```bash
+formspec analyze ./src/user-registration.ts UserRegistration -o ./generated
+```
+
+### FormSpec Chain DSL Support
+
+The CLI also supports the FormSpec chain DSL. Export your FormSpec definitions and the CLI will generate schemas for them:
+
+```typescript
+// forms.ts
+import { formspec, field } from "@formspec/dsl";
+
+export const ContactForm = formspec(
+  field.text("name", { label: "Name", required: true }),
+  field.text("email", { label: "Email", required: true }),
+  field.text("message", { label: "Message" })
+);
+```
+
+```bash
+formspec analyze ./src/forms.ts -o ./generated
+```
+
+### Method Parameter Analysis
+
+The CLI can detect `InferSchema<typeof X>` or `InferFormSchema<typeof X>` patterns in method parameters and use the referenced FormSpec to generate parameter schemas:
+
+```typescript
+import { formspec, field, type InferFormSchema } from "@formspec/dsl";
+
+export const ActivateParams = formspec(
+  field.number("amount", { label: "Amount", min: 100 }),
+  field.number("installments", { min: 2, max: 12 })
+);
+
+class PaymentPlan {
+  status!: "active" | "paused" | "canceled";
+
+  activate(params: InferFormSchema<typeof ActivateParams>): boolean {
+    // ...
+  }
+}
+```
+
+The CLI will generate schemas for both the class fields and the method parameters.
+
+## Output Structure
+
+```
+generated/
+├── ClassName/
+│   ├── schema.json           # JSON Schema for class fields
+│   ├── ux_spec.json          # FormSpec UX spec for form rendering
+│   ├── instance_methods/
+│   │   └── methodName/
+│   │       ├── params.schema.json
+│   │       ├── params.ux_spec.json  # (if FormSpec-based params)
+│   │       └── return_type.schema.json
+│   └── static_methods/
+│       └── methodName/
+│           └── ...
+└── formspecs/
+    └── ExportName/
+        ├── schema.json
+        └── ux_spec.json
+```
+
+## CLI Reference
+
+```
+formspec analyze <file> [className] [options]
+
+Arguments:
+  <file>        Path to TypeScript source file
+  [className]   Optional class name to analyze (if omitted, analyzes FormSpec exports)
+
+Options:
+  -o, --output <dir>    Output directory (default: ./generated)
+  -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+  -h, --help            Show help message
+```
+
+## TypeScript Configuration
+
+For decorator support, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+Note: The CLI performs static analysis, so decorators work even without these flags. However, your editor and TypeScript compiler will require them for decorator syntax support.
+
+## Troubleshooting
+
+### "Could not load compiled module" Warning
+
+This warning appears when the CLI cannot find a compiled JavaScript version of your TypeScript file. This is expected if you haven't compiled your TypeScript yet.
+
+**The CLI will still work** - it uses static TypeScript analysis which doesn't require compiled output. The warning only affects method parameters that use `InferSchema<typeof X>`, which require the FormSpec to be loaded at runtime.
+
+To suppress this warning, compile your TypeScript first:
+
+```bash
+tsc
+formspec analyze ./src/forms.ts MyClass -o ./generated
+```
+
+### Decorators Not Being Recognized
+
+Ensure:
+1. Decorator names match exactly (case-sensitive): `@Label`, not `@label`
+2. Decorators are function calls: `@Label("text")`, not `@Label`
+3. The decorator is imported (even if it's a stub)
+
+## License
+
+UNLICENSED

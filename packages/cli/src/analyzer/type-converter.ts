@@ -143,42 +143,73 @@ function convertUnionType(
 ): TypeConversionResult {
   const types = type.types;
 
-  // Check if all types are string literals (enum pattern)
-  const allStringLiterals = types.every((t) => t.isStringLiteral());
-  if (allStringLiterals) {
-    const enumValues = types.map((t) => (t as ts.StringLiteralType).value);
-    return {
-      jsonSchema: { enum: enumValues },
-      formSpecFieldType: "enum",
-    };
-  }
-
-  // Check if all types are number literals
-  const allNumberLiterals = types.every((t) => t.isNumberLiteral());
-  if (allNumberLiterals) {
-    const enumValues = types.map((t) => (t as ts.NumberLiteralType).value);
-    return {
-      jsonSchema: { enum: enumValues },
-      formSpecFieldType: "enum",
-    };
-  }
-
-  // Handle nullable types (T | null or T | undefined)
+  // Filter out null and undefined for analysis
+  // Note: undefined is filtered out since JSON Schema doesn't have an undefined type
+  // Optional fields are handled via the 'required' array, not the type
   const nonNullTypes = types.filter(
     (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
   );
+  const hasNull = types.some((t) => t.flags & ts.TypeFlags.Null);
 
+  // Check if this is a boolean type (true | false in TypeScript)
+  // TypeScript represents `boolean` as a union of `true | false` literal types
+  const isBooleanUnion = nonNullTypes.length === 2 &&
+    nonNullTypes.every((t) => t.flags & ts.TypeFlags.BooleanLiteral);
+
+  if (isBooleanUnion) {
+    const result: TypeConversionResult = {
+      jsonSchema: { type: "boolean" },
+      formSpecFieldType: "boolean",
+    };
+    if (hasNull) {
+      result.jsonSchema = { oneOf: [{ type: "boolean" }, { type: "null" }] };
+    }
+    return result;
+  }
+
+  // Check if all types are string literals (enum pattern)
+  const allStringLiterals = nonNullTypes.every((t) => t.isStringLiteral());
+  if (allStringLiterals && nonNullTypes.length > 0) {
+    const enumValues = nonNullTypes.map((t) => (t as ts.StringLiteralType).value);
+    const result: TypeConversionResult = {
+      jsonSchema: { enum: enumValues },
+      formSpecFieldType: "enum",
+    };
+    if (hasNull) {
+      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
+    }
+    return result;
+  }
+
+  // Check if all types are number literals
+  const allNumberLiterals = nonNullTypes.every((t) => t.isNumberLiteral());
+  if (allNumberLiterals && nonNullTypes.length > 0) {
+    const enumValues = nonNullTypes.map((t) => (t as ts.NumberLiteralType).value);
+    const result: TypeConversionResult = {
+      jsonSchema: { enum: enumValues },
+      formSpecFieldType: "enum",
+    };
+    if (hasNull) {
+      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
+    }
+    return result;
+  }
+
+  // Handle nullable types (T | null or T | undefined) with single non-null type
   if (nonNullTypes.length === 1 && nonNullTypes[0]) {
     const result = convertType(nonNullTypes[0], checker);
     // Make it nullable in JSON Schema
-    if (types.some((t) => t.flags & ts.TypeFlags.Null)) {
+    if (hasNull) {
       result.jsonSchema = { oneOf: [result.jsonSchema, { type: "null" }] };
     }
     return result;
   }
 
-  // General union - use oneOf
-  const schemas = types.map((t) => convertType(t, checker).jsonSchema);
+  // General union - use oneOf (filter out undefined which isn't valid in JSON Schema)
+  const schemas = nonNullTypes.map((t) => convertType(t, checker).jsonSchema);
+  if (hasNull) {
+    schemas.push({ type: "null" });
+  }
   return {
     jsonSchema: { oneOf: schemas },
     formSpecFieldType: "union",
