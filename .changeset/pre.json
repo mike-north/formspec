@@ -13,7 +13,12 @@
   },
   "changesets": [
     "build-integration-tools",
+    "cli-static-analysis",
+    "codegen-type-inference",
+    "decorator-dsl-experiment",
+    "dx-improvements",
     "enum-object-options",
+    "eslint-plugin-initial",
     "predicate-when-api"
   ]
 }
