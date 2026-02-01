@@ -73,7 +73,7 @@ export function createProgramContext(filePath: string): ProgramContext {
       esModuleInterop: true,
       skipLibCheck: true,
       declaration: true,
-      experimentalDecorators: false, // TC39 decorators don't need this
+      experimentalDecorators: true, // Required for legacy TypeScript decorators
     };
     fileNames = [absolutePath];
   }
