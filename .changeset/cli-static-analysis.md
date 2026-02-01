@@ -4,7 +4,7 @@
 
 Add @formspec/cli package for static TypeScript analysis and schema generation
 
-This new package provides a CLI tool that generates JSON Schema and FormSpec UX specs from TypeScript source files using a hybrid approach:
+This new package provides a CLI tool that generates JSON Schema and JSON Forms UI Schema from TypeScript source files using a hybrid approach:
 
 **Static Analysis (TypeScript Compiler API):**
 - Extracts class fields with their TypeScript types
@@ -30,7 +30,7 @@ formspec analyze ./src/forms.ts -o ./generated
 ```
 generated/ClassName/
 ├── schema.json           # JSON Schema for class fields
-├── ux_spec.json          # FormSpec UX spec
+├── ux_spec.json          # UI Schema
 ├── instance_methods/
 │   └── methodName/
 │       ├── params.schema.json

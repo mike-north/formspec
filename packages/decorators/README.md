@@ -49,11 +49,58 @@ class UserRegistration {
 }
 ```
 
-Then generate schemas:
+## Generating Schemas
+
+### Build-Time Only
+
+Generate JSON Schema and UI Schema files at build time:
 
 ```bash
 formspec generate ./src/user-registration.ts UserRegistration -o ./generated
 ```
+
+This outputs static JSON files to `./generated/`. No codegen step required.
+
+### Runtime Schema Generation
+
+If you need JSON Schema or UI Schema **at runtime in your program** (e.g., dynamic form rendering, server-side generation), you have two options:
+
+1. **Chain DSL** - Works at runtime without any codegen step. See the [Chain DSL documentation](../dsl/README.md).
+
+2. **Decorator DSL with codegen** - If you prefer to keep using decorated classes, run codegen to preserve type information:
+
+```bash
+# Generate type metadata file
+formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
+```
+
+```typescript
+// Import the generated file at your application entry point
+import './__formspec_types__.js';
+
+// Now buildFormSchemas() has access to full type information
+import { buildFormSchemas } from '@formspec/decorators';
+import { UserRegistration } from './forms.js';
+
+const { jsonSchema, uiSchema } = buildFormSchemas(UserRegistration);
+// jsonSchema: { $schema: "...", type: "object", properties: {...}, required: [...] }
+// uiSchema: { type: "VerticalLayout", elements: [...] }
+```
+
+Add `formspec codegen` to your build process to keep type metadata in sync.
+
+> **Note:** If you need to work with **dynamically fetched schema data** (schemas not known at build time), use the Chain DSL. It's the only option for dynamic schemas.
+
+### API Consistency
+
+The `buildFormSchemas()` function provides the same return type as `@formspec/build`:
+
+| DSL | Function | Returns |
+|-----|----------|---------|
+| Chain DSL | `buildFormSchemas(form)` | `{ jsonSchema, uiSchema }` |
+| Decorator DSL | `buildFormSchemas(Class)` | `{ jsonSchema, uiSchema }` |
+
+This allows you to switch between DSLs without changing how you consume the schemas.
 
 ## How It Works
 

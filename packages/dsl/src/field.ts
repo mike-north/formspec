@@ -92,22 +92,65 @@ export const field = {
    * // Schema type: "draft" | "sent" | "paid"
    * ```
    *
+   * Options can be strings or objects with `id` and `label`:
+   * ```typescript
+   * field.enum("priority", [
+   *   { id: "low", label: "Low Priority" },
+   *   { id: "high", label: "High Priority" },
+   * ])
+   * ```
+   *
+   * **Note:** All options must be of the same type (all strings OR all objects).
+   * Mixing strings and objects will throw a runtime error.
+   *
    * @param name - The field name (used as the schema key)
-   * @param options - Array of allowed string values
+   * @param options - Array of allowed string values or {id, label} objects
    * @param config - Optional configuration for label, etc.
    * @returns A StaticEnumField descriptor
+   * @throws Error if options array contains mixed types (strings and objects)
    */
   enum: <const N extends string, const O extends readonly EnumOptionValue[]>(
     name: N,
     options: O,
     config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">
-  ): StaticEnumField<N, O> => ({
-    _type: "field",
-    _field: "enum",
-    name,
-    options,
-    ...config,
-  }),
+  ): StaticEnumField<N, O> => {
+    // Validate that all options are of the same type (all strings or all objects)
+    if (options.length > 0) {
+      const firstIsObject = typeof options[0] === "object" && options[0] !== null;
+      const allSameType = options.every((opt) => {
+        const isObject = typeof opt === "object" && opt !== null;
+        return isObject === firstIsObject;
+      });
+
+      if (!allSameType) {
+        throw new Error(
+          `field.enum("${name}"): options must be all strings or all objects with {id, label}, not mixed. ` +
+          `Received mixed types in options array.`
+        );
+      }
+
+      // Validate object options have required properties
+      if (firstIsObject) {
+        for (const opt of options) {
+          const obj = opt as { id?: unknown; label?: unknown };
+          if (typeof obj.id !== "string" || typeof obj.label !== "string") {
+            throw new Error(
+              `field.enum("${name}"): object options must have string "id" and "label" properties. ` +
+              `Received: ${JSON.stringify(opt)}`
+            );
+          }
+        }
+      }
+    }
+
+    return {
+      _type: "field",
+      _field: "enum",
+      name,
+      options,
+      ...config,
+    };
+  },
 
   /**
    * Creates a field with dynamic enum options (fetched from a data source at runtime).

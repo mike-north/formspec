@@ -1,39 +1,41 @@
 {
-  "name": "@formspec/decorators",
+  "name": "@formspec/transformer",
   "version": "0.1.0-alpha.0",
-  "description": "Decorator stubs for FormSpec CLI static analysis",
-  "type": "module",
+  "description": "TypeScript transformer for FormSpec runtime type metadata",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc && esbuild dist/index.js --bundle --platform=node --format=cjs --outfile=dist/index.cjs --packages=external",
+    "build": "tsc",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
-  },
-  "devDependencies": {
-    "esbuild": "^0.27.2",
-    "vitest": "^3.0.0"
   },
   "publishConfig": {
     "access": "public"
   },
   "keywords": [
     "formspec",
-    "decorators",
+    "transformer",
     "typescript",
     "forms",
     "schema"
   ],
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
   "license": "UNLICENSED"
 }

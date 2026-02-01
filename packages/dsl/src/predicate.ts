@@ -32,6 +32,7 @@ import type { EqualsPredicate } from "@formspec/core";
  * @param field - The name of the field to check
  * @param value - The value the field must equal
  * @returns An EqualsPredicate for use with `when()`
+ * @public
  */
 export function is<const K extends string, const V>(
   field: K,

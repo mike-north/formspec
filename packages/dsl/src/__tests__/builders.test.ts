@@ -100,6 +100,49 @@ describe("field builders", () => {
       expect(f.label).toBe("Priority");
       expect(f.required).toBe(true);
     });
+
+    it("should handle empty options array", () => {
+      const f = field.enum("empty", [] as const);
+
+      expect(f._field).toBe("enum");
+      expect(f.options).toEqual([]);
+    });
+
+    it("should throw error for mixed string and object options", () => {
+      expect(() => {
+        // Using 'as any' to bypass type checking for runtime validation test
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        field.enum("mixed", ["string", { id: "obj", label: "Object" }] as any);
+      }).toThrow(/options must be all strings or all objects/);
+    });
+
+    it("should throw error for object options missing id", () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing invalid object
+        field.enum("invalid", [{ label: "No ID" }]);
+      }).toThrow(/object options must have string "id" and "label"/);
+    });
+
+    it("should throw error for object options missing label", () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing invalid object
+        field.enum("invalid", [{ id: "missing-label" }]);
+      }).toThrow(/object options must have string "id" and "label"/);
+    });
+
+    it("should throw error for object options with non-string id", () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing invalid object
+        field.enum("invalid", [{ id: 123, label: "Number ID" }]);
+      }).toThrow(/object options must have string "id" and "label"/);
+    });
+
+    it("should throw error for object options with non-string label", () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing invalid object
+        field.enum("invalid", [{ id: "valid", label: 456 }]);
+      }).toThrow(/object options must have string "id" and "label"/);
+    });
   });
 
   describe("field.dynamicEnum", () => {

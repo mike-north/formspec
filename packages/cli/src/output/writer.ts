@@ -2,7 +2,7 @@
  * Output writer for creating the schema folder structure.
  *
  * Creates directories and writes JSON files for:
- * - Class schema and UX spec
+ * - Class schema and UI Schema
  * - Instance method schemas
  * - Static method schemas
  * - Standalone FormSpec exports (chain DSL)
@@ -88,7 +88,7 @@ export function writeClassSchemas(
   writeJson(schemaPath, classSchemas.jsonSchema, indent);
   files.push(schemaPath);
 
-  // Write class UX spec
+  // Write class UI Schema
   const uxSpecPath = path.join(classDir, "ux_spec.json");
   writeJson(uxSpecPath, classSchemas.uxSpec, indent);
   files.push(uxSpecPath);
@@ -141,7 +141,7 @@ function writeMethodSchemas(
     writeJson(paramsSchemaPath, method.params.jsonSchema, indent);
     files.push(paramsSchemaPath);
 
-    // Write params UX spec if available (from FormSpec)
+    // Write params UI Schema if available (from FormSpec)
     if (method.params.uxSpec) {
       const paramsUxPath = path.join(methodDir, "params.ux_spec.json");
       writeJson(paramsUxPath, method.params.uxSpec, indent);
@@ -195,7 +195,7 @@ export function writeFormSpecSchemas(
     writeJson(schemaPath, schemas.jsonSchema, indent);
     files.push(schemaPath);
 
-    // Write UX Spec
+    // Write UI Schema
     const uxSpecPath = path.join(exportDir, "ux_spec.json");
     writeJson(uxSpecPath, schemas.uiSchema, indent);
     files.push(uxSpecPath);

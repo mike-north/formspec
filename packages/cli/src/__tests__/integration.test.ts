@@ -42,7 +42,7 @@ describe("generators", () => {
     expect(schemas.jsonSchema.required).toContain("active");
     expect(schemas.jsonSchema.required).not.toContain("price");
 
-    // UX Spec
+    // UI Schema
     expect(schemas.uxSpec.elements).toHaveLength(4);
     const nameElement = schemas.uxSpec.elements.find((e) => e.id === "name");
     expect(nameElement?._field).toBe("text");
@@ -145,7 +145,7 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
     expect(methodSchemas.name).toBe("activate");
     expect(methodSchemas.params).not.toBeNull();
     expect(methodSchemas.params?.formSpecExport).toBe("ActivateParams");
-    // Should have UX spec from the FormSpec
+    // Should have UI Schema from the FormSpec
     expect(methodSchemas.params?.uxSpec).not.toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 # @formspec/cli
 
-CLI tool for generating JSON Schema and FormSpec UX specs from TypeScript source files.
+CLI tool for generating JSON Schema and JSON Forms UI Schema from TypeScript source files.
 
 ## Installation
 
@@ -19,6 +19,31 @@ formspec generate ./src/forms.ts MyClass -o ./generated
 # Generate schemas from all FormSpec exports in a file (chain DSL)
 formspec generate ./src/forms.ts -o ./generated
 ```
+
+## When to Use
+
+### Decorators + CLI vs Chain DSL
+
+FormSpec offers two approaches for defining forms:
+
+| Approach | Best For | Schema Generation |
+|----------|----------|-------------------|
+| **Decorators + CLI** | Class-based data models, DTOs | Build-time (static analysis) or runtime (with codegen) |
+| **Chain DSL** | Dynamic forms, runtime construction | Build-time or runtime (no code generation needed) |
+
+**Use decorators + CLI when:**
+- Your forms map directly to TypeScript classes or DTOs
+- You prefer class-based modeling with validation constraints
+- You want type information inferred from TypeScript (no redundant type hints)
+- You need to generate schemas at build time for CI/CD pipelines
+
+**Use Chain DSL (`@formspec/dsl`) when:**
+- Forms are constructed dynamically at runtime
+- Form definitions come from a database or API
+- Forms don't correspond to specific TypeScript types
+- You want runtime schema generation without a build step
+
+Both approaches produce identical JSON Schema and UI Schema output.
 
 ## Features
 
@@ -150,7 +175,7 @@ The CLI will generate schemas for both the class fields and the method parameter
 generated/
 ├── ClassName/
 │   ├── schema.json           # JSON Schema for class fields
-│   ├── ux_spec.json          # FormSpec UX spec for form rendering
+│   ├── ux_spec.json          # JSON Forms UI Schema for form rendering
 │   ├── instance_methods/
 │   │   └── methodName/
 │   │       ├── params.schema.json
