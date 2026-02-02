@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc && esbuild dist/index.js --bundle --platform=node --format=cjs --outfile=dist/index.cjs --packages=external",

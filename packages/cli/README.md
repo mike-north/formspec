@@ -10,6 +10,28 @@ npm install @formspec/cli
 pnpm add @formspec/cli
 ```
 
+## Requirements
+
+**Package configuration** (package.json):
+
+```json
+{
+  "type": "module"
+}
+```
+
+**TypeScript configuration** (tsconfig.json):
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  }
+}
+```
+
 ## Quick Start
 
 ```bash

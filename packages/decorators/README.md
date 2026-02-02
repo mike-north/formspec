@@ -10,6 +10,28 @@ npm install @formspec/decorators
 pnpm add @formspec/decorators
 ```
 
+## Requirements
+
+**TypeScript configuration** (tsconfig.json):
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  }
+}
+```
+
+**Package configuration** (package.json):
+
+```json
+{
+  "type": "module"
+}
+```
+
 ## Usage
 
 ```typescript
