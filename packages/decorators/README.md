@@ -2,6 +2,38 @@
 
 Decorator stubs for FormSpec CLI static analysis.
 
+## Quick Start
+
+**1. Install the packages:**
+
+```bash
+npm install @formspec/decorators @formspec/cli
+```
+
+**2. Create a decorated class:**
+
+```typescript
+// forms.ts
+import { Label, Min, Max } from "@formspec/decorators";
+
+export class UserForm {
+  @Label("Full Name")
+  name!: string;
+
+  @Label("Age")
+  @Min(18)
+  @Max(120)
+  age?: number;
+}
+```
+
+**3. Generate schemas:**
+
+```bash
+formspec generate ./forms.ts UserForm -o ./generated
+# Creates generated/UserForm/schema.json and ux_spec.json
+```
+
 ## Installation
 
 ```bash

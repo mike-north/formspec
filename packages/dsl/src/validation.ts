@@ -190,11 +190,11 @@ export function validateForm(elements: readonly FormElement[]): ValidationResult
   // Collect all field names
   const fieldNames = collectFieldNames(elements);
 
-  // Check for duplicates at root level
+  // Check for duplicates at root level - duplicates are errors because they cause data loss
   for (const [name, info] of fieldNames) {
     if (info.count > 1 && info.paths[0] !== undefined) {
       issues.push({
-        severity: "warning",
+        severity: "error",
         message: `Duplicate field name "${name}" found ${info.count} times at: ${info.paths.join(", ")}`,
         path: info.paths[0],
       });

@@ -28,6 +28,7 @@ function createDecoratedClassInfo(
     name: "TestForm",
     sourcePath: "./test-form",
     typeMetadata: {},
+    isExported: true,
     ...overrides,
   };
 }
@@ -565,6 +566,25 @@ describe("generateCodegenOutput", () => {
       const output = generateCodegenOutput([cls], "/tmp/out.ts", "/tmp");
 
       expect(output).toContain("items?: { id: string }[] | null | undefined;");
+    });
+  });
+
+  describe("unexported class detection", () => {
+    it("should track isExported status", () => {
+      const exportedClass = createDecoratedClassInfo({
+        name: "ExportedForm",
+        isExported: true,
+        typeMetadata: { name: createTypeMetadata({ type: "string" }) },
+      });
+
+      const unexportedClass = createDecoratedClassInfo({
+        name: "UnexportedForm",
+        isExported: false,
+        typeMetadata: { name: createTypeMetadata({ type: "string" }) },
+      });
+
+      expect(exportedClass.isExported).toBe(true);
+      expect(unexportedClass.isExported).toBe(false);
     });
   });
 

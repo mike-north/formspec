@@ -12,9 +12,9 @@ describe("validateForm", () => {
 
       const result = validateForm(elements);
 
-      expect(result.valid).toBe(true); // duplicates are warnings, not errors
+      expect(result.valid).toBe(false); // duplicates are errors
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("warning");
+      expect(result.issues[0]!.severity).toBe("error");
       expect(result.issues[0]!.message).toContain('Duplicate field name "name"');
       expect(result.issues[0]!.message).toContain("2 times");
     });
@@ -33,8 +33,9 @@ describe("validateForm", () => {
 
       const result = validateForm(elements);
 
+      expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("warning");
+      expect(result.issues[0]!.severity).toBe("error");
       expect(result.issues[0]!.message).toContain('Duplicate field name "name"');
     });
 
@@ -50,8 +51,9 @@ describe("validateForm", () => {
 
       const result = validateForm(elements);
 
+      expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("warning");
+      expect(result.issues[0]!.severity).toBe("error");
     });
 
     it("should allow same field names inside different array items (separate scope)", () => {
@@ -155,7 +157,7 @@ describe("validateForm", () => {
     it("should report multiple issues", () => {
       const elements = [
         field.text("name"),
-        field.text("name"), // duplicate
+        field.text("name"), // duplicate - now an error
         when(
           is("nonExistent", "value"), // reference error
           field.text("extra"),
@@ -166,8 +168,8 @@ describe("validateForm", () => {
 
       expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(2);
-      expect(result.issues.filter((i) => i.severity === "warning")).toHaveLength(1);
-      expect(result.issues.filter((i) => i.severity === "error")).toHaveLength(1);
+      expect(result.issues.filter((i) => i.severity === "warning")).toHaveLength(0);
+      expect(result.issues.filter((i) => i.severity === "error")).toHaveLength(2);
     });
   });
 });
@@ -197,14 +199,14 @@ describe("formspecWithValidation", () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled();
   });
 
-  it("should log warnings when validate=true", () => {
+  it("should log errors when validate=true with duplicates", () => {
     formspecWithValidation(
       { validate: true },
       field.text("name"),
-      field.text("name"), // duplicate
+      field.text("name"), // duplicate - now an error
     );
 
-    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
   it("should log errors when validate=true and there are errors", () => {
@@ -224,7 +226,7 @@ describe("formspecWithValidation", () => {
       field.text("name"),
     );
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("TestForm"),
     );
   });
@@ -239,24 +241,24 @@ describe("formspecWithValidation", () => {
     ).toThrow("Form validation failed");
   });
 
-  it("should not throw when validate='throw' and there are only warnings", () => {
+  it("should throw when validate='throw' and there are duplicate fields", () => {
     expect(() =>
       formspecWithValidation(
         { validate: "throw" },
         field.text("name"),
-        field.text("name"), // duplicate - just a warning
+        field.text("name"), // duplicate - now an error
       ),
-    ).not.toThrow();
+    ).toThrow("Form validation failed");
   });
 
-  it("should work with validate='warn'", () => {
+  it("should log errors with validate='warn' for duplicates", () => {
     formspecWithValidation(
       { validate: "warn" },
       field.text("name"),
       field.text("name"),
     );
 
-    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
   it("should return correct form structure regardless of validation", () => {

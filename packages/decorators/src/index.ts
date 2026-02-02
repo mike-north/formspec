@@ -644,9 +644,8 @@ function createField(
   };
 
   // Required if not optional and not nullable
-  if (!typeInfo.optional && !typeInfo.nullable) {
-    field.required = true;
-  }
+  // Explicitly set to false for optional fields for consistency
+  field.required = !typeInfo.optional && !typeInfo.nullable;
 
   // Apply decorator metadata
   if (decoratorInfo.label) field.label = decoratorInfo.label;
@@ -943,11 +942,51 @@ function elementsToUiSchema(elements: FormSpecField[]): UISchemaElement[] {
 
 /**
  * Generates UI Schema from FormSpecField elements.
+ * Groups consecutive fields with the same @Group decorator into JSON Forms Group layouts.
+ * Preserves field order, creating multiple Group elements if the same group name
+ * appears in non-consecutive positions.
  */
 function generateUiSchemaFromElements(elements: FormSpecField[]): UISchemaElement {
+  const uiElements: UISchemaElement[] = [];
+  let currentGroup: string | undefined = undefined;
+  let currentGroupElements: UISchemaElement[] = [];
+
+  function flushCurrentGroup(): void {
+    if (currentGroupElements.length === 0) return;
+
+    if (currentGroup === undefined) {
+      // Ungrouped fields go directly into the layout
+      uiElements.push(...currentGroupElements);
+    } else {
+      // Grouped fields are wrapped in a Group element
+      uiElements.push({
+        type: "Group",
+        label: currentGroup,
+        elements: currentGroupElements,
+      });
+    }
+    currentGroupElements = [];
+  }
+
+  for (const element of elements) {
+    const control = elementsToUiSchema([element])[0]!;
+    const groupName = element.group;
+
+    if (groupName !== currentGroup) {
+      // Flush the previous group and start a new one
+      flushCurrentGroup();
+      currentGroup = groupName;
+    }
+
+    currentGroupElements.push(control);
+  }
+
+  // Flush any remaining group
+  flushCurrentGroup();
+
   return {
     type: "VerticalLayout",
-    elements: elementsToUiSchema(elements),
+    elements: uiElements,
   };
 }
 

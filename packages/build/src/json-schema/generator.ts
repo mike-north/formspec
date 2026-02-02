@@ -22,10 +22,13 @@ function generateNestedSchema(elements: readonly FormElement[]): JSONSchema7 {
 
   collectFields(elements, properties, required);
 
+  // Deduplicate required array (can have duplicates when conditionals reference same fields)
+  const uniqueRequired = [...new Set(required)];
+
   return {
     type: "object",
     properties,
-    ...(required.length > 0 && { required }),
+    ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
   };
 }
 
@@ -200,10 +203,13 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
 
   collectFields(form.elements, properties, required);
 
+  // Deduplicate required array (can have duplicates when conditionals reference same fields)
+  const uniqueRequired = [...new Set(required)];
+
   return {
     $schema: "https://json-schema.org/draft-07/schema#",
     type: "object",
     properties,
-    ...(required.length > 0 && { required }),
+    ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
   };
 }

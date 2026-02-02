@@ -212,7 +212,7 @@ describe("toFormSpec", () => {
       withTypeMetadata(TestForm, { name: { type: "string", optional: true } });
 
       const spec = toFormSpec(TestForm);
-      expect(spec.elements[0]?.required).toBeUndefined();
+      expect(spec.elements[0]?.required).toBe(false);
     });
 
     it("should mark nullable fields as not required", () => {
@@ -223,7 +223,7 @@ describe("toFormSpec", () => {
       withTypeMetadata(TestForm, { name: { type: "string", nullable: true } });
 
       const spec = toFormSpec(TestForm);
-      expect(spec.elements[0]?.required).toBeUndefined();
+      expect(spec.elements[0]?.required).toBe(false);
     });
   });
 
@@ -527,5 +527,178 @@ describe("missing type metadata warning", () => {
     buildFormSchemas(BuildSchemasOnceForm);
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("buildFormSchemas with @Group", () => {
+  it("should create Group elements in uiSchema for grouped fields", () => {
+    class GroupedForm {
+      @Group("Personal Info")
+      @Label("First Name")
+      firstName!: string;
+
+      @Group("Personal Info")
+      @Label("Last Name")
+      lastName!: string;
+
+      @Group("Contact")
+      @Label("Email")
+      email!: string;
+    }
+
+    withTypeMetadata(GroupedForm, {
+      firstName: { type: "string" },
+      lastName: { type: "string" },
+      email: { type: "string" },
+    });
+
+    const { uiSchema } = buildFormSchemas(GroupedForm);
+
+    expect(uiSchema.type).toBe("VerticalLayout");
+    expect(uiSchema.elements).toHaveLength(2);
+
+    // First group: Personal Info
+    expect(uiSchema.elements?.[0]?.type).toBe("Group");
+    expect(uiSchema.elements?.[0]?.label).toBe("Personal Info");
+    expect(uiSchema.elements?.[0]?.elements).toHaveLength(2);
+    expect(uiSchema.elements?.[0]?.elements?.[0]?.scope).toBe("#/properties/firstName");
+    expect(uiSchema.elements?.[0]?.elements?.[1]?.scope).toBe("#/properties/lastName");
+
+    // Second group: Contact
+    expect(uiSchema.elements?.[1]?.type).toBe("Group");
+    expect(uiSchema.elements?.[1]?.label).toBe("Contact");
+    expect(uiSchema.elements?.[1]?.elements).toHaveLength(1);
+    expect(uiSchema.elements?.[1]?.elements?.[0]?.scope).toBe("#/properties/email");
+  });
+
+  it("should put ungrouped fields directly in the layout", () => {
+    class MixedForm {
+      @Label("Name")
+      name!: string;
+
+      @Group("Details")
+      @Label("Email")
+      email!: string;
+
+      @Label("Age")
+      age!: number;
+    }
+
+    withTypeMetadata(MixedForm, {
+      name: { type: "string" },
+      email: { type: "string" },
+      age: { type: "number" },
+    });
+
+    const { uiSchema } = buildFormSchemas(MixedForm);
+
+    expect(uiSchema.type).toBe("VerticalLayout");
+    // Should have: Control (name), Group (Details), Control (age)
+    expect(uiSchema.elements).toHaveLength(3);
+
+    expect(uiSchema.elements?.[0]?.type).toBe("Control");
+    expect(uiSchema.elements?.[0]?.scope).toBe("#/properties/name");
+
+    expect(uiSchema.elements?.[1]?.type).toBe("Group");
+    expect(uiSchema.elements?.[1]?.label).toBe("Details");
+
+    expect(uiSchema.elements?.[2]?.type).toBe("Control");
+    expect(uiSchema.elements?.[2]?.scope).toBe("#/properties/age");
+  });
+
+  it("should preserve field order within groups", () => {
+    class OrderedForm {
+      @Group("Group A")
+      @Label("Field 1")
+      field1!: string;
+
+      @Group("Group A")
+      @Label("Field 2")
+      field2!: string;
+
+      @Group("Group A")
+      @Label("Field 3")
+      field3!: string;
+    }
+
+    withTypeMetadata(OrderedForm, {
+      field1: { type: "string" },
+      field2: { type: "string" },
+      field3: { type: "string" },
+    });
+
+    const { uiSchema } = buildFormSchemas(OrderedForm);
+
+    const group = uiSchema.elements?.[0];
+    expect(group?.type).toBe("Group");
+    expect(group?.elements?.[0]?.scope).toBe("#/properties/field1");
+    expect(group?.elements?.[1]?.scope).toBe("#/properties/field2");
+    expect(group?.elements?.[2]?.scope).toBe("#/properties/field3");
+  });
+
+  it("should not affect jsonSchema structure (groups are UI-only)", () => {
+    class GroupedJsonForm {
+      @Group("Group A")
+      @Label("Name")
+      name!: string;
+
+      @Group("Group B")
+      @Label("Age")
+      age!: number;
+    }
+
+    withTypeMetadata(GroupedJsonForm, {
+      name: { type: "string" },
+      age: { type: "number" },
+    });
+
+    const { jsonSchema } = buildFormSchemas(GroupedJsonForm);
+
+    // Groups don't affect JSON Schema - it's flat
+    expect(jsonSchema.properties).toHaveProperty("name");
+    expect(jsonSchema.properties).toHaveProperty("age");
+    expect(jsonSchema.required).toEqual(["name", "age"]);
+  });
+
+  it("should create multiple Group elements for non-consecutive fields with same group name", () => {
+    class NonConsecutiveGroupsForm {
+      @Group("Section A")
+      @Label("Field 1")
+      field1!: string;
+
+      @Group("Section B")
+      @Label("Field 2")
+      field2!: string;
+
+      @Group("Section A") // Same name, non-consecutive
+      @Label("Field 3")
+      field3!: string;
+    }
+
+    withTypeMetadata(NonConsecutiveGroupsForm, {
+      field1: { type: "string" },
+      field2: { type: "string" },
+      field3: { type: "string" },
+    });
+
+    const { uiSchema } = buildFormSchemas(NonConsecutiveGroupsForm);
+
+    expect(uiSchema.type).toBe("VerticalLayout");
+    // Should have: Group (Section A), Group (Section B), Group (Section A again)
+    expect(uiSchema.elements).toHaveLength(3);
+
+    expect(uiSchema.elements?.[0]?.type).toBe("Group");
+    expect(uiSchema.elements?.[0]?.label).toBe("Section A");
+    expect(uiSchema.elements?.[0]?.elements).toHaveLength(1);
+    expect(uiSchema.elements?.[0]?.elements?.[0]?.scope).toBe("#/properties/field1");
+
+    expect(uiSchema.elements?.[1]?.type).toBe("Group");
+    expect(uiSchema.elements?.[1]?.label).toBe("Section B");
+    expect(uiSchema.elements?.[1]?.elements).toHaveLength(1);
+
+    expect(uiSchema.elements?.[2]?.type).toBe("Group");
+    expect(uiSchema.elements?.[2]?.label).toBe("Section A");
+    expect(uiSchema.elements?.[2]?.elements).toHaveLength(1);
+    expect(uiSchema.elements?.[2]?.elements?.[0]?.scope).toBe("#/properties/field3");
   });
 });
