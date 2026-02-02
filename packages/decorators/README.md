@@ -207,6 +207,48 @@ This means:
 |-----------|---------|---------|
 | `@EnumOptions(opts)` | Custom labels | `@EnumOptions([{id: "us", label: "USA"}])` |
 
+#### Auto-generated Options
+
+When no `@EnumOptions` decorator is present, options are automatically generated from the union type with `{ id, label }` format:
+
+```typescript
+class UserForm {
+  @Label("Status")
+  status!: "draft" | "published" | "archived";
+  // Auto-generates: [
+  //   { id: "draft", label: "draft" },
+  //   { id: "published", label: "published" },
+  //   { id: "archived", label: "archived" }
+  // ]
+}
+```
+
+#### Record Shorthand
+
+Use an object where keys are IDs and values are labels for a more concise syntax:
+
+```typescript
+class UserForm {
+  @Label("Country")
+  @EnumOptions({
+    us: "United States",
+    ca: "Canada",
+    uk: "United Kingdom"
+  })
+  country!: "us" | "ca" | "uk";
+}
+```
+
+This is equivalent to the array format:
+
+```typescript
+@EnumOptions([
+  { id: "us", label: "United States" },
+  { id: "ca", label: "Canada" },
+  { id: "uk", label: "United Kingdom" }
+])
+```
+
 ### Layout & Conditional
 
 | Decorator | Purpose | Example |

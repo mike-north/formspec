@@ -49,6 +49,12 @@ type PropertyDecorator = (target: object, propertyKey: string) => void;
 /** Type for enum option - can be a simple string or an object with id/label */
 export type EnumOptionValue = string | { id: string; label: string };
 
+/**
+ * Input type for @EnumOptions decorator.
+ * Accepts either an array of options or a record mapping ids to labels.
+ */
+export type EnumOptionsInput = EnumOptionValue[] | Record<string, string>;
+
 /** Type for conditional visibility condition */
 export interface ShowWhenCondition {
   field: string;
@@ -470,27 +476,47 @@ export function MaxItems(value: number): PropertyDecorator {
 // =============================================================================
 
 /**
+ * Normalizes enum options input to a consistent array format.
+ * Supports both array format and record shorthand.
+ */
+function normalizeEnumOptions(input: EnumOptionsInput): EnumOptionValue[] {
+  if (Array.isArray(input)) {
+    return input;
+  }
+  // Convert record { id: label } to array of { id, label } objects.
+  // Note: Object.entries() preserves insertion order for non-integer-like string keys.
+  // Integer-like keys (e.g. "0", "1") are ordered numerically ahead of other keys
+  // per JS property enumeration rules, so numeric-looking ids may not appear in
+  // pure insertion order.
+  return Object.entries(input).map(([id, label]) => ({ id, label }));
+}
+
+/**
  * Provides custom options for enum fields with labels.
  *
  * Use this to provide human-readable labels for enum values,
  * or to customize the order and display of options.
  *
- * @param options - Array of option values or {id, label} objects
+ * @param options - Array of options, or a record mapping ids to labels
  * @example
  * ```typescript
+ * // Array format
  * @EnumOptions([
  *   { id: "us", label: "United States" },
- *   { id: "ca", label: "Canada" },
- *   { id: "uk", label: "United Kingdom" }
+ *   { id: "ca", label: "Canada" }
  * ])
- * country!: "us" | "ca" | "uk";
+ * country!: "us" | "ca";
+ *
+ * // Record shorthand
+ * @EnumOptions({ us: "United States", ca: "Canada" })
+ * country!: "us" | "ca";
  * ```
  */
-export function EnumOptions(options: EnumOptionValue[]): PropertyDecorator {
+export function EnumOptions(options: EnumOptionsInput): PropertyDecorator {
   return function (target: object, propertyKey: string): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctor = target.constructor as new (...args: any[]) => any;
-    getFieldMetadata(ctor, propertyKey).options = options;
+    getFieldMetadata(ctor, propertyKey).options = normalizeEnumOptions(options);
   };
 }
 
@@ -670,8 +696,11 @@ function createField(
   if (decoratorInfo.options) {
     field.options = decoratorInfo.options;
   } else if (typeInfo.values) {
-    // Convert simple values to strings
-    field.options = typeInfo.values.map((v) => String(v));
+    // Auto-generate { id, label } objects from type values
+    field.options = typeInfo.values.map((v) => {
+      const strVal = String(v);
+      return { id: strVal, label: strVal };
+    });
   }
 
   // Handle nested object properties
