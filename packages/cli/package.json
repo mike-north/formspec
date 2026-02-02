@@ -1,6 +1,6 @@
 {
   "name": "@formspec/cli",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "CLI tool for generating JSON Schema and FormSpec from TypeScript classes",
   "type": "module",
   "main": "./dist/index.js",

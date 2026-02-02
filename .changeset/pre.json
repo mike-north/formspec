@@ -21,6 +21,7 @@
     "enum-object-options",
     "eslint-plugin-initial",
     "fix-types-field",
+    "p4-enum-options-dx",
     "predicate-when-api",
     "runtime-type-metadata-warning"
   ]
