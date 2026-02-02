@@ -92,6 +92,116 @@ describe("toFormSpec", () => {
         { id: "ca", label: "Canada" },
       ]);
     });
+
+    it("should accept record shorthand for @EnumOptions", () => {
+      class TestForm {
+        @Label("Role")
+        @EnumOptions({ admin: "Administrator", user: "Regular User" })
+        role!: "admin" | "user";
+      }
+
+      withTypeMetadata(TestForm, {
+        role: { type: "enum", values: ["admin", "user"] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      expect(spec.elements[0]?.options).toEqual([
+        { id: "admin", label: "Administrator" },
+        { id: "user", label: "Regular User" },
+      ]);
+    });
+
+    it("should handle empty record for @EnumOptions", () => {
+      class TestForm {
+        @Label("Status")
+        @EnumOptions({})
+        status!: "active" | "inactive";
+      }
+
+      withTypeMetadata(TestForm, {
+        status: { type: "enum", values: ["active", "inactive"] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      // Empty record produces empty options array (decorator overrides auto-generation)
+      expect(spec.elements[0]?.options).toEqual([]);
+    });
+
+    it("should preserve insertion order in record shorthand", () => {
+      class TestForm {
+        @Label("Priority")
+        @EnumOptions({ z: "Zebra", a: "Apple", m: "Mango" })
+        priority!: "z" | "a" | "m";
+      }
+
+      withTypeMetadata(TestForm, {
+        priority: { type: "enum", values: ["z", "a", "m"] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      // Object.entries() preserves insertion order per ES2015+ spec
+      expect(spec.elements[0]?.options).toEqual([
+        { id: "z", label: "Zebra" },
+        { id: "a", label: "Apple" },
+        { id: "m", label: "Mango" },
+      ]);
+    });
+
+    it("should handle enum values with special characters", () => {
+      class TestForm {
+        @Label("Mode")
+        mode!: "user-mode" | "admin.mode" | "mode@test";
+      }
+
+      withTypeMetadata(TestForm, {
+        mode: { type: "enum", values: ["user-mode", "admin.mode", "mode@test"] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      expect(spec.elements[0]?.options).toEqual([
+        { id: "user-mode", label: "user-mode" },
+        { id: "admin.mode", label: "admin.mode" },
+        { id: "mode@test", label: "mode@test" },
+      ]);
+    });
+
+    it("should auto-generate options for numeric enum values", () => {
+      class TestForm {
+        @Label("Count")
+        count!: 1 | 2 | 3;
+      }
+
+      withTypeMetadata(TestForm, {
+        count: { type: "enum", values: [1, 2, 3] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      expect(spec.elements[0]?.options).toEqual([
+        { id: "1", label: "1" },
+        { id: "2", label: "2" },
+        { id: "3", label: "3" },
+      ]);
+    });
+
+    it("should handle empty values array in enum type metadata", () => {
+      class TestForm {
+        @Label("Empty")
+        empty!: string;
+      }
+
+      withTypeMetadata(TestForm, {
+        empty: { type: "enum", values: [] },
+      });
+
+      const spec = toFormSpec(TestForm);
+
+      expect(spec.elements[0]?.options).toEqual([]);
+    });
   });
 
   describe("field type mapping", () => {
@@ -139,7 +249,10 @@ describe("toFormSpec", () => {
 
       const spec = toFormSpec(TestForm);
       expect(spec.elements[0]?._field).toBe("enum");
-      expect(spec.elements[0]?.options).toEqual(["active", "inactive"]);
+      expect(spec.elements[0]?.options).toEqual([
+        { id: "active", label: "active" },
+        { id: "inactive", label: "inactive" },
+      ]);
     });
 
     it("should map array type to array field", () => {
@@ -700,5 +813,79 @@ describe("buildFormSchemas with @Group", () => {
     expect(uiSchema.elements?.[2]?.label).toBe("Section A");
     expect(uiSchema.elements?.[2]?.elements).toHaveLength(1);
     expect(uiSchema.elements?.[2]?.elements?.[0]?.scope).toBe("#/properties/field3");
+  });
+});
+
+describe("buildFormSchemas with P4 features", () => {
+  it("should include auto-generated enum options in JSON Schema oneOf", () => {
+    class AutoEnumForm {
+      @Label("Status")
+      status!: "draft" | "published";
+    }
+
+    withTypeMetadata(AutoEnumForm, {
+      status: { type: "enum", values: ["draft", "published"] },
+    });
+
+    const { jsonSchema } = buildFormSchemas(AutoEnumForm);
+
+    // Auto-generated options should produce oneOf with matching const and title
+    expect(jsonSchema.properties?.status?.oneOf).toEqual([
+      { const: "draft", title: "draft" },
+      { const: "published", title: "published" },
+    ]);
+  });
+
+  it("should include record shorthand enum options in JSON Schema oneOf", () => {
+    class RecordEnumForm {
+      @Label("Role")
+      @EnumOptions({ admin: "Administrator", user: "Regular User" })
+      role!: "admin" | "user";
+    }
+
+    withTypeMetadata(RecordEnumForm, {
+      role: { type: "enum", values: ["admin", "user"] },
+    });
+
+    const { jsonSchema } = buildFormSchemas(RecordEnumForm);
+
+    // Record shorthand options should produce oneOf with custom titles
+    expect(jsonSchema.properties?.role?.oneOf).toEqual([
+      { const: "admin", title: "Administrator" },
+      { const: "user", title: "Regular User" },
+    ]);
+  });
+
+  it("should generate both schemas correctly with P4 features", () => {
+    class CompleteP4Form {
+      @Label("Country")
+      @EnumOptions({ us: "United States", ca: "Canada" })
+      country!: "us" | "ca";
+
+      @Label("Plan")
+      plan!: "free" | "pro";
+    }
+
+    withTypeMetadata(CompleteP4Form, {
+      country: { type: "enum", values: ["us", "ca"] },
+      plan: { type: "enum", values: ["free", "pro"] },
+    });
+
+    const { jsonSchema, uiSchema } = buildFormSchemas(CompleteP4Form);
+
+    // JSON Schema
+    expect(jsonSchema.properties?.country?.oneOf).toEqual([
+      { const: "us", title: "United States" },
+      { const: "ca", title: "Canada" },
+    ]);
+    expect(jsonSchema.properties?.plan?.oneOf).toEqual([
+      { const: "free", title: "free" },
+      { const: "pro", title: "pro" },
+    ]);
+
+    // UI Schema
+    expect(uiSchema.elements).toHaveLength(2);
+    expect(uiSchema.elements?.[0]?.scope).toBe("#/properties/country");
+    expect(uiSchema.elements?.[1]?.scope).toBe("#/properties/plan");
   });
 });
