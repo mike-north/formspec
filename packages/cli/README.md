@@ -10,6 +10,18 @@ npm install @formspec/cli
 pnpm add @formspec/cli
 ```
 
+## Requirements
+
+**TypeScript configuration** (tsconfig.json):
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
 ## Quick Start
 
 ```bash

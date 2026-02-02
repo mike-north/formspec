@@ -10,6 +10,27 @@ npm install @formspec/dsl @formspec/build
 npm install formspec
 ```
 
+## Requirements
+
+This package is ESM-only and requires:
+
+```json
+// package.json
+{
+  "type": "module"
+}
+```
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  }
+}
+```
+
 ## Quick Start
 
 ```typescript
