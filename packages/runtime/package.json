@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && api-extractor run --local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

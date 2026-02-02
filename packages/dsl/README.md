@@ -92,7 +92,7 @@ field.enum("country", [
 });
 ```
 
-**Important:** Always use `as const` with enum options to get proper literal type inference. Without it, TypeScript will widen the array to `string[]`.
+**Note:** Use `as const` when passing enum options from a variable. For inline array literals, the `const` type parameter preserves literal types automatically.
 
 ### Dynamic Enum Field
 
@@ -244,13 +244,13 @@ import { buildFormSchemas, writeSchemas } from "@formspec/build";
 const { jsonSchema, uiSchema } = buildFormSchemas(MyForm);
 
 // Or write to files
-await writeSchemas(MyForm, {
+writeSchemas(MyForm, {
   outDir: "./generated",
   name: "MyForm"
 });
 // Creates:
-//   ./generated/formspecs/MyForm/schema.json
-//   ./generated/formspecs/MyForm/ux_spec.json
+//   ./generated/MyForm-schema.json
+//   ./generated/MyForm-uischema.json
 ```
 
 ## When to Use This Package
