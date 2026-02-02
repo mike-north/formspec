@@ -484,7 +484,10 @@ function normalizeEnumOptions(input: EnumOptionsInput): EnumOptionValue[] {
     return input;
   }
   // Convert record { id: label } to array of { id, label } objects.
-  // Object.entries() preserves insertion order per ES2015+ spec for string keys.
+  // Note: Object.entries() preserves insertion order for non-integer-like string keys.
+  // Integer-like keys (e.g. "0", "1") are ordered numerically ahead of other keys
+  // per JS property enumeration rules, so numeric-looking ids may not appear in
+  // pure insertion order.
   return Object.entries(input).map(([id, label]) => ({ id, label }));
 }
 
