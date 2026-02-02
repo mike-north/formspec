@@ -1,6 +1,6 @@
 {
   "name": "@formspec/dsl",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.4",
   "description": "DSL functions for defining FormSpec forms",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,5 +1,20 @@
 # @formspec/cli
 
+## 0.1.0-alpha.4
+
+### Patch Changes
+
+- [#18](https://github.com/mike-north/formspec/pull/18) [`2ccf6d1`](https://github.com/mike-north/formspec/commit/2ccf6d1174f3e08f95822f0c7cb14c0ff66d569b) Thanks [@mike-north](https://github.com/mike-north)! - Add README.md documentation to all npm packages
+  - Added comprehensive README.md files to formspec, @formspec/core, @formspec/build, and @formspec/runtime
+  - Added ESM requirements section to all package READMEs
+  - Updated package.json files to include README.md in published packages
+
+  This addresses DX evaluation feedback that published packages lacked documentation,
+  making it difficult for new users to get started.
+
+- Updated dependencies [[`2ccf6d1`](https://github.com/mike-north/formspec/commit/2ccf6d1174f3e08f95822f0c7cb14c0ff66d569b), [`96f08ac`](https://github.com/mike-north/formspec/commit/96f08acc744ca1de8f8ca58be15e51844aba29e9)]:
+  - @formspec/build@0.1.0-alpha.4
+
 ## 0.1.0-alpha.3
 
 ### Minor Changes

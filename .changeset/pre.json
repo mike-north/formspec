@@ -12,6 +12,7 @@
     "formspec": "0.0.1"
   },
   "changesets": [
+    "add-package-readmes",
     "build-integration-tools",
     "cli-static-analysis",
     "codegen-type-inference",
@@ -19,6 +20,8 @@
     "dx-improvements",
     "enum-object-options",
     "eslint-plugin-initial",
-    "predicate-when-api"
+    "fix-types-field",
+    "predicate-when-api",
+    "runtime-type-metadata-warning"
   ]
 }
