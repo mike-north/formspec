@@ -602,9 +602,9 @@ function warnIfMissingTypeMetadata(
     `  - Enum options from TypeScript types will not be available\n\n` +
     `  To fix this, run: formspec codegen <your-file.ts> -o ./__formspec_types__.ts\n` +
     `  Then import the generated file BEFORE calling ${functionName}():\n\n` +
-    `    import './__formspec_types__.js';\n` +
+    `    import './__formspec_types__';\n` +
     `    import { ${functionName} } from '@formspec/decorators';\n` +
-    `    const spec = ${functionName}(${className});\n`
+    `    const schemas = ${functionName}(${className});\n`
   );
 }
 

@@ -19,6 +19,7 @@ import {
   ShowWhen,
   Group,
   toFormSpec,
+  buildFormSchemas,
   getDecoratorMetadata,
   getTypeMetadata,
   type TypeMetadata,
@@ -498,7 +499,33 @@ describe("missing type metadata warning", () => {
       expect.stringContaining("formspec codegen")
     );
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("import './__formspec_types__.js'")
+      expect.stringContaining("import './__formspec_types__'")
     );
+  });
+
+  it("should emit warning when buildFormSchemas is called on decorated class without type metadata", () => {
+    class BuildSchemasWarnForm {
+      @Label("Name")
+      name!: string;
+    }
+
+    buildFormSchemas(BuildSchemasWarnForm);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[FormSpec] Warning: buildFormSchemas(BuildSchemasWarnForm) called without type metadata")
+    );
+  });
+
+  it("should only warn once per class for buildFormSchemas", () => {
+    class BuildSchemasOnceForm {
+      @Label("Name")
+      name!: string;
+    }
+
+    buildFormSchemas(BuildSchemasOnceForm);
+    buildFormSchemas(BuildSchemasOnceForm);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
   });
 });

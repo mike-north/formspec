@@ -16,9 +16,9 @@ without running `formspec codegen` first, the function now emits a warning:
   To fix this, run: formspec codegen <your-file.ts> -o ./__formspec_types__.ts
   Then import the generated file BEFORE calling toFormSpec():
 
-    import './__formspec_types__.js';
+    import './__formspec_types__';
     import { toFormSpec } from '@formspec/decorators';
-    const spec = toFormSpec(MyForm);
+    const schemas = toFormSpec(MyForm);
 ```
 
 This addresses DX evaluation feedback that silent degradation (all fields becoming
