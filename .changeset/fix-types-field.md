@@ -3,6 +3,7 @@
 "@formspec/core": patch
 "@formspec/build": patch
 "@formspec/runtime": patch
+"formspec": patch
 ---
 
 Fix TypeScript type resolution by including API Extractor in build
