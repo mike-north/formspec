@@ -1,6 +1,6 @@
 {
   "name": "formspec",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "description": "Type-safe form specifications that compile to JSON Schema and JSON Forms UI Schema",
   "type": "module",
   "main": "./dist/index.js",

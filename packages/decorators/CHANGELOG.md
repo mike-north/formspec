@@ -1,5 +1,45 @@
 # @formspec/decorators
 
+## 0.1.0-alpha.5
+
+### Minor Changes
+
+- [#22](https://github.com/mike-north/formspec/pull/22) [`a4b341d`](https://github.com/mike-north/formspec/commit/a4b341d42adaacf6f7e8fa79139575a41b181e84) Thanks [@mike-north](https://github.com/mike-north)! - Add DX improvements across FormSpec packages
+
+  **P4-3: EnumOptions Record Shorthand**
+
+  You can now use a more concise record format for `@EnumOptions`:
+
+  ```typescript
+  // New shorthand format
+  @EnumOptions({ admin: "Administrator", user: "Regular User" })
+  role!: "admin" | "user";
+
+  // Equivalent to the existing array format
+  @EnumOptions([
+    { id: "admin", label: "Administrator" },
+    { id: "user", label: "Regular User" }
+  ])
+  ```
+
+  **P4-1: Auto-generate Enum Options from Union Types**
+
+  When `@EnumOptions` is not present, options are now automatically generated with `{ id, label }` format where both values match the union member:
+
+  ```typescript
+  // Without @EnumOptions
+  status!: "draft" | "published";
+  // Auto-generates: [{ id: "draft", label: "draft" }, { id: "published", label: "published" }]
+  ```
+
+  These changes make it faster to define enum fields while maintaining full backward compatibility with the existing array format.
+
+  **Additional DX Improvements**
+  - **@formspec/dsl**: Duplicate field names are now reported as errors instead of warnings
+  - **@formspec/build**: Fixed duplicate entries in JSON Schema `required` arrays
+  - **@formspec/cli**: Added `--help` for subcommands, warn on unexported decorated classes
+  - **@formspec/decorators**: Added `@Group` decorator support for UI schema grouping
+
 ## 0.1.0-alpha.4
 
 ### Minor Changes
