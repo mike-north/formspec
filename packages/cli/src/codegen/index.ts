@@ -673,8 +673,8 @@ export function runCodegen(options: CodegenOptions): void {
     console.warn(
       `\n   The generated code will fail to compile because it cannot import these classes.`
     );
-    console.warn(`   To fix this, add 'export' to the class declaration:`);
-    console.warn(`     export class ${unexported[0]?.name} { ... }\n`);
+    console.warn(`   To fix this, add 'export' to the class declaration, for example:`);
+    console.warn(`     export class YourClassName { ... }\n`);
   }
 
   const output = generateCodegenOutput(classes, options.output, baseDir);

@@ -202,7 +202,7 @@ EXAMPLES:
   formspec generate ./src/forms.ts UserForm -o ./generated
 
   # Generate from FormSpec exports (requires compiled JS)
-  tsc                                         # Compile TypeScript first
+  # First compile using your build tool (tsc, esbuild, swc, etc.)
   formspec generate ./src/forms.ts -o ./generated
 
 HOW IT WORKS:
@@ -212,7 +212,8 @@ HOW IT WORKS:
 
   For FormSpec chain DSL exports (formspec(...)), the CLI needs to import
   the compiled JavaScript to generate schemas at runtime. Compile your
-  TypeScript first, or use the --compiled flag to specify the JS path.
+  TypeScript using your project's build process, or use the --compiled
+  flag to specify the JS path explicitly.
 `);
 }
 

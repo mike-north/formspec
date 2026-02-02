@@ -659,4 +659,46 @@ describe("buildFormSchemas with @Group", () => {
     expect(jsonSchema.properties).toHaveProperty("age");
     expect(jsonSchema.required).toEqual(["name", "age"]);
   });
+
+  it("should create multiple Group elements for non-consecutive fields with same group name", () => {
+    class NonConsecutiveGroupsForm {
+      @Group("Section A")
+      @Label("Field 1")
+      field1!: string;
+
+      @Group("Section B")
+      @Label("Field 2")
+      field2!: string;
+
+      @Group("Section A") // Same name, non-consecutive
+      @Label("Field 3")
+      field3!: string;
+    }
+
+    withTypeMetadata(NonConsecutiveGroupsForm, {
+      field1: { type: "string" },
+      field2: { type: "string" },
+      field3: { type: "string" },
+    });
+
+    const { uiSchema } = buildFormSchemas(NonConsecutiveGroupsForm);
+
+    expect(uiSchema.type).toBe("VerticalLayout");
+    // Should have: Group (Section A), Group (Section B), Group (Section A again)
+    expect(uiSchema.elements).toHaveLength(3);
+
+    expect(uiSchema.elements?.[0]?.type).toBe("Group");
+    expect(uiSchema.elements?.[0]?.label).toBe("Section A");
+    expect(uiSchema.elements?.[0]?.elements).toHaveLength(1);
+    expect(uiSchema.elements?.[0]?.elements?.[0]?.scope).toBe("#/properties/field1");
+
+    expect(uiSchema.elements?.[1]?.type).toBe("Group");
+    expect(uiSchema.elements?.[1]?.label).toBe("Section B");
+    expect(uiSchema.elements?.[1]?.elements).toHaveLength(1);
+
+    expect(uiSchema.elements?.[2]?.type).toBe("Group");
+    expect(uiSchema.elements?.[2]?.label).toBe("Section A");
+    expect(uiSchema.elements?.[2]?.elements).toHaveLength(1);
+    expect(uiSchema.elements?.[2]?.elements?.[0]?.scope).toBe("#/properties/field3");
+  });
 });

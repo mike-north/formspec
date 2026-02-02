@@ -94,6 +94,26 @@ describe("generateJsonSchema", () => {
     expect(Object.keys(schema.properties ?? {})).toEqual(["type", "extra"]);
   });
 
+  it("should deduplicate required array when same field appears in multiple conditionals", () => {
+    const form = formspec(
+      field.enum("type", ["a", "b", "c"] as const, { required: true }),
+      field.text("name", { required: true }), // required at root
+      when(is("type", "a"),
+        field.text("name", { required: true }), // same field in conditional
+      ),
+      when(is("type", "b"),
+        field.text("name", { required: true }), // same field in another conditional
+      ),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    // "name" should only appear once in required array, not 3 times
+    expect(schema.required).toBeDefined();
+    expect(schema.required?.filter(r => r === "name")).toHaveLength(1);
+    expect(schema.required?.filter(r => r === "type")).toHaveLength(1);
+  });
+
   it("should include x-formspec-source for dynamic enum fields", () => {
     const form = formspec(
       field.dynamicEnum("country", "countries", { label: "Country" }),
