@@ -2,7 +2,7 @@
  * Tests for the toFormSpec() runtime API.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   Label,
   Placeholder,
@@ -422,5 +422,83 @@ describe("getTypeMetadata", () => {
 
     const metadata = getTypeMetadata(TestForm);
     expect(metadata).toEqual({});
+  });
+});
+
+describe("missing type metadata warning", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it("should emit warning when toFormSpec is called on decorated class without type metadata", () => {
+    class WarnTestForm {
+      @Label("Name")
+      name!: string;
+    }
+
+    toFormSpec(WarnTestForm);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[FormSpec] Warning: toFormSpec(WarnTestForm) called without type metadata")
+    );
+  });
+
+  it("should not emit warning for same class twice", () => {
+    class WarnOnceForm {
+      @Label("Name")
+      name!: string;
+    }
+
+    toFormSpec(WarnOnceForm);
+    toFormSpec(WarnOnceForm);
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not emit warning when type metadata is present", () => {
+    class WithMetadataForm {
+      @Label("Name")
+      name!: string;
+    }
+    withTypeMetadata(WithMetadataForm, { name: { type: "string" } });
+
+    toFormSpec(WithMetadataForm);
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("should not emit warning for class without any decorators", () => {
+    class PlainForm {
+      name!: string;
+    }
+    // No decorators, no type metadata - this is likely a different use case
+    // so we don't warn
+
+    toFormSpec(PlainForm);
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("should include helpful instructions in warning message", () => {
+    class HelpfulForm {
+      @Label("Email")
+      email!: string;
+    }
+
+    toFormSpec(HelpfulForm);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("formspec codegen")
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("import './__formspec_types__.js'")
+    );
   });
 });
