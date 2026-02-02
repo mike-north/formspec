@@ -1,5 +1,46 @@
 # @formspec/decorators
 
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- [#19](https://github.com/mike-north/formspec/pull/19) [`98beb0a`](https://github.com/mike-north/formspec/commit/98beb0a59bd6ec792240f1135897274a45391148) Thanks [@mike-north](https://github.com/mike-north)! - Add runtime warning when decorated classes are used without type metadata
+
+  When `toFormSpec()` or `buildFormSchemas()` is called on a decorated class
+  without running `formspec codegen` first, the function now emits a warning:
+
+  ```
+  [FormSpec] Warning: toFormSpec(MyForm) called without type metadata.
+    - All fields will default to type "text"
+    - All fields will be marked as required
+    - Enum options from TypeScript types will not be available
+
+    To fix this, run: formspec codegen <your-file.ts> -o ./__formspec_types__.ts
+    Then import the generated file BEFORE calling toFormSpec():
+
+      import './__formspec_types__';
+      import { toFormSpec } from '@formspec/decorators';
+      const schemas = toFormSpec(MyForm);
+  ```
+
+  This addresses DX evaluation feedback that silent degradation (all fields becoming
+  "text", all fields becoming required) was confusing and led to subtle bugs.
+
+  The warning:
+  - Only appears once per class (prevents duplicate warnings)
+  - Only appears for decorated classes (classes without decorators are not warned)
+  - Includes actionable instructions for fixing the issue
+
+### Patch Changes
+
+- [#18](https://github.com/mike-north/formspec/pull/18) [`2ccf6d1`](https://github.com/mike-north/formspec/commit/2ccf6d1174f3e08f95822f0c7cb14c0ff66d569b) Thanks [@mike-north](https://github.com/mike-north)! - Add README.md documentation to all npm packages
+  - Added comprehensive README.md files to formspec, @formspec/core, @formspec/build, and @formspec/runtime
+  - Added ESM requirements section to all package READMEs
+  - Updated package.json files to include README.md in published packages
+
+  This addresses DX evaluation feedback that published packages lacked documentation,
+  making it difficult for new users to get started.
+
 ## 0.1.0-alpha.3
 
 ### Minor Changes
