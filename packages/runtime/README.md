@@ -58,9 +58,9 @@ const resolvers = defineResolvers(OrderForm, {
     validity: "valid",
   }),
 
-  fetch_states: async (context) => {
-    // Context can include form data for dependent lookups
-    const response = await fetch(`/api/states?country=${context?.country}`);
+  fetch_states: async (params) => {
+    // Params can include any context needed for the lookup (e.g. form data)
+    const response = await fetch(`/api/states?country=${params?.country}`);
     const states = await response.json();
     return {
       options: states.map((s: { code: string; name: string }) => ({
