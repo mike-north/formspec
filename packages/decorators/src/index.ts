@@ -557,6 +557,58 @@ export function Group(name: string): PropertyDecorator {
 const FORMSPEC_TYPES_KEY = "__formspec_types__";
 
 /**
+ * Tracks which classes have been warned about missing type metadata.
+ * This prevents duplicate warnings for the same class.
+ */
+const warnedClasses = new WeakSet<object>();
+
+/**
+ * Emits a warning when a decorated class is used without type metadata.
+ *
+ * @param ctor - The class constructor
+ * @param functionName - Name of the function that was called
+ */
+function warnIfMissingTypeMetadata(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => any,
+  functionName: string
+): void {
+  // Skip if already warned
+  if (warnedClasses.has(ctor)) {
+    return;
+  }
+
+  // Check if class has type metadata
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hasTypeMetadata = FORMSPEC_TYPES_KEY in ctor && Object.keys((ctor as any)[FORMSPEC_TYPES_KEY]).length > 0;
+  if (hasTypeMetadata) {
+    return;
+  }
+
+  // Check if class has decorator metadata (indicating decorators were applied)
+  const hasDecoratorMetadata = decoratorMetadata.has(ctor) && decoratorMetadata.get(ctor)!.size > 0;
+  if (!hasDecoratorMetadata) {
+    return; // No decorators applied, likely intentional basic usage
+  }
+
+  // Mark as warned and emit warning
+  warnedClasses.add(ctor);
+
+  const className = ctor.name || "UnknownClass";
+  console.warn(
+    `[FormSpec] Warning: ${functionName}(${className}) called without type metadata.\n` +
+    `  - All fields will default to type "text"\n` +
+    `  - All fields will be marked as required\n` +
+    `  - Enum options from TypeScript types will not be available\n\n` +
+    `  To fix this, run: formspec codegen <your-file.ts> -o ./__formspec_types__.ts\n` +
+    `  Then import the generated file BEFORE calling ${functionName}():\n\n` +
+    `    import './__formspec_types__';\n` +
+    `    import { ${functionName} } from '@formspec/decorators';\n` +
+    `    const schemas = ${functionName}(${className});\n`
+  );
+}
+
+/**
  * Maps type metadata type to FormSpec field type.
  */
 function mapTypeToFieldType(type: string): string {
@@ -663,6 +715,9 @@ function createField(
 export function toFormSpec<T extends new (...args: any[]) => any>(
   ctor: T
 ): FormSpecOutput {
+  // Warn if decorated class is missing type metadata
+  warnIfMissingTypeMetadata(ctor, "toFormSpec");
+
   // Get type metadata from codegen (if available)
   const typeMetadata: Record<string, TypeMetadata> =
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -933,6 +988,10 @@ function generateUiSchemaFromElements(elements: FormSpecField[]): UISchemaElemen
 export function buildFormSchemas<T extends new (...args: any[]) => any>(
   ctor: T
 ): BuildResult {
+  // Warn if decorated class is missing type metadata
+  // (toFormSpec will also check, but we want the correct function name in the warning)
+  warnIfMissingTypeMetadata(ctor, "buildFormSchemas");
+
   const { elements } = toFormSpec(ctor);
 
   return {
