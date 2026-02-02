@@ -53,6 +53,8 @@ export interface DecoratedClassInfo {
   sourcePath: string;
   /** Type metadata for all decorated properties in the class */
   typeMetadata: Record<string, TypeMetadata>;
+  /** Whether the class is exported from its source file */
+  isExported: boolean;
 }
 
 /**
@@ -96,11 +98,13 @@ export function findDecoratedClasses(
 
         const typeMetadata = extractTypeMetadata(node, checker);
         const relativePath = path.relative(baseDir, sourceFile.fileName);
+        const exported = isClassExported(node, sourceFile);
 
         results.push({
           name: className,
           sourcePath: relativePath.replace(/\.tsx?$/, ""),
           typeMetadata,
+          isExported: exported,
         });
       }
     });
@@ -118,6 +122,49 @@ function hasDecoratedProperties(node: ts.ClassDeclaration): boolean {
     const decorators = ts.getDecorators(member);
     return decorators !== undefined && decorators.length > 0;
   });
+}
+
+/**
+ * Checks if a class is exported from its source file.
+ *
+ * A class is considered exported if:
+ * 1. It has the 'export' modifier directly (export class Foo {})
+ * 2. It has 'export default' modifiers (export default class Foo {})
+ * 3. It's referenced in a named export declaration (export { Foo })
+ */
+function isClassExported(
+  classNode: ts.ClassDeclaration,
+  sourceFile: ts.SourceFile
+): boolean {
+  const className = classNode.name?.text;
+  if (!className) return false;
+
+  // Check for direct export modifier (export class Foo or export default class Foo)
+  const modifiers = ts.getModifiers(classNode);
+  if (modifiers) {
+    const hasExport = modifiers.some(
+      (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
+    );
+    if (hasExport) return true;
+  }
+
+  // Check for named exports (export { Foo } or export { Foo as Bar })
+  for (const statement of sourceFile.statements) {
+    if (ts.isExportDeclaration(statement) && statement.exportClause) {
+      if (ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          // Check if this export refers to our class
+          // element.name is the exported name, element.propertyName is the local name (if renamed)
+          const localName = element.propertyName?.text ?? element.name.text;
+          if (localName === className) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -612,6 +659,22 @@ export function runCodegen(options: CodegenOptions): void {
   for (const cls of classes) {
     const fieldCount = Object.keys(cls.typeMetadata).length;
     console.log(`  - ${cls.name} (${fieldCount} field(s))`);
+  }
+
+  // Check for unexported classes and warn
+  const unexported = classes.filter((cls) => !cls.isExported);
+  if (unexported.length > 0) {
+    console.warn(
+      `\n⚠️  Warning: The following decorated classes are not exported from their source files:`
+    );
+    for (const cls of unexported) {
+      console.warn(`   - ${cls.name} (${cls.sourcePath})`);
+    }
+    console.warn(
+      `\n   The generated code will fail to compile because it cannot import these classes.`
+    );
+    console.warn(`   To fix this, add 'export' to the class declaration:`);
+    console.warn(`     export class ${unexported[0]?.name} { ... }\n`);
   }
 
   const output = generateCodegenOutput(classes, options.output, baseDir);

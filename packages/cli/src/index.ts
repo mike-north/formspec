@@ -98,6 +98,11 @@ function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
 
   // Handle codegen command
   if (command === "codegen") {
+    // Check for --help on subcommand
+    if (rest.includes("--help") || rest.includes("-h")) {
+      printCodegenHelp();
+      process.exit(0);
+    }
     return parseCodegenArgs(rest);
   }
 
@@ -106,6 +111,12 @@ function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
     console.error(`Unknown command: ${command}`);
     console.error('Use "formspec generate" or "formspec codegen"');
     process.exit(1);
+  }
+
+  // Check for --help on subcommand
+  if (rest.includes("--help") || rest.includes("-h")) {
+    printGenerateHelp();
+    process.exit(0);
   }
 
   let filePath: string | undefined;
@@ -163,44 +174,91 @@ USAGE:
   formspec generate <file> [className] [options]
   formspec codegen <files...> [-o <output>]
 
-GENERATE COMMAND:
-  Arguments:
-    <file>        Path to TypeScript source file
-    [className]   Optional class name (if omitted, generates from FormSpec exports only)
+Use 'formspec <command> --help' for more information about a command.
+`);
+}
 
-  Options:
-    -o, --output <dir>    Output directory (default: ./generated)
-    -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+/**
+ * Prints help for the generate command.
+ */
+function printGenerateHelp(): void {
+  console.log(`
+formspec generate - Generate JSON Schema and UI Schema files from TypeScript
 
-  Examples:
-    formspec generate ./src/forms.ts InstallmentPlan -o ./generated
-    formspec generate ./src/forms.ts -o ./generated
+USAGE:
+  formspec generate <file> [className] [options]
 
-CODEGEN COMMAND:
-  Generate a TypeScript file that patches decorated classes with type metadata.
-  This enables runtime schema generation with toFormSpec() from @formspec/decorators.
+ARGUMENTS:
+  <file>        Path to TypeScript source file (.ts)
+  [className]   Optional class name to analyze
 
-  Arguments:
-    <files...>    TypeScript source files to analyze
+OPTIONS:
+  -o, --output <dir>    Output directory (default: ./generated)
+  -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+  -h, --help            Show this help message
 
-  Options:
-    -o, --output <file>   Output file (default: ./__formspec_types__.ts)
+EXAMPLES:
+  # Generate from a decorated class (static analysis only)
+  formspec generate ./src/forms.ts UserForm -o ./generated
 
-  Examples:
-    formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
-    formspec codegen ./src/**/*.ts -o ./src/__formspec_types__.ts
+  # Generate from FormSpec exports (requires compiled JS)
+  tsc                                         # Compile TypeScript first
+  formspec generate ./src/forms.ts -o ./generated
 
-  Usage in code:
+HOW IT WORKS:
+  The CLI performs static analysis of TypeScript source files using the
+  TypeScript Compiler API. It reads decorator metadata and type information
+  directly from the AST - no compiled output needed for class analysis.
+
+  For FormSpec chain DSL exports (formspec(...)), the CLI needs to import
+  the compiled JavaScript to generate schemas at runtime. Compile your
+  TypeScript first, or use the --compiled flag to specify the JS path.
+`);
+}
+
+/**
+ * Prints help for the codegen command.
+ */
+function printCodegenHelp(): void {
+  console.log(`
+formspec codegen - Generate type metadata for runtime schema generation
+
+USAGE:
+  formspec codegen <files...> [options]
+
+ARGUMENTS:
+  <files...>    TypeScript source files to analyze
+
+OPTIONS:
+  -o, --output <file>   Output file (default: ./__formspec_types__.ts)
+  -h, --help            Show this help message
+
+EXAMPLES:
+  formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
+  formspec codegen ./src/**/*.ts -o ./src/__formspec_types__.ts
+
+USAGE IN CODE:
+  After generating the type metadata file:
+
     // Import once at application entry point
     import './__formspec_types__';
 
-    // Then use toFormSpec() normally
+    // Then use toFormSpec() or buildFormSchemas() normally
     import { UserForm } from './forms';
-    import { toFormSpec } from '@formspec/decorators';
-    const spec = toFormSpec(UserForm);
+    import { toFormSpec, buildFormSchemas } from '@formspec/decorators';
 
-ALIASES:
-  formspec analyze      Same as 'generate' (for backwards compatibility)
+    const spec = toFormSpec(UserForm);
+    const { jsonSchema, uiSchema } = buildFormSchemas(UserForm);
+
+HOW IT WORKS:
+  TypeScript erases type information at runtime. This command extracts
+  type metadata (field types, enum values, optional/nullable flags) from
+  your decorated classes and generates a file that patches them with
+  a __formspec_types__ property.
+
+  Without codegen, toFormSpec() can only read decorator metadata (labels,
+  constraints) but not TypeScript types. With codegen, you get full type
+  information at runtime.
 `);
 }
 
