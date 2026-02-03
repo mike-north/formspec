@@ -35,6 +35,12 @@ export { EnumOption }
 export { EnumOptionValue }
 
 // @public
+export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+
+// @public
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
+
+// @public
 export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
 
 // @public
@@ -42,6 +48,12 @@ export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
 infer First,
 ...infer Rest
 ] ? ExtractFields<First> | ExtractFieldsFromArray<Rest> : never;
+
+// @public
+export type ExtractNonConditionalFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractNonConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer _Elements> ? never : never;
+
+// @public
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
 
 // @public
 export const field: {
@@ -78,8 +90,10 @@ export type InferFieldValue<F> = F extends TextField<string> ? string : F extend
 // @public
 export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 
+// Warning: (ae-forgotten-export) The symbol "Prettify" needs to be exported by the entry point index.d.ts
+//
 // @public
-export type InferSchema<Elements extends readonly FormElement[]> = BuildSchema<ExtractFieldsFromArray<Elements>>;
+export type InferSchema<Elements extends readonly FormElement[]> = Prettify<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
 
 // @public
 export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
