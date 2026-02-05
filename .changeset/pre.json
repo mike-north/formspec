@@ -17,6 +17,7 @@
     "cli-static-analysis",
     "codegen-type-inference",
     "decorator-dsl-experiment",
+    "dx-evaluation-round2",
     "dx-improvements",
     "enum-object-options",
     "eslint-plugin-initial",

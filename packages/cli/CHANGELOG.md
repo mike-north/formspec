@@ -1,5 +1,25 @@
 # @formspec/cli
 
+## 0.1.0-alpha.6
+
+### Patch Changes
+
+- [#27](https://github.com/mike-north/formspec/pull/27) [`7b3d95d`](https://github.com/mike-north/formspec/commit/7b3d95d9b51664f7156bc753cfcd64d3bd3bda22) Thanks [@mike-north](https://github.com/mike-north)! - Improve DX based on second round of evaluation feedback
+
+  **@formspec/cli:**
+  - Improved error messages to distinguish between "compiled file missing" and "no FormSpec exports found"
+  - Error messages now use `npx formspec` for users without CLI in PATH
+  - Added documentation for `codegen` command
+  - Added documentation explaining `ux_spec.json` vs JSON Forms `uiSchema` format
+
+  **@formspec/dsl:**
+  - Fixed type inference so fields inside `when()` conditionals are correctly typed as optional
+  - Added `FlattenIntersection` utility type (exported)
+  - Added `ExtractNonConditionalFields` and `ExtractConditionalFields` types with TSDoc examples
+
+- Updated dependencies []:
+  - @formspec/build@0.1.0-alpha.5
+
 ## 0.1.0-alpha.5
 
 ### Patch Changes
