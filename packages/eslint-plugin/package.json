@@ -24,6 +24,7 @@
     "api-documenter": "api-documenter markdown -i temp -o docs"
   },
   "dependencies": {
+    "@formspec/constraints": "workspace:*",
     "@typescript-eslint/utils": "^8.0.0"
   },
   "peerDependencies": {

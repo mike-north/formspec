@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://formspec.dev/schemas/formspec.schema.json",
+  "title": "FormSpec Configuration",
+  "description": "Configuration file schema for FormSpec projects (.formspec.yml)",
+  "type": "object",
+  "properties": {
+    "constraints": {
+      "$ref": "#/$defs/ConstraintConfig"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Severity": {
+      "type": "string",
+      "enum": ["error", "warn", "off"],
+      "description": "Severity level for constraint violations. 'error' fails validation, 'warn' emits warning, 'off' allows the feature."
+    },
+    "ConstraintConfig": {
+      "type": "object",
+      "description": "Complete constraint configuration for a FormSpec project",
+      "properties": {
+        "fieldTypes": {
+          "$ref": "#/$defs/FieldTypeConstraints"
+        },
+        "layout": {
+          "$ref": "#/$defs/LayoutConstraints"
+        },
+        "uiSchema": {
+          "$ref": "#/$defs/UISchemaConstraints"
+        },
+        "fieldOptions": {
+          "$ref": "#/$defs/FieldOptionConstraints"
+        },
+        "controlOptions": {
+          "$ref": "#/$defs/ControlOptionConstraints"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FieldTypeConstraints": {
+      "type": "object",
+      "description": "Control which field types are allowed",
+      "properties": {
+        "text": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.text() - basic text input"
+        },
+        "number": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.number() - numeric input"
+        },
+        "boolean": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.boolean() - checkbox/toggle"
+        },
+        "staticEnum": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.enum() with literal options"
+        },
+        "dynamicEnum": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.dynamicEnum() - runtime-fetched options"
+        },
+        "dynamicSchema": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.dynamicSchema() - runtime-fetched schema"
+        },
+        "array": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.array() / field.arrayWithConfig()"
+        },
+        "object": {
+          "$ref": "#/$defs/Severity",
+          "description": "field.object() / field.objectWithConfig()"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LayoutConstraints": {
+      "type": "object",
+      "description": "Control grouping, conditionals, and nesting",
+      "properties": {
+        "group": {
+          "$ref": "#/$defs/Severity",
+          "description": "group() - visual grouping of fields"
+        },
+        "conditionals": {
+          "$ref": "#/$defs/Severity",
+          "description": "when() - conditional field visibility"
+        },
+        "maxNestingDepth": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum nesting depth for objects/arrays (0 = flat only)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LayoutTypeConstraints": {
+      "type": "object",
+      "description": "JSONForms layout type constraints",
+      "properties": {
+        "VerticalLayout": {
+          "$ref": "#/$defs/Severity",
+          "description": "Stack elements vertically"
+        },
+        "HorizontalLayout": {
+          "$ref": "#/$defs/Severity",
+          "description": "Arrange elements horizontally"
+        },
+        "Group": {
+          "$ref": "#/$defs/Severity",
+          "description": "Visual grouping with label"
+        },
+        "Categorization": {
+          "$ref": "#/$defs/Severity",
+          "description": "Tabbed/wizard interface"
+        },
+        "Category": {
+          "$ref": "#/$defs/Severity",
+          "description": "Individual tab/step in Categorization"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuleEffectConstraints": {
+      "type": "object",
+      "description": "JSONForms rule effect constraints",
+      "properties": {
+        "SHOW": {
+          "$ref": "#/$defs/Severity",
+          "description": "Show element when condition is true"
+        },
+        "HIDE": {
+          "$ref": "#/$defs/Severity",
+          "description": "Hide element when condition is true"
+        },
+        "ENABLE": {
+          "$ref": "#/$defs/Severity",
+          "description": "Enable element when condition is true"
+        },
+        "DISABLE": {
+          "$ref": "#/$defs/Severity",
+          "description": "Disable element when condition is true"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RuleConstraints": {
+      "type": "object",
+      "description": "JSONForms rule constraints",
+      "properties": {
+        "enabled": {
+          "$ref": "#/$defs/Severity",
+          "description": "Whether rules are enabled at all"
+        },
+        "effects": {
+          "$ref": "#/$defs/RuleEffectConstraints",
+          "description": "Fine-grained control over rule effects"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UISchemaConstraints": {
+      "type": "object",
+      "description": "JSONForms UI Schema feature constraints",
+      "properties": {
+        "layouts": {
+          "$ref": "#/$defs/LayoutTypeConstraints",
+          "description": "Layout type constraints"
+        },
+        "rules": {
+          "$ref": "#/$defs/RuleConstraints",
+          "description": "Rule (conditional) constraints"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FieldOptionConstraints": {
+      "type": "object",
+      "description": "Control which field configuration options are allowed",
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/Severity",
+          "description": "Field label text"
+        },
+        "placeholder": {
+          "$ref": "#/$defs/Severity",
+          "description": "Input placeholder text"
+        },
+        "required": {
+          "$ref": "#/$defs/Severity",
+          "description": "Whether field is required"
+        },
+        "min": {
+          "$ref": "#/$defs/Severity",
+          "description": "Minimum value for numbers"
+        },
+        "max": {
+          "$ref": "#/$defs/Severity",
+          "description": "Maximum value for numbers"
+        },
+        "minItems": {
+          "$ref": "#/$defs/Severity",
+          "description": "Minimum array length"
+        },
+        "maxItems": {
+          "$ref": "#/$defs/Severity",
+          "description": "Maximum array length"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ControlOptionConstraints": {
+      "type": "object",
+      "description": "Control which JSONForms Control.options are allowed",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/Severity",
+          "description": "Renderer format hint (e.g., 'radio', 'textarea')"
+        },
+        "readonly": {
+          "$ref": "#/$defs/Severity",
+          "description": "Read-only mode"
+        },
+        "multi": {
+          "$ref": "#/$defs/Severity",
+          "description": "Multi-select for enums"
+        },
+        "showUnfocusedDescription": {
+          "$ref": "#/$defs/Severity",
+          "description": "Show description when unfocused"
+        },
+        "hideRequiredAsterisk": {
+          "$ref": "#/$defs/Severity",
+          "description": "Hide required indicator"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Severity"
+      }
+    }
+  }
+}
