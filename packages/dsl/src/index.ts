@@ -57,6 +57,7 @@ export type {
   ExtractConditionalFields,
   ExtractConditionalFieldsFromArray,
   BuildSchema,
+  FlattenIntersection,
   InferSchema,
   InferFormSchema,
 } from "./inference.js";

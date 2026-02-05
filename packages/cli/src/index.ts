@@ -326,11 +326,11 @@ async function main(): Promise<void> {
         console.warn();
         console.warn("   Run your build tool (tsc, esbuild, swc, etc.) then try again.");
         console.warn("   Or use -c/--compiled to specify the JS path explicitly:");
-        console.warn(`     formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`);
+        console.warn(`     npx formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`);
       } else {
         // Compiled file exists but no FormSpec exports found
         console.warn("   For decorated classes, specify the class name:");
-        console.warn(`     formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`);
+        console.warn(`     npx formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`);
         console.warn();
         console.warn("   For chain DSL, export a FormSpec from your file:");
         console.warn("     export const MyForm = formspec(...);");

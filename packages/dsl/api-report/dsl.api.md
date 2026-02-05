@@ -70,6 +70,11 @@ export const field: {
 };
 
 // @public
+export type FlattenIntersection<T> = {
+    [K in keyof T]: T[K];
+} & {};
+
+// @public
 export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
 
 // @public
@@ -90,10 +95,8 @@ export type InferFieldValue<F> = F extends TextField<string> ? string : F extend
 // @public
 export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 
-// Warning: (ae-forgotten-export) The symbol "Prettify" needs to be exported by the entry point index.d.ts
-//
 // @public
-export type InferSchema<Elements extends readonly FormElement[]> = Prettify<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
 
 // @public
 export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
