@@ -327,6 +327,8 @@ FormSpec is organized as a monorepo with the following packages:
 | `@formspec/dsl` | DSL functions (`field`, `group`, `when`, `formspec`) |
 | `@formspec/build` | Schema generators |
 | `@formspec/runtime` | Resolver helpers |
+| `@formspec/constraints` | Constraint definitions and validators |
+| `@formspec/eslint-plugin` | ESLint rules for FormSpec |
 
 For most use cases, just import from `formspec`:
 
@@ -390,6 +392,67 @@ if (!result.valid) {
 - `InferSchema<Elements>` - Infer schema type from form elements
 - `InferFormSchema<Form>` - Infer schema type from FormSpec
 - `InferFieldValue<Field>` - Infer value type from a single field
+
+## Constraints
+
+FormSpec supports constraining which DSL features are allowed in your project. This is useful for enforcing consistency, restricting to renderer-supported features, or keeping forms simple.
+
+### Configuration
+
+Create a `.formspec.yml` file in your project root:
+
+```yaml
+constraints:
+  fieldTypes:
+    text: off           # Allow (default)
+    dynamicSchema: error  # Disallow
+    array: warn         # Allow with warning
+
+  layout:
+    conditionals: off   # Allow when() conditionals
+    maxNestingDepth: 2  # Max nesting depth for objects/arrays
+
+  fieldOptions:
+    placeholder: off    # Allow placeholder option
+    minItems: warn      # Warn on array length constraints
+```
+
+### Severity Levels
+
+| Severity | Behavior |
+|----------|----------|
+| `"off"` | Feature is allowed (default) |
+| `"warn"` | Emit warning but allow |
+| `"error"` | Disallow - fail validation |
+
+### Available Constraints
+
+**Field Types** (`fieldTypes`): `text`, `number`, `boolean`, `staticEnum`, `dynamicEnum`, `dynamicSchema`, `array`, `object`
+
+**Layout** (`layout`): `group`, `conditionals`, `maxNestingDepth`
+
+**Field Options** (`fieldOptions`): `label`, `placeholder`, `required`, `min`, `max`, `minItems`, `maxItems`
+
+### ESLint Integration
+
+Use `@formspec/eslint-plugin` to catch constraint violations during development:
+
+```javascript
+// eslint.config.js
+import formspec from "@formspec/eslint-plugin";
+
+export default [
+  {
+    plugins: { formspec },
+    rules: {
+      "formspec/constraints-allowed-field-types": "error",
+      "formspec/constraints-allowed-layouts": "error",
+    },
+  },
+];
+```
+
+See [@formspec/constraints](./packages/constraints/README.md) for full documentation.
 
 ## Build Integration
 
