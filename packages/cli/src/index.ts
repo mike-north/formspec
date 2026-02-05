@@ -300,25 +300,41 @@ async function main(): Promise<void> {
 
     // Step 3: Load all FormSpec exports from compiled module
     let loadedFormSpecs = new Map();
+    let loadError: string | undefined;
     try {
       const { formSpecs } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
       console.log(`✓ Loaded ${formSpecs.size} FormSpec export(s) from module`);
-    } catch {
-      // This is not an error - runtime loading is only needed for:
-      // 1. Chain DSL FormSpec exports (formspec(...))
-      // 2. Method parameters using InferSchema<typeof X>
-      // Static class analysis works without compiled output
+    } catch (error) {
+      // Track load errors for better messaging later
+      // Runtime loading is only needed for chain DSL exports and method parameters
+      if (error instanceof Error && error.message.includes("Cannot find module")) {
+        loadError = `Compiled file not found at: ${compiledPath}`;
+      }
     }
 
     // Step 4: If className specified, analyze the class
     if (!generateOptions.className && loadedFormSpecs.size === 0) {
-      // No class name and no FormSpec exports - warn the user
+      // No class name and no FormSpec exports - provide context-aware error
       console.warn("⚠️  No class name specified and no FormSpec exports found.");
-      console.warn("   For decorated classes, specify the class name:");
-      console.warn(`     formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`);
-      console.warn("   For chain DSL, export a FormSpec from your file:");
-      console.warn("     export const MyForm = formspec(...);");
+      console.warn();
+
+      if (loadError) {
+        // Compiled file doesn't exist - suggest building first
+        console.warn("   For chain DSL forms, compile your TypeScript first:");
+        console.warn(`     ${loadError}`);
+        console.warn();
+        console.warn("   Run your build tool (tsc, esbuild, swc, etc.) then try again.");
+        console.warn("   Or use -c/--compiled to specify the JS path explicitly:");
+        console.warn(`     npx formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`);
+      } else {
+        // Compiled file exists but no FormSpec exports found
+        console.warn("   For decorated classes, specify the class name:");
+        console.warn(`     npx formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`);
+        console.warn();
+        console.warn("   For chain DSL, export a FormSpec from your file:");
+        console.warn("     export const MyForm = formspec(...);");
+      }
       console.warn();
       process.exit(1);
     }

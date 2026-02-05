@@ -100,6 +100,91 @@ export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
   : never;
 
 /**
+ * Extracts fields that are NOT inside conditionals.
+ * These fields are always visible and should be required in the inferred schema.
+ *
+ * @example
+ * ```typescript
+ * // Given a form with conditional and non-conditional fields:
+ * const form = formspec(
+ *   field.text("name"),           // non-conditional
+ *   field.number("age"),          // non-conditional
+ *   when(is("type", "business"),
+ *     field.text("company"),      // conditional (skipped)
+ *   ),
+ * );
+ *
+ * // ExtractNonConditionalFields extracts: TextField<"name"> | NumberField<"age">
+ * ```
+ */
+export type ExtractNonConditionalFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractNonConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer _Elements>
+      ? never // Skip conditionals - their fields are optional
+      : never;
+
+/**
+ * Extracts non-conditional fields from an array of elements.
+ *
+ * @example
+ * ```typescript
+ * type Elements = readonly [TextField<"name">, NumberField<"age">];
+ * type Fields = ExtractNonConditionalFieldsFromArray<Elements>;
+ * // TextField<"name"> | NumberField<"age">
+ * ```
+ */
+export type ExtractNonConditionalFieldsFromArray<Elements> =
+  Elements extends readonly [infer First, ...infer Rest]
+    ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
+    : never;
+
+/**
+ * Extracts fields that ARE inside conditionals.
+ * These fields may or may not be visible and should be optional in the inferred schema.
+ *
+ * @example
+ * ```typescript
+ * // Given a form with conditional fields:
+ * const form = formspec(
+ *   field.text("name"),           // non-conditional (skipped)
+ *   when(is("type", "business"),
+ *     field.text("company"),      // conditional (extracted)
+ *     field.text("taxId"),        // conditional (extracted)
+ *   ),
+ * );
+ *
+ * // ExtractConditionalFields extracts: TextField<"company"> | TextField<"taxId">
+ * ```
+ */
+export type ExtractConditionalFields<E> = E extends AnyField
+  ? never // Top-level fields are not conditional
+  : E extends Group<infer Elements>
+    ? ExtractConditionalFieldsFromArray<Elements> // Recurse into groups
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements> // All fields inside conditional
+      : never;
+
+/**
+ * Extracts conditional fields from an array of elements.
+ *
+ * @example
+ * ```typescript
+ * type Elements = readonly [
+ *   TextField<"name">,
+ *   Conditional<"type", "business", readonly [TextField<"company">]>
+ * ];
+ * type Fields = ExtractConditionalFieldsFromArray<Elements>;
+ * // TextField<"company">
+ * ```
+ */
+export type ExtractConditionalFieldsFromArray<Elements> =
+  Elements extends readonly [infer First, ...infer Rest]
+    ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
+    : never;
+
+/**
  * Builds a schema type from extracted fields.
  *
  * Maps field names to their inferred value types.
@@ -111,10 +196,33 @@ export type BuildSchema<Fields> = {
 };
 
 /**
+ * Utility type that flattens intersection types into a single object type.
+ *
+ * This improves TypeScript's display of inferred types and ensures
+ * structural equality checks work correctly.
+ *
+ * @example
+ * ```typescript
+ * // Without FlattenIntersection:
+ * type Messy = { a: string } & { b: number };
+ * // Displays as: { a: string } & { b: number }
+ *
+ * // With FlattenIntersection:
+ * type Clean = FlattenIntersection<{ a: string } & { b: number }>;
+ * // Displays as: { a: string; b: number }
+ * ```
+ */
+export type FlattenIntersection<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+/**
  * Infers the complete schema type from a form's elements.
  *
  * This is the main inference type that converts a form structure
  * into its corresponding TypeScript schema type.
+ *
+ * Non-conditional fields are required, conditional fields are optional.
  *
  * @example
  * ```typescript
@@ -126,10 +234,19 @@ export type BuildSchema<Fields> = {
  *
  * type Schema = InferSchema<typeof form.elements>;
  * // { name: string; age: number; status: "active" | "inactive" }
+ *
+ * // Conditional fields become optional:
+ * const formWithConditional = formspec(
+ *   field.enum("type", ["a", "b"] as const),
+ *   when(is("type", "a"), field.text("aField")),
+ * );
+ * type ConditionalSchema = InferSchema<typeof formWithConditional.elements>;
+ * // { type: "a" | "b"; aField?: string }
  * ```
  */
-export type InferSchema<Elements extends readonly FormElement[]> = BuildSchema<
-  ExtractFieldsFromArray<Elements>
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<
+  BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> &
+    Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>
 >;
 
 /**

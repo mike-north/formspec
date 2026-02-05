@@ -116,7 +116,7 @@ expectType<{ name: string; email: string; amount: number }>({} as GroupSchema);
 // InferSchema tests - Conditionals
 // =============================================================================
 
-// Test fields inside conditionals
+// Test fields inside conditionals - should be optional
 const conditionalForm = formspec(
   field.enum("type", ["personal", "business"] as const),
   when(is("type", "business"),
@@ -124,7 +124,53 @@ const conditionalForm = formspec(
   ),
 );
 type ConditionalSchema = InferSchema<typeof conditionalForm.elements>;
-expectType<{ type: "personal" | "business"; company: string }>({} as ConditionalSchema);
+// company is optional since it's inside a conditional
+expectType<{ type: "personal" | "business"; company?: string }>({} as ConditionalSchema);
+
+// Test multiple conditionals - all conditional fields should be optional
+const multiConditionalForm = formspec(
+  field.enum("accountType", ["personal", "business"] as const),
+  when(is("accountType", "personal"),
+    field.text("ssn"),
+  ),
+  when(is("accountType", "business"),
+    field.text("ein"),
+    field.text("companyName"),
+  ),
+);
+type MultiConditionalSchema = InferSchema<typeof multiConditionalForm.elements>;
+expectType<{
+  accountType: "personal" | "business";
+  ssn?: string;
+  ein?: string;
+  companyName?: string;
+}>({} as MultiConditionalSchema);
+
+// Test conditional inside group - still optional
+const conditionalInGroupForm = formspec(
+  group("Details",
+    field.text("name"),
+    when(is("showExtra", true),
+      field.text("extra"),
+    ),
+  ),
+  field.boolean("showExtra"),
+);
+type ConditionalInGroupSchema = InferSchema<typeof conditionalInGroupForm.elements>;
+expectType<{ name: string; showExtra: boolean; extra?: string }>({} as ConditionalInGroupSchema);
+
+// Test group inside conditional - all fields optional
+const groupInConditionalForm = formspec(
+  field.boolean("showAddress"),
+  when(is("showAddress", true),
+    group("Address",
+      field.text("street"),
+      field.text("city"),
+    ),
+  ),
+);
+type GroupInConditionalSchema = InferSchema<typeof groupInConditionalForm.elements>;
+expectType<{ showAddress: boolean; street?: string; city?: string }>({} as GroupInConditionalSchema);
 
 // =============================================================================
 // InferSchema tests - Array fields

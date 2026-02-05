@@ -35,6 +35,12 @@ export { EnumOption }
 export { EnumOptionValue }
 
 // @public
+export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+
+// @public
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
+
+// @public
 export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
 
 // @public
@@ -42,6 +48,12 @@ export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
 infer First,
 ...infer Rest
 ] ? ExtractFields<First> | ExtractFieldsFromArray<Rest> : never;
+
+// @public
+export type ExtractNonConditionalFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractNonConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer _Elements> ? never : never;
+
+// @public
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
 
 // @public
 export const field: {
@@ -56,6 +68,11 @@ export const field: {
     object: <const N extends string, const Properties extends readonly FormElement[]>(name: N, ...properties: Properties) => ObjectField<N, Properties>;
     objectWithConfig: <const N extends string, const Properties extends readonly FormElement[]>(name: N, config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">, ...properties: Properties) => ObjectField<N, Properties>;
 };
+
+// @public
+export type FlattenIntersection<T> = {
+    [K in keyof T]: T[K];
+} & {};
 
 // @public
 export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
@@ -79,7 +96,7 @@ export type InferFieldValue<F> = F extends TextField<string> ? string : F extend
 export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 
 // @public
-export type InferSchema<Elements extends readonly FormElement[]> = BuildSchema<ExtractFieldsFromArray<Elements>>;
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
 
 // @public
 export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;

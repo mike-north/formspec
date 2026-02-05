@@ -52,7 +52,12 @@ export type {
   InferFieldValue,
   ExtractFields,
   ExtractFieldsFromArray,
+  ExtractNonConditionalFields,
+  ExtractNonConditionalFieldsFromArray,
+  ExtractConditionalFields,
+  ExtractConditionalFieldsFromArray,
   BuildSchema,
+  FlattenIntersection,
   InferSchema,
   InferFormSchema,
 } from "./inference.js";
