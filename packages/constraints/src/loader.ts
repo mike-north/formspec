@@ -54,6 +54,7 @@ async function findConfigFile(
   let currentDir = resolve(startDir);
   const root = dirname(currentDir);
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break conditions
   while (true) {
     for (const fileName of CONFIG_FILE_NAMES) {
       const filePath = resolve(currentDir, fileName);

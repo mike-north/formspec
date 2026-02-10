@@ -89,13 +89,14 @@ function walkElements(
   depth: number
 ): void {
   for (const element of elements) {
-    const elementPath = pathPrefix ? `${pathPrefix}` : "";
+    const elementPath = pathPrefix;
 
     if (element._type === "field") {
-      validateField(element as AnyField, constraints, issues, elementPath, depth);
+      validateField(element, constraints, issues, elementPath, depth);
     } else if (element._type === "group") {
       validateGroup(element, constraints, issues, elementPath, depth);
-    } else if (element._type === "conditional") {
+    } else {
+      // element._type === "conditional"
       validateConditional(element, constraints, issues, elementPath, depth);
     }
   }
@@ -162,7 +163,8 @@ function validateField(
         `${fieldPath}[]`,
         depth + 1
       );
-    } else if (field._field === "object" && "properties" in field) {
+    } else if ("properties" in field) {
+      // field._field === "object"
       walkElements(
         field.properties as readonly FormElement[],
         constraints,

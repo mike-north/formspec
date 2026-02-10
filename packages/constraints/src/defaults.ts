@@ -42,8 +42,8 @@ export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
     label: "off",
     placeholder: "off",
     required: "off",
-    min: "off",
-    max: "off",
+    minValue: "off",
+    maxValue: "off",
     minItems: "off",
     maxItems: "off",
   },
@@ -53,6 +53,7 @@ export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
     multi: "off",
     showUnfocusedDescription: "off",
     hideRequiredAsterisk: "off",
+    custom: {},
   },
 };
 
@@ -102,6 +103,10 @@ export function mergeWithDefaults(
     controlOptions: {
       ...DEFAULT_CONSTRAINTS.controlOptions,
       ...config.controlOptions,
+      custom: {
+        ...DEFAULT_CONSTRAINTS.controlOptions.custom,
+        ...config.controlOptions?.custom,
+      },
     },
   };
 }

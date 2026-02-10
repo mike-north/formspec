@@ -2,11 +2,18 @@ import { describe, it, expect } from "vitest";
 import { field, group, when, is, formspec } from "@formspec/dsl";
 import {
   validateFormSpecElements,
+  validateFormSpec,
   validateFieldTypes,
   validateLayout,
   validateFieldOptions,
   extractFieldOptions,
   defineConstraints,
+  isFieldTypeAllowed,
+  getFieldTypeSeverity,
+  isFieldOptionAllowed,
+  getFieldOptionSeverity,
+  isLayoutTypeAllowed,
+  isNestingDepthAllowed,
 } from "../index.js";
 
 describe("validateFieldTypes", () => {
@@ -112,8 +119,8 @@ describe("validateLayout", () => {
 describe("validateFieldOptions", () => {
   it("returns no issues when options are allowed", () => {
     const issues = validateFieldOptions(
-      { fieldName: "age", presentOptions: ["min", "max"] },
-      { min: "off", max: "off" }
+      { fieldName: "age", presentOptions: ["minValue", "maxValue"] },
+      { minValue: "off", maxValue: "off" }
     );
     expect(issues).toHaveLength(0);
   });
@@ -145,12 +152,12 @@ describe("extractFieldOptions", () => {
     const options = extractFieldOptions({
       name: "age",
       label: "Age",
-      min: 0,
-      max: 120,
+      minValue: 0,
+      maxValue: 120,
     });
     expect(options).toContain("label");
-    expect(options).toContain("min");
-    expect(options).toContain("max");
+    expect(options).toContain("minValue");
+    expect(options).toContain("maxValue");
     expect(options).not.toContain("placeholder");
   });
 
@@ -253,7 +260,7 @@ describe("validateFormSpecElements", () => {
 
     const result = validateFormSpecElements(form.elements, {
       constraints: {
-        fieldOptions: { min: "error", max: "error" },
+        fieldOptions: { minValue: "error", maxValue: "error" },
       },
     });
 
@@ -327,5 +334,276 @@ describe("defineConstraints", () => {
     expect(config.fieldTypes.number).toBe("error");
     expect(config.layout.group).toBe("error");
     expect(config.layout.maxNestingDepth).toBe(2);
+  });
+});
+
+describe("validateFormSpec", () => {
+  it("validates a FormSpec object directly", () => {
+    const form = formspec(
+      field.text("name"),
+      field.dynamicEnum("country", "countries")
+    );
+
+    const result = validateFormSpec(form, {
+      constraints: {
+        fieldTypes: { dynamicEnum: "error" },
+      },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues).toHaveLength(1);
+  });
+});
+
+describe("isFieldTypeAllowed", () => {
+  it("returns true when field type severity is off", () => {
+    expect(isFieldTypeAllowed("text", { text: "off" })).toBe(true);
+  });
+
+  it("returns true when field type is not in constraints", () => {
+    expect(isFieldTypeAllowed("text", {})).toBe(true);
+  });
+
+  it("returns false when field type severity is error", () => {
+    expect(isFieldTypeAllowed("dynamic_enum", { dynamicEnum: "error" })).toBe(
+      false
+    );
+  });
+
+  it("returns false when field type severity is warn", () => {
+    expect(isFieldTypeAllowed("array", { array: "warn" })).toBe(false);
+  });
+
+  it("handles unknown field types gracefully", () => {
+    // Unknown field types should not cause errors
+    expect(
+      isFieldTypeAllowed("unknown_type" as "text", { text: "error" })
+    ).toBe(true);
+  });
+});
+
+describe("getFieldTypeSeverity", () => {
+  it("returns severity when field type is constrained", () => {
+    expect(getFieldTypeSeverity("dynamic_enum", { dynamicEnum: "error" })).toBe(
+      "error"
+    );
+  });
+
+  it("returns off when field type is not constrained", () => {
+    expect(getFieldTypeSeverity("text", {})).toBe("off");
+  });
+
+  it("returns warn when field type has warn severity", () => {
+    expect(getFieldTypeSeverity("array", { array: "warn" })).toBe("warn");
+  });
+
+  it("returns off for unknown field types", () => {
+    expect(getFieldTypeSeverity("unknown_type" as "text", { text: "error" })).toBe(
+      "off"
+    );
+  });
+});
+
+describe("isFieldOptionAllowed", () => {
+  it("returns true when option severity is off", () => {
+    expect(isFieldOptionAllowed("label", { label: "off" })).toBe(true);
+  });
+
+  it("returns true when option is not in constraints", () => {
+    expect(isFieldOptionAllowed("placeholder", {})).toBe(true);
+  });
+
+  it("returns false when option severity is error", () => {
+    expect(isFieldOptionAllowed("minValue", { minValue: "error" })).toBe(false);
+  });
+
+  it("returns false when option severity is warn", () => {
+    expect(isFieldOptionAllowed("maxItems", { maxItems: "warn" })).toBe(false);
+  });
+});
+
+describe("getFieldOptionSeverity", () => {
+  it("returns severity when option is constrained", () => {
+    expect(getFieldOptionSeverity("placeholder", { placeholder: "error" })).toBe(
+      "error"
+    );
+  });
+
+  it("returns off when option is not constrained", () => {
+    expect(getFieldOptionSeverity("label", {})).toBe("off");
+  });
+
+  it("returns warn when option has warn severity", () => {
+    expect(getFieldOptionSeverity("required", { required: "warn" })).toBe("warn");
+  });
+});
+
+describe("isLayoutTypeAllowed", () => {
+  it("returns true when group is allowed", () => {
+    expect(isLayoutTypeAllowed("group", { group: "off" })).toBe(true);
+  });
+
+  it("returns true when layout type is not in constraints", () => {
+    expect(isLayoutTypeAllowed("group", {})).toBe(true);
+    expect(isLayoutTypeAllowed("conditional", {})).toBe(true);
+  });
+
+  it("returns false when group is disallowed", () => {
+    expect(isLayoutTypeAllowed("group", { group: "error" })).toBe(false);
+  });
+
+  it("returns false when conditional is disallowed", () => {
+    expect(isLayoutTypeAllowed("conditional", { conditionals: "error" })).toBe(
+      false
+    );
+  });
+
+  it("returns false when layout type has warn severity", () => {
+    expect(isLayoutTypeAllowed("group", { group: "warn" })).toBe(false);
+  });
+});
+
+describe("isNestingDepthAllowed", () => {
+  it("returns true when depth is within limit", () => {
+    expect(isNestingDepthAllowed(2, { maxNestingDepth: 5 })).toBe(true);
+  });
+
+  it("returns true when depth equals max", () => {
+    expect(isNestingDepthAllowed(3, { maxNestingDepth: 3 })).toBe(true);
+  });
+
+  it("returns false when depth exceeds max", () => {
+    expect(isNestingDepthAllowed(4, { maxNestingDepth: 3 })).toBe(false);
+  });
+
+  it("returns true when maxNestingDepth is not set", () => {
+    expect(isNestingDepthAllowed(10, {})).toBe(true);
+  });
+
+  it("returns true when maxNestingDepth is Infinity", () => {
+    expect(isNestingDepthAllowed(100, { maxNestingDepth: Infinity })).toBe(true);
+  });
+
+  it("handles depth of 0", () => {
+    expect(isNestingDepthAllowed(0, { maxNestingDepth: 0 })).toBe(true);
+    expect(isNestingDepthAllowed(0, { maxNestingDepth: 5 })).toBe(true);
+  });
+});
+
+describe("extractFieldOptions", () => {
+  it("maps NumberField min/max to minValue/maxValue constraints", () => {
+    // NumberField in core uses min/max, but constraints use minValue/maxValue
+    const options = extractFieldOptions({
+      name: "quantity",
+      min: 1,
+      max: 100,
+    });
+    expect(options).toContain("minValue");
+    expect(options).toContain("maxValue");
+  });
+
+  it("extracts all known options", () => {
+    const options = extractFieldOptions({
+      name: "test",
+      label: "Test",
+      placeholder: "Enter value",
+      required: true,
+      min: 0,
+      max: 100,
+      minItems: 1,
+      maxItems: 10,
+    });
+    expect(options).toEqual(
+      expect.arrayContaining([
+        "label",
+        "placeholder",
+        "required",
+        "minValue",
+        "maxValue",
+        "minItems",
+        "maxItems",
+      ])
+    );
+  });
+
+  it("ignores unknown properties", () => {
+    const options = extractFieldOptions({
+      name: "test",
+      unknownOption: "value",
+      anotherUnknown: 123,
+    });
+    expect(options).toHaveLength(0);
+  });
+});
+
+describe("validateFieldTypes - negative cases", () => {
+  it("ignores unknown field types", () => {
+    const issues = validateFieldTypes(
+      { fieldType: "custom_unknown_type", fieldName: "test" },
+      { text: "error" }
+    );
+    expect(issues).toHaveLength(0);
+  });
+});
+
+describe("validateLayout - warning severity", () => {
+  it("returns warning when group has warn severity", () => {
+    const issues = validateLayout(
+      { layoutType: "group", label: "Test", depth: 0 },
+      { group: "warn" }
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe("warning");
+  });
+
+  it("returns warning when conditional has warn severity", () => {
+    const issues = validateLayout(
+      { layoutType: "conditional", depth: 0 },
+      { conditionals: "warn" }
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe("warning");
+  });
+});
+
+describe("validateFieldOptions - warning severity", () => {
+  it("returns warning when option has warn severity", () => {
+    const issues = validateFieldOptions(
+      { fieldName: "test", presentOptions: ["placeholder"] },
+      { placeholder: "warn" }
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.severity).toBe("warning");
+  });
+});
+
+describe("validateFormSpecElements - edge cases", () => {
+  it("handles empty elements array", () => {
+    const result = validateFormSpecElements([]);
+    expect(result.valid).toBe(true);
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it("handles deeply nested objects", () => {
+    const form = formspec(
+      field.object(
+        "level1",
+        field.object(
+          "level2",
+          field.object("level3", field.text("deepField"))
+        )
+      )
+    );
+
+    const result = validateFormSpecElements(form.elements, {
+      constraints: {
+        layout: { maxNestingDepth: 2 },
+      },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(
+      result.issues.some((i) => i.code === "EXCEEDED_NESTING_DEPTH")
+    ).toBe(true);
   });
 });

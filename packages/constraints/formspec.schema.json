@@ -193,11 +193,11 @@
           "$ref": "#/$defs/Severity",
           "description": "Whether field is required"
         },
-        "min": {
+        "minValue": {
           "$ref": "#/$defs/Severity",
           "description": "Minimum value for numbers"
         },
-        "max": {
+        "maxValue": {
           "$ref": "#/$defs/Severity",
           "description": "Maximum value for numbers"
         },

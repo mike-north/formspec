@@ -101,10 +101,10 @@ export interface FieldOptionConstraints {
   placeholder?: Severity;
   /** required - whether field is required */
   required?: Severity;
-  /** min - minimum value for numbers */
-  min?: Severity;
-  /** max - maximum value for numbers */
-  max?: Severity;
+  /** minValue - minimum value for numbers */
+  minValue?: Severity;
+  /** maxValue - maximum value for numbers */
+  maxValue?: Severity;
   /** minItems - minimum array length */
   minItems?: Severity;
   /** maxItems - maximum array length */
@@ -126,8 +126,8 @@ export interface ControlOptionConstraints {
   showUnfocusedDescription?: Severity;
   /** hideRequiredAsterisk - hide required indicator */
   hideRequiredAsterisk?: Severity;
-  /** Allow additional custom options (extensible) */
-  [key: string]: Severity | undefined;
+  /** Custom control options (extensible dictionary) */
+  custom?: Record<string, Severity>;
 }
 
 /**

@@ -11,8 +11,8 @@ export type FieldOption =
   | "label"
   | "placeholder"
   | "required"
-  | "min"
-  | "max"
+  | "minValue"
+  | "maxValue"
   | "minItems"
   | "maxItems";
 
@@ -59,7 +59,7 @@ function createFieldOptionIssue(
   option: FieldOption,
   severity: Severity
 ): ValidationIssue {
-  const path = context.path || context.fieldName;
+  const path = context.path ?? context.fieldName;
   return {
     code: "DISALLOWED_FIELD_OPTION",
     message: `Field "${context.fieldName}" uses the "${option}" option, which is not allowed in this project`,
@@ -85,8 +85,11 @@ export function extractFieldOptions(
   if (field["label"] !== undefined) options.push("label");
   if (field["placeholder"] !== undefined) options.push("placeholder");
   if (field["required"] !== undefined) options.push("required");
-  if (field["min"] !== undefined) options.push("min");
-  if (field["max"] !== undefined) options.push("max");
+  // NumberField uses "min"/"max" in core types, map to "minValue"/"maxValue" constraints
+  if (field["min"] !== undefined || field["minValue"] !== undefined)
+    options.push("minValue");
+  if (field["max"] !== undefined || field["maxValue"] !== undefined)
+    options.push("maxValue");
   if (field["minItems"] !== undefined) options.push("minItems");
   if (field["maxItems"] !== undefined) options.push("maxItems");
 

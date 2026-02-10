@@ -44,8 +44,8 @@ constraints:
     label: off
     placeholder: off
     required: off
-    min: off
-    max: off
+    minValue: off
+    maxValue: off
     minItems: off
     maxItems: off
 ```
@@ -96,7 +96,7 @@ Control which field configuration options are allowed:
 | `label` | Field label text |
 | `placeholder` | Input placeholder |
 | `required` | Required field validation |
-| `min`, `max` | Number field constraints |
+| `minValue`, `maxValue` | Number field constraints |
 | `minItems`, `maxItems` | Array length constraints |
 
 ### UI Schema (`uiSchema`)

@@ -100,7 +100,7 @@ function createNestingDepthIssue(
 ): ValidationIssue {
   const issue: ValidationIssue = {
     code: "EXCEEDED_NESTING_DEPTH",
-    message: `Nesting depth ${context.depth} exceeds maximum allowed depth of ${maxDepth}`,
+    message: `Nesting depth ${String(context.depth)} exceeds maximum allowed depth of ${String(maxDepth)}`,
     severity: "error",
     category: "layout",
   };
@@ -126,12 +126,9 @@ export function isLayoutTypeAllowed(
     return !severity || severity === "off";
   }
 
-  if (layoutType === "conditional") {
-    const severity = constraints.conditionals;
-    return !severity || severity === "off";
-  }
-
-  return true;
+  // layoutType === "conditional"
+  const severity = constraints.conditionals;
+  return !severity || severity === "off";
 }
 
 /**

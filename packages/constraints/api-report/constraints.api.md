@@ -18,7 +18,7 @@ export interface ConstraintConfig {
 
 // @public
 export interface ControlOptionConstraints {
-    [key: string]: Severity | undefined;
+    custom?: Record<string, Severity>;
     format?: Severity;
     hideRequiredAsterisk?: Severity;
     multi?: Severity;
@@ -39,15 +39,15 @@ export function defineConstraints(config: ConstraintConfig): ResolvedConstraintC
 export function extractFieldOptions(field: Record<string, unknown>): FieldOption[];
 
 // @public
-export type FieldOption = "label" | "placeholder" | "required" | "min" | "max" | "minItems" | "maxItems";
+export type FieldOption = "label" | "placeholder" | "required" | "minValue" | "maxValue" | "minItems" | "maxItems";
 
 // @public
 export interface FieldOptionConstraints {
     label?: Severity;
-    max?: Severity;
     maxItems?: Severity;
-    min?: Severity;
+    maxValue?: Severity;
     minItems?: Severity;
+    minValue?: Severity;
     placeholder?: Severity;
     required?: Severity;
 }

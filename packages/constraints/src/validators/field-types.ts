@@ -65,7 +65,7 @@ export function validateFieldTypes(
 
   const severity = constraints[constraintKey];
   if (severity && severity !== "off") {
-    const fieldTypeName = FIELD_TYPE_NAMES[context.fieldType] || context.fieldType;
+    const fieldTypeName = FIELD_TYPE_NAMES[context.fieldType] ?? context.fieldType;
     issues.push(createFieldTypeIssue(context, fieldTypeName, severity));
   }
 
@@ -80,7 +80,7 @@ function createFieldTypeIssue(
   fieldTypeName: string,
   severity: Severity
 ): ValidationIssue {
-  const path = context.path || context.fieldName;
+  const path = context.path ?? context.fieldName;
   return {
     code: "DISALLOWED_FIELD_TYPE",
     message: `Field "${context.fieldName}" uses ${fieldTypeName}, which is not allowed in this project`,
