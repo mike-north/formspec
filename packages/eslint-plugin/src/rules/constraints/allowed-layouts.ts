@@ -9,7 +9,7 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import { isLayoutTypeAllowed, type LayoutConstraints } from "@formspec/constraints";
+import { isLayoutTypeAllowed, type LayoutConstraints } from "@formspec/constraints/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`

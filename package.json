@@ -44,5 +44,10 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/eslint": "^9.6.1"
+    }
   }
 }
