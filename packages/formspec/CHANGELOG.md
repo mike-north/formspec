@@ -1,5 +1,12 @@
 # formspec
 
+## 0.1.0-alpha.7
+
+### Patch Changes
+
+- Updated dependencies [[`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f)]:
+  - @formspec/build@0.1.0-alpha.7
+
 ## 0.1.0-alpha.6
 
 ### Patch Changes

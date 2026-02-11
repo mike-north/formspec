@@ -1,4 +1,4 @@
-# @formspec/eslint-plugin
+# @formspec/constraints
 
 ## 0.1.0-alpha.7
 
@@ -17,8 +17,6 @@
   - New `constraints-allowed-field-types` rule
   - New `constraints-allowed-layouts` rule
   - Rules automatically load constraints from `.formspec.yml`
-
-### Patch Changes
 
 - [#31](https://github.com/mike-north/formspec/pull/31) [`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f) Thanks [@mike-north](https://github.com/mike-north)! - Add interactive FormSpec playground with browser-safe package entry points
 
@@ -44,42 +42,13 @@
   **@formspec/eslint-plugin:**
   - Update constraint rules to import from browser-safe entry points
 
-- Updated dependencies [[`5c3cdbf`](https://github.com/mike-north/formspec/commit/5c3cdbfbb6c10ce80722917decd8d16f496e3202), [`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f), [`5c3cdbf`](https://github.com/mike-north/formspec/commit/5c3cdbfbb6c10ce80722917decd8d16f496e3202)]:
-  - @formspec/constraints@0.1.0-alpha.7
+### Patch Changes
 
-## 0.1.0-alpha.3
-
-### Minor Changes
-
-- [#10](https://github.com/mike-north/formspec/pull/10) [`b713663`](https://github.com/mike-north/formspec/commit/b713663420d23b47d3a5317ab3400a555ebf8cc4) Thanks [@mike-north](https://github.com/mike-north)! - Add ESLint plugin for FormSpec decorator DSL type safety
-
-  This plugin provides compile-time validation for projects using FormSpec's TypeScript decorator DSL. It catches common mistakes by validating that decorators match their field types and enforcing consistency rules.
-
-  **Installation:**
-
-  ```bash
-  npm install --save-dev @formspec/eslint-plugin
-  ```
-
-  **Usage:**
-
-  ```javascript
-  import formspec from "@formspec/eslint-plugin";
-
-  export default [...formspec.configs.recommended];
-  ```
-
-  **Rules included:**
-  - `decorator-field-type-mismatch`: Validates decorator/field type compatibility (e.g., @Min/@Max on number fields)
-  - `enum-options-match-type`: Ensures @EnumOptions values match the field's TypeScript union type
-  - `showwhen-field-exists`: Validates @ShowWhen references a field that exists in the class
-  - `showwhen-suggests-optional`: Suggests fields with @ShowWhen should be optional
-  - `min-max-valid-range`: Ensures @Min/@Max and @MinItems/@MaxItems have valid ranges
-  - `no-conflicting-decorators`: Detects decorators that imply conflicting field types
-  - `no-duplicate-decorators`: Prevents duplicate decorators on the same field
-
-  **Config presets:**
-  - `recommended`: Sensible defaults (showwhen-suggests-optional as warning)
-  - `strict`: All rules as errors
-
-  See package README for detailed rule documentation.
+- [#29](https://github.com/mike-north/formspec/pull/29) [`5c3cdbf`](https://github.com/mike-north/formspec/commit/5c3cdbfbb6c10ce80722917decd8d16f496e3202) Thanks [@mike-north](https://github.com/mike-north)! - Fix type errors and improve test coverage in constraints package
+  - Fix `extractFieldOptions` to correctly map `min`/`max` properties from `NumberField` to `minValue`/`maxValue` constraints
+  - Add missing `custom` property to `DEFAULT_CONSTRAINTS.controlOptions`
+  - Fix ESLint violations (nullish coalescing, unnecessary conditionals, template expressions)
+  - Add comprehensive tests for helper functions: `isFieldTypeAllowed`, `getFieldTypeSeverity`, `isFieldOptionAllowed`, `getFieldOptionSeverity`, `isLayoutTypeAllowed`, `isNestingDepthAllowed`
+  - Add tests for `validateFormSpec` wrapper function
+  - Add edge case tests for empty elements and deeply nested objects
+  - Increase test count from 35 to 72

@@ -1,6 +1,6 @@
 {
   "name": "@formspec/playground",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.7",
   "private": true,
   "description": "Interactive playground for FormSpec - write forms and see generated schemas live",
   "type": "module",

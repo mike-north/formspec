@@ -9,13 +9,18 @@
     "@formspec/dsl": "0.0.1",
     "@formspec/eslint-plugin": "0.0.0",
     "@formspec/runtime": "0.0.1",
-    "formspec": "0.0.1"
+    "formspec": "0.0.1",
+    "@formspec/constraints": "0.1.0-alpha.0",
+    "@formspec/playground": "0.1.0-alpha.0"
   },
   "changesets": [
+    "add-constraints-package",
     "add-package-readmes",
+    "add-playground-package",
     "build-integration-tools",
     "cli-static-analysis",
     "codegen-type-inference",
+    "constraints-fixes",
     "decorator-dsl-experiment",
     "dx-evaluation-round2",
     "dx-improvements",
