@@ -52,7 +52,6 @@ async function findConfigFile(
   searchParents: boolean
 ): Promise<string | null> {
   let currentDir = resolve(startDir);
-  const root = dirname(currentDir);
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break conditions
   while (true) {
@@ -66,11 +65,12 @@ async function findConfigFile(
       }
     }
 
-    if (!searchParents || currentDir === root) {
+    if (!searchParents) {
       break;
     }
 
     const parentDir = dirname(currentDir);
+    // Reached filesystem root when dirname returns same path
     if (parentDir === currentDir) {
       break;
     }

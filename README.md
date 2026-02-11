@@ -431,7 +431,7 @@ constraints:
 
 **Layout** (`layout`): `group`, `conditionals`, `maxNestingDepth`
 
-**Field Options** (`fieldOptions`): `label`, `placeholder`, `required`, `min`, `max`, `minItems`, `maxItems`
+**Field Options** (`fieldOptions`): `label`, `placeholder`, `required`, `minValue`, `maxValue`, `minItems`, `maxItems`
 
 ### ESLint Integration
 

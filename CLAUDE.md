@@ -52,6 +52,7 @@ formspec (main entry point - re-exports everything)
 @formspec/decorators       (alternative decorator-based DSL)
 @formspec/cli              (codegen CLI for decorator DSL)
 @formspec/eslint-plugin    (ESLint rules for FormSpec)
+@formspec/constraints      (constraint validation and enforcement)
 ```
 
 ### Key Concepts
