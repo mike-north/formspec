@@ -92,8 +92,10 @@ declare module "@formspec/dsl" {
     number(name: string, options?: { label?: string; required?: boolean; min?: number; max?: number }): import("@formspec/core").AnyField;
     boolean(name: string, options?: { label?: string; required?: boolean }): import("@formspec/core").AnyField;
     enum<T extends readonly string[]>(name: string, options: T, config?: { label?: string; required?: boolean }): import("@formspec/core").AnyField;
-    array(name: string, config: { label?: string; items: readonly FormElement[]; minItems?: number; maxItems?: number }): import("@formspec/core").AnyField;
-    object(name: string, config: { label?: string; properties: readonly FormElement[] }): import("@formspec/core").AnyField;
+    array<N extends string, Items extends readonly FormElement[]>(name: N, ...items: Items): import("@formspec/core").AnyField;
+    arrayWithConfig<N extends string, Items extends readonly FormElement[]>(name: N, config: { label?: string; minItems?: number; maxItems?: number }, ...items: Items): import("@formspec/core").AnyField;
+    object<N extends string, Properties extends readonly FormElement[]>(name: N, ...properties: Properties): import("@formspec/core").AnyField;
+    objectWithConfig<N extends string, Properties extends readonly FormElement[]>(name: N, config: { label?: string; required?: boolean }, ...properties: Properties): import("@formspec/core").AnyField;
     dynamicEnum(name: string, source: string, config?: { label?: string; params?: readonly string[] }): import("@formspec/core").AnyField;
   };
 }

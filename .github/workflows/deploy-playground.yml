@@ -9,6 +9,7 @@ on:
       - "packages/dsl/**"
       - "packages/build/**"
       - "packages/constraints/**"
+      - "packages/eslint-plugin/**"
   workflow_dispatch:
 
 permissions:

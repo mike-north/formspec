@@ -16,7 +16,6 @@ export interface LintProps {
 
 export function Lint({ errors, isCompiling }: LintProps): React.ReactElement {
   const hasErrors = errors.some((e) => e.severity === "error");
-  const _hasWarnings = errors.some((e) => e.severity === "warning");
 
   return (
     <Box

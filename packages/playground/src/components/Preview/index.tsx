@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { JsonForms } from "@jsonforms/react";
 import {
   materialRenderers,
@@ -42,7 +42,7 @@ export function Preview({ jsonSchema, uiSchema }: PreviewProps): React.ReactElem
   }, [jsonSchema]);
 
   // Reset data when schema properties change
-  useMemo(() => {
+  useEffect(() => {
     setFormData({});
   }, [schemaKey]);
 

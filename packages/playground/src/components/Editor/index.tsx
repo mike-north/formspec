@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import MonacoEditor, { type Monaco, type OnMount } from "@monaco-editor/react";
 import type * as monaco from "monaco-editor";
 import { useMonacoFormspec } from "../../hooks/useMonacoFormspec";
@@ -65,9 +65,11 @@ export function Editor({
   );
 
   // Update markers when errors change
-  if (monacoInstance && editorRef.current) {
-    updateMarkers();
-  }
+  useEffect(() => {
+    if (monacoInstance && editorRef.current) {
+      updateMarkers();
+    }
+  }, [monacoInstance, updateMarkers]);
 
   return (
     <Box

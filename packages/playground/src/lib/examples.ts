@@ -72,16 +72,15 @@ const ProductForm = formspec(
     field.number("stock", { label: "Stock Quantity", min: 0 }),
     field.boolean("trackInventory", { label: "Track Inventory" }),
   ),
-  field.array("variants", {
+  field.arrayWithConfig("variants", {
     label: "Product Variants",
     minItems: 1,
-    items: [
-      field.text("sku", { label: "SKU", required: true }),
-      field.text("color", { label: "Color" }),
-      field.text("size", { label: "Size" }),
-      field.number("additionalPrice", { label: "Price Adjustment" }),
-    ],
-  }),
+  },
+    field.text("sku", { label: "SKU", required: true }),
+    field.text("color", { label: "Color" }),
+    field.text("size", { label: "Size" }),
+    field.number("additionalPrice", { label: "Price Adjustment" }),
+  ),
 );
 
 export default ProductForm;`,
