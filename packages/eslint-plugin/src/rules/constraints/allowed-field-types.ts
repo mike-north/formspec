@@ -14,7 +14,7 @@ import {
   getFieldTypeSeverity,
   type FieldTypeConstraints,
   type Severity,
-} from "@formspec/constraints";
+} from "@formspec/constraints/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
