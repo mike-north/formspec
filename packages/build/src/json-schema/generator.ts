@@ -64,7 +64,7 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
         opts.length > 0 &&
         opts.every(
           (opt): opt is { id: string; label: string } =>
-            typeof opt === "object" && opt !== null && "id" in opt && "label" in opt
+            typeof opt === "object" && "id" in opt && "label" in opt
         );
       if (isObjectOptions) {
         // Object options with id/label: use oneOf with const/title

@@ -33,14 +33,18 @@ export function createProgramContext(filePath: string): ProgramContext {
   const absolutePath = path.resolve(filePath);
   const fileDir = path.dirname(absolutePath);
 
-  // Find tsconfig.json
-  const configPath = ts.findConfigFile(fileDir, ts.sys.fileExists, "tsconfig.json");
+  // Find tsconfig.json - using ts.sys.fileExists which has `this: void` requirement
+  const configPath = ts.findConfigFile(
+    fileDir,
+    ts.sys.fileExists.bind(ts.sys),
+    "tsconfig.json"
+  );
 
   let compilerOptions: ts.CompilerOptions;
   let fileNames: string[];
 
   if (configPath) {
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+    const configFile = ts.readConfigFile(configPath, ts.sys.readFile.bind(ts.sys));
     if (configFile.error) {
       throw new Error(`Error reading tsconfig.json: ${ts.flattenDiagnosticMessageText(configFile.error.messageText, "\n")}`);
     }

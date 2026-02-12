@@ -53,7 +53,7 @@ export interface FormSpecField {
   minItems?: number;
   maxItems?: number;
   pattern?: string;
-  options?: Array<string | { id: string; label: string }>;
+  options?: (string | { id: string; label: string })[];
   showWhen?: object;
   group?: string;
   fields?: FormSpecField[];  // Nested fields for object types
@@ -171,6 +171,7 @@ function convertUnionType(
   // Check if all types are string literals (enum pattern)
   const allStringLiterals = nonNullTypes.every((t) => t.isStringLiteral());
   if (allStringLiterals && nonNullTypes.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.StringLiteralType).value);
     const result: TypeConversionResult = {
       jsonSchema: { enum: enumValues },
@@ -185,6 +186,7 @@ function convertUnionType(
   // Check if all types are number literals
   const allNumberLiterals = nonNullTypes.every((t) => t.isNumberLiteral());
   if (allNumberLiterals && nonNullTypes.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.NumberLiteralType).value);
     const result: TypeConversionResult = {
       jsonSchema: { enum: enumValues },
@@ -341,12 +343,17 @@ export function createFormSpecField(
 
 /**
  * Applies a decorator's values to a FormSpec field.
+ *
+ * @param field - The FormSpec field to modify
+ * @param decorator - The decorator information to apply
+ * @param _type - The TypeScript type (unused but kept for future use)
+ * @param _checker - The TypeScript type checker (unused but kept for future use)
  */
 function applyDecoratorToField(
   field: FormSpecField,
   decorator: DecoratorInfo,
-  type: ts.Type,
-  checker: ts.TypeChecker
+  _type: ts.Type,
+  _checker: ts.TypeChecker
 ): void {
   const { name, args } = decorator;
 
@@ -419,7 +426,7 @@ function applyDecoratorToField(
 
     case "EnumOptions":
       if (Array.isArray(args[0])) {
-        field.options = args[0] as Array<string | { id: string; label: string }>;
+        field.options = args[0] as (string | { id: string; label: string })[];
       }
       break;
 

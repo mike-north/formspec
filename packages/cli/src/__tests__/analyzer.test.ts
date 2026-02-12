@@ -54,7 +54,8 @@ describe("findClassByName", () => {
 describe("analyzeClass", () => {
   it("analyzes InstallmentPlan fields", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     expect(analysis.name).toBe("InstallmentPlan");
@@ -69,7 +70,8 @@ describe("analyzeClass", () => {
 
   it("detects optional fields", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     const emailField = analysis.fields.find((f) => f.name === "customerEmail");
@@ -81,7 +83,8 @@ describe("analyzeClass", () => {
 
   it("analyzes instance methods", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     expect(analysis.instanceMethods).toHaveLength(2);
@@ -93,7 +96,8 @@ describe("analyzeClass", () => {
 
   it("analyzes static methods", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     expect(analysis.staticMethods).toHaveLength(1);
@@ -102,7 +106,8 @@ describe("analyzeClass", () => {
 
   it("detects InferSchema references in method parameters", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     const activateMethod = analysis.instanceMethods.find(
@@ -121,7 +126,8 @@ describe("analyzeClass", () => {
 
   it("analyzes SimpleProduct without FormSpec references", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     expect(analysis.name).toBe("SimpleProduct");
@@ -138,10 +144,12 @@ describe("analyzeClass", () => {
 describe("convertType", () => {
   it("converts string type", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const nameField = analysis.fields.find((f) => f.name === "name")!;
+    const nameField = analysis.fields.find((f) => f.name === "name");
+    if (!nameField) throw new Error("name field not found");
     const result = convertType(nameField.type, ctx.checker);
 
     expect(result.jsonSchema.type).toBe("string");
@@ -150,10 +158,12 @@ describe("convertType", () => {
 
   it("converts number type", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const priceField = analysis.fields.find((f) => f.name === "price")!;
+    const priceField = analysis.fields.find((f) => f.name === "price");
+    if (!priceField) throw new Error("price field not found");
     const result = convertType(priceField.type, ctx.checker);
 
     // price is optional so it's number | undefined
@@ -162,10 +172,12 @@ describe("convertType", () => {
 
   it("converts boolean type", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const activeField = analysis.fields.find((f) => f.name === "active")!;
+    const activeField = analysis.fields.find((f) => f.name === "active");
+    if (!activeField) throw new Error("active field not found");
     const result = convertType(activeField.type, ctx.checker);
 
     expect(result.jsonSchema.type).toBe("boolean");
@@ -174,10 +186,12 @@ describe("convertType", () => {
 
   it("converts string literal union to enum", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const statusField = analysis.fields.find((f) => f.name === "status")!;
+    const statusField = analysis.fields.find((f) => f.name === "status");
+    if (!statusField) throw new Error("status field not found");
     const result = convertType(statusField.type, ctx.checker);
 
     expect(result.jsonSchema.enum).toEqual(["active", "paused", "canceled"]);

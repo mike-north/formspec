@@ -543,7 +543,9 @@ describe("missing type metadata warning", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+      // Mock implementation intentionally empty
+    });
   });
 
   afterEach(() => {

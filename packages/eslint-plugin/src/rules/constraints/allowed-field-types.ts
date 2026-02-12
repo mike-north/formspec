@@ -13,7 +13,7 @@ import type { TSESTree } from "@typescript-eslint/utils";
 import {
   getFieldTypeSeverity,
   type FieldTypeConstraints,
-  type Severity,
+  type Severity as _Severity,
 } from "@formspec/constraints/browser";
 
 const createRule = ESLintUtils.RuleCreator(
@@ -87,6 +87,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
   },
   defaultOptions: [{}],
   create(context) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- RuleTester may not apply defaultOptions
     const constraints = context.options[0] ?? {};
 
     return {
@@ -130,7 +131,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
         // Extract field name from first argument
         const fieldName = extractFieldName(node.arguments[0]);
         const fieldTypeName =
-          FIELD_TYPE_NAMES[methodName] || `${methodName} field`;
+          FIELD_TYPE_NAMES[methodName] ?? `${methodName} field`;
 
         context.report({
           node: node.callee.property,

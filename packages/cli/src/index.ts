@@ -27,6 +27,7 @@ import {
   loadFormSpecs,
   loadNamedFormSpecs,
   resolveCompiledPath,
+  type FormSpecSchemas,
 } from "./runtime/formspec-loader.js";
 import {
   writeClassSchemas,
@@ -139,8 +140,8 @@ function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
       process.exit(1);
     } else if (!filePath) {
       filePath = arg;
-    } else if (!className) {
-      className = arg;
+    } else {
+      className ??= arg;
     }
   }
 
@@ -299,12 +300,12 @@ async function main(): Promise<void> {
       generateOptions.compiledPath ?? resolveCompiledPath(generateOptions.filePath);
 
     // Step 3: Load all FormSpec exports from compiled module
-    let loadedFormSpecs = new Map();
+    let loadedFormSpecs = new Map<string, FormSpecSchemas>();
     let loadError: string | undefined;
     try {
       const { formSpecs } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
-      console.log(`✓ Loaded ${formSpecs.size} FormSpec export(s) from module`);
+      console.log(`✓ Loaded ${String(formSpecs.size)} FormSpec export(s) from module`);
     } catch (error) {
       // Track load errors for better messaging later
       // Runtime loading is only needed for chain DSL exports and method parameters
@@ -349,9 +350,9 @@ async function main(): Promise<void> {
 
       // Analyze class
       const analysis = analyzeClass(classDecl, ctx.checker);
-      console.log(`✓ Analyzed class "${analysis.name}" with ${analysis.fields.length} field(s)`);
-      console.log(`  Instance methods: ${analysis.instanceMethods.length}`);
-      console.log(`  Static methods: ${analysis.staticMethods.length}`);
+      console.log(`✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`);
+      console.log(`  Instance methods: ${String(analysis.instanceMethods.length)}`);
+      console.log(`  Static methods: ${String(analysis.staticMethods.length)}`);
 
       // Collect FormSpec references from methods
       const allMethods = [...analysis.instanceMethods, ...analysis.staticMethods];
@@ -396,7 +397,7 @@ async function main(): Promise<void> {
         { outDir: generateOptions.outDir }
       );
 
-      console.log(`✓ Wrote ${classResult.files.length} file(s) to ${classResult.dir}`);
+      console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
     }
 
     // Step 5: Write standalone FormSpec exports (chain DSL)
@@ -407,7 +408,7 @@ async function main(): Promise<void> {
 
       if (formSpecResult.files.length > 0) {
         console.log(
-          `✓ Wrote ${formSpecResult.files.length} FormSpec file(s) to ${formSpecResult.dir}`
+          `✓ Wrote ${String(formSpecResult.files.length)} FormSpec file(s) to ${formSpecResult.dir}`
         );
       }
     }

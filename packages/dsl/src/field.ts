@@ -116,17 +116,21 @@ export const field = {
   ): StaticEnumField<N, O> => {
     // Validate that all options are of the same type (all strings or all objects)
     if (options.length > 0) {
-      const firstIsObject = typeof options[0] === "object" && options[0] !== null;
-      const allSameType = options.every((opt) => {
-        const isObject = typeof opt === "object" && opt !== null;
-        return isObject === firstIsObject;
-      });
+      const first = options[0];
+      // Runtime check: TypeScript allows mixed arrays, but we enforce homogeneity
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      const firstIsObject = typeof first === "object" && first !== null;
 
-      if (!allSameType) {
-        throw new Error(
-          `field.enum("${name}"): options must be all strings or all objects with {id, label}, not mixed. ` +
-          `Received mixed types in options array.`
-        );
+      // Check all items match the type of the first item
+      for (const opt of options) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        const optIsObject = typeof opt === "object" && opt !== null;
+        if (optIsObject !== firstIsObject) {
+          throw new Error(
+            `field.enum("${name}"): options must be all strings or all objects with {id, label}, not mixed. ` +
+            `Received mixed types in options array.`
+          );
+        }
       }
 
       // Validate object options have required properties
