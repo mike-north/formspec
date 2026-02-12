@@ -27,6 +27,7 @@ import {
   loadFormSpecs,
   loadNamedFormSpecs,
   resolveCompiledPath,
+  type FormSpecSchemas,
 } from "./runtime/formspec-loader.js";
 import {
   writeClassSchemas,
@@ -299,7 +300,7 @@ async function main(): Promise<void> {
       generateOptions.compiledPath ?? resolveCompiledPath(generateOptions.filePath);
 
     // Step 3: Load all FormSpec exports from compiled module
-    let loadedFormSpecs = new Map<string, unknown>();
+    let loadedFormSpecs = new Map<string, FormSpecSchemas>();
     let loadError: string | undefined;
     try {
       const { formSpecs } = await loadFormSpecs(compiledPath);
