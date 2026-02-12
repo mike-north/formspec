@@ -1,6 +1,6 @@
 {
   "name": "@formspec/constraints",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.7",
   "description": "Constraint validation for FormSpec - restrict features based on target environment capabilities",
   "type": "module",
   "main": "./dist/index.js",
