@@ -29,7 +29,8 @@ const hasCompiledFixture = fs.existsSync(compiledPath);
 describe("generators", () => {
   it("generates class schemas from static analysis", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
     const schemas = generateClassSchemas(analysis, ctx.checker);
 
@@ -51,7 +52,8 @@ describe("generators", () => {
 
   it("collects FormSpec references from methods", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     const refs = collectFormSpecReferences([
@@ -66,10 +68,12 @@ describe("generators", () => {
 
   it("generates method schemas without FormSpec (static only)", () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct")!;
+    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
+    if (!classDecl) throw new Error("SimpleProduct class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const updateMethod = analysis.instanceMethods[0]!;
+    const updateMethod = analysis.instanceMethods[0];
+    if (!updateMethod) throw new Error("updateMethod not found");
     const methodSchemas = generateMethodSchemas(
       updateMethod,
       ctx.checker,
@@ -116,7 +120,8 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
     expect(formSpecs.has("CancelParams")).toBe(true);
 
     // Check generated schemas
-    const userForm = formSpecs.get("UserRegistrationForm")!;
+    const userForm = formSpecs.get("UserRegistrationForm");
+    if (!userForm) throw new Error("UserRegistrationForm not found");
     expect(userForm.jsonSchema).toBeDefined();
     expect(userForm.uiSchema).toBeDefined();
 
@@ -126,7 +131,8 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
 
   it("generates method schemas with FormSpec params", async () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     // Load FormSpecs at runtime
@@ -135,7 +141,8 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
     // Generate method schemas
     const activateMethod = analysis.instanceMethods.find(
       (m) => m.name === "activate"
-    )!;
+    );
+    if (!activateMethod) throw new Error("activate method not found");
     const methodSchemas = generateMethodSchemas(
       activateMethod,
       ctx.checker,
@@ -167,7 +174,8 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
 
   it("writes class schemas to output directory", async () => {
     const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan")!;
+    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
+    if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
     // Load FormSpecs
@@ -212,11 +220,11 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
     ).toBe(true);
 
     // Verify JSON content
-    const schemaContent = JSON.parse(
+    const schemaContent: unknown = JSON.parse(
       fs.readFileSync(path.join(result.dir, "schema.json"), "utf-8")
     );
-    expect(schemaContent.type).toBe("object");
-    expect(schemaContent.properties).toBeDefined();
+    expect((schemaContent as { type: string }).type).toBe("object");
+    expect((schemaContent as { properties: unknown }).properties).toBeDefined();
   });
 
   it("writes FormSpec schemas to output directory", async () => {

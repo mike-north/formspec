@@ -178,9 +178,11 @@ function extractTypeMetadata(
 
   for (const member of classNode.members) {
     if (!ts.isPropertyDeclaration(member)) continue;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Both checks needed: name can be undefined OR not an identifier
     if (!member.name || !ts.isIdentifier(member.name)) continue;
 
     const symbol = checker.getSymbolAtLocation(member.name);
+    // Skip properties without symbols - they don't have resolvable types
     if (!symbol) continue;
 
     const type = checker.getTypeOfSymbolAtLocation(symbol, member);
@@ -203,7 +205,7 @@ function extractTypeMetadata(
 function convertTypeToMetadata(
   type: ts.Type,
   checker: ts.TypeChecker,
-  visited: Set<ts.Type> = new Set()
+  visited = new Set<ts.Type>()
 ): TypeMetadata {
   // Cycle detection for object types only
   const isObjectType = (type.flags & ts.TypeFlags.Object) !== 0;
@@ -238,6 +240,7 @@ function convertTypeToMetadata(
     if (allStringLiterals && nonNullTypes.length > 0) {
       const result: TypeMetadata = {
         type: "enum",
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
         values: nonNullTypes.map((t) => (t as ts.StringLiteralType).value),
       };
       if (hasNull) result.nullable = true;
@@ -249,6 +252,7 @@ function convertTypeToMetadata(
     if (allNumberLiterals && nonNullTypes.length > 0) {
       const result: TypeMetadata = {
         type: "enum",
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
         values: nonNullTypes.map((t) => (t as ts.NumberLiteralType).value),
       };
       if (hasNull) result.nullable = true;
@@ -256,8 +260,11 @@ function convertTypeToMetadata(
     }
 
     // Nullable single type
-    if (nonNullTypes.length === 1 && nonNullTypes[0]) {
-      const result = convertTypeToMetadata(nonNullTypes[0], checker, visited);
+    // Explicit undefined check needed for array element access
+    if (nonNullTypes.length === 1) {
+      const singleType = nonNullTypes[0];
+      if (!singleType) return { type: "unknown" };
+      const result = convertTypeToMetadata(singleType, checker, visited);
       if (hasNull) result.nullable = true;
       return result;
     }
@@ -295,7 +302,7 @@ function convertTypeToMetadata(
   if (type.flags & ts.TypeFlags.Object) {
     const properties: Record<string, TypeMetadata> = {};
     for (const prop of type.getProperties()) {
-      // Skip properties without declarations (can't determine type safely)
+      // Skip properties without declarations - undefined check needed because declarations array can be empty
       const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
       if (!declaration) continue;
 
@@ -579,7 +586,7 @@ function generateTypedAccessor(cls: DecoratedClassInfo): string {
       const fieldType = metadataTypeToFieldType(metadata.type);
       const required = !metadata.optional;
 
-      let elementType = `{ readonly _field: "${fieldType}"; readonly id: "${fieldName}"; readonly required: ${required}`;
+      let elementType = `{ readonly _field: "${fieldType}"; readonly id: "${fieldName}"; readonly required: ${String(required)}`;
 
       // Add options for enum types
       if (metadata.type === "enum" && metadata.values) {
@@ -646,7 +653,7 @@ export function runCodegen(options: CodegenOptions): void {
   const baseDir = options.baseDir ?? path.dirname(options.output);
   const absoluteFiles = options.files.map((f) => path.resolve(f));
 
-  console.log(`Scanning ${absoluteFiles.length} file(s) for decorated classes...`);
+  console.log(`Scanning ${String(absoluteFiles.length)} file(s) for decorated classes...`);
 
   const classes = findDecoratedClasses(absoluteFiles, baseDir);
 
@@ -655,10 +662,10 @@ export function runCodegen(options: CodegenOptions): void {
     return;
   }
 
-  console.log(`Found ${classes.length} decorated class(es):`);
+  console.log(`Found ${String(classes.length)} decorated class(es):`);
   for (const cls of classes) {
     const fieldCount = Object.keys(cls.typeMetadata).length;
-    console.log(`  - ${cls.name} (${fieldCount} field(s))`);
+    console.log(`  - ${cls.name} (${String(fieldCount)} field(s))`);
   }
 
   // Check for unexported classes and warn

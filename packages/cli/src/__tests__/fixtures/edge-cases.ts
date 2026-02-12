@@ -64,7 +64,7 @@ export class ArrayEdgeCases {
   nullableArray!: string[] | null;
 
   // Array of objects
-  objectArray!: Array<{ id: number; name: string }>;
+  objectArray!: { id: number; name: string }[];
 
   // Empty array type (any[])
   anyArray!: unknown[];
@@ -81,7 +81,8 @@ export class ArrayEdgeCases {
  * Various object type patterns.
  */
 export class ObjectEdgeCases {
-  // Empty object
+  // Empty object - Allow this as a test case for empty object type handling
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   emptyObject!: {};
 
   // Record type
@@ -123,7 +124,8 @@ export class SpecialTypes {
   // never type (edge case)
   // Note: never is not typically used as a property type
 
-  // void type
+  // void type - Test case for void type handling, used in FormSpec codegen tests
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
   voidField!: void;
 
   // Date (built-in object)

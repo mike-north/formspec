@@ -4,6 +4,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { writeSchemas } from "../index.js";
 import { formspec, field, group } from "@formspec/dsl";
+import type { JSONSchema7 } from "../json-schema/types.js";
+import type { UISchema } from "../ui-schema/types.js";
 
 describe("writeSchemas", () => {
   let tempDir: string;
@@ -88,8 +90,8 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
-      const uiSchema = JSON.parse(fs.readFileSync(result.uiSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
+      const uiSchema = JSON.parse(fs.readFileSync(result.uiSchemaPath, "utf-8")) as UISchema;
 
       expect(jsonSchema).toHaveProperty("type", "object");
       expect(jsonSchema).toHaveProperty("properties");
@@ -109,12 +111,12 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
 
       expect(jsonSchema.properties).toHaveProperty("name");
       expect(jsonSchema.properties).toHaveProperty("age");
       expect(jsonSchema.required).toContain("name");
-      expect(jsonSchema.properties.age).toHaveProperty("minimum", 0);
+      expect(jsonSchema.properties?.["age"]).toHaveProperty("minimum", 0);
     });
 
     it("should handle forms with enum fields", () => {
@@ -127,10 +129,11 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
 
-      expect(jsonSchema.properties.status).toHaveProperty("enum");
-      expect(jsonSchema.properties.status.enum).toEqual(["draft", "published", "archived"]);
+      const statusProperty = jsonSchema.properties?.["status"];
+      expect(statusProperty).toHaveProperty("enum");
+      expect(statusProperty?.enum).toEqual(["draft", "published", "archived"]);
     });
 
     it("should handle forms with nested objects", () => {
@@ -146,11 +149,12 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
 
-      expect(jsonSchema.properties.address).toHaveProperty("type", "object");
-      expect(jsonSchema.properties.address.properties).toHaveProperty("street");
-      expect(jsonSchema.properties.address.properties).toHaveProperty("city");
+      const addressProperty = jsonSchema.properties?.["address"];
+      expect(addressProperty).toHaveProperty("type", "object");
+      expect(addressProperty?.properties).toHaveProperty("street");
+      expect(addressProperty?.properties).toHaveProperty("city");
     });
 
     it("should handle forms with arrays", () => {
@@ -166,10 +170,10 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
 
-      expect(jsonSchema.properties.items).toHaveProperty("type", "array");
-      expect(jsonSchema.properties.items).toHaveProperty("items");
+      expect(jsonSchema.properties?.["items"]).toHaveProperty("type", "array");
+      expect(jsonSchema.properties?.["items"]).toHaveProperty("items");
     });
   });
 
@@ -191,7 +195,7 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
       expect(jsonSchema.properties).toHaveProperty("updated");
       expect(jsonSchema.properties).not.toHaveProperty("original");
     });
@@ -205,7 +209,7 @@ describe("writeSchemas", () => {
       });
 
       expect(fs.existsSync(result.jsonSchemaPath)).toBe(true);
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
       expect(jsonSchema).toHaveProperty("type", "object");
     });
 
@@ -220,7 +224,7 @@ describe("writeSchemas", () => {
         name: "test",
       });
 
-      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8"));
+      const jsonSchema = JSON.parse(fs.readFileSync(result.jsonSchemaPath, "utf-8")) as JSONSchema7;
       expect(jsonSchema.properties).toHaveProperty("field-with-dashes");
       expect(jsonSchema.properties).toHaveProperty("field_with_underscores");
     });

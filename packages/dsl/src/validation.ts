@@ -8,7 +8,6 @@
 
 import type {
   FormElement,
-  AnyField,
   Group,
   Conditional,
   ArrayField,
@@ -48,7 +47,7 @@ export interface ValidationResult {
  */
 function collectFieldNames(
   elements: readonly FormElement[],
-  path: string = ""
+  path = ""
 ): Map<string, { count: number; paths: string[] }> {
   const fieldNames = new Map<string, { count: number; paths: string[] }>();
 
@@ -56,10 +55,11 @@ function collectFieldNames(
     for (const element of elements) {
       switch (element._type) {
         case "field": {
-          const field = element as AnyField;
+          // After type narrowing, element is known to be AnyField
+          const field = element;
           const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
           const existing = fieldNames.get(field.name);
-          if (existing) {
+          if (existing !== undefined) {
             existing.count++;
             existing.paths.push(fieldPath);
           } else {
@@ -106,15 +106,16 @@ function collectFieldNames(
  */
 function collectConditionalReferences(
   elements: readonly FormElement[],
-  path: string = ""
-): Array<{ fieldName: string; path: string }> {
-  const references: Array<{ fieldName: string; path: string }> = [];
+  path = ""
+): { fieldName: string; path: string }[] {
+  const references: { fieldName: string; path: string }[] = [];
 
   function visit(elements: readonly FormElement[], currentPath: string): void {
     for (const element of elements) {
       switch (element._type) {
         case "field": {
-          const field = element as AnyField;
+          // After type narrowing, element is known to be AnyField
+          const field = element;
           const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
 
           // Recurse into array items and object properties
@@ -195,7 +196,7 @@ export function validateForm(elements: readonly FormElement[]): ValidationResult
     if (info.count > 1 && info.paths[0] !== undefined) {
       issues.push({
         severity: "error",
-        message: `Duplicate field name "${name}" found ${info.count} times at: ${info.paths.join(", ")}`,
+        message: `Duplicate field name "${name}" found ${String(info.count)} times at: ${info.paths.join(", ")}`,
         path: info.paths[0],
       });
     }

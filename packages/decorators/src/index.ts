@@ -186,7 +186,7 @@ export interface JSONSchema7 {
   /** Enum values (for simple string enums) */
   enum?: unknown[];
   /** Enum with labels using oneOf/const pattern */
-  oneOf?: Array<{ const: unknown; title?: string }>;
+  oneOf?: { const: unknown; title?: string }[];
   /** Array item schema (for type: "array") */
   items?: JSONSchema7;
 }
@@ -250,11 +250,16 @@ function getFieldMetadata(
   if (!decoratorMetadata.has(ctor)) {
     decoratorMetadata.set(ctor, new Map());
   }
-  const classMetadata = decoratorMetadata.get(ctor)!;
-  if (!classMetadata.has(propertyKey)) {
-    classMetadata.set(propertyKey, {});
+  // Safe to use non-null assertion: we just created the map if it didn't exist
+  const classMetadata = decoratorMetadata.get(ctor);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  if (!classMetadata!.has(propertyKey)) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    classMetadata!.set(propertyKey, {});
   }
-  return classMetadata.get(propertyKey)!;
+  // Safe to use non-null assertion: we just created the metadata if it didn't exist
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return classMetadata!.get(propertyKey)!;
 }
 
 // =============================================================================
@@ -586,7 +591,7 @@ const FORMSPEC_TYPES_KEY = "__formspec_types__";
  * Tracks which classes have been warned about missing type metadata.
  * This prevents duplicate warnings for the same class.
  */
-const warnedClasses = new WeakSet<object>();
+const warnedClasses = new WeakSet();
 
 /**
  * Emits a warning when a decorated class is used without type metadata.
@@ -605,13 +610,15 @@ function warnIfMissingTypeMetadata(
   }
 
   // Check if class has type metadata
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hasTypeMetadata = FORMSPEC_TYPES_KEY in ctor && Object.keys((ctor as any)[FORMSPEC_TYPES_KEY]).length > 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+  const hasTypeMetadata = FORMSPEC_TYPES_KEY in ctor && Object.keys((ctor as any)[FORMSPEC_TYPES_KEY] as object).length > 0;
   if (hasTypeMetadata) {
     return;
   }
 
   // Check if class has decorator metadata (indicating decorators were applied)
+  // Safe to use non-null assertion: we just checked has(ctor)
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const hasDecoratorMetadata = decoratorMetadata.has(ctor) && decoratorMetadata.get(ctor)!.size > 0;
   if (!hasDecoratorMetadata) {
     return; // No decorators applied, likely intentional basic usage
@@ -739,17 +746,16 @@ function createField(
  * // { elements: [{ _field: "text", id: "name", label: "Name", required: true }, ...] }
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toFormSpec<T extends new (...args: any[]) => any>(
-  ctor: T
+export function toFormSpec(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => any
 ): FormSpecOutput {
   // Warn if decorated class is missing type metadata
   warnIfMissingTypeMetadata(ctor, "toFormSpec");
 
   // Get type metadata from codegen (if available)
-  const typeMetadata: Record<string, TypeMetadata> =
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (ctor as any)[FORMSPEC_TYPES_KEY] ?? {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+  const typeMetadata: Record<string, TypeMetadata> = (ctor as any)[FORMSPEC_TYPES_KEY] ?? {};
 
   // Get decorator metadata
   const classDecoratorMeta = decoratorMetadata.get(ctor) ?? new Map();
@@ -759,17 +765,19 @@ export function toFormSpec<T extends new (...args: any[]) => any>(
 
   // Process all fields from type metadata
   for (const [fieldName, typeInfo] of Object.entries(typeMetadata)) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const decoratorInfo = classDecoratorMeta.get(fieldName) ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     elements.push(createField(fieldName, typeInfo, decoratorInfo));
   }
 
   // If no type metadata, fall back to decorator metadata only
   // (limited functionality - no type information)
   if (Object.keys(typeMetadata).length === 0) {
+    // Map.entries() can return types that ESLint infers as any in some contexts
     for (const [fieldName, decoratorInfo] of classDecoratorMeta.entries()) {
-      elements.push(
-        createField(fieldName, { type: "unknown" }, decoratorInfo)
-      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      elements.push(createField(fieldName, { type: "unknown" }, decoratorInfo));
     }
   }
 
@@ -784,10 +792,11 @@ export function toFormSpec<T extends new (...args: any[]) => any>(
  * @param ctor - The class constructor
  * @returns Map of field names to decorator metadata
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDecoratorMetadata<T extends new (...args: any[]) => any>(
-  ctor: T
+export function getDecoratorMetadata(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => any
 ): Map<string, FieldDecoratorMetadata> {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return decoratorMetadata.get(ctor) ?? new Map();
 }
 
@@ -799,11 +808,11 @@ export function getDecoratorMetadata<T extends new (...args: any[]) => any>(
  * @param ctor - The class constructor
  * @returns Record of field names to type metadata, or empty object if not transformed
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getTypeMetadata<T extends new (...args: any[]) => any>(
-  ctor: T
-): Record<string, TypeMetadata> {
+export function getTypeMetadata(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => any
+): Record<string, TypeMetadata> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
   return (ctor as any)[FORMSPEC_TYPES_KEY] ?? {};
 }
 
@@ -859,14 +868,15 @@ function fieldToJsonSchema(field: FormSpecField): JSONSchema7 {
   if (field._field === "enum" && field.options) {
     const hasLabels = field.options.some(
       (opt): opt is { id: string; label: string } =>
-        typeof opt === "object" && opt !== null && "id" in opt
+        typeof opt === "object" && "id" in opt
     );
     if (hasLabels) {
       schema.oneOf = field.options.map((opt) => {
         if (typeof opt === "object" && "id" in opt) {
           return { const: opt.id, title: opt.label };
         }
-        return { const: opt, title: String(opt) };
+        // opt is a string in this case
+        return { const: opt, title: opt };
       });
     } else {
       schema.enum = field.options.map((opt) =>
@@ -998,6 +1008,8 @@ function generateUiSchemaFromElements(elements: FormSpecField[]): UISchemaElemen
   }
 
   for (const element of elements) {
+    // Safe to use non-null assertion: elementsToUiSchema always returns at least one element
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const control = elementsToUiSchema([element])[0]!;
     const groupName = element.group;
 
@@ -1052,9 +1064,9 @@ function generateUiSchemaFromElements(elements: FormSpecField[]): UISchemaElemen
  * // uiSchema: { type: "VerticalLayout", elements: [...] }
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildFormSchemas<T extends new (...args: any[]) => any>(
-  ctor: T
+export function buildFormSchemas(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctor: new (...args: any[]) => any
 ): BuildResult {
   // Warn if decorated class is missing type metadata
   // (toFormSpec will also check, but we want the correct function name in the warning)

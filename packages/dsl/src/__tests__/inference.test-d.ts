@@ -36,7 +36,6 @@ expectType<"draft" | "sent" | "paid">(
 );
 
 // StaticEnumField with object options should infer to union of id values
-import type { EnumOption } from "@formspec/core";
 expectType<"low" | "high">(
   {} as InferFieldValue<StaticEnumField<"priority", readonly [
     { readonly id: "low"; readonly label: "Low Priority" },
@@ -61,19 +60,19 @@ expectType<{ street: string; city: string }>(
 // =============================================================================
 
 // Test single text field
-const singleTextField = formspec(
+const _singleTextField = formspec(
   field.text("name"),
 );
-type SingleTextSchema = InferSchema<typeof singleTextField.elements>;
+type SingleTextSchema = InferSchema<typeof _singleTextField.elements>;
 expectType<{ name: string }>({} as SingleTextSchema);
 
 // Test multiple basic fields
-const multipleFields = formspec(
+const _multipleFields = formspec(
   field.text("name"),
   field.number("age"),
   field.boolean("active"),
 );
-type MultipleFieldsSchema = InferSchema<typeof multipleFields.elements>;
+type MultipleFieldsSchema = InferSchema<typeof _multipleFields.elements>;
 expectType<{ name: string; age: number; active: boolean }>({} as MultipleFieldsSchema);
 
 // =============================================================================
@@ -81,20 +80,20 @@ expectType<{ name: string; age: number; active: boolean }>({} as MultipleFieldsS
 // =============================================================================
 
 // Test static enum field
-const enumForm = formspec(
+const _enumForm = formspec(
   field.enum("status", ["draft", "sent", "paid"] as const),
 );
-type EnumSchema = InferSchema<typeof enumForm.elements>;
+type EnumSchema = InferSchema<typeof _enumForm.elements>;
 expectType<{ status: "draft" | "sent" | "paid" }>({} as EnumSchema);
 
 // Test static enum field with object options
-const objectEnumForm = formspec(
+const _objectEnumForm = formspec(
   field.enum("priority", [
     { id: "low", label: "Low Priority" },
     { id: "high", label: "High Priority" },
   ] as const),
 );
-type ObjectEnumSchema = InferSchema<typeof objectEnumForm.elements>;
+type ObjectEnumSchema = InferSchema<typeof _objectEnumForm.elements>;
 expectType<{ priority: "low" | "high" }>({} as ObjectEnumSchema);
 
 // =============================================================================
@@ -102,14 +101,14 @@ expectType<{ priority: "low" | "high" }>({} as ObjectEnumSchema);
 // =============================================================================
 
 // Test fields inside groups
-const groupForm = formspec(
+const _groupForm = formspec(
   group("Customer",
     field.text("name"),
     field.text("email"),
   ),
   field.number("amount"),
 );
-type GroupSchema = InferSchema<typeof groupForm.elements>;
+type GroupSchema = InferSchema<typeof _groupForm.elements>;
 expectType<{ name: string; email: string; amount: number }>({} as GroupSchema);
 
 // =============================================================================
@@ -117,18 +116,18 @@ expectType<{ name: string; email: string; amount: number }>({} as GroupSchema);
 // =============================================================================
 
 // Test fields inside conditionals - should be optional
-const conditionalForm = formspec(
+const _conditionalForm = formspec(
   field.enum("type", ["personal", "business"] as const),
   when(is("type", "business"),
     field.text("company"),
   ),
 );
-type ConditionalSchema = InferSchema<typeof conditionalForm.elements>;
+type ConditionalSchema = InferSchema<typeof _conditionalForm.elements>;
 // company is optional since it's inside a conditional
 expectType<{ type: "personal" | "business"; company?: string }>({} as ConditionalSchema);
 
 // Test multiple conditionals - all conditional fields should be optional
-const multiConditionalForm = formspec(
+const _multiConditionalForm = formspec(
   field.enum("accountType", ["personal", "business"] as const),
   when(is("accountType", "personal"),
     field.text("ssn"),
@@ -138,7 +137,7 @@ const multiConditionalForm = formspec(
     field.text("companyName"),
   ),
 );
-type MultiConditionalSchema = InferSchema<typeof multiConditionalForm.elements>;
+type MultiConditionalSchema = InferSchema<typeof _multiConditionalForm.elements>;
 expectType<{
   accountType: "personal" | "business";
   ssn?: string;
@@ -147,7 +146,7 @@ expectType<{
 }>({} as MultiConditionalSchema);
 
 // Test conditional inside group - still optional
-const conditionalInGroupForm = formspec(
+const _conditionalInGroupForm = formspec(
   group("Details",
     field.text("name"),
     when(is("showExtra", true),
@@ -156,11 +155,11 @@ const conditionalInGroupForm = formspec(
   ),
   field.boolean("showExtra"),
 );
-type ConditionalInGroupSchema = InferSchema<typeof conditionalInGroupForm.elements>;
+type ConditionalInGroupSchema = InferSchema<typeof _conditionalInGroupForm.elements>;
 expectType<{ name: string; showExtra: boolean; extra?: string }>({} as ConditionalInGroupSchema);
 
 // Test group inside conditional - all fields optional
-const groupInConditionalForm = formspec(
+const _groupInConditionalForm = formspec(
   field.boolean("showAddress"),
   when(is("showAddress", true),
     group("Address",
@@ -169,7 +168,7 @@ const groupInConditionalForm = formspec(
     ),
   ),
 );
-type GroupInConditionalSchema = InferSchema<typeof groupInConditionalForm.elements>;
+type GroupInConditionalSchema = InferSchema<typeof _groupInConditionalForm.elements>;
 expectType<{ showAddress: boolean; street?: string; city?: string }>({} as GroupInConditionalSchema);
 
 // =============================================================================
@@ -177,13 +176,13 @@ expectType<{ showAddress: boolean; street?: string; city?: string }>({} as Group
 // =============================================================================
 
 // Test array fields
-const arrayForm = formspec(
+const _arrayForm = formspec(
   field.array("addresses",
     field.text("street"),
     field.text("city"),
   ),
 );
-type ArraySchema = InferSchema<typeof arrayForm.elements>;
+type ArraySchema = InferSchema<typeof _arrayForm.elements>;
 expectType<{ addresses: { street: string; city: string }[] }>({} as ArraySchema);
 
 // =============================================================================
@@ -191,14 +190,14 @@ expectType<{ addresses: { street: string; city: string }[] }>({} as ArraySchema)
 // =============================================================================
 
 // Test object fields
-const objectForm = formspec(
+const _objectForm = formspec(
   field.object("address",
     field.text("street"),
     field.text("city"),
     field.text("zip"),
   ),
 );
-type ObjectSchema = InferSchema<typeof objectForm.elements>;
+type ObjectSchema = InferSchema<typeof _objectForm.elements>;
 expectType<{ address: { street: string; city: string; zip: string } }>({} as ObjectSchema);
 
 // =============================================================================
@@ -206,12 +205,12 @@ expectType<{ address: { street: string; city: string; zip: string } }>({} as Obj
 // =============================================================================
 
 // Test InferFormSchema convenience type
-const complexForm = formspec(
+const _complexForm = formspec(
   field.text("name"),
   field.number("amount"),
   field.enum("status", ["active", "inactive"] as const),
 );
-type ComplexSchema = InferFormSchema<typeof complexForm>;
+type ComplexSchema = InferFormSchema<typeof _complexForm>;
 expectType<{ name: string; amount: number; status: "active" | "inactive" }>(
   {} as ComplexSchema
 );
@@ -227,4 +226,4 @@ expectNotType<number>({} as InferFieldValue<TextField<"name">>);
 expectNotType<string>({} as InferFieldValue<NumberField<"age">>);
 
 // Enum should NOT allow invalid values
-expectNotType<{ status: string }>({} as InferSchema<typeof enumForm.elements>);
+expectNotType<{ status: string }>({} as InferSchema<typeof _enumForm.elements>);
