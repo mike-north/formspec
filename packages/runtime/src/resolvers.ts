@@ -86,7 +86,9 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
 
   function visit(el: FormElement): void {
     if (el._type === "field" && el._field === "dynamic_enum") {
-      sources.add((el as DynamicEnumField<string, string>).source);
+      // After checking _field, we know this is a DynamicEnumField
+      const dynamicField: DynamicEnumField<string, string> = el;
+      sources.add(dynamicField.source);
     } else if (el._type === "group") {
       (el as Group<readonly FormElement[]>).elements.forEach(visit);
     } else if (el._type === "conditional") {
@@ -143,7 +145,7 @@ export function defineResolvers<
 ): ResolverRegistry<Sources> {
   const sourceSet = extractSources(form.elements);
   const resolverMap = new Map<string, Resolver<keyof DataSourceRegistry>>(
-    Object.entries(resolvers) as Array<[string, Resolver<keyof DataSourceRegistry>]>
+    Object.entries(resolvers) as [string, Resolver<keyof DataSourceRegistry>][]
   );
 
   // Validate that all sources have resolvers

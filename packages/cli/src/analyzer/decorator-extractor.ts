@@ -159,7 +159,7 @@ function extractArgValue(node: ts.Expression): DecoratorArg {
 
   // Object literal
   if (ts.isObjectLiteralExpression(node)) {
-    const obj: { [key: string]: DecoratorArg } = {};
+    const obj: Record<string, DecoratorArg> = {};
     for (const prop of node.properties) {
       if (ts.isPropertyAssignment(prop)) {
         const key = getPropertyName(prop.name);

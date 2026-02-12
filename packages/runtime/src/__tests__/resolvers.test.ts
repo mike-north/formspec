@@ -12,13 +12,16 @@ describe("defineResolvers", () => {
     );
 
     const resolvers = defineResolvers(form, {
-      countries: async () => ({
-        options: [
-          { value: "us", label: "United States" },
-          { value: "ca", label: "Canada" },
-        ],
-        validity: "valid" as const,
-      }),
+      countries: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return {
+          options: [
+            { value: "us", label: "United States" },
+            { value: "ca", label: "Canada" },
+          ],
+          validity: "valid" as const,
+        };
+      },
     });
 
     expect(resolvers.has("countries")).toBe(true);
@@ -31,12 +34,15 @@ describe("defineResolvers", () => {
     );
 
     const resolvers = defineResolvers(form, {
-      countries: async () => ({
-        options: [
-          { value: "us", label: "United States" },
-        ],
-        validity: "valid" as const,
-      }),
+      countries: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return {
+          options: [
+            { value: "us", label: "United States" },
+          ],
+          validity: "valid" as const,
+        };
+      },
     });
 
     const result = await resolvers.get("countries")();
@@ -55,8 +61,14 @@ describe("defineResolvers", () => {
     );
 
     const resolvers = defineResolvers(form, {
-      countries: async () => ({ options: [], validity: "valid" as const }),
-      cities: async () => ({ options: [], validity: "valid" as const }),
+      countries: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return { options: [], validity: "valid" as const };
+      },
+      cities: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return { options: [], validity: "valid" as const };
+      },
     });
 
     expect(resolvers.sources().sort()).toEqual(["cities", "countries"]);
@@ -71,7 +83,10 @@ describe("defineResolvers", () => {
     );
 
     const resolvers = defineResolvers(form, {
-      extras: async () => ({ options: [], validity: "valid" as const }),
+      extras: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return { options: [], validity: "valid" as const };
+      },
     });
 
     expect(resolvers.has("extras")).toBe(true);
@@ -83,7 +98,10 @@ describe("defineResolvers", () => {
     );
 
     const resolvers = defineResolvers(form, {
-      countries: async () => ({ options: [], validity: "valid" as const }),
+      countries: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return { options: [], validity: "valid" as const };
+      },
     });
 
     expect(() => resolvers.get("unknown" as "countries")).toThrow(
@@ -100,6 +118,7 @@ describe("defineResolvers", () => {
 
     const resolvers = defineResolvers(form, {
       products: async (params) => {
+        await Promise.resolve(); // Needed for async interface compliance
         receivedParams = params;
         return { options: [], validity: "valid" as const };
       },

@@ -14,9 +14,13 @@ describe("validateForm", () => {
 
       expect(result.valid).toBe(false); // duplicates are errors
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("error");
-      expect(result.issues[0]!.message).toContain('Duplicate field name "name"');
-      expect(result.issues[0]!.message).toContain("2 times");
+      const firstIssue = result.issues[0];
+      expect(firstIssue).toBeDefined();
+      if (firstIssue) {
+        expect(firstIssue.severity).toBe("error");
+        expect(firstIssue.message).toContain('Duplicate field name "name"');
+        expect(firstIssue.message).toContain("2 times");
+      }
     });
 
     it("should detect duplicate field names inside groups", () => {
@@ -35,8 +39,12 @@ describe("validateForm", () => {
 
       expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("error");
-      expect(result.issues[0]!.message).toContain('Duplicate field name "name"');
+      const firstIssue = result.issues[0];
+      expect(firstIssue).toBeDefined();
+      if (firstIssue) {
+        expect(firstIssue.severity).toBe("error");
+        expect(firstIssue.message).toContain('Duplicate field name "name"');
+      }
     });
 
     it("should detect duplicate field names inside conditionals", () => {
@@ -53,7 +61,11 @@ describe("validateForm", () => {
 
       expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("error");
+      const firstIssue = result.issues[0];
+      expect(firstIssue).toBeDefined();
+      if (firstIssue) {
+        expect(firstIssue.severity).toBe("error");
+      }
     });
 
     it("should allow same field names inside different array items (separate scope)", () => {
@@ -100,8 +112,12 @@ describe("validateForm", () => {
 
       expect(result.valid).toBe(false);
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0]!.severity).toBe("error");
-      expect(result.issues[0]!.message).toContain('non-existent field "status"');
+      const firstIssue = result.issues[0];
+      expect(firstIssue).toBeDefined();
+      if (firstIssue) {
+        expect(firstIssue.severity).toBe("error");
+        expect(firstIssue.message).toContain('non-existent field "status"');
+      }
     });
 
     it("should pass when conditional references existing field", () => {
@@ -179,8 +195,8 @@ describe("formspecWithValidation", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -287,7 +303,11 @@ describe("validation with complex structures", () => {
     const result = validateForm(elements);
 
     expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]!.message).toContain('"street"');
+    const firstIssue = result.issues[0];
+    expect(firstIssue).toBeDefined();
+    if (firstIssue) {
+      expect(firstIssue.message).toContain('"street"');
+    }
   });
 
   it("should validate deeply nested structures", () => {

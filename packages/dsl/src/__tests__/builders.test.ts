@@ -323,9 +323,8 @@ describe("complex compositions", () => {
 
     const customerGroup = form.elements[0];
     expect(customerGroup._type).toBe("group");
-    if (customerGroup._type === "group") {
-      expect(customerGroup.elements).toHaveLength(2);
-      expect(customerGroup.elements[1]._type).toBe("field");
-    }
+    // Type is narrowed after the assertion above, safe to access group properties
+    expect(customerGroup.elements).toHaveLength(2);
+    expect(customerGroup.elements[1]._type).toBe("field");
   });
 });

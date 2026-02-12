@@ -47,6 +47,7 @@ export const allowedLayouts = createRule<Options, MessageIds>({
   },
   defaultOptions: [{}],
   create(context) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- RuleTester may not apply defaultOptions
     const constraints = context.options[0] ?? {};
 
     return {

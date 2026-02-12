@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import {
   generateCodegenOutput,
-  findDecoratedClasses,
+  findDecoratedClasses as _findDecoratedClasses,
   type DecoratedClassInfo,
   type TypeMetadata,
 } from "../codegen/index.js";
@@ -219,11 +219,11 @@ describe("generateCodegenOutput", () => {
       const output = generateCodegenOutput([cls], "/tmp/out.ts", "/tmp");
 
       // Extract just the schema type section
-      const schemaMatch = output.match(
-        /export type TestFormSchema = \{[\s\S]*?\};/
-      );
+      const schemaRegex = /export type TestFormSchema = \{[\s\S]*?\};/;
+      const schemaMatch = schemaRegex.exec(output);
       expect(schemaMatch).not.toBeNull();
-      const schemaSection = schemaMatch![0];
+      if (!schemaMatch) throw new Error("Schema section not found");
+      const schemaSection = schemaMatch[0];
 
       // Should have unquoted identifiers in schema type
       expect(schemaSection).toContain("firstName: string;");
@@ -450,11 +450,11 @@ describe("generateCodegenOutput", () => {
       const output = generateCodegenOutput([cls], "/tmp/out.ts", "/tmp");
 
       // Extract just the schema type section
-      const schemaMatch = output.match(
-        /export type TestFormSchema = \{[\s\S]*?\};/
-      );
+      const schemaRegex = /export type TestFormSchema = \{[\s\S]*?\};/;
+      const schemaMatch = schemaRegex.exec(output);
       expect(schemaMatch).not.toBeNull();
-      const schemaSection = schemaMatch![0];
+      if (!schemaMatch) throw new Error("Schema section not found");
+      const schemaSection = schemaMatch[0];
 
       expect(schemaSection).toContain('"async": string;');
       expect(schemaSection).toContain('"await": string;');

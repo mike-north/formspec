@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildFormSchemas, generateJsonSchema, generateUiSchema } from "../index.js";
+import { buildFormSchemas } from "../index.js";
 import { formspec, field, group, when, is } from "@formspec/dsl";
 
 describe("Edge cases: Empty and minimal forms", () => {
