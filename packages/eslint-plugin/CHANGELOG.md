@@ -1,5 +1,17 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.8
+
+### Patch Changes
+
+- [#32](https://github.com/mike-north/formspec/pull/32) [`01ec074`](https://github.com/mike-north/formspec/commit/01ec07475f99eabb721d71baf9ab3fca6e721b98) Thanks [@mike-north](https://github.com/mike-north)! - Fix all ESLint errors and add lint enforcement to CI
+  - Fix 213 lint errors across 6 packages (build, cli, decorators, dsl, eslint-plugin, runtime)
+  - Add lint step to CI workflow to enforce rules on all future PRs
+  - Fixes include: proper null checks, type assertions, array syntax, template literals, and unused variable handling
+
+- Updated dependencies []:
+  - @formspec/constraints@0.1.0-alpha.7
+
 ## 0.1.0-alpha.7
 
 ### Minor Changes

@@ -26,6 +26,7 @@
     "dx-improvements",
     "enum-object-options",
     "eslint-plugin-initial",
+    "fix-lint-errors",
     "fix-types-field",
     "p4-enum-options-dx",
     "predicate-when-api",

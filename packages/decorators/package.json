@@ -1,6 +1,6 @@
 {
   "name": "@formspec/decorators",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.8",
   "description": "Decorator stubs for FormSpec CLI static analysis",
   "type": "module",
   "main": "./dist/index.js",
