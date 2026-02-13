@@ -59,12 +59,30 @@ The playground uses browser-safe entry points that exclude Node.js APIs:
 
 ## Deployment
 
-Automatically deployed to GitHub Pages on push to `main` branch when changes are made to:
+The playground is automatically deployed to GitHub Pages via GitHub Actions.
+
+### Automatic Deployment
+
+Changes pushed to the `main` branch trigger automatic deployment when files in these directories are modified:
 - `packages/playground/**`
 - `packages/core/**`
 - `packages/dsl/**`
 - `packages/build/**`
 - `packages/constraints/**`
+
+The workflow (`.github/workflows/deploy-playground.yml`) will:
+1. Build all packages
+2. Generate the static site from the playground
+3. Deploy to GitHub Pages with automatic enablement
+
+### GitHub Pages Setup
+
+The workflow uses the `configure-pages` action with `enablement: true`, which will automatically:
+- Enable GitHub Pages for the repository (if not already enabled)
+- Configure the Pages deployment source to use GitHub Actions
+- Set up the necessary permissions
+
+**Note**: On the first run, the workflow may require repository administrator permissions to enable Pages. Once enabled, subsequent deployments will work automatically.
 
 The deployed playground is available at: https://mike-north.github.io/formspec/
 
