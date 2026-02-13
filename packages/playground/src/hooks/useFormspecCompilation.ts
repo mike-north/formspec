@@ -62,20 +62,28 @@ export function useFormspecCompilation(
     setIsCompiling(true);
 
     // Use requestIdleCallback or setTimeout for non-blocking compilation
-    const doCompile = () => {
+    const doCompile = async () => {
       idleCallbackRef.current = null;
       const currentConstraints = constraintsRef.current;
 
       // First, run ESLint linting if constraints are configured
       let lintErrors: DiagnosticMessage[] = [];
       if (currentConstraints) {
-        const lintMessages = lintFormSpec(codeRef.current, currentConstraints);
-        lintErrors = lintMessages.map((msg): DiagnosticMessage => ({
-          message: msg.message,
-          line: msg.line,
-          column: msg.column,
-          severity: msg.severity,
-        }));
+        try {
+          // Lazy import linter to avoid loading ESLint modules until needed
+          const { lintFormSpec } = await import("../lib/linter");
+          const lintMessages = lintFormSpec(codeRef.current, currentConstraints);
+          lintErrors = lintMessages.map((msg): DiagnosticMessage => ({
+            message: msg.message,
+            line: msg.line,
+            column: msg.column,
+            severity: msg.severity,
+          }));
+        } catch (error) {
+          // Linting failed (likely due to browser compatibility issues)
+          // Log the error but don't block compilation
+          console.warn("ESLint linting failed in browser:", error);
+        }
       }
 
       // Then run compilation (TypeScript transpile + execute + schema generation)

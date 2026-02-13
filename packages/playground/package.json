@@ -40,6 +40,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "typescript": "^5.7.3",
     "vite": "^6.3.0",
+    "vite-plugin-node-polyfills": "^0.25.0",
     "vite-plugin-static-copy": "^2.3.0",
     "vitest": "^3.0.0"
   },
