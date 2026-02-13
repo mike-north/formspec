@@ -2,10 +2,6 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
-import path from "path";
-
-// Get the directory path for this config file
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 /**
  * Vite plugin to stub Node.js-specific packages that are optionally imported
@@ -74,42 +70,20 @@ export default { IgnorePattern };
 
 /**
  * Vite plugin to inject process polyfill into the HTML.
- * This is needed for @typescript-eslint/parser which references process.env.
+ * This ensures process.env is available before any modules load.
  */
 function injectProcessPolyfill(): Plugin {
   return {
     name: "inject-process-polyfill",
     transformIndexHtml(html) {
-      // Inject polyfills for Node.js globals that ESLint and related packages expect
-      // We inject at the start of <head> to ensure they're available before module scripts load
+      // Inject minimal process polyfill at the start of <head>
+      // The vite-plugin-node-polyfills handles the full polyfill in modules,
+      // but we need this early injection to ensure process.env exists before module loading
       const polyfillScript = `<script>
-// Polyfill process for Node.js compatibility in browser
-window.process = { env: {} };
-
-// Polyfill path module for Node.js compatibility in browser
-window.path = {
-  dirname: function(path) { 
-    const lastSlash = path.lastIndexOf('/');
-    return lastSlash === -1 ? '.' : path.slice(0, lastSlash);
-  },
-  basename: function(path) {
-    const lastSlash = path.lastIndexOf('/');
-    return lastSlash === -1 ? path : path.slice(lastSlash + 1);
-  },
-  extname: function(path) {
-    const lastDot = path.lastIndexOf('.');
-    const lastSlash = path.lastIndexOf('/');
-    return (lastDot === -1 || lastDot < lastSlash) ? '' : path.slice(lastDot);
-  },
-  join: function(...parts) {
-    return parts.filter(p => p).join('/').replace(/\\/+/g, '/');
-  },
-  resolve: function(...parts) {
-    return parts.filter(p => p).join('/').replace(/\\/+/g, '/');
-  },
-  sep: '/',
-  delimiter: ':'
-};
+// Minimal process polyfill for early module initialization
+if (typeof window.process === 'undefined') {
+  window.process = { env: {} };
+}
 </script>
 `;
       return html.replace("<head>", "<head>" + polyfillScript);
@@ -141,14 +115,6 @@ export default defineConfig({
   ],
   // Base path for GitHub Pages (mike-north/formspec)
   base: "/formspec/",
-  // Resolve configuration to handle Node.js built-ins
-  resolve: {
-    alias: {
-      // Alias Node.js built-ins to our polyfills
-      path: path.resolve(__dirname, "src/polyfills/path.ts"),
-      "node:path": path.resolve(__dirname, "src/polyfills/path.ts"),
-    },
-  },
   // Optimize dependencies to resolve browser-specific entry points
   optimizeDeps: {
     include: ["eslint/universal"],
