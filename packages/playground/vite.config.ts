@@ -14,7 +14,9 @@ function stubNodePackages(): Plugin {
     "@eslint/eslintrc", // The non-universal version
   ]);
 
-  // Node.js built-in modules that need polyfills
+  // Node.js built-in modules that need to be stubbed
+  // Note: path, process, os, util, events are polyfilled by vite-plugin-node-polyfills
+  // The modules listed here are ones that Vite tries to import but aren't polyfilled
   const nodeBuiltins = new Set([
     "path",
     "node:path",
@@ -59,8 +61,8 @@ export default { IgnorePattern };
           `;
         }
         
-        // Return polyfills for specific Node.js modules - these are handled by vite-plugin-node-polyfills now
-        // Return an empty module for other packages
+        // Return an empty module for other built-ins that vite-plugin-node-polyfills doesn't handle
+        // These are typically just stubbed since they're not used in the browser
         return "export default {};";
       }
       return null;
@@ -71,16 +73,19 @@ export default { IgnorePattern };
 /**
  * Vite plugin to inject process polyfill into the HTML.
  * This ensures process.env is available before any modules load.
+ * 
+ * This is needed because some modules check for process.env during initialization,
+ * before the vite-plugin-node-polyfills can inject the full process polyfill.
  */
 function injectProcessPolyfill(): Plugin {
   return {
     name: "inject-process-polyfill",
     transformIndexHtml(html) {
       // Inject minimal process polyfill at the start of <head>
-      // The vite-plugin-node-polyfills handles the full polyfill in modules,
-      // but we need this early injection to ensure process.env exists before module loading
+      // This provides early access to process.env before module loading
       const polyfillScript = `<script>
 // Minimal process polyfill for early module initialization
+// The full polyfill is provided by vite-plugin-node-polyfills
 if (typeof window.process === 'undefined') {
   window.process = { env: {} };
 }
