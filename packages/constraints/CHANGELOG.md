@@ -1,5 +1,12 @@
 # @formspec/constraints
 
+## 0.1.0-alpha.10
+
+### Patch Changes
+
+- Updated dependencies [[`15519c3`](https://github.com/mike-north/formspec/commit/15519c393904ed73748f3de8dd1a07b28cfdcf41)]:
+  - @formspec/core@0.1.0-alpha.10
+
 ## 0.1.0-alpha.9
 
 ### Patch Changes
