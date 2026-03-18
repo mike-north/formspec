@@ -46,16 +46,18 @@ export interface TypeConversionResult {
 }
 
 /**
- * Given a ts.Type for a class or interface, navigates to its declaration
- * and returns a Map from property name to its fully analyzed FieldInfo.
+ * Given a ts.Type for a named type (class, interface, or type alias with
+ * a type literal body), navigates to its declaration and returns a Map
+ * from property name to its fully analyzed FieldInfo.
  *
  * - **Classes**: uses `analyzeField` to extract decorators + JSDoc constraints
- * - **Interfaces**: extracts JSDoc constraint and display metadata tags
+ * - **Interfaces**: extracts `@Field_displayName`, `@Field_description`, and constraint tags
+ * - **Type aliases** (object literals): same as interfaces
  *
- * Returns null for non-class/non-interface types (type aliases, inline objects),
+ * Returns null for unnamed types (inline objects, mapped types, etc.),
  * preserving existing structural-only behavior for those cases.
  */
-function getClassFieldInfoMap(
+function getNamedTypeFieldInfoMap(
   type: ts.Type,
   checker: ts.TypeChecker
 ): Map<string, FieldInfo> | null {
@@ -147,7 +149,7 @@ function getObjectPropertyInfos(
   type: ts.ObjectType,
   checker: ts.TypeChecker
 ): ObjectPropertyInfo[] {
-  const classFieldMap = getClassFieldInfoMap(type, checker);
+  const classFieldMap = getNamedTypeFieldInfoMap(type, checker);
   const result: ObjectPropertyInfo[] = [];
 
   for (const prop of type.getProperties()) {

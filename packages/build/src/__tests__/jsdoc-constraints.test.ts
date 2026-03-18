@@ -9,7 +9,10 @@
 
 import { describe, it, expect } from "vitest";
 import * as ts from "typescript";
-import { extractJSDocConstraints, extractJSDocFieldMetadata } from "../analyzer/jsdoc-constraints.js";
+import {
+  extractJSDocConstraints,
+  extractJSDocFieldMetadata,
+} from "../analyzer/jsdoc-constraints.js";
 
 /**
  * Helper: creates an in-memory TypeScript source file and returns the
@@ -281,11 +284,16 @@ describe("@EnumOptions JSON parsing", () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       name: "EnumOptions",
-      args: [[{ id: "low", label: "Low" }, { id: "high", label: "High" }]],
+      args: [
+        [
+          { id: "low", label: "Low" },
+          { id: "high", label: "High" },
+        ],
+      ],
     });
   });
 
-  it("parses a valid JSON record (key-value options)", () => {
+  it("skips a JSON record (only arrays are accepted)", () => {
     const prop = getPropertyFromSource(`
       class Foo {
         /** @EnumOptions {"a":"Label A","b":"Label B"} */
@@ -294,11 +302,7 @@ describe("@EnumOptions JSON parsing", () => {
     `);
 
     const result = extractJSDocConstraints(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      name: "EnumOptions",
-      args: [{ a: "Label A", b: "Label B" }],
-    });
+    expect(result).toHaveLength(0);
   });
 
   it("accepts an empty JSON array", () => {
@@ -314,7 +318,7 @@ describe("@EnumOptions JSON parsing", () => {
     expect(result[0]).toMatchObject({ name: "EnumOptions", args: [[]] });
   });
 
-  it("accepts an empty JSON object", () => {
+  it("skips an empty JSON object", () => {
     const prop = getPropertyFromSource(`
       class Foo {
         /** @EnumOptions {} */
@@ -323,8 +327,7 @@ describe("@EnumOptions JSON parsing", () => {
     `);
 
     const result = extractJSDocConstraints(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]?.args[0]).toEqual({});
+    expect(result).toHaveLength(0);
   });
 
   it("skips malformed JSON syntax", () => {
