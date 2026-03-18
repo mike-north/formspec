@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { CONSTRAINT_TAG_DEFINITIONS, type ConstraintTagName } from "@formspec/core";
-import type { DecoratorInfo } from "./decorator-extractor.js";
+import type { DecoratorArg, DecoratorInfo } from "./decorator-extractor.js";
 
 /**
  * Extracts JSDoc constraint tags from a TypeScript AST node and returns
@@ -58,6 +58,19 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
         continue;
       }
       results.push(createSyntheticDecorator(constraintName, value));
+    } else if (expectedType === "json") {
+      // JSON type (EnumOptions) — parse inline JSON array/object
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        // Validate structure: must be an array or plain object (not a primitive)
+        if (!Array.isArray(parsed) && (typeof parsed !== "object" || parsed === null)) {
+          continue;
+        }
+        results.push(createSyntheticDecorator(constraintName, parsed as DecoratorArg));
+      } catch {
+        // Skip malformed JSON
+        continue;
+      }
     } else {
       // "string" type (Pattern)
       results.push(createSyntheticDecorator(constraintName, trimmed));
@@ -65,6 +78,59 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
   }
 
   return results;
+}
+
+/**
+ * Extracts `@displayName` and `@description` JSDoc tags from a node
+ * and returns a synthetic `Field` {@link DecoratorInfo} if either is present.
+ *
+ * This enables interface properties to carry display metadata via TSDoc
+ * tags instead of the `@Field` decorator (which requires a class):
+ *
+ * ```typescript
+ * interface Config {
+ *   // @Field_displayName Program Name
+ *   // @Field_description Internal identifier
+ *   programName: string;
+ * }
+ * ```
+ *
+ * @param node - The AST node to inspect for display metadata tags
+ * @returns A synthetic `Field` decorator info, or null if no tags found
+ */
+export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
+  const jsDocTags = ts.getJSDocTags(node);
+
+  let displayName: string | undefined;
+  let description: string | undefined;
+
+  for (const tag of jsDocTags) {
+    const tagName = tag.tagName.text;
+    const commentText = getTagCommentText(tag);
+    if (commentText === undefined || commentText.trim() === "") {
+      continue;
+    }
+
+    const trimmed = commentText.trim();
+
+    if (tagName === "Field_displayName") {
+      displayName = trimmed;
+    } else if (tagName === "Field_description") {
+      description = trimmed;
+    }
+  }
+
+  if (displayName === undefined && description === undefined) {
+    return null;
+  }
+
+  // Build the FieldOptions-shaped arg object
+  const fieldOpts: Record<string, DecoratorArg> = {
+    ...(displayName !== undefined ? { displayName } : {}),
+    ...(description !== undefined ? { description } : {}),
+  };
+
+  return createSyntheticDecorator("Field", fieldOpts);
 }
 
 /**
@@ -92,7 +158,7 @@ function getTagCommentText(tag: ts.JSDocTag): string | undefined {
  * decorator AST node. Downstream constraint processing only uses
  * the `name` and `args` fields.
  */
-function createSyntheticDecorator(name: string, value: string | number): DecoratorInfo {
+function createSyntheticDecorator(name: string, value: DecoratorArg): DecoratorInfo {
   return {
     name,
     args: [value],

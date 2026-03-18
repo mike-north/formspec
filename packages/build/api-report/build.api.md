@@ -122,7 +122,16 @@ export interface GenerateFromClassResult {
 export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>): JSONSchema7;
 
 // @public
+export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
+
+// @public
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
+
+// @public
+export interface GenerateSchemasOptions {
+    filePath: string;
+    typeName: string;
+}
 
 // @public
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;

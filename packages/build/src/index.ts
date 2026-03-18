@@ -65,6 +65,7 @@ export type {
   ClassSchemas,
   GenerateFromClassOptions,
   GenerateFromClassResult,
+  GenerateSchemasOptions,
 } from "./generators/class-schema.js";
 
 export type { TypeMetadata, DecoratedClassInfo, CodegenOptions } from "./codegen/index.js";
@@ -80,7 +81,10 @@ export { generateUiSchema } from "./ui-schema/generator.js";
 // Decorator DSL: High-Level Entry Points
 // =============================================================================
 
-export { generateSchemasFromClass } from "./generators/class-schema.js";
+export { generateSchemasFromClass, generateSchemas } from "./generators/class-schema.js";
+
+// generateSchemas is the recommended entry point — it auto-detects class/interface/type alias.
+// generateSchemasFromClass is retained for backwards compatibility.
 
 export { findDecoratedClasses, generateCodegenOutput, runCodegen } from "./codegen/index.js";
 

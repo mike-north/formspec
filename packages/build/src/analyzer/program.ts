@@ -93,6 +93,33 @@ export function createProgramContext(filePath: string): ProgramContext {
 }
 
 /**
+ * Generic AST node finder by name. Walks the source file tree and returns
+ * the first node matching the predicate with the given name.
+ */
+function findNodeByName<T extends ts.Node>(
+  sourceFile: ts.SourceFile,
+  name: string,
+  predicate: (node: ts.Node) => node is T,
+  getName: (node: T) => string | undefined
+): T | null {
+  let result: T | null = null;
+
+  function visit(node: ts.Node): void {
+    if (result) return;
+
+    if (predicate(node) && getName(node) === name) {
+      result = node;
+      return;
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return result;
+}
+
+/**
  * Finds a class declaration by name in a source file.
  *
  * @param sourceFile - The source file to search
@@ -103,19 +130,33 @@ export function findClassByName(
   sourceFile: ts.SourceFile,
   className: string
 ): ts.ClassDeclaration | null {
-  let result: ts.ClassDeclaration | null = null;
+  return findNodeByName(sourceFile, className, ts.isClassDeclaration, (n) => n.name?.text);
+}
 
-  function visit(node: ts.Node): void {
-    if (result) return;
+/**
+ * Finds an interface declaration by name in a source file.
+ *
+ * @param sourceFile - The source file to search
+ * @param interfaceName - Name of the interface to find
+ * @returns The interface declaration node, or null if not found
+ */
+export function findInterfaceByName(
+  sourceFile: ts.SourceFile,
+  interfaceName: string
+): ts.InterfaceDeclaration | null {
+  return findNodeByName(sourceFile, interfaceName, ts.isInterfaceDeclaration, (n) => n.name.text);
+}
 
-    if (ts.isClassDeclaration(node) && node.name?.text === className) {
-      result = node;
-      return;
-    }
-
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-  return result;
+/**
+ * Finds a type alias declaration by name in a source file.
+ *
+ * @param sourceFile - The source file to search
+ * @param aliasName - Name of the type alias to find
+ * @returns The type alias declaration node, or null if not found
+ */
+export function findTypeAliasByName(
+  sourceFile: ts.SourceFile,
+  aliasName: string
+): ts.TypeAliasDeclaration | null {
+  return findNodeByName(sourceFile, aliasName, ts.isTypeAliasDeclaration, (n) => n.name.text);
 }
