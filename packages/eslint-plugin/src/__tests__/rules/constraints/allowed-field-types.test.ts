@@ -142,10 +142,7 @@ ruleTester.run("constraints-allowed-field-types", allowedFieldTypes, {
         field.array("items", { name: "x" });
       `,
       options: [{ dynamicEnum: "error", array: "error" }],
-      errors: [
-        { messageId: "disallowedFieldType" },
-        { messageId: "disallowedFieldType" },
-      ],
+      errors: [{ messageId: "disallowedFieldType" }, { messageId: "disallowedFieldType" }],
     },
     // field.enum() (staticEnum constraint)
     {

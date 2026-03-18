@@ -16,6 +16,10 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
+    },
+    "./internals": {
+      "types": "./dist/internals.d.ts",
+      "import": "./dist/internals.js"
     }
   },
   "files": [
@@ -34,7 +38,11 @@
   "dependencies": {
     "@formspec/core": "workspace:*"
   },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "devDependencies": {
+    "@formspec/decorators": "workspace:*",
     "@formspec/dsl": "workspace:*",
     "vitest": "^3.0.0"
   },

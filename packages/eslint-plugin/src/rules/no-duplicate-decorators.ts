@@ -4,8 +4,8 @@
  * Ensures a field doesn't have the same decorator applied multiple times.
  *
  * Invalid:
- *   @Label("First")
- *   @Label("Second")  // Duplicate
+ *   @Field({ displayName: "First" })
+ *   @Field({ displayName: "Second" })  // Duplicate
  *   field!: string;
  *
  *   @EnumOptions(["a", "b"])
@@ -14,7 +14,7 @@
  */
 
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { getFormSpecDecorators } from "../utils/decorator-utils.js";
+import { getFormSpecDecorators, FORMSPEC_DECORATORS } from "../utils/decorator-utils.js";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -22,29 +22,12 @@ const createRule = ESLintUtils.RuleCreator(
 
 type MessageIds = "duplicateDecorator";
 
-/**
- * Decorators that should only appear once per field.
- */
-const SINGLE_USE_DECORATORS = new Set([
-  "Label",
-  "Placeholder",
-  "Optional",
-  "Min",
-  "Max",
-  "MinItems",
-  "MaxItems",
-  "EnumOptions",
-  "Group",
-  "ShowWhen",
-]);
-
 export const noDuplicateDecorators = createRule<[], MessageIds>({
   name: "no-duplicate-decorators",
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensures a field doesn't have the same decorator applied multiple times",
+      description: "Ensures a field doesn't have the same decorator applied multiple times",
     },
     messages: {
       duplicateDecorator:
@@ -63,7 +46,7 @@ export const noDuplicateDecorators = createRule<[], MessageIds>({
         const seen = new Map<string, boolean>();
 
         for (const decorator of decorators) {
-          if (!SINGLE_USE_DECORATORS.has(decorator.name)) continue;
+          if (!FORMSPEC_DECORATORS.has(decorator.name)) continue;
 
           if (seen.has(decorator.name)) {
             context.report({

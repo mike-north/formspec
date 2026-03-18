@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Full Name",
+      "description": "Your legal name",
+      "minLength": 2,
+      "maxLength": 100
+    },
+    "email": {
+      "type": "string",
+      "title": "Email Address",
+      "description": "We'll send a confirmation email",
+      "pattern": "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"
+    },
+    "age": {
+      "type": "number",
+      "title": "Age",
+      "minimum": 13,
+      "maximum": 120
+    },
+    "username": {
+      "type": "string",
+      "title": "Username",
+      "minLength": 3,
+      "maxLength": 30,
+      "pattern": "^[a-zA-Z0-9_]+$"
+    },
+    "accountType": {
+      "enum": ["personal", "business", "enterprise"],
+      "title": "Account Type"
+    },
+    "language": {
+      "enum": ["en", "es", "fr", "de", "ja"],
+      "title": "Preferred Language"
+    },
+    "newsletter": {
+      "type": "boolean",
+      "title": "Newsletter"
+    },
+    "companyName": {
+      "type": "string",
+      "title": "Company Name"
+    },
+    "taxId": {
+      "type": "string",
+      "title": "Tax ID",
+      "pattern": "^\\d{2}-\\d{7}$"
+    },
+    "plan": {
+      "type": "string",
+      "title": "Plan",
+      "deprecated": true
+    },
+    "referralCode": {
+      "type": "string",
+      "title": "Referral Code",
+      "default": "NONE"
+    }
+  },
+  "required": ["name", "email", "age", "username", "accountType", "language", "referralCode"]
+}

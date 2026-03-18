@@ -1,12 +1,17 @@
 /**
- * Unit tests for the analyzer module.
+ * Unit tests for the analyzer module (imported from @formspec/build).
+ *
+ * These tests verify that the CLI can use the analysis API from @formspec/build.
+ * Comprehensive analyzer tests are in @formspec/build.
  */
 
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import { createProgramContext, findClassByName } from "../analyzer/program.js";
-import { analyzeClass } from "../analyzer/class-analyzer.js";
-import { convertType } from "../analyzer/type-converter.js";
+import {
+  createProgramContext,
+  findClassByName,
+  analyzeClass,
+} from "@formspec/build/internals";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -80,121 +85,5 @@ describe("analyzeClass", () => {
     expect(emailField?.optional).toBe(true);
     expect(amountField?.optional).toBe(false);
   });
-
-  it("analyzes instance methods", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
-    if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    expect(analysis.instanceMethods).toHaveLength(2);
-
-    const methodNames = analysis.instanceMethods.map((m) => m.name);
-    expect(methodNames).toContain("activate");
-    expect(methodNames).toContain("cancelPlan");
-  });
-
-  it("analyzes static methods", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
-    if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    expect(analysis.staticMethods).toHaveLength(1);
-    expect(analysis.staticMethods[0]?.name).toBe("createStandard");
-  });
-
-  it("detects InferSchema references in method parameters", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
-    if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    const activateMethod = analysis.instanceMethods.find(
-      (m) => m.name === "activate"
-    );
-    expect(activateMethod?.parameters).toHaveLength(1);
-    expect(activateMethod?.parameters[0]?.formSpecExportName).toBe(
-      "ActivateParams"
-    );
-
-    const cancelMethod = analysis.instanceMethods.find(
-      (m) => m.name === "cancelPlan"
-    );
-    expect(cancelMethod?.parameters[0]?.formSpecExportName).toBe("CancelParams");
-  });
-
-  it("analyzes SimpleProduct without FormSpec references", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
-    if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    expect(analysis.name).toBe("SimpleProduct");
-    expect(analysis.fields).toHaveLength(4);
-    expect(analysis.instanceMethods).toHaveLength(1);
-    expect(analysis.staticMethods).toHaveLength(0);
-
-    // The update method shouldn't have a FormSpec reference
-    const updateMethod = analysis.instanceMethods[0];
-    expect(updateMethod?.parameters[0]?.formSpecExportName).toBeNull();
-  });
 });
 
-describe("convertType", () => {
-  it("converts string type", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
-    if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    const nameField = analysis.fields.find((f) => f.name === "name");
-    if (!nameField) throw new Error("name field not found");
-    const result = convertType(nameField.type, ctx.checker);
-
-    expect(result.jsonSchema.type).toBe("string");
-    expect(result.formSpecFieldType).toBe("text");
-  });
-
-  it("converts number type", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
-    if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    const priceField = analysis.fields.find((f) => f.name === "price");
-    if (!priceField) throw new Error("price field not found");
-    const result = convertType(priceField.type, ctx.checker);
-
-    // price is optional so it's number | undefined
-    expect(result.formSpecFieldType).toBe("number");
-  });
-
-  it("converts boolean type", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
-    if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    const activeField = analysis.fields.find((f) => f.name === "active");
-    if (!activeField) throw new Error("active field not found");
-    const result = convertType(activeField.type, ctx.checker);
-
-    expect(result.jsonSchema.type).toBe("boolean");
-    expect(result.formSpecFieldType).toBe("boolean");
-  });
-
-  it("converts string literal union to enum", () => {
-    const ctx = createProgramContext(sampleFormsPath);
-    const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
-    if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-
-    const statusField = analysis.fields.find((f) => f.name === "status");
-    if (!statusField) throw new Error("status field not found");
-    const result = convertType(statusField.type, ctx.checker);
-
-    expect(result.jsonSchema.enum).toEqual(["active", "paused", "canceled"]);
-    expect(result.formSpecFieldType).toBe("enum");
-  });
-});

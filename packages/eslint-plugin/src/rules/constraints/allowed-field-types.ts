@@ -61,8 +61,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Validates that field types are allowed by the project's constraints",
+      description: "Validates that field types are allowed by the project's constraints",
     },
     messages: {
       disallowedFieldType:
@@ -130,8 +129,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
 
         // Extract field name from first argument
         const fieldName = extractFieldName(node.arguments[0]);
-        const fieldTypeName =
-          FIELD_TYPE_NAMES[methodName] ?? `${methodName} field`;
+        const fieldTypeName = FIELD_TYPE_NAMES[methodName] ?? `${methodName} field`;
 
         context.report({
           node: node.callee.property,

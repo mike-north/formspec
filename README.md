@@ -30,18 +30,18 @@ import type { InferFormSchema } from "formspec";
 
 // Define your form
 const ContactForm = formspec(
-  group("Personal Info",
+  group(
+    "Personal Info",
     field.text("name", { label: "Full Name", required: true }),
-    field.text("email", { label: "Email", required: true }),
+    field.text("email", { label: "Email", required: true })
   ),
-  group("Preferences",
+  group(
+    "Preferences",
     field.enum("contactMethod", ["email", "phone", "mail"], {
       label: "Preferred Contact Method",
     }),
-    when(is("contactMethod", "phone"),
-      field.text("phoneNumber", { label: "Phone Number" }),
-    ),
-  ),
+    when(is("contactMethod", "phone"), field.text("phoneNumber", { label: "Phone Number" }))
+  )
 );
 
 // Infer the TypeScript type
@@ -58,16 +58,16 @@ const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
 
 ```typescript
 // Text input
-field.text("name", { label: "Name", placeholder: "Enter name", required: true })
+field.text("name", { label: "Name", placeholder: "Enter name", required: true });
 
 // Number input
-field.number("age", { label: "Age", min: 0, max: 150 })
+field.number("age", { label: "Age", min: 0, max: 150 });
 
 // Boolean checkbox
-field.boolean("subscribe", { label: "Subscribe to newsletter" })
+field.boolean("subscribe", { label: "Subscribe to newsletter" });
 
 // Static enum (dropdown/radio)
-field.enum("status", ["draft", "published", "archived"], { label: "Status" })
+field.enum("status", ["draft", "published", "archived"], { label: "Status" });
 ```
 
 ### Dynamic Fields
@@ -75,37 +75,41 @@ field.enum("status", ["draft", "published", "archived"], { label: "Status" })
 ```typescript
 // Dynamic enum - options fetched at runtime
 // Second argument is the resolver identifier (maps to a resolver defined with defineResolvers)
-field.dynamicEnum("country", "fetch_countries", { label: "Country" })
+field.dynamicEnum("country", "fetch_countries", { label: "Country" });
 
 // Dynamic enum with dependencies
 field.dynamicEnum("city", "fetch_cities", {
   label: "City",
   params: ["country"], // city options depend on selected country
-})
+});
 ```
 
 ### Complex Fields
 
 ```typescript
 // Object field - nested properties under a single key
-field.object("address",
+field.object(
+  "address",
   field.text("street", { label: "Street" }),
   field.text("city", { label: "City" }),
-  field.text("zip", { label: "ZIP Code" }),
-)
+  field.text("zip", { label: "ZIP Code" })
+);
 
 // Array field - repeating items
-field.array("contacts",
+field.array(
+  "contacts",
   field.text("name", { label: "Contact Name" }),
-  field.text("email", { label: "Email" }),
-)
+  field.text("email", { label: "Email" })
+);
 
 // Array with constraints
-field.arrayWithConfig("lineItems", { label: "Line Items", minItems: 1, maxItems: 20 },
+field.arrayWithConfig(
+  "lineItems",
+  { label: "Line Items", minItems: 1, maxItems: 20 },
   field.text("description"),
   field.number("quantity", { min: 1 }),
-  field.number("price", { min: 0 }),
-)
+  field.number("price", { min: 0 })
+);
 ```
 
 ## Structure Elements
@@ -116,14 +120,8 @@ Groups provide visual organization without affecting the schema structure:
 
 ```typescript
 const form = formspec(
-  group("Customer Information",
-    field.text("name"),
-    field.text("email"),
-  ),
-  group("Order Details",
-    field.number("quantity"),
-    field.number("total"),
-  ),
+  group("Customer Information", field.text("name"), field.text("email")),
+  group("Order Details", field.number("quantity"), field.number("total"))
 );
 ```
 
@@ -135,27 +133,28 @@ Show/hide fields based on other field values:
 const form = formspec(
   field.enum("paymentMethod", ["card", "bank", "crypto"]),
 
-  when(is("paymentMethod", "card"),
+  when(
+    is("paymentMethod", "card"),
     field.text("cardNumber", { label: "Card Number" }),
-    field.text("cvv", { label: "CVV" }),
+    field.text("cvv", { label: "CVV" })
   ),
 
-  when(is("paymentMethod", "bank"),
+  when(
+    is("paymentMethod", "bank"),
     field.text("accountNumber", { label: "Account Number" }),
-    field.text("routingNumber", { label: "Routing Number" }),
-  ),
+    field.text("routingNumber", { label: "Routing Number" })
+  )
 );
 ```
 
 Conditionals can be nested for complex logic:
 
 ```typescript
-when(is("country", "US"),
+when(
+  is("country", "US"),
   field.text("ssn", { label: "SSN" }),
-  when(is("paymentMethod", "bank"),
-    field.text("routingNumber", { label: "Routing Number" }),
-  ),
-)
+  when(is("paymentMethod", "bank"), field.text("routingNumber", { label: "Routing Number" }))
+);
 ```
 
 ## Dynamic Data with Resolvers
@@ -179,7 +178,7 @@ const resolvers = defineResolvers(ContactForm, {
     const country = params.country;
     const cities = await fetchCitiesForCountry(country);
     return {
-      options: cities.map(c => ({ value: c.id, label: c.name })),
+      options: cities.map((c) => ({ value: c.id, label: c.name })),
       validity: "valid",
     };
   },
@@ -197,13 +196,8 @@ const form = formspec(
   field.text("name"),
   field.number("age"),
   field.enum("role", ["admin", "user"]),
-  field.object("address",
-    field.text("city"),
-    field.text("country"),
-  ),
-  field.array("tags",
-    field.text("tag"),
-  ),
+  field.object("address", field.text("city"), field.text("country")),
+  field.array("tags", field.text("tag"))
 );
 
 // Infer from elements
@@ -235,7 +229,7 @@ import { formspec, field, group, buildFormSchemas } from "formspec";
 
 const form = formspec(
   field.text("name", { label: "Full Name" }),
-  field.enum("country", ["us", "ca"], { label: "Country" }),
+  field.enum("country", ["us", "ca"], { label: "Country" })
 );
 
 // Works at build-time
@@ -245,6 +239,7 @@ const { jsonSchema, uiSchema } = buildFormSchemas(form);
 ```
 
 **Use the Chain DSL when:**
+
 - You're working with dynamically fetched schema data (the only option for this)
 - You want JSON Schema or UI Schema at runtime without a codegen step
 - You want type information available without extra build steps
@@ -274,6 +269,7 @@ class InvoiceForm {
 ```
 
 **Use the Decorator DSL when:**
+
 - You prefer class-based domain models
 - Your types are known at build-time (not dynamically fetched)
 - You only need schemas at build-time (no codegen), or you're willing to run `formspec codegen` for runtime access
@@ -282,12 +278,12 @@ See [@formspec/decorators](./packages/decorators/README.md) for usage details.
 
 ### Comparison
 
-| Aspect | Chain DSL | Decorator DSL |
-|--------|-----------|---------------|
-| Runtime schemas | Works directly | Requires `formspec codegen` |
-| Build-time schemas | Works directly | Works directly |
-| Dynamic data | Native support | N/A |
-| Type source | Builder methods | TypeScript types |
+| Aspect             | Chain DSL       | Decorator DSL               |
+| ------------------ | --------------- | --------------------------- |
+| Runtime schemas    | Works directly  | Requires `formspec codegen` |
+| Build-time schemas | Works directly  | Works directly              |
+| Dynamic data       | Native support  | N/A                         |
+| Type source        | Builder methods | TypeScript types            |
 
 ## JSON Schema Extensions
 
@@ -320,15 +316,15 @@ Added to dynamic enum fields with dependencies. Lists field names whose values a
 
 FormSpec is organized as a monorepo with the following packages:
 
-| Package | Description |
-|---------|-------------|
-| `formspec` | Main package with all re-exports (recommended) |
-| `@formspec/core` | Core type definitions |
-| `@formspec/dsl` | DSL functions (`field`, `group`, `when`, `formspec`) |
-| `@formspec/build` | Schema generators |
-| `@formspec/runtime` | Resolver helpers |
-| `@formspec/constraints` | Constraint definitions and validators |
-| `@formspec/eslint-plugin` | ESLint rules for FormSpec |
+| Package                   | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `formspec`                | Main package with all re-exports (recommended)       |
+| `@formspec/core`          | Core type definitions                                |
+| `@formspec/dsl`           | DSL functions (`field`, `group`, `when`, `formspec`) |
+| `@formspec/build`         | Schema generators                                    |
+| `@formspec/runtime`       | Resolver helpers                                     |
+| `@formspec/constraints`   | Constraint definitions and validators                |
+| `@formspec/eslint-plugin` | ESLint rules for FormSpec                            |
 
 For most use cases, just import from `formspec`:
 
@@ -377,7 +373,7 @@ import { formspecWithValidation, validateForm } from "formspec";
 const form = formspecWithValidation(
   { validate: true, name: "MyForm" },
   field.text("name"),
-  when(is("status", "draft"), field.text("notes")), // Error: "status" doesn't exist
+  when(is("status", "draft"), field.text("notes")) // Error: "status" doesn't exist
 );
 
 // Or validate separately
@@ -404,26 +400,26 @@ Create a `.formspec.yml` file in your project root:
 ```yaml
 constraints:
   fieldTypes:
-    text: off           # Allow (default)
-    dynamicSchema: error  # Disallow
-    array: warn         # Allow with warning
+    text: off # Allow (default)
+    dynamicSchema: error # Disallow
+    array: warn # Allow with warning
 
   layout:
-    conditionals: off   # Allow when() conditionals
-    maxNestingDepth: 2  # Max nesting depth for objects/arrays
+    conditionals: off # Allow when() conditionals
+    maxNestingDepth: 2 # Max nesting depth for objects/arrays
 
   fieldOptions:
-    placeholder: off    # Allow placeholder option
-    minItems: warn      # Warn on array length constraints
+    placeholder: off # Allow placeholder option
+    minItems: warn # Warn on array length constraints
 ```
 
 ### Severity Levels
 
-| Severity | Behavior |
-|----------|----------|
-| `"off"` | Feature is allowed (default) |
-| `"warn"` | Emit warning but allow |
-| `"error"` | Disallow - fail validation |
+| Severity  | Behavior                     |
+| --------- | ---------------------------- |
+| `"off"`   | Feature is allowed (default) |
+| `"warn"`  | Emit warning but allow       |
+| `"error"` | Disallow - fail validation   |
 
 ### Available Constraints
 
@@ -467,11 +463,12 @@ The simplest approach is using the `writeSchemas()` helper:
 import { formspec, field, group, writeSchemas } from "formspec";
 
 const ProductForm = formspec(
-  group("Product",
+  group(
+    "Product",
     field.text("name", { required: true }),
     field.enum("status", ["draft", "active", "archived"]),
-    field.number("price", { min: 0 }),
-  ),
+    field.number("price", { min: 0 })
+  )
 );
 
 // Write schemas to ./generated/product-schema.json and ./generated/product-uischema.json
@@ -540,7 +537,7 @@ import { formspec, field } from "formspec";
 
 export default formspec(
   field.text("name", { required: true }),
-  field.enum("status", ["draft", "active"]),
+  field.enum("status", ["draft", "active"])
 );
 ```
 

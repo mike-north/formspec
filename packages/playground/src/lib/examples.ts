@@ -129,6 +129,76 @@ const SurveyForm = formspec(
 export default SurveyForm;`,
   },
   {
+    name: "Decorator DSL",
+    description: "Form definition using TypeScript decorators",
+    code: `import {
+  Field,
+  Group,
+  ShowWhen,
+  EnumOptions,
+  Minimum,
+  MaxLength,
+  Pattern,
+  customDecorator,
+} from "@formspec/decorators";
+
+// Create custom decorators via an extension namespace
+const aiExt = customDecorator("ai-assist");
+
+// Marker decorator — no arguments, just flags the field
+const AISuggested = aiExt.marker("AISuggested");
+
+// Parameterized decorator — accepts a confidence threshold
+const AIConfidence = aiExt.as<{ threshold: number }>("AIConfidence");
+
+class SupportTicketForm {
+  @Field({ displayName: "Full Name", description: "Your legal name" })
+  @MaxLength(100)
+  name!: string;
+
+  @Field({ displayName: "Email Address" })
+  @Pattern("^[^@]+@[^@]+\\.[^@]+$")
+  email!: string;
+
+  @Field({ displayName: "Age", description: "Must be 18 or older" })
+  @Minimum(18)
+  age!: number;
+
+  @Group("Ticket Details")
+  @Field({ displayName: "Priority", order: 1 })
+  @EnumOptions({ low: "Low", medium: "Medium", high: "High", critical: "Critical" })
+  priority!: "low" | "medium" | "high" | "critical";
+
+  @Group("Ticket Details")
+  @Field({ displayName: "Category" })
+  @EnumOptions(["billing", "technical", "general"])
+  category!: "billing" | "technical" | "general";
+
+  @Group("Ticket Details")
+  @Field({ displayName: "Status" })
+  status: "pending" | "active" = "pending";
+
+  @Field({ displayName: "Issue Description", description: "Describe your issue" })
+  @MaxLength(2000)
+  @AISuggested
+  description!: string;
+
+  @Field({ displayName: "Suggested Resolution" })
+  @AIConfidence({ threshold: 0.85 })
+  suggestedResolution?: string;
+
+  @ShowWhen({ field: "priority", value: "critical" })
+  @Field({ displayName: "Escalation Contact" })
+  escalationContact?: string;
+
+  /** @deprecated Use \`category\` instead. */
+  @Field({ displayName: "Department (Deprecated)" })
+  department?: string;
+}
+
+export default SupportTicketForm;`,
+  },
+  {
     name: "Minimal Example",
     description: "Simplest possible FormSpec",
     code: `import { formspec, field } from "@formspec/dsl";
@@ -143,8 +213,9 @@ export default SimpleForm;`,
 ];
 
 // Safe fallback: examples array is statically defined with at least one element
-export const defaultExample = examples[0] ?? examples[examples.length - 1] ?? {
-  name: "Default",
-  description: "Default example",
-  code: 'import { formspec, field } from "@formspec/dsl";\nexport default formspec(field.text("name"));',
-};
+export const defaultExample = examples[0] ??
+  examples[examples.length - 1] ?? {
+    name: "Default",
+    description: "Default example",
+    code: 'import { formspec, field } from "@formspec/dsl";\nexport default formspec(field.text("name"));',
+  };

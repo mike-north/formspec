@@ -28,8 +28,7 @@ export const showwhenSuggestsOptional = createRule<[], MessageIds>({
   meta: {
     type: "suggestion",
     docs: {
-      description:
-        "Suggests that fields with @ShowWhen should be marked as optional",
+      description: "Suggests that fields with @ShowWhen should be marked as optional",
     },
     messages: {
       shouldBeOptional:

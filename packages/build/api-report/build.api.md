@@ -16,8 +16,21 @@ export interface BuildResult {
     readonly uiSchema: UISchema;
 }
 
-// Warning: (ae-forgotten-export) The symbol "UISchemaElementBase" needs to be exported by the entry point index.d.ts
-//
+// @public
+export interface ClassSchemas {
+    jsonSchema: ExtendedJSONSchema7;
+    uiSchema: {
+        elements: FormSpecField[];
+    };
+}
+
+// @public
+export interface CodegenOptions {
+    baseDir?: string;
+    files: string[];
+    output: string;
+}
+
 // @public
 export interface ControlElement extends UISchemaElementBase {
     // (undocumented)
@@ -29,10 +42,93 @@ export interface ControlElement extends UISchemaElementBase {
 }
 
 // @public
+export interface DecoratedClassInfo {
+    isExported: boolean;
+    name: string;
+    sourcePath: string;
+    typeMetadata: Record<string, TypeMetadata>;
+}
+
+// @public
+export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+// @public
+export function findDecoratedClasses(files: string[], baseDir: string): DecoratedClassInfo[];
+
+// @public
+export interface FormSpecField {
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    _field: string;
+    // (undocumented)
+    fields?: FormSpecField[];
+    // (undocumented)
+    group?: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    label?: string;
+    // (undocumented)
+    max?: number;
+    // (undocumented)
+    maxItems?: number;
+    // (undocumented)
+    maxLength?: number;
+    // (undocumented)
+    min?: number;
+    // (undocumented)
+    minItems?: number;
+    // (undocumented)
+    minLength?: number;
+    // (undocumented)
+    options?: (string | {
+        id: string;
+        label: string;
+    })[];
+    // (undocumented)
+    pattern?: string;
+    // (undocumented)
+    placeholder?: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    showWhen?: object;
+    // (undocumented)
+    step?: number;
+}
+
+// @public
+export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
+
+// @public
+export function generateCodegenOutput(classes: DecoratedClassInfo[], outputPath: string, baseDir: string): string;
+
+// @public
+export interface GenerateFromClassOptions {
+    className: string;
+    filePath: string;
+}
+
+// @public
+export interface GenerateFromClassResult {
+    jsonSchema: ExtendedJSONSchema7;
+    uiSchema: {
+        elements: FormSpecField[];
+    };
+}
+
+// @public
 export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>): JSONSchema7;
 
 // @public
+export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
+
+// @public
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+
+// @public
+export function getSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`): unknown;
 
 // @public
 export interface GroupLayout extends UISchemaElementBase {
@@ -73,6 +169,8 @@ export interface JSONSchema7 {
     const?: string | number | boolean | null;
     // (undocumented)
     default?: unknown;
+    // (undocumented)
+    deprecated?: boolean;
     // (undocumented)
     description?: string;
     // (undocumented)
@@ -131,12 +229,31 @@ export interface Rule {
 }
 
 // @public
+export interface RuleConditionSchema {
+    // (undocumented)
+    allOf?: RuleConditionSchema[];
+    // (undocumented)
+    const?: unknown;
+    // (undocumented)
+    enum?: readonly unknown[];
+    // (undocumented)
+    maximum?: number;
+    // (undocumented)
+    minimum?: number;
+    // (undocumented)
+    properties?: Record<string, RuleConditionSchema>;
+    // (undocumented)
+    type?: string;
+}
+
+// @public
 export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 
 // @public
+export function runCodegen(options: CodegenOptions): void;
+
+// @public
 export interface SchemaBasedCondition {
-    // Warning: (ae-forgotten-export) The symbol "RuleConditionSchema" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     schema: RuleConditionSchema;
     // (undocumented)
@@ -144,10 +261,33 @@ export interface SchemaBasedCondition {
 }
 
 // @public
+export function setSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`, value: unknown): void;
+
+// @public
+export interface TypeMetadata {
+    itemType?: TypeMetadata;
+    nullable?: boolean;
+    optional?: boolean;
+    properties?: Record<string, TypeMetadata>;
+    type: string;
+    values?: unknown[];
+}
+
+// @public
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout;
 
 // @public
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout;
+
+// @public
+export interface UISchemaElementBase {
+    // (undocumented)
+    options?: Record<string, unknown>;
+    // (undocumented)
+    rule?: Rule;
+    // (undocumented)
+    type: UISchemaElementType;
+}
 
 // @public
 export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category";

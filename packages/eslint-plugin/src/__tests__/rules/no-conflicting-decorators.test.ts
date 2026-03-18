@@ -23,36 +23,48 @@ const ruleTester = new RuleTester({
 
 ruleTester.run("no-conflicting-decorators", noConflictingDecorators, {
   valid: [
-    // @Min and @Max both imply number - no conflict
+    // @Minimum and @Maximum both imply number - no conflict
     {
       code: `
-        function Min(n: number) { return () => {}; }
-        function Max(n: number) { return () => {}; }
+        function Minimum(n: number) { return () => {}; }
+        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Min(0)
-          @Max(100)
+          @Minimum(0)
+          @Maximum(100)
           value!: number;
         }
       `,
     },
-    // @MinItems and @MaxItems both imply array - no conflict
+    // @MinLength and @MaxLength both imply string - no conflict
     {
       code: `
-        function MinItems(n: number) { return () => {}; }
-        function MaxItems(n: number) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
+        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @MinItems(1)
-          @MaxItems(10)
-          items!: string[];
+          @MinLength(1)
+          @MaxLength(100)
+          name!: string;
+        }
+      `,
+    },
+    // All exclusive numeric decorators - no conflict
+    {
+      code: `
+        function ExclusiveMinimum(n: number) { return () => {}; }
+        function ExclusiveMaximum(n: number) { return () => {}; }
+        class Form {
+          @ExclusiveMinimum(0)
+          @ExclusiveMaximum(100)
+          value!: number;
         }
       `,
     },
     // Single decorator - no conflict possible
     {
       code: `
-        function Placeholder(s: string) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
         class Form {
-          @Placeholder("Enter name")
+          @MinLength(1)
           name!: string;
         }
       `,
@@ -60,52 +72,52 @@ ruleTester.run("no-conflicting-decorators", noConflictingDecorators, {
     // Non-type-hinting decorators
     {
       code: `
-        function Label(s: string) { return () => {}; }
-        function Optional() { return () => {}; }
+        function Field(opts: unknown) { return () => {}; }
+        function Group(name: string) { return () => {}; }
         class Form {
-          @Label("Name")
-          @Optional()
-          name?: string;
+          @Field({ displayName: "Name" })
+          @Group("personal")
+          name!: string;
         }
       `,
     },
   ],
   invalid: [
-    // @Min (number) + @Placeholder (string) - conflict
+    // @Minimum (number) + @MinLength (string) - conflict
     {
       code: `
-        function Min(n: number) { return () => {}; }
-        function Placeholder(s: string) { return () => {}; }
+        function Minimum(n: number) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
         class Form {
-          @Min(0)
-          @Placeholder("Enter value")
+          @Minimum(0)
+          @MinLength(1)
           field!: string;
         }
       `,
       errors: [{ messageId: "conflictingDecorators" }],
     },
-    // @MinItems (array) + @Min (number) - conflict
+    // @Pattern (string) + @Maximum (number) - conflict
     {
       code: `
-        function Min(n: number) { return () => {}; }
-        function MinItems(n: number) { return () => {}; }
+        function Pattern(s: string) { return () => {}; }
+        function Maximum(n: number) { return () => {}; }
         class Form {
-          @MinItems(1)
-          @Min(0)
-          field!: number[];
+          @Pattern("^[a-z]+$")
+          @Maximum(100)
+          field!: string;
         }
       `,
       errors: [{ messageId: "conflictingDecorators" }],
     },
-    // @Placeholder (string) + @MaxItems (array) - conflict
+    // @ExclusiveMinimum (number) + @MaxLength (string) - conflict
     {
       code: `
-        function Placeholder(s: string) { return () => {}; }
-        function MaxItems(n: number) { return () => {}; }
+        function ExclusiveMinimum(n: number) { return () => {}; }
+        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @Placeholder("Enter items")
-          @MaxItems(10)
-          field!: string[];
+          @ExclusiveMinimum(0)
+          @MaxLength(100)
+          field!: string;
         }
       `,
       errors: [{ messageId: "conflictingDecorators" }],

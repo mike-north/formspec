@@ -1,0 +1,20 @@
+{
+  "name": "@formspec-examples/standard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "build:schemas": "node --import tsx scripts/build-schemas.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@formspec/decorators": "workspace:*",
+    "@formspec/build": "workspace:*",
+    "@formspec/eslint-plugin": "workspace:*",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.1"
+  }
+}

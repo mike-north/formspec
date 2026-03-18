@@ -56,9 +56,8 @@ export interface FetchOptionsResponse<T = unknown> {
  * If the source has an `id` property, that becomes the value type.
  * Otherwise, defaults to `string`.
  */
-export type DataSourceValueType<Source extends string> =
-  Source extends keyof DataSourceRegistry
-    ? DataSourceRegistry[Source] extends { id: infer ID }
-      ? ID
-      : string
-    : string;
+export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry
+  ? DataSourceRegistry[Source] extends { id: infer ID }
+    ? ID
+    : string
+  : string;

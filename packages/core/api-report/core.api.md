@@ -37,6 +37,20 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
 }
 
 // @public
+export const CONSTRAINT_TAG_DEFINITIONS: {
+    readonly Minimum: "number";
+    readonly Maximum: "number";
+    readonly ExclusiveMinimum: "number";
+    readonly ExclusiveMaximum: "number";
+    readonly MinLength: "number";
+    readonly MaxLength: "number";
+    readonly Pattern: "string";
+};
+
+// @public
+export type ConstraintTagName = keyof typeof CONSTRAINT_TAG_DEFINITIONS;
+
+// @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
 
 // @public
@@ -117,6 +131,12 @@ export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional
 export interface FormSpec<Elements extends readonly FormElement[]> {
     readonly elements: Elements;
 }
+
+// @public
+export const FORMSPEC_DECORATOR_NAMES: readonly ["Field", "Group", "ShowWhen", "EnumOptions", "Minimum", "Maximum", "ExclusiveMinimum", "ExclusiveMaximum", "MinLength", "MaxLength", "Pattern"];
+
+// @public
+export type FormSpecDecoratorName = (typeof FORMSPEC_DECORATOR_NAMES)[number];
 
 // @public
 export interface FormState<Schema extends Record<string, unknown>> {

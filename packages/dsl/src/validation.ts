@@ -6,13 +6,7 @@
  * - All field references in conditionals point to existing fields
  */
 
-import type {
-  FormElement,
-  Group,
-  Conditional,
-  ArrayField,
-  ObjectField,
-} from "@formspec/core";
+import type { FormElement, Group, Conditional, ArrayField, ObjectField } from "@formspec/core";
 
 /**
  * Validation issue severity levels.
@@ -246,4 +240,3 @@ export function logValidationIssues(result: ValidationResult, formName?: string)
     }
   }
 }
-

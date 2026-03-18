@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 .claude/*.local.json
 # Claude Code local configuration (auto-added)
 .claude/*.local.*
+
+scratch
+.worktrees

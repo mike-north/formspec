@@ -79,10 +79,7 @@ export function when<
   const K extends string,
   const V,
   const Elements extends readonly FormElement[],
->(
-  predicate: Predicate<K, V>,
-  ...elements: Elements
-): Conditional<K, V, Elements> {
+>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements> {
   return {
     _type: "conditional",
     field: predicate.field,

@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "x-formspec-ui-hints": true,
+      "title": "Task Name",
+      "description": "A short name for this task"
+    },
+    "description": {
+      "type": "string",
+      "x-formspec-ui-hints": true,
+      "title": "Description"
+    },
+    "priority": {
+      "type": "number",
+      "title": "Priority",
+      "minimum": 1
+    },
+    "status": {
+      "enum": ["todo", "in-progress", "done"],
+      "title": "Status"
+    },
+    "assignee": {
+      "type": "string",
+      "title": "Assignee"
+    },
+    "submitLabel": {
+      "type": "string",
+      "x-formspec-actions": {
+        "label": "Submit",
+        "style": "primary"
+      },
+      "title": "Submit Action"
+    },
+    "cancelLabel": {
+      "type": "string",
+      "x-formspec-actions": {
+        "label": "Cancel",
+        "style": "secondary"
+      },
+      "title": "Cancel Action"
+    }
+  },
+  "required": ["name", "priority", "status", "submitLabel"]
+}

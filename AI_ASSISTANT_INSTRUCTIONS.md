@@ -24,9 +24,8 @@ import { formspec, field, group, when, is, buildFormSchemas } from "formspec";
 import type { InferFormSchema } from "formspec";
 
 // Step 1: Define the form structure
-const MyForm = formspec(
-  // Add fields here
-);
+const MyForm = formspec();
+// Add fields here
 
 // Step 2: Infer the TypeScript type (optional but recommended)
 type MyFormSchema = InferFormSchema<typeof MyForm>;
@@ -36,6 +35,7 @@ const { jsonSchema, uiSchema } = buildFormSchemas(MyForm);
 ```
 
 **Key points to communicate:**
+
 - Use `as const` on enum arrays to preserve literal types
 - Required fields should have `required: true`
 - The inferred type matches what form data will look like at runtime
@@ -72,11 +72,12 @@ const form = formspec(
   field.enum("role", ["admin", "editor", "viewer"] as const, {
     label: "Role",
     required: true,
-  }),
+  })
 );
 ```
 
 **Common mistakes to watch for:**
+
 - Forgetting `as const` on enum options (results in `string` instead of union type)
 - Not setting `required: true` for mandatory fields
 
@@ -86,18 +87,20 @@ Groups provide visual organization without changing the schema structure:
 
 ```typescript
 const form = formspec(
-  group("Personal Information",
+  group(
+    "Personal Information",
     field.text("firstName", { label: "First Name" }),
     field.text("lastName", { label: "Last Name" }),
-    field.text("email", { label: "Email" }),
+    field.text("email", { label: "Email" })
   ),
 
-  group("Address",
+  group(
+    "Address",
     field.text("street", { label: "Street Address" }),
     field.text("city", { label: "City" }),
     field.text("state", { label: "State" }),
-    field.text("zipCode", { label: "ZIP Code" }),
-  ),
+    field.text("zipCode", { label: "ZIP Code" })
+  )
 );
 
 // Schema type is flat:
@@ -105,6 +108,7 @@ const form = formspec(
 ```
 
 **Explain to users:**
+
 - Groups are purely for UI organization
 - They render as fieldsets or card sections
 - They don't create nested objects in the schema
@@ -118,17 +122,19 @@ const form = formspec(
   field.text("name", { label: "Customer Name" }),
 
   // This creates a nested object in the schema
-  field.object("billingAddress",
+  field.object(
+    "billingAddress",
     field.text("street", { label: "Street" }),
     field.text("city", { label: "City" }),
-    field.text("zip", { label: "ZIP" }),
+    field.text("zip", { label: "ZIP" })
   ),
 
-  field.object("shippingAddress",
+  field.object(
+    "shippingAddress",
     field.text("street", { label: "Street" }),
     field.text("city", { label: "City" }),
-    field.text("zip", { label: "ZIP" }),
-  ),
+    field.text("zip", { label: "ZIP" })
+  )
 );
 
 // Schema type:
@@ -148,16 +154,19 @@ const form = formspec(
   field.text("orderNumber", { label: "Order Number" }),
 
   // Simple array
-  field.array("lineItems",
+  field.array(
+    "lineItems",
     field.text("productName", { label: "Product" }),
     field.number("quantity", { label: "Qty", min: 1 }),
-    field.number("price", { label: "Price", min: 0 }),
+    field.number("price", { label: "Price", min: 0 })
   ),
 
   // Array with constraints
-  field.arrayWithConfig("tags", { label: "Tags", minItems: 1, maxItems: 5 },
-    field.text("tag", { label: "Tag" }),
-  ),
+  field.arrayWithConfig(
+    "tags",
+    { label: "Tags", minItems: 1, maxItems: 5 },
+    field.text("tag", { label: "Tag" })
+  )
 );
 
 // Schema type:
@@ -179,20 +188,23 @@ const form = formspec(
   }),
 
   // Only show when employed
-  when(is("employmentStatus", "employed"),
+  when(
+    is("employmentStatus", "employed"),
     field.text("employerName", { label: "Employer Name" }),
-    field.text("jobTitle", { label: "Job Title" }),
+    field.text("jobTitle", { label: "Job Title" })
   ),
 
   // Only show when self-employed
-  when(is("employmentStatus", "self-employed"),
+  when(
+    is("employmentStatus", "self-employed"),
     field.text("businessName", { label: "Business Name" }),
-    field.text("businessType", { label: "Business Type" }),
-  ),
+    field.text("businessType", { label: "Business Type" })
+  )
 );
 ```
 
 **Key points:**
+
 - The condition field must be defined before (or at same level as) the `when`
 - Conditional fields are still in the schema - they're just hidden in the UI
 - The inferred type includes all fields regardless of conditions
@@ -206,19 +218,19 @@ const form = formspec(
   field.enum("country", ["US", "CA", "GB"] as const),
   field.enum("paymentMethod", ["card", "bank"] as const),
 
-  when(is("country", "US"),
+  when(
+    is("country", "US"),
     field.text("ssn", { label: "SSN (last 4 digits)" }),
 
     // Nested: only show when country=US AND paymentMethod=bank
-    when(is("paymentMethod", "bank"),
+    when(
+      is("paymentMethod", "bank"),
       field.text("routingNumber", { label: "Routing Number" }),
-      field.text("accountNumber", { label: "Account Number" }),
-    ),
+      field.text("accountNumber", { label: "Account Number" })
+    )
   ),
 
-  when(is("country", "GB"),
-    field.text("sortCode", { label: "Sort Code" }),
-  ),
+  when(is("country", "GB"), field.text("sortCode", { label: "Sort Code" }))
 );
 ```
 
@@ -245,7 +257,7 @@ const form = formspec(
   field.dynamicEnum("city", "cities", {
     label: "City",
     params: ["country", "state"], // Depends on both country and state
-  }),
+  })
 );
 
 // Step 2: Define resolvers for each data source
@@ -264,7 +276,7 @@ const resolvers = defineResolvers(form, {
     // params.country contains the selected country
     const states = await fetchStates(params.country);
     return {
-      options: states.map(s => ({ value: s.code, label: s.name })),
+      options: states.map((s) => ({ value: s.code, label: s.name })),
       validity: states.length > 0 ? "valid" : "unknown",
     };
   },
@@ -272,7 +284,7 @@ const resolvers = defineResolvers(form, {
   cities: async (params) => {
     const cities = await fetchCities(params.country, params.state);
     return {
-      options: cities.map(c => ({ value: c.id, label: c.name })),
+      options: cities.map((c) => ({ value: c.id, label: c.name })),
       validity: "valid",
     };
   },
@@ -280,6 +292,7 @@ const resolvers = defineResolvers(form, {
 ```
 
 **Key concepts:**
+
 - The `source` parameter is a key that maps to a resolver
 - The `params` array lists fields whose values are passed to the resolver
 - Resolvers return `{ options, validity, message? }`
@@ -298,7 +311,7 @@ const form = formspec(
   // Schema for this field is loaded at runtime based on extensionType
   field.dynamicSchema("extensionConfig", "payment-extension", {
     label: "Provider Configuration",
-  }),
+  })
 );
 ```
 
@@ -311,7 +324,9 @@ const form = formspec(
 When users ask about the generated JSON Schema, explain these FormSpec-specific extensions:
 
 ### `x-formspec-source`
+
 Marks a field as a dynamic enum and specifies the data source:
+
 ```json
 {
   "type": "string",
@@ -320,7 +335,9 @@ Marks a field as a dynamic enum and specifies the data source:
 ```
 
 ### `x-formspec-params`
+
 Lists dependent fields for cascading dropdowns:
+
 ```json
 {
   "type": "string",
@@ -330,7 +347,9 @@ Lists dependent fields for cascading dropdowns:
 ```
 
 ### `x-formspec-schemaSource`
+
 Marks a field as having a dynamically-loaded schema:
+
 ```json
 {
   "type": "object",
@@ -358,6 +377,7 @@ type FieldValue = InferFieldValue<typeof someField>;
 ```
 
 **Type inference rules:**
+
 - `field.text` → `string`
 - `field.number` → `number`
 - `field.boolean` → `boolean`
@@ -375,20 +395,23 @@ type FieldValue = InferFieldValue<typeof someField>;
 ```typescript
 const form = formspec(
   // Required section
-  group("Required Information",
+  group(
+    "Required Information",
     field.text("email", { label: "Email", required: true }),
-    field.text("password", { label: "Password", required: true }),
+    field.text("password", { label: "Password", required: true })
   ),
 
   // Optional section with toggle
   field.boolean("hasProfile", { label: "Add profile information?" }),
 
-  when(is("hasProfile", true),
-    group("Profile (Optional)",
+  when(
+    is("hasProfile", true),
+    group(
+      "Profile (Optional)",
       field.text("displayName", { label: "Display Name" }),
-      field.text("bio", { label: "Bio" }),
-    ),
-  ),
+      field.text("bio", { label: "Bio" })
+    )
+  )
 );
 ```
 
@@ -398,20 +421,15 @@ const form = formspec(
 // Define each step as a separate form, then combine or use separately
 const Step1 = formspec(
   field.text("email", { required: true }),
-  field.text("password", { required: true }),
+  field.text("password", { required: true })
 );
 
 const Step2 = formspec(
   field.text("firstName", { required: true }),
-  field.text("lastName", { required: true }),
+  field.text("lastName", { required: true })
 );
 
-const Step3 = formspec(
-  field.object("address",
-    field.text("street"),
-    field.text("city"),
-  ),
-);
+const Step3 = formspec(field.object("address", field.text("street"), field.text("city")));
 
 // Generate schemas for each step
 const step1Schemas = buildFormSchemas(Step1);
@@ -432,18 +450,20 @@ const form = formspec(
   field.text("email", { label: "Email", required: true }),
 
   // Individual-specific
-  when(is("userType", "individual"),
+  when(
+    is("userType", "individual"),
     field.text("firstName", { label: "First Name", required: true }),
     field.text("lastName", { label: "Last Name", required: true }),
-    field.text("ssn", { label: "SSN (last 4)" }),
+    field.text("ssn", { label: "SSN (last 4)" })
   ),
 
   // Business-specific
-  when(is("userType", "business"),
+  when(
+    is("userType", "business"),
     field.text("companyName", { label: "Company Name", required: true }),
     field.text("taxId", { label: "Tax ID", required: true }),
-    field.text("duns", { label: "DUNS Number" }),
-  ),
+    field.text("duns", { label: "DUNS Number" })
+  )
 );
 ```
 
@@ -466,15 +486,13 @@ const form = formspecWithValidation(
   { validate: true, name: "MyForm" },
   field.text("name"),
   field.enum("status", ["draft", "sent"] as const),
-  when(is("status", "draft"),
-    field.text("notes"),
-  ),
+  when(is("status", "draft"), field.text("notes"))
 );
 
 // Option 2: Validate separately
 const form = formspec(
   field.text("name"),
-  when(is("nonExistent", "value"), field.text("extra")), // Error!
+  when(is("nonExistent", "value"), field.text("extra")) // Error!
 );
 const result = validateForm(form.elements);
 // result.valid === false
@@ -487,7 +505,7 @@ const result = validateForm(form.elements);
 formspecWithValidation(
   {
     // Log warnings/errors to console
-    validate: true,        // or "warn"
+    validate: true, // or "warn"
 
     // Throw on validation errors
     validate: "throw",
@@ -506,18 +524,19 @@ formspecWithValidation(
 
 ```typescript
 interface ValidationResult {
-  valid: boolean;  // false if any errors (warnings don't affect this)
+  valid: boolean; // false if any errors (warnings don't affect this)
   issues: ValidationIssue[];
 }
 
 interface ValidationIssue {
   severity: "error" | "warning";
   message: string;
-  path: string;  // e.g., "when(status).fieldName"
+  path: string; // e.g., "when(status).fieldName"
 }
 ```
 
 **When to use validation:**
+
 - During development to catch mistakes early
 - In CI/CD to prevent invalid forms from being deployed
 - Use `validate: "throw"` in tests to ensure forms are valid
@@ -529,18 +548,21 @@ interface ValidationIssue {
 ### Issue: Enum type is `string` instead of union
 
 **Problem:**
+
 ```typescript
-field.enum("status", ["draft", "published"]) // Type: string
+field.enum("status", ["draft", "published"]); // Type: string
 ```
 
 **Solution:**
+
 ```typescript
-field.enum("status", ["draft", "published"] as const) // Type: "draft" | "published"
+field.enum("status", ["draft", "published"] as const); // Type: "draft" | "published"
 ```
 
 ### Issue: Type inference not working
 
 **Check:**
+
 1. Is the form defined with `const`?
 2. Are enum options using `as const`?
 3. Is the form variable typed explicitly? (Remove explicit type annotation)
@@ -556,12 +578,14 @@ const form = formspec(...);
 ### Issue: Conditional field references unknown field
 
 **Problem:**
+
 ```typescript
 when("nonExistent", "value", ...) // Runtime: field doesn't exist
 ```
 
 **Solution:**
 Ensure the condition field is defined before or at the same level as the `when`:
+
 ```typescript
 field.enum("myField", ["a", "b"] as const),
 when(is("myField", "a"), ...),
@@ -570,21 +594,16 @@ when(is("myField", "a"), ...),
 ### Issue: Nested object vs Group confusion
 
 **Explain the difference:**
+
 - `group("Label", ...)` - UI organization only, flat schema
 - `field.object("key", ...)` - Creates nested object in schema
 
 ```typescript
 // Group: schema is { name, email }
-group("Contact",
-  field.text("name"),
-  field.text("email"),
-)
+group("Contact", field.text("name"), field.text("email"));
 
 // Object: schema is { contact: { name, email } }
-field.object("contact",
-  field.text("name"),
-  field.text("email"),
-)
+field.object("contact", field.text("name"), field.text("email"));
 ```
 
 ---

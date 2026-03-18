@@ -36,7 +36,7 @@ export interface UseFormspecCompilationResult {
  */
 export function useFormspecCompilation(
   code: string,
-  options: UseFormspecCompilationOptions = {},
+  options: UseFormspecCompilationOptions = {}
 ): UseFormspecCompilationResult {
   const { debounceMs = 500, constraints } = options;
   const [isCompiling, setIsCompiling] = useState(false);
@@ -70,16 +70,20 @@ export function useFormspecCompilation(
       let lintErrors: DiagnosticMessage[] = [];
       if (currentConstraints) {
         const lintMessages = lintFormSpec(codeRef.current, currentConstraints);
-        lintErrors = lintMessages.map((msg): DiagnosticMessage => ({
-          message: msg.message,
-          line: msg.line,
-          column: msg.column,
-          severity: msg.severity,
-        }));
+        lintErrors = lintMessages.map(
+          (msg): DiagnosticMessage => ({
+            message: msg.message,
+            line: msg.line,
+            column: msg.column,
+            severity: msg.severity,
+          })
+        );
       }
 
       // Then run compilation (TypeScript transpile + execute + schema generation)
-      const constraintConfig = currentConstraints ? toConstraintConfig(currentConstraints) : undefined;
+      const constraintConfig = currentConstraints
+        ? toConstraintConfig(currentConstraints)
+        : undefined;
       const result: CompileResult = compileFormSpec(codeRef.current, {
         constraints: constraintConfig,
       });

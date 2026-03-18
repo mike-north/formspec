@@ -7,17 +7,20 @@ Add @formspec/cli package for static TypeScript analysis and schema generation
 This new package provides a CLI tool that generates JSON Schema and JSON Forms UI Schema from TypeScript source files using a hybrid approach:
 
 **Static Analysis (TypeScript Compiler API):**
+
 - Extracts class fields with their TypeScript types
 - Parses decorator metadata (@Label, @Min, @Max, etc.)
 - Detects method parameters using `InferSchema<typeof X>` pattern
 - Converts TypeScript types to JSON Schema and FormSpec fields
 
 **Runtime Execution (Dynamic Import):**
+
 - Loads exported FormSpec constants (chain DSL) at runtime
 - Uses @formspec/build generators to produce schemas
 - Enables full FormSpec features for method parameters
 
 **Usage:**
+
 ```bash
 # Generate schemas from a class with decorators
 formspec generate ./src/forms.ts MyClass -o ./generated
@@ -27,6 +30,7 @@ formspec generate ./src/forms.ts -o ./generated
 ```
 
 **Output Structure:**
+
 ```
 generated/ClassName/
 ├── schema.json           # JSON Schema for class fields

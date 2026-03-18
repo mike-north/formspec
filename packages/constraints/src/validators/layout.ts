@@ -55,10 +55,7 @@ export function validateLayout(
 /**
  * Creates a validation issue for a disallowed group.
  */
-function createGroupIssue(
-  context: LayoutContext,
-  severity: Severity
-): ValidationIssue {
+function createGroupIssue(context: LayoutContext, severity: Severity): ValidationIssue {
   const labelInfo = context.label ? ` "${context.label}"` : "";
   const issue: ValidationIssue = {
     code: "DISALLOWED_GROUP",
@@ -75,10 +72,7 @@ function createGroupIssue(
 /**
  * Creates a validation issue for a disallowed conditional.
  */
-function createConditionalIssue(
-  context: LayoutContext,
-  severity: Severity
-): ValidationIssue {
+function createConditionalIssue(context: LayoutContext, severity: Severity): ValidationIssue {
   const issue: ValidationIssue = {
     code: "DISALLOWED_CONDITIONAL",
     message: `Conditional visibility (when/is) is not allowed in this project`,
@@ -94,10 +88,7 @@ function createConditionalIssue(
 /**
  * Creates a validation issue for exceeding nesting depth.
  */
-function createNestingDepthIssue(
-  context: LayoutContext,
-  maxDepth: number
-): ValidationIssue {
+function createNestingDepthIssue(context: LayoutContext, maxDepth: number): ValidationIssue {
   const issue: ValidationIssue = {
     code: "EXCEEDED_NESTING_DEPTH",
     message: `Nesting depth ${String(context.depth)} exceeds maximum allowed depth of ${String(maxDepth)}`,
@@ -138,10 +129,7 @@ export function isLayoutTypeAllowed(
  * @param constraints - Layout constraints
  * @returns true if allowed, false if exceeds limit
  */
-export function isNestingDepthAllowed(
-  depth: number,
-  constraints: LayoutConstraints
-): boolean {
+export function isNestingDepthAllowed(depth: number, constraints: LayoutConstraints): boolean {
   const maxDepth = constraints.maxNestingDepth;
   if (maxDepth === undefined) {
     return true;

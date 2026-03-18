@@ -18,10 +18,7 @@ import {
 
 describe("validateFieldTypes", () => {
   it("returns no issues when field type is allowed", () => {
-    const issues = validateFieldTypes(
-      { fieldType: "text", fieldName: "name" },
-      { text: "off" }
-    );
+    const issues = validateFieldTypes({ fieldType: "text", fieldName: "name" }, { text: "off" });
     expect(issues).toHaveLength(0);
   });
 
@@ -92,10 +89,7 @@ describe("validateLayout", () => {
   });
 
   it("returns error when nesting depth exceeded", () => {
-    const issues = validateLayout(
-      { layoutType: "group", depth: 3 },
-      { maxNestingDepth: 2 }
-    );
+    const issues = validateLayout({ layoutType: "group", depth: 3 }, { maxNestingDepth: 2 });
     expect(issues).toHaveLength(1);
     expect(issues[0]).toMatchObject({
       code: "EXCEEDED_NESTING_DEPTH",
@@ -104,14 +98,9 @@ describe("validateLayout", () => {
   });
 
   it("allows nesting at exact max depth", () => {
-    const issues = validateLayout(
-      { layoutType: "group", depth: 2 },
-      { maxNestingDepth: 2 }
-    );
+    const issues = validateLayout({ layoutType: "group", depth: 2 }, { maxNestingDepth: 2 });
     // Should only have group issue if group is disallowed, not depth issue
-    const depthIssues = issues.filter(
-      (i) => i.code === "EXCEEDED_NESTING_DEPTH"
-    );
+    const depthIssues = issues.filter((i) => i.code === "EXCEEDED_NESTING_DEPTH");
     expect(depthIssues).toHaveLength(0);
   });
 });
@@ -180,10 +169,7 @@ describe("validateFormSpecElements", () => {
   });
 
   it("validates field types against constraints", () => {
-    const form = formspec(
-      field.text("name"),
-      field.dynamicEnum("country", "countries")
-    );
+    const form = formspec(field.text("name"), field.dynamicEnum("country", "countries"));
 
     const result = validateFormSpecElements(form.elements, {
       constraints: {
@@ -200,9 +186,7 @@ describe("validateFormSpecElements", () => {
   });
 
   it("validates groups against constraints", () => {
-    const form = formspec(
-      group("Contact", field.text("name"), field.text("email"))
-    );
+    const form = formspec(group("Contact", field.text("name"), field.text("email")));
 
     const result = validateFormSpecElements(form.elements, {
       constraints: {
@@ -227,9 +211,7 @@ describe("validateFormSpecElements", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.issues.some((i) => i.code === "DISALLOWED_CONDITIONAL")).toBe(
-      true
-    );
+    expect(result.issues.some((i) => i.code === "DISALLOWED_CONDITIONAL")).toBe(true);
   });
 
   it("validates nested object fields", () => {
@@ -248,15 +230,11 @@ describe("validateFormSpecElements", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(
-      result.issues.some((i) => i.code === "EXCEEDED_NESTING_DEPTH")
-    ).toBe(true);
+    expect(result.issues.some((i) => i.code === "EXCEEDED_NESTING_DEPTH")).toBe(true);
   });
 
   it("validates field options", () => {
-    const form = formspec(
-      field.number("quantity", { min: 1, max: 100 })
-    );
+    const form = formspec(field.number("quantity", { min: 1, max: 100 }));
 
     const result = validateFormSpecElements(form.elements, {
       constraints: {
@@ -266,9 +244,7 @@ describe("validateFormSpecElements", () => {
 
     expect(result.valid).toBe(false);
     expect(result.issues).toHaveLength(2);
-    expect(
-      result.issues.every((i) => i.code === "DISALLOWED_FIELD_OPTION")
-    ).toBe(true);
+    expect(result.issues.every((i) => i.code === "DISALLOWED_FIELD_OPTION")).toBe(true);
   });
 
   it("passes with warnings but valid=true", () => {
@@ -287,11 +263,7 @@ describe("validateFormSpecElements", () => {
 
   it("validates array items recursively", () => {
     const form = formspec(
-      field.array(
-        "items",
-        field.text("description"),
-        field.dynamicEnum("category", "categories")
-      )
+      field.array("items", field.text("description"), field.dynamicEnum("category", "categories"))
     );
 
     const result = validateFormSpecElements(form.elements, {
@@ -301,9 +273,7 @@ describe("validateFormSpecElements", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.issues.some((i) => i.fieldType === "dynamic_enum")).toBe(
-      true
-    );
+    expect(result.issues.some((i) => i.fieldType === "dynamic_enum")).toBe(true);
   });
 });
 
@@ -339,10 +309,7 @@ describe("defineConstraints", () => {
 
 describe("validateFormSpec", () => {
   it("validates a FormSpec object directly", () => {
-    const form = formspec(
-      field.text("name"),
-      field.dynamicEnum("country", "countries")
-    );
+    const form = formspec(field.text("name"), field.dynamicEnum("country", "countries"));
 
     const result = validateFormSpec(form, {
       constraints: {
@@ -365,9 +332,7 @@ describe("isFieldTypeAllowed", () => {
   });
 
   it("returns false when field type severity is error", () => {
-    expect(isFieldTypeAllowed("dynamic_enum", { dynamicEnum: "error" })).toBe(
-      false
-    );
+    expect(isFieldTypeAllowed("dynamic_enum", { dynamicEnum: "error" })).toBe(false);
   });
 
   it("returns false when field type severity is warn", () => {
@@ -376,17 +341,13 @@ describe("isFieldTypeAllowed", () => {
 
   it("handles unknown field types gracefully", () => {
     // Unknown field types should not cause errors
-    expect(
-      isFieldTypeAllowed("unknown_type" as "text", { text: "error" })
-    ).toBe(true);
+    expect(isFieldTypeAllowed("unknown_type" as "text", { text: "error" })).toBe(true);
   });
 });
 
 describe("getFieldTypeSeverity", () => {
   it("returns severity when field type is constrained", () => {
-    expect(getFieldTypeSeverity("dynamic_enum", { dynamicEnum: "error" })).toBe(
-      "error"
-    );
+    expect(getFieldTypeSeverity("dynamic_enum", { dynamicEnum: "error" })).toBe("error");
   });
 
   it("returns off when field type is not constrained", () => {
@@ -398,9 +359,7 @@ describe("getFieldTypeSeverity", () => {
   });
 
   it("returns off for unknown field types", () => {
-    expect(getFieldTypeSeverity("unknown_type" as "text", { text: "error" })).toBe(
-      "off"
-    );
+    expect(getFieldTypeSeverity("unknown_type" as "text", { text: "error" })).toBe("off");
   });
 });
 
@@ -424,9 +383,7 @@ describe("isFieldOptionAllowed", () => {
 
 describe("getFieldOptionSeverity", () => {
   it("returns severity when option is constrained", () => {
-    expect(getFieldOptionSeverity("placeholder", { placeholder: "error" })).toBe(
-      "error"
-    );
+    expect(getFieldOptionSeverity("placeholder", { placeholder: "error" })).toBe("error");
   });
 
   it("returns off when option is not constrained", () => {
@@ -453,9 +410,7 @@ describe("isLayoutTypeAllowed", () => {
   });
 
   it("returns false when conditional is disallowed", () => {
-    expect(isLayoutTypeAllowed("conditional", { conditionals: "error" })).toBe(
-      false
-    );
+    expect(isLayoutTypeAllowed("conditional", { conditionals: "error" })).toBe(false);
   });
 
   it("returns false when layout type has warn severity", () => {
@@ -588,10 +543,7 @@ describe("validateFormSpecElements - edge cases", () => {
     const form = formspec(
       field.object(
         "level1",
-        field.object(
-          "level2",
-          field.object("level3", field.text("deepField"))
-        )
+        field.object("level2", field.object("level3", field.text("deepField")))
       )
     );
 
@@ -602,8 +554,6 @@ describe("validateFormSpecElements - edge cases", () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(
-      result.issues.some((i) => i.code === "EXCEEDED_NESTING_DEPTH")
-    ).toBe(true);
+    expect(result.issues.some((i) => i.code === "EXCEEDED_NESTING_DEPTH")).toBe(true);
   });
 });

@@ -31,15 +31,23 @@ import type { UISchema } from "./ui-schema/types.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// Re-export types
+// =============================================================================
+// Type Exports
+// =============================================================================
+
 export type {
   JSONSchema7,
   JSONSchemaType,
+  ExtendedJSONSchema7,
+  FormSpecSchemaExtensions,
 } from "./json-schema/types.js";
+
+export { setSchemaExtension, getSchemaExtension } from "./json-schema/types.js";
 
 export type {
   UISchema,
   UISchemaElement,
+  UISchemaElementBase,
   UISchemaElementType,
   ControlElement,
   VerticalLayout,
@@ -47,12 +55,34 @@ export type {
   GroupLayout,
   Rule,
   RuleEffect,
+  RuleConditionSchema,
   SchemaBasedCondition,
 } from "./ui-schema/types.js";
 
-// Re-export individual generators
+export type { FormSpecField } from "./analyzer/type-converter.js";
+
+export type {
+  ClassSchemas,
+  GenerateFromClassOptions,
+  GenerateFromClassResult,
+} from "./generators/class-schema.js";
+
+export type { TypeMetadata, DecoratedClassInfo, CodegenOptions } from "./codegen/index.js";
+
+// =============================================================================
+// Chain DSL Generators
+// =============================================================================
+
 export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
+
+// =============================================================================
+// Decorator DSL: High-Level Entry Points
+// =============================================================================
+
+export { generateSchemasFromClass } from "./generators/class-schema.js";
+
+export { findDecoratedClasses, generateCodegenOutput, runCodegen } from "./codegen/index.js";
 
 /**
  * Result of building form schemas.
@@ -91,9 +121,7 @@ export interface BuildResult {
  * @param form - The FormSpec to build schemas from
  * @returns Object containing both jsonSchema and uiSchema
  */
-export function buildFormSchemas<E extends readonly FormElement[]>(
-  form: FormSpec<E>
-): BuildResult {
+export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>): BuildResult {
   return {
     jsonSchema: generateJsonSchema(form),
     uiSchema: generateUiSchema(form),

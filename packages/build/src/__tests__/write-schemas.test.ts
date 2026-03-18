@@ -24,10 +24,7 @@ describe("writeSchemas", () => {
   // Positive tests
   describe("positive cases", () => {
     it("should write both schema files to specified directory", () => {
-      const form = formspec(
-        field.text("name", { required: true }),
-        field.number("age"),
-      );
+      const form = formspec(field.text("name", { required: true }), field.number("age"));
 
       const result = writeSchemas(form, {
         outDir: tempDir,
@@ -80,10 +77,7 @@ describe("writeSchemas", () => {
     });
 
     it("should generate valid JSON files that can be parsed", () => {
-      const form = formspec(
-        field.text("name"),
-        field.enum("status", ["draft", "active"]),
-      );
+      const form = formspec(field.text("name"), field.enum("status", ["draft", "active"]));
 
       const result = writeSchemas(form, {
         outDir: tempDir,
@@ -100,10 +94,11 @@ describe("writeSchemas", () => {
 
     it("should generate correct schema content matching buildFormSchemas output", () => {
       const form = formspec(
-        group("Info",
+        group(
+          "Info",
           field.text("name", { label: "Name", required: true }),
-          field.number("age", { label: "Age", min: 0 }),
-        ),
+          field.number("age", { label: "Age", min: 0 })
+        )
       );
 
       const result = writeSchemas(form, {
@@ -120,9 +115,7 @@ describe("writeSchemas", () => {
     });
 
     it("should handle forms with enum fields", () => {
-      const form = formspec(
-        field.enum("status", ["draft", "published", "archived"]),
-      );
+      const form = formspec(field.enum("status", ["draft", "published", "archived"]));
 
       const result = writeSchemas(form, {
         outDir: tempDir,
@@ -137,12 +130,7 @@ describe("writeSchemas", () => {
     });
 
     it("should handle forms with nested objects", () => {
-      const form = formspec(
-        field.object("address",
-          field.text("street"),
-          field.text("city"),
-        ),
-      );
+      const form = formspec(field.object("address", field.text("street"), field.text("city")));
 
       const result = writeSchemas(form, {
         outDir: tempDir,
@@ -158,12 +146,7 @@ describe("writeSchemas", () => {
     });
 
     it("should handle forms with arrays", () => {
-      const form = formspec(
-        field.array("items",
-          field.text("name"),
-          field.number("quantity"),
-        ),
-      );
+      const form = formspec(field.array("items", field.text("name"), field.number("quantity")));
 
       const result = writeSchemas(form, {
         outDir: tempDir,
@@ -214,10 +197,7 @@ describe("writeSchemas", () => {
     });
 
     it("should handle forms with special characters in field names", () => {
-      const form = formspec(
-        field.text("field-with-dashes"),
-        field.text("field_with_underscores"),
-      );
+      const form = formspec(field.text("field-with-dashes"), field.text("field_with_underscores"));
 
       const result = writeSchemas(form, {
         outDir: tempDir,

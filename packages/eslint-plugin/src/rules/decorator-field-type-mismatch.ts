@@ -2,9 +2,8 @@
  * Rule: decorator-field-type-mismatch
  *
  * Ensures FormSpec decorators are applied to fields with compatible types:
- * - @Min/@Max only on number fields
- * - @MinItems/@MaxItems only on array fields
- * - @Placeholder only on string fields
+ * - @Minimum/@Maximum/@ExclusiveMinimum/@ExclusiveMaximum only on number fields
+ * - @MinLength/@MaxLength/@Pattern only on string fields
  */
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
@@ -13,6 +12,7 @@ import {
   DECORATOR_TYPE_HINTS,
   type TypeHintDecorator,
 } from "../utils/decorator-utils.js";
+import { getJSDocConstraints } from "../utils/jsdoc-utils.js";
 import {
   getPropertyType,
   getFieldTypeCategory,
@@ -23,26 +23,27 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
-type MessageIds =
-  | "minMaxOnNonNumber"
-  | "minMaxItemsOnNonArray"
-  | "placeholderOnNonString";
+type MessageIds = "numericOnNonNumber" | "stringOnNonString";
 
 const EXPECTED_TYPES: Record<TypeHintDecorator, FieldTypeCategory[]> = {
-  Min: ["number"],
-  Max: ["number"],
-  Placeholder: ["string"],
-  MinItems: ["array"],
-  MaxItems: ["array"],
+  Minimum: ["number"],
+  Maximum: ["number"],
+  ExclusiveMinimum: ["number"],
+  ExclusiveMaximum: ["number"],
+  MinLength: ["string"],
+  MaxLength: ["string"],
+  Pattern: ["string"],
   EnumOptions: ["string", "union"], // Handled by separate rule
 };
 
 const DECORATOR_MESSAGE_IDS: Partial<Record<TypeHintDecorator, MessageIds>> = {
-  Min: "minMaxOnNonNumber",
-  Max: "minMaxOnNonNumber",
-  Placeholder: "placeholderOnNonString",
-  MinItems: "minMaxItemsOnNonArray",
-  MaxItems: "minMaxItemsOnNonArray",
+  Minimum: "numericOnNonNumber",
+  Maximum: "numericOnNonNumber",
+  ExclusiveMinimum: "numericOnNonNumber",
+  ExclusiveMaximum: "numericOnNonNumber",
+  MinLength: "stringOnNonString",
+  MaxLength: "stringOnNonString",
+  Pattern: "stringOnNonString",
 };
 
 export const decoratorFieldTypeMismatch = createRule<[], MessageIds>({
@@ -50,16 +51,13 @@ export const decoratorFieldTypeMismatch = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensures FormSpec decorators are applied to fields with compatible types",
+      description: "Ensures FormSpec decorators are applied to fields with compatible types",
     },
     messages: {
-      minMaxOnNonNumber:
+      numericOnNonNumber:
         "@{{decorator}} can only be used on number fields, but field '{{field}}' has type '{{actualType}}'",
-      minMaxItemsOnNonArray:
-        "@{{decorator}} can only be used on array fields, but field '{{field}}' has type '{{actualType}}'",
-      placeholderOnNonString:
-        "@Placeholder can only be used on string fields, but field '{{field}}' has type '{{actualType}}'",
+      stringOnNonString:
+        "@{{decorator}} can only be used on string fields, but field '{{field}}' has type '{{actualType}}'",
     },
     schema: [],
   },
@@ -71,7 +69,10 @@ export const decoratorFieldTypeMismatch = createRule<[], MessageIds>({
     return {
       PropertyDefinition(node) {
         const decorators = getFormSpecDecorators(node);
-        if (decorators.length === 0) return;
+        const jsdocConstraints = getJSDocConstraints(node, context.sourceCode);
+
+        // Nothing to check if there are no decorators or JSDoc constraints
+        if (decorators.length === 0 && jsdocConstraints.length === 0) return;
 
         const type = getPropertyType(node, services);
         if (!type) return;
@@ -104,6 +105,31 @@ export const decoratorFieldTypeMismatch = createRule<[], MessageIds>({
               messageId,
               data: {
                 decorator: decoratorName,
+                field: fieldName,
+                actualType,
+              },
+            });
+          }
+        }
+
+        // Also check JSDoc constraint tags for type compatibility
+        for (const constraint of jsdocConstraints) {
+          const constraintName = constraint.name as TypeHintDecorator;
+          if (!(constraintName in DECORATOR_TYPE_HINTS)) continue;
+          if (constraintName === "EnumOptions") continue;
+
+          const expectedTypes = EXPECTED_TYPES[constraintName];
+          const isCompatible = expectedTypes.includes(fieldTypeCategory);
+
+          if (!isCompatible) {
+            const messageId = DECORATOR_MESSAGE_IDS[constraintName];
+            if (!messageId) continue;
+
+            context.report({
+              loc: constraint.comment.loc,
+              messageId,
+              data: {
+                decorator: constraintName,
                 field: fieldName,
                 actualType,
               },

@@ -69,16 +69,17 @@ export function Constraints({ config, onChange }: ConstraintsProps): React.React
   const [yamlValue, setYamlValue] = useState(() => constraintsToYaml(config));
 
   const handleFieldTypeChange = useCallback(
-    (fieldType: keyof ConstraintsConfig["fieldTypes"]) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      onChange({
-        ...config,
-        fieldTypes: {
-          ...config.fieldTypes,
-          [fieldType]: event.target.checked,
-        },
-      });
-    },
-    [config, onChange],
+    (fieldType: keyof ConstraintsConfig["fieldTypes"]) =>
+      (event: React.ChangeEvent<HTMLInputElement>) => {
+        onChange({
+          ...config,
+          fieldTypes: {
+            ...config.fieldTypes,
+            [fieldType]: event.target.checked,
+          },
+        });
+      },
+    [config, onChange]
   );
 
   const handleLayoutChange = useCallback(
@@ -91,7 +92,7 @@ export function Constraints({ config, onChange }: ConstraintsProps): React.React
         },
       });
     },
-    [config, onChange],
+    [config, onChange]
   );
 
   const handleNestingDepthChange = useCallback(
@@ -107,7 +108,7 @@ export function Constraints({ config, onChange }: ConstraintsProps): React.React
         });
       }
     },
-    [config, onChange],
+    [config, onChange]
   );
 
   const handleYamlChange = useCallback(
@@ -123,7 +124,7 @@ export function Constraints({ config, onChange }: ConstraintsProps): React.React
         // Invalid YAML, ignore
       }
     },
-    [onChange],
+    [onChange]
   );
 
   // Sync YAML when tab changes to YAML

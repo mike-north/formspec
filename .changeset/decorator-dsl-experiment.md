@@ -33,6 +33,7 @@ class InvoiceForm {
 ```
 
 Key features:
+
 - Property types define the schema shape
 - Decorators add form metadata (labels, validation, etc.)
 - TypeScript `?` indicates optional fields

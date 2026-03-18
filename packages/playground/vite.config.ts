@@ -61,9 +61,9 @@ export default defineConfig({
           // Split Monaco editor into its own chunk (it's large)
           "monaco-editor": ["monaco-editor"],
           // Split MUI into its own chunk
-          "mui": ["@mui/material", "@mui/icons-material", "@emotion/react", "@emotion/styled"],
+          mui: ["@mui/material", "@mui/icons-material", "@emotion/react", "@emotion/styled"],
           // Split JSON Forms into its own chunk
-          "jsonforms": ["@jsonforms/core", "@jsonforms/react", "@jsonforms/material-renderers"],
+          jsonforms: ["@jsonforms/core", "@jsonforms/react", "@jsonforms/material-renderers"],
         },
       },
     },

@@ -31,6 +31,15 @@ export default [
     },
   },
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/temp/**", "**/coverage/**"],
+    ignores: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/temp/**",
+      "**/coverage/**",
+      "scratch/**",
+      // Examples have their own eslint.config.js with formspec plugin rules.
+      // They are linted separately via `pnpm -r run lint`.
+      "examples/**",
+    ],
   },
 ];

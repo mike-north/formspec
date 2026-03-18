@@ -67,9 +67,7 @@ export const DEFAULT_CONFIG: FormSpecConfig = {
 /**
  * Merges user constraints with defaults, filling in any missing values.
  */
-export function mergeWithDefaults(
-  config: ConstraintConfig | undefined
-): ResolvedConstraintConfig {
+export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig {
   if (!config) {
     return DEFAULT_CONSTRAINTS;
   }

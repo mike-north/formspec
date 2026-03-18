@@ -92,11 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.message}
           </Typography>
           <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={this.handleReset}
-            >
+            <Button variant="outlined" size="small" onClick={this.handleReset}>
               Try Again
             </Button>
             <Button

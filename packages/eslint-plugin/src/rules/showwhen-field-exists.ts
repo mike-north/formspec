@@ -33,8 +33,7 @@ export const showwhenFieldExists = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensures @ShowWhen references a field that exists in the same class",
+      description: "Ensures @ShowWhen references a field that exists in the same class",
     },
     messages: {
       fieldDoesNotExist:

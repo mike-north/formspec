@@ -23,37 +23,49 @@ const ruleTester = new RuleTester({
 
 ruleTester.run("decorator-field-type-mismatch", decoratorFieldTypeMismatch, {
   valid: [
-    // @Min/@Max on number fields
+    // @Minimum/@Maximum on number fields
     {
       code: `
-        function Min(n: number) { return () => {}; }
-        function Max(n: number) { return () => {}; }
+        function Minimum(n: number) { return () => {}; }
+        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Min(0)
-          @Max(100)
+          @Minimum(0)
+          @Maximum(100)
           age!: number;
         }
       `,
     },
-    // @Placeholder on string fields
+    // @ExclusiveMinimum/@ExclusiveMaximum on number fields
     {
       code: `
-        function Placeholder(s: string) { return () => {}; }
+        function ExclusiveMinimum(n: number) { return () => {}; }
+        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @Placeholder("Enter name")
+          @ExclusiveMinimum(0)
+          @ExclusiveMaximum(100)
+          age!: number;
+        }
+      `,
+    },
+    // @MinLength/@MaxLength on string fields
+    {
+      code: `
+        function MinLength(n: number) { return () => {}; }
+        function MaxLength(n: number) { return () => {}; }
+        class Form {
+          @MinLength(1)
+          @MaxLength(100)
           name!: string;
         }
       `,
     },
-    // @MinItems/@MaxItems on array fields
+    // @Pattern on string fields
     {
       code: `
-        function MinItems(n: number) { return () => {}; }
-        function MaxItems(n: number) { return () => {}; }
+        function Pattern(s: string) { return () => {}; }
         class Form {
-          @MinItems(1)
-          @MaxItems(10)
-          items!: string[];
+          @Pattern("^[a-z]+$")
+          code!: string;
         }
       `,
     },
@@ -67,62 +79,139 @@ ruleTester.run("decorator-field-type-mismatch", decoratorFieldTypeMismatch, {
         }
       `,
     },
-  ],
-  invalid: [
-    // @Min on non-number field
+    // JSDoc @Minimum on number field
     {
       code: `
-        function Min(n: number) { return () => {}; }
         class Form {
-          @Min(0)
+          /** @Minimum 5 */
+          count!: number;
+        }
+      `,
+    },
+    // JSDoc @Pattern on string field
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[a-z]+$ */
+          code!: string;
+        }
+      `,
+    },
+    // JSDoc @Pattern containing @ (e.g., email validation regex)
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[^@]+@[^@]+\\.[^@]+$ */
+          email!: string;
+        }
+      `,
+    },
+    // JSDoc @MinLength on string field
+    {
+      code: `
+        class Form {
+          /** @MinLength 1 */
           name!: string;
         }
       `,
-      errors: [{ messageId: "minMaxOnNonNumber" }],
     },
-    // @Max on non-number field
+  ],
+  invalid: [
+    // @Minimum on non-number field
     {
       code: `
-        function Max(n: number) { return () => {}; }
+        function Minimum(n: number) { return () => {}; }
         class Form {
-          @Max(100)
+          @Minimum(0)
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    // @Maximum on non-number field
+    {
+      code: `
+        function Maximum(n: number) { return () => {}; }
+        class Form {
+          @Maximum(100)
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "minMaxOnNonNumber" }],
+      errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @Placeholder on non-string field
+    // @ExclusiveMinimum on non-number field
     {
       code: `
-        function Placeholder(s: string) { return () => {}; }
+        function ExclusiveMinimum(n: number) { return () => {}; }
         class Form {
-          @Placeholder("Enter value")
-          count!: number;
-        }
-      `,
-      errors: [{ messageId: "placeholderOnNonString" }],
-    },
-    // @MinItems on non-array field
-    {
-      code: `
-        function MinItems(n: number) { return () => {}; }
-        class Form {
-          @MinItems(1)
+          @ExclusiveMinimum(0)
           name!: string;
         }
       `,
-      errors: [{ messageId: "minMaxItemsOnNonArray" }],
+      errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @MaxItems on non-array field
+    // @MinLength on non-string field
     {
       code: `
-        function MaxItems(n: number) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
         class Form {
-          @MaxItems(10)
+          @MinLength(1)
           count!: number;
         }
       `,
-      errors: [{ messageId: "minMaxItemsOnNonArray" }],
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    // @MaxLength on non-string field
+    {
+      code: `
+        function MaxLength(n: number) { return () => {}; }
+        class Form {
+          @MaxLength(100)
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    // @Pattern on non-string field
+    {
+      code: `
+        function Pattern(s: string) { return () => {}; }
+        class Form {
+          @Pattern("^[0-9]+$")
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    // JSDoc @Minimum on string field
+    {
+      code: `
+        class Form {
+          /** @Minimum 5 */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    // JSDoc @Pattern on number field
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[0-9]+$ */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    // JSDoc @MaxLength on number field
+    {
+      code: `
+        class Form {
+          /** @MaxLength 100 */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
     },
   ],
 });

@@ -1,8 +1,4 @@
-import type {
-  FieldTypeConstraints,
-  Severity,
-  ValidationIssue,
-} from "../types.js";
+import type { FieldTypeConstraints, Severity, ValidationIssue } from "../types.js";
 
 /**
  * Maps FormSpec field._field values to constraint config keys.
@@ -100,10 +96,7 @@ function createFieldTypeIssue(
  * @param constraints - Field type constraints
  * @returns true if allowed, false if disallowed
  */
-export function isFieldTypeAllowed(
-  fieldType: string,
-  constraints: FieldTypeConstraints
-): boolean {
+export function isFieldTypeAllowed(fieldType: string, constraints: FieldTypeConstraints): boolean {
   const constraintKey = FIELD_TYPE_MAP[fieldType];
   if (!constraintKey) {
     return true; // Unknown types are allowed by default

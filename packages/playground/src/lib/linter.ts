@@ -87,8 +87,9 @@ export function lintFormSpec(code: string, constraints: ConstraintsConfig): Lint
   const layoutOptions = constraintsToLayoutOptions(constraints);
 
   // Check if any field types are actually restricted
-  const hasFieldTypeRestrictions = Object.values(fieldTypeOptions).some(v => v === "error");
-  const hasLayoutRestrictions = layoutOptions.group === "error" || layoutOptions.conditionals === "error";
+  const hasFieldTypeRestrictions = Object.values(fieldTypeOptions).some((v) => v === "error");
+  const hasLayoutRestrictions =
+    layoutOptions.group === "error" || layoutOptions.conditionals === "error";
 
   // If no restrictions, return empty
   if (!hasFieldTypeRestrictions && !hasLayoutRestrictions) {
@@ -136,19 +137,17 @@ export function lintFormSpec(code: string, constraints: ConstraintsConfig): Lint
       rules,
     } as Linter.Config;
 
-    const messages = linter.verify(
-      code,
-      config,
-      { filename: "form.ts" }
-    );
+    const messages = linter.verify(code, config, { filename: "form.ts" });
 
-    return messages.map((msg: Linter.LintMessage): LintMessage => ({
-      message: msg.message,
-      line: msg.line,
-      column: msg.column,
-      severity: msg.severity === 2 ? "error" : "warning",
-      ruleId: msg.ruleId,
-    }));
+    return messages.map(
+      (msg: Linter.LintMessage): LintMessage => ({
+        message: msg.message,
+        line: msg.line,
+        column: msg.column,
+        severity: msg.severity === 2 ? "error" : "warning",
+        ruleId: msg.ruleId,
+      })
+    );
   } catch (_error) {
     // Parser failed - likely invalid syntax. The TypeScript compiler
     // will catch and report syntax errors during compilation, so we

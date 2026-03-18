@@ -150,19 +150,14 @@ function collectFields(
 
       case "group":
         // Groups don't affect schema structure, just collect their children
-        collectFields(
-          (element as Group<readonly FormElement[]>).elements,
-          properties,
-          required
-        );
+        collectFields((element as Group<readonly FormElement[]>).elements, properties, required);
         break;
 
       case "conditional":
         // Conditional fields are still part of the schema
         // They're just hidden/shown in the UI
         collectFields(
-          (element as Conditional<string, unknown, readonly FormElement[]>)
-            .elements,
+          (element as Conditional<string, unknown, readonly FormElement[]>).elements,
           properties,
           required
         );

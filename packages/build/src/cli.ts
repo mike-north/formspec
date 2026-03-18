@@ -132,14 +132,8 @@ async function main(): Promise<void> {
     // Look for the form export
     const form = module["default"] ?? module["form"];
 
-    if (
-      !form ||
-      typeof form !== "object" ||
-      !("elements" in form)
-    ) {
-      console.error(
-        "Error: Input file must export a FormSpec as default export or as 'form'"
-      );
+    if (!form || typeof form !== "object" || !("elements" in form)) {
+      console.error("Error: Input file must export a FormSpec as default export or as 'form'");
       console.error("Example:");
       console.error('  export default formspec(field.text("name"));');
       console.error("  // or");

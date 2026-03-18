@@ -12,10 +12,12 @@ import type { ConstraintsConfig } from "../../components/Constraints";
 /**
  * Creates a test constraints config with all fields allowed by default.
  */
-function createAllowedConfig(overrides: Partial<{
-  fieldTypes: Partial<ConstraintsConfig["fieldTypes"]>;
-  layout: Partial<ConstraintsConfig["layout"]>;
-}> = {}): ConstraintsConfig {
+function createAllowedConfig(
+  overrides: Partial<{
+    fieldTypes: Partial<ConstraintsConfig["fieldTypes"]>;
+    layout: Partial<ConstraintsConfig["layout"]>;
+  }> = {}
+): ConstraintsConfig {
   return {
     fieldTypes: {
       text: true,
@@ -263,7 +265,16 @@ describe("hasActiveConstraints", () => {
 
     it("returns true when only one field type is forbidden", () => {
       // Each field type should be detected individually
-      const fieldTypes = ["text", "number", "boolean", "enum", "dynamicEnum", "dynamicSchema", "array", "object"] as const;
+      const fieldTypes = [
+        "text",
+        "number",
+        "boolean",
+        "enum",
+        "dynamicEnum",
+        "dynamicSchema",
+        "array",
+        "object",
+      ] as const;
 
       for (const fieldType of fieldTypes) {
         const uiConfig = createAllowedConfig({

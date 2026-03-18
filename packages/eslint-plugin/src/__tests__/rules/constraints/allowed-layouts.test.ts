@@ -102,10 +102,7 @@ ruleTester.run("constraints-allowed-layouts", allowedLayouts, {
         group("Address", { name: "street" });
       `,
       options: [{ group: "error" }],
-      errors: [
-        { messageId: "disallowedGroup" },
-        { messageId: "disallowedGroup" },
-      ],
+      errors: [{ messageId: "disallowedGroup" }, { messageId: "disallowedGroup" }],
     },
     // Both group() and when() disallowed
     {
@@ -120,10 +117,7 @@ ruleTester.run("constraints-allowed-layouts", allowedLayouts, {
         when({ field: "type" }, { name: "company" });
       `,
       options: [{ group: "error", conditionals: "error" }],
-      errors: [
-        { messageId: "disallowedGroup" },
-        { messageId: "disallowedConditional" },
-      ],
+      errors: [{ messageId: "disallowedGroup" }, { messageId: "disallowedConditional" }],
     },
     // Nested group() calls
     {
@@ -134,10 +128,7 @@ ruleTester.run("constraints-allowed-layouts", allowedLayouts, {
         group("Outer", group("Inner", { name: "field" }));
       `,
       options: [{ group: "error" }],
-      errors: [
-        { messageId: "disallowedGroup" },
-        { messageId: "disallowedGroup" },
-      ],
+      errors: [{ messageId: "disallowedGroup" }, { messageId: "disallowedGroup" }],
     },
   ],
 });

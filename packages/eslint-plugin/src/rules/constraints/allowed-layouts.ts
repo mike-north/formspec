@@ -30,8 +30,7 @@ export const allowedLayouts = createRule<Options, MessageIds>({
     messages: {
       disallowedGroup:
         "group() is not allowed - visual grouping is not supported in this project{{labelInfo}}",
-      disallowedConditional:
-        "when() conditional visibility is not allowed in this project",
+      disallowedConditional: "when() conditional visibility is not allowed in this project",
     },
     schema: [
       {

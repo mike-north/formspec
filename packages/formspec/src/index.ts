@@ -98,7 +98,16 @@ export { createInitialFieldState } from "@formspec/core";
 // DSL functions
 // =============================================================================
 
-export { field, group, when, is, formspec, formspecWithValidation, validateForm, logValidationIssues } from "@formspec/dsl";
+export {
+  field,
+  group,
+  when,
+  is,
+  formspec,
+  formspecWithValidation,
+  validateForm,
+  logValidationIssues,
+} from "@formspec/dsl";
 
 // Re-export enum option types (commonly used)
 export type { EnumOption, EnumOptionValue } from "@formspec/dsl";
@@ -153,8 +162,4 @@ export type {
 
 export { defineResolvers } from "@formspec/runtime";
 
-export type {
-  Resolver,
-  ResolverMap,
-  ResolverRegistry,
-} from "@formspec/runtime";
+export type { Resolver, ResolverMap, ResolverRegistry } from "@formspec/runtime";

@@ -25,13 +25,10 @@ describe("validateForm", () => {
 
     it("should detect duplicate field names inside groups", () => {
       const elements = [
-        group(
-          "Personal",
-          field.text("name"),
-        ),
+        group("Personal", field.text("name")),
         group(
           "Business",
-          field.text("name"), // duplicate
+          field.text("name") // duplicate
         ),
       ] as const;
 
@@ -53,7 +50,7 @@ describe("validateForm", () => {
         field.text("value"),
         when(
           is("type", "a"),
-          field.text("value"), // duplicate
+          field.text("value") // duplicate
         ),
       ] as const;
 
@@ -71,11 +68,7 @@ describe("validateForm", () => {
     it("should allow same field names inside different array items (separate scope)", () => {
       // Fields inside arrays are in a different scope - this is valid
       const elements = [
-        field.array(
-          "addresses",
-          field.text("street"),
-          field.text("city"),
-        ),
+        field.array("addresses", field.text("street"), field.text("city")),
       ] as const;
 
       const result = validateForm(elements);
@@ -104,7 +97,7 @@ describe("validateForm", () => {
         field.text("name"),
         when(
           is("status", "draft"), // "status" doesn't exist!
-          field.text("notes"),
+          field.text("notes")
         ),
       ] as const;
 
@@ -123,10 +116,7 @@ describe("validateForm", () => {
     it("should pass when conditional references existing field", () => {
       const elements = [
         field.enum("status", ["draft", "sent"] as const),
-        when(
-          is("status", "draft"),
-          field.text("notes"),
-        ),
+        when(is("status", "draft"), field.text("notes")),
       ] as const;
 
       const result = validateForm(elements);
@@ -142,8 +132,8 @@ describe("validateForm", () => {
           is("type", "a"),
           when(
             is("subtype", "x"), // "subtype" doesn't exist!
-            field.text("extra"),
-          ),
+            field.text("extra")
+          )
         ),
       ] as const;
 
@@ -156,10 +146,7 @@ describe("validateForm", () => {
     it("should allow forward references (field defined after conditional)", () => {
       // This is valid - the conditional references a field that's defined later
       const elements = [
-        when(
-          is("status", "draft"),
-          field.text("notes"),
-        ),
+        when(is("status", "draft"), field.text("notes")),
         field.enum("status", ["draft", "sent"] as const),
       ] as const;
 
@@ -176,7 +163,7 @@ describe("validateForm", () => {
         field.text("name"), // duplicate - now an error
         when(
           is("nonExistent", "value"), // reference error
-          field.text("extra"),
+          field.text("extra")
         ),
       ] as const;
 
@@ -208,7 +195,7 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: false },
       field.text("name"),
-      when(is("nonExistent", "value"), field.text("notes")),
+      when(is("nonExistent", "value"), field.text("notes"))
     );
 
     expect(consoleWarnSpy).not.toHaveBeenCalled();
@@ -219,7 +206,7 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: true },
       field.text("name"),
-      field.text("name"), // duplicate - now an error
+      field.text("name") // duplicate - now an error
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -229,7 +216,7 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: true },
       field.text("name"),
-      when(is("nonExistent", "value"), field.text("notes")),
+      when(is("nonExistent", "value"), field.text("notes"))
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -239,12 +226,10 @@ describe("formspecWithValidation", () => {
     formspecWithValidation(
       { validate: true, name: "TestForm" },
       field.text("name"),
-      field.text("name"),
+      field.text("name")
     );
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("TestForm"),
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("TestForm"));
   });
 
   it("should throw when validate='throw' and there are errors", () => {
@@ -252,8 +237,8 @@ describe("formspecWithValidation", () => {
       formspecWithValidation(
         { validate: "throw" },
         field.text("name"),
-        when(is("nonExistent", "value"), field.text("notes")),
-      ),
+        when(is("nonExistent", "value"), field.text("notes"))
+      )
     ).toThrow("Form validation failed");
   });
 
@@ -262,17 +247,13 @@ describe("formspecWithValidation", () => {
       formspecWithValidation(
         { validate: "throw" },
         field.text("name"),
-        field.text("name"), // duplicate - now an error
-      ),
+        field.text("name") // duplicate - now an error
+      )
     ).toThrow("Form validation failed");
   });
 
   it("should log errors with validate='warn' for duplicates", () => {
-    formspecWithValidation(
-      { validate: "warn" },
-      field.text("name"),
-      field.text("name"),
-    );
+    formspecWithValidation({ validate: "warn" }, field.text("name"), field.text("name"));
 
     expect(consoleErrorSpy).toHaveBeenCalled();
   });
@@ -281,7 +262,7 @@ describe("formspecWithValidation", () => {
     const form = formspecWithValidation(
       { validate: true, name: "Test" },
       field.text("name"),
-      field.number("age"),
+      field.number("age")
     );
 
     expect(form.elements).toHaveLength(2);
@@ -296,7 +277,7 @@ describe("validation with complex structures", () => {
       field.object(
         "address",
         field.text("street"),
-        field.text("street"), // duplicate inside object
+        field.text("street") // duplicate inside object
       ),
     ] as const;
 
@@ -324,11 +305,11 @@ describe("validation with complex structures", () => {
               field.text("name"),
               when(
                 is("missing", "value"), // doesn't exist!
-                field.text("extra"),
-              ),
-            ),
-          ),
-        ),
+                field.text("extra")
+              )
+            )
+          )
+        )
       ),
     ] as const;
 

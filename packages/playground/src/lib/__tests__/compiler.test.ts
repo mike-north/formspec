@@ -14,16 +14,22 @@ import { compileFormSpec, type CompileResult } from "../compiler";
 /**
  * Helper to assert compilation success.
  */
-function expectSuccess(result: CompileResult): asserts result is Extract<CompileResult, { success: true }> {
+function expectSuccess(
+  result: CompileResult
+): asserts result is Extract<CompileResult, { success: true }> {
   if (!result.success) {
-    throw new Error(`Expected success but got errors: ${result.errors.map((e) => e.message).join(", ")}`);
+    throw new Error(
+      `Expected success but got errors: ${result.errors.map((e) => e.message).join(", ")}`
+    );
   }
 }
 
 /**
  * Helper to assert compilation failure.
  */
-function expectFailure(result: CompileResult): asserts result is Extract<CompileResult, { success: false }> {
+function expectFailure(
+  result: CompileResult
+): asserts result is Extract<CompileResult, { success: false }> {
   if (result.success) {
     throw new Error("Expected failure but got success");
   }
@@ -113,7 +119,9 @@ describe("compileFormSpec", () => {
       const result = compileFormSpec(code);
       expectSuccess(result);
 
-      const addressSchema = result.jsonSchema.properties?.address as { properties?: Record<string, unknown> } | undefined;
+      const addressSchema = result.jsonSchema.properties?.address as
+        | { properties?: Record<string, unknown> }
+        | undefined;
       expect(addressSchema?.properties).toHaveProperty("street");
       expect(addressSchema?.properties).toHaveProperty("city");
     });

@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { JsonForms } from "@jsonforms/react";
-import {
-  materialRenderers,
-  materialCells,
-} from "@jsonforms/material-renderers";
+import { materialRenderers, materialCells } from "@jsonforms/material-renderers";
 import type { JsonSchema, UISchemaElement } from "@jsonforms/core";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -24,11 +21,7 @@ interface TabPanelProps {
 
 function TabPanel({ children, value, index }: TabPanelProps): React.ReactElement | null {
   if (value !== index) return null;
-  return (
-    <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-      {children}
-    </Box>
-  );
+  return <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>{children}</Box>;
 }
 
 export function Preview({ jsonSchema, uiSchema }: PreviewProps): React.ReactElement {
@@ -68,9 +61,7 @@ export function Preview({ jsonSchema, uiSchema }: PreviewProps): React.ReactElem
           color: "text.secondary",
         }}
       >
-        <Typography variant="body2">
-          Write FormSpec code to see the live preview
-        </Typography>
+        <Typography variant="body2">Write FormSpec code to see the live preview</Typography>
       </Box>
     );
   }
@@ -82,7 +73,9 @@ export function Preview({ jsonSchema, uiSchema }: PreviewProps): React.ReactElem
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={tab}
-          onChange={(_, newValue: number) => { setTab(newValue); }}
+          onChange={(_, newValue: number) => {
+            setTab(newValue);
+          }}
           variant="fullWidth"
           sx={{
             minHeight: 40,

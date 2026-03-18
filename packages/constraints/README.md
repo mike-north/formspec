@@ -26,18 +26,18 @@ Create a `.formspec.yml` file in your project root:
 ```yaml
 constraints:
   fieldTypes:
-    text: off          # Allow text fields
-    number: off        # Allow number fields
-    boolean: off       # Allow boolean fields
-    staticEnum: off    # Allow static enums
-    dynamicEnum: warn  # Warn on dynamic enums
-    dynamicSchema: error  # Disallow dynamic schemas
-    array: off         # Allow arrays
-    object: off        # Allow objects
+    text: off # Allow text fields
+    number: off # Allow number fields
+    boolean: off # Allow boolean fields
+    staticEnum: off # Allow static enums
+    dynamicEnum: warn # Warn on dynamic enums
+    dynamicSchema: error # Disallow dynamic schemas
+    array: off # Allow arrays
+    object: off # Allow objects
 
   layout:
-    group: off         # Allow groups
-    conditionals: off  # Allow when() conditionals
+    group: off # Allow groups
+    conditionals: off # Allow when() conditionals
     maxNestingDepth: 3 # Max nesting depth (0 = flat only)
 
   fieldOptions:
@@ -54,11 +54,11 @@ constraints:
 
 Each constraint can be set to:
 
-| Severity | Behavior |
-|----------|----------|
-| `"off"` | Feature is allowed (default) |
-| `"warn"` | Emit warning but allow |
-| `"error"` | Disallow - fail validation |
+| Severity  | Behavior                     |
+| --------- | ---------------------------- |
+| `"off"`   | Feature is allowed (default) |
+| `"warn"`  | Emit warning but allow       |
+| `"error"` | Disallow - fail validation   |
 
 ## Constraint Categories
 
@@ -66,38 +66,38 @@ Each constraint can be set to:
 
 Control which DSL field builders are allowed:
 
-| Constraint | DSL Function |
-|------------|--------------|
-| `text` | `field.text()` |
-| `number` | `field.number()` |
-| `boolean` | `field.boolean()` |
-| `staticEnum` | `field.enum()` |
-| `dynamicEnum` | `field.dynamicEnum()` |
-| `dynamicSchema` | `field.dynamicSchema()` |
-| `array` | `field.array()`, `field.arrayWithConfig()` |
-| `object` | `field.object()`, `field.objectWithConfig()` |
+| Constraint      | DSL Function                                 |
+| --------------- | -------------------------------------------- |
+| `text`          | `field.text()`                               |
+| `number`        | `field.number()`                             |
+| `boolean`       | `field.boolean()`                            |
+| `staticEnum`    | `field.enum()`                               |
+| `dynamicEnum`   | `field.dynamicEnum()`                        |
+| `dynamicSchema` | `field.dynamicSchema()`                      |
+| `array`         | `field.array()`, `field.arrayWithConfig()`   |
+| `object`        | `field.object()`, `field.objectWithConfig()` |
 
 ### Layout (`layout`)
 
 Control structure and nesting:
 
-| Constraint | Description |
-|------------|-------------|
-| `group` | `group()` visual grouping |
-| `conditionals` | `when()` conditional visibility |
+| Constraint        | Description                             |
+| ----------------- | --------------------------------------- |
+| `group`           | `group()` visual grouping               |
+| `conditionals`    | `when()` conditional visibility         |
 | `maxNestingDepth` | Maximum depth for nested objects/arrays |
 
 ### Field Options (`fieldOptions`)
 
 Control which field configuration options are allowed:
 
-| Constraint | Description |
-|------------|-------------|
-| `label` | Field label text |
-| `placeholder` | Input placeholder |
-| `required` | Required field validation |
-| `minValue`, `maxValue` | Number field constraints |
-| `minItems`, `maxItems` | Array length constraints |
+| Constraint             | Description               |
+| ---------------------- | ------------------------- |
+| `label`                | Field label text          |
+| `placeholder`          | Input placeholder         |
+| `required`             | Required field validation |
+| `minValue`, `maxValue` | Number field constraints  |
+| `minItems`, `maxItems` | Array length constraints  |
 
 ### UI Schema (`uiSchema`)
 
@@ -110,7 +110,7 @@ constraints:
       VerticalLayout: off
       HorizontalLayout: off
       Group: off
-      Categorization: error  # Disallow tabbed interfaces
+      Categorization: error # Disallow tabbed interfaces
       Category: error
     rules:
       enabled: off
@@ -147,9 +147,7 @@ import { formspec, field, when, is } from "@formspec/dsl";
 const form = formspec(
   field.text("name"),
   field.dynamicEnum("country", "fetch_countries"),
-  when(is("country", "US"),
-    field.text("state"),
-  ),
+  when(is("country", "US"), field.text("state"))
 );
 
 const result = validateFormSpec(form, resolved);
@@ -165,18 +163,18 @@ if (!result.valid) {
 
 ```typescript
 interface ValidationResult {
-  valid: boolean;  // true if no errors (warnings OK)
+  valid: boolean; // true if no errors (warnings OK)
   issues: ValidationIssue[];
 }
 
 interface ValidationIssue {
-  code: string;           // e.g., "FIELD_TYPE_NOT_ALLOWED"
-  message: string;        // Human-readable description
+  code: string; // e.g., "FIELD_TYPE_NOT_ALLOWED"
+  message: string; // Human-readable description
   severity: "error" | "warning";
   category: "fieldTypes" | "layout" | "uiSchema" | "fieldOptions" | "controlOptions";
-  path?: string;          // JSON pointer to issue location
-  fieldName?: string;     // Affected field name
-  fieldType?: string;     // Affected field type
+  path?: string; // JSON pointer to issue location
+  fieldName?: string; // Affected field name
+  fieldType?: string; // Affected field type
 }
 ```
 
@@ -228,10 +226,10 @@ Restrict to features supported by standard JSON Forms renderers:
 ```yaml
 constraints:
   fieldTypes:
-    dynamicSchema: error  # Not supported by JSON Forms
+    dynamicSchema: error # Not supported by JSON Forms
   uiSchema:
     layouts:
-      Categorization: warn  # May not be supported by all renderers
+      Categorization: warn # May not be supported by all renderers
 ```
 
 ### Warn on Advanced Features

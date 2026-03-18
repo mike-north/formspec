@@ -1,5 +1,10 @@
 import type { FormElement, FormSpec, AnyField } from "@formspec/core";
-import type { ConstraintConfig, ResolvedConstraintConfig, ValidationIssue, ValidationResult } from "../types.js";
+import type {
+  ConstraintConfig,
+  ResolvedConstraintConfig,
+  ValidationIssue,
+  ValidationResult,
+} from "../types.js";
 import { mergeWithDefaults } from "../defaults.js";
 import { validateFieldTypes } from "./field-types.js";
 import { validateLayout } from "./layout.js";
@@ -150,9 +155,7 @@ function validateField(
       constraints.layout
     );
     // Only add nesting depth issues, not group issues
-    issues.push(
-      ...layoutIssues.filter((issue) => issue.code === "EXCEEDED_NESTING_DEPTH")
-    );
+    issues.push(...layoutIssues.filter((issue) => issue.code === "EXCEEDED_NESTING_DEPTH"));
 
     // Recursively validate nested elements
     if (field._field === "array" && "items" in field) {
@@ -180,7 +183,11 @@ function validateField(
  * Validates a group element.
  */
 function validateGroup(
-  group: { readonly _type: "group"; readonly label: string; readonly elements: readonly FormElement[] },
+  group: {
+    readonly _type: "group";
+    readonly label: string;
+    readonly elements: readonly FormElement[];
+  },
   constraints: ResolvedConstraintConfig,
   issues: ValidationIssue[],
   pathPrefix: string,

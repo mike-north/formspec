@@ -1,0 +1,88 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "customerName",
+      "required": true,
+      "group": "Customer",
+      "label": "Customer Name",
+      "description": "Full legal name",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    {
+      "_field": "text",
+      "id": "customerEmail",
+      "required": true,
+      "group": "Customer",
+      "label": "Customer Email"
+    },
+    {
+      "_field": "number",
+      "id": "quantity",
+      "required": true,
+      "group": "Order Details",
+      "label": "Quantity",
+      "min": 1,
+      "max": 999
+    },
+    {
+      "_field": "number",
+      "id": "unitPrice",
+      "required": true,
+      "group": "Order Details",
+      "label": "Unit Price",
+      "min": 0,
+      "max": 99999
+    },
+    {
+      "_field": "enum",
+      "id": "priority",
+      "required": true,
+      "group": "Order Details",
+      "label": "Priority",
+      "options": [
+        {
+          "id": "low",
+          "label": "Low"
+        },
+        {
+          "id": "normal",
+          "label": "Normal"
+        },
+        {
+          "id": "high",
+          "label": "High"
+        },
+        {
+          "id": "urgent",
+          "label": "Urgent"
+        }
+      ]
+    },
+    {
+      "_field": "enum",
+      "id": "shippingMethod",
+      "required": true,
+      "group": "Shipping",
+      "label": "Shipping Method",
+      "options": ["standard", "express", "overnight"]
+    },
+    {
+      "_field": "text",
+      "id": "expressInstructions",
+      "showWhen": {
+        "field": "shippingMethod",
+        "value": "express"
+      },
+      "group": "Shipping",
+      "label": "Express Instructions"
+    },
+    {
+      "_field": "text",
+      "id": "discountCode",
+      "group": "Shipping",
+      "label": "Discount Code"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "type": "object",
+  "properties": {
+    "customerName": {
+      "type": "string",
+      "title": "Customer Name",
+      "description": "Full legal name",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "customerEmail": {
+      "type": "string",
+      "title": "Customer Email"
+    },
+    "quantity": {
+      "type": "number",
+      "title": "Quantity",
+      "minimum": 1,
+      "maximum": 999
+    },
+    "unitPrice": {
+      "type": "number",
+      "title": "Unit Price",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    "priority": {
+      "enum": ["low", "normal", "high", "urgent"],
+      "title": "Priority"
+    },
+    "shippingMethod": {
+      "enum": ["standard", "express", "overnight"],
+      "title": "Shipping Method"
+    },
+    "expressInstructions": {
+      "type": "string",
+      "title": "Express Instructions"
+    },
+    "discountCode": {
+      "type": "string",
+      "title": "Discount Code"
+    }
+  },
+  "required": [
+    "customerName",
+    "customerEmail",
+    "quantity",
+    "unitPrice",
+    "priority",
+    "shippingMethod"
+  ]
+}

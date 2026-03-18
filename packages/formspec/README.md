@@ -42,7 +42,7 @@ const ContactForm = formspec(
   field.text("email", { label: "Email", required: true }),
   field.enum("subject", ["General", "Support", "Sales"], { label: "Subject" }),
   field.text("message", { label: "Message", required: true }),
-  field.boolean("subscribe", { label: "Subscribe to newsletter" }),
+  field.boolean("subscribe", { label: "Subscribe to newsletter" })
 );
 
 // Infer TypeScript type from the form
@@ -58,27 +58,21 @@ const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
 ### Field Types
 
 ```typescript
-field.text("name", { label: "Name", required: true })
-field.number("age", { label: "Age", min: 0, max: 120 })
-field.boolean("active", { label: "Active" })
-field.enum("status", ["draft", "published"], { label: "Status" })
-field.dynamicEnum("country", "fetch_countries", { label: "Country" })
-field.array("tags", field.text("tag"))
-field.object("address", field.text("street"), field.text("city"))
+field.text("name", { label: "Name", required: true });
+field.number("age", { label: "Age", min: 0, max: 120 });
+field.boolean("active", { label: "Active" });
+field.enum("status", ["draft", "published"], { label: "Status" });
+field.dynamicEnum("country", "fetch_countries", { label: "Country" });
+field.array("tags", field.text("tag"));
+field.object("address", field.text("street"), field.text("city"));
 ```
 
 ### Grouping
 
 ```typescript
 const Form = formspec(
-  group("Personal Info",
-    field.text("firstName"),
-    field.text("lastName"),
-  ),
-  group("Contact",
-    field.text("email"),
-    field.text("phone"),
-  ),
+  group("Personal Info", field.text("firstName"), field.text("lastName")),
+  group("Contact", field.text("email"), field.text("phone"))
 );
 ```
 
@@ -87,10 +81,11 @@ const Form = formspec(
 ```typescript
 const Form = formspec(
   field.enum("type", ["personal", "business"]),
-  when(is("type", "business"),
+  when(
+    is("type", "business"),
     field.text("companyName", { label: "Company Name" }),
-    field.text("taxId", { label: "Tax ID" }),
-  ),
+    field.text("taxId", { label: "Tax ID" })
+  )
 );
 ```
 
@@ -111,9 +106,7 @@ const handleSubmit = (data: FormData) => {
 ```typescript
 import { defineResolvers } from "formspec";
 
-const Form = formspec(
-  field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
-);
+const Form = formspec(field.dynamicEnum("country", "fetch_countries", { label: "Country" }));
 
 const resolvers = defineResolvers(Form, {
   fetch_countries: async () => ({
@@ -143,21 +136,21 @@ writeSchemas(ContactForm, {
 
 This umbrella package re-exports from several focused packages:
 
-| Package | Description |
-|---------|-------------|
-| `@formspec/core` | Core type definitions |
-| `@formspec/dsl` | DSL functions (`formspec`, `field`, `group`, `when`, `is`) |
-| `@formspec/build` | Schema generators (`buildFormSchemas`, `writeSchemas`) |
-| `@formspec/runtime` | Runtime helpers (`defineResolvers`) |
+| Package             | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `@formspec/core`    | Core type definitions                                      |
+| `@formspec/dsl`     | DSL functions (`formspec`, `field`, `group`, `when`, `is`) |
+| `@formspec/build`   | Schema generators (`buildFormSchemas`, `writeSchemas`)     |
+| `@formspec/runtime` | Runtime helpers (`defineResolvers`)                        |
 
 You can import from the umbrella package for convenience, or from individual packages for smaller bundle sizes.
 
 ## Related Packages
 
-| Package | Description |
-|---------|-------------|
-| `@formspec/decorators` | Decorator-based API for class definitions |
-| `@formspec/cli` | CLI tool for static analysis of decorated classes |
+| Package                | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `@formspec/decorators` | Decorator-based API for class definitions         |
+| `@formspec/cli`        | CLI tool for static analysis of decorated classes |
 
 ## License
 

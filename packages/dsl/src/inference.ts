@@ -50,27 +50,28 @@ import type {
  * type T5 = InferFieldValue<ObjectField<"address", [TextField<"city">]>>; // { city: string }
  * ```
  */
-export type InferFieldValue<F> = F extends TextField<string>
-  ? string
-  : F extends NumberField<string>
-    ? number
-    : F extends BooleanField<string>
-      ? boolean
-      : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
-        ? O extends readonly EnumOption[]
-          ? O[number]["id"]
-          : O extends readonly string[]
-            ? O[number]
-            : never
-        : F extends DynamicEnumField<string, infer Source>
-          ? DataSourceValueType<Source>
-          : F extends DynamicSchemaField<string>
-            ? Record<string, unknown>
-            : F extends ArrayField<string, infer Items extends readonly FormElement[]>
-              ? InferSchema<Items>[]
-              : F extends ObjectField<string, infer Properties extends readonly FormElement[]>
-                ? InferSchema<Properties>
-                : never;
+export type InferFieldValue<F> =
+  F extends TextField<string>
+    ? string
+    : F extends NumberField<string>
+      ? number
+      : F extends BooleanField<string>
+        ? boolean
+        : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
+          ? O extends readonly EnumOption[]
+            ? O[number]["id"]
+            : O extends readonly string[]
+              ? O[number]
+              : never
+          : F extends DynamicEnumField<string, infer Source>
+            ? DataSourceValueType<Source>
+            : F extends DynamicSchemaField<string>
+              ? Record<string, unknown>
+              : F extends ArrayField<string, infer Items extends readonly FormElement[]>
+                ? InferSchema<Items>[]
+                : F extends ObjectField<string, infer Properties extends readonly FormElement[]>
+                  ? InferSchema<Properties>
+                  : never;
 
 /**
  * Extracts all fields from a single element (recursively).
@@ -135,10 +136,12 @@ export type ExtractNonConditionalFields<E> = E extends AnyField
  * // TextField<"name"> | NumberField<"age">
  * ```
  */
-export type ExtractNonConditionalFieldsFromArray<Elements> =
-  Elements extends readonly [infer First, ...infer Rest]
-    ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
-    : never;
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
+  : never;
 
 /**
  * Extracts fields that ARE inside conditionals.
@@ -179,10 +182,12 @@ export type ExtractConditionalFields<E> = E extends AnyField
  * // TextField<"company">
  * ```
  */
-export type ExtractConditionalFieldsFromArray<Elements> =
-  Elements extends readonly [infer First, ...infer Rest]
-    ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
-    : never;
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
+  : never;
 
 /**
  * Builds a schema type from extracted fields.
@@ -190,9 +195,9 @@ export type ExtractConditionalFieldsFromArray<Elements> =
  * Maps field names to their inferred value types.
  */
 export type BuildSchema<Fields> = {
-  [F in Fields as F extends { name: infer N extends string }
-    ? N
-    : never]: F extends AnyField ? InferFieldValue<F> : never;
+  [F in Fields as F extends { name: infer N extends string } ? N : never]: F extends AnyField
+    ? InferFieldValue<F>
+    : never;
 };
 
 /**

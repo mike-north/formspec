@@ -91,7 +91,12 @@ function App(): React.ReactElement {
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Header */}
-      <AppBar position="static" color="transparent" elevation={0} sx={{ borderBottom: 1, borderColor: "divider" }}>
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={0}
+        sx={{ borderBottom: 1, borderColor: "divider" }}
+      >
         <Toolbar variant="dense" sx={{ minHeight: 48 }}>
           <Typography
             variant="h6"
@@ -123,7 +128,9 @@ function App(): React.ReactElement {
             {examples.map((example) => (
               <MenuItem
                 key={example.name}
-                onClick={() => { handleExampleSelect(example.code); }}
+                onClick={() => {
+                  handleExampleSelect(example.code);
+                }}
                 sx={{ minWidth: 240 }}
               >
                 <ListItemText
@@ -165,65 +172,65 @@ function App(): React.ReactElement {
       {/* Main Content */}
       <Box sx={{ flex: 1, overflow: "hidden" }}>
         <ErrorBoundary fallbackTitle="Error rendering playground">
-        <Allotment>
-          {/* Left Panel - Editor + Lint */}
-          <Allotment.Pane minSize={300} preferredSize="40%">
-            <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <Allotment vertical>
-                <Allotment.Pane minSize={200} preferredSize="75%">
-                  <Box sx={{ height: "100%", p: 1 }}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        display: "block",
-                        px: 1,
-                        py: 0.5,
-                        color: "text.secondary",
-                        fontWeight: 500,
-                      }}
-                    >
-                      FormSpec Code
-                    </Typography>
-                    <Box sx={{ height: "calc(100% - 24px)" }}>
-                      <Editor value={code} onChange={setCode} errors={errors} />
+          <Allotment>
+            {/* Left Panel - Editor + Lint */}
+            <Allotment.Pane minSize={300} preferredSize="40%">
+              <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                <Allotment vertical>
+                  <Allotment.Pane minSize={200} preferredSize="75%">
+                    <Box sx={{ height: "100%", p: 1 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          px: 1,
+                          py: 0.5,
+                          color: "text.secondary",
+                          fontWeight: 500,
+                        }}
+                      >
+                        FormSpec Code
+                      </Typography>
+                      <Box sx={{ height: "calc(100% - 24px)" }}>
+                        <Editor value={code} onChange={setCode} errors={errors} />
+                      </Box>
                     </Box>
-                  </Box>
-                </Allotment.Pane>
-                <Allotment.Pane minSize={100} preferredSize="25%">
-                  <Lint errors={errors} isCompiling={isCompiling} />
-                </Allotment.Pane>
-              </Allotment>
-            </Box>
-          </Allotment.Pane>
-
-          {/* Middle Panel - Schema Output */}
-          <Allotment.Pane minSize={250} preferredSize="30%">
-            <Box sx={{ height: "100%", p: 1 }}>
-              <Output jsonSchema={jsonSchema} uiSchema={uiSchema} />
-            </Box>
-          </Allotment.Pane>
-
-          {/* Right Panel - Preview */}
-          <Allotment.Pane minSize={250} preferredSize="30%">
-            <Box sx={{ height: "100%", p: 1 }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  display: "block",
-                  px: 1,
-                  py: 0.5,
-                  color: "text.secondary",
-                  fontWeight: 500,
-                }}
-              >
-                Live Form Preview
-              </Typography>
-              <Box sx={{ height: "calc(100% - 24px)" }}>
-                <Preview jsonSchema={jsonSchema} uiSchema={uiSchema} />
+                  </Allotment.Pane>
+                  <Allotment.Pane minSize={100} preferredSize="25%">
+                    <Lint errors={errors} isCompiling={isCompiling} />
+                  </Allotment.Pane>
+                </Allotment>
               </Box>
-            </Box>
-          </Allotment.Pane>
-        </Allotment>
+            </Allotment.Pane>
+
+            {/* Middle Panel - Schema Output */}
+            <Allotment.Pane minSize={250} preferredSize="30%">
+              <Box sx={{ height: "100%", p: 1 }}>
+                <Output jsonSchema={jsonSchema} uiSchema={uiSchema} />
+              </Box>
+            </Allotment.Pane>
+
+            {/* Right Panel - Preview */}
+            <Allotment.Pane minSize={250} preferredSize="30%">
+              <Box sx={{ height: "100%", p: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    px: 1,
+                    py: 0.5,
+                    color: "text.secondary",
+                    fontWeight: 500,
+                  }}
+                >
+                  Live Form Preview
+                </Typography>
+                <Box sx={{ height: "calc(100% - 24px)" }}>
+                  <Preview jsonSchema={jsonSchema} uiSchema={uiSchema} />
+                </Box>
+              </Box>
+            </Allotment.Pane>
+          </Allotment>
         </ErrorBoundary>
       </Box>
 
