@@ -247,7 +247,8 @@ USAGE IN CODE:
     // Then use the generated accessor functions
     import { getUserFormFormSpec } from './__formspec_types__';
 
-    const { jsonSchema, uiSchema } = getUserFormFormSpec();
+    const spec = getUserFormFormSpec();
+    // Use \`spec\` with your preferred schema builder or form renderer.
 
   Alternatively, use generateSchemasFromClass() for static analysis
   without codegen:
