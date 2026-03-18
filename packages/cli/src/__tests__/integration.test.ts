@@ -236,7 +236,9 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
 
     expect(fs.existsSync(result.dir)).toBe(true);
     expect(fs.existsSync(path.join(result.dir, "UserRegistrationForm", "schema.json"))).toBe(true);
-    expect(fs.existsSync(path.join(result.dir, "UserRegistrationForm", "ui_schema.json"))).toBe(true);
+    expect(fs.existsSync(path.join(result.dir, "UserRegistrationForm", "ui_schema.json"))).toBe(
+      true
+    );
     expect(fs.existsSync(path.join(result.dir, "ProductConfigForm", "schema.json"))).toBe(true);
   });
 });

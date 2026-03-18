@@ -244,22 +244,29 @@ USAGE IN CODE:
     // Import once at application entry point
     import './__formspec_types__';
 
-    // Then use toFormSpec() or buildFormSchemas() normally
-    import { UserForm } from './forms';
-    import { toFormSpec, buildFormSchemas } from '@formspec/decorators';
+    // Then use the generated accessor functions
+    import { getUserFormFormSpec } from './__formspec_types__';
 
-    const spec = toFormSpec(UserForm);
-    const { jsonSchema, uiSchema } = buildFormSchemas(UserForm);
+    const { jsonSchema, uiSchema } = getUserFormFormSpec();
+
+  Alternatively, use generateSchemasFromClass() for static analysis
+  without codegen:
+
+    import { generateSchemasFromClass } from '@formspec/build';
+
+    const { jsonSchema, uiSchema } = generateSchemasFromClass({
+      filePath: './src/forms.ts',
+      className: 'UserForm',
+    });
 
 HOW IT WORKS:
   TypeScript erases type information at runtime. This command extracts
   type metadata (field types, enum values, optional/nullable flags) from
   your decorated classes and generates a file that patches them with
-  a __formspec_types__ property.
+  a __formspec_types__ property and accessor functions.
 
-  Without codegen, toFormSpec() can only read decorator metadata (labels,
-  constraints) but not TypeScript types. With codegen, you get full type
-  information at runtime.
+  Without codegen, use generateSchemasFromClass() from @formspec/build
+  for purely static analysis (no runtime metadata needed).
 `);
 }
 
