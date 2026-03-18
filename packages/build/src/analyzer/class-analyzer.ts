@@ -175,7 +175,12 @@ export function analyzeField(
 
 /**
  * Given a type node, checks if it references a type alias and extracts
- * any JSDoc constraint/display-metadata tags from the alias declaration.
+ * JSDoc constraint tags from the alias declaration.
+ *
+ * Only constraint tags (`@Minimum`, `@Maximum`, `@Pattern`, etc.) are
+ * propagated — display metadata (`@Field_displayName`, `@Field_description`)
+ * is intentionally excluded because display metadata is a field-level
+ * concern, not a type-level one.
  *
  * This makes `type Percent = number` with `@Minimum 0 @Maximum 100`
  * propagate constraints to any field typed as `Percent`.
