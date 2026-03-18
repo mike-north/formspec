@@ -7,11 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import {
-  createProgramContext,
-  findClassByName,
-  analyzeClass,
-} from "@formspec/build/internals";
+import { createProgramContext, findClassByName, analyzeClass } from "@formspec/build/internals";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -86,4 +82,3 @@ describe("analyzeClass", () => {
     expect(amountField?.optional).toBe(false);
   });
 });
-

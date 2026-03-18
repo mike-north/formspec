@@ -123,7 +123,10 @@ export function analyzeClass(
 /**
  * Analyzes a property declaration to extract field info.
  */
-function analyzeField(prop: ts.PropertyDeclaration, checker: ts.TypeChecker): FieldInfo | null {
+export function analyzeField(
+  prop: ts.PropertyDeclaration,
+  checker: ts.TypeChecker
+): FieldInfo | null {
   // Skip computed property names
   if (!ts.isIdentifier(prop.name)) {
     return null;
