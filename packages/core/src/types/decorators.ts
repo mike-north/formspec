@@ -39,6 +39,7 @@ export const CONSTRAINT_TAG_DEFINITIONS = {
   MinLength: "number",
   MaxLength: "number",
   Pattern: "string",
+  EnumOptions: "json",
 } as const;
 
 /** Type of a constraint tag name. */

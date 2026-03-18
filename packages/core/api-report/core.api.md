@@ -45,6 +45,7 @@ export const CONSTRAINT_TAG_DEFINITIONS: {
     readonly MinLength: "number";
     readonly MaxLength: "number";
     readonly Pattern: "string";
+    readonly EnumOptions: "json";
 };
 
 // @public

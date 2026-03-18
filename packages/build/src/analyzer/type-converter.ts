@@ -8,7 +8,7 @@
 
 import * as ts from "typescript";
 import type { DecoratorInfo } from "./decorator-extractor.js";
-import { analyzeField, type FieldInfo } from "./class-analyzer.js";
+import { analyzeField, analyzeInterfaceProperty, type FieldInfo } from "./class-analyzer.js";
 import { setSchemaExtension, type ExtendedJSONSchema7 } from "../json-schema/types.js";
 
 /**
@@ -46,26 +46,73 @@ export interface TypeConversionResult {
 }
 
 /**
- * Attempts to find a class declaration for the given type and extract
- * FieldInfo for each property via analyzeField.
+ * Given a ts.Type for a class or interface, navigates to its declaration
+ * and returns a Map from property name to its fully analyzed FieldInfo.
  *
- * Returns null for non-class types (interfaces, type aliases, inline objects),
+ * - **Classes**: uses `analyzeField` to extract decorators + JSDoc constraints
+ * - **Interfaces**: extracts JSDoc constraint and display metadata tags
+ *
+ * Returns null for non-class/non-interface types (type aliases, inline objects),
  * preserving existing structural-only behavior for those cases.
  */
 function getClassFieldInfoMap(
   type: ts.Type,
   checker: ts.TypeChecker
 ): Map<string, FieldInfo> | null {
-  const symbol = type.getSymbol();
-  if (!symbol?.declarations) return null;
-  const classDecl = symbol.declarations.find(ts.isClassDeclaration);
-  if (!classDecl) return null;
+  // Check both direct symbol and alias symbol — type aliases resolve to
+  // an anonymous __type symbol, with the original alias on type.aliasSymbol.
+  const symbols = [type.getSymbol(), type.aliasSymbol].filter(
+    (s): s is ts.Symbol => s?.declarations != null && s.declarations.length > 0
+  );
 
+  for (const symbol of symbols) {
+    const declarations = symbol.declarations;
+    if (!declarations) continue;
+
+    // Try class declaration
+    const classDecl = declarations.find(ts.isClassDeclaration);
+    if (classDecl) {
+      const map = new Map<string, FieldInfo>();
+      for (const member of classDecl.members) {
+        if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
+          const fieldInfo = analyzeField(member, checker);
+          if (fieldInfo) map.set(fieldInfo.name, fieldInfo);
+        }
+      }
+      return map;
+    }
+
+    // Try interface declaration
+    const interfaceDecl = declarations.find(ts.isInterfaceDeclaration);
+    if (interfaceDecl) {
+      return buildFieldInfoMapFromSignatures(interfaceDecl.members, checker);
+    }
+
+    // Try type alias with type literal body: type X = { ... }
+    const typeAliasDecl = declarations.find(ts.isTypeAliasDeclaration);
+    if (typeAliasDecl && ts.isTypeLiteralNode(typeAliasDecl.type)) {
+      return buildFieldInfoMapFromSignatures(typeAliasDecl.type.members, checker);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Builds a FieldInfo map from interface/type-literal property signatures,
+ * delegating to {@link analyzeInterfaceProperty} for JSDoc extraction.
+ */
+function buildFieldInfoMapFromSignatures(
+  members: ts.NodeArray<ts.TypeElement>,
+  checker: ts.TypeChecker
+): Map<string, FieldInfo> {
   const map = new Map<string, FieldInfo>();
-  for (const member of classDecl.members) {
-    if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
-      const fieldInfo = analyzeField(member, checker);
-      if (fieldInfo) map.set(fieldInfo.name, fieldInfo);
+  for (const member of members) {
+    if (ts.isPropertySignature(member)) {
+      const fieldInfo = analyzeInterfaceProperty(member, checker);
+      if (fieldInfo) {
+        map.set(fieldInfo.name, fieldInfo);
+      }
     }
   }
   return map;
