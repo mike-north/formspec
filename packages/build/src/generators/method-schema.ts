@@ -140,7 +140,7 @@ function generateParamsSchemas(
     jsonSchema: {
       type: "object",
       properties,
-      required,
+      ...(required.length > 0 ? { required } : {}),
     },
     uiSchema: null,
     formSpecExport: null,

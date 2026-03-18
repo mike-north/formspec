@@ -645,7 +645,9 @@ function generateTypedAccessor(cls: DecoratedClassInfo): string {
   lines.push(` * Reads the patched type metadata from the class.`);
   lines.push(` */`);
   lines.push(`export function get${cls.name}FormSpec(): ${cls.name}FormSpec {`);
-  lines.push(`  const types = (${cls.name} as any).__formspec_types__ as Record<string, unknown>[];`);
+  lines.push(
+    `  const types = (${cls.name} as any).__formspec_types__ as Record<string, unknown>[];`
+  );
   lines.push(`  return { elements: types } as unknown as ${cls.name}FormSpec;`);
   lines.push(`}`);
 

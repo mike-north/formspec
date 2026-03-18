@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "../generators/class-schema.js";
-import { getSchemaExtension } from "../json-schema/types.js";
+import { getSchemaExtension, type ExtendedJSONSchema7 } from "../json-schema/types.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 
@@ -348,6 +348,189 @@ describe("Decorator Pipeline Integration", () => {
       expect(notesSchema?.type).toBe("string");
       expect(notesSchema?.minimum).toBeUndefined();
       expect(notesSchema?.minLength).toBeUndefined();
+    });
+  });
+
+  describe("Nested class: decorator constraints", () => {
+    it("should propagate decorator constraints into nested JSON Schema properties", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "UserWithAddress",
+      });
+
+      const { jsonSchema } = result;
+      const addressSchema = jsonSchema.properties?.["address"] as ExtendedJSONSchema7 | undefined;
+
+      // Address sub-schema carries street constraints
+      expect(addressSchema?.properties?.["street"]).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+      });
+
+      // Zip carries pattern
+      expect(addressSchema?.properties?.["zip"]).toMatchObject({
+        pattern: "^\\d{5}(-\\d{4})?$",
+      });
+
+      // Required array on the nested object: street and city required, zip optional
+      expect(addressSchema?.required).toContain("street");
+      expect(addressSchema?.required).toContain("city");
+      expect(addressSchema?.required).not.toContain("zip");
+    });
+
+    it("should propagate decorator constraints into nested uiSchema fields", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "UserWithAddress",
+      });
+
+      const { uiSchema } = result;
+      const addressField = uiSchema.elements.find((e) => e.id === "address");
+
+      expect(addressField?.fields).toBeDefined();
+
+      const streetField = addressField?.fields?.find((f) => f.id === "street");
+      expect(streetField).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+        required: true,
+      });
+    });
+  });
+
+  describe("Nested class: JSDoc constraints", () => {
+    it("should propagate JSDoc constraints into nested JSON Schema properties", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "ProductWithDimensions",
+      });
+
+      const { jsonSchema } = result;
+      const dimSchema = jsonSchema.properties?.["dimensions"] as ExtendedJSONSchema7 | undefined;
+
+      // width has both minimum and maximum from JSDoc
+      expect(dimSchema?.properties?.["width"]).toMatchObject({
+        minimum: 0,
+        maximum: 10000,
+      });
+
+      // depth has minimum but no maximum
+      const depthSchema = dimSchema?.properties?.["depth"] as ExtendedJSONSchema7 | undefined;
+      expect(depthSchema?.minimum).toBe(0);
+      expect(depthSchema?.maximum).toBeUndefined();
+    });
+
+    it("should propagate JSDoc constraints into nested uiSchema fields", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "ProductWithDimensions",
+      });
+
+      const { uiSchema } = result;
+      const dimField = uiSchema.elements.find((e) => e.id === "dimensions");
+
+      expect(dimField?.fields).toBeDefined();
+
+      const widthField = dimField?.fields?.find((f) => f.id === "width");
+      expect(widthField).toMatchObject({
+        min: 0,
+        max: 10000,
+      });
+    });
+  });
+
+  describe("Nested class: three-level nesting", () => {
+    it("should propagate constraints through three levels of nesting in JSON Schema", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "Order",
+      });
+
+      const { jsonSchema } = result;
+      const customerSchema = jsonSchema.properties?.["customer"] as ExtendedJSONSchema7 | undefined;
+
+      // Level 2: customer.name has minLength
+      expect(customerSchema?.properties?.["name"]).toMatchObject({
+        minLength: 1,
+      });
+
+      // Level 3: customer.address.street has minLength and maxLength
+      const addressSchema = customerSchema?.properties?.["address"] as
+        | ExtendedJSONSchema7
+        | undefined;
+      expect(addressSchema?.properties?.["street"]).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+      });
+    });
+
+    it("should propagate constraints through three levels of nesting in uiSchema", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "Order",
+      });
+
+      const { uiSchema } = result;
+      const customerField = uiSchema.elements.find((e) => e.id === "customer");
+
+      expect(customerField?.fields).toBeDefined();
+
+      // Level 2: customer name field has constraints
+      const nameField = customerField?.fields?.find((f) => f.id === "name");
+      expect(nameField?.minLength).toBe(1);
+
+      // Level 3: customer > address > street
+      const addressField = customerField?.fields?.find((f) => f.id === "address");
+      expect(addressField?.fields).toBeDefined();
+
+      const streetField = addressField?.fields?.find((f) => f.id === "street");
+      expect(streetField).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+        required: true,
+      });
+    });
+  });
+
+  describe("Nested class: circular references", () => {
+    it("should complete without hanging on circular class references", { timeout: 5000 }, () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "NodeA",
+      });
+
+      const { jsonSchema } = result;
+
+      // Basic structure is valid
+      expect(jsonSchema.type).toBe("object");
+      expect(jsonSchema.properties?.["name"]).toMatchObject({
+        minLength: 1,
+      });
+
+      // Sibling property exists (may be bare { type: "object" } at the cycle point)
+      expect(jsonSchema.properties?.["sibling"]).toBeDefined();
+    });
+  });
+
+  describe("Nested class: non-class object types (regression)", () => {
+    it("should handle inline object types without errors", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-nested-class.ts"),
+        className: "WithInlineObject",
+      });
+
+      const { jsonSchema } = result;
+      const metadataSchema = jsonSchema.properties?.["metadata"] as ExtendedJSONSchema7 | undefined;
+
+      // Structural extraction still works — key has type string
+      expect(metadataSchema?.properties?.["key"]).toMatchObject({
+        type: "string",
+      });
+
+      // No decorator constraints on inline object properties
+      const keySchema = metadataSchema?.properties?.["key"] as ExtendedJSONSchema7 | undefined;
+      expect(keySchema?.minLength).toBeUndefined();
+      expect(keySchema?.maxLength).toBeUndefined();
     });
   });
 

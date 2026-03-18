@@ -8,7 +8,7 @@
 
 import * as ts from "typescript";
 import type { DecoratorInfo } from "./decorator-extractor.js";
-import type { FieldInfo } from "./class-analyzer.js";
+import { analyzeField, type FieldInfo } from "./class-analyzer.js";
 import { setSchemaExtension, type ExtendedJSONSchema7 } from "../json-schema/types.js";
 
 /**
@@ -46,6 +46,78 @@ export interface TypeConversionResult {
 }
 
 /**
+ * Attempts to find a class declaration for the given type and extract
+ * FieldInfo for each property via analyzeField.
+ *
+ * Returns null for non-class types (interfaces, type aliases, inline objects),
+ * preserving existing structural-only behavior for those cases.
+ */
+function getClassFieldInfoMap(
+  type: ts.Type,
+  checker: ts.TypeChecker
+): Map<string, FieldInfo> | null {
+  const symbol = type.getSymbol();
+  if (!symbol?.declarations) return null;
+  const classDecl = symbol.declarations.find(ts.isClassDeclaration);
+  if (!classDecl) return null;
+
+  const map = new Map<string, FieldInfo>();
+  for (const member of classDecl.members) {
+    if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
+      const fieldInfo = analyzeField(member, checker);
+      if (fieldInfo) map.set(fieldInfo.name, fieldInfo);
+    }
+  }
+  return map;
+}
+
+/**
+ * Resolved information about a single property of an object type.
+ *
+ * Computed once by `getObjectPropertyInfos` and consumed by both the
+ * JSON Schema path (`convertObjectType`) and the UI Schema path
+ * (`createFormSpecField`), eliminating duplicated iteration logic.
+ */
+interface ObjectPropertyInfo {
+  /** Property name */
+  name: string;
+  /** Resolved TypeScript type for the property */
+  type: ts.Type;
+  /** Whether the property is optional */
+  optional: boolean;
+  /** FieldInfo from the class declaration, if this is a class-typed object */
+  fieldInfo: FieldInfo | undefined;
+}
+
+/**
+ * Iterates the properties of an object type and resolves each property's
+ * type, optionality, and class-level field info (decorators/JSDoc).
+ *
+ * This is the single source of truth for nested property analysis, used
+ * by both the JSON Schema and FormSpec field generation paths.
+ */
+function getObjectPropertyInfos(
+  type: ts.ObjectType,
+  checker: ts.TypeChecker
+): ObjectPropertyInfo[] {
+  const classFieldMap = getClassFieldInfoMap(type, checker);
+  const result: ObjectPropertyInfo[] = [];
+
+  for (const prop of type.getProperties()) {
+    const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
+    if (!declaration) continue;
+
+    const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
+    const optional = !!(prop.flags & ts.SymbolFlags.Optional);
+    const fieldInfo = classFieldMap?.get(prop.name) ?? undefined;
+
+    result.push({ name: prop.name, type: propType, optional, fieldInfo });
+  }
+
+  return result;
+}
+
+/**
  * Converts a TypeScript type to JSON Schema and FormSpec field type.
  *
  * @param type - The TypeScript type to convert
@@ -53,6 +125,14 @@ export interface TypeConversionResult {
  * @returns Conversion result with JSON Schema and FormSpec type
  */
 export function convertType(type: ts.Type, checker: ts.TypeChecker): TypeConversionResult {
+  return convertTypeInternal(type, checker, new Set());
+}
+
+function convertTypeInternal(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  visiting: Set<ts.Type>
+): TypeConversionResult {
   // Handle primitive types
   if (type.flags & ts.TypeFlags.String) {
     return { jsonSchema: { type: "string" }, formSpecFieldType: "text" };
@@ -91,17 +171,17 @@ export function convertType(type: ts.Type, checker: ts.TypeChecker): TypeConvers
 
   // Handle union types (including string literal unions for enums)
   if (type.isUnion()) {
-    return convertUnionType(type, checker);
+    return convertUnionType(type, checker, visiting);
   }
 
   // Handle array types
   if (checker.isArrayType(type)) {
-    return convertArrayType(type, checker);
+    return convertArrayType(type, checker, visiting);
   }
 
   // Handle object types
   if (type.flags & ts.TypeFlags.Object) {
-    return convertObjectType(type as ts.ObjectType, checker);
+    return convertObjectType(type as ts.ObjectType, checker, visiting);
   }
 
   // Fallback
@@ -111,7 +191,11 @@ export function convertType(type: ts.Type, checker: ts.TypeChecker): TypeConvers
 /**
  * Converts a union type to JSON Schema.
  */
-function convertUnionType(type: ts.UnionType, checker: ts.TypeChecker): TypeConversionResult {
+function convertUnionType(
+  type: ts.UnionType,
+  checker: ts.TypeChecker,
+  visiting: Set<ts.Type>
+): TypeConversionResult {
   const types = type.types;
 
   // Filter out null and undefined for analysis
@@ -170,7 +254,7 @@ function convertUnionType(type: ts.UnionType, checker: ts.TypeChecker): TypeConv
 
   // Handle nullable types (T | null or T | undefined) with single non-null type
   if (nonNullTypes.length === 1 && nonNullTypes[0]) {
-    const result = convertType(nonNullTypes[0], checker);
+    const result = convertTypeInternal(nonNullTypes[0], checker, visiting);
     // Make it nullable in JSON Schema
     if (hasNull) {
       result.jsonSchema = { oneOf: [result.jsonSchema, { type: "null" }] };
@@ -179,7 +263,7 @@ function convertUnionType(type: ts.UnionType, checker: ts.TypeChecker): TypeConv
   }
 
   // General union - use oneOf (filter out undefined which isn't valid in JSON Schema)
-  const schemas = nonNullTypes.map((t) => convertType(t, checker).jsonSchema);
+  const schemas = nonNullTypes.map((t) => convertTypeInternal(t, checker, visiting).jsonSchema);
   if (hasNull) {
     schemas.push({ type: "null" });
   }
@@ -192,11 +276,17 @@ function convertUnionType(type: ts.UnionType, checker: ts.TypeChecker): TypeConv
 /**
  * Converts an array type to JSON Schema.
  */
-function convertArrayType(type: ts.Type, checker: ts.TypeChecker): TypeConversionResult {
+function convertArrayType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  visiting: Set<ts.Type>
+): TypeConversionResult {
   const typeArgs = (type as ts.TypeReference).typeArguments;
   const elementType = typeArgs?.[0];
 
-  const itemSchema = elementType ? convertType(elementType, checker).jsonSchema : {};
+  const itemSchema = elementType
+    ? convertTypeInternal(elementType, checker, visiting).jsonSchema
+    : {};
 
   return {
     jsonSchema: {
@@ -210,27 +300,34 @@ function convertArrayType(type: ts.Type, checker: ts.TypeChecker): TypeConversio
 /**
  * Converts an object type to JSON Schema.
  */
-function convertObjectType(type: ts.ObjectType, checker: ts.TypeChecker): TypeConversionResult {
+function convertObjectType(
+  type: ts.ObjectType,
+  checker: ts.TypeChecker,
+  visiting: Set<ts.Type>
+): TypeConversionResult {
+  // Circular reference guard
+  if (visiting.has(type)) {
+    return { jsonSchema: { type: "object" }, formSpecFieldType: "object" };
+  }
+  visiting.add(type);
+
   const properties: Record<string, ExtendedJSONSchema7> = {};
   const required: string[] = [];
 
-  const props = type.getProperties();
+  for (const propInfo of getObjectPropertyInfos(type, checker)) {
+    const propSchema = convertTypeInternal(propInfo.type, checker, visiting).jsonSchema;
 
-  for (const prop of props) {
-    const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (!declaration) continue;
+    // Apply decorator/JSDoc constraints from the class declaration if available
+    properties[propInfo.name] = propInfo.fieldInfo
+      ? applyDecoratorsToSchema(propSchema, propInfo.fieldInfo.decorators, propInfo.fieldInfo)
+      : propSchema;
 
-    const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
-
-    const propSchema = convertType(propType, checker).jsonSchema;
-    properties[prop.name] = propSchema;
-
-    // Check if property is optional
-    const isOptional = prop.flags & ts.SymbolFlags.Optional;
-    if (!isOptional) {
-      required.push(prop.name);
+    if (!propInfo.optional) {
+      required.push(propInfo.name);
     }
   }
+
+  visiting.delete(type);
 
   return {
     jsonSchema: {
@@ -257,7 +354,8 @@ export function createFormSpecField(
   type: ts.Type,
   decorators: DecoratorInfo[],
   optional: boolean,
-  checker: ts.TypeChecker
+  checker: ts.TypeChecker,
+  visitedTypes = new Set<ts.Type>()
 ): FormSpecField {
   const { formSpecFieldType } = convertType(type, checker);
 
@@ -271,25 +369,33 @@ export function createFormSpecField(
     field.required = true;
   }
 
-  // For object types, recursively add nested fields
+  // For object types, recursively add nested fields.
+  // Note: visitedTypes guards against circular references independently from
+  // the `visiting` set in convertTypeInternal — they protect different recursion
+  // paths (FormSpec field generation vs JSON Schema generation).
   if (formSpecFieldType === "object" && type.flags & ts.TypeFlags.Object) {
-    const objectType = type as ts.ObjectType;
-    const nestedFields: FormSpecField[] = [];
+    if (!visitedTypes.has(type)) {
+      visitedTypes.add(type);
 
-    for (const prop of objectType.getProperties()) {
-      const propDeclaration = prop.valueDeclaration ?? prop.declarations?.[0];
-      if (!propDeclaration) continue;
+      const nestedFields: FormSpecField[] = [];
+      for (const propInfo of getObjectPropertyInfos(type as ts.ObjectType, checker)) {
+        nestedFields.push(
+          createFormSpecField(
+            propInfo.name,
+            propInfo.type,
+            propInfo.fieldInfo?.decorators ?? [],
+            propInfo.optional,
+            checker,
+            visitedTypes
+          )
+        );
+      }
 
-      const propType = checker.getTypeOfSymbolAtLocation(prop, propDeclaration);
-      const propOptional = !!(prop.flags & ts.SymbolFlags.Optional);
+      visitedTypes.delete(type);
 
-      // Note: We don't have access to decorators on nested class properties here
-      // since we're analyzing the type, not the class declaration
-      nestedFields.push(createFormSpecField(prop.name, propType, [], propOptional, checker));
-    }
-
-    if (nestedFields.length > 0) {
-      field.fields = nestedFields;
+      if (nestedFields.length > 0) {
+        field.fields = nestedFields;
+      }
     }
   }
 
