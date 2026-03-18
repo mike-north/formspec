@@ -24,11 +24,16 @@ import { generateUiSchema } from "./ui-schema/generator.js";
 export type {
   JSONSchema7,
   JSONSchemaType,
+  ExtendedJSONSchema7,
+  FormSpecSchemaExtensions,
 } from "./json-schema/types.js";
+
+export { setSchemaExtension, getSchemaExtension } from "./json-schema/types.js";
 
 export type {
   UISchema,
   UISchemaElement,
+  UISchemaElementBase,
   UISchemaElementType,
   ControlElement,
   VerticalLayout,
@@ -36,6 +41,7 @@ export type {
   GroupLayout,
   Rule,
   RuleEffect,
+  RuleConditionSchema,
   SchemaBasedCondition,
 } from "./ui-schema/types.js";
 
@@ -71,9 +77,7 @@ export interface BuildResult {
  * @param form - The FormSpec to build schemas from
  * @returns Object containing both jsonSchema and uiSchema
  */
-export function buildFormSchemas<E extends readonly FormElement[]>(
-  form: FormSpec<E>
-): BuildResult {
+export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>): BuildResult {
   return {
     jsonSchema: generateJsonSchema(form),
     uiSchema: generateUiSchema(form),

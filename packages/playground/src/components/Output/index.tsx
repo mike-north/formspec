@@ -22,11 +22,7 @@ interface TabPanelProps {
 
 function TabPanel({ children, value, index }: TabPanelProps): React.ReactElement | null {
   if (value !== index) return null;
-  return (
-    <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-      {children}
-    </Box>
-  );
+  return <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>{children}</Box>;
 }
 
 function JsonViewer({ data, label }: { data: unknown; label: string }): React.ReactElement {
@@ -46,7 +42,9 @@ function JsonViewer({ data, label }: { data: unknown; label: string }): React.Re
     navigator.clipboard.writeText(jsonString).then(
       () => {
         setCopied(true);
-        setTimeout(() => { setCopied(false); }, 2000);
+        setTimeout(() => {
+          setCopied(false);
+        }, 2000);
       },
       (error: unknown) => {
         console.error("Failed to copy:", error);
@@ -115,10 +113,7 @@ function JsonViewer({ data, label }: { data: unknown; label: string }): React.Re
  */
 function syntaxHighlight(json: string): string {
   // Escape HTML first
-  const escaped = json
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  const escaped = json.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   // Apply syntax highlighting
   return escaped.replace(
@@ -135,11 +130,11 @@ function syntaxHighlight(json: string): string {
         }
       } else if (/true|false/.test(match)) {
         cls = "boolean";
-      } else if (match.includes('null')) {
+      } else if (match.includes("null")) {
         cls = "null";
       }
       return `<span class="${cls}">${match}</span>`;
-    },
+    }
   );
 }
 
@@ -151,7 +146,9 @@ export function Output({ jsonSchema, uiSchema }: OutputProps): React.ReactElemen
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
           value={tab}
-          onChange={(_, newValue: number) => { setTab(newValue); }}
+          onChange={(_, newValue: number) => {
+            setTab(newValue);
+          }}
           variant="fullWidth"
           sx={{
             minHeight: 40,

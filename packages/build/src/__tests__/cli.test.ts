@@ -65,27 +65,36 @@ describe("CLI", () => {
     });
 
     it("should fail for unknown option", () => {
-      const formFile = createFormFile("form.js", `
+      const formFile = createFormFile(
+        "form.js",
+        `
         export default { elements: [] };
-      `);
+      `
+      );
       const result = runCli([formFile, "--unknown-option"]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("Unknown option");
     });
 
     it("should fail when --out-dir has no value", () => {
-      const formFile = createFormFile("form.js", `
+      const formFile = createFormFile(
+        "form.js",
+        `
         export default { elements: [] };
-      `);
+      `
+      );
       const result = runCli([formFile, "--out-dir"]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("--out-dir requires a value");
     });
 
     it("should fail when --name has no value", () => {
-      const formFile = createFormFile("form.js", `
+      const formFile = createFormFile(
+        "form.js",
+        `
         export default { elements: [] };
-      `);
+      `
+      );
       const result = runCli([formFile, "--name"]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("--name requires a value");
@@ -100,18 +109,24 @@ describe("CLI", () => {
     });
 
     it("should fail when file has no form export", () => {
-      const formFile = createFormFile("no-export.js", `
+      const formFile = createFormFile(
+        "no-export.js",
+        `
         const notExported = { foo: "bar" };
-      `);
+      `
+      );
       const result = runCli([formFile]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("Error");
     });
 
     it("should fail when export is not a FormSpec", () => {
-      const formFile = createFormFile("not-formspec.js", `
+      const formFile = createFormFile(
+        "not-formspec.js",
+        `
         export default { notAForm: true };
-      `);
+      `
+      );
       const result = runCli([formFile]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("FormSpec");
@@ -120,13 +135,16 @@ describe("CLI", () => {
 
   describe("successful generation", () => {
     it("should generate schemas from default export", () => {
-      const formFile = createFormFile("form-default.js", `
+      const formFile = createFormFile(
+        "form-default.js",
+        `
         export default {
           elements: [
             { _type: "field", _field: "text", name: "name" }
           ]
         };
-      `);
+      `
+      );
 
       const outDir = path.join(tempDir, "output");
       const result = runCli([formFile, "-o", outDir, "-n", "test"]);
@@ -138,13 +156,16 @@ describe("CLI", () => {
     });
 
     it("should generate schemas from named 'form' export", () => {
-      const formFile = createFormFile("form-named.js", `
+      const formFile = createFormFile(
+        "form-named.js",
+        `
         export const form = {
           elements: [
             { _type: "field", _field: "text", name: "title" }
           ]
         };
-      `);
+      `
+      );
 
       const outDir = path.join(tempDir, "output");
       const result = runCli([formFile, "-o", outDir, "-n", "test"]);
@@ -154,13 +175,16 @@ describe("CLI", () => {
     });
 
     it("should derive name from input filename when not specified", () => {
-      const formFile = createFormFile("my-form.js", `
+      const formFile = createFormFile(
+        "my-form.js",
+        `
         export default {
           elements: [
             { _type: "field", _field: "text", name: "name" }
           ]
         };
-      `);
+      `
+      );
 
       const outDir = path.join(tempDir, "output");
       const result = runCli([formFile, "-o", outDir]);
@@ -171,13 +195,16 @@ describe("CLI", () => {
     });
 
     it("should use default output directory when not specified", () => {
-      const formFile = createFormFile("form.js", `
+      const formFile = createFormFile(
+        "form.js",
+        `
         export default {
           elements: [
             { _type: "field", _field: "text", name: "name" }
           ]
         };
-      `);
+      `
+      );
 
       const result = runCli([formFile, "-n", "test"]);
 
@@ -187,13 +214,16 @@ describe("CLI", () => {
     });
 
     it("should accept short flags -o and -n", () => {
-      const formFile = createFormFile("form.js", `
+      const formFile = createFormFile(
+        "form.js",
+        `
         export default {
           elements: [
             { _type: "field", _field: "text", name: "name" }
           ]
         };
-      `);
+      `
+      );
 
       const outDir = path.join(tempDir, "out");
       const result = runCli([formFile, "-o", outDir, "-n", "short"]);

@@ -34,10 +34,7 @@ import type { EqualsPredicate } from "@formspec/core";
  * @returns An EqualsPredicate for use with `when()`
  * @public
  */
-export function is<const K extends string, const V>(
-  field: K,
-  value: V,
-): EqualsPredicate<K, V> {
+export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V> {
   return {
     _predicate: "equals",
     field,

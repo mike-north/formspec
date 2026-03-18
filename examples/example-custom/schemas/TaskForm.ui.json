@@ -1,0 +1,66 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "name",
+      "required": true,
+      "group": "Header",
+      "label": "Task Name",
+      "description": "A short name for this task"
+    },
+    {
+      "_field": "text",
+      "id": "description",
+      "group": "Header",
+      "label": "Description"
+    },
+    {
+      "_field": "number",
+      "id": "priority",
+      "required": true,
+      "group": "Details",
+      "label": "Priority",
+      "min": 1
+    },
+    {
+      "_field": "enum",
+      "id": "status",
+      "required": true,
+      "group": "Details",
+      "label": "Status",
+      "options": [
+        {
+          "id": "todo",
+          "label": "To Do"
+        },
+        {
+          "id": "in-progress",
+          "label": "In Progress"
+        },
+        {
+          "id": "done",
+          "label": "Done"
+        }
+      ]
+    },
+    {
+      "_field": "text",
+      "id": "assignee",
+      "group": "Details",
+      "label": "Assignee"
+    },
+    {
+      "_field": "text",
+      "id": "submitLabel",
+      "required": true,
+      "group": "Actions",
+      "label": "Submit Action"
+    },
+    {
+      "_field": "text",
+      "id": "cancelLabel",
+      "group": "Actions",
+      "label": "Cancel Action"
+    }
+  ]
+}

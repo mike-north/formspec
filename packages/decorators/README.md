@@ -1,38 +1,8 @@
 # @formspec/decorators
 
-Decorator stubs for FormSpec CLI static analysis.
+Marker-only TC39 Stage 3 decorators for FormSpec CLI static analysis.
 
-## Quick Start
-
-**1. Install the packages:**
-
-```bash
-npm install @formspec/decorators @formspec/cli
-```
-
-**2. Create a decorated class:**
-
-```typescript
-// forms.ts
-import { Label, Min, Max } from "@formspec/decorators";
-
-export class UserForm {
-  @Label("Full Name")
-  name!: string;
-
-  @Label("Age")
-  @Min(18)
-  @Max(120)
-  age?: number;
-}
-```
-
-**3. Generate schemas:**
-
-```bash
-formspec generate ./forms.ts UserForm -o ./generated
-# Creates generated/UserForm/schema.json and ux_spec.json
-```
+These decorators are **no-ops at runtime** — they carry zero overhead. The FormSpec CLI reads decorator names and arguments directly from the TypeScript AST, without executing your code.
 
 ## Installation
 
@@ -42,233 +12,157 @@ npm install @formspec/decorators
 pnpm add @formspec/decorators
 ```
 
-## Requirements
-
-**TypeScript configuration** (tsconfig.json):
-
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
-  }
-}
-```
-
-**Package configuration** (package.json):
-
-```json
-{
-  "type": "module"
-}
-```
-
-## Usage
+## Quick Start
 
 ```typescript
-import { Label, Min, Max, EnumOptions, ShowWhen, Group } from '@formspec/decorators';
+import { Field, Group, Minimum, Maximum, EnumOptions } from "@formspec/decorators";
 
-class UserRegistration {
+class UserForm {
   @Group("Personal Info")
-  @Label("Full Name")
+  @Field({ displayName: "Full Name", placeholder: "Jane Doe" })
   name!: string;
 
   @Group("Personal Info")
-  @Label("Age")
-  @Min(18)
-  @Max(120)
+  @Field({ displayName: "Age" })
+  @Minimum(18)
+  @Maximum(120)
   age?: number;
 
-  @Group("Preferences")
-  @Label("Country")
+  @Field({ displayName: "Country" })
   @EnumOptions([
     { id: "us", label: "United States" },
     { id: "ca", label: "Canada" },
-    { id: "uk", label: "United Kingdom" }
   ])
-  country!: "us" | "ca" | "uk";
-
-  @Group("Preferences")
-  @Label("Contact Method")
-  contactMethod!: "email" | "phone";
-
-  @ShowWhen({ field: "contactMethod", value: "email" })
-  @Label("Email Address")
-  email?: string;
-
-  @ShowWhen({ field: "contactMethod", value: "phone" })
-  @Label("Phone Number")
-  phone?: string;
+  country!: "us" | "ca";
 }
 ```
 
-## Generating Schemas
-
-### Build-Time Only
-
-Generate JSON Schema and UI Schema files at build time:
+Then generate schemas at build time:
 
 ```bash
-formspec generate ./src/user-registration.ts UserRegistration -o ./generated
+formspec generate ./forms.ts UserForm -o ./generated
 ```
 
-This outputs static JSON files to `./generated/`. No codegen step required.
-
-### Runtime Schema Generation
-
-If you need JSON Schema or UI Schema **at runtime in your program** (e.g., dynamic form rendering, server-side generation), you have two options:
-
-1. **Chain DSL** - Works at runtime without any codegen step. See the [Chain DSL documentation](../dsl/README.md).
-
-2. **Decorator DSL with codegen** - If you prefer to keep using decorated classes, run codegen to preserve type information:
-
-```bash
-# Generate type metadata file
-formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
-```
-
-```typescript
-// Import the generated file at your application entry point
-import './__formspec_types__.js';
-
-// Now buildFormSchemas() has access to full type information
-import { buildFormSchemas } from '@formspec/decorators';
-import { UserRegistration } from './forms.js';
-
-const { jsonSchema, uiSchema } = buildFormSchemas(UserRegistration);
-// jsonSchema: { $schema: "...", type: "object", properties: {...}, required: [...] }
-// uiSchema: { type: "VerticalLayout", elements: [...] }
-```
-
-Add `formspec codegen` to your build process to keep type metadata in sync.
-
-> **Note:** If you need to work with **dynamically fetched schema data** (schemas not known at build time), use the Chain DSL. It's the only option for dynamic schemas.
-
-### API Consistency
-
-The `buildFormSchemas()` function provides the same return type as `@formspec/build`:
-
-| DSL | Function | Returns |
-|-----|----------|---------|
-| Chain DSL | `buildFormSchemas(form)` | `{ jsonSchema, uiSchema }` |
-| Decorator DSL | `buildFormSchemas(Class)` | `{ jsonSchema, uiSchema }` |
-
-This allows you to switch between DSLs without changing how you consume the schemas.
-
-## How It Works
-
-These decorators are **no-ops at runtime** - they have zero overhead in your production code.
-
-The FormSpec CLI uses TypeScript's compiler API to statically analyze your source files. It reads decorator names and arguments directly from the AST, without ever executing your code.
-
-This means:
-- No reflection metadata required
-- No runtime dependencies
-- Works with any TypeScript configuration
-- Tree-shaking friendly
-
-## Available Decorators
+## Built-in Decorators
 
 ### Field Metadata
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@Label(text)` | Display label | `@Label("Full Name")` |
-| `@Placeholder(text)` | Input placeholder | `@Placeholder("Enter name...")` |
-| `@Description(text)` | Help text | `@Description("Your legal name")` |
+| Decorator            | Argument                                              | Purpose                               |
+| -------------------- | ----------------------------------------------------- | ------------------------------------- |
+| `@Field(opts)`       | `{ displayName, description?, placeholder?, order? }` | Display metadata for a field          |
+| `@Group(name)`       | `string`                                              | Assigns the field to a named UI group |
+| `@ShowWhen(cond)`    | `{ field, value }`                                    | Conditional visibility                |
+| `@EnumOptions(opts)` | `EnumOptionValue[] \| Record<string, string>`         | Custom enum labels                    |
 
 ### Numeric Constraints
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@Min(n)` | Minimum value | `@Min(0)` |
-| `@Max(n)` | Maximum value | `@Max(100)` |
-| `@Step(n)` | Step increment | `@Step(0.01)` |
+| Decorator              | Argument | JSON Schema Property |
+| ---------------------- | -------- | -------------------- |
+| `@Minimum(n)`          | `number` | `minimum`            |
+| `@Maximum(n)`          | `number` | `maximum`            |
+| `@ExclusiveMinimum(n)` | `number` | `exclusiveMinimum`   |
+| `@ExclusiveMaximum(n)` | `number` | `exclusiveMaximum`   |
 
 ### String Constraints
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@MinLength(n)` | Minimum length | `@MinLength(1)` |
-| `@MaxLength(n)` | Maximum length | `@MaxLength(255)` |
-| `@Pattern(regex)` | Regex pattern | `@Pattern("^[a-z]+$")` |
+| Decorator         | Argument | JSON Schema Property |
+| ----------------- | -------- | -------------------- |
+| `@MinLength(n)`   | `number` | `minLength`          |
+| `@MaxLength(n)`   | `number` | `maxLength`          |
+| `@Pattern(regex)` | `string` | `pattern`            |
 
-### Array Constraints
+## Type Inference
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@MinItems(n)` | Minimum items | `@MinItems(1)` |
-| `@MaxItems(n)` | Maximum items | `@MaxItems(10)` |
+Several properties are inferred directly from TypeScript — no decorator needed:
 
-### Enum Options
+| Property          | Inferred From                                                   |
+| ----------------- | --------------------------------------------------------------- |
+| Field type        | TS type annotation (`string`, `number`, `boolean`, union types) |
+| Required/optional | `?` modifier or `T \| undefined`                                |
+| Default value     | Property initializer                                            |
+| Deprecated        | `@deprecated` JSDoc tag                                         |
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@EnumOptions(opts)` | Custom labels | `@EnumOptions([{id: "us", label: "USA"}])` |
+## Extensibility API
 
-#### Auto-generated Options
+### Extending a Built-in Decorator
 
-When no `@EnumOptions` decorator is present, options are automatically generated from the union type with `{ id, label }` format:
+Use `extendDecorator` to create a specialised version of a built-in:
 
 ```typescript
-class UserForm {
-  @Label("Status")
-  status!: "draft" | "published" | "archived";
-  // Auto-generates: [
-  //   { id: "draft", label: "draft" },
-  //   { id: "published", label: "published" },
-  //   { id: "archived", label: "archived" }
-  // ]
+import { extendDecorator } from "@formspec/decorators";
+
+const CurrencyField = extendDecorator("Field").as<{
+  displayName: string;
+  currency: string;
+}>("CurrencyField");
+
+class InvoiceForm {
+  @CurrencyField({ displayName: "Amount", currency: "USD" })
+  amount!: number;
 }
 ```
 
-#### Record Shorthand
+The CLI treats `@CurrencyField` as an extension of `@Field` — it inherits the Field schema behaviour and adds the custom `currency` property to the output.
 
-Use an object where keys are IDs and values are labels for a more concise syntax:
+### Custom Decorators (with Extension Namespace)
+
+Use `customDecorator` to create decorators for a CLI extension:
 
 ```typescript
-class UserForm {
-  @Label("Country")
-  @EnumOptions({
-    us: "United States",
-    ca: "Canada",
-    uk: "United Kingdom"
-  })
-  country!: "us" | "ca" | "uk";
+import { customDecorator } from "@formspec/decorators";
+
+// Parameterised — takes arguments
+const Tooltip = customDecorator("my-ui-extension").as<{ text: string }>("Tooltip");
+
+// Marker — applied directly, no arguments
+const Sensitive = customDecorator("my-ui-extension").marker("Sensitive");
+
+class ProfileForm {
+  @Tooltip({ text: "Shown on hover" })
+  @Field({ displayName: "Bio" })
+  bio!: string;
+
+  @Sensitive
+  @Field({ displayName: "SSN" })
+  ssn!: string;
 }
 ```
 
-This is equivalent to the array format:
+The CLI emits these as `x-formspec-my-ui-extension` properties in the generated schema.
+
+### Custom Decorators (without Extension Namespace)
+
+For decorators that don't need a CLI extension namespace:
 
 ```typescript
-@EnumOptions([
-  { id: "us", label: "United States" },
-  { id: "ca", label: "Canada" },
-  { id: "uk", label: "United Kingdom" }
-])
+import { customDecorator } from "@formspec/decorators";
+
+const Title = customDecorator().marker("Title");
+
+class MyForm {
+  @Title
+  @Field({ displayName: "Heading" })
+  heading!: string;
+}
 ```
 
-### Layout & Conditional
+## How It Works
 
-| Decorator | Purpose | Example |
-|-----------|---------|---------|
-| `@Group(name)` | Group fields | `@Group("Contact Info")` |
-| `@ShowWhen(cond)` | Conditional visibility | `@ShowWhen({ field: "type", value: "other" })` |
+1. You write decorated classes using TC39 Stage 3 decorator syntax.
+2. The FormSpec CLI uses the TypeScript Compiler API to statically analyse your source files.
+3. It reads decorator names and arguments from the AST — your code is never executed.
+4. JSON Schema and UI Schema are generated from the AST analysis.
+
+This means:
+
+- No reflection metadata required
+- No runtime dependencies
+- Zero bundle size impact (decorators are tree-shaken as dead code)
+- Works with any bundler
 
 ## TypeScript Configuration
 
-For decorator support, ensure your `tsconfig.json` includes:
-
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true
-  }
-}
-```
-
-Note: The `emitDecoratorMetadata` flag is not required since these decorators don't use reflection.
+These are standard TC39 Stage 3 decorators — no special tsconfig flags needed. Do **not** set `experimentalDecorators: true` (that enables the legacy decorator proposal).
 
 ## License
 

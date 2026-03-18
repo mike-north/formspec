@@ -4,13 +4,9 @@
  * Ensures a field doesn't have decorators that imply conflicting types.
  *
  * Invalid:
- *   @Min(0)           // Implies number
- *   @Placeholder("x") // Implies string
+ *   @Minimum(0)       // Implies number
+ *   @MinLength(1)     // Implies string
  *   field!: string;
- *
- *   @MinItems(1)      // Implies array
- *   @Min(0)           // Implies number
- *   field!: number[];
  */
 
 import { ESLintUtils } from "@typescript-eslint/utils";
@@ -31,8 +27,7 @@ export const noConflictingDecorators = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensures a field doesn't have decorators that imply conflicting types",
+      description: "Ensures a field doesn't have decorators that imply conflicting types",
     },
     messages: {
       conflictingDecorators:

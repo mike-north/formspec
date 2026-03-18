@@ -16,24 +16,23 @@
  *   formspec generate ./src/forms.ts MyClass -o ./generated
  */
 
-import { createProgramContext, findClassByName } from "./analyzer/program.js";
-import { analyzeClass } from "./analyzer/class-analyzer.js";
-import { generateClassSchemas } from "./generators/class-schema.js";
+import { runCodegen } from "@formspec/build";
 import {
+  createProgramContext,
+  findClassByName,
+  analyzeClass,
+  generateClassSchemas,
   generateMethodSchemas,
   collectFormSpecReferences,
-} from "./generators/method-schema.js";
+} from "@formspec/build/internals";
+import type { LoadedFormSpecSchemas } from "@formspec/build/internals";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,
   resolveCompiledPath,
   type FormSpecSchemas,
 } from "./runtime/formspec-loader.js";
-import {
-  writeClassSchemas,
-  writeFormSpecSchemas,
-} from "./output/writer.js";
-import { runCodegen } from "./codegen/index.js";
+import { writeClassSchemas, writeFormSpecSchemas } from "./output/writer.js";
 
 /**
  * CLI options parsed from arguments.
@@ -147,7 +146,7 @@ function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
 
   if (!filePath) {
     console.error("Error: No file path provided");
-    console.error('Usage: formspec generate <file> [className] [-o <outDir>]');
+    console.error("Usage: formspec generate <file> [className] [-o <outDir>]");
     process.exit(1);
   }
 
@@ -265,6 +264,23 @@ HOW IT WORKS:
 }
 
 /**
+ * Converts FormSpecSchemas to LoadedFormSpecSchemas for the build package API.
+ */
+function toLoadedSchemas(
+  formSpecs: Map<string, FormSpecSchemas>
+): Map<string, LoadedFormSpecSchemas> {
+  const result = new Map<string, LoadedFormSpecSchemas>();
+  for (const [name, schemas] of formSpecs) {
+    result.set(name, {
+      name: schemas.name,
+      jsonSchema: schemas.jsonSchema,
+      uiSchema: schemas.uiSchema,
+    });
+  }
+  return result;
+}
+
+/**
  * Main CLI entry point.
  */
 async function main(): Promise<void> {
@@ -327,11 +343,15 @@ async function main(): Promise<void> {
         console.warn();
         console.warn("   Run your build tool (tsc, esbuild, swc, etc.) then try again.");
         console.warn("   Or use -c/--compiled to specify the JS path explicitly:");
-        console.warn(`     npx formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`);
+        console.warn(
+          `     npx formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`
+        );
       } else {
         // Compiled file exists but no FormSpec exports found
         console.warn("   For decorated classes, specify the class name:");
-        console.warn(`     npx formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`);
+        console.warn(
+          `     npx formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`
+        );
         console.warn();
         console.warn("   For chain DSL, export a FormSpec from your file:");
         console.warn("     export const MyForm = formspec(...);");
@@ -344,13 +364,17 @@ async function main(): Promise<void> {
       const classDecl = findClassByName(ctx.sourceFile, generateOptions.className);
 
       if (!classDecl) {
-        console.error(`Error: Class "${generateOptions.className}" not found in ${generateOptions.filePath}`);
+        console.error(
+          `Error: Class "${generateOptions.className}" not found in ${generateOptions.filePath}`
+        );
         process.exit(1);
       }
 
       // Analyze class
       const analysis = analyzeClass(classDecl, ctx.checker);
-      console.log(`✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`);
+      console.log(
+        `✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`
+      );
       console.log(`  Instance methods: ${String(analysis.instanceMethods.length)}`);
       console.log(`  Static methods: ${String(analysis.staticMethods.length)}`);
 
@@ -362,9 +386,7 @@ async function main(): Promise<void> {
         console.log(`  FormSpec refs: ${Array.from(formSpecRefs).join(", ")}`);
 
         // Load specific FormSpecs if not already loaded
-        const missing = Array.from(formSpecRefs).filter(
-          (name) => !loadedFormSpecs.has(name)
-        );
+        const missing = Array.from(formSpecRefs).filter((name) => !loadedFormSpecs.has(name));
         if (missing.length > 0) {
           try {
             const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
@@ -381,11 +403,12 @@ async function main(): Promise<void> {
       const classSchemas = generateClassSchemas(analysis, ctx.checker);
 
       // Generate method schemas
+      const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
       const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-        generateMethodSchemas(m, ctx.checker, loadedFormSpecs)
+        generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
       );
       const staticMethodSchemas = analysis.staticMethods.map((m) =>
-        generateMethodSchemas(m, ctx.checker, loadedFormSpecs)
+        generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
       );
 
       // Write class output

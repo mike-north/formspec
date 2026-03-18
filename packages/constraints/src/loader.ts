@@ -47,10 +47,7 @@ export interface LoadConfigResult {
 /**
  * Searches for a config file in the given directory and optionally parent directories.
  */
-async function findConfigFile(
-  startDir: string,
-  searchParents: boolean
-): Promise<string | null> {
+async function findConfigFile(startDir: string, searchParents: boolean): Promise<string | null> {
   let currentDir = resolve(startDir);
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break conditions
@@ -92,9 +89,7 @@ async function parseConfigFile(filePath: string): Promise<FormSpecConfig> {
   }
 
   if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(
-      `Invalid config file at ${filePath}: expected an object, got ${typeof parsed}`
-    );
+    throw new Error(`Invalid config file at ${filePath}: expected an object, got ${typeof parsed}`);
   }
 
   return parsed as FormSpecConfig;
@@ -118,9 +113,7 @@ async function parseConfigFile(filePath: string): Promise<FormSpecConfig> {
  * const result = await loadConfig({ configPath: '/path/to/config.yml' });
  * ```
  */
-export async function loadConfig(
-  options: LoadConfigOptions = {}
-): Promise<LoadConfigResult> {
+export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadConfigResult> {
   const { cwd = process.cwd(), configPath, searchParents = true } = options;
 
   let resolvedPath: string | null = null;
@@ -161,9 +154,7 @@ export async function loadConfig(
  * @param yamlContent - The YAML content to parse
  * @returns The parsed and merged configuration
  */
-export function loadConfigFromString(
-  yamlContent: string
-): ResolvedConstraintConfig {
+export function loadConfigFromString(yamlContent: string): ResolvedConstraintConfig {
   const parsed = parseYaml(yamlContent) as FormSpecConfig | null | undefined;
 
   if (parsed === null || parsed === undefined) {
@@ -171,9 +162,7 @@ export function loadConfigFromString(
   }
 
   if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(
-      `Invalid config content: expected an object, got ${typeof parsed}`
-    );
+    throw new Error(`Invalid config content: expected an object, got ${typeof parsed}`);
   }
 
   return mergeWithDefaults(parsed.constraints);
@@ -199,8 +188,6 @@ export function loadConfigFromString(
  * });
  * ```
  */
-export function defineConstraints(
-  config: ConstraintConfig
-): ResolvedConstraintConfig {
+export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig {
   return mergeWithDefaults(config);
 }

@@ -27,6 +27,7 @@ export interface JSONSchema7 {
   // Metadata
   title?: string;
   description?: string;
+  deprecated?: boolean;
 
   // Type
   type?: JSONSchemaType | JSONSchemaType[];
@@ -94,4 +95,43 @@ export interface JSONSchema7 {
    * Indicates that the schema should be loaded dynamically at runtime.
    */
   "x-formspec-schemaSource"?: string;
+}
+
+/** Extension properties for custom FormSpec decorators. */
+export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
+
+/** JSON Schema with FormSpec extension properties for arbitrary x-formspec-* keys. */
+export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+/**
+ * Sets a FormSpec extension property on a JSON Schema node.
+ *
+ * Use this to safely add `x-formspec-*` properties to any schema,
+ * including nested schemas typed as `JSONSchema7` (which don't carry
+ * the extension index signature).
+ *
+ * @param schema - Any JSON Schema node
+ * @param key - Extension key (must start with `x-formspec-`)
+ * @param value - Extension value
+ */
+export function setSchemaExtension(
+  schema: JSONSchema7,
+  key: `x-formspec-${string}`,
+  value: unknown
+): void {
+  (schema as ExtendedJSONSchema7)[key] = value;
+}
+
+/**
+ * Reads a FormSpec extension property from a JSON Schema node.
+ *
+ * Use this to safely read `x-formspec-*` properties from any schema,
+ * including nested schemas typed as `JSONSchema7`.
+ *
+ * @param schema - Any JSON Schema node
+ * @param key - Extension key (must start with `x-formspec-`)
+ * @returns The extension value, or `undefined` if not present
+ */
+export function getSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`): unknown {
+  return (schema as ExtendedJSONSchema7)[key];
 }

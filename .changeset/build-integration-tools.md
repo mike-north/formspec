@@ -10,13 +10,16 @@ New `writeSchemas()` function and CLI tool make it easy to generate JSON Schema 
 ### New exports
 
 **Functions:**
+
 - `writeSchemas(form, options)` - Build and write schemas to disk
 
 **Types:**
+
 - `WriteSchemasOptions` - Configuration for schema file output
 - `WriteSchemasResult` - Paths to generated schema files
 
 **CLI:**
+
 - `formspec-build` command for generating schemas from form definition files
 
 ### Documentation improvements

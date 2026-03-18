@@ -64,6 +64,7 @@ The playground is automatically deployed to GitHub Pages via GitHub Actions.
 ### Automatic Deployment
 
 Changes pushed to the `main` branch trigger automatic deployment when files in these directories are modified:
+
 - `packages/playground/**`
 - `packages/core/**`
 - `packages/dsl/**`
@@ -71,6 +72,7 @@ Changes pushed to the `main` branch trigger automatic deployment when files in t
 - `packages/constraints/**`
 
 The workflow (`.github/workflows/deploy-playground.yml`) will:
+
 1. Build all packages
 2. Generate the static site from the playground
 3. Deploy to GitHub Pages with automatic enablement
@@ -78,6 +80,7 @@ The workflow (`.github/workflows/deploy-playground.yml`) will:
 ### GitHub Pages Setup
 
 The workflow uses the `configure-pages` action with `enablement: true`, which will automatically:
+
 - Enable GitHub Pages for the repository (if not already enabled)
 - Configure the Pages deployment source to use GitHub Actions
 - Set up the necessary permissions

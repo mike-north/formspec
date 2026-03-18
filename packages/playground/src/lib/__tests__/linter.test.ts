@@ -12,10 +12,12 @@ import type { ConstraintsConfig } from "../../components/Constraints";
 /**
  * Creates a test constraints config with all fields allowed by default.
  */
-function createAllowedConfig(overrides: Partial<{
-  fieldTypes: Partial<ConstraintsConfig["fieldTypes"]>;
-  layout: Partial<ConstraintsConfig["layout"]>;
-}> = {}): ConstraintsConfig {
+function createAllowedConfig(
+  overrides: Partial<{
+    fieldTypes: Partial<ConstraintsConfig["fieldTypes"]>;
+    layout: Partial<ConstraintsConfig["layout"]>;
+  }> = {}
+): ConstraintsConfig {
   return {
     fieldTypes: {
       text: true,

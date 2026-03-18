@@ -1,14 +1,9 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@3.1.2/schema.json",
-  "changelog": [
-    "@changesets/changelog-github",
-    { "repo": "mike-north/formspec" }
-  ],
+  "changelog": ["@changesets/changelog-github", { "repo": "mike-north/formspec" }],
   "commit": false,
   "fixed": [],
-  "linked": [
-    ["formspec", "@formspec/*"]
-  ],
+  "linked": [["formspec", "@formspec/*"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

@@ -44,7 +44,7 @@ import { formspec, field } from "@formspec/dsl";
 // Define a form with dynamic enum fields
 const OrderForm = formspec(
   field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
-  field.dynamicEnum("state", "fetch_states", { label: "State" }),
+  field.dynamicEnum("state", "fetch_states", { label: "State" })
 );
 
 // Define type-safe resolvers
@@ -94,17 +94,17 @@ interface FetchOptionsResponse {
 
 ### Functions
 
-| Function | Description |
-|----------|-------------|
+| Function                           | Description                          |
+| ---------------------------------- | ------------------------------------ |
 | `defineResolvers(form, resolvers)` | Create a type-safe resolver registry |
 
 ### Types
 
-| Type | Description |
-|------|-------------|
-| `Resolver` | Async function that fetches options |
-| `ResolverMap<F>` | Map of data source names to resolvers |
-| `ResolverRegistry<F>` | Registry with `get()` method |
+| Type                  | Description                           |
+| --------------------- | ------------------------------------- |
+| `Resolver`            | Async function that fetches options   |
+| `ResolverMap<F>`      | Map of data source names to resolvers |
+| `ResolverRegistry<F>` | Registry with `get()` method          |
 
 ## Type Safety
 

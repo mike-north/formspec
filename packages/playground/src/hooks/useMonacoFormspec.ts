@@ -31,13 +31,15 @@ async function loadTypeDefinitions(): Promise<TypeDefinitions> {
     const basePath = import.meta.env.BASE_URL;
     const [core, dsl, build] = await Promise.all([
       fetch(`${basePath}types/core.d.ts`).then((r) =>
-        r.ok ? r.text() : Promise.reject(new Error(`Failed to load core.d.ts: ${String(r.status)}`)),
+        r.ok ? r.text() : Promise.reject(new Error(`Failed to load core.d.ts: ${String(r.status)}`))
       ),
       fetch(`${basePath}types/dsl.d.ts`).then((r) =>
-        r.ok ? r.text() : Promise.reject(new Error(`Failed to load dsl.d.ts: ${String(r.status)}`)),
+        r.ok ? r.text() : Promise.reject(new Error(`Failed to load dsl.d.ts: ${String(r.status)}`))
       ),
       fetch(`${basePath}types/build.d.ts`).then((r) =>
-        r.ok ? r.text() : Promise.reject(new Error(`Failed to load build.d.ts: ${String(r.status)}`)),
+        r.ok
+          ? r.text()
+          : Promise.reject(new Error(`Failed to load build.d.ts: ${String(r.status)}`))
       ),
     ]);
 
@@ -144,7 +146,7 @@ export interface UseMonacoFormspecOptions {
  */
 export function useMonacoFormspec(
   monaco: Monaco | null,
-  options: UseMonacoFormspecOptions = {},
+  options: UseMonacoFormspecOptions = {}
 ): void {
   const { onTypesLoaded, onTypesError } = options;
   const disposablesRef = useRef<monaco.IDisposable[]>([]);
@@ -152,7 +154,9 @@ export function useMonacoFormspec(
   const setupMonaco = useCallback(
     async (monacoInstance: Monaco) => {
       // Clean up previous disposables
-      disposablesRef.current.forEach((d) => { d.dispose(); });
+      disposablesRef.current.forEach((d) => {
+        d.dispose();
+      });
       disposablesRef.current = [];
 
       // Configure TypeScript compiler options
@@ -203,12 +207,12 @@ export function useMonacoFormspec(
       for (const lib of libs) {
         const disposable = monacoInstance.languages.typescript.typescriptDefaults.addExtraLib(
           lib.content,
-          lib.filePath,
+          lib.filePath
         );
         disposablesRef.current.push(disposable);
       }
     },
-    [onTypesLoaded, onTypesError],
+    [onTypesLoaded, onTypesError]
   );
 
   useEffect(() => {
@@ -217,7 +221,9 @@ export function useMonacoFormspec(
     }
 
     return () => {
-      disposablesRef.current.forEach((d) => { d.dispose(); });
+      disposablesRef.current.forEach((d) => {
+        d.dispose();
+      });
       disposablesRef.current = [];
     };
   }, [monaco, setupMonaco]);

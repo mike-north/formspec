@@ -5,17 +5,16 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { createProgramContext, findClassByName } from "../analyzer/program.js";
-import { analyzeClass } from "../analyzer/class-analyzer.js";
-import { generateClassSchemas } from "../generators/class-schema.js";
 import {
+  createProgramContext,
+  findClassByName,
+  analyzeClass,
+  generateClassSchemas,
   generateMethodSchemas,
   collectFormSpecReferences,
-} from "../generators/method-schema.js";
-import {
-  loadFormSpecs,
-  isFormSpec,
-} from "../runtime/formspec-loader.js";
+} from "@formspec/build/internals";
+import type { LoadedFormSpecSchemas } from "@formspec/build/internals";
+import { loadFormSpecs, isFormSpec } from "../runtime/formspec-loader.js";
 import { writeClassSchemas, writeFormSpecSchemas } from "../output/writer.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
@@ -25,6 +24,23 @@ const testOutputDir = path.join(__dirname, "__test_output__");
 
 // Check if compiled fixture exists (may need to be built)
 const hasCompiledFixture = fs.existsSync(compiledPath);
+
+/**
+ * Converts FormSpecSchemas from loader to LoadedFormSpecSchemas for build API.
+ */
+function toLoadedSchemas(
+  formSpecs: Map<string, { name: string; jsonSchema: unknown; uiSchema: unknown }>
+): Map<string, LoadedFormSpecSchemas> {
+  const result = new Map<string, LoadedFormSpecSchemas>();
+  for (const [name, schemas] of formSpecs) {
+    result.set(name, {
+      name: schemas.name,
+      jsonSchema: schemas.jsonSchema,
+      uiSchema: schemas.uiSchema,
+    });
+  }
+  return result;
+}
 
 describe("generators", () => {
   it("generates class schemas from static analysis", () => {
@@ -44,8 +60,8 @@ describe("generators", () => {
     expect(schemas.jsonSchema.required).not.toContain("price");
 
     // UI Schema
-    expect(schemas.uxSpec.elements).toHaveLength(4);
-    const nameElement = schemas.uxSpec.elements.find((e) => e.id === "name");
+    expect(schemas.uiSchema.elements).toHaveLength(4);
+    const nameElement = schemas.uiSchema.elements.find((e) => e.id === "name");
     expect(nameElement?._field).toBe("text");
     expect(nameElement?.required).toBe(true);
   });
@@ -74,16 +90,12 @@ describe("generators", () => {
 
     const updateMethod = analysis.instanceMethods[0];
     if (!updateMethod) throw new Error("updateMethod not found");
-    const methodSchemas = generateMethodSchemas(
-      updateMethod,
-      ctx.checker,
-      new Map()
-    );
+    const methodSchemas = generateMethodSchemas(updateMethod, ctx.checker, new Map());
 
     expect(methodSchemas.name).toBe("update");
     expect(methodSchemas.params).not.toBeNull();
     expect(methodSchemas.params?.jsonSchema.type).toBe("object");
-    expect(methodSchemas.params?.uxSpec).toBeNull();
+    expect(methodSchemas.params?.uiSchema).toBeNull();
     expect(methodSchemas.returnType.type).toBe("boolean");
   });
 });
@@ -91,9 +103,7 @@ describe("generators", () => {
 describe("isFormSpec", () => {
   it("detects valid FormSpec-like objects", () => {
     const validFormSpec = {
-      elements: [
-        { _type: "field", _field: "text", name: "test" },
-      ],
+      elements: [{ _type: "field", _field: "text", name: "test" }],
     };
 
     expect(isFormSpec(validFormSpec)).toBe(true);
@@ -137,23 +147,18 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
 
     // Load FormSpecs at runtime
     const { formSpecs } = await loadFormSpecs(compiledPath);
+    const loadedSchemas = toLoadedSchemas(formSpecs);
 
     // Generate method schemas
-    const activateMethod = analysis.instanceMethods.find(
-      (m) => m.name === "activate"
-    );
+    const activateMethod = analysis.instanceMethods.find((m) => m.name === "activate");
     if (!activateMethod) throw new Error("activate method not found");
-    const methodSchemas = generateMethodSchemas(
-      activateMethod,
-      ctx.checker,
-      formSpecs
-    );
+    const methodSchemas = generateMethodSchemas(activateMethod, ctx.checker, loadedSchemas);
 
     expect(methodSchemas.name).toBe("activate");
     expect(methodSchemas.params).not.toBeNull();
     expect(methodSchemas.params?.formSpecExport).toBe("ActivateParams");
     // Should have UI Schema from the FormSpec
-    expect(methodSchemas.params?.uxSpec).not.toBeNull();
+    expect(methodSchemas.params?.uiSchema).not.toBeNull();
   });
 });
 
@@ -180,14 +185,15 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
 
     // Load FormSpecs
     const { formSpecs } = await loadFormSpecs(compiledPath);
+    const loadedSchemas = toLoadedSchemas(formSpecs);
 
     // Generate schemas
     const classSchemas = generateClassSchemas(analysis, ctx.checker);
     const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-      generateMethodSchemas(m, ctx.checker, formSpecs)
+      generateMethodSchemas(m, ctx.checker, loadedSchemas)
     );
     const staticMethodSchemas = analysis.staticMethods.map((m) =>
-      generateMethodSchemas(m, ctx.checker, formSpecs)
+      generateMethodSchemas(m, ctx.checker, loadedSchemas)
     );
 
     // Write output
@@ -202,16 +208,12 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
     // Verify directory structure
     expect(fs.existsSync(result.dir)).toBe(true);
     expect(fs.existsSync(path.join(result.dir, "schema.json"))).toBe(true);
-    expect(fs.existsSync(path.join(result.dir, "ux_spec.json"))).toBe(true);
+    expect(fs.existsSync(path.join(result.dir, "ui_schema.json"))).toBe(true);
     expect(
-      fs.existsSync(
-        path.join(result.dir, "instance_methods", "activate", "params.schema.json")
-      )
+      fs.existsSync(path.join(result.dir, "instance_methods", "activate", "params.schema.json"))
     ).toBe(true);
     expect(
-      fs.existsSync(
-        path.join(result.dir, "instance_methods", "activate", "params.ux_spec.json")
-      )
+      fs.existsSync(path.join(result.dir, "instance_methods", "activate", "params.ui_schema.json"))
     ).toBe(true);
     expect(
       fs.existsSync(
@@ -233,14 +235,8 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
     const result = writeFormSpecSchemas(formSpecs, { outDir: testOutputDir });
 
     expect(fs.existsSync(result.dir)).toBe(true);
-    expect(
-      fs.existsSync(path.join(result.dir, "UserRegistrationForm", "schema.json"))
-    ).toBe(true);
-    expect(
-      fs.existsSync(path.join(result.dir, "UserRegistrationForm", "ux_spec.json"))
-    ).toBe(true);
-    expect(
-      fs.existsSync(path.join(result.dir, "ProductConfigForm", "schema.json"))
-    ).toBe(true);
+    expect(fs.existsSync(path.join(result.dir, "UserRegistrationForm", "schema.json"))).toBe(true);
+    expect(fs.existsSync(path.join(result.dir, "UserRegistrationForm", "ui_schema.json"))).toBe(true);
+    expect(fs.existsSync(path.join(result.dir, "ProductConfigForm", "schema.json"))).toBe(true);
   });
 });

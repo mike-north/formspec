@@ -52,6 +52,6 @@ if (rootElement) {
         <CssBaseline />
         <App />
       </ThemeProvider>
-    </StrictMode>,
+    </StrictMode>
   );
 }

@@ -19,15 +19,8 @@
  */
 
 import { ESLintUtils } from "@typescript-eslint/utils";
-import {
-  findDecorator,
-  getDecoratorArrayArg,
-} from "../utils/decorator-utils.js";
-import {
-  getPropertyType,
-  getStringLiteralUnionValues,
-  isStringType,
-} from "../utils/type-utils.js";
+import { findDecorator, getDecoratorArrayArg } from "../utils/decorator-utils.js";
+import { getPropertyType, getStringLiteralUnionValues, isStringType } from "../utils/type-utils.js";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -40,16 +33,14 @@ export const enumOptionsMatchType = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Ensures @EnumOptions values match the field's TypeScript union type",
+      description: "Ensures @EnumOptions values match the field's TypeScript union type",
     },
     messages: {
       enumOptionsMismatch:
         "@EnumOptions values don't match field type. Options: [{{options}}], Type: {{fieldType}}",
       enumOptionsMissing:
         "@EnumOptions is missing values that are in the field type: [{{missing}}]",
-      enumOptionsExtra:
-        "@EnumOptions has values not in the field type: [{{extra}}]",
+      enumOptionsExtra: "@EnumOptions has values not in the field type: [{{extra}}]",
     },
     schema: [],
   },

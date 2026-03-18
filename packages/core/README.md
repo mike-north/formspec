@@ -77,34 +77,34 @@ function processForm(form: FormSpec<readonly FormElement[]>) {
 
 ### Field Types
 
-| Type | Description |
-|------|-------------|
-| `TextField` | Text input field |
-| `NumberField` | Numeric input field |
-| `BooleanField` | Boolean/checkbox field |
-| `StaticEnumField` | Dropdown with static options |
-| `DynamicEnumField` | Dropdown with dynamic options from resolver |
-| `DynamicSchemaField` | Field with dynamic schema from resolver |
-| `ArrayField` | Array of nested elements |
-| `ObjectField` | Nested object with child fields |
-| `AnyField` | Union of all field types |
+| Type                 | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `TextField`          | Text input field                            |
+| `NumberField`        | Numeric input field                         |
+| `BooleanField`       | Boolean/checkbox field                      |
+| `StaticEnumField`    | Dropdown with static options                |
+| `DynamicEnumField`   | Dropdown with dynamic options from resolver |
+| `DynamicSchemaField` | Field with dynamic schema from resolver     |
+| `ArrayField`         | Array of nested elements                    |
+| `ObjectField`        | Nested object with child fields             |
+| `AnyField`           | Union of all field types                    |
 
 ### Structural Types
 
-| Type | Description |
-|------|-------------|
-| `Group` | Groups related fields with a label |
-| `Conditional` | Shows fields based on predicate |
+| Type          | Description                                 |
+| ------------- | ------------------------------------------- |
+| `Group`       | Groups related fields with a label          |
+| `Conditional` | Shows fields based on predicate             |
 | `FormElement` | Union of `AnyField`, `Group`, `Conditional` |
-| `FormSpec<E>` | Complete form specification |
+| `FormSpec<E>` | Complete form specification                 |
 
 ### State Types
 
-| Type | Description |
-|------|-------------|
-| `Validity` | `"valid"`, `"invalid"`, `"unknown"` |
-| `FieldState<T>` | Runtime state of a single field |
-| `FormState<S>` | Runtime state of entire form |
+| Type            | Description                         |
+| --------------- | ----------------------------------- |
+| `Validity`      | `"valid"`, `"invalid"`, `"unknown"` |
+| `FieldState<T>` | Runtime state of a single field     |
+| `FormState<S>`  | Runtime state of entire form        |
 
 ## License
 

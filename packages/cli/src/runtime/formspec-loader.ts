@@ -64,9 +64,7 @@ export function isFormSpec(value: unknown): value is FormSpecLike {
   // Each element should have a _type property with a string value
   return elements.every(
     (el) =>
-      el !== null &&
-      typeof el === "object" &&
-      typeof (el as { _type?: unknown })._type === "string"
+      el !== null && typeof el === "object" && typeof (el as { _type?: unknown })._type === "string"
   );
 }
 
@@ -157,9 +155,7 @@ export async function loadNamedFormSpecs(
         );
       }
     } else if (value) {
-      console.warn(
-        `Warning: Export "${name}" exists but is not a valid FormSpec object`
-      );
+      console.warn(`Warning: Export "${name}" exists but is not a valid FormSpec object`);
     } else {
       console.warn(`Warning: Export "${name}" not found in module`);
     }

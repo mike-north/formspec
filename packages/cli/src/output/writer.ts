@@ -10,8 +10,8 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ClassSchemas } from "../generators/class-schema.js";
-import type { MethodSchemas } from "../generators/method-schema.js";
+import type { ClassSchemas } from "@formspec/build";
+import type { MethodSchemas } from "@formspec/build/internals";
 import type { FormSpecSchemas } from "../runtime/formspec-loader.js";
 
 /**
@@ -51,11 +51,11 @@ export interface FormSpecWriteResult {
  * ```
  * {outDir}/{className}/
  * ├── schema.json
- * ├── ux_spec.json
+ * ├── ui_schema.json
  * ├── instance_methods/
  * │   └── {methodName}/
  * │       ├── params.schema.json
- * │       ├── params.ux_spec.json (if FormSpec-based)
+ * │       ├── params.ui_schema.json (if FormSpec-based)
  * │       └── return_type.schema.json
  * └── static_methods/
  *     └── {methodName}/
@@ -89,9 +89,9 @@ export function writeClassSchemas(
   files.push(schemaPath);
 
   // Write class UI Schema
-  const uxSpecPath = path.join(classDir, "ux_spec.json");
-  writeJson(uxSpecPath, classSchemas.uxSpec, indent);
-  files.push(uxSpecPath);
+  const uiSchemaPath = path.join(classDir, "ui_schema.json");
+  writeJson(uiSchemaPath, classSchemas.uiSchema, indent);
+  files.push(uiSchemaPath);
 
   // Write instance methods
   if (instanceMethods.length > 0) {
@@ -126,11 +126,7 @@ export function writeClassSchemas(
  * @param indent - JSON indentation
  * @returns Array of written file paths
  */
-function writeMethodSchemas(
-  method: MethodSchemas,
-  parentDir: string,
-  indent: number
-): string[] {
+function writeMethodSchemas(method: MethodSchemas, parentDir: string, indent: number): string[] {
   const methodDir = path.join(parentDir, method.name);
   ensureDir(methodDir);
   const files: string[] = [];
@@ -142,10 +138,10 @@ function writeMethodSchemas(
     files.push(paramsSchemaPath);
 
     // Write params UI Schema if available (from FormSpec)
-    if (method.params.uxSpec) {
-      const paramsUxPath = path.join(methodDir, "params.ux_spec.json");
-      writeJson(paramsUxPath, method.params.uxSpec, indent);
-      files.push(paramsUxPath);
+    if (method.params.uiSchema) {
+      const paramsUiSchemaPath = path.join(methodDir, "params.ui_schema.json");
+      writeJson(paramsUiSchemaPath, method.params.uiSchema, indent);
+      files.push(paramsUiSchemaPath);
     }
   }
 
@@ -165,7 +161,7 @@ function writeMethodSchemas(
  * {outDir}/formspecs/
  * └── {exportName}/
  *     ├── schema.json
- *     └── ux_spec.json
+ *     └── ui_schema.json
  * ```
  *
  * @param formSpecs - Map of FormSpec export names to their schemas
@@ -196,9 +192,9 @@ export function writeFormSpecSchemas(
     files.push(schemaPath);
 
     // Write UI Schema
-    const uxSpecPath = path.join(exportDir, "ux_spec.json");
-    writeJson(uxSpecPath, schemas.uiSchema, indent);
-    files.push(uxSpecPath);
+    const uiSchemaPath = path.join(exportDir, "ui_schema.json");
+    writeJson(uiSchemaPath, schemas.uiSchema, indent);
+    files.push(uiSchemaPath);
   }
 
   return { dir: formspecsDir, files };

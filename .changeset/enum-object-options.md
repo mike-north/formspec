@@ -17,13 +17,13 @@ Enum fields can now use object options with `id` and `label` properties, allowin
 
 ```typescript
 // String options (existing behavior)
-field.enum("status", ["draft", "sent", "paid"])
+field.enum("status", ["draft", "sent", "paid"]);
 
 // Object options (new)
 field.enum("priority", [
   { id: "low", label: "Low Priority" },
   { id: "high", label: "High Priority" },
-])
+]);
 ```
 
 ### JSON Schema generation

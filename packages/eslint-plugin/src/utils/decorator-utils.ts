@@ -3,12 +3,13 @@
  */
 
 import { TSESTree, AST_NODE_TYPES } from "@typescript-eslint/utils";
+import { FORMSPEC_DECORATOR_NAMES } from "@formspec/core";
 
 /**
  * Information extracted from a decorator.
  */
 export interface DecoratorInfo {
-  /** The decorator name (e.g., "Min", "Label", "EnumOptions") */
+  /** The decorator name (e.g., "Minimum", "Field", "EnumOptions") */
   name: string;
   /** The arguments passed to the decorator */
   args: TSESTree.Expression[];
@@ -20,15 +21,13 @@ export interface DecoratorInfo {
  * FormSpec decorator names that imply specific field types.
  */
 export const DECORATOR_TYPE_HINTS = {
-  // Number field decorators
-  Min: "number",
-  Max: "number",
-  // String/text field decorators
-  Placeholder: "string",
-  // Array field decorators
-  MinItems: "array",
-  MaxItems: "array",
-  // Enum field decorators
+  Minimum: "number",
+  Maximum: "number",
+  ExclusiveMinimum: "number",
+  ExclusiveMaximum: "number",
+  MinLength: "string",
+  MaxLength: "string",
+  Pattern: "string",
   EnumOptions: "enum",
 } as const;
 
@@ -37,19 +36,7 @@ export type TypeHintDecorator = keyof typeof DECORATOR_TYPE_HINTS;
 /**
  * All known FormSpec decorator names.
  */
-export const FORMSPEC_DECORATORS = new Set([
-  "FormClass",
-  "Label",
-  "Optional",
-  "Placeholder",
-  "Min",
-  "Max",
-  "EnumOptions",
-  "Group",
-  "ShowWhen",
-  "MinItems",
-  "MaxItems",
-]);
+export const FORMSPEC_DECORATORS = new Set<string>(FORMSPEC_DECORATOR_NAMES);
 
 /**
  * Extracts decorator information from a Decorator AST node.
@@ -94,9 +81,7 @@ export function getDecoratorInfo(decorator: TSESTree.Decorator): DecoratorInfo |
  * @param node - The property definition node
  * @returns Array of decorator info objects for FormSpec decorators
  */
-export function getFormSpecDecorators(
-  node: TSESTree.PropertyDefinition
-): DecoratorInfo[] {
+export function getFormSpecDecorators(node: TSESTree.PropertyDefinition): DecoratorInfo[] {
   const decorators = node.decorators;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- decorators can be undefined
   if (!decorators || decorators.length === 0) {
@@ -153,6 +138,16 @@ export function getDecoratorLiteralArg(decorator: DecoratorInfo): unknown {
 
   if (arg.type === AST_NODE_TYPES.Literal) {
     return arg.value;
+  }
+
+  // Handle negative numbers: -5 is a UnaryExpression('-', Literal(5))
+  if (
+    arg.type === AST_NODE_TYPES.UnaryExpression &&
+    arg.operator === "-" &&
+    arg.argument.type === AST_NODE_TYPES.Literal &&
+    typeof arg.argument.value === "number"
+  ) {
+    return -arg.argument.value;
   }
 
   return null;

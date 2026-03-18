@@ -33,3 +33,6 @@ export type {
 } from "./elements.js";
 
 export type { EqualsPredicate, Predicate } from "./predicate.js";
+
+export { FORMSPEC_DECORATOR_NAMES, CONSTRAINT_TAG_DEFINITIONS } from "./decorators.js";
+export type { FormSpecDecoratorName, ConstraintTagName } from "./decorators.js";

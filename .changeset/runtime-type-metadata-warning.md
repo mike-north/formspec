@@ -25,6 +25,7 @@ This addresses DX evaluation feedback that silent degradation (all fields becomi
 "text", all fields becoming required) was confusing and led to subtle bugs.
 
 The warning:
+
 - Only appears once per class (prevents duplicate warnings)
 - Only appears for decorated classes (classes without decorators are not warned)
 - Includes actionable instructions for fixing the issue

@@ -54,14 +54,14 @@ export function Editor({
       editorRef.current = editor;
       onMonacoMount?.(monacoInst);
     },
-    [onMonacoMount],
+    [onMonacoMount]
   );
 
   const handleChange = useCallback(
     (newValue: string | undefined) => {
       onChange(newValue ?? "");
     },
-    [onChange],
+    [onChange]
   );
 
   // Update markers when errors change

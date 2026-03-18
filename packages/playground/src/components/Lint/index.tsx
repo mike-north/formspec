@@ -52,10 +52,7 @@ export function Lint({ errors, isCompiling }: LintProps): React.ReactElement {
             </Typography>
           </Box>
         ) : (
-          <Typography
-            variant="caption"
-            color={hasErrors ? "error.main" : "warning.main"}
-          >
+          <Typography variant="caption" color={hasErrors ? "error.main" : "warning.main"}>
             {errors.length} {errors.length === 1 ? "issue" : "issues"}
           </Typography>
         )}
@@ -75,9 +72,7 @@ export function Lint({ errors, isCompiling }: LintProps): React.ReactElement {
             }}
           >
             <CheckCircleIcon sx={{ fontSize: 48, color: "success.main", mb: 1, opacity: 0.5 }} />
-            <Typography variant="body2">
-              Your FormSpec code is valid
-            </Typography>
+            <Typography variant="body2">Your FormSpec code is valid</Typography>
           </Box>
         ) : (
           <List dense sx={{ py: 0 }}>

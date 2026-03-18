@@ -66,6 +66,7 @@ formspec (main entry point - re-exports everything)
 ### Build Order
 
 Packages must build in dependency order. The root `pnpm run build` handles this automatically. For manual builds:
+
 1. `@formspec/core` (no deps)
 2. `@formspec/dsl` (depends on core)
 3. `@formspec/build`, `@formspec/runtime` (depend on core)

@@ -1,0 +1,111 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "name",
+      "required": true,
+      "group": "Personal Information",
+      "label": "Full Name",
+      "description": "Your legal name",
+      "placeholder": "Jane Doe",
+      "minLength": 2,
+      "maxLength": 100
+    },
+    {
+      "_field": "text",
+      "id": "email",
+      "required": true,
+      "group": "Personal Information",
+      "label": "Email Address",
+      "description": "We'll send a confirmation email",
+      "pattern": "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"
+    },
+    {
+      "_field": "number",
+      "id": "age",
+      "required": true,
+      "group": "Personal Information",
+      "label": "Age",
+      "min": 13,
+      "max": 120
+    },
+    {
+      "_field": "text",
+      "id": "username",
+      "required": true,
+      "group": "Account",
+      "label": "Username",
+      "placeholder": "johndoe42",
+      "minLength": 3,
+      "maxLength": 30,
+      "pattern": "^[a-zA-Z0-9_]+$"
+    },
+    {
+      "_field": "enum",
+      "id": "accountType",
+      "required": true,
+      "group": "Account",
+      "label": "Account Type",
+      "options": [
+        {
+          "id": "personal",
+          "label": "Personal"
+        },
+        {
+          "id": "business",
+          "label": "Business"
+        },
+        {
+          "id": "enterprise",
+          "label": "Enterprise"
+        }
+      ]
+    },
+    {
+      "_field": "enum",
+      "id": "language",
+      "required": true,
+      "group": "Preferences",
+      "label": "Preferred Language",
+      "options": ["en", "es", "fr", "de", "ja"]
+    },
+    {
+      "_field": "boolean",
+      "id": "newsletter",
+      "group": "Preferences",
+      "label": "Newsletter"
+    },
+    {
+      "_field": "text",
+      "id": "companyName",
+      "showWhen": {
+        "field": "accountType",
+        "value": "business"
+      },
+      "group": "Business Details",
+      "label": "Company Name"
+    },
+    {
+      "_field": "text",
+      "id": "taxId",
+      "showWhen": {
+        "field": "accountType",
+        "value": "business"
+      },
+      "group": "Business Details",
+      "label": "Tax ID",
+      "pattern": "^\\d{2}-\\d{7}$"
+    },
+    {
+      "_field": "text",
+      "id": "plan",
+      "label": "Plan"
+    },
+    {
+      "_field": "text",
+      "id": "referralCode",
+      "required": true,
+      "label": "Referral Code"
+    }
+  ]
+}

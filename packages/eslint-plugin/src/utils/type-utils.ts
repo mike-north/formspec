@@ -9,7 +9,14 @@ import type ts from "typescript";
 /**
  * Field type categories for FormSpec.
  */
-export type FieldTypeCategory = "string" | "number" | "boolean" | "array" | "object" | "union" | "unknown";
+export type FieldTypeCategory =
+  | "string"
+  | "number"
+  | "boolean"
+  | "array"
+  | "object"
+  | "union"
+  | "unknown";
 
 /**
  * Checks if a TypeScript type is a string type.
@@ -128,6 +135,31 @@ export function isArrayType(type: ts.Type, checker: ts.TypeChecker): boolean {
 }
 
 /**
+ * Strips `undefined` and `null` from a union type.
+ *
+ * Optional fields (`field?: string`) have type `string | undefined`. This
+ * function returns the non-nullish part so that type categorization works
+ * correctly for optional fields.
+ *
+ * If the type is not a union or all constituents are nullish, returns the
+ * original type unchanged.
+ */
+function stripNullishFromUnion(type: ts.Type): ts.Type {
+  if (!type.isUnion()) return type;
+
+  const nonNullish = type.types.filter(
+    (t) => !((t.flags & (32768 | 65536)) /* ts.TypeFlags.Undefined | ts.TypeFlags.Null */)
+  );
+
+  if (nonNullish.length === 0) return type;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above guarantees element exists
+  if (nonNullish.length === 1) return nonNullish[0]!;
+
+  // Still a union after stripping — return original (union categorization applies)
+  return type;
+}
+
+/**
  * Determines the field type category from a TypeScript type.
  *
  * Categories help determine which decorators are valid for a field.
@@ -136,22 +168,22 @@ export function isArrayType(type: ts.Type, checker: ts.TypeChecker): boolean {
  * @param checker - The TypeScript type checker instance
  * @returns The field type category
  */
-export function getFieldTypeCategory(
-  type: ts.Type,
-  checker: ts.TypeChecker
-): FieldTypeCategory {
-  if (isStringType(type, checker)) return "string";
-  if (isNumberType(type, checker)) return "number";
-  if (isBooleanType(type, checker)) return "boolean";
-  if (isArrayType(type, checker)) return "array";
+export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): FieldTypeCategory {
+  // Strip undefined/null from union types (e.g., optional fields: string | undefined → string)
+  const stripped = stripNullishFromUnion(type);
+
+  if (isStringType(stripped, checker)) return "string";
+  if (isNumberType(stripped, checker)) return "number";
+  if (isBooleanType(stripped, checker)) return "boolean";
+  if (isArrayType(stripped, checker)) return "array";
 
   // Check for object types (but not arrays)
-  if (type.flags & 524288 /* ts.TypeFlags.Object */) {
+  if (stripped.flags & 524288 /* ts.TypeFlags.Object */) {
     return "object";
   }
 
   // Check for unions that aren't all strings/numbers
-  if (type.isUnion()) {
+  if (stripped.isUnion()) {
     return "union";
   }
 
@@ -219,18 +251,13 @@ export function isOptionalProperty(node: TSESTree.PropertyDefinition): boolean {
 /**
  * Gets the type checker from parser services.
  */
-export function getTypeChecker(
-  services: ParserServicesWithTypeInformation
-): ts.TypeChecker {
+export function getTypeChecker(services: ParserServicesWithTypeInformation): ts.TypeChecker {
   return services.program.getTypeChecker();
 }
 
 /**
  * Converts a TypeScript type to a readable string.
  */
-export function typeToString(
-  type: ts.Type,
-  checker: ts.TypeChecker
-): string {
+export function typeToString(type: ts.Type, checker: ts.TypeChecker): string {
   return checker.typeToString(type);
 }

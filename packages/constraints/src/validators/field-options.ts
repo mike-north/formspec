@@ -1,8 +1,4 @@
-import type {
-  FieldOptionConstraints,
-  Severity,
-  ValidationIssue,
-} from "../types.js";
+import type { FieldOptionConstraints, Severity, ValidationIssue } from "../types.js";
 
 /**
  * Known field options that can be validated.
@@ -77,19 +73,15 @@ function createFieldOptionIssue(
  * @param field - A field object with potential options
  * @returns Array of present option names
  */
-export function extractFieldOptions(
-  field: Record<string, unknown>
-): FieldOption[] {
+export function extractFieldOptions(field: Record<string, unknown>): FieldOption[] {
   const options: FieldOption[] = [];
 
   if (field["label"] !== undefined) options.push("label");
   if (field["placeholder"] !== undefined) options.push("placeholder");
   if (field["required"] !== undefined) options.push("required");
   // NumberField uses "min"/"max" in core types, map to "minValue"/"maxValue" constraints
-  if (field["min"] !== undefined || field["minValue"] !== undefined)
-    options.push("minValue");
-  if (field["max"] !== undefined || field["maxValue"] !== undefined)
-    options.push("maxValue");
+  if (field["min"] !== undefined || field["minValue"] !== undefined) options.push("minValue");
+  if (field["max"] !== undefined || field["maxValue"] !== undefined) options.push("maxValue");
   if (field["minItems"] !== undefined) options.push("minItems");
   if (field["maxItems"] !== undefined) options.push("maxItems");
 

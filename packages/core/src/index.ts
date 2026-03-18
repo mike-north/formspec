@@ -46,7 +46,15 @@ export type {
   // Predicates
   EqualsPredicate,
   Predicate,
+
+  // Decorators
+  FormSpecDecoratorName,
+  ConstraintTagName,
 } from "./types/index.js";
 
 // Re-export functions
-export { createInitialFieldState } from "./types/index.js";
+export {
+  createInitialFieldState,
+  FORMSPEC_DECORATOR_NAMES,
+  CONSTRAINT_TAG_DEFINITIONS,
+} from "./types/index.js";

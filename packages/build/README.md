@@ -44,7 +44,7 @@ import { formspec, field, group } from "@formspec/dsl";
 const ContactForm = formspec(
   field.text("name", { label: "Name", required: true }),
   field.text("email", { label: "Email", required: true }),
-  field.enum("subject", ["General", "Support", "Sales"]),
+  field.enum("subject", ["General", "Support", "Sales"])
 );
 
 const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
@@ -116,22 +116,22 @@ const uiSchema = generateUiSchema(ContactForm);
 
 ### Functions
 
-| Function | Description |
-|----------|-------------|
-| `buildFormSchemas(form)` | Generate both JSON Schema and UI Schema |
-| `generateJsonSchema(form)` | Generate only JSON Schema |
-| `generateUiSchema(form)` | Generate only UI Schema |
-| `writeSchemas(form, options)` | Build and write schemas to disk |
+| Function                      | Description                             |
+| ----------------------------- | --------------------------------------- |
+| `buildFormSchemas(form)`      | Generate both JSON Schema and UI Schema |
+| `generateJsonSchema(form)`    | Generate only JSON Schema               |
+| `generateUiSchema(form)`      | Generate only UI Schema                 |
+| `writeSchemas(form, options)` | Build and write schemas to disk         |
 
 ### Types
 
-| Type | Description |
-|------|-------------|
-| `BuildResult` | Return type of `buildFormSchemas` |
-| `WriteSchemasOptions` | Options for `writeSchemas` |
-| `WriteSchemasResult` | Return type of `writeSchemas` |
-| `JSONSchema7` | JSON Schema Draft-07 type |
-| `UISchema` | JSON Forms UI Schema type |
+| Type                  | Description                       |
+| --------------------- | --------------------------------- |
+| `BuildResult`         | Return type of `buildFormSchemas` |
+| `WriteSchemasOptions` | Options for `writeSchemas`        |
+| `WriteSchemasResult`  | Return type of `writeSchemas`     |
+| `JSONSchema7`         | JSON Schema Draft-07 type         |
+| `UISchema`            | JSON Forms UI Schema type         |
 
 ## License
 

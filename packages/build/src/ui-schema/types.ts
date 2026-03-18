@@ -96,11 +96,7 @@ export interface GroupLayout extends UISchemaElementBase {
 /**
  * Union of all UI Schema element types.
  */
-export type UISchemaElement =
-  | ControlElement
-  | VerticalLayout
-  | HorizontalLayout
-  | GroupLayout;
+export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout;
 
 /**
  * Root UI Schema (always a layout).

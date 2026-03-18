@@ -94,10 +94,7 @@ ruleTester.run("enum-options-match-type", enumOptionsMatchType, {
           type!: "a" | "b";
         }
       `,
-      errors: [
-        { messageId: "enumOptionsMissing" },
-        { messageId: "enumOptionsExtra" },
-      ],
+      errors: [{ messageId: "enumOptionsMissing" }, { messageId: "enumOptionsExtra" }],
     },
   ],
 });

@@ -41,11 +41,7 @@ export type { FormSpecOptions } from "./structure.js";
 
 // Validation
 export { validateForm, logValidationIssues } from "./validation.js";
-export type {
-  ValidationSeverity,
-  ValidationIssue,
-  ValidationResult,
-} from "./validation.js";
+export type { ValidationSeverity, ValidationIssue, ValidationResult } from "./validation.js";
 
 // Type inference utilities
 export type {

@@ -14,31 +14,33 @@ describe("Integration: Complete form workflow", () => {
   it("should handle a realistic invoice form", () => {
     // Define a realistic invoice form
     const InvoiceForm = formspec(
-      group("Customer",
+      group(
+        "Customer",
         field.text("customerName", { label: "Customer Name", required: true }),
         field.text("customerEmail", { label: "Email", required: true }),
-        field.object("billingAddress",
+        field.object(
+          "billingAddress",
           field.text("street", { label: "Street", required: true }),
           field.text("city", { label: "City", required: true }),
           field.text("state", { label: "State" }),
-          field.text("zip", { label: "ZIP Code" }),
-        ),
+          field.text("zip", { label: "ZIP Code" })
+        )
       ),
-      group("Invoice Details",
+      group(
+        "Invoice Details",
         field.enum("status", ["draft", "sent", "paid", "overdue"] as const, {
           label: "Status",
           required: true,
         }),
         field.number("amount", { label: "Amount", min: 0, required: true }),
-        field.array("lineItems",
+        field.array(
+          "lineItems",
           field.text("description", { label: "Description", required: true }),
           field.number("quantity", { label: "Qty", min: 1 }),
-          field.number("unitPrice", { label: "Unit Price", min: 0 }),
-        ),
+          field.number("unitPrice", { label: "Unit Price", min: 0 })
+        )
       ),
-      when(is("status", "draft"),
-        field.text("internalNotes", { label: "Internal Notes" }),
-      ),
+      when(is("status", "draft"), field.text("internalNotes", { label: "Internal Notes" }))
     );
 
     // Generate schemas
@@ -117,9 +119,7 @@ describe("Integration: Complete form workflow", () => {
       },
       status: "draft",
       amount: 1000,
-      lineItems: [
-        { description: "Consulting", quantity: 10, unitPrice: 100 },
-      ],
+      lineItems: [{ description: "Consulting", quantity: 10, unitPrice: 100 }],
       internalNotes: "Priority customer",
     };
 
@@ -134,16 +134,16 @@ describe("Integration: Complete form workflow", () => {
         label: "Payment Method",
         required: true,
       }),
-      when(is("country", "US"),
+      when(
+        is("country", "US"),
         field.text("ssn", { label: "SSN (last 4)" }),
-        when(is("paymentMethod", "bank"),
+        when(
+          is("paymentMethod", "bank"),
           field.text("routingNumber", { label: "Routing Number" }),
-          field.text("accountNumber", { label: "Account Number" }),
-        ),
+          field.text("accountNumber", { label: "Account Number" })
+        )
       ),
-      when(is("country", "GB"),
-        field.text("sortCode", { label: "Sort Code" }),
-      ),
+      when(is("country", "GB"), field.text("sortCode", { label: "Sort Code" }))
     );
 
     const { jsonSchema, uiSchema } = buildFormSchemas(PaymentForm);
@@ -172,7 +172,7 @@ describe("Integration: Complete form workflow", () => {
         label: "State",
         params: ["country"],
       }),
-      field.text("city", { label: "City" }),
+      field.text("city", { label: "City" })
     );
 
     const { jsonSchema, uiSchema } = buildFormSchemas(AddressForm);
@@ -191,21 +191,17 @@ describe("Integration: Complete form workflow", () => {
 
   it("should handle complex nested object and array combinations", () => {
     const OrderForm = formspec(
-      field.object("customer",
+      field.object(
+        "customer",
         field.text("name"),
-        field.array("contacts",
-          field.text("email"),
-          field.text("phone"),
-        ),
+        field.array("contacts", field.text("email"), field.text("phone"))
       ),
-      field.array("orders",
+      field.array(
+        "orders",
         field.text("productId"),
         field.number("quantity"),
-        field.object("shipping",
-          field.text("method"),
-          field.number("cost"),
-        ),
-      ),
+        field.object("shipping", field.text("method"), field.number("cost"))
+      )
     );
 
     const { jsonSchema } = buildFormSchemas(OrderForm);

@@ -14,15 +14,14 @@ import { decoratorFieldTypeMismatch } from "./rules/decorator-field-type-mismatc
 import { enumOptionsMatchType } from "./rules/enum-options-match-type.js";
 import { showwhenFieldExists } from "./rules/showwhen-field-exists.js";
 import { showwhenSuggestsOptional } from "./rules/showwhen-suggests-optional.js";
-import { minMaxValidRange } from "./rules/min-max-valid-range.js";
+import { consistentConstraints } from "./rules/consistent-constraints.js";
 import { noConflictingDecorators } from "./rules/no-conflicting-decorators.js";
 import { noDuplicateDecorators } from "./rules/no-duplicate-decorators.js";
+import { decoratorAllowedFieldTypes } from "./rules/decorator-allowed-field-types.js";
+import { preferCustomDecorator } from "./rules/prefer-custom-decorator.js";
 
 // Constraint rules for Chain DSL
-import {
-  allowedFieldTypes,
-  allowedLayouts,
-} from "./rules/constraints/index.js";
+import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js";
 
 /**
  * All rules provided by this plugin.
@@ -33,9 +32,11 @@ const rules = {
   "enum-options-match-type": enumOptionsMatchType,
   "showwhen-field-exists": showwhenFieldExists,
   "showwhen-suggests-optional": showwhenSuggestsOptional,
-  "min-max-valid-range": minMaxValidRange,
+  "consistent-constraints": consistentConstraints,
   "no-conflicting-decorators": noConflictingDecorators,
   "no-duplicate-decorators": noDuplicateDecorators,
+  "decorator-allowed-field-types": decoratorAllowedFieldTypes,
+  "prefer-custom-decorator": preferCustomDecorator,
 
   // Constraint rules for Chain DSL
   "constraints-allowed-field-types": allowedFieldTypes,
@@ -74,7 +75,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "@formspec/enum-options-match-type": "error",
       "@formspec/showwhen-field-exists": "error",
       "@formspec/showwhen-suggests-optional": "warn",
-      "@formspec/min-max-valid-range": "error",
+      "@formspec/consistent-constraints": "error",
       "@formspec/no-conflicting-decorators": "error",
       "@formspec/no-duplicate-decorators": "error",
     },
@@ -97,7 +98,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "@formspec/enum-options-match-type": "error",
       "@formspec/showwhen-field-exists": "error",
       "@formspec/showwhen-suggests-optional": "error",
-      "@formspec/min-max-valid-range": "error",
+      "@formspec/consistent-constraints": "error",
       "@formspec/no-conflicting-decorators": "error",
       "@formspec/no-duplicate-decorators": "error",
     },
@@ -125,9 +126,11 @@ export {
   enumOptionsMatchType,
   showwhenFieldExists,
   showwhenSuggestsOptional,
-  minMaxValidRange,
+  consistentConstraints,
   noConflictingDecorators,
   noDuplicateDecorators,
+  decoratorAllowedFieldTypes,
+  preferCustomDecorator,
   // Constraint rules for Chain DSL
   allowedFieldTypes,
   allowedLayouts,

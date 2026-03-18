@@ -7,9 +7,7 @@ import { formspec, field, group, when, is } from "@formspec/dsl";
 
 describe("defineResolvers", () => {
   it("should create a resolver registry", () => {
-    const form = formspec(
-      field.dynamicEnum("country", "countries", { label: "Country" }),
-    );
+    const form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
     const resolvers = defineResolvers(form, {
       countries: async () => {
@@ -29,17 +27,13 @@ describe("defineResolvers", () => {
   });
 
   it("should fetch options from resolver", async () => {
-    const form = formspec(
-      field.dynamicEnum("country", "countries"),
-    );
+    const form = formspec(field.dynamicEnum("country", "countries"));
 
     const resolvers = defineResolvers(form, {
       countries: async () => {
         await Promise.resolve(); // Needed for async interface compliance
         return {
-          options: [
-            { value: "us", label: "United States" },
-          ],
+          options: [{ value: "us", label: "United States" }],
           validity: "valid" as const,
         };
       },
@@ -54,10 +48,11 @@ describe("defineResolvers", () => {
 
   it("should extract sources from nested groups", () => {
     const form = formspec(
-      group("Location",
+      group(
+        "Location",
         field.dynamicEnum("country", "countries"),
-        field.dynamicEnum("city", "cities"),
-      ),
+        field.dynamicEnum("city", "cities")
+      )
     );
 
     const resolvers = defineResolvers(form, {
@@ -77,9 +72,7 @@ describe("defineResolvers", () => {
   it("should extract sources from conditionals", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const),
-      when(is("type", "a"),
-        field.dynamicEnum("extra", "extras"),
-      ),
+      when(is("type", "a"), field.dynamicEnum("extra", "extras"))
     );
 
     const resolvers = defineResolvers(form, {
@@ -93,9 +86,7 @@ describe("defineResolvers", () => {
   });
 
   it("should throw when getting unknown resolver", () => {
-    const form = formspec(
-      field.dynamicEnum("country", "countries"),
-    );
+    const form = formspec(field.dynamicEnum("country", "countries"));
 
     const resolvers = defineResolvers(form, {
       countries: async () => {
@@ -110,9 +101,7 @@ describe("defineResolvers", () => {
   });
 
   it("should pass params to resolver", async () => {
-    const form = formspec(
-      field.dynamicEnum("product", "products", { params: ["merchantId"] }),
-    );
+    const form = formspec(field.dynamicEnum("product", "products", { params: ["merchantId"] }));
 
     let receivedParams: Record<string, unknown> | undefined;
 

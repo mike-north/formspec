@@ -128,7 +128,7 @@ export const field = {
         if (optIsObject !== firstIsObject) {
           throw new Error(
             `field.enum("${name}"): options must be all strings or all objects with {id, label}, not mixed. ` +
-            `Received mixed types in options array.`
+              `Received mixed types in options array.`
           );
         }
       }
@@ -140,7 +140,7 @@ export const field = {
           if (typeof obj.id !== "string" || typeof obj.label !== "string") {
             throw new Error(
               `field.enum("${name}"): object options must have string "id" and "label" properties. ` +
-              `Received: ${JSON.stringify(opt)}`
+                `Received: ${JSON.stringify(opt)}`
             );
           }
         }

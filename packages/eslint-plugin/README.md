@@ -1,3 +1,24 @@
+# @your-org/eslint-plugin
+
+ESLint rules for working with your schema/constraints.
+
+## Rules
+
+| Rule name               | Description                                                     |
+| ----------------------- | --------------------------------------------------------------- |
+| `consistent-constraints` | Enforces consistent min/max and related constraints in schemas. |
+
+## Rule details
+
+### `consistent-constraints`
+
+This rule validates that constraint-related properties (such as minimum and maximum
+values, lengths, or ranges) are used consistently and do not contradict each other.
+
+It is intended as a replacement for the now-removed `min-max-valid-range` rule and
+should be enabled wherever constraint consistency needs to be enforced.
+
+<!-- Add additional rules and documentation here as needed. -->
 # @formspec/eslint-plugin
 
 ESLint plugin for validating FormSpec decorator DSL usage in TypeScript projects. This plugin catches common mistakes by ensuring decorators match their field types and enforcing consistency rules.
@@ -55,15 +76,15 @@ export default [
 
 ## Rules
 
-| Rule | Description | Recommended | Strict |
-|------|-------------|-------------|--------|
-| [`decorator-field-type-mismatch`](#decorator-field-type-mismatch) | Ensures decorators are applied to fields with compatible types | error | error |
-| [`enum-options-match-type`](#enum-options-match-type) | Ensures @EnumOptions values match the field's union type | error | error |
-| [`showwhen-field-exists`](#showwhen-field-exists) | Ensures @ShowWhen references a field that exists | error | error |
-| [`showwhen-suggests-optional`](#showwhen-suggests-optional) | Suggests @ShowWhen fields should be optional | warn | error |
-| [`min-max-valid-range`](#min-max-valid-range) | Ensures @Min/@Max have valid ranges | error | error |
-| [`no-conflicting-decorators`](#no-conflicting-decorators) | Prevents decorators that imply conflicting types | error | error |
-| [`no-duplicate-decorators`](#no-duplicate-decorators) | Prevents duplicate decorators on the same field | error | error |
+| Rule                                                              | Description                                                    | Recommended | Strict |
+| ----------------------------------------------------------------- | -------------------------------------------------------------- | ----------- | ------ |
+| [`decorator-field-type-mismatch`](#decorator-field-type-mismatch) | Ensures decorators are applied to fields with compatible types | error       | error  |
+| [`enum-options-match-type`](#enum-options-match-type)             | Ensures @EnumOptions values match the field's union type       | error       | error  |
+| [`showwhen-field-exists`](#showwhen-field-exists)                 | Ensures @ShowWhen references a field that exists               | error       | error  |
+| [`showwhen-suggests-optional`](#showwhen-suggests-optional)       | Suggests @ShowWhen fields should be optional                   | warn        | error  |
+| [`min-max-valid-range`](#min-max-valid-range)                     | Ensures @Min/@Max have valid ranges                            | error       | error  |
+| [`no-conflicting-decorators`](#no-conflicting-decorators)         | Prevents decorators that imply conflicting types               | error       | error  |
+| [`no-duplicate-decorators`](#no-duplicate-decorators)             | Prevents duplicate decorators on the same field                | error       | error  |
 
 ### decorator-field-type-mismatch
 
@@ -197,6 +218,7 @@ name!: string;
 ### Recommended
 
 Sensible defaults for most projects:
+
 - All type safety rules enabled as errors
 - `showwhen-suggests-optional` as warning (not blocking)
 
@@ -207,9 +229,7 @@ All rules enabled as errors for maximum type safety enforcement.
 ```javascript
 import formspec from "@formspec/eslint-plugin";
 
-export default [
-  ...formspec.configs.strict,
-];
+export default [...formspec.configs.strict];
 ```
 
 ## License

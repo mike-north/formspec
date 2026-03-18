@@ -48,9 +48,7 @@ export { DEFAULT_CONSTRAINTS, DEFAULT_CONFIG, mergeWithDefaults };
  * @param yamlContent - The YAML content to parse
  * @returns The parsed and merged configuration
  */
-export function loadConfigFromString(
-  yamlContent: string
-): ResolvedConstraintConfig {
+export function loadConfigFromString(yamlContent: string): ResolvedConstraintConfig {
   const parsed = parseYaml(yamlContent) as FormSpecConfig | null | undefined;
 
   if (parsed === null || parsed === undefined) {
@@ -58,9 +56,7 @@ export function loadConfigFromString(
   }
 
   if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(
-      `Invalid config content: expected an object, got ${typeof parsed}`
-    );
+    throw new Error(`Invalid config content: expected an object, got ${typeof parsed}`);
   }
 
   return mergeWithDefaults(parsed.constraints);
@@ -86,9 +82,7 @@ export function loadConfigFromString(
  * });
  * ```
  */
-export function defineConstraints(
-  config: ConstraintConfig
-): ResolvedConstraintConfig {
+export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig {
   return mergeWithDefaults(config);
 }
 

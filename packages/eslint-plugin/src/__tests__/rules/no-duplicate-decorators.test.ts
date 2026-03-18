@@ -26,9 +26,9 @@ ruleTester.run("no-duplicate-decorators", noDuplicateDecorators, {
     // Single decorator
     {
       code: `
-        function Label(s: string) { return () => {}; }
+        function Field(opts: unknown) { return () => {}; }
         class Form {
-          @Label("Name")
+          @Field({ displayName: "Name" })
           name!: string;
         }
       `,
@@ -36,14 +36,14 @@ ruleTester.run("no-duplicate-decorators", noDuplicateDecorators, {
     // Multiple different decorators
     {
       code: `
-        function Label(s: string) { return () => {}; }
-        function Placeholder(s: string) { return () => {}; }
-        function Optional() { return () => {}; }
+        function Field(opts: unknown) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
+        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @Label("Name")
-          @Placeholder("Enter name")
-          @Optional()
-          name?: string;
+          @Field({ displayName: "Name" })
+          @MinLength(1)
+          @MaxLength(100)
+          name!: string;
         }
       `,
     },
@@ -57,13 +57,13 @@ ruleTester.run("no-duplicate-decorators", noDuplicateDecorators, {
     },
   ],
   invalid: [
-    // Duplicate @Label
+    // Duplicate @Field
     {
       code: `
-        function Label(s: string) { return () => {}; }
+        function Field(opts: unknown) { return () => {}; }
         class Form {
-          @Label("First")
-          @Label("Second")
+          @Field({ displayName: "First" })
+          @Field({ displayName: "Second" })
           name!: string;
         }
       `,
@@ -81,25 +81,25 @@ ruleTester.run("no-duplicate-decorators", noDuplicateDecorators, {
       `,
       errors: [{ messageId: "duplicateDecorator" }],
     },
-    // Duplicate @Min
+    // Duplicate @Minimum
     {
       code: `
-        function Min(n: number) { return () => {}; }
+        function Minimum(n: number) { return () => {}; }
         class Form {
-          @Min(0)
-          @Min(10)
+          @Minimum(0)
+          @Minimum(10)
           value!: number;
         }
       `,
       errors: [{ messageId: "duplicateDecorator" }],
     },
-    // Duplicate @Placeholder
+    // Duplicate @MinLength
     {
       code: `
-        function Placeholder(s: string) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
         class Form {
-          @Placeholder("First")
-          @Placeholder("Second")
+          @MinLength(1)
+          @MinLength(5)
           name!: string;
         }
       `,
@@ -108,20 +108,17 @@ ruleTester.run("no-duplicate-decorators", noDuplicateDecorators, {
     // Multiple duplicates (only first pair reported per decorator type)
     {
       code: `
-        function Label(s: string) { return () => {}; }
-        function Placeholder(s: string) { return () => {}; }
+        function Field(opts: unknown) { return () => {}; }
+        function MinLength(n: number) { return () => {}; }
         class Form {
-          @Label("First")
-          @Label("Second")
-          @Placeholder("One")
-          @Placeholder("Two")
+          @Field({ displayName: "First" })
+          @Field({ displayName: "Second" })
+          @MinLength(1)
+          @MinLength(5)
           name!: string;
         }
       `,
-      errors: [
-        { messageId: "duplicateDecorator" },
-        { messageId: "duplicateDecorator" },
-      ],
+      errors: [{ messageId: "duplicateDecorator" }, { messageId: "duplicateDecorator" }],
     },
   ],
 });

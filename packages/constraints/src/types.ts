@@ -197,12 +197,7 @@ export interface ValidationIssue {
   /** Severity level of this issue */
   severity: "error" | "warning";
   /** Which constraint category this issue belongs to */
-  category:
-    | "fieldTypes"
-    | "layout"
-    | "uiSchema"
-    | "fieldOptions"
-    | "controlOptions";
+  category: "fieldTypes" | "layout" | "uiSchema" | "fieldOptions" | "controlOptions";
   /** JSON pointer or field path to the issue location */
   path?: string;
   /** Name of the affected field (if applicable) */

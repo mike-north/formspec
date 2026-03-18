@@ -67,9 +67,10 @@ export function compileFormSpec(code: string, options: CompileOptions = {}): Com
       .filter((d) => d.category === ts.DiagnosticCategory.Error)
       .map((d): DiagnosticMessage => {
         const message = ts.flattenDiagnosticMessageText(d.messageText, "\n");
-        const pos = d.file && d.start !== undefined
-          ? d.file.getLineAndCharacterOfPosition(d.start)
-          : undefined;
+        const pos =
+          d.file && d.start !== undefined
+            ? d.file.getLineAndCharacterOfPosition(d.start)
+            : undefined;
         return {
           message,
           line: pos ? pos.line + 1 : undefined,
@@ -107,10 +108,9 @@ export function compileFormSpec(code: string, options: CompileOptions = {}): Com
     // Step 4: Validate against constraints
     const constraintErrors: DiagnosticMessage[] = [];
     if (options.constraints) {
-      const validationResult = validateFormSpec(
-        formSpec as FormSpec<readonly FormElement[]>,
-        { constraints: options.constraints }
-      );
+      const validationResult = validateFormSpec(formSpec as FormSpec<readonly FormElement[]>, {
+        constraints: options.constraints,
+      });
 
       for (const issue of validationResult.issues) {
         // Try to find line number by searching for the field name in source
@@ -220,48 +220,42 @@ function executeCode(jsCode: string): unknown {
         })
         .join("\n");
       return assignments;
-    },
+    }
   );
 
   // Handle: import * as x from "module"
   transformedCode = transformedCode.replace(
     /import\s*\*\s*as\s+(\w+)\s+from\s*["']([^"']+)["'];?/g,
-    (_, alias: string, module: string) => `const ${alias} = __require("${module}");`,
+    (_, alias: string, module: string) => `const ${alias} = __require("${module}");`
   );
 
   // Handle: import x from "module" (default import)
   transformedCode = transformedCode.replace(
     /import\s+(\w+)\s+from\s*["']([^"']+)["'];?/g,
     (_, name: string, module: string) =>
-      `const ${name} = __require("${module}").default ?? __require("${module}");`,
+      `const ${name} = __require("${module}").default ?? __require("${module}");`
   );
 
   // Handle: export default x
-  transformedCode = transformedCode.replace(
-    /export\s+default\s+/g,
-    "__exports.default = ",
-  );
+  transformedCode = transformedCode.replace(/export\s+default\s+/g, "__exports.default = ");
 
   // Handle: export { x }
-  transformedCode = transformedCode.replace(
-    /export\s*\{([^}]+)\};?/g,
-    (_, exports: string) => {
-      const exportList = exports.split(",").map((s) => s.trim());
-      return exportList
-        .map((exp) => {
-          const parts = exp.split(/\s+as\s+/).map((s) => s.trim());
-          const name = parts[0] ?? "";
-          const exportName = parts[1] ?? name;
-          return `__exports.${exportName} = ${name};`;
-        })
-        .join("\n");
-    },
-  );
+  transformedCode = transformedCode.replace(/export\s*\{([^}]+)\};?/g, (_, exports: string) => {
+    const exportList = exports.split(",").map((s) => s.trim());
+    return exportList
+      .map((exp) => {
+        const parts = exp.split(/\s+as\s+/).map((s) => s.trim());
+        const name = parts[0] ?? "";
+        const exportName = parts[1] ?? name;
+        return `__exports.${exportName} = ${name};`;
+      })
+      .join("\n");
+  });
 
   // Handle: export const x = ...
   transformedCode = transformedCode.replace(
     /export\s+(const|let|var)\s+(\w+)/g,
-    (_, keyword: string, name: string) => `${keyword} ${name}; __exports.${name}`,
+    (_, keyword: string, name: string) => `${keyword} ${name}; __exports.${name}`
   );
 
   // Create the execution context

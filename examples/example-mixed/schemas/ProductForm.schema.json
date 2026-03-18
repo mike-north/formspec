@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Product Name",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "price": {
+      "type": "number",
+      "title": "Price",
+      "minimum": 0,
+      "maximum": 99999
+    },
+    "weight": {
+      "type": "number",
+      "title": "Weight (kg)",
+      "minimum": 0.01,
+      "maximum": 1000
+    },
+    "sku": {
+      "type": "string",
+      "title": "SKU",
+      "pattern": "^[A-Z]{3}-\\d{4}$"
+    },
+    "stock": {
+      "type": "number",
+      "title": "Stock Count",
+      "minimum": 0,
+      "exclusiveMaximum": 10000
+    },
+    "batchCode": {
+      "type": "string",
+      "title": "Batch Code",
+      "minLength": 5,
+      "maxLength": 20
+    },
+    "category": {
+      "enum": ["electronics", "clothing", "food", "other"],
+      "title": "Category"
+    },
+    "expiryDays": {
+      "type": "number",
+      "title": "Expiry Days",
+      "minimum": 1,
+      "maximum": 365
+    }
+  },
+  "required": ["name", "price", "weight", "sku", "stock", "category"]
+}

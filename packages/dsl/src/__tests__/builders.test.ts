@@ -89,13 +89,17 @@ describe("field builders", () => {
     });
 
     it("should include optional config with object options", () => {
-      const f = field.enum("priority", [
-        { id: "low", label: "Low" },
-        { id: "high", label: "High" },
-      ] as const, {
-        label: "Priority",
-        required: true,
-      });
+      const f = field.enum(
+        "priority",
+        [
+          { id: "low", label: "Low" },
+          { id: "high", label: "High" },
+        ] as const,
+        {
+          label: "Priority",
+          required: true,
+        }
+      );
 
       expect(f.label).toBe("Priority");
       expect(f.required).toBe(true);
@@ -177,11 +181,7 @@ describe("field builders", () => {
 
   describe("field.array", () => {
     it("should create an array field with item schema", () => {
-      const f = field.array(
-        "addresses",
-        field.text("street"),
-        field.text("city"),
-      );
+      const f = field.array("addresses", field.text("street"), field.text("city"));
 
       expect(f._type).toBe("field");
       expect(f._field).toBe("array");
@@ -197,7 +197,7 @@ describe("field builders", () => {
       const f = field.arrayWithConfig(
         "items",
         { label: "Line Items", minItems: 1, maxItems: 10 },
-        field.text("description"),
+        field.text("description")
       );
 
       expect(f.label).toBe("Line Items");
@@ -212,7 +212,7 @@ describe("field builders", () => {
         "address",
         field.text("street"),
         field.text("city"),
-        field.text("zip"),
+        field.text("zip")
       );
 
       expect(f._type).toBe("field");
@@ -227,7 +227,7 @@ describe("field builders", () => {
       const f = field.objectWithConfig(
         "billing",
         { label: "Billing Address", required: true },
-        field.text("street"),
+        field.text("street")
       );
 
       expect(f.label).toBe("Billing Address");
@@ -239,11 +239,7 @@ describe("field builders", () => {
 describe("structure builders", () => {
   describe("group", () => {
     it("should create a group with label and elements", () => {
-      const g = group(
-        "Customer Info",
-        field.text("name"),
-        field.text("email"),
-      );
+      const g = group("Customer Info", field.text("name"), field.text("email"));
 
       expect(g._type).toBe("group");
       expect(g.label).toBe("Customer Info");
@@ -253,10 +249,7 @@ describe("structure builders", () => {
 
   describe("when", () => {
     it("should create a conditional with predicate and elements", () => {
-      const c = when(
-        is("country", "US"),
-        field.text("state"),
-      );
+      const c = when(is("country", "US"), field.text("state"));
 
       expect(c._type).toBe("conditional");
       expect(c.field).toBe("country");
@@ -273,22 +266,15 @@ describe("structure builders", () => {
 
   describe("formspec", () => {
     it("should create a form spec with elements", () => {
-      const f = formspec(
-        field.text("name"),
-        field.number("age"),
-      );
+      const f = formspec(field.text("name"), field.number("age"));
 
       expect(f.elements).toHaveLength(2);
     });
 
     it("should support nested structures", () => {
       const f = formspec(
-        group("Basic",
-          field.text("name"),
-        ),
-        when(is("type", "business"),
-          field.text("company"),
-        ),
+        group("Basic", field.text("name")),
+        when(is("type", "business"), field.text("company"))
       );
 
       expect(f.elements).toHaveLength(2);
@@ -301,22 +287,19 @@ describe("structure builders", () => {
 describe("complex compositions", () => {
   it("should support deeply nested structures", () => {
     const form = formspec(
-      group("Customer",
+      group(
+        "Customer",
         field.text("name", { required: true }),
-        field.object("address",
-          field.text("street"),
-          field.text("city"),
-        ),
+        field.object("address", field.text("street"), field.text("city"))
       ),
-      when(is("type", "business"),
-        group("Business Info",
+      when(
+        is("type", "business"),
+        group(
+          "Business Info",
           field.text("company"),
-          field.array("contacts",
-            field.text("name"),
-            field.text("email"),
-          ),
-        ),
-      ),
+          field.array("contacts", field.text("name"), field.text("email"))
+        )
+      )
     );
 
     expect(form.elements).toHaveLength(2);

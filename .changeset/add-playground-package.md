@@ -8,6 +8,7 @@
 Add interactive FormSpec playground with browser-safe package entry points
 
 **@formspec/playground:**
+
 - New package with interactive playground for writing and testing FormSpec definitions
 - Real-time TypeScript compilation and schema generation
 - Live form preview with JSON Forms
@@ -17,14 +18,17 @@ Add interactive FormSpec playground with browser-safe package entry points
 - Automatically deployed to GitHub Pages
 
 **@formspec/build:**
+
 - Add `@formspec/build/browser` entry point for browser environments
 - Excludes Node.js-specific functions like `writeSchemas`
 - Exports `buildFormSchemas`, `generateJsonSchema`, `generateUiSchema`
 
 **@formspec/constraints:**
+
 - Add `@formspec/constraints/browser` entry point for browser environments
 - Excludes file-based config loader requiring Node.js APIs
 - Exports `loadConfigFromString`, `defineConstraints`, validators
 
 **@formspec/eslint-plugin:**
+
 - Update constraint rules to import from browser-safe entry points

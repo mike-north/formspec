@@ -13,6 +13,7 @@ files (e.g., `./dist/dsl.d.ts`), but these files were not being generated
 during the build because API Extractor was not included in the build script.
 
 This caused TypeScript users to see:
+
 ```
 error TS2307: Cannot find module '@formspec/dsl' or its corresponding type declarations.
 ```
