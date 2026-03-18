@@ -149,7 +149,7 @@ function getObjectPropertyInfos(
   type: ts.ObjectType,
   checker: ts.TypeChecker
 ): ObjectPropertyInfo[] {
-  const classFieldMap = getNamedTypeFieldInfoMap(type, checker);
+  const fieldInfoMap = getNamedTypeFieldInfoMap(type, checker);
   const result: ObjectPropertyInfo[] = [];
 
   for (const prop of type.getProperties()) {
@@ -158,7 +158,7 @@ function getObjectPropertyInfos(
 
     const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
     const optional = !!(prop.flags & ts.SymbolFlags.Optional);
-    const fieldInfo = classFieldMap?.get(prop.name) ?? undefined;
+    const fieldInfo = fieldInfoMap?.get(prop.name) ?? undefined;
 
     result.push({ name: prop.name, type: propType, optional, fieldInfo });
   }
