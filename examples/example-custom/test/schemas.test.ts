@@ -53,7 +53,7 @@ describe("TaskForm schemas", () => {
   it("emits x-formspec-actions for Action decorator with params", () => {
     const props = result.jsonSchema.properties as Record<string, Record<string, unknown>>;
     expect(props["submitLabel"]).toHaveProperty("x-formspec-actions");
-    expect(props["submitLabel"]["x-formspec-actions"]).toEqual({
+    expect(props["submitLabel"]!["x-formspec-actions"]).toEqual({
       label: "Submit",
       style: "primary",
     });
@@ -62,7 +62,7 @@ describe("TaskForm schemas", () => {
   it("emits x-formspec-actions for cancel action", () => {
     const props = result.jsonSchema.properties as Record<string, Record<string, unknown>>;
     expect(props["cancelLabel"]).toHaveProperty("x-formspec-actions");
-    expect(props["cancelLabel"]["x-formspec-actions"]).toEqual({
+    expect(props["cancelLabel"]!["x-formspec-actions"]).toEqual({
       label: "Cancel",
       style: "secondary",
     });
