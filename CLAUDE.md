@@ -115,6 +115,3 @@ pnpm run release            # Build and publish (CI usually does this)
 - All decorators are no-ops at runtime — constraint metadata is extracted via static AST analysis
 - JSDoc constraint tags (`/** @Minimum 0 @Maximum 100 */`) are treated as synthetic decorators in the analysis pipeline
 - API Extractor manages public API surface for library packages — commit `api-report/` files
-
-# currentDate
-Today's date is 2026-03-17.
