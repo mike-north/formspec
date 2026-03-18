@@ -12,11 +12,17 @@
  * @packageDocumentation
  */
 
-// Analyzer: program context and class lookup
-export { createProgramContext, findClassByName } from "./analyzer/program.js";
+// Analyzer: program context and type lookup
+export {
+  createProgramContext,
+  findClassByName,
+  findInterfaceByName,
+  findTypeAliasByName,
+} from "./analyzer/program.js";
 
-// Analyzer: class analysis
-export { analyzeClass } from "./analyzer/class-analyzer.js";
+// Analyzer: class, interface, and type alias analysis
+export { analyzeClass, analyzeInterface, analyzeTypeAlias } from "./analyzer/class-analyzer.js";
+export type { AnalyzeTypeAliasResult } from "./analyzer/class-analyzer.js";
 
 // Generators: class schema
 export { generateClassSchemas } from "./generators/class-schema.js";

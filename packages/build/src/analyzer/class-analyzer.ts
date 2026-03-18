@@ -11,7 +11,7 @@
 
 import * as ts from "typescript";
 import { extractDecorators, resolveDecorator, type DecoratorInfo } from "./decorator-extractor.js";
-import { extractJSDocConstraints } from "./jsdoc-constraints.js";
+import { extractJSDocConstraints, extractJSDocFieldMetadata } from "./jsdoc-constraints.js";
 
 /**
  * Analyzed field information from a class.
@@ -152,6 +152,12 @@ export function analyzeField(
   const jsdocConstraints = extractJSDocConstraints(prop);
   decorators.push(...jsdocConstraints);
 
+  // Inherit constraints from type alias declarations (same as interface properties)
+  if (prop.type) {
+    const aliasConstraints = extractTypeAliasConstraints(prop.type, checker);
+    decorators.push(...aliasConstraints);
+  }
+
   const deprecated = hasDeprecatedTag(prop);
   const defaultValue = extractDefaultValue(prop.initializer);
 
@@ -164,6 +170,37 @@ export function analyzeField(
     deprecated,
     defaultValue,
   };
+}
+
+/**
+ * Given a type node, checks if it references a type alias and extracts
+ * any JSDoc constraint/display-metadata tags from the alias declaration.
+ *
+ * This makes `type Percent = number` with `@Minimum 0 @Maximum 100`
+ * propagate constraints to any field typed as `Percent`.
+ */
+function extractTypeAliasConstraints(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker
+): DecoratorInfo[] {
+  // Only handle type references (e.g., `Percent`, not `number` directly)
+  if (!ts.isTypeReferenceNode(typeNode)) return [];
+
+  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
+  if (!symbol?.declarations) return [];
+
+  const aliasDecl = symbol.declarations.find(ts.isTypeAliasDeclaration);
+  if (!aliasDecl) return [];
+
+  // Don't extract from object type aliases — those are handled by
+  // the nested object analysis pipeline in type-converter.ts
+  if (ts.isTypeLiteralNode(aliasDecl.type)) return [];
+
+  const result: DecoratorInfo[] = [];
+  const metadata = extractJSDocFieldMetadata(aliasDecl);
+  if (metadata) result.push(metadata);
+  result.push(...extractJSDocConstraints(aliasDecl));
+  return result;
 }
 
 /**
@@ -309,4 +346,162 @@ function detectFormSpecReference(typeNode: ts.TypeNode | undefined): string | nu
   }
 
   return null;
+}
+
+/**
+ * Analyzes an interface declaration to extract field information.
+ *
+ * Similar to {@link analyzeClass} but for interface declarations.
+ * Extracts JSDoc constraint tags and display metadata (`@displayName`,
+ * `@description`) from property signatures, producing the same
+ * {@link ClassAnalysis} structure for downstream schema generation.
+ *
+ * @param interfaceDecl - The interface declaration to analyze
+ * @param checker - TypeScript type checker
+ * @returns Analysis result with fields (no methods — interfaces have no implementations)
+ */
+export function analyzeInterface(
+  interfaceDecl: ts.InterfaceDeclaration,
+  checker: ts.TypeChecker
+): ClassAnalysis {
+  const name = interfaceDecl.name.text;
+  const fields: FieldInfo[] = [];
+
+  for (const member of interfaceDecl.members) {
+    if (ts.isPropertySignature(member)) {
+      const fieldInfo = analyzeInterfaceProperty(member, checker);
+      if (fieldInfo) {
+        fields.push(fieldInfo);
+      }
+    }
+  }
+
+  return {
+    name,
+    fields,
+    instanceMethods: [],
+    staticMethods: [],
+  };
+}
+
+/**
+ * Result of analyzing a type alias — either a successful analysis or
+ * an error describing why the alias can't be analyzed.
+ */
+export type AnalyzeTypeAliasResult =
+  | { ok: true; analysis: ClassAnalysis }
+  | { ok: false; error: string };
+
+/**
+ * Analyzes a type alias declaration to extract field information.
+ *
+ * Supports type aliases whose body is a type literal (object type):
+ *
+ * ```typescript
+ * type Config = {
+ *   // @DisplayName Name @Minimum 1
+ *   name: string;
+ * };
+ * ```
+ *
+ * Returns an error result (not an exception) for non-object-literal aliases,
+ * allowing callers to accumulate diagnostics across multiple types.
+ *
+ * @param typeAlias - The type alias declaration to analyze
+ * @param checker - TypeScript type checker
+ * @returns Success with analysis, or error with a diagnostic message including line number
+ */
+export function analyzeTypeAlias(
+  typeAlias: ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker
+): AnalyzeTypeAliasResult {
+  // Only handle type literals: type X = { ... }
+  if (!ts.isTypeLiteralNode(typeAlias.type)) {
+    const sourceFile = typeAlias.getSourceFile();
+    const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- enum reverse mapping can be undefined for compiler-internal kinds
+    const kindDesc = ts.SyntaxKind[typeAlias.type.kind] ?? "unknown";
+    return {
+      ok: false,
+      error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object type literal (found ${kindDesc})`,
+    };
+  }
+
+  const name = typeAlias.name.text;
+  const fields: FieldInfo[] = [];
+
+  for (const member of typeAlias.type.members) {
+    if (ts.isPropertySignature(member)) {
+      const fieldInfo = analyzeInterfaceProperty(member, checker);
+      if (fieldInfo) {
+        fields.push(fieldInfo);
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    analysis: {
+      name,
+      fields,
+      instanceMethods: [],
+      staticMethods: [],
+    },
+  };
+}
+
+/**
+ * Analyzes an interface property signature to extract field info.
+ *
+ * Extracts JSDoc constraint tags (`@Minimum`, `@MaxLength`, etc.) and
+ * display metadata (`@DisplayName`, `@Description`) from the property's
+ * TSDoc comments. Also used by the type converter for nested interface/type
+ * alias constraint propagation.
+ */
+export function analyzeInterfaceProperty(
+  prop: ts.PropertySignature,
+  checker: ts.TypeChecker
+): FieldInfo | null {
+  if (!ts.isIdentifier(prop.name)) {
+    return null;
+  }
+
+  const name = prop.name.text;
+  const typeNode = prop.type;
+  const type = checker.getTypeAtLocation(prop);
+  const optional = prop.questionToken !== undefined;
+
+  // Interface properties have no decorators — only JSDoc tags
+  const decorators: DecoratorInfo[] = [];
+
+  // Extract display metadata (@displayName, @description) as synthetic Field decorator
+  const fieldMetadata = extractJSDocFieldMetadata(prop);
+  if (fieldMetadata) {
+    decorators.push(fieldMetadata);
+  }
+
+  // Extract constraint tags (@Minimum, @MaxLength, @Pattern, etc.)
+  const jsdocConstraints = extractJSDocConstraints(prop);
+  decorators.push(...jsdocConstraints);
+
+  // If the field's type is a type alias (e.g., `discount: Percent` where
+  // `type Percent = number` has `@Minimum 0 @Maximum 100`), inherit
+  // constraints from the alias declaration. This makes constrained
+  // primitive aliases behave like inline JSDoc on the field itself.
+  if (typeNode) {
+    const aliasConstraints = extractTypeAliasConstraints(typeNode, checker);
+    decorators.push(...aliasConstraints);
+  }
+
+  const deprecated = hasDeprecatedTag(prop);
+
+  return {
+    name,
+    typeNode,
+    type,
+    optional,
+    decorators,
+    deprecated,
+    defaultValue: undefined,
+  };
 }

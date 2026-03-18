@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as ts from "typescript";
-import { extractJSDocConstraints } from "../analyzer/jsdoc-constraints.js";
+import { extractJSDocConstraints, extractJSDocFieldMetadata } from "../analyzer/jsdoc-constraints.js";
 
 /**
  * Helper: creates an in-memory TypeScript source file and returns the
@@ -29,6 +29,26 @@ function getPropertyFromSource(source: string): ts.PropertyDeclaration {
   }
 
   throw new Error("No property declaration found in source");
+}
+
+/**
+ * Helper: creates an in-memory TypeScript source file and returns the
+ * first property signature found in the first interface.
+ */
+function getInterfacePropertyFromSource(source: string): ts.PropertySignature {
+  const sourceFile = ts.createSourceFile("test.ts", source, ts.ScriptTarget.Latest, true);
+
+  for (const stmt of sourceFile.statements) {
+    if (ts.isInterfaceDeclaration(stmt)) {
+      for (const member of stmt.members) {
+        if (ts.isPropertySignature(member)) {
+          return member;
+        }
+      }
+    }
+  }
+
+  throw new Error("No property signature found in source");
 }
 
 describe("extractJSDocConstraints", () => {
@@ -228,5 +248,296 @@ describe("extractJSDocConstraints", () => {
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ name: "Minimum", args: [0] });
+  });
+});
+
+// ============================================================================
+// @EnumOptions JSON parsing
+// ============================================================================
+
+describe("@EnumOptions JSON parsing", () => {
+  it("parses a valid JSON string array", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions ["a","b","c"] */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: "EnumOptions", args: [["a", "b", "c"]] });
+  });
+
+  it("parses a valid JSON object array (labeled options)", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions [{"id":"low","label":"Low"},{"id":"high","label":"High"}] */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      name: "EnumOptions",
+      args: [[{ id: "low", label: "Low" }, { id: "high", label: "High" }]],
+    });
+  });
+
+  it("parses a valid JSON record (key-value options)", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions {"a":"Label A","b":"Label B"} */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      name: "EnumOptions",
+      args: [{ a: "Label A", b: "Label B" }],
+    });
+  });
+
+  it("accepts an empty JSON array", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions [] */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: "EnumOptions", args: [[]] });
+  });
+
+  it("accepts an empty JSON object", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions {} */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.args[0]).toEqual({});
+  });
+
+  it("skips malformed JSON syntax", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions ["unclosed */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips JSON with trailing comma", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions ["a","b",] */
+        x!: string;
+      }
+    `);
+
+    // JSON.parse rejects trailing commas
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips JSON string primitive", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions "not-an-array" */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips JSON number primitive", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions 42 */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips JSON boolean primitive", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions true */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("skips JSON null", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions null */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(0);
+  });
+
+  it("coexists with other constraint tags", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @EnumOptions ["a","b"] @MinLength 1 */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraints(prop);
+    expect(result).toHaveLength(2);
+    expect(result.find((d) => d.name === "EnumOptions")).toMatchObject({
+      args: [["a", "b"]],
+    });
+    expect(result.find((d) => d.name === "MinLength")).toMatchObject({
+      args: [1],
+    });
+  });
+});
+
+// ============================================================================
+// extractJSDocFieldMetadata
+// ============================================================================
+
+describe("extractJSDocFieldMetadata", () => {
+  it("extracts @Field_displayName", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @Field_displayName Full Name */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      name: "Field",
+      args: [{ displayName: "Full Name" }],
+    });
+  });
+
+  it("extracts @Field_description", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @Field_description Help text for this field */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      name: "Field",
+      args: [{ description: "Help text for this field" }],
+    });
+    // Should not have displayName when only description is present
+    const opts = result?.args[0] as Record<string, unknown>;
+    expect(opts["displayName"]).toBeUndefined();
+  });
+
+  it("extracts both @Field_displayName and @Field_description", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @Field_displayName Full Name
+         * @Field_description The user's legal name
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      name: "Field",
+      args: [{ displayName: "Full Name", description: "The user's legal name" }],
+    });
+  });
+
+  it("returns null when no metadata tags are present", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @Minimum 0 */
+        x: number;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).toBeNull();
+  });
+
+  it("returns null when no JSDoc comment exists", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).toBeNull();
+  });
+
+  it("skips tags with empty values", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @Field_displayName */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).toBeNull();
+  });
+
+  it("skips tags with whitespace-only values", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @Field_displayName    */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).toBeNull();
+  });
+
+  it("works on class properties too", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @Field_displayName Class Field */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocFieldMetadata(prop);
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      name: "Field",
+      args: [{ displayName: "Class Field" }],
+    });
   });
 });

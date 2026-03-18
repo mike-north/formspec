@@ -14,8 +14,13 @@ import {
   type FormSpecField,
 } from "../analyzer/type-converter.js";
 import type { ExtendedJSONSchema7 } from "../json-schema/types.js";
-import { createProgramContext, findClassByName } from "../analyzer/program.js";
-import { analyzeClass } from "../analyzer/class-analyzer.js";
+import {
+  createProgramContext,
+  findClassByName,
+  findInterfaceByName,
+  findTypeAliasByName,
+} from "../analyzer/program.js";
+import { analyzeClass, analyzeInterface, analyzeTypeAlias } from "../analyzer/class-analyzer.js";
 
 /**
  * Generated schemas for a class.
@@ -153,4 +158,69 @@ export function generateSchemasFromClass(
 
   const analysis = analyzeClass(classDecl, ctx.checker);
   return generateClassSchemas(analysis, ctx.checker);
+}
+
+/**
+ * Options for generating schemas from a named type (class or interface).
+ */
+export interface GenerateSchemasOptions {
+  /** Path to the TypeScript source file */
+  filePath: string;
+  /** Name of the exported class or interface to analyze */
+  typeName: string;
+}
+
+/**
+ * Generates JSON Schema and FormSpec/UI Schema from a named TypeScript
+ * type — either a decorated class or an interface with TSDoc tags.
+ *
+ * This is the recommended entry point. It automatically detects whether
+ * the name resolves to a class or interface and uses the appropriate
+ * analysis pipeline:
+ *
+ * - **Classes**: extracts decorators and JSDoc constraints
+ * - **Interfaces**: extracts TSDoc tags (`@DisplayName`, `@Minimum`, etc.)
+ *
+ * @example
+ * ```typescript
+ * // Works with both classes and interfaces — caller doesn't need to know
+ * const result = generateSchemas({
+ *   filePath: "./src/config.ts",
+ *   typeName: "DiscountConfig",
+ * });
+ * ```
+ *
+ * @param options - File path and type name
+ * @returns Generated JSON Schema and FormSpec/UI Schema
+ */
+export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
+  const ctx = createProgramContext(options.filePath);
+
+  // Try class first
+  const classDecl = findClassByName(ctx.sourceFile, options.typeName);
+  if (classDecl) {
+    const analysis = analyzeClass(classDecl, ctx.checker);
+    return generateClassSchemas(analysis, ctx.checker);
+  }
+
+  // Try interface
+  const interfaceDecl = findInterfaceByName(ctx.sourceFile, options.typeName);
+  if (interfaceDecl) {
+    const analysis = analyzeInterface(interfaceDecl, ctx.checker);
+    return generateClassSchemas(analysis, ctx.checker);
+  }
+
+  // Try type alias
+  const typeAlias = findTypeAliasByName(ctx.sourceFile, options.typeName);
+  if (typeAlias) {
+    const result = analyzeTypeAlias(typeAlias, ctx.checker);
+    if (result.ok) {
+      return generateClassSchemas(result.analysis, ctx.checker);
+    }
+    throw new Error(result.error);
+  }
+
+  throw new Error(
+    `Type "${options.typeName}" not found as a class, interface, or type alias in ${options.filePath}`
+  );
 }
