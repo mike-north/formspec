@@ -1,6 +1,6 @@
 {
   "name": "@formspec/decorators",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "description": "Marker-only TC39 Stage 3 decorators for FormSpec CLI static analysis",
   "type": "module",
   "main": "./dist/index.js",
