@@ -197,11 +197,10 @@ function extractTypeAliasConstraints(
   // the nested object analysis pipeline in type-converter.ts
   if (ts.isTypeLiteralNode(aliasDecl.type)) return [];
 
-  const result: DecoratorInfo[] = [];
-  const metadata = extractJSDocFieldMetadata(aliasDecl);
-  if (metadata) result.push(metadata);
-  result.push(...extractJSDocConstraints(aliasDecl));
-  return result;
+  // Only propagate constraint tags, not display metadata (@Field_displayName,
+  // @Field_description). Display metadata on the alias shouldn't override the
+  // field's own title/description — those are field-level concerns.
+  return extractJSDocConstraints(aliasDecl);
 }
 
 /**
@@ -353,9 +352,10 @@ function detectFormSpecReference(typeNode: ts.TypeNode | undefined): string | nu
  * Analyzes an interface declaration to extract field information.
  *
  * Similar to {@link analyzeClass} but for interface declarations.
- * Extracts JSDoc constraint tags and display metadata (`@displayName`,
- * `@description`) from property signatures, producing the same
- * {@link ClassAnalysis} structure for downstream schema generation.
+ * Extracts JSDoc constraint tags (`@Minimum`, `@MaxLength`, etc.) and
+ * display metadata (`@Field_displayName`, `@Field_description`) from
+ * property signatures, producing the same {@link ClassAnalysis}
+ * structure for downstream schema generation.
  *
  * @param interfaceDecl - The interface declaration to analyze
  * @param checker - TypeScript type checker
@@ -400,7 +400,7 @@ export type AnalyzeTypeAliasResult =
  *
  * ```typescript
  * type Config = {
- *   // @DisplayName Name @Minimum 1
+ *   // @Field_displayName Name @Minimum 1
  *   name: string;
  * };
  * ```

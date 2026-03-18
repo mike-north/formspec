@@ -161,25 +161,26 @@ export function generateSchemasFromClass(
 }
 
 /**
- * Options for generating schemas from a named type (class or interface).
+ * Options for generating schemas from a named type (class, interface, or type alias).
  */
 export interface GenerateSchemasOptions {
   /** Path to the TypeScript source file */
   filePath: string;
-  /** Name of the exported class or interface to analyze */
+  /** Name of the exported class, interface, or type alias to analyze */
   typeName: string;
 }
 
 /**
  * Generates JSON Schema and FormSpec/UI Schema from a named TypeScript
- * type — either a decorated class or an interface with TSDoc tags.
+ * type — a decorated class, an interface with TSDoc tags, or a type alias.
  *
  * This is the recommended entry point. It automatically detects whether
- * the name resolves to a class or interface and uses the appropriate
- * analysis pipeline:
+ * the name resolves to a class, interface, or type alias and uses the
+ * appropriate analysis pipeline:
  *
  * - **Classes**: extracts decorators and JSDoc constraints
- * - **Interfaces**: extracts TSDoc tags (`@DisplayName`, `@Minimum`, etc.)
+ * - **Interfaces**: extracts TSDoc tags (`@Field_displayName`, `@Minimum`, etc.)
+ * - **Type aliases**: object literal bodies analyzed like interfaces
  *
  * @example
  * ```typescript

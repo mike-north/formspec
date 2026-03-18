@@ -59,11 +59,11 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
       }
       results.push(createSyntheticDecorator(constraintName, value));
     } else if (expectedType === "json") {
-      // JSON type (EnumOptions) — parse inline JSON array/object
+      // JSON type (EnumOptions) — parse inline JSON array only.
+      // Downstream UI schema generation expects an array of options.
       try {
         const parsed: unknown = JSON.parse(trimmed);
-        // Validate structure: must be an array or plain object (not a primitive)
-        if (!Array.isArray(parsed) && (typeof parsed !== "object" || parsed === null)) {
+        if (!Array.isArray(parsed)) {
           continue;
         }
         results.push(createSyntheticDecorator(constraintName, parsed as DecoratorArg));
@@ -81,8 +81,9 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
 }
 
 /**
- * Extracts `@displayName` and `@description` JSDoc tags from a node
- * and returns a synthetic `Field` {@link DecoratorInfo} if either is present.
+ * Extracts `@Field_displayName` and `@Field_description` TSDoc tags from
+ * a node and returns a synthetic `Field` {@link DecoratorInfo} if either
+ * is present.
  *
  * This enables interface properties to carry display metadata via TSDoc
  * tags instead of the `@Field` decorator (which requires a class):
