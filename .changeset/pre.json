@@ -11,7 +11,11 @@
     "@formspec/runtime": "0.0.1",
     "formspec": "0.0.1",
     "@formspec/constraints": "0.1.0-alpha.0",
-    "@formspec/playground": "0.1.0-alpha.0"
+    "@formspec/playground": "0.1.0-alpha.0",
+    "@formspec-examples/constrained": "0.0.0",
+    "@formspec-examples/custom": "0.0.0",
+    "@formspec-examples/mixed": "0.0.0",
+    "@formspec-examples/standard": "0.0.0"
   },
   "changesets": [
     "add-constraints-package",
@@ -22,6 +26,7 @@
     "codegen-type-inference",
     "constraints-fixes",
     "decorator-dsl-experiment",
+    "decorator-redesign",
     "dx-evaluation-round2",
     "dx-improvements",
     "enum-object-options",

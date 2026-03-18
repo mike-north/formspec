@@ -1,5 +1,12 @@
 # @formspec/runtime
 
+## 0.1.0-alpha.9
+
+### Patch Changes
+
+- Updated dependencies [[`f598436`](https://github.com/mike-north/formspec/commit/f598436187e881d777259e794005bb4980abca21)]:
+  - @formspec/core@0.1.0-alpha.9
+
 ## 0.1.0-alpha.8
 
 ### Patch Changes
