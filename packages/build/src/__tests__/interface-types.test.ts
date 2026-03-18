@@ -135,7 +135,9 @@ describe("analyzeInterface", () => {
 
     const nameField = analysis.fields.find((f) => f.name === "name");
     const fullNameField = analysis.fields.find((f) => f.name === "fullName");
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated field detection
     expect(nameField?.deprecated).toBe(true);
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated field detection
     expect(fullNameField?.deprecated).toBe(false);
   });
 
@@ -459,10 +461,8 @@ describe("constrained primitive type aliases", () => {
 
 describe("findInterfaceByName", () => {
   it("finds an existing interface", () => {
-    const ctx = getCtx();
-    const decl = findInterfaceByName(ctx.sourceFile, "SimpleConfig");
-    expect(decl).not.toBeNull();
-    expect(decl!.name.text).toBe("SimpleConfig");
+    const { decl } = requireInterface("SimpleConfig");
+    expect(decl.name.text).toBe("SimpleConfig");
   });
 
   it("returns null for non-existent interface", () => {
@@ -474,10 +474,8 @@ describe("findInterfaceByName", () => {
 
 describe("findTypeAliasByName", () => {
   it("finds an existing type alias", () => {
-    const ctx = getCtx();
-    const decl = findTypeAliasByName(ctx.sourceFile, "SimpleTypeAlias");
-    expect(decl).not.toBeNull();
-    expect(decl!.name.text).toBe("SimpleTypeAlias");
+    const { decl } = requireTypeAlias("SimpleTypeAlias");
+    expect(decl.name.text).toBe("SimpleTypeAlias");
   });
 
   it("returns null for non-existent type alias", () => {

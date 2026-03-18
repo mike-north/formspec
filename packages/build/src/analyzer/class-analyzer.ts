@@ -148,15 +148,16 @@ export function analyzeField(
     }
   }
 
-  // Merge JSDoc constraint tags (e.g., /** @Minimum 0 @Maximum 100 */)
-  const jsdocConstraints = extractJSDocConstraints(prop);
-  decorators.push(...jsdocConstraints);
-
-  // Inherit constraints from type alias declarations (same as interface properties)
+  // Inherit constraints from type alias declarations first (as defaults).
+  // Field-level decorators and JSDoc are applied after, so they take precedence.
   if (prop.type) {
     const aliasConstraints = extractTypeAliasConstraints(prop.type, checker);
     decorators.push(...aliasConstraints);
   }
+
+  // Merge JSDoc constraint tags (e.g., /** @Minimum 0 @Maximum 100 */)
+  const jsdocConstraints = extractJSDocConstraints(prop);
+  decorators.push(...jsdocConstraints);
 
   const deprecated = hasDeprecatedTag(prop);
   const defaultValue = extractDefaultValue(prop.initializer);
@@ -474,7 +475,14 @@ export function analyzeInterfaceProperty(
   // Interface properties have no decorators — only JSDoc tags
   const decorators: DecoratorInfo[] = [];
 
-  // Extract display metadata (@displayName, @description) as synthetic Field decorator
+  // Inherit constraints from type alias declarations first (as defaults).
+  // Field-level tags are applied after, so they take precedence.
+  if (typeNode) {
+    const aliasConstraints = extractTypeAliasConstraints(typeNode, checker);
+    decorators.push(...aliasConstraints);
+  }
+
+  // Extract display metadata (@Field_displayName, @Field_description) as synthetic Field decorator
   const fieldMetadata = extractJSDocFieldMetadata(prop);
   if (fieldMetadata) {
     decorators.push(fieldMetadata);
@@ -483,15 +491,6 @@ export function analyzeInterfaceProperty(
   // Extract constraint tags (@Minimum, @MaxLength, @Pattern, etc.)
   const jsdocConstraints = extractJSDocConstraints(prop);
   decorators.push(...jsdocConstraints);
-
-  // If the field's type is a type alias (e.g., `discount: Percent` where
-  // `type Percent = number` has `@Minimum 0 @Maximum 100`), inherit
-  // constraints from the alias declaration. This makes constrained
-  // primitive aliases behave like inline JSDoc on the field itself.
-  if (typeNode) {
-    const aliasConstraints = extractTypeAliasConstraints(typeNode, checker);
-    decorators.push(...aliasConstraints);
-  }
 
   const deprecated = hasDeprecatedTag(prop);
 
