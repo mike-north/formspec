@@ -2,10 +2,18 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "@formspec/build";
-import type { ExtendedJSONSchema7 } from "@formspec/build";
+import type { ExtendedJSONSchema7, UISchemaElement } from "@formspec/build";
 
 const formsPath = path.resolve(import.meta.dirname, "../src/forms.ts");
 const schemasDir = path.resolve(import.meta.dirname, "../schemas");
+
+/** Narrows to a layout element with `elements` and optional `label`. */
+function findGroup(elements: UISchemaElement[], label: string) {
+  return elements.find(
+    (e): e is UISchemaElement & { elements: UISchemaElement[]; label: string } =>
+      e.type === "Group" && "label" in e && (e as { label: string }).label === label
+  );
+}
 
 describe("TaskForm schemas", () => {
   const result = generateSchemasFromClass({
@@ -82,7 +90,13 @@ describe("TaskForm schemas", () => {
   });
 
   it("includes group assignments in uiSchema", () => {
-    const nameField = result.uiSchema.elements.find((e) => e.id === "name");
-    expect(nameField).toHaveProperty("group", "Header");
+    // Fields with @Group are placed inside GroupLayout elements
+    const headerGroup = findGroup(result.uiSchema.elements, "Header");
+    expect(headerGroup).toBeDefined();
+    expect(headerGroup?.type).toBe("Group");
+    const nameControl = headerGroup?.elements.find(
+      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/name"
+    );
+    expect(nameControl).toBeDefined();
   });
 });

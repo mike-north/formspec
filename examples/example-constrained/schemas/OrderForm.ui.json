@@ -1,88 +1,72 @@
 {
+  "type": "VerticalLayout",
   "elements": [
     {
-      "_field": "text",
-      "id": "customerName",
-      "required": true,
-      "group": "Customer",
-      "label": "Customer Name",
-      "description": "Full legal name",
-      "minLength": 1,
-      "maxLength": 200
-    },
-    {
-      "_field": "text",
-      "id": "customerEmail",
-      "required": true,
-      "group": "Customer",
-      "label": "Customer Email"
-    },
-    {
-      "_field": "number",
-      "id": "quantity",
-      "required": true,
-      "group": "Order Details",
-      "label": "Quantity",
-      "min": 1,
-      "max": 999
-    },
-    {
-      "_field": "number",
-      "id": "unitPrice",
-      "required": true,
-      "group": "Order Details",
-      "label": "Unit Price",
-      "min": 0,
-      "max": 99999
-    },
-    {
-      "_field": "enum",
-      "id": "priority",
-      "required": true,
-      "group": "Order Details",
-      "label": "Priority",
-      "options": [
+      "type": "Group",
+      "label": "Customer",
+      "elements": [
         {
-          "id": "low",
-          "label": "Low"
+          "type": "Control",
+          "scope": "#/properties/customerName",
+          "label": "Customer Name"
         },
         {
-          "id": "normal",
-          "label": "Normal"
-        },
-        {
-          "id": "high",
-          "label": "High"
-        },
-        {
-          "id": "urgent",
-          "label": "Urgent"
+          "type": "Control",
+          "scope": "#/properties/customerEmail",
+          "label": "Customer Email"
         }
       ]
     },
     {
-      "_field": "enum",
-      "id": "shippingMethod",
-      "required": true,
-      "group": "Shipping",
-      "label": "Shipping Method",
-      "options": ["standard", "express", "overnight"]
+      "type": "Group",
+      "label": "Order Details",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/quantity",
+          "label": "Quantity"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/unitPrice",
+          "label": "Unit Price"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/priority",
+          "label": "Priority"
+        }
+      ]
     },
     {
-      "_field": "text",
-      "id": "expressInstructions",
-      "showWhen": {
-        "field": "shippingMethod",
-        "value": "express"
-      },
-      "group": "Shipping",
-      "label": "Express Instructions"
-    },
-    {
-      "_field": "text",
-      "id": "discountCode",
-      "group": "Shipping",
-      "label": "Discount Code"
+      "type": "Group",
+      "label": "Shipping",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/shippingMethod",
+          "label": "Shipping Method"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/expressInstructions",
+          "label": "Express Instructions",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/shippingMethod",
+              "schema": {
+                "const": "express"
+              }
+            }
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/discountCode",
+          "label": "Discount Code"
+        }
+      ]
     }
   ]
 }

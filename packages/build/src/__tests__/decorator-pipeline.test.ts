@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "../generators/class-schema.js";
 import { getSchemaExtension, type ExtendedJSONSchema7 } from "../json-schema/types.js";
+import type { GroupLayout } from "../ui-schema/types.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 
@@ -93,47 +94,65 @@ describe("Decorator Pipeline Integration", () => {
       });
 
       const { uiSchema } = result;
+      expect(uiSchema.type).toBe("VerticalLayout");
       const elements = uiSchema.elements;
 
-      // name: label, description, required, string constraints
-      const nameField = elements.find((e) => e.id === "name");
-      expect(nameField).toMatchObject({
-        _field: "text",
-        id: "name",
+      // name: label from @Field displayName
+      const nameControl = elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/name"
+      );
+      expect(nameControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/name",
         label: "Full Name",
-        description: "Your legal name",
-        required: true,
-        minLength: 2,
-        maxLength: 100,
       });
 
-      // age: label, required, numeric constraints
-      const ageField = elements.find((e) => e.id === "age");
-      expect(ageField).toMatchObject({
-        _field: "number",
-        id: "age",
+      // age: label from @Field displayName
+      const ageControl = elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/age"
+      );
+      expect(ageControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/age",
         label: "Age",
-        required: true,
-        min: 0,
-        max: 150,
       });
 
-      // email: optional (no required property)
-      const emailField = elements.find((e) => e.id === "email");
-      expect(emailField?.pattern).toBe("^[^@]+@[^@]+$");
-      expect(emailField?.required).toBeUndefined();
+      // email: present in UI schema
+      const emailControl = elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/email"
+      );
+      expect(emailControl).toBeDefined();
 
-      // country: group assignment and enum options
-      const countryField = elements.find((e) => e.id === "country");
-      expect(countryField?.group).toBe("Preferences");
-      expect(countryField?.options).toEqual([
-        { id: "us", label: "United States" },
-        { id: "ca", label: "Canada" },
-      ]);
+      // country: grouped under "Preferences" GroupLayout
+      const preferencesGroup = elements.find(
+        (e) => e.type === "Group" && e.label === "Preferences"
+      ) as GroupLayout | undefined;
+      expect(preferencesGroup).toBeDefined();
+      expect(preferencesGroup?.type).toBe("Group");
+      const countryControl = preferencesGroup?.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/country"
+      );
+      expect(countryControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/country",
+        label: "Country",
+      });
 
-      // state: showWhen condition
-      const stateField = elements.find((e) => e.id === "state");
-      expect(stateField?.showWhen).toEqual({ field: "country", value: "us" });
+      // state: showWhen → SHOW rule
+      const stateControl = elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/state"
+      );
+      expect(stateControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/state",
+        rule: {
+          effect: "SHOW",
+          condition: {
+            scope: "#/properties/country",
+            schema: { const: "us" },
+          },
+        },
+      });
     });
   });
 
@@ -176,26 +195,26 @@ describe("Decorator Pipeline Integration", () => {
       });
 
       const { uiSchema } = result;
+      expect(uiSchema.type).toBe("VerticalLayout");
 
-      // amount: Floor(0) -> min: 0, Ceiling(1000000) -> max: 1000000
-      const amountField = uiSchema.elements.find((e) => e.id === "amount");
-      expect(amountField).toMatchObject({
-        _field: "number",
-        id: "amount",
+      // amount: label from CustomField displayName
+      const amountControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/amount"
+      );
+      expect(amountControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/amount",
         label: "Amount",
-        description: "Total amount in cents",
-        required: true,
-        min: 0,
-        max: 1000000,
       });
 
-      // label: CustomField -> label
-      const labelField = uiSchema.elements.find((e) => e.id === "label");
-      expect(labelField).toMatchObject({
-        _field: "text",
-        id: "label",
+      // label: CustomField -> label in UI Schema
+      const labelControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/label"
+      );
+      expect(labelControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/label",
         label: "Label",
-        required: true,
       });
     });
   });
@@ -251,8 +270,10 @@ describe("Decorator Pipeline Integration", () => {
       expect(plainSchema?.title).toBeUndefined();
 
       // uiSchema: username should have label from @Field, ExternalValidator ignored
-      const usernameField = uiSchema.elements.find((e) => e.id === "username");
-      expect(usernameField?.label).toBe("Username");
+      const usernameControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/username"
+      );
+      expect(usernameControl?.label).toBe("Username");
 
       // No x-formspec-* keys anywhere (ExternalValidator is not a custom decorator)
       for (const key of Object.keys(jsonSchema.properties ?? {})) {
@@ -378,22 +399,23 @@ describe("Decorator Pipeline Integration", () => {
       expect(addressSchema?.required).not.toContain("zip");
     });
 
-    it("should propagate decorator constraints into nested uiSchema fields", () => {
+    it("should emit a Control for nested object fields in uiSchema", () => {
       const result = generateSchemasFromClass({
         filePath: path.join(fixturesDir, "example-nested-class.ts"),
         className: "UserWithAddress",
       });
 
       const { uiSchema } = result;
-      const addressField = uiSchema.elements.find((e) => e.id === "address");
+      expect(uiSchema.type).toBe("VerticalLayout");
 
-      expect(addressField?.fields).toBeDefined();
-
-      const streetField = addressField?.fields?.find((f) => f.id === "street");
-      expect(streetField).toMatchObject({
-        minLength: 1,
-        maxLength: 200,
-        required: true,
+      // Nested object fields are emitted as a single Control; nested
+      // field constraints are validated via jsonSchema, not uiSchema.
+      const addressControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/address"
+      );
+      expect(addressControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/address",
       });
     });
   });
@@ -420,21 +442,23 @@ describe("Decorator Pipeline Integration", () => {
       expect(depthSchema?.maximum).toBeUndefined();
     });
 
-    it("should propagate JSDoc constraints into nested uiSchema fields", () => {
+    it("should emit a Control for nested object fields in uiSchema", () => {
       const result = generateSchemasFromClass({
         filePath: path.join(fixturesDir, "example-nested-class.ts"),
         className: "ProductWithDimensions",
       });
 
       const { uiSchema } = result;
-      const dimField = uiSchema.elements.find((e) => e.id === "dimensions");
+      expect(uiSchema.type).toBe("VerticalLayout");
 
-      expect(dimField?.fields).toBeDefined();
-
-      const widthField = dimField?.fields?.find((f) => f.id === "width");
-      expect(widthField).toMatchObject({
-        min: 0,
-        max: 10000,
+      // Nested object fields are emitted as a single Control; nested
+      // JSDoc constraints are validated via jsonSchema, not uiSchema.
+      const dimControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/dimensions"
+      );
+      expect(dimControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/dimensions",
       });
     });
   });
@@ -464,30 +488,23 @@ describe("Decorator Pipeline Integration", () => {
       });
     });
 
-    it("should propagate constraints through three levels of nesting in uiSchema", () => {
+    it("should emit a Control for nested object fields at all nesting levels in uiSchema", () => {
       const result = generateSchemasFromClass({
         filePath: path.join(fixturesDir, "example-nested-class.ts"),
         className: "Order",
       });
 
       const { uiSchema } = result;
-      const customerField = uiSchema.elements.find((e) => e.id === "customer");
+      expect(uiSchema.type).toBe("VerticalLayout");
 
-      expect(customerField?.fields).toBeDefined();
-
-      // Level 2: customer name field has constraints
-      const nameField = customerField?.fields?.find((f) => f.id === "name");
-      expect(nameField?.minLength).toBe(1);
-
-      // Level 3: customer > address > street
-      const addressField = customerField?.fields?.find((f) => f.id === "address");
-      expect(addressField?.fields).toBeDefined();
-
-      const streetField = addressField?.fields?.find((f) => f.id === "street");
-      expect(streetField).toMatchObject({
-        minLength: 1,
-        maxLength: 200,
-        required: true,
+      // Nested object fields are emitted as a single Control; deep nesting
+      // constraints are validated via jsonSchema, not uiSchema.
+      const customerControl = uiSchema.elements.find(
+        (e) => e.type === "Control" && e.scope === "#/properties/customer"
+      );
+      expect(customerControl).toMatchObject({
+        type: "Control",
+        scope: "#/properties/customer",
       });
     });
   });

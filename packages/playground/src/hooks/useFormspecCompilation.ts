@@ -1,10 +1,56 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { compileFormSpec, type CompileResult, type DiagnosticMessage } from "../lib/compiler";
-import { lintFormSpec } from "../lib/linter";
 import type { FormSpec, FormElement } from "@formspec/core";
 import type { JSONSchema7, UISchema } from "@formspec/build/browser";
 import type { ConstraintsConfig } from "../components/Constraints";
 import { toConstraintConfig } from "../lib/constraintAdapter";
+
+type PlaygroundLinterModule = typeof import("../lib/linter");
+
+let linterModulePromise: Promise<PlaygroundLinterModule | null> | null = null;
+let hasLoggedLinterFailure = false;
+
+async function loadPlaygroundLinter(): Promise<PlaygroundLinterModule | null> {
+  linterModulePromise ??= import("../lib/linter").catch((error: unknown) => {
+    if (!hasLoggedLinterFailure) {
+      console.warn("Playground linting is unavailable in this browser environment.", error);
+      hasLoggedLinterFailure = true;
+    }
+
+    return null;
+  });
+
+  return linterModulePromise;
+}
+
+async function collectLintErrors(
+  code: string,
+  constraints: ConstraintsConfig
+): Promise<DiagnosticMessage[]> {
+  const linterModule = await loadPlaygroundLinter();
+  if (!linterModule) {
+    return [];
+  }
+
+  try {
+    const lintMessages = linterModule.lintFormSpec(code, constraints);
+    return lintMessages.map(
+      (msg): DiagnosticMessage => ({
+        message: msg.message,
+        line: msg.line,
+        column: msg.column,
+        severity: msg.severity,
+      })
+    );
+  } catch (error) {
+    if (!hasLoggedLinterFailure) {
+      console.warn("Playground linting failed at runtime and has been disabled.", error);
+      hasLoggedLinterFailure = true;
+    }
+
+    return [];
+  }
+}
 
 export interface UseFormspecCompilationOptions {
   /** Debounce delay in milliseconds (default: 500) */
@@ -47,6 +93,7 @@ export function useFormspecCompilation(
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleCallbackRef = useRef<number | null>(null);
+  const compileVersionRef = useRef(0);
   const codeRef = useRef(code);
   const constraintsRef = useRef(constraints);
   codeRef.current = code;
@@ -60,24 +107,17 @@ export function useFormspecCompilation(
     }
 
     setIsCompiling(true);
+    const compileVersion = ++compileVersionRef.current;
 
     // Use requestIdleCallback or setTimeout for non-blocking compilation
-    const doCompile = () => {
+    const doCompile = async () => {
       idleCallbackRef.current = null;
       const currentConstraints = constraintsRef.current;
 
       // First, run ESLint linting if constraints are configured
       let lintErrors: DiagnosticMessage[] = [];
       if (currentConstraints) {
-        const lintMessages = lintFormSpec(codeRef.current, currentConstraints);
-        lintErrors = lintMessages.map(
-          (msg): DiagnosticMessage => ({
-            message: msg.message,
-            line: msg.line,
-            column: msg.column,
-            severity: msg.severity,
-          })
-        );
+        lintErrors = await collectLintErrors(codeRef.current, currentConstraints);
       }
 
       // Then run compilation (TypeScript transpile + execute + schema generation)
@@ -87,6 +127,10 @@ export function useFormspecCompilation(
       const result: CompileResult = compileFormSpec(codeRef.current, {
         constraints: constraintConfig,
       });
+
+      if (compileVersion !== compileVersionRef.current) {
+        return;
+      }
 
       if (result.success) {
         setFormSpec(result.formSpec);
@@ -105,9 +149,16 @@ export function useFormspecCompilation(
 
     // Use requestIdleCallback if available, otherwise setTimeout
     if ("requestIdleCallback" in window) {
-      idleCallbackRef.current = window.requestIdleCallback(doCompile, { timeout: 1000 });
+      idleCallbackRef.current = window.requestIdleCallback(
+        () => {
+          void doCompile();
+        },
+        { timeout: 1000 }
+      );
     } else {
-      setTimeout(doCompile, 0);
+      setTimeout(() => {
+        void doCompile();
+      }, 0);
     }
   }, []);
 

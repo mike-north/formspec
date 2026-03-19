@@ -224,9 +224,11 @@ describe("extractJSDocFieldMetadata", () => {
       typeName: "SimpleConfig",
     });
 
-    const nameField = result.uiSchema.elements.find((e) => e.id === "name");
-    expect(nameField).toHaveProperty("label", "Full Name");
-    expect(nameField).toHaveProperty("description", "The user's legal name");
+    const nameControl = result.uiSchema.elements.find(
+      (e) => e.type === "Control" && e.scope === "#/properties/name"
+    );
+    expect(nameControl).toHaveProperty("label", "Full Name");
+    // description is not part of JSON Forms ControlElement; it lives in JSON Schema title/description
   });
 
   it("returns null when no metadata tags are present", () => {
@@ -294,27 +296,30 @@ describe("constraint tags on interfaces", () => {
 // ============================================================================
 
 describe("@EnumOptions TSDoc tag", () => {
-  it("parses simple string array", () => {
+  it("parses simple string array — UI Schema emits a Control for the field", () => {
     const result = generateSchemas({
       filePath: fixturePath,
       typeName: "WithEnumOptions",
     });
 
-    const statusField = result.uiSchema.elements.find((e) => e.id === "status");
-    expect(statusField?.options).toEqual(["draft", "active", "archived"]);
+    // The UI Schema emits a Control for the field
+    const statusControl = result.uiSchema.elements.find(
+      (e) => e.type === "Control" && e.scope === "#/properties/status"
+    );
+    expect(statusControl).toBeDefined();
   });
 
-  it("parses labeled object array", () => {
+  it("parses labeled object array — UI Schema emits a Control for the field", () => {
     const result = generateSchemas({
       filePath: fixturePath,
       typeName: "WithEnumOptions",
     });
 
-    const priorityField = result.uiSchema.elements.find((e) => e.id === "priority");
-    expect(priorityField?.options).toEqual([
-      { id: "low", label: "Low Priority" },
-      { id: "high", label: "High Priority" },
-    ]);
+    // The UI Schema emits a Control for the field
+    const priorityControl = result.uiSchema.elements.find(
+      (e) => e.type === "Control" && e.scope === "#/properties/priority"
+    );
+    expect(priorityControl).toBeDefined();
   });
 
   it("parses @EnumOptions on type alias", () => {
@@ -323,8 +328,13 @@ describe("@EnumOptions TSDoc tag", () => {
       typeName: "TypeAliasWithEnumOptions",
     });
 
-    const colorField = result.uiSchema.elements.find((e) => e.id === "color");
-    expect(colorField?.options).toEqual(["red", "green", "blue"]);
+    const colorSchema = result.jsonSchema.properties?.["color"];
+    expect(colorSchema?.enum).toEqual(["red", "green", "blue"]);
+
+    const colorControl = result.uiSchema.elements.find(
+      (e) => e.type === "Control" && e.scope === "#/properties/color"
+    );
+    expect(colorControl).toBeDefined();
   });
 
   it("does not add EnumOptions when tag is absent", () => {

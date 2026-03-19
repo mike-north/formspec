@@ -1,75 +1,72 @@
 {
+  "type": "VerticalLayout",
   "elements": [
     {
-      "_field": "text",
-      "id": "name",
-      "required": true,
-      "group": "Details",
-      "label": "Product Name",
-      "minLength": 1,
-      "maxLength": 200
+      "type": "Group",
+      "label": "Details",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name",
+          "label": "Product Name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/price",
+          "label": "Price"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/weight",
+          "label": "Weight (kg)"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/sku",
+          "label": "SKU"
+        }
+      ]
     },
     {
-      "_field": "number",
-      "id": "price",
-      "required": true,
-      "group": "Details",
-      "label": "Price",
-      "min": 0,
-      "max": 99999
+      "type": "Group",
+      "label": "Inventory",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/stock",
+          "label": "Stock Count"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/batchCode",
+          "label": "Batch Code"
+        }
+      ]
     },
     {
-      "_field": "number",
-      "id": "weight",
-      "required": true,
-      "group": "Details",
-      "label": "Weight (kg)",
-      "min": 0.01,
-      "max": 1000
-    },
-    {
-      "_field": "text",
-      "id": "sku",
-      "required": true,
-      "group": "Details",
-      "label": "SKU",
-      "pattern": "^[A-Z]{3}-\\d{4}$"
-    },
-    {
-      "_field": "number",
-      "id": "stock",
-      "required": true,
-      "group": "Inventory",
-      "label": "Stock Count",
-      "min": 0
-    },
-    {
-      "_field": "text",
-      "id": "batchCode",
-      "group": "Inventory",
-      "label": "Batch Code",
-      "minLength": 5,
-      "maxLength": 20
-    },
-    {
-      "_field": "enum",
-      "id": "category",
-      "required": true,
-      "group": "Shipping",
-      "label": "Category",
-      "options": ["electronics", "clothing", "food", "other"]
-    },
-    {
-      "_field": "number",
-      "id": "expiryDays",
-      "showWhen": {
-        "field": "category",
-        "value": "food"
-      },
-      "group": "Shipping",
-      "label": "Expiry Days",
-      "min": 1,
-      "max": 365
+      "type": "Group",
+      "label": "Shipping",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/category",
+          "label": "Category"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/expiryDays",
+          "label": "Expiry Days",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/category",
+              "schema": {
+                "const": "food"
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

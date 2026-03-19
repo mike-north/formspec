@@ -53,6 +53,9 @@ export type {
   VerticalLayout,
   HorizontalLayout,
   GroupLayout,
+  Categorization,
+  Category,
+  LabelElement,
   Rule,
   RuleEffect,
   RuleConditionSchema,
@@ -71,11 +74,34 @@ export type {
 export type { TypeMetadata, DecoratedClassInfo, CodegenOptions } from "./codegen/index.js";
 
 // =============================================================================
+// Zod Validation Schemas
+// =============================================================================
+
+export {
+  ruleEffectSchema,
+  uiSchemaElementTypeSchema,
+  ruleConditionSchema,
+  schemaBasedConditionSchema,
+  ruleSchema,
+  controlSchema,
+  verticalLayoutSchema,
+  horizontalLayoutSchema,
+  groupLayoutSchema,
+  categorizationSchema,
+  categorySchema,
+  labelElementSchema,
+  uiSchemaElementSchema,
+  uiSchema as uiSchemaSchema,
+} from "./ui-schema/schema.js";
+
+export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js";
+
+// =============================================================================
 // Chain DSL Generators
 // =============================================================================
 
 export { generateJsonSchema } from "./json-schema/generator.js";
-export { generateUiSchema } from "./ui-schema/generator.js";
+export { generateUiSchema, generateUiSchemaFromFields } from "./ui-schema/generator.js";
 
 // =============================================================================
 // Decorator DSL: High-Level Entry Points

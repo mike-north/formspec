@@ -1,104 +1,39 @@
 /**
  * JSON Forms UI Schema type definitions.
  *
- * These types define the UI layout structure for JSON Forms.
+ * Types are derived from Zod schemas in ./schema.ts.
  * See: https://jsonforms.io/docs/uischema/
  */
 
-/**
- * UI Schema element types.
- */
-export type UISchemaElementType =
-  | "Control"
-  | "VerticalLayout"
-  | "HorizontalLayout"
-  | "Group"
-  | "Categorization"
-  | "Category";
+export type {
+  RuleConditionSchema,
+  SchemaBasedCondition,
+  Rule,
+  RuleEffect,
+  ControlElement,
+  VerticalLayout,
+  HorizontalLayout,
+  GroupLayout,
+  Categorization,
+  Category,
+  LabelElement,
+  UISchemaElement,
+  UISchemaElementType,
+  UISchema,
+} from "./schema.js";
 
-/**
- * Rule effect types for conditional visibility.
- */
-export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-
-/**
- * JSON Schema subset for rule conditions.
- */
-export interface RuleConditionSchema {
-  const?: unknown;
-  enum?: readonly unknown[];
-  type?: string;
-  minimum?: number;
-  maximum?: number;
-  properties?: Record<string, RuleConditionSchema>;
-  allOf?: RuleConditionSchema[];
-}
-
-/**
- * Condition for a rule.
- */
-export interface SchemaBasedCondition {
-  scope: string;
-  schema: RuleConditionSchema;
-}
-
-/**
- * Rule for conditional element visibility/enablement.
- */
-export interface Rule {
-  effect: RuleEffect;
-  condition: SchemaBasedCondition;
-}
+import type { Rule, UISchemaElementType } from "./schema.js";
 
 /**
  * Base interface for all UI Schema elements.
+ *
+ * This is a manually maintained interface representing the common shape
+ * shared by all element types. It is kept as an interface (rather than
+ * derived from Zod) because it is the base of a discriminated union, not
+ * a union member itself.
  */
 export interface UISchemaElementBase {
   type: UISchemaElementType;
   rule?: Rule;
   options?: Record<string, unknown>;
 }
-
-/**
- * A Control element that binds to a JSON Schema property.
- */
-export interface ControlElement extends UISchemaElementBase {
-  type: "Control";
-  scope: string;
-  label?: string;
-}
-
-/**
- * A vertical layout element.
- */
-export interface VerticalLayout extends UISchemaElementBase {
-  type: "VerticalLayout";
-  elements: UISchemaElement[];
-}
-
-/**
- * A horizontal layout element.
- */
-export interface HorizontalLayout extends UISchemaElementBase {
-  type: "HorizontalLayout";
-  elements: UISchemaElement[];
-}
-
-/**
- * A group element with a label.
- */
-export interface GroupLayout extends UISchemaElementBase {
-  type: "Group";
-  label: string;
-  elements: UISchemaElement[];
-}
-
-/**
- * Union of all UI Schema element types.
- */
-export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout;
-
-/**
- * Root UI Schema (always a layout).
- */
-export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout;

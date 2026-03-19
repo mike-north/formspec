@@ -2,10 +2,18 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "@formspec/build";
-import type { ExtendedJSONSchema7 } from "@formspec/build";
+import type { ExtendedJSONSchema7, UISchemaElement } from "@formspec/build";
 
 const formsPath = path.resolve(import.meta.dirname, "../src/forms.ts");
 const schemasDir = path.resolve(import.meta.dirname, "../schemas");
+
+/** Narrows to a layout element with `elements` and optional `label`. */
+function findGroup(elements: UISchemaElement[], label: string) {
+  return elements.find(
+    (e): e is UISchemaElement & { elements: UISchemaElement[]; label: string } =>
+      e.type === "Group" && "label" in e && (e as { label: string }).label === label
+  );
+}
 
 describe("ProductForm schemas", () => {
   const result = generateSchemasFromClass({
@@ -76,7 +84,13 @@ describe("ProductForm schemas", () => {
   });
 
   it("includes showWhen in uiSchema for conditional field", () => {
-    const expiryField = result.uiSchema.elements.find((e) => e.id === "expiryDays");
-    expect(expiryField?.showWhen).toEqual({ field: "category", value: "food" });
+    const shippingGroup = findGroup(result.uiSchema.elements, "Shipping");
+    const expiryControl = shippingGroup?.elements.find(
+      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/expiryDays"
+    );
+    expect(expiryControl?.rule).toEqual({
+      effect: "SHOW",
+      condition: { scope: "#/properties/category", schema: { const: "food" } },
+    });
   });
 });

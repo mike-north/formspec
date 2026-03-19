@@ -51,17 +51,17 @@ Builder functions with full type inference:
 import { formspec, field, group, when, is } from "@formspec/dsl";
 
 const InvoiceForm = formspec(
-  group("Customer",
+  group(
+    "Customer",
     field.text("name", { label: "Name", required: true }),
-    field.dynamicEnum("country", "countries", { label: "Country" }),
+    field.dynamicEnum("country", "countries", { label: "Country" })
   ),
-  group("Details",
+  group(
+    "Details",
     field.number("amount", { label: "Amount", min: 0, required: true }),
     field.enum("status", ["draft", "sent", "paid"] as const),
-    when(is("status", "draft"),
-      field.text("notes", { label: "Internal Notes" }),
-    ),
-  ),
+    when(is("status", "draft"), field.text("notes", { label: "Internal Notes" }))
+  )
 );
 
 type Schema = InferFormSchema<typeof InvoiceForm>;
@@ -99,18 +99,18 @@ All decorators are **no-ops at runtime** — they exist solely as markers for th
 
 All form elements implement a discriminated union on `_type`:
 
-| Element | `_type` | `_field` | Schema Inference |
-|---------|---------|----------|-----------------|
-| `TextField<N>` | `"field"` | `"text"` | `string` |
-| `NumberField<N>` | `"field"` | `"number"` | `number` |
-| `BooleanField<N>` | `"field"` | `"boolean"` | `boolean` |
-| `StaticEnumField<N, O>` | `"field"` | `"enum"` | Union of option values |
-| `DynamicEnumField<N, S>` | `"field"` | `"dynamic_enum"` | `DataSourceValueType<S>` |
-| `DynamicSchemaField<N>` | `"field"` | `"dynamic_schema"` | `Record<string, unknown>` |
-| `ArrayField<N, Items>` | `"field"` | `"array"` | `InferSchema<Items>[]` |
-| `ObjectField<N, Props>` | `"field"` | `"object"` | `InferSchema<Props>` |
-| `Group<Elements>` | `"group"` | — | Transparent (fields extracted) |
-| `Conditional<K, V, Elements>` | `"conditional"` | — | Fields become optional |
+| Element                       | `_type`         | `_field`           | Schema Inference               |
+| ----------------------------- | --------------- | ------------------ | ------------------------------ |
+| `TextField<N>`                | `"field"`       | `"text"`           | `string`                       |
+| `NumberField<N>`              | `"field"`       | `"number"`         | `number`                       |
+| `BooleanField<N>`             | `"field"`       | `"boolean"`        | `boolean`                      |
+| `StaticEnumField<N, O>`       | `"field"`       | `"enum"`           | Union of option values         |
+| `DynamicEnumField<N, S>`      | `"field"`       | `"dynamic_enum"`   | `DataSourceValueType<S>`       |
+| `DynamicSchemaField<N>`       | `"field"`       | `"dynamic_schema"` | `Record<string, unknown>`      |
+| `ArrayField<N, Items>`        | `"field"`       | `"array"`          | `InferSchema<Items>[]`         |
+| `ObjectField<N, Props>`       | `"field"`       | `"object"`         | `InferSchema<Props>`           |
+| `Group<Elements>`             | `"group"`       | —                  | Transparent (fields extracted) |
+| `Conditional<K, V, Elements>` | `"conditional"` | —                  | Fields become optional         |
 
 ### Type Inference Pipeline
 
@@ -138,6 +138,7 @@ FormSpec definition
 ```
 
 The JSON Schema generator maps field types directly:
+
 - `field.text()` → `{ type: "string" }`
 - `field.number()` with `min`/`max` → `{ type: "number", minimum, maximum }`
 - `field.enum()` → `{ type: "string", enum: [...] }`
@@ -233,69 +234,69 @@ Restricts which FormSpec features are allowed, configured via `.formspec.yml`:
 ```yaml
 constraints:
   fieldTypes:
-    dynamicEnum: error      # Disallow dynamic enums
-    dynamicSchema: error    # Disallow dynamic schemas
+    dynamicEnum: error # Disallow dynamic enums
+    dynamicSchema: error # Disallow dynamic schemas
   layout:
-    group: off              # Allow groups
-    conditionals: warn      # Warn on conditionals
-    maxNestingDepth: 3      # Limit nesting
+    group: off # Allow groups
+    conditionals: warn # Warn on conditionals
+    maxNestingDepth: 3 # Limit nesting
   fieldOptions:
-    placeholder: off        # Allow placeholders
+    placeholder: off # Allow placeholders
 ```
 
 ### Enforcement Layers
 
-| Layer | Tool | When |
-|-------|------|------|
-| **Build-time** | `@formspec/eslint-plugin` | During linting / CI |
-| **Programmatic** | `validateFormSpec()` | At runtime or in build scripts |
-| **Browser** | `@formspec/constraints/browser` | In the playground |
+| Layer            | Tool                            | When                           |
+| ---------------- | ------------------------------- | ------------------------------ |
+| **Build-time**   | `@formspec/eslint-plugin`       | During linting / CI            |
+| **Programmatic** | `validateFormSpec()`            | At runtime or in build scripts |
+| **Browser**      | `@formspec/constraints/browser` | In the playground              |
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 
 ### Decorator DSL Rules
 
-| Rule | Purpose |
-|------|---------|
-| `decorator-field-type-mismatch` | `@Minimum`/`@Maximum` only on `number`; `@MinLength`/`@Pattern` only on `string` |
-| `enum-options-match-type` | `@EnumOptions` values match the field's TypeScript union type |
-| `showwhen-field-exists` | `@ShowWhen({ field: "x" })` references an existing field in the class |
-| `showwhen-suggests-optional` | Fields with `@ShowWhen` should be optional (`?`) |
-| `consistent-constraints` | `@Minimum ≤ @Maximum`; no conflicting bound types; no duplicate decorator + JSDoc source |
-| `no-conflicting-decorators` | No `@Minimum` + `@MinLength` on the same field (implies conflicting types) |
-| `no-duplicate-decorators` | No duplicate `@EnumOptions` on the same field |
-| `decorator-allowed-field-types` | Restrict TypeScript types on decorated properties (configurable) |
-| `prefer-custom-decorator` | Suggest project-specific decorators over built-ins (configurable) |
+| Rule                            | Purpose                                                                                  |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `decorator-field-type-mismatch` | `@Minimum`/`@Maximum` only on `number`; `@MinLength`/`@Pattern` only on `string`         |
+| `enum-options-match-type`       | `@EnumOptions` values match the field's TypeScript union type                            |
+| `showwhen-field-exists`         | `@ShowWhen({ field: "x" })` references an existing field in the class                    |
+| `showwhen-suggests-optional`    | Fields with `@ShowWhen` should be optional (`?`)                                         |
+| `consistent-constraints`        | `@Minimum ≤ @Maximum`; no conflicting bound types; no duplicate decorator + JSDoc source |
+| `no-conflicting-decorators`     | No `@Minimum` + `@MinLength` on the same field (implies conflicting types)               |
+| `no-duplicate-decorators`       | No duplicate `@EnumOptions` on the same field                                            |
+| `decorator-allowed-field-types` | Restrict TypeScript types on decorated properties (configurable)                         |
+| `prefer-custom-decorator`       | Suggest project-specific decorators over built-ins (configurable)                        |
 
 ### Constraint DSL Rules
 
-| Rule | Purpose |
-|------|---------|
+| Rule                              | Purpose                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------- |
 | `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `.formspec.yml` |
-| `constraints-allowed-layouts` | `group()`, `when()` validated against `.formspec.yml` |
+| `constraints-allowed-layouts`     | `group()`, `when()` validated against `.formspec.yml`                         |
 
 ## Entry Points
 
 `@formspec/build` provides three entry points for different consumers:
 
-| Entry Point | Audience | Exports |
-|-------------|----------|---------|
-| `@formspec/build` | Public API | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
-| `@formspec/build/browser` | Browser (playground) | Schema generators without Node.js fs/path |
-| `@formspec/build/internals` | CLI (unstable) | `createProgramContext`, `analyzeClass`, `generateClassSchemas`, codegen functions |
+| Entry Point                 | Audience             | Exports                                                                           |
+| --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| `@formspec/build`           | Public API           | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
+| `@formspec/build/browser`   | Browser (playground) | Schema generators without Node.js fs/path                                         |
+| `@formspec/build/internals` | CLI (unstable)       | `createProgramContext`, `analyzeClass`, `generateClassSchemas`, codegen functions |
 
 ## Testing Strategy
 
 ### Test Layers
 
-| Layer | Framework | Location | Purpose |
-|-------|-----------|----------|---------|
-| **Unit** | Vitest | `src/__tests__/*.test.ts` | Individual functions in isolation |
-| **Type** | tsd | `src/__tests__/*.test-d.ts` | Type inference correctness |
-| **Integration** | Vitest | `src/__tests__/integration.test.ts` | Full pipeline (DSL → schema) |
-| **Fixture-based** | Vitest | `src/__tests__/decorator-pipeline.test.ts` | Real TypeScript files through the analyzer |
-| **ESLint rule** | RuleTester | `src/__tests__/rules/*.test.ts` | Valid/invalid code patterns per rule |
-| **Example projects** | Vitest | `examples/*/test/schemas.test.ts` | Schema snapshot validation |
+| Layer                | Framework  | Location                                   | Purpose                                    |
+| -------------------- | ---------- | ------------------------------------------ | ------------------------------------------ |
+| **Unit**             | Vitest     | `src/__tests__/*.test.ts`                  | Individual functions in isolation          |
+| **Type**             | tsd        | `src/__tests__/*.test-d.ts`                | Type inference correctness                 |
+| **Integration**      | Vitest     | `src/__tests__/integration.test.ts`        | Full pipeline (DSL → schema)               |
+| **Fixture-based**    | Vitest     | `src/__tests__/decorator-pipeline.test.ts` | Real TypeScript files through the analyzer |
+| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`            | Valid/invalid code patterns per rule       |
+| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`          | Schema snapshot validation                 |
 
 ### Test Infrastructure
 
@@ -324,6 +325,7 @@ Interactive browser-based editor (React + Vite + Monaco Editor):
 ## TypeScript Configuration
 
 Strict mode with additional strictness flags:
+
 - `strict: true`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`
 - `noImplicitOverride`, `noPropertyAccessFromIndexSignature`
 - `verbatimModuleSyntax`, `isolatedModules`, `noEmitOnError`
