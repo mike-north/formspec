@@ -151,9 +151,12 @@ export function useFormspecCompilation(
 
     // Use requestIdleCallback if available, otherwise setTimeout
     if ("requestIdleCallback" in window) {
-      idleCallbackRef.current = window.requestIdleCallback(() => {
-        void doCompile();
-      }, { timeout: 1000 });
+      idleCallbackRef.current = window.requestIdleCallback(
+        () => {
+          void doCompile();
+        },
+        { timeout: 1000 }
+      );
     } else {
       setTimeout(() => {
         void doCompile();
