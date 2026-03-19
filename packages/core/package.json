@@ -3,12 +3,14 @@
   "version": "0.1.0-alpha.10",
   "description": "Core utilities for formspec",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/core.d.ts",
   "exports": {
     ".": {
       "types": "./dist/core.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -16,7 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && api-extractor run --local",
+    "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "api-extractor": "api-extractor run",
