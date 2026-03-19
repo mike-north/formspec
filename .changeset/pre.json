@@ -36,6 +36,8 @@
     "interface-type-alias-schemas",
     "p4-enum-options-dx",
     "predicate-when-api",
-    "runtime-type-metadata-warning"
+    "runtime-type-metadata-warning",
+    "tsup-dual-cjs-esm",
+    "zod-validated-ui-schema"
   ]
 }
