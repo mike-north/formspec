@@ -3,12 +3,14 @@
   "version": "0.1.0-alpha.10",
   "description": "Type-safe form specifications that compile to JSON Schema and JSON Forms UI Schema",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/formspec.d.ts",
   "exports": {
     ".": {
       "types": "./dist/formspec.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -16,7 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc && declaration-file-normalizer dist/index.d.ts && api-extractor run --local",
+    "build": "tsup && tsc --emitDeclarationOnly && declaration-file-normalizer dist/index.d.ts && api-extractor run --local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "api-extractor": "api-extractor run",
