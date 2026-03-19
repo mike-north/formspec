@@ -37,6 +37,7 @@ export default [
       "**/temp/**",
       "**/coverage/**",
       "scratch/**",
+      ".worktrees/**",
       // Examples have their own eslint.config.js with formspec plugin rules.
       // They are linted separately via `pnpm -r run lint`.
       "examples/**",

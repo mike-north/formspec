@@ -223,20 +223,15 @@ export function generateUiSchemaFromFields(fields: FormSpecField[]): UISchema {
         elements.push(el);
       }
     } else {
-      // If this key has already been emitted (subsequent fields in the same
-      // group pushed onto the same entry), skip the duplicate position.
-      // We handle this by only emitting when we first encounter the key.
-      // Find index in elements of an already-pushed Group for this key.
-      const alreadyEmitted = elements.some((e) => e.type === "Group" && e.label === key);
-      if (!alreadyEmitted) {
-        const groupElements = groupMap.get(key) ?? [];
-        const groupLayout: GroupLayout = {
-          type: "Group",
-          label: key,
-          elements: groupElements,
-        };
-        elements.push(groupLayout);
-      }
+      // Each group key appears in orderedKeys exactly once (guarded by
+      // `!groupMap.has()` above), so we emit the Group element directly.
+      const groupElements = groupMap.get(key) ?? [];
+      const groupLayout: GroupLayout = {
+        type: "Group",
+        label: key,
+        elements: groupElements,
+      };
+      elements.push(groupLayout);
     }
   }
 

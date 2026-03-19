@@ -11,16 +11,14 @@ let linterModulePromise: Promise<PlaygroundLinterModule | null> | null = null;
 let hasLoggedLinterFailure = false;
 
 async function loadPlaygroundLinter(): Promise<PlaygroundLinterModule | null> {
-  if (!linterModulePromise) {
-    linterModulePromise = import("../lib/linter").catch((error: unknown) => {
-      if (!hasLoggedLinterFailure) {
-        console.warn("Playground linting is unavailable in this browser environment.", error);
-        hasLoggedLinterFailure = true;
-      }
+  linterModulePromise ??= import("../lib/linter").catch((error: unknown) => {
+    if (!hasLoggedLinterFailure) {
+      console.warn("Playground linting is unavailable in this browser environment.", error);
+      hasLoggedLinterFailure = true;
+    }
 
-      return null;
-    });
-  }
+    return null;
+  });
 
   return linterModulePromise;
 }

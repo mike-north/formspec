@@ -179,7 +179,7 @@ export const uiSchemaElementSchema: z.ZodType<UISchemaElement> = z.lazy(() =>
 export const controlSchema = z
   .object({
     type: z.literal("Control"),
-    scope: z.string(),
+    scope: jsonPointerSchema,
     label: z.union([z.string(), z.literal(false)]).optional(),
     rule: ruleSchema.optional(),
     options: z.record(z.string(), z.unknown()).optional(),
