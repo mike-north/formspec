@@ -1,25 +1,3 @@
-# @your-org/eslint-plugin
-
-ESLint rules for working with your schema/constraints.
-
-## Rules
-
-| Rule name                | Description                                                     |
-| ------------------------ | --------------------------------------------------------------- |
-| `consistent-constraints` | Enforces consistent min/max and related constraints in schemas. |
-
-## Rule details
-
-### `consistent-constraints`
-
-This rule validates that constraint-related properties (such as minimum and maximum
-values, lengths, or ranges) are used consistently and do not contradict each other.
-
-It is intended as a replacement for the now-removed `min-max-valid-range` rule and
-should be enabled wherever constraint consistency needs to be enforced.
-
-<!-- Add additional rules and documentation here as needed. -->
-
 # @formspec/eslint-plugin
 
 ESLint plugin for validating FormSpec decorator DSL usage in TypeScript projects. This plugin catches common mistakes by ensuring decorators match their field types and enforcing consistency rules.
