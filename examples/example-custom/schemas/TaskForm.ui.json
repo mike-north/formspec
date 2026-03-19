@@ -1,66 +1,58 @@
 {
+  "type": "VerticalLayout",
   "elements": [
     {
-      "_field": "text",
-      "id": "name",
-      "required": true,
-      "group": "Header",
-      "label": "Task Name",
-      "description": "A short name for this task"
-    },
-    {
-      "_field": "text",
-      "id": "description",
-      "group": "Header",
-      "label": "Description"
-    },
-    {
-      "_field": "number",
-      "id": "priority",
-      "required": true,
-      "group": "Details",
-      "label": "Priority",
-      "min": 1
-    },
-    {
-      "_field": "enum",
-      "id": "status",
-      "required": true,
-      "group": "Details",
-      "label": "Status",
-      "options": [
+      "type": "Group",
+      "label": "Header",
+      "elements": [
         {
-          "id": "todo",
-          "label": "To Do"
+          "type": "Control",
+          "scope": "#/properties/name",
+          "label": "Task Name"
         },
         {
-          "id": "in-progress",
-          "label": "In Progress"
-        },
-        {
-          "id": "done",
-          "label": "Done"
+          "type": "Control",
+          "scope": "#/properties/description",
+          "label": "Description"
         }
       ]
     },
     {
-      "_field": "text",
-      "id": "assignee",
-      "group": "Details",
-      "label": "Assignee"
+      "type": "Group",
+      "label": "Details",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/priority",
+          "label": "Priority"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/status",
+          "label": "Status"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/assignee",
+          "label": "Assignee"
+        }
+      ]
     },
     {
-      "_field": "text",
-      "id": "submitLabel",
-      "required": true,
-      "group": "Actions",
-      "label": "Submit Action"
-    },
-    {
-      "_field": "text",
-      "id": "cancelLabel",
-      "group": "Actions",
-      "label": "Cancel Action"
+      "type": "Group",
+      "label": "Actions",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/submitLabel",
+          "label": "Submit Action"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/cancelLabel",
+          "label": "Cancel Action"
+        }
+      ]
     }
   ]
 }

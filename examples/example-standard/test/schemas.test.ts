@@ -2,10 +2,18 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "@formspec/build";
-import type { ExtendedJSONSchema7 } from "@formspec/build";
+import type { ExtendedJSONSchema7, UISchemaElement } from "@formspec/build";
 
 const formsPath = path.resolve(import.meta.dirname, "../src/forms.ts");
 const schemasDir = path.resolve(import.meta.dirname, "../schemas");
+
+/** Narrows to a layout element with `elements` and optional `label`. */
+function findGroup(elements: UISchemaElement[], label: string) {
+  return elements.find(
+    (e): e is UISchemaElement & { elements: UISchemaElement[]; label: string } =>
+      e.type === "Group" && "label" in e && (e as { label: string }).label === label
+  );
+}
 
 describe("UserRegistrationForm schemas", () => {
   const result = generateSchemasFromClass({
@@ -76,21 +84,34 @@ describe("UserRegistrationForm schemas", () => {
   });
 
   it("includes display metadata in uiSchema", () => {
-    const nameField = result.uiSchema.elements.find((e) => e.id === "name");
-    expect(nameField).toMatchObject({
+    const personalGroup = findGroup(result.uiSchema.elements, "Personal Information");
+    const nameControl = personalGroup?.elements.find(
+      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/name"
+    );
+    expect(nameControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/name",
       label: "Full Name",
-      description: "Your legal name",
     });
   });
 
   it("includes group assignments in uiSchema", () => {
-    const nameField = result.uiSchema.elements.find((e) => e.id === "name");
-    expect(nameField).toHaveProperty("group", "Personal Information");
+    const personalGroup = findGroup(result.uiSchema.elements, "Personal Information");
+    expect(personalGroup).toBeDefined();
+    const nameControl = personalGroup?.elements.find(
+      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/name"
+    );
+    expect(nameControl).toBeDefined();
   });
 
   it("includes showWhen conditions in uiSchema", () => {
-    const companyField = result.uiSchema.elements.find((e) => e.id === "companyName");
-    expect(companyField).toHaveProperty("showWhen");
-    expect(companyField?.showWhen).toEqual({ field: "accountType", value: "business" });
+    const businessGroup = findGroup(result.uiSchema.elements, "Business Details");
+    const companyControl = businessGroup?.elements.find(
+      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/companyName"
+    );
+    expect(companyControl?.rule).toEqual({
+      effect: "SHOW",
+      condition: { scope: "#/properties/accountType", schema: { const: "business" } },
+    });
   });
 });

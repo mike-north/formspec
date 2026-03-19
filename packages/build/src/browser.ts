@@ -39,15 +39,38 @@ export type {
   VerticalLayout,
   HorizontalLayout,
   GroupLayout,
+  Categorization,
+  Category,
+  LabelElement,
   Rule,
   RuleEffect,
   RuleConditionSchema,
   SchemaBasedCondition,
 } from "./ui-schema/types.js";
 
+// Zod validation schemas
+export {
+  ruleEffectSchema,
+  uiSchemaElementTypeSchema,
+  ruleConditionSchema,
+  schemaBasedConditionSchema,
+  ruleSchema,
+  controlSchema,
+  verticalLayoutSchema,
+  horizontalLayoutSchema,
+  groupLayoutSchema,
+  categorizationSchema,
+  categorySchema,
+  labelElementSchema,
+  uiSchemaElementSchema,
+  uiSchema as uiSchemaSchema,
+} from "./ui-schema/schema.js";
+
+export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js";
+
 // Re-export individual generators
 export { generateJsonSchema } from "./json-schema/generator.js";
-export { generateUiSchema } from "./ui-schema/generator.js";
+export { generateUiSchema, generateUiSchemaFromFields } from "./ui-schema/generator.js";
 
 /**
  * Result of building form schemas.

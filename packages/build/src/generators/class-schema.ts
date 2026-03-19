@@ -14,6 +14,8 @@ import {
   type FormSpecField,
 } from "../analyzer/type-converter.js";
 import type { ExtendedJSONSchema7 } from "../json-schema/types.js";
+import type { UISchema } from "../ui-schema/types.js";
+import { generateUiSchemaFromFields } from "../ui-schema/generator.js";
 import {
   createProgramContext,
   findClassByName,
@@ -28,10 +30,8 @@ import { analyzeClass, analyzeInterface, analyzeTypeAlias } from "../analyzer/cl
 export interface ClassSchemas {
   /** JSON Schema for validation */
   jsonSchema: ExtendedJSONSchema7;
-  /** FormSpec/UI Schema for rendering */
-  uiSchema: {
-    elements: FormSpecField[];
-  };
+  /** JSON Forms UI Schema for rendering */
+  uiSchema: UISchema;
 }
 
 /**
@@ -81,10 +81,8 @@ export function generateClassSchemas(
     ...(required.length > 0 ? { required } : {}),
   };
 
-  // Build FormSpec/UI Schema
-  const uiSchema = {
-    elements: uiElements,
-  };
+  // Convert FormSpecField[] to JSON Forms UISchema
+  const uiSchema = generateUiSchemaFromFields(uiElements);
 
   return { jsonSchema, uiSchema };
 }
@@ -123,8 +121,8 @@ export interface GenerateFromClassOptions {
 export interface GenerateFromClassResult {
   /** JSON Schema for validation */
   jsonSchema: ExtendedJSONSchema7;
-  /** FormSpec/UI Schema for rendering */
-  uiSchema: { elements: FormSpecField[] };
+  /** JSON Forms UI Schema for rendering */
+  uiSchema: UISchema;
 }
 
 /**

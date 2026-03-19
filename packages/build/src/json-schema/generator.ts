@@ -12,6 +12,24 @@ import type {
   ObjectField,
 } from "@formspec/core";
 import type { JSONSchema7 } from "./types.js";
+import { jsonSchema7Schema } from "./schema.js";
+import { z } from "zod";
+
+/**
+ * Parses a value through a Zod schema, converting validation errors to a descriptive Error.
+ */
+function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, label: string): T {
+  try {
+    return schema.parse(value);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(
+        `Generated ${label} failed validation:\n${error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n")}`
+      );
+    }
+    throw error;
+  }
+}
 
 /**
  * Generates JSON Schema for nested elements (used for array items and object properties).
@@ -203,10 +221,12 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   // in multiple branches/containers, e.g., repeated in different conditional branches)
   const uniqueRequired = [...new Set(required)];
 
-  return {
+  const result: JSONSchema7 = {
     $schema: "https://json-schema.org/draft-07/schema#",
     type: "object",
     properties,
     ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
   };
+
+  return parseOrThrow(jsonSchema7Schema, result, "JSON Schema");
 }

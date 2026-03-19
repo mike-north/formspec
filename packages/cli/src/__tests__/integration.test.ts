@@ -59,11 +59,16 @@ describe("generators", () => {
     expect(schemas.jsonSchema.required).toContain("active");
     expect(schemas.jsonSchema.required).not.toContain("price");
 
-    // UI Schema
+    // UI Schema: VerticalLayout with one Control per field
+    expect(schemas.uiSchema.type).toBe("VerticalLayout");
     expect(schemas.uiSchema.elements).toHaveLength(4);
-    const nameElement = schemas.uiSchema.elements.find((e) => e.id === "name");
-    expect(nameElement?._field).toBe("text");
-    expect(nameElement?.required).toBe(true);
+    const nameControl = schemas.uiSchema.elements.find(
+      (e) => e.type === "Control" && e.scope === "#/properties/name"
+    );
+    expect(nameControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/name",
+    });
   });
 
   it("collects FormSpec references from methods", () => {

@@ -1,110 +1,101 @@
 {
+  "type": "VerticalLayout",
   "elements": [
     {
-      "_field": "text",
-      "id": "name",
-      "required": true,
-      "group": "Personal Information",
-      "label": "Full Name",
-      "description": "Your legal name",
-      "placeholder": "Jane Doe",
-      "minLength": 2,
-      "maxLength": 100
-    },
-    {
-      "_field": "text",
-      "id": "email",
-      "required": true,
-      "group": "Personal Information",
-      "label": "Email Address",
-      "description": "We'll send a confirmation email",
-      "pattern": "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"
-    },
-    {
-      "_field": "number",
-      "id": "age",
-      "required": true,
-      "group": "Personal Information",
-      "label": "Age",
-      "min": 13,
-      "max": 120
-    },
-    {
-      "_field": "text",
-      "id": "username",
-      "required": true,
-      "group": "Account",
-      "label": "Username",
-      "placeholder": "johndoe42",
-      "minLength": 3,
-      "maxLength": 30,
-      "pattern": "^[a-zA-Z0-9_]+$"
-    },
-    {
-      "_field": "enum",
-      "id": "accountType",
-      "required": true,
-      "group": "Account",
-      "label": "Account Type",
-      "options": [
+      "type": "Group",
+      "label": "Personal Information",
+      "elements": [
         {
-          "id": "personal",
-          "label": "Personal"
+          "type": "Control",
+          "scope": "#/properties/name",
+          "label": "Full Name"
         },
         {
-          "id": "business",
-          "label": "Business"
+          "type": "Control",
+          "scope": "#/properties/email",
+          "label": "Email Address"
         },
         {
-          "id": "enterprise",
-          "label": "Enterprise"
+          "type": "Control",
+          "scope": "#/properties/age",
+          "label": "Age"
         }
       ]
     },
     {
-      "_field": "enum",
-      "id": "language",
-      "required": true,
-      "group": "Preferences",
-      "label": "Preferred Language",
-      "options": ["en", "es", "fr", "de", "ja"]
+      "type": "Group",
+      "label": "Account",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/username",
+          "label": "Username"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/accountType",
+          "label": "Account Type"
+        }
+      ]
     },
     {
-      "_field": "boolean",
-      "id": "newsletter",
-      "group": "Preferences",
-      "label": "Newsletter"
+      "type": "Group",
+      "label": "Preferences",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/language",
+          "label": "Preferred Language"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/newsletter",
+          "label": "Newsletter"
+        }
+      ]
     },
     {
-      "_field": "text",
-      "id": "companyName",
-      "showWhen": {
-        "field": "accountType",
-        "value": "business"
-      },
-      "group": "Business Details",
-      "label": "Company Name"
+      "type": "Group",
+      "label": "Business Details",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/companyName",
+          "label": "Company Name",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/accountType",
+              "schema": {
+                "const": "business"
+              }
+            }
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/taxId",
+          "label": "Tax ID",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/accountType",
+              "schema": {
+                "const": "business"
+              }
+            }
+          }
+        }
+      ]
     },
     {
-      "_field": "text",
-      "id": "taxId",
-      "showWhen": {
-        "field": "accountType",
-        "value": "business"
-      },
-      "group": "Business Details",
-      "label": "Tax ID",
-      "pattern": "^\\d{2}-\\d{7}$"
-    },
-    {
-      "_field": "text",
-      "id": "plan",
+      "type": "Control",
+      "scope": "#/properties/plan",
       "label": "Plan"
     },
     {
-      "_field": "text",
-      "id": "referralCode",
-      "required": true,
+      "type": "Control",
+      "scope": "#/properties/referralCode",
       "label": "Referral Code"
     }
   ]

@@ -27,6 +27,9 @@ export type { AnalyzeTypeAliasResult } from "./analyzer/class-analyzer.js";
 // Generators: class schema
 export { generateClassSchemas } from "./generators/class-schema.js";
 
+// UI Schema utilities
+export { generateUiSchemaFromFields } from "./ui-schema/generator.js";
+
 // Generators: method schema
 export { generateMethodSchemas, collectFormSpecReferences } from "./generators/method-schema.js";
 export type { LoadedFormSpecSchemas, MethodSchemas } from "./generators/method-schema.js";
