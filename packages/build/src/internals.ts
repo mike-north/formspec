@@ -12,6 +12,9 @@
  * @packageDocumentation
  */
 
+// Canonicalize: DSL → FormIR
+export { canonicalizeDSL } from "./canonicalize/index.js";
+
 // Analyzer: program context and type lookup
 export {
   createProgramContext,
