@@ -36,3 +36,43 @@ export type { EqualsPredicate, Predicate } from "./predicate.js";
 
 export { FORMSPEC_DECORATOR_NAMES, CONSTRAINT_TAG_DEFINITIONS } from "./decorators.js";
 export type { FormSpecDecoratorName, ConstraintTagName } from "./decorators.js";
+
+export { IR_VERSION } from "./ir.js";
+export type {
+  JsonValue,
+  Provenance,
+  PathTarget,
+  TypeNode,
+  PrimitiveTypeNode,
+  EnumMember,
+  EnumTypeNode,
+  ArrayTypeNode,
+  ObjectProperty,
+  ObjectTypeNode,
+  UnionTypeNode,
+  ReferenceTypeNode,
+  DynamicTypeNode,
+  CustomTypeNode,
+  ConstraintNode,
+  NumericConstraintNode,
+  LengthConstraintNode,
+  PatternConstraintNode,
+  ArrayCardinalityConstraintNode,
+  EnumMemberConstraintNode,
+  CustomConstraintNode,
+  AnnotationNode,
+  DisplayNameAnnotationNode,
+  DescriptionAnnotationNode,
+  PlaceholderAnnotationNode,
+  DefaultValueAnnotationNode,
+  DeprecatedAnnotationNode,
+  FormatHintAnnotationNode,
+  CustomAnnotationNode,
+  FieldNode,
+  LayoutNode,
+  GroupLayoutNode,
+  ConditionalLayoutNode,
+  FormIRElement,
+  TypeDefinition,
+  FormIR,
+} from "./ir.js";

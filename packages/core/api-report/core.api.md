@@ -5,7 +5,24 @@
 ```ts
 
 // @public
+export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
+
+// @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+
+// @public
+export interface ArrayCardinalityConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "uniqueItems";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly path?: PathTarget;
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: true;
+}
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
@@ -17,6 +34,14 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
     readonly name: N;
     readonly required?: boolean;
     readonly _type: "field";
+}
+
+// @public
+export interface ArrayTypeNode {
+    // (undocumented)
+    readonly items: TypeNode;
+    // (undocumented)
+    readonly kind: "array";
 }
 
 // @public
@@ -37,6 +62,17 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
 }
 
 // @public
+export interface ConditionalLayoutNode {
+    readonly elements: readonly FormIRElement[];
+    readonly fieldName: string;
+    // (undocumented)
+    readonly kind: "conditional";
+    // (undocumented)
+    readonly provenance: Provenance;
+    readonly value: JsonValue;
+}
+
+// @public
 export const CONSTRAINT_TAG_DEFINITIONS: {
     readonly Minimum: "number";
     readonly Maximum: "number";
@@ -49,10 +85,49 @@ export const CONSTRAINT_TAG_DEFINITIONS: {
 };
 
 // @public
+export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | CustomConstraintNode;
+
+// @public
 export type ConstraintTagName = keyof typeof CONSTRAINT_TAG_DEFINITIONS;
 
 // @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
+
+// @public
+export interface CustomAnnotationNode {
+    readonly annotationId: string;
+    // (undocumented)
+    readonly annotationKind: "custom";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: JsonValue;
+}
+
+// @public
+export interface CustomConstraintNode {
+    readonly compositionRule: "intersect" | "override";
+    readonly constraintId: string;
+    // (undocumented)
+    readonly constraintKind: "custom";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly path?: PathTarget;
+    readonly payload: JsonValue;
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public
+export interface CustomTypeNode {
+    // (undocumented)
+    readonly kind: "custom";
+    readonly payload: JsonValue;
+    readonly typeId: string;
+}
 
 // @public
 export interface DataSourceOption<T = unknown> {
@@ -69,6 +144,52 @@ export interface DataSourceRegistry {
 export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry ? DataSourceRegistry[Source] extends {
     id: infer ID;
 } ? ID : string : string;
+
+// @public (undocumented)
+export interface DefaultValueAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "defaultValue";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    readonly value: JsonValue;
+}
+
+// @public (undocumented)
+export interface DeprecatedAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "deprecated";
+    // (undocumented)
+    readonly kind: "annotation";
+    readonly message?: string;
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public (undocumented)
+export interface DescriptionAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "description";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: string;
+}
+
+// @public (undocumented)
+export interface DisplayNameAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "displayName";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: string;
+}
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
@@ -92,6 +213,36 @@ export interface DynamicSchemaField<N extends string> {
 }
 
 // @public
+export interface DynamicTypeNode {
+    // (undocumented)
+    readonly dynamicKind: "enum" | "schema";
+    // (undocumented)
+    readonly kind: "dynamic";
+    readonly parameterFields: readonly string[];
+    readonly sourceKey: string;
+}
+
+// @public
+export interface EnumMember {
+    readonly displayName?: string;
+    readonly value: string | number;
+}
+
+// @public
+export interface EnumMemberConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "allowedMembers";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly members: readonly (string | number)[];
+    // (undocumented)
+    readonly path?: PathTarget;
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public
 export interface EnumOption {
     // (undocumented)
     readonly id: string;
@@ -101,6 +252,14 @@ export interface EnumOption {
 
 // @public
 export type EnumOptionValue = string | EnumOption;
+
+// @public
+export interface EnumTypeNode {
+    // (undocumented)
+    readonly kind: "enum";
+    // (undocumented)
+    readonly members: readonly EnumMember[];
+}
 
 // @public
 export interface EqualsPredicate<K extends string, V> {
@@ -117,6 +276,22 @@ export interface FetchOptionsResponse<T = unknown> {
 }
 
 // @public
+export interface FieldNode {
+    readonly annotations: readonly AnnotationNode[];
+    readonly constraints: readonly ConstraintNode[];
+    // (undocumented)
+    readonly kind: "field";
+    readonly mergeHistory?: readonly {
+        readonly node: ConstraintNode | AnnotationNode;
+        readonly dominated: boolean;
+    }[];
+    readonly name: string;
+    readonly provenance: Provenance;
+    readonly required: boolean;
+    readonly type: TypeNode;
+}
+
+// @public
 export interface FieldState<T> {
     readonly dirty: boolean;
     readonly errors: readonly string[];
@@ -126,7 +301,31 @@ export interface FieldState<T> {
 }
 
 // @public
+export interface FormatHintAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "formatHint";
+    readonly format: string;
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public
 export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export interface FormIR {
+    readonly elements: readonly FormIRElement[];
+    readonly irVersion: string;
+    // (undocumented)
+    readonly kind: "form-ir";
+    readonly provenance: Provenance;
+    readonly typeRegistry: Record<string, TypeDefinition>;
+}
+
+// @public
+export type FormIRElement = FieldNode | LayoutNode;
 
 // @public
 export interface FormSpec<Elements extends readonly FormElement[]> {
@@ -157,6 +356,42 @@ export interface Group<Elements extends readonly FormElement[]> {
 }
 
 // @public
+export interface GroupLayoutNode {
+    readonly elements: readonly FormIRElement[];
+    // (undocumented)
+    readonly kind: "group";
+    // (undocumented)
+    readonly label: string;
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public
+export const IR_VERSION: "0.1.0";
+
+// @public
+export type JsonValue = null | boolean | number | string | readonly JsonValue[] | {
+    readonly [key: string]: JsonValue;
+};
+
+// @public
+export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
+
+// @public
+export interface LengthConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly path?: PathTarget;
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: number;
+}
+
+// @public
 export interface NumberField<N extends string> {
     readonly _field: "number";
     readonly label?: string;
@@ -165,6 +400,19 @@ export interface NumberField<N extends string> {
     readonly name: N;
     readonly required?: boolean;
     readonly _type: "field";
+}
+
+// @public
+export interface NumericConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf";
+    // (undocumented)
+    readonly kind: "constraint";
+    readonly path?: PathTarget;
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: number;
 }
 
 // @public
@@ -178,7 +426,85 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 }
 
 // @public
+export interface ObjectProperty {
+    readonly annotations: readonly AnnotationNode[];
+    readonly constraints: readonly ConstraintNode[];
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    readonly optional: boolean;
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly type: TypeNode;
+}
+
+// @public
+export interface ObjectTypeNode {
+    readonly additionalProperties: boolean;
+    // (undocumented)
+    readonly kind: "object";
+    readonly properties: readonly ObjectProperty[];
+}
+
+// @public
+export interface PathTarget {
+    readonly segments: readonly string[];
+}
+
+// @public
+export interface PatternConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "pattern";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly path?: PathTarget;
+    readonly pattern: string;
+    // (undocumented)
+    readonly provenance: Provenance;
+}
+
+// @public (undocumented)
+export interface PlaceholderAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "placeholder";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: string;
+}
+
+// @public
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
+
+// @public
+export interface PrimitiveTypeNode {
+    // (undocumented)
+    readonly kind: "primitive";
+    // (undocumented)
+    readonly primitiveKind: "string" | "number" | "boolean" | "null";
+}
+
+// @public
+export interface Provenance {
+    readonly column: number;
+    readonly file: string;
+    readonly length?: number;
+    readonly line: number;
+    readonly surface: "tsdoc" | "chain-dsl" | "extension" | "inferred";
+    readonly tagName?: string;
+}
+
+// @public
+export interface ReferenceTypeNode {
+    // (undocumented)
+    readonly kind: "reference";
+    readonly name: string;
+    readonly typeArguments: readonly TypeNode[];
+}
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
@@ -198,6 +524,24 @@ export interface TextField<N extends string> {
     readonly placeholder?: string;
     readonly required?: boolean;
     readonly _type: "field";
+}
+
+// @public
+export interface TypeDefinition {
+    readonly name: string;
+    readonly provenance: Provenance;
+    readonly type: TypeNode;
+}
+
+// @public
+export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | ObjectTypeNode | UnionTypeNode | ReferenceTypeNode | DynamicTypeNode | CustomTypeNode;
+
+// @public
+export interface UnionTypeNode {
+    // (undocumented)
+    readonly kind: "union";
+    // (undocumented)
+    readonly members: readonly TypeNode[];
 }
 
 // @public
