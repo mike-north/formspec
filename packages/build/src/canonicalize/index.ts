@@ -1,1 +1,1 @@
-export { canonicalizeDSL } from "./chain-dsl-canonicalizer.js";
+export { canonicalizeChainDSL } from "./chain-dsl-canonicalizer.js";

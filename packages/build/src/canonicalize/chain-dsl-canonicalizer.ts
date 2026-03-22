@@ -25,6 +25,7 @@ import type {
   StaticEnumField,
   TextField,
   // IR types
+  JsonValue,
   AnnotationNode,
   ArrayTypeNode,
   ConstraintNode,
@@ -69,7 +70,7 @@ function isGroup(el: FormElement): el is Group<readonly FormElement[]> {
 }
 
 function isConditional(
-  el: FormElement,
+  el: FormElement
 ): el is Conditional<string, unknown, readonly FormElement[]> {
   return el._type === "conditional";
 }
@@ -88,7 +89,7 @@ function isField(el: FormElement): el is AnyField {
  * @param form - A form specification created via `formspec(...)` from `@formspec/dsl`
  * @returns The canonical intermediate representation
  */
-export function canonicalizeDSL(form: FormSpec<readonly FormElement[]>): FormIR {
+export function canonicalizeChainDSL(form: FormSpec<readonly FormElement[]>): FormIR {
   return {
     kind: "form-ir",
     irVersion: IR_VERSION,
@@ -119,8 +120,11 @@ function canonicalizeElement(element: FormElement): FormIRElement {
   if (isGroup(element)) {
     return canonicalizeGroup(element);
   }
-  // isConditional — TypeScript knows this is the only remaining case
-  return canonicalizeConditional(element as Conditional<string, unknown, readonly FormElement[]>);
+  if (isConditional(element)) {
+    return canonicalizeConditional(element);
+  }
+  const _exhaustive: never = element;
+  throw new Error(`Unknown element type: ${JSON.stringify(_exhaustive)}`);
 }
 
 // =============================================================================
@@ -148,6 +152,10 @@ function canonicalizeField(field: AnyField): FieldNode {
       return canonicalizeArrayField(field);
     case "object":
       return canonicalizeObjectField(field);
+    default: {
+      const _exhaustive: never = field;
+      throw new Error(`Unknown field type: ${JSON.stringify(_exhaustive)}`);
+    }
   }
 }
 
@@ -161,7 +169,7 @@ function canonicalizeTextField(field: TextField<string>): FieldNode {
     field.name,
     type,
     field.required,
-    buildAnnotations(field.label, field.placeholder),
+    buildAnnotations(field.label, field.placeholder)
   );
 }
 
@@ -194,7 +202,7 @@ function canonicalizeNumberField(field: NumberField<string>): FieldNode {
     type,
     field.required,
     buildAnnotations(field.label),
-    constraints,
+    constraints
   );
 }
 
@@ -204,7 +212,7 @@ function canonicalizeBooleanField(field: BooleanField<string>): FieldNode {
 }
 
 function canonicalizeStaticEnumField(
-  field: StaticEnumField<string, readonly EnumOptionValue[]>,
+  field: StaticEnumField<string, readonly EnumOptionValue[]>
 ): FieldNode {
   const members: EnumMember[] = field.options.map((opt) => {
     if (typeof opt === "string") {
@@ -273,7 +281,7 @@ function canonicalizeArrayField(field: ArrayField<string, readonly FormElement[]
     type,
     field.required,
     buildAnnotations(field.label),
-    constraints,
+    constraints
   );
 }
 
@@ -301,18 +309,14 @@ function canonicalizeGroup(g: Group<readonly FormElement[]>): GroupLayoutNode {
 }
 
 function canonicalizeConditional(
-  c: Conditional<string, unknown, readonly FormElement[]>,
+  c: Conditional<string, unknown, readonly FormElement[]>
 ): ConditionalLayoutNode {
   return {
     kind: "conditional",
     fieldName: c.field,
     // Conditional values from the chain DSL are JSON-serializable primitives
     // (strings, numbers, booleans) produced by the `is()` predicate helper.
-    // The `value` field is typed as `unknown` in the DSL but is constrained
-    // to JsonValue-compatible values by the runtime `is()` helper. We assert
-    // this here since there is no static type-safe narrowing path available.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: c.value as ConditionalLayoutNode["value"],
+    value: assertJsonValue(c.value),
     elements: canonicalizeElements(c.elements),
     provenance: CHAIN_DSL_PROVENANCE,
   };
@@ -323,6 +327,36 @@ function canonicalizeConditional(
 // =============================================================================
 
 /**
+ * Validates that a value is JSON-serializable (`JsonValue`).
+ * The chain DSL's `is()` helper constrains conditional values to
+ * JSON-compatible primitives, but the TypeScript type is `unknown`.
+ * This runtime guard replaces an `as` cast with a validated assertion.
+ */
+function assertJsonValue(v: unknown): JsonValue {
+  if (
+    v === null ||
+    typeof v === "string" ||
+    typeof v === "number" ||
+    typeof v === "boolean"
+  ) {
+    return v;
+  }
+  if (Array.isArray(v)) {
+    return v.map(assertJsonValue);
+  }
+  if (typeof v === "object" && v !== null) {
+    const result: Record<string, JsonValue> = {};
+    for (const [key, val] of Object.entries(v)) {
+      result[key] = assertJsonValue(val);
+    }
+    return result;
+  }
+  throw new Error(
+    `Conditional value is not a valid JsonValue: ${String(v)}`,
+  );
+}
+
+/**
  * Builds a FieldNode from common field properties.
  */
 function buildFieldNode(
@@ -330,7 +364,7 @@ function buildFieldNode(
   type: TypeNode,
   required: boolean | undefined,
   annotations: AnnotationNode[],
-  constraints: ConstraintNode[] = [],
+  constraints: ConstraintNode[] = []
 ): FieldNode {
   return {
     kind: "field",
@@ -378,8 +412,19 @@ function buildAnnotations(label?: string, placeholder?: string): AnnotationNode[
  *
  * Only field elements produce properties; groups and conditionals within
  * an object/array context are recursively flattened to extract their fields.
+ *
+ * Fields inside conditional branches are always marked `optional: true`
+ * because their presence in the data depends on the condition being met.
+ * This matches the DSL's type inference behavior where conditional fields
+ * produce optional properties in `InferFormSchema`.
+ *
+ * @param elements - The form elements to convert
+ * @param insideConditional - Whether these elements are inside a conditional branch
  */
-function buildObjectProperties(elements: readonly FormElement[]): ObjectProperty[] {
+function buildObjectProperties(
+  elements: readonly FormElement[],
+  insideConditional = false,
+): ObjectProperty[] {
   const properties: ObjectProperty[] = [];
 
   for (const el of elements) {
@@ -388,17 +433,22 @@ function buildObjectProperties(elements: readonly FormElement[]): ObjectProperty
       properties.push({
         name: fieldNode.name,
         type: fieldNode.type,
-        optional: !fieldNode.required,
+        // Fields inside a conditional branch are always optional in the
+        // data schema, regardless of their `required` flag — the condition
+        // may not be met, so the field may be absent.
+        optional: insideConditional || !fieldNode.required,
         constraints: fieldNode.constraints,
         annotations: fieldNode.annotations,
         provenance: CHAIN_DSL_PROVENANCE,
       });
     } else if (isGroup(el)) {
-      // Groups inside object/array items contribute their fields by flattening
-      properties.push(...buildObjectProperties(el.elements));
+      // Groups inside object/array items contribute their fields by flattening.
+      // Groups do not affect optionality — pass through the current state.
+      properties.push(...buildObjectProperties(el.elements, insideConditional));
     } else if (isConditional(el)) {
-      // Conditionals inside object/array items contribute their fields by flattening
-      properties.push(...buildObjectProperties(el.elements));
+      // Conditionals inside object/array items contribute their fields by
+      // flattening, but all fields inside are forced optional.
+      properties.push(...buildObjectProperties(el.elements, true));
     }
   }
 

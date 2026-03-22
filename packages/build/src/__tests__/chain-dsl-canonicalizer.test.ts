@@ -12,7 +12,7 @@ import type {
   ObjectTypeNode,
   PrimitiveTypeNode,
 } from "@formspec/core";
-import { canonicalizeDSL } from "../canonicalize/index.js";
+import { canonicalizeChainDSL } from "../canonicalize/index.js";
 
 // =============================================================================
 // HELPERS
@@ -27,7 +27,7 @@ const CHAIN_DSL_PROVENANCE = {
 
 function getField(ir: FormIR, name: string): FieldNode {
   const el = ir.elements.find((e) => e.kind === "field" && e.name === name);
-  if (!el || el.kind !== "field") {
+  if (el?.kind !== "field") {
     throw new Error(`Field "${name}" not found in IR`);
   }
   return el;
@@ -35,7 +35,7 @@ function getField(ir: FormIR, name: string): FieldNode {
 
 function getGroup(ir: FormIR, label: string): GroupLayoutNode {
   const el = ir.elements.find((e) => e.kind === "group" && e.label === label);
-  if (!el || el.kind !== "group") {
+  if (el?.kind !== "group") {
     throw new Error(`Group "${label}" not found in IR`);
   }
   return el;
@@ -43,7 +43,7 @@ function getGroup(ir: FormIR, label: string): GroupLayoutNode {
 
 function getConditional(ir: FormIR, fieldName: string): ConditionalLayoutNode {
   const el = ir.elements.find((e) => e.kind === "conditional" && e.fieldName === fieldName);
-  if (!el || el.kind !== "conditional") {
+  if (el?.kind !== "conditional") {
     throw new Error(`Conditional on field "${fieldName}" not found in IR`);
   }
   return el;
@@ -53,11 +53,11 @@ function getConditional(ir: FormIR, fieldName: string): ConditionalLayoutNode {
 // TOP-LEVEL STRUCTURE
 // =============================================================================
 
-describe("canonicalizeDSL", () => {
+describe("canonicalizeChainDSL", () => {
   describe("FormIR top-level structure", () => {
     it("produces a form-ir with correct kind and version", () => {
       const form = formspec(field.text("name"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
 
       expect(ir.kind).toBe("form-ir");
       expect(ir.irVersion).toBe(IR_VERSION);
@@ -67,20 +67,16 @@ describe("canonicalizeDSL", () => {
 
     it("produces empty elements array for empty form", () => {
       const form = formspec();
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
 
       expect(ir.elements).toHaveLength(0);
     });
 
     it("preserves element order", () => {
       const form = formspec(field.text("a"), field.text("b"), field.text("c"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
 
-      expect(ir.elements.map((e) => (e.kind === "field" ? e.name : null))).toEqual([
-        "a",
-        "b",
-        "c",
-      ]);
+      expect(ir.elements.map((e) => (e.kind === "field" ? e.name : null))).toEqual(["a", "b", "c"]);
     });
   });
 
@@ -91,7 +87,7 @@ describe("canonicalizeDSL", () => {
   describe("text field", () => {
     it("produces FieldNode with PrimitiveTypeNode(string)", () => {
       const form = formspec(field.text("email"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "email");
 
       expect(f.kind).toBe("field");
@@ -103,7 +99,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps label to DisplayNameAnnotationNode", () => {
       const form = formspec(field.text("email", { label: "Email Address" }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "email");
 
       expect(f.annotations).toHaveLength(1);
@@ -117,7 +113,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps placeholder to PlaceholderAnnotationNode", () => {
       const form = formspec(field.text("email", { placeholder: "e.g. user@example.com" }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "email");
 
       expect(f.annotations).toHaveLength(1);
@@ -130,9 +126,9 @@ describe("canonicalizeDSL", () => {
 
     it("maps both label and placeholder to two annotations in order", () => {
       const form = formspec(
-        field.text("email", { label: "Email", placeholder: "user@example.com" }),
+        field.text("email", { label: "Email", placeholder: "user@example.com" })
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "email");
 
       expect(f.annotations).toHaveLength(2);
@@ -145,7 +141,7 @@ describe("canonicalizeDSL", () => {
 
     it("produces no annotations when neither label nor placeholder is set", () => {
       const form = formspec(field.text("name"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "name");
 
       expect(f.annotations).toHaveLength(0);
@@ -153,7 +149,7 @@ describe("canonicalizeDSL", () => {
 
     it("sets required=true when required option is true", () => {
       const form = formspec(field.text("name", { required: true }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "name");
 
       expect(f.required).toBe(true);
@@ -161,7 +157,7 @@ describe("canonicalizeDSL", () => {
 
     it("sets required=false when required option is absent", () => {
       const form = formspec(field.text("name"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "name");
 
       expect(f.required).toBe(false);
@@ -169,7 +165,7 @@ describe("canonicalizeDSL", () => {
 
     it("sets required=false when required option is false", () => {
       const form = formspec(field.text("name", { required: false }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "name");
 
       expect(f.required).toBe(false);
@@ -177,7 +173,7 @@ describe("canonicalizeDSL", () => {
 
     it("produces no constraints for text field", () => {
       const form = formspec(field.text("name"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "name");
 
       expect(f.constraints).toHaveLength(0);
@@ -191,7 +187,7 @@ describe("canonicalizeDSL", () => {
   describe("number field", () => {
     it("produces FieldNode with PrimitiveTypeNode(number)", () => {
       const form = formspec(field.number("age"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "age");
 
       const type = f.type as PrimitiveTypeNode;
@@ -201,7 +197,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps min to NumericConstraintNode(minimum)", () => {
       const form = formspec(field.number("age", { min: 0 }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "age");
 
       expect(f.constraints).toHaveLength(1);
@@ -215,7 +211,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps max to NumericConstraintNode(maximum)", () => {
       const form = formspec(field.number("age", { max: 150 }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "age");
 
       expect(f.constraints).toHaveLength(1);
@@ -228,7 +224,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps both min and max to two constraint nodes in order", () => {
       const form = formspec(field.number("age", { min: 0, max: 150 }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "age");
 
       expect(f.constraints).toHaveLength(2);
@@ -238,7 +234,7 @@ describe("canonicalizeDSL", () => {
 
     it("produces no constraints when min and max are absent", () => {
       const form = formspec(field.number("score"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "score");
 
       expect(f.constraints).toHaveLength(0);
@@ -246,7 +242,7 @@ describe("canonicalizeDSL", () => {
 
     it("handles negative min and max values", () => {
       const form = formspec(field.number("temp", { min: -273.15, max: -0.01 }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "temp");
 
       expect(f.constraints[0]).toMatchObject({ constraintKind: "minimum", value: -273.15 });
@@ -261,7 +257,7 @@ describe("canonicalizeDSL", () => {
   describe("boolean field", () => {
     it("produces FieldNode with PrimitiveTypeNode(boolean)", () => {
       const form = formspec(field.boolean("active"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "active");
 
       const type = f.type as PrimitiveTypeNode;
@@ -271,7 +267,7 @@ describe("canonicalizeDSL", () => {
 
     it("maps label to DisplayNameAnnotationNode", () => {
       const form = formspec(field.boolean("active", { label: "Is Active" }));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "active");
 
       expect(f.annotations).toHaveLength(1);
@@ -286,7 +282,7 @@ describe("canonicalizeDSL", () => {
   describe("static enum field", () => {
     it("produces FieldNode with EnumTypeNode (string values)", () => {
       const form = formspec(field.enum("status", ["draft", "sent", "paid"] as const));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "status");
 
       const type = f.type as EnumTypeNode;
@@ -297,15 +293,12 @@ describe("canonicalizeDSL", () => {
 
     it("maps object options to EnumMember with displayName", () => {
       const form = formspec(
-        field.enum(
-          "priority",
-          [
-            { id: "low", label: "Low Priority" },
-            { id: "high", label: "High Priority" },
-          ] as const,
-        ),
+        field.enum("priority", [
+          { id: "low", label: "Low Priority" },
+          { id: "high", label: "High Priority" },
+        ] as const)
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "priority");
 
       const type = f.type as EnumTypeNode;
@@ -317,7 +310,7 @@ describe("canonicalizeDSL", () => {
 
     it("produces no constraints for enum field", () => {
       const form = formspec(field.enum("status", ["a", "b"] as const));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "status");
 
       expect(f.constraints).toHaveLength(0);
@@ -331,7 +324,7 @@ describe("canonicalizeDSL", () => {
   describe("dynamic enum field", () => {
     it("produces FieldNode with DynamicTypeNode(enum)", () => {
       const form = formspec(field.dynamicEnum("country", "fetch_countries"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "country");
 
       const type = f.type as DynamicTypeNode;
@@ -343,9 +336,9 @@ describe("canonicalizeDSL", () => {
 
     it("maps params to parameterFields", () => {
       const form = formspec(
-        field.dynamicEnum("city", "fetch_cities", { params: ["country", "region"] }),
+        field.dynamicEnum("city", "fetch_cities", { params: ["country", "region"] })
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "city");
 
       const type = f.type as DynamicTypeNode;
@@ -354,7 +347,7 @@ describe("canonicalizeDSL", () => {
 
     it("has empty parameterFields when params is absent", () => {
       const form = formspec(field.dynamicEnum("country", "fetch_countries"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "country");
 
       const type = f.type as DynamicTypeNode;
@@ -369,7 +362,7 @@ describe("canonicalizeDSL", () => {
   describe("dynamic schema field", () => {
     it("produces FieldNode with DynamicTypeNode(schema)", () => {
       const form = formspec(field.dynamicSchema("extension_data", "stripe_extension"));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "extension_data");
 
       const type = f.type as DynamicTypeNode;
@@ -386,8 +379,10 @@ describe("canonicalizeDSL", () => {
 
   describe("array field", () => {
     it("produces FieldNode with ArrayTypeNode containing ObjectTypeNode for items", () => {
-      const form = formspec(field.array("lineItems", field.text("description"), field.number("qty")));
-      const ir = canonicalizeDSL(form);
+      const form = formspec(
+        field.array("lineItems", field.text("description"), field.number("qty"))
+      );
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "lineItems");
 
       const type = f.type as ArrayTypeNode;
@@ -400,10 +395,8 @@ describe("canonicalizeDSL", () => {
     });
 
     it("maps minItems via arrayWithConfig to LengthConstraintNode(minItems)", () => {
-      const form = formspec(
-        field.arrayWithConfig("items", { minItems: 1 }, field.text("name")),
-      );
-      const ir = canonicalizeDSL(form);
+      const form = formspec(field.arrayWithConfig("items", { minItems: 1 }, field.text("name")));
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       expect(f.constraints).toHaveLength(1);
@@ -415,10 +408,8 @@ describe("canonicalizeDSL", () => {
     });
 
     it("maps maxItems via arrayWithConfig to LengthConstraintNode(maxItems)", () => {
-      const form = formspec(
-        field.arrayWithConfig("items", { maxItems: 10 }, field.text("name")),
-      );
-      const ir = canonicalizeDSL(form);
+      const form = formspec(field.arrayWithConfig("items", { maxItems: 10 }, field.text("name")));
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       expect(f.constraints).toHaveLength(1);
@@ -431,9 +422,9 @@ describe("canonicalizeDSL", () => {
 
     it("maps both minItems and maxItems to two constraint nodes in order", () => {
       const form = formspec(
-        field.arrayWithConfig("items", { minItems: 1, maxItems: 10 }, field.text("name")),
+        field.arrayWithConfig("items", { minItems: 1, maxItems: 10 }, field.text("name"))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       expect(f.constraints).toHaveLength(2);
@@ -443,7 +434,7 @@ describe("canonicalizeDSL", () => {
 
     it("produces no constraints for array field without min/maxItems", () => {
       const form = formspec(field.array("items", field.text("name")));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       expect(f.constraints).toHaveLength(0);
@@ -451,7 +442,7 @@ describe("canonicalizeDSL", () => {
 
     it("sets additionalProperties to false on items object", () => {
       const form = formspec(field.array("items", field.text("name")));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       const type = f.type as ArrayTypeNode;
@@ -464,10 +455,10 @@ describe("canonicalizeDSL", () => {
         field.array(
           "items",
           field.text("required_field", { required: true }),
-          field.text("optional_field"),
-        ),
+          field.text("optional_field")
+        )
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       const type = f.type as ArrayTypeNode;
@@ -484,7 +475,7 @@ describe("canonicalizeDSL", () => {
   describe("object field", () => {
     it("produces FieldNode with ObjectTypeNode", () => {
       const form = formspec(field.object("address", field.text("street"), field.text("city")));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "address");
 
       const type = f.type as ObjectTypeNode;
@@ -497,9 +488,9 @@ describe("canonicalizeDSL", () => {
 
     it("propagates constraints and annotations from nested fields to ObjectProperty", () => {
       const form = formspec(
-        field.object("nested", field.number("score", { min: 0, max: 100, label: "Score" })),
+        field.object("nested", field.number("score", { min: 0, max: 100, label: "Score" }))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "nested");
 
       const type = f.type as ObjectTypeNode;
@@ -522,7 +513,7 @@ describe("canonicalizeDSL", () => {
   describe("group element", () => {
     it("produces GroupLayoutNode", () => {
       const form = formspec(group("Personal Info", field.text("name"), field.text("email")));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const g = getGroup(ir, "Personal Info");
 
       expect(g.kind).toBe("group");
@@ -533,7 +524,7 @@ describe("canonicalizeDSL", () => {
 
     it("recursively canonicalizes group elements", () => {
       const form = formspec(group("Section", field.text("name")));
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const g = getGroup(ir, "Section");
 
       expect(g.elements[0]).toMatchObject({ kind: "field", name: "name" });
@@ -541,9 +532,9 @@ describe("canonicalizeDSL", () => {
 
     it("flattens group elements into ObjectProperty when group is inside object field", () => {
       const form = formspec(
-        field.object("address", group("Fields", field.text("street"), field.text("city"))),
+        field.object("address", group("Fields", field.text("street"), field.text("city")))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "address");
 
       const type = f.type as ObjectTypeNode;
@@ -561,9 +552,9 @@ describe("canonicalizeDSL", () => {
     it("produces ConditionalLayoutNode", () => {
       const form = formspec(
         field.enum("status", ["draft", "sent"] as const),
-        when(is("status", "draft"), field.text("notes")),
+        when(is("status", "draft"), field.text("notes"))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const c = getConditional(ir, "status");
 
       expect(c.kind).toBe("conditional");
@@ -576,9 +567,9 @@ describe("canonicalizeDSL", () => {
     it("recursively canonicalizes conditional elements", () => {
       const form = formspec(
         field.boolean("showExtra"),
-        when(is("showExtra", true), field.text("extra")),
+        when(is("showExtra", true), field.text("extra"))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const c = getConditional(ir, "showExtra");
 
       expect(c.value).toBe(true);
@@ -587,18 +578,35 @@ describe("canonicalizeDSL", () => {
 
     it("flattens conditional elements into ObjectProperty when conditional is inside object field", () => {
       const form = formspec(
-        field.object(
-          "nested",
-          field.boolean("flag"),
-          when(is("flag", true), field.text("extra")),
-        ),
+        field.object("nested", field.boolean("flag"), when(is("flag", true), field.text("extra")))
       );
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "nested");
 
       const type = f.type as ObjectTypeNode;
       // flag + extra flattened from the conditional
       expect(type.properties.map((p) => p.name)).toContain("extra");
+    });
+
+    it("marks conditional fields inside objects as optional regardless of required flag", () => {
+      const form = formspec(
+        field.object(
+          "nested",
+          field.text("always_present", { required: true }),
+          when(is("always_present", "yes"), field.text("conditional_field", { required: true })),
+        ),
+      );
+      const ir = canonicalizeChainDSL(form);
+      const f = getField(ir, "nested");
+
+      const type = f.type as ObjectTypeNode;
+      const alwaysPresent = type.properties.find((p) => p.name === "always_present");
+      const conditionalField = type.properties.find((p) => p.name === "conditional_field");
+
+      // Non-conditional required field → optional: false
+      expect(alwaysPresent?.optional).toBe(false);
+      // Conditional field → optional: true even though required: true was set
+      expect(conditionalField?.optional).toBe(true);
     });
   });
 
@@ -608,11 +616,8 @@ describe("canonicalizeDSL", () => {
 
   describe("provenance", () => {
     it("all nodes carry chain-dsl provenance", () => {
-      const form = formspec(
-        field.text("name"),
-        group("G", field.number("score", { min: 0 })),
-      );
-      const ir = canonicalizeDSL(form);
+      const form = formspec(field.text("name"), group("G", field.number("score", { min: 0 })));
+      const ir = canonicalizeChainDSL(form);
 
       expect(ir.provenance.surface).toBe("chain-dsl");
 
@@ -641,10 +646,10 @@ describe("canonicalizeDSL", () => {
         field.enum("status", ["draft", "sent"] as const),
         field.dynamicEnum("country", "fetch_countries"),
         group("Address", field.text("street"), field.text("city")),
-        when(is("status", "draft"), field.text("notes")),
+        when(is("status", "draft"), field.text("notes"))
       );
 
-      const ir = canonicalizeDSL(form);
+      const ir = canonicalizeChainDSL(form);
 
       expect(ir.kind).toBe("form-ir");
       expect(ir.irVersion).toBe(IR_VERSION);
