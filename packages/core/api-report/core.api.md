@@ -321,7 +321,7 @@ export interface FormIR {
     // (undocumented)
     readonly kind: "form-ir";
     readonly provenance: Provenance;
-    readonly typeRegistry: Record<string, TypeDefinition>;
+    readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
 }
 
 // @public

@@ -41,8 +41,8 @@ export type JsonValue =
 // =============================================================================
 
 /**
- * Describes the origin of a constraint or annotation node.
- * Enables diagnostics that point to the source of a contradiction.
+ * Describes the origin of an IR node.
+ * Enables diagnostics that point to the source of a contradiction or error.
  */
 export interface Provenance {
   /** The authoring surface that produced this node. */
@@ -490,7 +490,7 @@ export interface FormIR {
    * Registry of named types referenced by fields in this form.
    * Keys are fully-qualified type names matching `ReferenceTypeNode.name`.
    */
-  readonly typeRegistry: Record<string, TypeDefinition>;
+  readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
   /** Provenance of the form definition itself. */
   readonly provenance: Provenance;
 }

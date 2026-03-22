@@ -73,6 +73,7 @@ expectAssignable<JsonValue>({ nested: { count: 1 } });
 
 // Non-serializable types are not assignable
 expectError<JsonValue>(undefined);
+// eslint-disable-next-line @typescript-eslint/no-empty-function -- testing that functions are rejected as JsonValue
 expectError<JsonValue>(() => {});
 expectError<JsonValue>(Symbol("x"));
 
@@ -133,11 +134,7 @@ expectError<PrimitiveTypeNode>({ kind: "primitive", primitiveKind: "integer" });
 // EnumTypeNode
 const enumNode: EnumTypeNode = {
   kind: "enum",
-  members: [
-    { value: "draft" },
-    { value: "sent", displayName: "Sent" },
-    { value: 1 },
-  ],
+  members: [{ value: "draft" }, { value: "sent", displayName: "Sent" }, { value: 1 }],
 };
 expectAssignable<TypeNode>(enumNode);
 
@@ -590,3 +587,136 @@ expectError<FormIR>({
   typeRegistry: {},
   provenance: provNode,
 });
+
+// =============================================================================
+// MISSING CONSTRAINT VARIANT COVERAGE
+// =============================================================================
+
+const exclusiveMinConstraint: NumericConstraintNode = {
+  kind: "constraint",
+  constraintKind: "exclusiveMinimum",
+  value: 0,
+  provenance: provNode,
+};
+expectAssignable<ConstraintNode>(exclusiveMinConstraint);
+
+const exclusiveMaxConstraint: NumericConstraintNode = {
+  kind: "constraint",
+  constraintKind: "exclusiveMaximum",
+  value: 100,
+  provenance: provNode,
+};
+expectAssignable<ConstraintNode>(exclusiveMaxConstraint);
+
+const maxLengthConstraint: LengthConstraintNode = {
+  kind: "constraint",
+  constraintKind: "maxLength",
+  value: 255,
+  provenance: provNode,
+};
+expectAssignable<ConstraintNode>(maxLengthConstraint);
+
+const maxItemsConstraint: LengthConstraintNode = {
+  kind: "constraint",
+  constraintKind: "maxItems",
+  value: 50,
+  provenance: provNode,
+};
+expectAssignable<ConstraintNode>(maxItemsConstraint);
+
+// =============================================================================
+// DISCRIMINATED UNION NARROWING TESTS
+// =============================================================================
+
+// TypeNode narrows on `kind`
+declare const typeNodeVar: TypeNode;
+if (typeNodeVar.kind === "primitive") {
+  expectType<PrimitiveTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "enum") {
+  expectType<EnumTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "array") {
+  expectType<ArrayTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "object") {
+  expectType<ObjectTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "union") {
+  expectType<UnionTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "reference") {
+  expectType<ReferenceTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "dynamic") {
+  expectType<DynamicTypeNode>(typeNodeVar);
+}
+if (typeNodeVar.kind === "custom") {
+  expectType<CustomTypeNode>(typeNodeVar);
+}
+
+// ConstraintNode narrows on `constraintKind`
+declare const constraintVar: ConstraintNode;
+if (constraintVar.constraintKind === "minimum") {
+  expectType<NumericConstraintNode>(constraintVar);
+}
+if (constraintVar.constraintKind === "pattern") {
+  expectType<PatternConstraintNode>(constraintVar);
+}
+if (constraintVar.constraintKind === "minLength") {
+  expectType<LengthConstraintNode>(constraintVar);
+}
+if (constraintVar.constraintKind === "uniqueItems") {
+  expectType<ArrayCardinalityConstraintNode>(constraintVar);
+}
+if (constraintVar.constraintKind === "allowedMembers") {
+  expectType<EnumMemberConstraintNode>(constraintVar);
+}
+if (constraintVar.constraintKind === "custom") {
+  expectType<CustomConstraintNode>(constraintVar);
+}
+
+// AnnotationNode narrows on `annotationKind`
+declare const annotationVar: AnnotationNode;
+if (annotationVar.annotationKind === "displayName") {
+  expectType<DisplayNameAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "description") {
+  expectType<DescriptionAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "placeholder") {
+  expectType<PlaceholderAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "defaultValue") {
+  expectType<DefaultValueAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "deprecated") {
+  expectType<DeprecatedAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "formatHint") {
+  expectType<FormatHintAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "custom") {
+  expectType<CustomAnnotationNode>(annotationVar);
+}
+
+// LayoutNode narrows on `kind`
+declare const layoutVar: LayoutNode;
+if (layoutVar.kind === "group") {
+  expectType<GroupLayoutNode>(layoutVar);
+}
+if (layoutVar.kind === "conditional") {
+  expectType<ConditionalLayoutNode>(layoutVar);
+}
+
+// FormIRElement narrows on `kind`
+declare const elementVar: FormIRElement;
+if (elementVar.kind === "field") {
+  expectType<FieldNode>(elementVar);
+}
+if (elementVar.kind === "group") {
+  expectType<GroupLayoutNode>(elementVar);
+}
+if (elementVar.kind === "conditional") {
+  expectType<ConditionalLayoutNode>(elementVar);
+}
