@@ -155,9 +155,6 @@ importers:
       '@microsoft/tsdoc':
         specifier: ^0.16.0
         version: 0.16.0
-      '@microsoft/tsdoc-config':
-        specifier: ^0.18.1
-        version: 0.18.1
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
@@ -171,6 +168,9 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../dsl
+      '@microsoft/tsdoc-config':
+        specifier: ^0.18.1
+        version: 0.18.1
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
