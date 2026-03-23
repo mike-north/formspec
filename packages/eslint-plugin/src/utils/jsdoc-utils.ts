@@ -45,11 +45,9 @@ export function getJSDocConstraints(
   // Collect comments before the node itself
   const comments = [...sourceCode.getCommentsBefore(node)];
 
-  // For PropertyDefinition with decorators, also check comments before the
-  // property key. JSDoc comments placed between decorators and the property
-  // name (e.g., `@Minimum(5)\n/** @Maximum 100 */\nvalue!: number;`) are
-  // not "before" the PropertyDefinition node — they're between the
-  // decorator and the key.
+  // For PropertyDefinition with decorators, also collect comments before the
+  // property key — JSDoc comments placed between decorators and the property
+  // name are not "before" the PropertyDefinition node in typescript-eslint ASTs.
   if (node.type === AST_NODE_TYPES.PropertyDefinition && node.decorators.length > 0) {
     const keyComments = sourceCode.getCommentsBefore(node.key);
     for (const c of keyComments) {

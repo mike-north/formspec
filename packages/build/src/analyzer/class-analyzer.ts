@@ -1,5 +1,5 @@
 /**
- * Class analyzer for extracting fields, types, and decorators.
+ * Class analyzer for extracting fields, types, and JSDoc constraints.
  *
  * Produces `IRClassAnalysis` containing `FieldNode[]` and `typeRegistry`
  * directly from class, interface, or type alias declarations.
@@ -15,11 +15,8 @@ import type {
   Provenance,
   ObjectProperty,
   TypeDefinition,
-  NumericConstraintNode,
-  LengthConstraintNode,
   JsonValue,
 } from "@formspec/core";
-import { extractDecorators, resolveDecorator, type DecoratorInfo } from "./decorator-extractor.js";
 import {
   extractJSDocConstraintNodes,
   extractJSDocAnnotationNodes,
@@ -112,11 +109,10 @@ export function analyzeClassToIR(
 
   for (const member of classDecl.members) {
     if (ts.isPropertyDeclaration(member)) {
-      const decorators = extractDecorators(member);
-      const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting, decorators);
+      const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
       if (fieldNode) {
         fields.push(fieldNode);
-        fieldLayouts.push(extractLayoutMetadata(decorators));
+        fieldLayouts.push({});
       }
     } else if (ts.isMethodDeclaration(member)) {
       const methodInfo = analyzeMethod(member, checker);
@@ -212,19 +208,13 @@ export function analyzeTypeAliasToIR(
 
 /**
  * Analyzes a class property declaration into a canonical IR FieldNode.
- *
- * @param preExtractedDecorators - Optional pre-extracted decorators from the caller.
- *   When provided, avoids a redundant `extractDecorators` call. Callers that need
- *   the decorators for other purposes (e.g., layout metadata) should extract once
- *   and pass the result here.
  */
 function analyzeFieldToIR(
   prop: ts.PropertyDeclaration,
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>,
-  preExtractedDecorators?: ReturnType<typeof extractDecorators>
+  visiting: Set<ts.Type>
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
     return null;
@@ -246,27 +236,11 @@ function analyzeFieldToIR(
     constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
   }
 
-  // Extract decorator constraints (class properties have decorators).
-  // Use pre-extracted decorators if provided to avoid redundant AST traversal.
-  const decorators = preExtractedDecorators ?? extractDecorators(prop);
-  for (const dec of decorators) {
-    if (dec.node) {
-      const resolved = resolveDecorator(dec.node, checker);
-      if (resolved) {
-        dec.resolved = resolved;
-      }
-    }
-  }
-  constraints.push(...extractConstraintsFromDecorators(decorators, provenance));
-
-  // Extract JSDoc constraint tags (higher precedence)
+  // Extract JSDoc constraint tags
   constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations
   const annotations: AnnotationNode[] = [];
-
-  // Annotations from decorators (Field decorator)
-  annotations.push(...extractAnnotationsFromDecorators(decorators, provenance));
 
   // JSDoc annotations (@Field_displayName, @Field_description, @deprecated)
   annotations.push(...extractJSDocAnnotationNodes(prop, file));
@@ -665,153 +639,6 @@ function buildFieldNodeInfoMap(
     }
   }
   return map;
-}
-
-// =============================================================================
-// LAYOUT METADATA EXTRACTION FROM DECORATORS
-// =============================================================================
-
-/**
- * Extracts `@Group` and `@ShowWhen` decorator metadata from pre-extracted decorator info.
- *
- * Accepts the result of `extractDecorators` directly to avoid re-traversing the AST.
- */
-function extractLayoutMetadata(
-  decorators: ReturnType<typeof extractDecorators>
-): FieldLayoutMetadata {
-  let groupLabel: string | undefined;
-  let showWhen: FieldLayoutMetadata["showWhen"];
-
-  for (const dec of decorators) {
-    if (dec.name === "Group" && typeof dec.args[0] === "string") {
-      groupLabel = dec.args[0];
-    }
-    if (dec.name === "ShowWhen") {
-      const opts = dec.args[0];
-      if (typeof opts === "object" && opts !== null && !Array.isArray(opts)) {
-        const field = opts["field"];
-        const value = opts["value"];
-        if (typeof field === "string") {
-          showWhen = { field, value: value ?? null };
-        }
-      }
-    }
-  }
-
-  return {
-    ...(groupLabel !== undefined && { groupLabel }),
-    ...(showWhen !== undefined && { showWhen }),
-  };
-}
-
-// =============================================================================
-// CONSTRAINT/ANNOTATION EXTRACTION FROM DECORATORS
-// =============================================================================
-
-/** Decorator names that map to numeric constraints. */
-const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {
-  Minimum: "minimum",
-  Maximum: "maximum",
-  ExclusiveMinimum: "exclusiveMinimum",
-  ExclusiveMaximum: "exclusiveMaximum",
-};
-
-/** Decorator names that map to length constraints. */
-const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind"]> = {
-  MinLength: "minLength",
-  MaxLength: "maxLength",
-};
-
-/**
- * Extracts IR ConstraintNodes from decorator info (for class property decorators).
- */
-function extractConstraintsFromDecorators(
-  decorators: DecoratorInfo[],
-  provenance: Provenance
-): ConstraintNode[] {
-  const constraints: ConstraintNode[] = [];
-
-  for (const dec of decorators) {
-    const effectiveName = dec.resolved?.extendsBuiltin ?? dec.name;
-
-    const numericKind = NUMERIC_CONSTRAINT_MAP[effectiveName];
-    if (numericKind && typeof dec.args[0] === "number") {
-      constraints.push({
-        kind: "constraint",
-        constraintKind: numericKind,
-        value: dec.args[0],
-        provenance,
-      });
-      continue;
-    }
-
-    const lengthKind = LENGTH_CONSTRAINT_MAP[effectiveName];
-    if (lengthKind && typeof dec.args[0] === "number") {
-      constraints.push({
-        kind: "constraint",
-        constraintKind: lengthKind,
-        value: dec.args[0],
-        provenance,
-      });
-      continue;
-    }
-
-    if (effectiveName === "Pattern" && typeof dec.args[0] === "string") {
-      constraints.push({
-        kind: "constraint",
-        constraintKind: "pattern",
-        pattern: dec.args[0],
-        provenance,
-      });
-    }
-  }
-
-  return constraints;
-}
-
-/**
- * Extracts IR AnnotationNodes from decorator info (for class property decorators).
- */
-function extractAnnotationsFromDecorators(
-  decorators: DecoratorInfo[],
-  provenance: Provenance
-): AnnotationNode[] {
-  const annotations: AnnotationNode[] = [];
-
-  for (const dec of decorators) {
-    const effectiveName = dec.resolved?.extendsBuiltin ?? dec.name;
-    if (effectiveName === "Field") {
-      const opts = dec.args[0];
-      if (typeof opts === "object" && opts !== null && !Array.isArray(opts)) {
-        if (typeof opts["displayName"] === "string") {
-          annotations.push({
-            kind: "annotation",
-            annotationKind: "displayName",
-            value: opts["displayName"],
-            provenance,
-          });
-        }
-        if (typeof opts["description"] === "string") {
-          annotations.push({
-            kind: "annotation",
-            annotationKind: "description",
-            value: opts["description"],
-            provenance,
-          });
-        }
-        if (typeof opts["placeholder"] === "string") {
-          annotations.push({
-            kind: "annotation",
-            annotationKind: "placeholder",
-            value: opts["placeholder"],
-            provenance,
-          });
-        }
-      }
-    }
-  }
-
-  return annotations;
 }
 
 // =============================================================================

@@ -140,92 +140,24 @@ function addUnknownExtension(
 // CONSTRAINT NARROWING HELPERS
 // =============================================================================
 
-/**
- * Extract the effective numeric constraint with the given kind.
- *
- * When multiple constraints of the same kind exist (e.g. from a type alias +
- * a JSDoc tag), derives the most restrictive effective bound:
- * - minimum / exclusiveMinimum: the largest value (strictest lower bound)
- * - maximum / exclusiveMaximum: the smallest value (strictest upper bound)
- *
- * The returned node is the one that contributes the effective bound, so its
- * provenance points to the right location in diagnostics.
- */
+/** Extract the first numeric constraint with the given kind, if present. */
 function findNumeric(
   constraints: readonly ConstraintNode[],
   constraintKind: NumericConstraintNode["constraintKind"]
 ): NumericConstraintNode | undefined {
-  const matching = constraints.filter(
+  return constraints.find(
     (c): c is NumericConstraintNode => c.constraintKind === constraintKind
   );
-  if (matching.length === 0) return undefined;
-
-  let best = matching[0];
-  for (let i = 1; i < matching.length; i++) {
-    const current = matching[i];
-    if (current === undefined || best === undefined) continue;
-    switch (constraintKind) {
-      case "minimum":
-      case "exclusiveMinimum":
-        // Largest lower bound is the most restrictive
-        if (current.value > best.value) best = current;
-        break;
-      case "maximum":
-      case "exclusiveMaximum":
-        // Smallest upper bound is the most restrictive
-        if (current.value < best.value) best = current;
-        break;
-      case "multipleOf":
-        // Keep the first; no clear "most restrictive" for multipleOf
-        break;
-      default: {
-        const _exhaustive: never = constraintKind;
-        void _exhaustive;
-      }
-    }
-  }
-  return best;
 }
 
-/**
- * Extract the effective length constraint with the given kind.
- *
- * When multiple constraints of the same kind exist, derives the most
- * restrictive effective bound:
- * - minLength / minItems: the largest value (strictest lower bound)
- * - maxLength / maxItems: the smallest value (strictest upper bound)
- */
+/** Extract the first length constraint with the given kind, if present. */
 function findLength(
   constraints: readonly ConstraintNode[],
   constraintKind: LengthConstraintNode["constraintKind"]
 ): LengthConstraintNode | undefined {
-  const matching = constraints.filter(
+  return constraints.find(
     (c): c is LengthConstraintNode => c.constraintKind === constraintKind
   );
-  if (matching.length === 0) return undefined;
-
-  let best = matching[0];
-  for (let i = 1; i < matching.length; i++) {
-    const current = matching[i];
-    if (current === undefined || best === undefined) continue;
-    switch (constraintKind) {
-      case "minLength":
-      case "minItems":
-        // Largest lower bound is the most restrictive
-        if (current.value > best.value) best = current;
-        break;
-      case "maxLength":
-      case "maxItems":
-        // Smallest upper bound is the most restrictive
-        if (current.value < best.value) best = current;
-        break;
-      default: {
-        const _exhaustive: never = constraintKind;
-        void _exhaustive;
-      }
-    }
-  }
-  return best;
 }
 
 /** Extract all allowedMembers constraints. */
@@ -392,19 +324,6 @@ function checkTypeApplicability(
   type: TypeNode,
   constraints: readonly ConstraintNode[]
 ): void {
-  // For union, reference, dynamic, and custom types we conservatively skip
-  // applicability checks — at least one underlying member type may support the
-  // constraint, and we cannot resolve the concrete type here without deeper
-  // analysis. This avoids false-positive type-mismatch diagnostics on optional
-  // fields (union of T | null) and on extension/reference types.
-  const isOpaque =
-    type.kind === "union" ||
-    type.kind === "reference" ||
-    type.kind === "dynamic" ||
-    type.kind === "custom";
-
-  if (isOpaque) return;
-
   const isNumber = type.kind === "primitive" && type.primitiveKind === "number";
   const isString = type.kind === "primitive" && type.primitiveKind === "string";
   const isArray = type.kind === "array";
@@ -478,10 +397,8 @@ function checkTypeApplicability(
         break;
       }
       default: {
-        // Compile-time exhaustiveness guard. Skip unknown constraint kinds
-        // gracefully (e.g. from a newer core version) rather than throwing.
         const _exhaustive: never = constraint;
-        void _exhaustive;
+        throw new Error(`Unhandled constraint kind: ${(_exhaustive as ConstraintNode).constraintKind}`);
       }
     }
   }
@@ -493,41 +410,11 @@ function checkTypeApplicability(
 
 function validateFieldNode(ctx: ValidationContext, field: FieldNode): void {
   validateConstraints(ctx, field.name, field.type, field.constraints);
-  validateTypeNode(ctx, field.name, field.type);
-}
 
-/**
- * Recursively validates constraints found in a TypeNode structure.
- *
- * Handles object properties, array items, and union members so that
- * constraints nested inside any composite type are checked.
- */
-function validateTypeNode(ctx: ValidationContext, parentName: string, type: TypeNode): void {
-  switch (type.kind) {
-    case "object":
-      for (const prop of type.properties) {
-        validateObjectProperty(ctx, parentName, prop);
-      }
-      break;
-    case "array":
-      // Validate constraints on the element type (covers arrays of objects etc.)
-      validateTypeNode(ctx, `${parentName}[]`, type.items);
-      break;
-    case "union":
-      for (const member of type.members) {
-        validateTypeNode(ctx, parentName, member);
-      }
-      break;
-    case "primitive":
-    case "enum":
-    case "reference":
-    case "dynamic":
-    case "custom":
-      // No nested constraints to validate for leaf types
-      break;
-    default: {
-      const _exhaustive: never = type;
-      void _exhaustive;
+  // Recurse into object type properties
+  if (field.type.kind === "object") {
+    for (const prop of field.type.properties) {
+      validateObjectProperty(ctx, field.name, prop);
     }
   }
 }
@@ -539,7 +426,13 @@ function validateObjectProperty(
 ): void {
   const qualifiedName = `${parentName}.${prop.name}`;
   validateConstraints(ctx, qualifiedName, prop.type, prop.constraints);
-  validateTypeNode(ctx, qualifiedName, prop.type);
+
+  // Recurse further if this property is also an object
+  if (prop.type.kind === "object") {
+    for (const nestedProp of prop.type.properties) {
+      validateObjectProperty(ctx, qualifiedName, nestedProp);
+    }
+  }
 }
 
 function validateConstraints(
@@ -574,11 +467,8 @@ function validateElement(ctx: ValidationContext, element: FormIRElement): void {
       }
       break;
     default: {
-      // Compile-time exhaustiveness guard. Do not throw — unknown element kinds
-      // (e.g. from a newer core version) should be skipped gracefully so that
-      // validation can still check the rest of the IR.
       const _exhaustive: never = element;
-      void _exhaustive;
+      throw new Error(`Unhandled element kind: ${(_exhaustive as FormIRElement).kind}`);
     }
   }
 }
@@ -608,16 +498,6 @@ export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationR
 
   for (const element of ir.elements) {
     validateElement(ctx, element);
-  }
-
-  // Also validate types stored in the typeRegistry — these include named object
-  // types referenced by fields, and their properties may carry constraints that
-  // could contain contradictions or type mismatches.
-  const visited = new Set<string>();
-  for (const [name, typeDef] of Object.entries(ir.typeRegistry)) {
-    if (visited.has(name)) continue;
-    visited.add(name);
-    validateTypeNode(ctx, name, typeDef.type);
   }
 
   return {

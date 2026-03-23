@@ -28,11 +28,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @Minimum < @Maximum
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(0)
-          @Maximum(100)
+          /** @Minimum 0 @Maximum 100 */
           value!: number;
         }
       `,
@@ -40,11 +37,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @Minimum == @Maximum (equal is valid for inclusive bounds)
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(50)
-          @Maximum(50)
+          /** @Minimum 50 @Maximum 50 */
           value!: number;
         }
       `,
@@ -52,11 +46,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum < @ExclusiveMaximum
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(0)
-          @ExclusiveMaximum(100)
+          /** @ExclusiveMinimum 0 @ExclusiveMaximum 100 */
           value!: number;
         }
       `,
@@ -64,11 +55,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @MinLength < @MaxLength
     {
       code: `
-        function MinLength(n: number) { return () => {}; }
-        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @MinLength(1)
-          @MaxLength(100)
+          /** @MinLength 1 @MaxLength 100 */
           name!: string;
         }
       `,
@@ -76,9 +64,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Only @Minimum (no @Maximum)
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
         class Form {
-          @Minimum(0)
+          /** @Minimum 0 */
           value!: number;
         }
       `,
@@ -86,9 +73,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Only @Maximum (no @Minimum)
     {
       code: `
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Maximum(100)
+          /** @Maximum 100 */
           value!: number;
         }
       `,
@@ -96,11 +82,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @Minimum with @ExclusiveMaximum where exclusive max > min
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(0)
-          @ExclusiveMaximum(100)
+          /** @Minimum 0 @ExclusiveMaximum 100 */
           value!: number;
         }
       `,
@@ -108,11 +91,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum < @Maximum (valid: exclusive min below inclusive max)
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(0)
-          @Maximum(100)
+          /** @ExclusiveMinimum 0 @Maximum 100 */
           value!: number;
         }
       `,
@@ -120,11 +100,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @MinLength == @MaxLength (valid: fixed-length string)
     {
       code: `
-        function MinLength(n: number) { return () => {}; }
-        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @MinLength(5)
-          @MaxLength(5)
+          /** @MinLength 5 @MaxLength 5 */
           name!: string;
         }
       `,
@@ -132,49 +109,16 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Negative values: @Minimum(-100) < @Maximum(-50) is valid
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(-100)
-          @Maximum(-50)
+          /** @Minimum -100 @Maximum -50 */
           value!: number;
         }
       `,
     },
-    // JSDoc-only constraints with valid range
+    // No constraints at all
     {
       code: `
         class Form {
-          /** @Minimum 0 @Maximum 100 */
-          value!: number;
-        }
-      `,
-    },
-    // Mixed source: decorator for one constraint, JSDoc for a different one
-    {
-      code: `
-        function Minimum(n: number) { return () => {}; }
-        class Form {
-          @Minimum(0)
-          /** @Maximum 100 */
-          value!: number;
-        }
-      `,
-    },
-    // JSDoc-only: MinLength/MaxLength
-    {
-      code: `
-        class Form {
-          /** @MinLength 1 @MaxLength 255 */
-          name!: string;
-        }
-      `,
-    },
-    // JSDoc ExclusiveMinimum < ExclusiveMaximum
-    {
-      code: `
-        class Form {
-          /** @ExclusiveMinimum 0 @ExclusiveMaximum 100 */
           value!: number;
         }
       `,
@@ -184,11 +128,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(-50)
-          @Maximum(-100)
+          /** @Minimum -50 @Maximum -100 */
           value!: number;
         }
       `,
@@ -197,11 +138,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @Minimum > @Maximum
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(100)
-          @Maximum(50)
+          /** @Minimum 100 @Maximum 50 */
           value!: number;
         }
       `,
@@ -210,11 +148,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum >= @ExclusiveMaximum (equal is invalid for exclusive bounds)
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(50)
-          @ExclusiveMaximum(50)
+          /** @ExclusiveMinimum 50 @ExclusiveMaximum 50 */
           value!: number;
         }
       `,
@@ -223,11 +158,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum > @ExclusiveMaximum
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(100)
-          @ExclusiveMaximum(50)
+          /** @ExclusiveMinimum 100 @ExclusiveMaximum 50 */
           value!: number;
         }
       `,
@@ -236,11 +168,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @MinLength > @MaxLength
     {
       code: `
-        function MinLength(n: number) { return () => {}; }
-        function MaxLength(n: number) { return () => {}; }
         class Form {
-          @MinLength(100)
-          @MaxLength(10)
+          /** @MinLength 100 @MaxLength 10 */
           name!: string;
         }
       `,
@@ -249,11 +178,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Conflicting minimum bounds: @Minimum + @ExclusiveMinimum
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function ExclusiveMinimum(n: number) { return () => {}; }
         class Form {
-          @Minimum(0)
-          @ExclusiveMinimum(0)
+          /** @Minimum 0 @ExclusiveMinimum 0 */
           value!: number;
         }
       `,
@@ -262,11 +188,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // Conflicting maximum bounds: @Maximum + @ExclusiveMaximum
     {
       code: `
-        function Maximum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @Maximum(100)
-          @ExclusiveMaximum(100)
+          /** @Maximum 100 @ExclusiveMaximum 100 */
           value!: number;
         }
       `,
@@ -275,11 +198,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMaximum(n) where n <= @Minimum(m)
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(50)
-          @ExclusiveMaximum(50)
+          /** @Minimum 50 @ExclusiveMaximum 50 */
           value!: number;
         }
       `,
@@ -288,11 +208,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMaximum(n) where n < @Minimum(m)
     {
       code: `
-        function Minimum(n: number) { return () => {}; }
-        function ExclusiveMaximum(n: number) { return () => {}; }
         class Form {
-          @Minimum(100)
-          @ExclusiveMaximum(50)
+          /** @Minimum 100 @ExclusiveMaximum 50 */
           value!: number;
         }
       `,
@@ -301,11 +218,8 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum(m) + @Maximum(n) where n == m (invalid: no valid values)
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(50)
-          @Maximum(50)
+          /** @ExclusiveMinimum 50 @Maximum 50 */
           value!: number;
         }
       `,
@@ -314,69 +228,12 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
     // @ExclusiveMinimum(m) + @Maximum(n) where n < m (invalid)
     {
       code: `
-        function ExclusiveMinimum(n: number) { return () => {}; }
-        function Maximum(n: number) { return () => {}; }
         class Form {
-          @ExclusiveMinimum(100)
-          @Maximum(50)
+          /** @ExclusiveMinimum 100 @Maximum 50 */
           value!: number;
         }
       `,
       errors: [{ messageId: "maximumLessOrEqualExclusiveMin" }],
-    },
-    // JSDoc range violation: MinLength > MaxLength
-    {
-      code: `
-        class Form {
-          /** @MinLength 100 @MaxLength 1 */
-          name!: string;
-        }
-      `,
-      errors: [{ messageId: "minLengthGreaterThanMaxLength" }],
-    },
-    // JSDoc range violation: Minimum > Maximum
-    {
-      code: `
-        class Form {
-          /** @Minimum 100 @Maximum 1 */
-          value!: number;
-        }
-      `,
-      errors: [{ messageId: "minimumGreaterThanMaximum" }],
-    },
-    // Conflicting bounds via JSDoc: @Minimum + @ExclusiveMinimum
-    {
-      code: `
-        class Form {
-          /** @Minimum 5 @ExclusiveMinimum 5 */
-          value!: number;
-        }
-      `,
-      errors: [{ messageId: "conflictingMinimumBounds" }],
-    },
-    // Duplicate source: same constraint via decorator AND JSDoc
-    {
-      code: `
-        function Minimum(n: number) { return () => {}; }
-        class Form {
-          @Minimum(5)
-          /** @Minimum 10 */
-          value!: number;
-        }
-      `,
-      errors: [{ messageId: "duplicateConstraintSource" }],
-    },
-    // Cross-source range violation: decorator @Minimum(100) + JSDoc @Maximum 1
-    {
-      code: `
-        function Minimum(n: number) { return () => {}; }
-        class Form {
-          @Minimum(100)
-          /** @Maximum 1 */
-          value!: number;
-        }
-      `,
-      errors: [{ messageId: "minimumGreaterThanMaximum" }],
     },
   ],
 });

@@ -16,49 +16,25 @@ export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", Op
     name: string;
 };
 
-// Warning: (ae-forgotten-export) The symbol "MessageIds_4" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "MessageIds_3" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "Options_2" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_4, Options_2, unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// Warning: (ae-forgotten-export) The symbol "MessageIds_3" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export const consistentConstraints: ESLintUtils.RuleModule<MessageIds_3, [], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// Warning: (ae-forgotten-export) The symbol "DecoratorAllowedFieldTypesOptions" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export const decoratorAllowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", [DecoratorAllowedFieldTypesOptions], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
-//
-// @public (undocumented)
-export const decoratorFieldTypeMismatch: ESLintUtils.RuleModule<MessageIds, [], unknown, ESLintUtils.RuleListener> & {
+export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_3, Options_2, unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
 // Warning: (ae-forgotten-export) The symbol "MessageIds_2" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
-export const enumOptionsMatchType: ESLintUtils.RuleModule<MessageIds_2, [], unknown, ESLintUtils.RuleListener> & {
+export const consistentConstraints: ESLintUtils.RuleModule<MessageIds_2, [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
+// Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-export const noConflictingDecorators: ESLintUtils.RuleModule<"conflictingDecorators", [], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// @public (undocumented)
-export const noDuplicateDecorators: ESLintUtils.RuleModule<"duplicateDecorator", [], unknown, ESLintUtils.RuleListener> & {
+export const constraintTypeMismatch: ESLintUtils.RuleModule<MessageIds, [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -68,31 +44,10 @@ const plugin: {
         name: string;
     };
     rules: {
-        readonly "decorator-field-type-mismatch": TSESLint.RuleModule<"numericOnNonNumber" | "stringOnNonString", [], unknown, TSESLint.RuleListener> & {
+        readonly "constraint-type-mismatch": TSESLint.RuleModule<"numericOnNonNumber" | "stringOnNonString", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "enum-options-match-type": TSESLint.RuleModule<"enumOptionsMismatch" | "enumOptionsMissing" | "enumOptionsExtra", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "showwhen-field-exists": TSESLint.RuleModule<"fieldDoesNotExist", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "showwhen-suggests-optional": TSESLint.RuleModule<"shouldBeOptional", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "consistent-constraints": TSESLint.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin" | "duplicateConstraintSource", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "no-conflicting-decorators": TSESLint.RuleModule<"conflictingDecorators", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "no-duplicate-decorators": TSESLint.RuleModule<"duplicateDecorator", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "decorator-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", [DecoratorAllowedFieldTypesOptions], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
-        readonly "prefer-custom-decorator": TSESLint.RuleModule<"preferCustomDecorator", [PreferCustomDecoratorOptions], unknown, TSESLint.RuleListener> & {
+        readonly "consistent-constraints": TSESLint.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {
@@ -108,25 +63,6 @@ const plugin: {
     };
 };
 export default plugin;
-
-// @public (undocumented)
-export const preferCustomDecorator: ESLintUtils.RuleModule<"preferCustomDecorator", [PreferCustomDecoratorOptions], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// @public (undocumented)
-export const showwhenFieldExists: ESLintUtils.RuleModule<"fieldDoesNotExist", [], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// @public (undocumented)
-export const showwhenSuggestsOptional: ESLintUtils.RuleModule<"shouldBeOptional", [], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
-
-// Warnings were encountered during analysis:
-//
-// src/index.ts:111:13 - (ae-forgotten-export) The symbol "PreferCustomDecoratorOptions" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

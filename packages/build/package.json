@@ -49,7 +49,6 @@
     "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@formspec/decorators": "workspace:*",
     "@formspec/dsl": "workspace:*",
     "vitest": "^3.0.0"
   },

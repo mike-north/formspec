@@ -2,9 +2,9 @@
 "@formspec/eslint-plugin": minor
 ---
 
-Add ESLint plugin for FormSpec decorator DSL type safety
+Add ESLint plugin for FormSpec type safety
 
-This plugin provides compile-time validation for projects using FormSpec's TypeScript decorator DSL. It catches common mistakes by validating that decorators match their field types and enforcing consistency rules.
+This plugin provides compile-time validation for projects using FormSpec's class-based analysis path. It catches common mistakes by validating that decorators and JSDoc tags match their field types and enforcing consistency rules.
 
 **Installation:**
 

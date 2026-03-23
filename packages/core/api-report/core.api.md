@@ -333,12 +333,6 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 }
 
 // @public
-export const FORMSPEC_DECORATOR_NAMES: readonly ["Field", "Group", "ShowWhen", "EnumOptions", "Minimum", "Maximum", "ExclusiveMinimum", "ExclusiveMaximum", "MinLength", "MaxLength", "Pattern"];
-
-// @public
-export type FormSpecDecoratorName = (typeof FORMSPEC_DECORATOR_NAMES)[number];
-
-// @public
 export interface FormState<Schema extends Record<string, unknown>> {
     readonly dirty: boolean;
     readonly fields: {

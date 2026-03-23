@@ -1,7 +1,7 @@
 /**
  * Rule: consistent-constraints
  *
- * Ensures constraint decorator pairs have valid ranges and don't conflict:
+ * Ensures JSDoc constraint tag pairs have valid ranges and don't conflict:
  * - @Minimum must be <= @Maximum
  * - @ExclusiveMinimum must be < @ExclusiveMaximum
  * - @MinLength must be <= @MaxLength
@@ -9,14 +9,10 @@
  * - @Maximum and @ExclusiveMaximum must not both be present
  * - @Maximum(n) where n < @Minimum(m) is invalid
  * - @ExclusiveMaximum(n) where n <= @Minimum(m) is invalid
- *
- * Constraints may come from decorators or JSDoc tags. If both a decorator
- * and a JSDoc tag specify the same constraint, that is a lint error.
  */
 
 import type { TSESTree } from "@typescript-eslint/utils";
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { findDecorator, getDecoratorLiteralArg } from "../utils/decorator-utils.js";
 import { getJSDocConstraints, findJSDocConstraint } from "../utils/jsdoc-utils.js";
 
 const createRule = ESLintUtils.RuleCreator(
@@ -30,8 +26,7 @@ type MessageIds =
   | "conflictingMinimumBounds"
   | "conflictingMaximumBounds"
   | "exclusiveMaxLessOrEqualMin"
-  | "maximumLessOrEqualExclusiveMin"
-  | "duplicateConstraintSource";
+  | "maximumLessOrEqualExclusiveMin";
 
 interface ConstraintResult {
   value: number;
@@ -48,7 +43,7 @@ export const consistentConstraints = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description: "Ensures constraint decorator pairs have valid ranges and don't conflict",
+      description: "Ensures JSDoc constraint tag pairs have valid ranges and don't conflict",
     },
     messages: {
       minimumGreaterThanMaximum:
@@ -65,8 +60,6 @@ export const consistentConstraints = createRule<[], MessageIds>({
         "@ExclusiveMaximum({{max}}) must be greater than @Minimum({{min}}).",
       maximumLessOrEqualExclusiveMin:
         "@Maximum({{max}}) must be greater than @ExclusiveMinimum({{min}}).",
-      duplicateConstraintSource:
-        "Constraint '{{name}}' is specified via both a decorator and a TSDoc tag. Use one or the other.",
     },
     schema: [],
   },
@@ -78,33 +71,15 @@ export const consistentConstraints = createRule<[], MessageIds>({
       PropertyDefinition(node) {
         const jsdocConstraints = getJSDocConstraints(node, sourceCode);
 
-        // Track which constraints have already been reported as duplicates
-        const reportedDuplicates = new Set<string>();
+        // Nothing to check without any constraints
+        if (jsdocConstraints.length === 0) return;
 
         /**
-         * Gets a numeric constraint value from either a decorator or a JSDoc tag.
-         * Reports a conflict if both sources provide the same constraint.
-         * Returns null if the constraint is absent, ambiguous, or non-numeric.
+         * Gets a numeric constraint value from a JSDoc tag.
+         * Returns null if the constraint is absent or non-numeric.
          */
         function getConstraintValue(name: string): ConstraintResult | null {
-          const dec = findDecorator(node, name);
           const jsdoc = findJSDocConstraint(jsdocConstraints, name);
-
-          // Conflict: same constraint from both sources
-          if (dec && jsdoc) {
-            reportedDuplicates.add(name);
-            context.report({
-              node: dec.node,
-              messageId: "duplicateConstraintSource",
-              data: { name },
-            });
-            return null; // Don't validate range when ambiguous
-          }
-
-          if (dec) {
-            const val = getDecoratorLiteralArg(dec);
-            return typeof val === "number" ? { value: val, loc: dec.node.loc } : null;
-          }
 
           if (jsdoc && typeof jsdoc.value === "number") {
             return { value: jsdoc.value, loc: jsdoc.comment.loc };
@@ -114,23 +89,11 @@ export const consistentConstraints = createRule<[], MessageIds>({
         }
 
         /**
-         * Checks whether a constraint is present from either source.
-         * Only reports duplicate source if not already reported by getConstraintValue.
+         * Checks whether a constraint is present.
          */
         function hasConstraint(name: string): PresenceResult {
-          const dec = findDecorator(node, name);
           const jsdoc = findJSDocConstraint(jsdocConstraints, name);
 
-          if (dec && jsdoc && !reportedDuplicates.has(name)) {
-            reportedDuplicates.add(name);
-            context.report({
-              node: dec.node,
-              messageId: "duplicateConstraintSource",
-              data: { name },
-            });
-          }
-
-          if (dec) return { present: true, loc: dec.node.loc };
           if (jsdoc) return { present: true, loc: jsdoc.comment.loc };
           return { present: false, loc: null };
         }

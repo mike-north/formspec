@@ -71,8 +71,6 @@ export type {
   GenerateSchemasOptions,
 } from "./generators/class-schema.js";
 
-export type { TypeMetadata, DecoratedClassInfo, CodegenOptions } from "./codegen/index.js";
-
 // =============================================================================
 // Zod Validation Schemas
 // =============================================================================
@@ -104,15 +102,13 @@ export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
 
 // =============================================================================
-// Decorator DSL: High-Level Entry Points
+// Class/Interface Analysis: High-Level Entry Points
 // =============================================================================
 
 export { generateSchemasFromClass, generateSchemas } from "./generators/class-schema.js";
 
 // generateSchemas is the recommended entry point — it auto-detects class/interface/type alias.
 // generateSchemasFromClass is retained for backwards compatibility.
-
-export { findDecoratedClasses, generateCodegenOutput, runCodegen } from "./codegen/index.js";
 
 /**
  * Result of building form schemas.

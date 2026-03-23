@@ -8,8 +8,8 @@ This new package provides a CLI tool that generates JSON Schema and JSON Forms U
 
 **Static Analysis (TypeScript Compiler API):**
 
-- Extracts class fields with their TypeScript types
-- Parses decorator metadata (@Label, @Min, @Max, etc.)
+- Extracts class and interface fields with their TypeScript types
+- Parses decorator and JSDoc constraint metadata (@Label, @Min, @Max, etc.)
 - Detects method parameters using `InferSchema<typeof X>` pattern
 - Converts TypeScript types to JSON Schema and FormSpec fields
 

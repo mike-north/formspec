@@ -6,7 +6,7 @@
  *   formspec generate <file> [className] [-o <outDir>]
  *
  * Examples:
- *   # Generate schemas from a class with decorators
+ *   # Generate schemas from a class with JSDoc constraints
  *   formspec generate ./src/forms.ts InstallmentPlan -o ./generated
  *
  *   # Generate schemas from all FormSpec exports in a file (chain DSL)
@@ -16,7 +16,6 @@
  *   formspec generate ./src/forms.ts MyClass -o ./generated
  */
 
-import { runCodegen } from "@formspec/build";
 import {
   createProgramContext,
   findClassByName,
@@ -46,49 +45,9 @@ interface CliOptions {
 }
 
 /**
- * Codegen-specific CLI options.
- */
-interface CodegenCliOptions {
-  command: "codegen";
-  files: string[];
-  output: string;
-}
-
-/**
- * Parses codegen command arguments.
- */
-function parseCodegenArgs(args: string[]): CodegenCliOptions {
-  const files: string[] = [];
-  let output = "./__formspec_types__.ts";
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (!arg) continue;
-
-    if (arg === "-o" || arg === "--output") {
-      const nextArg = args[++i];
-      if (nextArg) output = nextArg;
-    } else if (arg.startsWith("-")) {
-      console.error(`Unknown option: ${arg}`);
-      process.exit(1);
-    } else {
-      files.push(arg);
-    }
-  }
-
-  if (files.length === 0) {
-    console.error("Error: No source files provided");
-    console.error("Usage: formspec codegen <files...> [-o <output>]");
-    process.exit(1);
-  }
-
-  return { command: "codegen", files, output };
-}
-
-/**
  * Parses command line arguments.
  */
-function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
+function parseArgs(args: string[]): CliOptions {
   const [command, ...rest] = args;
 
   if (!command || command === "--help" || command === "-h") {
@@ -96,20 +55,10 @@ function parseArgs(args: string[]): CliOptions | CodegenCliOptions {
     process.exit(0);
   }
 
-  // Handle codegen command
-  if (command === "codegen") {
-    // Check for --help on subcommand
-    if (rest.includes("--help") || rest.includes("-h")) {
-      printCodegenHelp();
-      process.exit(0);
-    }
-    return parseCodegenArgs(rest);
-  }
-
   // Accept both "generate" (primary) and "analyze" (alias for backwards compatibility)
   if (command !== "generate" && command !== "analyze") {
     console.error(`Unknown command: ${command}`);
-    console.error('Use "formspec generate" or "formspec codegen"');
+    console.error('Use "formspec generate"');
     process.exit(1);
   }
 
@@ -166,15 +115,10 @@ function printHelp(): void {
   console.log(`
 FormSpec CLI - Generate JSON Schema and FormSpec from TypeScript
 
-COMMANDS:
-  generate    Generate JSON Schema and UI Schema files from TypeScript
-  codegen     Generate type metadata file for runtime schema generation
-
 USAGE:
   formspec generate <file> [className] [options]
-  formspec codegen <files...> [-o <output>]
 
-Use 'formspec <command> --help' for more information about a command.
+Use 'formspec generate --help' for more information.
 `);
 }
 
@@ -198,7 +142,7 @@ OPTIONS:
   -h, --help            Show this help message
 
 EXAMPLES:
-  # Generate from a decorated class (static analysis only)
+  # Generate from a class with JSDoc constraints (static analysis only)
   formspec generate ./src/forms.ts UserForm -o ./generated
 
   # Generate from FormSpec exports (requires compiled JS)
@@ -207,67 +151,13 @@ EXAMPLES:
 
 HOW IT WORKS:
   The CLI performs static analysis of TypeScript source files using the
-  TypeScript Compiler API. It reads decorator metadata and type information
+  TypeScript Compiler API. It reads JSDoc metadata and type information
   directly from the AST - no compiled output needed for class analysis.
 
   For FormSpec chain DSL exports (formspec(...)), the CLI needs to import
   the compiled JavaScript to generate schemas at runtime. Compile your
   TypeScript using your project's build process, or use the --compiled
   flag to specify the JS path explicitly.
-`);
-}
-
-/**
- * Prints help for the codegen command.
- */
-function printCodegenHelp(): void {
-  console.log(`
-formspec codegen - Generate type metadata for runtime schema generation
-
-USAGE:
-  formspec codegen <files...> [options]
-
-ARGUMENTS:
-  <files...>    TypeScript source files to analyze
-
-OPTIONS:
-  -o, --output <file>   Output file (default: ./__formspec_types__.ts)
-  -h, --help            Show this help message
-
-EXAMPLES:
-  formspec codegen ./src/forms.ts -o ./src/__formspec_types__.ts
-  formspec codegen ./src/**/*.ts -o ./src/__formspec_types__.ts
-
-USAGE IN CODE:
-  After generating the type metadata file:
-
-    // Import once at application entry point
-    import './__formspec_types__';
-
-    // Then use the generated accessor functions
-    import { getUserFormFormSpec } from './__formspec_types__';
-
-    const spec = getUserFormFormSpec();
-    // Use \`spec\` with your preferred schema builder or form renderer.
-
-  Alternatively, use generateSchemasFromClass() for static analysis
-  without codegen:
-
-    import { generateSchemasFromClass } from '@formspec/build';
-
-    const { jsonSchema, uiSchema } = generateSchemasFromClass({
-      filePath: './src/forms.ts',
-      className: 'UserForm',
-    });
-
-HOW IT WORKS:
-  TypeScript erases type information at runtime. This command extracts
-  type metadata (field types, enum values, optional/nullable flags) from
-  your decorated classes and generates a file that patches them with
-  a __formspec_types__ property and accessor functions.
-
-  Without codegen, use generateSchemasFromClass() from @formspec/build
-  for purely static analysis (no runtime metadata needed).
 `);
 }
 
@@ -295,33 +185,20 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
-  // Handle codegen command
-  if (options.command === "codegen") {
-    const codegenOptions = options as CodegenCliOptions;
-    runCodegen({
-      files: codegenOptions.files,
-      output: codegenOptions.output,
-    });
-    return;
+  console.log(`Generating schemas from: ${options.filePath}`);
+  if (options.className) {
+    console.log(`Class: ${options.className}`);
   }
-
-  // Handle generate command
-  const generateOptions = options as CliOptions;
-  console.log(`Generating schemas from: ${generateOptions.filePath}`);
-  if (generateOptions.className) {
-    console.log(`Class: ${generateOptions.className}`);
-  }
-  console.log(`Output: ${generateOptions.outDir}`);
+  console.log(`Output: ${options.outDir}`);
   console.log();
 
   try {
     // Step 1: Static analysis with TypeScript
-    const ctx = createProgramContext(generateOptions.filePath);
+    const ctx = createProgramContext(options.filePath);
     console.log("✓ Created TypeScript program");
 
     // Step 2: Resolve compiled JS path for runtime loading
-    const compiledPath =
-      generateOptions.compiledPath ?? resolveCompiledPath(generateOptions.filePath);
+    const compiledPath = options.compiledPath ?? resolveCompiledPath(options.filePath);
 
     // Step 3: Load all FormSpec exports from compiled module
     let loadedFormSpecs = new Map<string, FormSpecSchemas>();
@@ -339,7 +216,7 @@ async function main(): Promise<void> {
     }
 
     // Step 4: If className specified, analyze the class
-    if (!generateOptions.className && loadedFormSpecs.size === 0) {
+    if (!options.className && loadedFormSpecs.size === 0) {
       // No class name and no FormSpec exports - provide context-aware error
       console.warn("⚠️  No class name specified and no FormSpec exports found.");
       console.warn();
@@ -352,13 +229,13 @@ async function main(): Promise<void> {
         console.warn("   Run your build tool (tsc, esbuild, swc, etc.) then try again.");
         console.warn("   Or use -c/--compiled to specify the JS path explicitly:");
         console.warn(
-          `     npx formspec generate ${generateOptions.filePath} -c ./dist/forms.js -o ${generateOptions.outDir}`
+          `     npx formspec generate ${options.filePath} -c ./dist/forms.js -o ${options.outDir}`
         );
       } else {
         // Compiled file exists but no FormSpec exports found
-        console.warn("   For decorated classes, specify the class name:");
+        console.warn("   For classes with JSDoc constraints, specify the class name:");
         console.warn(
-          `     npx formspec generate ${generateOptions.filePath} <ClassName> -o ${generateOptions.outDir}`
+          `     npx formspec generate ${options.filePath} <ClassName> -o ${options.outDir}`
         );
         console.warn();
         console.warn("   For chain DSL, export a FormSpec from your file:");
@@ -368,18 +245,16 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    if (generateOptions.className) {
-      const classDecl = findClassByName(ctx.sourceFile, generateOptions.className);
+    if (options.className) {
+      const classDecl = findClassByName(ctx.sourceFile, options.className);
 
       if (!classDecl) {
-        console.error(
-          `Error: Class "${generateOptions.className}" not found in ${generateOptions.filePath}`
-        );
+        console.error(`Error: Class "${options.className}" not found in ${options.filePath}`);
         process.exit(1);
       }
 
       // Analyze class
-      const analysis = analyzeClassToIR(classDecl, ctx.checker, generateOptions.filePath);
+      const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
       console.log(
         `✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`
       );
@@ -408,7 +283,7 @@ async function main(): Promise<void> {
       }
 
       // Generate class schemas
-      const classSchemas = generateClassSchemas(analysis, { file: generateOptions.filePath });
+      const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
 
       // Generate method schemas
       const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
@@ -425,7 +300,7 @@ async function main(): Promise<void> {
         classSchemas,
         instanceMethodSchemas,
         staticMethodSchemas,
-        { outDir: generateOptions.outDir }
+        { outDir: options.outDir }
       );
 
       console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
@@ -434,7 +309,7 @@ async function main(): Promise<void> {
     // Step 5: Write standalone FormSpec exports (chain DSL)
     if (loadedFormSpecs.size > 0) {
       const formSpecResult = writeFormSpecSchemas(loadedFormSpecs, {
-        outDir: generateOptions.outDir,
+        outDir: options.outDir,
       });
 
       if (formSpecResult.files.length > 0) {
