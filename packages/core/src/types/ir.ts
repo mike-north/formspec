@@ -154,9 +154,7 @@ export interface ObjectTypeNode {
   readonly properties: readonly ObjectProperty[];
   /**
    * Whether additional properties beyond those listed are permitted.
-   * Canonicalizers and IR producers must always emit an explicit boolean
-   * value here (typically `false`, since FormSpec object types are closed
-   * by default).
+   * Defaults to false — object types in FormSpec are closed.
    */
   readonly additionalProperties: boolean;
 }
@@ -337,7 +335,6 @@ export type AnnotationNode =
   | FormatHintAnnotationNode
   | CustomAnnotationNode;
 
-/** Human-readable label for the field, shown as a form input label. */
 export interface DisplayNameAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "displayName";
@@ -345,7 +342,6 @@ export interface DisplayNameAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Longer explanatory text shown beneath or alongside the field. */
 export interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
@@ -353,7 +349,6 @@ export interface DescriptionAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Input placeholder text shown when the field has no value. */
 export interface PlaceholderAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "placeholder";
@@ -361,7 +356,6 @@ export interface PlaceholderAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Default value pre-populated in the form if the field is not explicitly set. */
 export interface DefaultValueAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "defaultValue";
@@ -370,7 +364,6 @@ export interface DefaultValueAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Marks the field as deprecated with an optional human-readable message. */
 export interface DeprecatedAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "deprecated";
@@ -462,18 +455,9 @@ export type FormIRElement = FieldNode | LayoutNode;
 // TYPE REGISTRY
 // =============================================================================
 
-/**
- * A named type definition stored in the type registry.
- *
- * Invariant: `name` must equal the key under which this definition is stored
- * in `FormIR.typeRegistry`. IR producers must enforce this — consumers may
- * rely on it without re-checking.
- */
+/** A named type definition stored in the type registry. */
 export interface TypeDefinition {
-  /**
-   * The fully-qualified reference name.
-   * Must equal the key under which this entry is stored in `FormIR.typeRegistry`.
-   */
+  /** The fully-qualified reference name (key in the registry). */
   readonly name: string;
   /** The resolved type node. */
   readonly type: TypeNode;
@@ -497,9 +481,9 @@ export interface FormIR {
   readonly kind: "form-ir";
   /**
    * Schema version for the IR format itself.
-   * Must equal `IR_VERSION` — typed exactly to prevent stale-version bugs.
+   * Should equal `IR_VERSION`.
    */
-  readonly irVersion: typeof IR_VERSION;
+  readonly irVersion: string;
   /** Top-level elements of the form: fields and layout nodes. */
   readonly elements: readonly FormIRElement[];
   /**

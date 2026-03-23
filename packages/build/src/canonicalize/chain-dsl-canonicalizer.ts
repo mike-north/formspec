@@ -333,27 +333,21 @@ function canonicalizeConditional(
  * This runtime guard replaces an `as` cast with a validated assertion.
  */
 function assertJsonValue(v: unknown): JsonValue {
-  if (
-    v === null ||
-    typeof v === "string" ||
-    typeof v === "number" ||
-    typeof v === "boolean"
-  ) {
+  if (v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
     return v;
   }
   if (Array.isArray(v)) {
     return v.map(assertJsonValue);
   }
-  if (typeof v === "object" && v !== null) {
+  if (typeof v === "object") {
     const result: Record<string, JsonValue> = {};
     for (const [key, val] of Object.entries(v)) {
       result[key] = assertJsonValue(val);
     }
     return result;
   }
-  throw new Error(
-    `Conditional value is not a valid JsonValue: ${String(v)}`,
-  );
+  // Remaining types (function, symbol, bigint, undefined) are not JSON-serializable
+  throw new TypeError(`Conditional value is not a valid JsonValue: ${typeof v}`);
 }
 
 /**
@@ -423,7 +417,7 @@ function buildAnnotations(label?: string, placeholder?: string): AnnotationNode[
  */
 function buildObjectProperties(
   elements: readonly FormElement[],
-  insideConditional = false,
+  insideConditional = false
 ): ObjectProperty[] {
   const properties: ObjectProperty[] = [];
 

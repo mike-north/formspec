@@ -593,8 +593,8 @@ describe("canonicalizeChainDSL", () => {
         field.object(
           "nested",
           field.text("always_present", { required: true }),
-          when(is("always_present", "yes"), field.text("conditional_field", { required: true })),
-        ),
+          when(is("always_present", "yes"), field.text("conditional_field", { required: true }))
+        )
       );
       const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "nested");
