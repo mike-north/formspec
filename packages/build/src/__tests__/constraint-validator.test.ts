@@ -14,9 +14,11 @@ import type {
   EnumTypeNode,
   ObjectTypeNode,
 } from "@formspec/core";
-import { IR_VERSION } from "@formspec/core";
+import { IR_VERSION, defineConstraint } from "@formspec/core";
 import { validateIR } from "../validate/index.js";
-import type { ValidationDiagnostic, ExtensionRegistry } from "../validate/index.js";
+import type { ValidationDiagnostic } from "../validate/index.js";
+import { createExtensionRegistry } from "../extensions/index.js";
+import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
 // HELPERS
@@ -842,7 +844,19 @@ describe("validateIR", () => {
     });
 
     it("is true when there are only warning diagnostics (valid despite warnings)", () => {
-      const registry: ExtensionRegistry = new Set(["x-known/ext/constraint"]);
+      const registry = createExtensionRegistry([
+        {
+          extensionId: "x-known/ext",
+          constraints: [
+            defineConstraint({
+              constraintName: "constraint",
+              compositionRule: "intersect",
+              applicableTypes: null,
+              toJsonSchema: () => ({}),
+            }),
+          ],
+        },
+      ]);
       const ir = makeIR([
         makeField("field", STRING_TYPE, [customConstraint("x-unknown/ext/constraint", 1)]),
       ]);
@@ -860,8 +874,29 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("DEC-006: unknown extension constraint", () => {
+    /** Helper: creates a registry with a known constraint at the given ID. */
+    function registryWith(constraintId: string): ExtensionRegistry {
+      // Parse the constraintId to extract extensionId and constraintName
+      const lastSlash = constraintId.lastIndexOf("/");
+      const extensionId = constraintId.substring(0, lastSlash);
+      const constraintName = constraintId.substring(lastSlash + 1);
+      return createExtensionRegistry([
+        {
+          extensionId,
+          constraints: [
+            defineConstraint({
+              constraintName,
+              compositionRule: "intersect",
+              applicableTypes: null,
+              toJsonSchema: () => ({}),
+            }),
+          ],
+        },
+      ]);
+    }
+
     it("emits UNKNOWN_EXTENSION warning when constraintId not in registry", () => {
-      const registry: ExtensionRegistry = new Set(["x-stripe/monetary/currency"]);
+      const registry = registryWith("x-stripe/monetary/currency");
       const ir = makeIR([
         makeField("price", STRING_TYPE, [customConstraint("x-stripe/monetary/unknown-thing", 1)]),
       ]);
@@ -876,7 +911,7 @@ describe("validateIR", () => {
     });
 
     it("does not emit when constraintId is found in registry", () => {
-      const registry: ExtensionRegistry = new Set(["x-stripe/monetary/currency"]);
+      const registry = registryWith("x-stripe/monetary/currency");
       const ir = makeIR([
         makeField("price", STRING_TYPE, [customConstraint("x-stripe/monetary/currency", 1)]),
       ]);
@@ -897,7 +932,7 @@ describe("validateIR", () => {
     });
 
     it("uses custom vendor prefix in UNKNOWN_EXTENSION code", () => {
-      const registry: ExtensionRegistry = new Set();
+      const registry = createExtensionRegistry([]);
       const ir = makeIR([
         makeField("price", STRING_TYPE, [customConstraint("x-anything/ext/constraint", 1)]),
       ]);
@@ -907,7 +942,7 @@ describe("validateIR", () => {
     });
 
     it("emits warning for each unknown custom constraint on different fields", () => {
-      const registry: ExtensionRegistry = new Set();
+      const registry = createExtensionRegistry([]);
       const ir = makeIR([
         makeField("field1", STRING_TYPE, [customConstraint("x-ext/a", 1)]),
         makeField("field2", STRING_TYPE, [customConstraint("x-ext/b", 2)]),

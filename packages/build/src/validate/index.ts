@@ -9,5 +9,7 @@ export type {
   ValidationDiagnostic,
   ValidationResult,
   ValidateIROptions,
-  ExtensionRegistry,
 } from "./constraint-validator.js";
+
+// Re-export ExtensionRegistry from the extensions module for convenience
+export type { ExtensionRegistry } from "../extensions/index.js";

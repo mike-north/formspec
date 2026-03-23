@@ -55,8 +55,11 @@ export type {
   ValidationDiagnostic,
   ValidationResult,
   ValidateIROptions,
-  ExtensionRegistry,
 } from "./validate/index.js";
+
+// Extensions: extension registry for custom types, constraints, annotations
+export { createExtensionRegistry } from "./extensions/index.js";
+export type { ExtensionRegistry } from "./extensions/index.js";
 
 // Generators: method schema
 export { generateMethodSchemas, collectFormSpecReferences } from "./generators/method-schema.js";

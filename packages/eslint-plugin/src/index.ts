@@ -4,7 +4,7 @@
  * ESLint plugin for FormSpec constraint validation.
  *
  * Provides rules to:
- * - Validate JSDoc constraint tags on class/interface fields
+ * - Validate JSDoc constraints on class/interface fields
  * - Validate Chain DSL usage against project constraints
  * - Ensure forms comply with target environment capabilities
  */

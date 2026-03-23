@@ -40,8 +40,8 @@ import {
   type DocBlock,
 } from "@microsoft/tsdoc";
 import {
-  CONSTRAINT_TAG_DEFINITIONS,
-  type ConstraintTagName,
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  type BuiltinConstraintName,
   type ConstraintNode,
   type AnnotationNode,
   type Provenance,
@@ -82,10 +82,10 @@ const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind
 const TAGS_REQUIRING_RAW_TEXT = new Set(["Pattern", "EnumOptions"]);
 
 /**
- * Type guard that checks whether a tag name is a known ConstraintTagName.
+ * Type guard that checks whether a tag name is a known BuiltinConstraintName.
  */
-function isConstraintTagName(tagName: string): tagName is ConstraintTagName {
-  return tagName in CONSTRAINT_TAG_DEFINITIONS;
+function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
+  return tagName in BUILTIN_CONSTRAINT_DEFINITIONS;
 }
 
 /**
@@ -97,7 +97,7 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
 
   // Register each constraint tag as a custom block tag (allowMultiple so
   // repeated tags don't produce warnings).
-  for (const tagName of Object.keys(CONSTRAINT_TAG_DEFINITIONS)) {
+  for (const tagName of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -334,18 +334,18 @@ function extractPlainText(node: DocNode): string {
 
 /**
  * Parses a raw text value extracted from a TSDoc block tag into an IR
- * ConstraintNode based on the tag name and CONSTRAINT_TAG_DEFINITIONS.
+ * ConstraintNode based on the tag name and BUILTIN_CONSTRAINT_DEFINITIONS.
  */
 function parseConstraintValue(
   tagName: string,
   text: string,
   provenance: Provenance
 ): ConstraintNode | null {
-  if (!isConstraintTagName(tagName)) {
+  if (!isBuiltinConstraintName(tagName)) {
     return null;
   }
 
-  const expectedType = CONSTRAINT_TAG_DEFINITIONS[tagName];
+  const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[tagName];
 
   if (expectedType === "number") {
     const value = Number(text);

@@ -1,10 +1,10 @@
 /**
- * Utility functions for extracting constraint tags from JSDoc comments.
+ * Utility functions for extracting constraints from JSDoc comments.
  */
 
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import { CONSTRAINT_TAG_DEFINITIONS } from "@formspec/core";
+import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core";
 
 /** A constraint extracted from a JSDoc comment tag. */
 export interface JSDocConstraint {
@@ -16,8 +16,8 @@ export interface JSDocConstraint {
   comment: TSESTree.Comment;
 }
 
-const NUMERIC_TAG_NAMES = Object.keys(CONSTRAINT_TAG_DEFINITIONS).filter(
-  (k) => CONSTRAINT_TAG_DEFINITIONS[k as keyof typeof CONSTRAINT_TAG_DEFINITIONS] === "number"
+const NUMERIC_TAG_NAMES = Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS).filter(
+  (k) => BUILTIN_CONSTRAINT_DEFINITIONS[k as keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS] === "number"
 );
 const NUMERIC_TAGS_PATTERN = NUMERIC_TAG_NAMES.join("|");
 

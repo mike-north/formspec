@@ -6,7 +6,7 @@
  * {@link AnnotationNode} directly.
  *
  * @see packages/core/src/types/ir.ts for IR type definitions
- * @see packages/core/src/types/decorators.ts for CONSTRAINT_TAG_DEFINITIONS
+ * @see packages/core/src/types/constraint-definitions.ts for BUILTIN_CONSTRAINT_DEFINITIONS
  */
 
 import { describe, it, expect } from "vitest";

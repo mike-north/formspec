@@ -1,24 +1,24 @@
 /**
- * JSDoc constraint tag and annotation extractor.
+ * JSDoc constraint and annotation extractor.
  *
- * Extracts constraint tags and annotation tags from JSDoc comments on
+ * Extracts constraints and annotation tags from JSDoc comments on
  * class/interface fields and returns canonical IR nodes directly:
  * - {@link ConstraintNode} for set-influencing tags (@Minimum, @Pattern, etc.)
  * - {@link AnnotationNode} for value-influencing tags (@Field_displayName, etc.)
  *
  * The IR extraction path uses the official `@microsoft/tsdoc` parser for
- * constraint tags (all TSDoc-compliant alphanumeric names) and the TypeScript
+ * constraints (all TSDoc-compliant alphanumeric names) and the TypeScript
  * compiler JSDoc API for annotation tags (which contain underscores, e.g.
  * `@Field_displayName`).
  *
- * Supported constraint tags correspond to keys in {@link CONSTRAINT_TAG_DEFINITIONS}
+ * Supported constraints correspond to keys in {@link BUILTIN_CONSTRAINT_DEFINITIONS}
  * from `@formspec/core` (e.g., `@Minimum`, `@Maximum`, `@Pattern`).
  */
 
 import * as ts from "typescript";
 import {
-  CONSTRAINT_TAG_DEFINITIONS,
-  type ConstraintTagName,
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  type BuiltinConstraintName,
   type ConstraintNode,
   type AnnotationNode,
   type JsonValue,
@@ -58,11 +58,11 @@ export interface ConstraintInfo {
 // =============================================================================
 
 /**
- * Extracts JSDoc constraint tags from a TypeScript AST node and returns
+ * Extracts constraints from JSDoc comments on a TypeScript AST node and returns
  * canonical {@link ConstraintNode} objects.
  *
  * Uses the official `@microsoft/tsdoc` parser for structured tag extraction.
- * Constraint tags are registered as custom block tags in the TSDoc configuration.
+ * Constraints are registered as custom block tags in the TSDoc configuration.
  *
  * @param node - The AST node to inspect for JSDoc tags
  * @param file - Absolute path to the source file for provenance
@@ -172,12 +172,12 @@ export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
   for (const tag of jsDocTags) {
     const tagName = tag.tagName.text;
 
-    if (!(tagName in CONSTRAINT_TAG_DEFINITIONS)) {
+    if (!(tagName in BUILTIN_CONSTRAINT_DEFINITIONS)) {
       continue;
     }
 
-    const constraintName = tagName as ConstraintTagName;
-    const expectedType = CONSTRAINT_TAG_DEFINITIONS[constraintName];
+    const constraintName = tagName as BuiltinConstraintName;
+    const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[constraintName];
 
     const commentText = getTagCommentText(tag);
     if (commentText === undefined || commentText === "") {

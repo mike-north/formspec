@@ -48,8 +48,8 @@ export type {
   EqualsPredicate,
   Predicate,
 
-  // Constraint tags
-  ConstraintTagName,
+  // Built-in constraints
+  BuiltinConstraintName,
 
   // Canonical IR
   JsonValue,
@@ -91,4 +91,15 @@ export type {
 } from "./types/index.js";
 
 // Re-export functions and constants
-export { createInitialFieldState, CONSTRAINT_TAG_DEFINITIONS, IR_VERSION } from "./types/index.js";
+export { createInitialFieldState, BUILTIN_CONSTRAINT_DEFINITIONS, IR_VERSION } from "./types/index.js";
+
+// Extension API
+export type {
+  ExtensionDefinition,
+  CustomTypeRegistration,
+  CustomConstraintRegistration,
+  CustomAnnotationRegistration,
+  VocabularyKeywordRegistration,
+} from "./extensions/index.js";
+
+export { defineExtension, defineCustomType, defineConstraint, defineAnnotation } from "./extensions/index.js";
