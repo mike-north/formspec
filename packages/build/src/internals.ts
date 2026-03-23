@@ -49,6 +49,15 @@ export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 // UI Schema: IR-based generator
 export { generateUiSchemaFromIR } from "./ui-schema/ir-generator.js";
 
+// Validate: constraint validation and contradiction detection
+export { validateIR } from "./validate/index.js";
+export type {
+  ValidationDiagnostic,
+  ValidationResult,
+  ValidateIROptions,
+  ExtensionRegistry,
+} from "./validate/index.js";
+
 // Generators: method schema
 export { generateMethodSchemas, collectFormSpecReferences } from "./generators/method-schema.js";
 export type { LoadedFormSpecSchemas, MethodSchemas } from "./generators/method-schema.js";

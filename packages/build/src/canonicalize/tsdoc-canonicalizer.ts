@@ -66,8 +66,8 @@ export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSourc
  * Assembles flat fields and their layout metadata into a tree of
  * `FormIRElement[]` with groups and conditionals.
  *
- * Fields are processed in order. All fields sharing the same `@Group` label
- * are collected into a single `GroupLayoutNode` regardless of their position.
+ * Fields are processed in order. Consecutive fields with the same
+ * `@Group` label are collected into a single `GroupLayoutNode`.
  * Fields with `@ShowWhen` are wrapped in `ConditionalLayoutNode`.
  */
 function assembleElements(
@@ -77,8 +77,8 @@ function assembleElements(
 ): readonly FormIRElement[] {
   const elements: FormIRElement[] = [];
 
-  // Group all fields with the same group label together, preserving the
-  // insertion order of the first occurrence of each label.
+  // Group consecutive fields with the same group label together.
+  // We use an ordered map to preserve insertion order of groups.
   const groupMap = new Map<string, FormIRElement[]>();
   const topLevelOrder: (
     | { type: "group"; label: string }
