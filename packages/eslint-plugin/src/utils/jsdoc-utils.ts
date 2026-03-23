@@ -17,7 +17,8 @@ export interface JSDocConstraint {
 }
 
 const NUMERIC_TAG_NAMES = Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS).filter(
-  (k) => BUILTIN_CONSTRAINT_DEFINITIONS[k as keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS] === "number"
+  (k) =>
+    BUILTIN_CONSTRAINT_DEFINITIONS[k as keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS] === "number"
 );
 const NUMERIC_TAGS_PATTERN = NUMERIC_TAG_NAMES.join("|");
 
@@ -107,4 +108,89 @@ export function findJSDocConstraint(
   name: string
 ): JSDocConstraint | null {
   return constraints.find((c) => c.name === name) ?? null;
+}
+
+/** A raw JSDoc tag occurrence — name + raw string value + comment node. */
+export interface RawJSDocTag {
+  /** The tag name (without the `@` prefix). */
+  name: string;
+  /** The raw string value that follows the tag name (trimmed). */
+  value: string;
+  /** The comment node (for error reporting location). */
+  comment: TSESTree.Comment;
+}
+
+/**
+ * Extracts all occurrences of a specific JSDoc tag from the comments
+ * preceding a node, returning the raw string value of each occurrence.
+ *
+ * Unlike `getJSDocConstraints`, this function is not limited to the
+ * registered FormSpec constraint tag names and does not attempt to
+ * parse the value as a number. The value is everything between the
+ * tag name and the next `*\/` or end-of-line.
+ *
+ * Intentionally does NOT stop at `@` characters in the value, because
+ * custom tag values can contain `@` (e.g., regex patterns like
+ * `[^@]+@[^@]+` for email validation).
+ *
+ * This is used by `createConstraintRule` to support custom/extension tags.
+ *
+ * @param tagName - The tag name to look for (without the `@` prefix)
+ * @param node - The AST node to check for preceding JSDoc comments
+ * @param sourceCode - The ESLint source code object
+ * @returns Array of raw tag occurrences
+ */
+export function getArbitraryJSDocTag(
+  tagName: string,
+  node: TSESTree.Node,
+  sourceCode: SourceCode
+): RawJSDocTag[] {
+  // Collect comments before the node itself
+  const comments = [...sourceCode.getCommentsBefore(node)];
+
+  // For PropertyDefinition with decorators, also collect comments before the
+  // property key — JSDoc comments placed between decorators and the property
+  // name are not "before" the PropertyDefinition node.
+  if (node.type === AST_NODE_TYPES.PropertyDefinition && node.decorators.length > 0) {
+    const keyComments = sourceCode.getCommentsBefore(node.key);
+    for (const c of keyComments) {
+      if (!comments.includes(c)) {
+        comments.push(c);
+      }
+    }
+  }
+
+  const results: RawJSDocTag[] = [];
+
+  // Build a per-call regex to avoid shared mutable `lastIndex` state.
+  // Escape the tag name to handle special regex characters (e.g., `.`, `$`).
+  const escapedTag = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Stop on the next whitespace-prefixed @ (another tag), end of block comment
+  // (*/) or end of line/input. This ensures multiple tags in the same comment
+  // are each matched independently (e.g. `@Foo 1 @Bar 2` yields two matches).
+  const tagRegex = new RegExp(
+    `@(${escapedTag})(?:\\s+([\\s\\S]*?))?(?=\\s*@|\\s*\\*\\/|\\s*$)`,
+    "gm"
+  );
+
+  for (const comment of comments) {
+    // Only process JSDoc-style block comments (/** ... */)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison -- TSESTree.Comment uses "Block"/"Line" strings, not AST_NODE_TYPES enum
+    if (comment.type !== "Block" || !comment.value.startsWith("*")) {
+      continue;
+    }
+
+    tagRegex.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = tagRegex.exec(comment.value)) !== null) {
+      const matchedName = match[1];
+      const rawValue = match[2] ?? "";
+      if (!matchedName) continue;
+
+      const cleanedValue = rawValue.replace(/^\s*\*\s*/gm, "").trim();
+      results.push({ name: matchedName, value: cleanedValue, comment });
+    }
+  }
+
+  return results;
 }
