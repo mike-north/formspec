@@ -207,7 +207,11 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
 
-  packages/core: {}
+  packages/core:
+    devDependencies:
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
 
   packages/decorators:
     devDependencies:
