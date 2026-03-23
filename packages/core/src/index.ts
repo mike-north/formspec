@@ -5,6 +5,7 @@
  * - Form element types (fields, groups, conditionals)
  * - Field and form state types
  * - Data source registry for dynamic enums
+ * - Canonical IR types (FormIR, FieldNode, TypeNode, ConstraintNode, AnnotationNode, etc.)
  *
  * @packageDocumentation
  */
@@ -50,11 +51,50 @@ export type {
   // Decorators
   FormSpecDecoratorName,
   ConstraintTagName,
+
+  // Canonical IR
+  JsonValue,
+  Provenance,
+  PathTarget,
+  TypeNode,
+  PrimitiveTypeNode,
+  EnumMember,
+  EnumTypeNode,
+  ArrayTypeNode,
+  ObjectProperty,
+  ObjectTypeNode,
+  UnionTypeNode,
+  ReferenceTypeNode,
+  DynamicTypeNode,
+  CustomTypeNode,
+  ConstraintNode,
+  NumericConstraintNode,
+  LengthConstraintNode,
+  PatternConstraintNode,
+  ArrayCardinalityConstraintNode,
+  EnumMemberConstraintNode,
+  CustomConstraintNode,
+  AnnotationNode,
+  DisplayNameAnnotationNode,
+  DescriptionAnnotationNode,
+  PlaceholderAnnotationNode,
+  DefaultValueAnnotationNode,
+  DeprecatedAnnotationNode,
+  FormatHintAnnotationNode,
+  CustomAnnotationNode,
+  FieldNode,
+  LayoutNode,
+  GroupLayoutNode,
+  ConditionalLayoutNode,
+  FormIRElement,
+  TypeDefinition,
+  FormIR,
 } from "./types/index.js";
 
-// Re-export functions
+// Re-export functions and constants
 export {
   createInitialFieldState,
   FORMSPEC_DECORATOR_NAMES,
   CONSTRAINT_TAG_DEFINITIONS,
+  IR_VERSION,
 } from "./types/index.js";
