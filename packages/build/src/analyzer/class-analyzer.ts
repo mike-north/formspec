@@ -236,7 +236,7 @@ function analyzeFieldToIR(
     constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
   }
 
-  // Extract JSDoc constraint tags
+  // Extract JSDoc constraints
   constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations
@@ -292,7 +292,7 @@ function analyzeInterfacePropertyToIR(
     constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
   }
 
-  // JSDoc constraint tags
+  // JSDoc constraints
   constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations

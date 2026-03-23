@@ -4,6 +4,7 @@
  * Performs the Validate pipeline phase:
  * - Contradiction detection between paired constraints
  * - Type applicability checks (e.g. numeric constraints on string fields)
+ * - Custom constraint type applicability (when extension registry is provided)
  * - Unknown extension warnings (when a registry is provided)
  *
  * @packageDocumentation
@@ -21,6 +22,7 @@ import type {
   Provenance,
   ObjectProperty,
 } from "@formspec/core";
+import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
 // PUBLIC API TYPES
@@ -50,12 +52,6 @@ export interface ValidationResult {
   readonly valid: boolean;
 }
 
-/**
- * Registry of known extension constraint IDs for DEC-006 unknown extension checks.
- * Keys are constraint IDs (e.g., `"x-stripe/monetary/currency"`).
- */
-export type ExtensionRegistry = ReadonlySet<string>;
-
 /** Options for constraint validation. */
 export interface ValidateIROptions {
   /**
@@ -64,9 +60,11 @@ export interface ValidateIROptions {
    */
   readonly vendorPrefix?: string;
   /**
-   * Registry of known extension constraint IDs.
-   * When provided, custom constraints with IDs absent from this registry
-   * emit a WARNING (UNKNOWN_EXTENSION). When omitted, no warning is emitted.
+   * Extension registry for resolving custom constraint type applicability.
+   * When provided, custom constraints with `applicableTypes` will be
+   * validated against the field's type node kind. Custom constraints
+   * whose IDs are absent from this registry emit a WARNING (UNKNOWN_EXTENSION).
+   * When omitted, custom constraints are silently skipped.
    */
   readonly extensionRegistry?: ExtensionRegistry;
 }
@@ -384,23 +382,58 @@ function checkTypeApplicability(
         break;
       }
       case "custom": {
-        if (
-          ctx.extensionRegistry !== undefined &&
-          !ctx.extensionRegistry.has(constraint.constraintId)
-        ) {
-          addUnknownExtension(
-            ctx,
-            `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not registered in the extension registry`,
-            constraint.provenance
-          );
-        }
+        checkCustomConstraint(ctx, fieldName, type, constraint);
         break;
       }
       default: {
         const _exhaustive: never = constraint;
-        throw new Error(`Unhandled constraint kind: ${(_exhaustive as ConstraintNode).constraintKind}`);
+        throw new Error(
+          `Unhandled constraint kind: ${(_exhaustive as ConstraintNode).constraintKind}`
+        );
       }
     }
+  }
+}
+
+/**
+ * Check a custom constraint against the extension registry.
+ *
+ * When the registry is available:
+ * - If the constraint ID is not found, emit UNKNOWN_EXTENSION warning
+ * - If found and the registration has `applicableTypes`, verify the field's
+ *   type kind is in that list (emit TYPE_MISMATCH if not)
+ * - If `applicableTypes` is null, the constraint applies to any type
+ *
+ * When no registry is available, custom constraints are silently skipped.
+ */
+function checkCustomConstraint(
+  ctx: ValidationContext,
+  fieldName: string,
+  type: TypeNode,
+  constraint: ConstraintNode & { readonly constraintKind: "custom" }
+): void {
+  if (ctx.extensionRegistry === undefined) return;
+
+  const registration = ctx.extensionRegistry.findConstraint(constraint.constraintId);
+
+  if (registration === undefined) {
+    addUnknownExtension(
+      ctx,
+      `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not registered in the extension registry`,
+      constraint.provenance
+    );
+    return;
+  }
+
+  // If applicableTypes is null, the constraint applies to any type
+  if (registration.applicableTypes === null) return;
+
+  if (!registration.applicableTypes.includes(type.kind)) {
+    addTypeMismatch(
+      ctx,
+      `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
+      constraint.provenance
+    );
   }
 }
 
@@ -483,6 +516,7 @@ function validateElement(ctx: ValidationContext, element: FormIRElement): void {
  * Checks for:
  * - Contradictions between paired constraints (e.g. `minimum > maximum`)
  * - Type applicability violations (e.g. `minLength` on a number field)
+ * - Custom constraint type applicability (via extension registry)
  * - Unknown extension constraints (when `extensionRegistry` is provided)
  *
  * @param ir - The form IR to validate.

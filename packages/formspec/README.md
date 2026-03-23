@@ -147,9 +147,10 @@ You can import from the umbrella package for convenience, or from individual pac
 
 ## Related Packages
 
-| Package         | Description                                        |
-| --------------- | -------------------------------------------------- |
-| `@formspec/cli` | CLI tool for static analysis and schema generation |
+| Package                | Description                                       |
+| ---------------------- | ------------------------------------------------- |
+| `@formspec/decorators` | Decorator-based API for class definitions         |
+| `@formspec/cli`        | CLI tool for static analysis of decorated classes |
 
 ## License
 

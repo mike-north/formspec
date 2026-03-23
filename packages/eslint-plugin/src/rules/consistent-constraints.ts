@@ -1,7 +1,7 @@
 /**
  * Rule: consistent-constraints
  *
- * Ensures JSDoc constraint tag pairs have valid ranges and don't conflict:
+ * Ensures JSDoc constraint pairs have valid ranges and don't conflict:
  * - @Minimum must be <= @Maximum
  * - @ExclusiveMinimum must be < @ExclusiveMaximum
  * - @MinLength must be <= @MaxLength
@@ -43,7 +43,7 @@ export const consistentConstraints = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description: "Ensures JSDoc constraint tag pairs have valid ranges and don't conflict",
+      description: "Ensures JSDoc constraint pairs have valid ranges and don't conflict",
     },
     messages: {
       minimumGreaterThanMaximum:

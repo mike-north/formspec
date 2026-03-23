@@ -1,7 +1,7 @@
 /**
  * Rule: constraint-type-mismatch
  *
- * Ensures JSDoc constraint tags are applied to fields with compatible types:
+ * Ensures JSDoc constraints are applied to fields with compatible types:
  * - @Minimum/@Maximum/@ExclusiveMinimum/@ExclusiveMaximum only on number fields
  * - @MinLength/@MaxLength/@Pattern only on string fields
  */
@@ -46,7 +46,7 @@ export const constraintTypeMismatch = createRule<[], MessageIds>({
   meta: {
     type: "problem",
     docs: {
-      description: "Ensures JSDoc constraint tags are applied to fields with compatible types",
+      description: "Ensures JSDoc constraints are applied to fields with compatible types",
     },
     messages: {
       numericOnNonNumber:

@@ -11,13 +11,15 @@ formspec (umbrella — re-exports everything)
 ├── @formspec/build        (schema generators + static analysis)
 └── @formspec/runtime      (dynamic field resolvers)
 
+@formspec/decorators       (decorator DSL — independent, no deps)
+
 @formspec/cli              (CLI tool)
 └── @formspec/build/internals
 
 @formspec/constraints      (constraint validation)
 └── @formspec/core
 
-@formspec/eslint-plugin    (lint rules for chain DSL and class analysis)
+@formspec/eslint-plugin    (lint rules for both DSLs)
 ├── @formspec/constraints
 └── @formspec/core
 
@@ -30,13 +32,14 @@ formspec (umbrella — re-exports everything)
 Packages build in dependency order. `pnpm run build` at the root handles this automatically.
 
 1. `@formspec/core` — no dependencies
-2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` — depend on core
-3. `@formspec/build` — depends on core
-4. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/constraints
-5. `formspec` — umbrella, depends on all above
-6. `@formspec/playground` — depends on everything, private
+2. `@formspec/decorators` — no library dependencies
+3. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` — depend on core
+4. `@formspec/build` — depends on core
+5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/constraints
+6. `formspec` — umbrella, depends on all above
+7. `@formspec/playground` — depends on everything, private
 
-## Two Authoring Paths
+## Two DSLs
 
 FormSpec offers two ways to define forms that compile to the same output.
 
@@ -65,24 +68,30 @@ type Schema = InferFormSchema<typeof InvoiceForm>;
 // { name: string; country: string; amount: number; status: "draft" | "sent" | "paid"; notes?: string }
 ```
 
-### Class/Interface Analysis
+### Decorator DSL (`@formspec/decorators`)
 
-TypeScript classes and interfaces analyzed statically via the TypeScript Compiler API. Constraints are expressed using decorators (no-ops at runtime) and/or JSDoc/TSDoc tags:
+TypeScript class decorators analyzed via static analysis:
 
 ```typescript
+import { Field, MinLength, MaxLength, Minimum, Pattern } from "@formspec/decorators";
+
 class UserForm {
-  /** @MinLength 2 @MaxLength 100 */
+  @Field({ displayName: "Full Name" })
+  @MinLength(2)
+  @MaxLength(100)
   name!: string;
 
-  /** @Minimum 0 */
+  @Field({ displayName: "Age" })
+  @Minimum(0)
   age!: number;
 
-  /** @Pattern ^[^@]+@[^@]+$ */
+  @Field({ displayName: "Email" })
+  @Pattern("^[^@]+@[^@]+$")
   email?: string;
 }
 ```
 
-All decorators are **no-ops at runtime** — they exist solely as markers for the static analysis pipeline in `@formspec/build`. JSDoc/TSDoc constraint tags are parsed directly from source.
+All decorators are **no-ops at runtime** — they exist solely as markers for the static analysis pipeline in `@formspec/build`.
 
 ## Core Type System (`@formspec/core`)
 
@@ -137,7 +146,7 @@ The JSON Schema generator maps field types directly:
 - `group()` → Transparent in JSON Schema; becomes `GroupLayout` in UI Schema
 - `when()` → Fields included unconditionally in JSON Schema; UI Schema gets `rule: { effect: "SHOW", condition: ... }`
 
-### Class/Interface Analysis Path (Static Analysis)
+### Decorator DSL Path (Static Analysis)
 
 ```
 TypeScript source file
@@ -146,11 +155,12 @@ createProgramContext()          // Create TS program + type checker
   ↓
 analyzeClass()                  // Extract FieldInfo[] with types, decorators, JSDoc
   ├─ extractDecorators()        // Parse @Decorator() calls from AST
+  ├─ resolveDecorator()         // Brand-based resolution for custom/extended decorators
   └─ extractJSDocConstraints()  // Parse /** @Minimum 0 @Maximum 100 */ tags
   ↓
 generateClassSchemas()          // Convert analysis to schemas
   ├─ convertType()              // Map TS types → JSON Schema + FormSpec field type
-  ├─ applyConstraintsToSchema() // Apply constraints to JSON Schema
+  ├─ applyDecoratorsToSchema()  // Apply constraints to JSON Schema
   └─ createFormSpecField()      // Build UI Schema field definitions
   ↓
 { jsonSchema, uiSchema }
@@ -166,7 +176,10 @@ ClassAnalysis
 │   ├── optional: boolean
 │   ├── decorators: DecoratorInfo[]
 │   │   ├── name: string           // "Field", "Minimum", etc.
-│   │   └── args: DecoratorArg[]   // Parsed literal values
+│   │   ├── args: DecoratorArg[]   // Parsed literal values
+│   │   └── resolved?: ResolvedDecorator
+│   │       ├── extendsBuiltin?    // "Field" (for extended decorators)
+│   │       └── extensionName?     // "my-ext" (for custom decorators)
 │   ├── deprecated: boolean        // From JSDoc @deprecated
 │   └── defaultValue: unknown      // From property initializer
 ├── instanceMethods: MethodInfo[]
@@ -178,6 +191,16 @@ ClassAnalysis
 When a class field's type is another class (e.g., `address!: Address`), the type converter navigates from `ts.Type` → class declaration → `analyzeField()` on each property to extract decorator/JSDoc metadata for nested properties. This is handled by `getObjectPropertyInfos()`, a shared helper used by both the JSON Schema and UI Schema paths.
 
 Circular references (e.g., `NodeA.sibling?: NodeB`, `NodeB.sibling?: NodeA`) are detected via visited-type sets. The JSON Schema path produces `{ type: "object" }` at the cycle point; the UI Schema path omits nested fields.
+
+### Custom Decorator Resolution
+
+The `@formspec/decorators` package provides factory functions for extensibility:
+
+- **`extendDecorator("Field").as<Args>("CustomField")`** — Creates a decorator that maps to a built-in (e.g., a `CurrencyField` that extends `Field`)
+- **`customDecorator("my-ext").as<Args>("Tooltip")`** — Creates a decorator that emits `x-formspec-my-ext` extension properties in JSON Schema
+- **`customDecorator("my-ext").marker("Sensitive")`** — Zero-arg marker version
+
+Detection works via **branded types** using unique symbols (`FORMSPEC_EXTENDS`, `FORMSPEC_EXTENSION`, `FORMSPEC_MARKER`). The static analyzer reads these brands from the TypeScript type system — no runtime metadata needed.
 
 ## CLI (`@formspec/cli`)
 
@@ -231,7 +254,7 @@ constraints:
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 
-### Class Analysis Rules
+### Decorator DSL Rules
 
 | Rule                            | Purpose                                                                                  |
 | ------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -266,14 +289,14 @@ constraints:
 
 ### Test Layers
 
-| Layer                | Framework  | Location                                  | Purpose                                    |
-| -------------------- | ---------- | ----------------------------------------- | ------------------------------------------ |
-| **Unit**             | Vitest     | `src/__tests__/*.test.ts`                 | Individual functions in isolation          |
-| **Type**             | tsd        | `src/__tests__/*.test-d.ts`               | Type inference correctness                 |
-| **Integration**      | Vitest     | `src/__tests__/integration.test.ts`       | Full pipeline (DSL → schema)               |
-| **Fixture-based**    | Vitest     | `src/__tests__/analysis-pipeline.test.ts` | Real TypeScript files through the analyzer |
-| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`           | Valid/invalid code patterns per rule       |
-| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`         | Schema snapshot validation                 |
+| Layer                | Framework  | Location                                   | Purpose                                    |
+| -------------------- | ---------- | ------------------------------------------ | ------------------------------------------ |
+| **Unit**             | Vitest     | `src/__tests__/*.test.ts`                  | Individual functions in isolation          |
+| **Type**             | tsd        | `src/__tests__/*.test-d.ts`                | Type inference correctness                 |
+| **Integration**      | Vitest     | `src/__tests__/integration.test.ts`        | Full pipeline (DSL → schema)               |
+| **Fixture-based**    | Vitest     | `src/__tests__/decorator-pipeline.test.ts` | Real TypeScript files through the analyzer |
+| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`            | Valid/invalid code patterns per rule       |
+| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`          | Schema snapshot validation                 |
 
 ### Test Infrastructure
 
@@ -295,7 +318,7 @@ Interactive browser-based editor (React + Vite + Monaco Editor):
 
 - **Changesets** for version management — all `@formspec/*` packages are version-linked
 - **API Extractor** generates `.d.ts` rollups and API reports for library packages
-- **Dual format**: All published packages ship ESM + CommonJS via tsup
+- **Dual format**: `@formspec/decorators` publishes ESM + CommonJS
 - **Pre-release**: Currently on `0.1.0-alpha.*`
 - All publishable packages use `"publishConfig": { "access": "public" }`
 

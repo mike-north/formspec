@@ -54,6 +54,21 @@ export interface BooleanField<N extends string> {
 }
 
 // @public
+export const BUILTIN_CONSTRAINT_DEFINITIONS: {
+    readonly Minimum: "number";
+    readonly Maximum: "number";
+    readonly ExclusiveMinimum: "number";
+    readonly ExclusiveMaximum: "number";
+    readonly MinLength: "number";
+    readonly MaxLength: "number";
+    readonly Pattern: "string";
+    readonly EnumOptions: "json";
+};
+
+// @public
+export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
+
+// @public
 export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
     readonly elements: Elements;
     readonly field: FieldName;
@@ -73,22 +88,7 @@ export interface ConditionalLayoutNode {
 }
 
 // @public
-export const CONSTRAINT_TAG_DEFINITIONS: {
-    readonly Minimum: "number";
-    readonly Maximum: "number";
-    readonly ExclusiveMinimum: "number";
-    readonly ExclusiveMaximum: "number";
-    readonly MinLength: "number";
-    readonly MaxLength: "number";
-    readonly Pattern: "string";
-    readonly EnumOptions: "json";
-};
-
-// @public
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | CustomConstraintNode;
-
-// @public
-export type ConstraintTagName = keyof typeof CONSTRAINT_TAG_DEFINITIONS;
 
 // @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
@@ -107,6 +107,12 @@ export interface CustomAnnotationNode {
 }
 
 // @public
+export interface CustomAnnotationRegistration {
+    readonly annotationName: string;
+    readonly toJsonSchema?: (value: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+}
+
+// @public
 export interface CustomConstraintNode {
     readonly compositionRule: "intersect" | "override";
     readonly constraintId: string;
@@ -122,11 +128,25 @@ export interface CustomConstraintNode {
 }
 
 // @public
+export interface CustomConstraintRegistration {
+    readonly applicableTypes: readonly TypeNode["kind"][] | null;
+    readonly compositionRule: "intersect" | "override";
+    readonly constraintName: string;
+    readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+}
+
+// @public
 export interface CustomTypeNode {
     // (undocumented)
     readonly kind: "custom";
     readonly payload: JsonValue;
     readonly typeId: string;
+}
+
+// @public
+export interface CustomTypeRegistration {
+    readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly typeName: string;
 }
 
 // @public
@@ -155,6 +175,18 @@ export interface DefaultValueAnnotationNode {
     readonly provenance: Provenance;
     readonly value: JsonValue;
 }
+
+// @public
+export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
+
+// @public
+export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
+
+// @public
+export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
+
+// @public
+export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @public (undocumented)
 export interface DeprecatedAnnotationNode {
@@ -266,6 +298,15 @@ export interface EqualsPredicate<K extends string, V> {
     readonly field: K;
     readonly _predicate: "equals";
     readonly value: V;
+}
+
+// @public
+export interface ExtensionDefinition {
+    readonly annotations?: readonly CustomAnnotationRegistration[];
+    readonly constraints?: readonly CustomConstraintRegistration[];
+    readonly extensionId: string;
+    readonly types?: readonly CustomTypeRegistration[];
+    readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
 }
 
 // @public
@@ -540,5 +581,11 @@ export interface UnionTypeNode {
 
 // @public
 export type Validity = "valid" | "invalid" | "unknown";
+
+// @public
+export interface VocabularyKeywordRegistration {
+    readonly keyword: string;
+    readonly schema: JsonValue;
+}
 
 ```

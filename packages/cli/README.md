@@ -25,6 +25,7 @@ pnpm add @formspec/cli
 ```json
 {
   "compilerOptions": {
+    "experimentalDecorators": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext"
   }
@@ -105,7 +106,7 @@ import "./__formspec_types__.js";
 
 // Then use runtime schema generation
 import { UserForm } from "./forms.js";
-import { buildFormSchemas } from "@formspec/build";
+import { buildFormSchemas } from "@formspec/decorators";
 
 const { jsonSchema, uiSchema } = buildFormSchemas(UserForm);
 ```
@@ -113,7 +114,7 @@ const { jsonSchema, uiSchema } = buildFormSchemas(UserForm);
 **When to use `codegen`:**
 
 - You want to generate schemas at runtime (not build time)
-- You're using class-based analysis (not chain DSL)
+- You're using the decorator DSL (not chain DSL)
 - You need type information that TypeScript erases at compile time
 
 > **Note:** The chain DSL (`@formspec/dsl`) doesn't require codegen because it preserves type information at runtime.
@@ -182,16 +183,16 @@ Both formats are generated from the same FormSpec definition, ensuring consisten
 
 ## When to Use
 
-### Class Analysis + CLI vs Chain DSL
+### Decorators + CLI vs Chain DSL
 
 FormSpec offers two approaches for defining forms:
 
-| Approach                  | Best For                            | Schema Generation                                      |
-| ------------------------- | ----------------------------------- | ------------------------------------------------------ |
-| **Class/Interface + CLI** | Class-based data models, DTOs       | Build-time (static analysis) or runtime (with codegen) |
-| **Chain DSL**             | Dynamic forms, runtime construction | Build-time or runtime (no code generation needed)      |
+| Approach             | Best For                            | Schema Generation                                      |
+| -------------------- | ----------------------------------- | ------------------------------------------------------ |
+| **Decorators + CLI** | Class-based data models, DTOs       | Build-time (static analysis) or runtime (with codegen) |
+| **Chain DSL**        | Dynamic forms, runtime construction | Build-time or runtime (no code generation needed)      |
 
-**Use class/interface analysis when:**
+**Use decorators + CLI when:**
 
 - Your forms map directly to TypeScript classes or DTOs
 - You prefer class-based modeling with validation constraints
@@ -245,22 +246,38 @@ The CLI recognizes decorators by name through static analysis. You don't need a 
 | `@ShowWhen(cond)`    | Conditional visibility    | `@ShowWhen({ field: "type", value: "other" })`       |
 | `@Group(name)`       | Group fields together     | `@Group("Contact Info")`                             |
 
-#### Using Decorators and JSDoc Tags
+#### Using Decorators
 
-Decorators are recognized by name through static analysis — no specific runtime library is required. Alternatively, use JSDoc/TSDoc tags directly on your class properties.
+Install the `@formspec/decorators` package:
+
+```bash
+npm install @formspec/decorators
+```
+
+Then use the decorators in your class:
 
 ```typescript
 // user-registration.ts
+import { Label, Min, Max, EnumOptions } from "@formspec/decorators";
 
 class UserRegistration {
-  /** @MinLength 1 */
+  @Label("Full Name")
   name!: string;
 
+  @Label("Email Address")
   email!: string;
 
-  /** @Minimum 18 @Maximum 120 */
+  @Label("Age")
+  @Min(18)
+  @Max(120)
   age?: number;
 
+  @Label("Country")
+  @EnumOptions([
+    { id: "us", label: "United States" },
+    { id: "ca", label: "Canada" },
+    { id: "uk", label: "United Kingdom" },
+  ])
   country!: "us" | "ca" | "uk";
 }
 ```
@@ -271,7 +288,7 @@ Run the CLI:
 formspec generate ./src/user-registration.ts UserRegistration -o ./generated
 ```
 
-> **Note**: Any decorators used are no-ops at runtime with zero overhead. The CLI reads them through static analysis of your TypeScript source code.
+> **Note**: The decorators are no-ops at runtime with zero overhead. The CLI reads them through static analysis of your TypeScript source code.
 
 ### FormSpec Chain DSL Support
 
@@ -341,17 +358,25 @@ generated/
 Given this TypeScript class:
 
 ```typescript
+import { Label, Min, Max, EnumOptions } from "@formspec/decorators";
+
 class ContactForm {
-  /** @Label Full Name */
+  @Label("Full Name")
   name!: string;
 
-  /** @Label Email Address */
+  @Label("Email Address")
   email!: string;
 
-  /** @Label Age @Minimum 18 @Maximum 120 */
+  @Label("Age")
+  @Min(18)
+  @Max(120)
   age?: number;
 
-  /** @Label Country */
+  @Label("Country")
+  @EnumOptions([
+    { id: "us", label: "United States" },
+    { id: "ca", label: "Canada" },
+  ])
   country!: "us" | "ca";
 }
 ```
@@ -413,6 +438,20 @@ Aliases:
   formspec analyze      Same as 'generate' (backwards compatibility)
 ```
 
+## TypeScript Configuration
+
+For decorator support, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
+> **Note**: The `emitDecoratorMetadata` flag is not required. The CLI performs static analysis and reads decorators directly from the AST without using reflection.
+
 ## Troubleshooting
 
 ### "Could not load compiled module" Warning
@@ -434,7 +473,7 @@ Ensure:
 
 1. Decorator names match exactly (case-sensitive): `@Label`, not `@label`
 2. Decorators are function calls: `@Label("text")`, not `@Label`
-3. The decorator function is defined or imported in the file
+3. The decorator is imported (even if it's a stub)
 
 ## License
 

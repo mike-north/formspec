@@ -1,10 +1,10 @@
 /**
- * Unit tests for JSDoc constraint tag extraction.
+ * Unit tests for JSDoc constraint extraction.
  *
- * Verifies that {@link extractJSDocConstraints} correctly parses TSDoc
- * constraint tags into synthetic ConstraintInfo objects.
+ * Verifies that {@link extractJSDocConstraints} correctly parses JSDoc
+ * constraints into synthetic ConstraintInfo objects.
  *
- * @see packages/core/src/types/constraint-tags.ts for CONSTRAINT_TAG_DEFINITIONS
+ * @see packages/core/src/types/constraint-definitions.ts for BUILTIN_CONSTRAINT_DEFINITIONS
  */
 
 import { describe, it, expect } from "vitest";
