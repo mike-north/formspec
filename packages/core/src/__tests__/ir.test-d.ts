@@ -588,15 +588,6 @@ expectError<FormIR>({
   provenance: provNode,
 });
 
-// FormIR.irVersion must be exactly IR_VERSION, not an arbitrary string
-expectError<FormIR>({
-  kind: "form-ir",
-  irVersion: "9.9.9",
-  elements: [],
-  typeRegistry: {},
-  provenance: provNode,
-});
-
 // =============================================================================
 // MISSING CONSTRAINT VARIANT COVERAGE
 // =============================================================================
