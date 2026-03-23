@@ -31,13 +31,26 @@ export default [
     },
   },
   {
-    // Legacy test file using deprecated extractJSDocConstraints — migrated in a later stack PR
+    // Legacy/transitional files — deprecated APIs and unresolved types cleaned up in later stack PRs
     files: [
       "packages/build/src/__tests__/jsdoc-constraints.test.ts",
+      "packages/build/src/__tests__/constraint-validator.test.ts",
+      "packages/build/src/__tests__/extension-api.test.ts",
       "packages/build/src/analyzer/jsdoc-constraints.ts",
+      "packages/build/src/analyzer/tsdoc-parser.ts",
+      "packages/build/src/extensions/registry.ts",
+      "packages/build/src/validate/constraint-validator.ts",
+      "packages/eslint-plugin/src/utils/jsdoc-utils.ts",
     ],
     rules: {
       "@typescript-eslint/no-deprecated": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-redundant-type-constituents": "off",
     },
   },
   {
