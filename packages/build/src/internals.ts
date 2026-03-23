@@ -12,6 +12,9 @@
  * @packageDocumentation
  */
 
+// Canonicalize: DSL → FormIR
+export { canonicalizeChainDSL } from "./canonicalize/index.js";
+
 // Analyzer: program context and type lookup
 export {
   createProgramContext,
@@ -26,6 +29,10 @@ export type { AnalyzeTypeAliasResult } from "./analyzer/class-analyzer.js";
 
 // Generators: class schema
 export { generateClassSchemas } from "./generators/class-schema.js";
+
+// JSON Schema 2020-12: IR-based generator
+export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";
+export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 
 // UI Schema utilities
 export { generateUiSchemaFromFields } from "./ui-schema/generator.js";

@@ -145,7 +145,7 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
     id: infer ID;
 } ? ID : string : string;
 
-// @public
+// @public (undocumented)
 export interface DefaultValueAnnotationNode {
     // (undocumented)
     readonly annotationKind: "defaultValue";
@@ -156,7 +156,7 @@ export interface DefaultValueAnnotationNode {
     readonly value: JsonValue;
 }
 
-// @public
+// @public (undocumented)
 export interface DeprecatedAnnotationNode {
     // (undocumented)
     readonly annotationKind: "deprecated";
@@ -167,7 +167,7 @@ export interface DeprecatedAnnotationNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// @public (undocumented)
 export interface DescriptionAnnotationNode {
     // (undocumented)
     readonly annotationKind: "description";
@@ -179,7 +179,7 @@ export interface DescriptionAnnotationNode {
     readonly value: string;
 }
 
-// @public
+// @public (undocumented)
 export interface DisplayNameAnnotationNode {
     // (undocumented)
     readonly annotationKind: "displayName";
@@ -317,7 +317,7 @@ export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional
 // @public
 export interface FormIR {
     readonly elements: readonly FormIRElement[];
-    readonly irVersion: typeof IR_VERSION;
+    readonly irVersion: string;
     // (undocumented)
     readonly kind: "form-ir";
     readonly provenance: Provenance;
@@ -465,7 +465,7 @@ export interface PatternConstraintNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// @public (undocumented)
 export interface PlaceholderAnnotationNode {
     // (undocumented)
     readonly annotationKind: "placeholder";
