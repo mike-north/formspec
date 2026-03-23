@@ -4,6 +4,11 @@
  * Converts TypeScript types (extracted via type checker) to:
  * - JSON Schema definitions
  * - FormSpec field definitions
+ *
+ * @deprecated This module is part of the legacy JSON Schema generation path.
+ * The canonical IR pipeline (class-analyzer.ts → resolveTypeNode → TypeNode)
+ * replaces this module's type resolution responsibilities. This file will be
+ * deleted in Phase 4 when the IR pipeline replaces all generators.
  */
 
 import * as ts from "typescript";

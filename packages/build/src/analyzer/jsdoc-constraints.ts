@@ -1,30 +1,145 @@
 /**
- * JSDoc constraint tag extractor.
+ * JSDoc constraint tag and annotation extractor.
  *
- * Extracts constraint tags from JSDoc comments on class fields and returns
- * synthetic {@link DecoratorInfo} objects that integrate seamlessly with
- * the existing decorator-based constraint pipeline.
+ * Extracts constraint tags and annotation tags from JSDoc comments on
+ * class/interface fields and returns canonical IR nodes directly:
+ * - {@link ConstraintNode} for set-influencing tags (@Minimum, @Pattern, etc.)
+ * - {@link AnnotationNode} for value-influencing tags (@Field_displayName, etc.)
  *
- * Supported tags correspond to keys in {@link CONSTRAINT_TAG_DEFINITIONS}
+ * The IR extraction path uses the official `@microsoft/tsdoc` parser for
+ * constraint tags (all TSDoc-compliant alphanumeric names) and the TypeScript
+ * compiler JSDoc API for annotation tags (which contain underscores, e.g.
+ * `@Field_displayName`).
+ *
+ * Supported constraint tags correspond to keys in {@link CONSTRAINT_TAG_DEFINITIONS}
  * from `@formspec/core` (e.g., `@Minimum`, `@Maximum`, `@Pattern`).
  */
 
 import * as ts from "typescript";
-import { CONSTRAINT_TAG_DEFINITIONS, type ConstraintTagName } from "@formspec/core";
+import {
+  CONSTRAINT_TAG_DEFINITIONS,
+  type ConstraintTagName,
+  type ConstraintNode,
+  type AnnotationNode,
+  type JsonValue,
+} from "@formspec/core";
+import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
+
+// Legacy re-exports for backward compatibility with decorator pipeline.
+// These will be removed when the decorator DSL is deleted (Phase 7).
 import type { DecoratorArg, DecoratorInfo } from "./decorator-extractor.js";
+
+// =============================================================================
+// IR API — uses @microsoft/tsdoc for structured parsing
+// =============================================================================
 
 /**
  * Extracts JSDoc constraint tags from a TypeScript AST node and returns
- * synthetic {@link DecoratorInfo} objects.
+ * canonical {@link ConstraintNode} objects.
  *
- * For each recognised tag (case-sensitive PascalCase match against
- * {@link CONSTRAINT_TAG_DEFINITIONS}), the comment text is parsed
- * according to the tag's declared value type:
- * - `"number"` tags: parsed via `Number()` — skipped when NaN
- * - `"string"` tags (`Pattern`): used as-is (trimmed)
+ * Uses the official `@microsoft/tsdoc` parser for structured tag extraction.
+ * Constraint tags are registered as custom block tags in the TSDoc configuration.
  *
  * @param node - The AST node to inspect for JSDoc tags
- * @returns Synthetic decorator info objects for each valid constraint tag
+ * @param file - Absolute path to the source file for provenance
+ * @returns Canonical constraint nodes for each valid constraint tag
+ */
+export function extractJSDocConstraintNodes(node: ts.Node, file = ""): ConstraintNode[] {
+  const result = parseTSDocTags(node, file);
+  return [...result.constraints];
+}
+
+/**
+ * Extracts `@Field_displayName`, `@Field_description`, and `@deprecated`
+ * TSDoc tags from a node and returns canonical {@link AnnotationNode} objects.
+ *
+ * Uses a hybrid approach:
+ * - `@deprecated` is extracted via the TSDoc parser (standard tag).
+ * - `@Field_displayName` and `@Field_description` are extracted via the
+ *   TypeScript compiler JSDoc API because they contain underscores which
+ *   are invalid in TSDoc tag names.
+ *
+ * @param node - The AST node to inspect for annotation tags
+ * @param file - Absolute path to the source file for provenance
+ * @returns Canonical annotation nodes
+ */
+export function extractJSDocAnnotationNodes(node: ts.Node, file = ""): AnnotationNode[] {
+  const result = parseTSDocTags(node, file);
+  return [...result.annotations];
+}
+
+/**
+ * Checks if a node has a TSDoc `@deprecated` tag.
+ *
+ * Uses the TSDoc parser for structured detection.
+ */
+export function hasDeprecatedTag(node: ts.Node): boolean {
+  return hasDeprecatedTagTSDoc(node);
+}
+
+/**
+ * Extracts a default value from a property initializer and returns a
+ * {@link DefaultValueAnnotationNode} if present.
+ *
+ * Only extracts literal values (strings, numbers, booleans, null).
+ */
+export function extractDefaultValueAnnotation(
+  initializer: ts.Expression | undefined,
+  file = ""
+): AnnotationNode | null {
+  if (!initializer) return null;
+
+  let value: JsonValue | undefined;
+
+  if (ts.isStringLiteral(initializer)) {
+    value = initializer.text;
+  } else if (ts.isNumericLiteral(initializer)) {
+    value = Number(initializer.text);
+  } else if (initializer.kind === ts.SyntaxKind.TrueKeyword) {
+    value = true;
+  } else if (initializer.kind === ts.SyntaxKind.FalseKeyword) {
+    value = false;
+  } else if (initializer.kind === ts.SyntaxKind.NullKeyword) {
+    value = null;
+  } else if (ts.isPrefixUnaryExpression(initializer)) {
+    if (
+      initializer.operator === ts.SyntaxKind.MinusToken &&
+      ts.isNumericLiteral(initializer.operand)
+    ) {
+      value = -Number(initializer.operand.text);
+    }
+  }
+
+  if (value === undefined) return null;
+
+  const sourceFile = initializer.getSourceFile();
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(initializer.getStart());
+
+  return {
+    kind: "annotation",
+    annotationKind: "defaultValue",
+    value,
+    provenance: {
+      surface: "tsdoc",
+      file,
+      line: line + 1,
+      column: character,
+    },
+  };
+}
+
+// =============================================================================
+// LEGACY API — backward compatibility for decorator-based pipeline
+// =============================================================================
+
+/**
+ * Extracts JSDoc constraint tags and returns synthetic {@link DecoratorInfo}
+ * objects for backward compatibility with the decorator-based pipeline.
+ *
+ * Uses the TypeScript compiler JSDoc API (not TSDoc parser) to maintain
+ * identical behavior with the legacy pipeline.
+ *
+ * @deprecated Use {@link extractJSDocConstraintNodes} for IR output.
  */
 export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
   const results: DecoratorInfo[] = [];
@@ -33,7 +148,6 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
   for (const tag of jsDocTags) {
     const tagName = tag.tagName.text;
 
-    // Case-sensitive check against known constraint tags
     if (!(tagName in CONSTRAINT_TAG_DEFINITIONS)) {
       continue;
     }
@@ -41,7 +155,6 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
     const constraintName = tagName as ConstraintTagName;
     const expectedType = CONSTRAINT_TAG_DEFINITIONS[constraintName];
 
-    // Extract comment text — can be string, NodeArray<JSDocComment>, or undefined
     const commentText = getTagCommentText(tag);
     if (commentText === undefined || commentText === "") {
       continue;
@@ -59,8 +172,6 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
       }
       results.push(createSyntheticDecorator(constraintName, value));
     } else if (expectedType === "json") {
-      // JSON type (EnumOptions) — parse inline JSON array only.
-      // Downstream UI schema generation expects an array of options.
       try {
         const parsed: unknown = JSON.parse(trimmed);
         if (!Array.isArray(parsed)) {
@@ -68,11 +179,9 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
         }
         results.push(createSyntheticDecorator(constraintName, parsed as DecoratorArg));
       } catch {
-        // Skip malformed JSON
         continue;
       }
     } else {
-      // "string" type (Pattern)
       results.push(createSyntheticDecorator(constraintName, trimmed));
     }
   }
@@ -81,23 +190,11 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
 }
 
 /**
- * Extracts `@Field_displayName` and `@Field_description` TSDoc tags from
- * a node and returns a synthetic `Field` {@link DecoratorInfo} if either
- * is present.
+ * Extracts `@Field_displayName` and `@Field_description` TSDoc tags
+ * and returns a synthetic `Field` {@link DecoratorInfo} for backward
+ * compatibility with the decorator-based pipeline.
  *
- * This enables interface properties to carry display metadata via TSDoc
- * tags instead of the `@Field` decorator (which requires a class):
- *
- * ```typescript
- * interface Config {
- *   // @Field_displayName Program Name
- *   // @Field_description Internal identifier
- *   programName: string;
- * }
- * ```
- *
- * @param node - The AST node to inspect for display metadata tags
- * @returns A synthetic `Field` decorator info, or null if no tags found
+ * @deprecated Use {@link extractJSDocAnnotationNodes} for IR output.
  */
 export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
   const jsDocTags = ts.getJSDocTags(node);
@@ -125,7 +222,6 @@ export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
     return null;
   }
 
-  // Build the FieldOptions-shaped arg object
   const fieldOpts: Record<string, DecoratorArg> = {
     ...(displayName !== undefined ? { displayName } : {}),
     ...(description !== undefined ? { description } : {}),
@@ -133,6 +229,10 @@ export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
 
   return createSyntheticDecorator("Field", fieldOpts);
 }
+
+// =============================================================================
+// PRIVATE HELPERS
+// =============================================================================
 
 /**
  * Extracts the text content from a JSDoc tag's comment.
@@ -153,11 +253,7 @@ function getTagCommentText(tag: ts.JSDocTag): string | undefined {
 }
 
 /**
- * Creates a synthetic {@link DecoratorInfo} for a JSDoc constraint tag.
- *
- * The `node` field is `undefined` because JSDoc constraints have no
- * decorator AST node. Downstream constraint processing only uses
- * the `name` and `args` fields.
+ * Creates a synthetic {@link DecoratorInfo} for backward compatibility.
  */
 function createSyntheticDecorator(name: string, value: DecoratorArg): DecoratorInfo {
   return {

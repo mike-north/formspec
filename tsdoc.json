@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+  "_comment": "IMPORTANT: tagDefinitions here must stay in sync with BUILTIN_CONSTRAINT_DEFINITIONS in packages/core/src/constraints/constraint-definitions.ts. Adding a new constraint tag requires updating both files.",
+  "tagDefinitions": [
+    {
+      "tagName": "@Minimum",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@Maximum",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@ExclusiveMinimum",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@ExclusiveMaximum",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@MinLength",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@MaxLength",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@Pattern",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@EnumOptions",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    }
+  ],
+  "supportForTags": {
+    "@Minimum": true,
+    "@Maximum": true,
+    "@ExclusiveMinimum": true,
+    "@ExclusiveMaximum": true,
+    "@MinLength": true,
+    "@MaxLength": true,
+    "@Pattern": true,
+    "@EnumOptions": true
+  }
+}
