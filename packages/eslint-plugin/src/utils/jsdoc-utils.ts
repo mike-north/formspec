@@ -2,7 +2,7 @@
  * Utility functions for extracting constraint tags from JSDoc comments.
  */
 
-import type { TSESTree } from "@typescript-eslint/utils";
+import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 import { CONSTRAINT_TAG_DEFINITIONS } from "@formspec/core";
 
@@ -44,6 +44,18 @@ export function getJSDocConstraints(
 ): JSDocConstraint[] {
   // Collect comments before the node itself
   const comments = [...sourceCode.getCommentsBefore(node)];
+
+  // For PropertyDefinition with decorators, also collect comments before the
+  // property key — JSDoc comments placed between decorators and the property
+  // name are not "before" the PropertyDefinition node in typescript-eslint ASTs.
+  if (node.type === AST_NODE_TYPES.PropertyDefinition && node.decorators.length > 0) {
+    const keyComments = sourceCode.getCommentsBefore(node.key);
+    for (const c of keyComments) {
+      if (!comments.includes(c)) {
+        comments.push(c);
+      }
+    }
+  }
 
   const results: JSDocConstraint[] = [];
 
