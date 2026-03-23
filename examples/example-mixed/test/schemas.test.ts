@@ -2,18 +2,9 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "@formspec/build";
-import type { ExtendedJSONSchema7, UISchemaElement } from "@formspec/build";
 
 const formsPath = path.resolve(import.meta.dirname, "../src/forms.ts");
 const schemasDir = path.resolve(import.meta.dirname, "../schemas");
-
-/** Narrows to a layout element with `elements` and optional `label`. */
-function findGroup(elements: UISchemaElement[], label: string) {
-  return elements.find(
-    (e): e is UISchemaElement & { elements: UISchemaElement[]; label: string } =>
-      e.type === "Group" && "label" in e && (e as { label: string }).label === label
-  );
-}
 
 describe("ProductForm schemas", () => {
   const result = generateSchemasFromClass({
@@ -24,7 +15,7 @@ describe("ProductForm schemas", () => {
   it("generated JSON Schema matches committed file", () => {
     const committed = JSON.parse(
       fs.readFileSync(path.join(schemasDir, "ProductForm.schema.json"), "utf-8")
-    ) as ExtendedJSONSchema7;
+    ) as Record<string, unknown>;
     expect(result.jsonSchema).toEqual(committed);
   });
 
@@ -83,14 +74,35 @@ describe("ProductForm schemas", () => {
     expect(props["expiryDays"]).toMatchObject({ minimum: 1, maximum: 365 });
   });
 
-  it("includes showWhen in uiSchema for conditional field", () => {
-    const shippingGroup = findGroup(result.uiSchema.elements, "Shipping");
-    const expiryControl = shippingGroup?.elements.find(
-      (e) => e.type === "Control" && "scope" in e && e.scope === "#/properties/expiryDays"
+  it("includes group assignments and showWhen rule in uiSchema", () => {
+    const elements = result.uiSchema.elements as Array<{
+      type: string;
+      label?: string;
+      elements?: Array<{ type: string; scope?: string; rule?: unknown }>;
+    }>;
+
+    // Top-level elements are the three Group nodes in definition order.
+    expect(elements.map((el) => ({ type: el.type, label: el.label }))).toEqual([
+      { type: "Group", label: "Details" },
+      { type: "Group", label: "Inventory" },
+      { type: "Group", label: "Shipping" },
+    ]);
+
+    // The Shipping group contains expiryDays with a SHOW rule.
+    const shippingGroup = elements[2];
+    expect(shippingGroup?.type).toBe("Group");
+    expect(shippingGroup?.label).toBe("Shipping");
+
+    const expiryControl = shippingGroup?.elements?.find(
+      (el) => el.scope === "#/properties/expiryDays"
     );
-    expect(expiryControl?.rule).toEqual({
-      effect: "SHOW",
-      condition: { scope: "#/properties/category", schema: { const: "food" } },
+    expect(expiryControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/expiryDays",
+      rule: {
+        effect: "SHOW",
+        condition: { scope: "#/properties/category", schema: { const: "food" } },
+      },
     });
   });
 });

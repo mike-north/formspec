@@ -8,7 +8,7 @@ import * as path from "node:path";
 import {
   createProgramContext,
   findClassByName,
-  analyzeClass,
+  analyzeClassToIR,
   generateClassSchemas,
   generateMethodSchemas,
   collectFormSpecReferences,
@@ -47,8 +47,8 @@ describe("generators", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
     if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-    const schemas = generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
+    const schemas = generateClassSchemas(analysis, { file: sampleFormsPath });
 
     // JSON Schema
     expect(schemas.jsonSchema.type).toBe("object");
@@ -75,7 +75,7 @@ describe("generators", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
     if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     const refs = collectFormSpecReferences([
       ...analysis.instanceMethods,
@@ -91,7 +91,7 @@ describe("generators", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");
     if (!classDecl) throw new Error("SimpleProduct class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     const updateMethod = analysis.instanceMethods[0];
     if (!updateMethod) throw new Error("updateMethod not found");
@@ -148,7 +148,7 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
     if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     // Load FormSpecs at runtime
     const { formSpecs } = await loadFormSpecs(compiledPath);
@@ -186,14 +186,14 @@ describe.skipIf(!hasCompiledFixture)("output writer", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
     if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     // Load FormSpecs
     const { formSpecs } = await loadFormSpecs(compiledPath);
     const loadedSchemas = toLoadedSchemas(formSpecs);
 
     // Generate schemas
-    const classSchemas = generateClassSchemas(analysis, ctx.checker);
+    const classSchemas = generateClassSchemas(analysis, { file: sampleFormsPath });
     const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
       generateMethodSchemas(m, ctx.checker, loadedSchemas)
     );

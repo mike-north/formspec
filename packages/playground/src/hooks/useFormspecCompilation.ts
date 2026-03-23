@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { compileFormSpec, type CompileResult, type DiagnosticMessage } from "../lib/compiler";
 import type { FormSpec, FormElement } from "@formspec/core";
-import type { JSONSchema7, UISchema } from "@formspec/build/browser";
+import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
 import type { ConstraintsConfig } from "../components/Constraints";
 import { toConstraintConfig } from "../lib/constraintAdapter";
 
@@ -65,7 +65,7 @@ export interface UseFormspecCompilationResult {
   /** The compiled FormSpec object, if successful */
   formSpec: FormSpec<readonly FormElement[]> | null;
   /** The generated JSON Schema, if successful */
-  jsonSchema: JSONSchema7 | null;
+  jsonSchema: JsonSchema2020 | null;
   /** The generated UI Schema, if successful */
   uiSchema: UISchema | null;
   /** Compilation errors, if any */
@@ -87,7 +87,7 @@ export function useFormspecCompilation(
   const { debounceMs = 500, constraints } = options;
   const [isCompiling, setIsCompiling] = useState(false);
   const [formSpec, setFormSpec] = useState<FormSpec<readonly FormElement[]> | null>(null);
-  const [jsonSchema, setJsonSchema] = useState<JSONSchema7 | null>(null);
+  const [jsonSchema, setJsonSchema] = useState<JsonSchema2020 | null>(null);
   const [uiSchema, setUiSchema] = useState<UISchema | null>(null);
   const [errors, setErrors] = useState<DiagnosticMessage[]>([]);
 

@@ -139,6 +139,7 @@ export {
 } from "@formspec/build";
 
 export type {
+  JsonSchema2020,
   JSONSchema7,
   JSONSchemaType,
   UISchema,

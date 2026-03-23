@@ -47,7 +47,7 @@ describe("Integration: Complete form workflow", () => {
     const { jsonSchema, uiSchema } = buildFormSchemas(InvoiceForm);
 
     // Verify JSON Schema structure
-    expect(jsonSchema.$schema).toBe("https://json-schema.org/draft-07/schema#");
+    expect(jsonSchema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(jsonSchema.type).toBe("object");
 
     // Verify required fields
@@ -84,7 +84,6 @@ describe("Integration: Complete form workflow", () => {
 
     // Verify enum
     expect(jsonSchema.properties?.["status"]).toMatchObject({
-      type: "string",
       enum: ["draft", "sent", "paid", "overdue"],
     });
 

@@ -10,14 +10,14 @@
 
 import type { FormSpec, FormElement } from "@formspec/core";
 import * as dsl from "@formspec/dsl";
-import { buildFormSchemas, type JSONSchema7, type UISchema } from "@formspec/build/browser";
+import { buildFormSchemas, type JsonSchema2020, type UISchema } from "@formspec/build/browser";
 import { validateFormSpec, type ConstraintConfig } from "@formspec/constraints/browser";
 import ts from "typescript";
 
 export interface CompilationResult {
   success: true;
   formSpec: FormSpec<readonly FormElement[]>;
-  jsonSchema: JSONSchema7;
+  jsonSchema: JsonSchema2020;
   uiSchema: UISchema;
 }
 

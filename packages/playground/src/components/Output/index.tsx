@@ -7,10 +7,10 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
-import type { JSONSchema7, UISchema } from "@formspec/build/browser";
+import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
 
 export interface OutputProps {
-  jsonSchema: JSONSchema7 | null;
+  jsonSchema: JsonSchema2020 | null;
   uiSchema: UISchema | null;
 }
 

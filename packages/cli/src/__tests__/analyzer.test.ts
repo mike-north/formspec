@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import { createProgramContext, findClassByName, analyzeClass } from "@formspec/build/internals";
+import { createProgramContext, findClassByName, analyzeClassToIR } from "@formspec/build/internals";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -52,12 +52,12 @@ describe("findClassByName", () => {
   });
 });
 
-describe("analyzeClass", () => {
+describe("analyzeClassToIR", () => {
   it("analyzes InstallmentPlan fields", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
     if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     expect(analysis.name).toBe("InstallmentPlan");
     expect(analysis.fields).toHaveLength(4);
@@ -73,12 +73,13 @@ describe("analyzeClass", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
     if (!classDecl) throw new Error("InstallmentPlan class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
     const emailField = analysis.fields.find((f) => f.name === "customerEmail");
     const amountField = analysis.fields.find((f) => f.name === "amount");
 
-    expect(emailField?.optional).toBe(true);
-    expect(amountField?.optional).toBe(false);
+    // In IR, optional is inverted as `required`
+    expect(emailField?.required).toBe(false);
+    expect(amountField?.required).toBe(true);
   });
 });

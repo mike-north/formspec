@@ -149,7 +149,6 @@ describe("Edge cases: Enum options", () => {
     const { jsonSchema } = buildFormSchemas(form);
 
     expect(jsonSchema.properties?.["singleOption"]).toMatchObject({
-      type: "string",
       enum: ["only"],
     });
   });
@@ -160,7 +159,6 @@ describe("Edge cases: Enum options", () => {
     const { jsonSchema } = buildFormSchemas(form);
 
     expect(jsonSchema.properties?.["singleObj"]).toMatchObject({
-      type: "string",
       oneOf: [{ const: "only", title: "Only Option" }],
     });
   });
@@ -171,7 +169,6 @@ describe("Edge cases: Enum options", () => {
     const { jsonSchema } = buildFormSchemas(form);
 
     expect(jsonSchema.properties?.["withEmpty"]).toMatchObject({
-      type: "string",
       enum: ["", "value"],
     });
   });

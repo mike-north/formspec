@@ -6,10 +6,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import type { JSONSchema7, UISchema } from "@formspec/build/browser";
+import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
 
 export interface PreviewProps {
-  jsonSchema: JSONSchema7 | null;
+  jsonSchema: JsonSchema2020 | null;
   uiSchema: UISchema | null;
 }
 

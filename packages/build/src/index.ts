@@ -2,7 +2,7 @@
  * `@formspec/build` - Build tools for FormSpec
  *
  * This package provides generators to compile FormSpec forms into:
- * - JSON Schema (for validation)
+ * - JSON Schema 2020-12 (for validation)
  * - JSON Forms UI Schema (for rendering)
  *
  * @example
@@ -26,7 +26,7 @@
 import type { FormElement, FormSpec } from "@formspec/core";
 import { generateJsonSchema } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
-import type { JSONSchema7 } from "./json-schema/types.js";
+import type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 import type { UISchema } from "./ui-schema/types.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -34,6 +34,8 @@ import * as path from "node:path";
 // =============================================================================
 // Type Exports
 // =============================================================================
+
+export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 
 export type {
   JSONSchema7,
@@ -61,8 +63,6 @@ export type {
   RuleConditionSchema,
   SchemaBasedCondition,
 } from "./ui-schema/types.js";
-
-export type { FormSpecField } from "./analyzer/type-converter.js";
 
 export type {
   ClassSchemas,
@@ -101,7 +101,7 @@ export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js
 // =============================================================================
 
 export { generateJsonSchema } from "./json-schema/generator.js";
-export { generateUiSchema, generateUiSchemaFromFields } from "./ui-schema/generator.js";
+export { generateUiSchema } from "./ui-schema/generator.js";
 
 // =============================================================================
 // Decorator DSL: High-Level Entry Points
@@ -118,8 +118,8 @@ export { findDecoratedClasses, generateCodegenOutput, runCodegen } from "./codeg
  * Result of building form schemas.
  */
 export interface BuildResult {
-  /** JSON Schema for validation */
-  readonly jsonSchema: JSONSchema7;
+  /** JSON Schema 2020-12 for validation */
+  readonly jsonSchema: JsonSchema2020;
   /** JSON Forms UI Schema for rendering */
   readonly uiSchema: UISchema;
 }

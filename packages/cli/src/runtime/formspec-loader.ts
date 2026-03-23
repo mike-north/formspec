@@ -9,7 +9,7 @@
  */
 
 import { generateJsonSchema, generateUiSchema } from "@formspec/build";
-import type { JSONSchema7, UISchema } from "@formspec/build";
+import type { JsonSchema2020, UISchema } from "@formspec/build";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -27,7 +27,7 @@ export interface FormSpecSchemas {
   /** The FormSpec export name */
   name: string;
   /** Generated JSON Schema */
-  jsonSchema: JSONSchema7;
+  jsonSchema: JsonSchema2020;
   /** Generated UI Schema (FormSpec/JSON Forms) */
   uiSchema: UISchema;
 }

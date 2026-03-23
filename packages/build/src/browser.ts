@@ -19,8 +19,12 @@
 import type { FormElement, FormSpec } from "@formspec/core";
 import { generateJsonSchema } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
+import type { JsonSchema2020 } from "./json-schema/ir-generator.js";
+import type { UISchema } from "./ui-schema/types.js";
 
 // Re-export types
+export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
+
 export type {
   JSONSchema7,
   JSONSchemaType,
@@ -70,16 +74,16 @@ export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js
 
 // Re-export individual generators
 export { generateJsonSchema } from "./json-schema/generator.js";
-export { generateUiSchema, generateUiSchemaFromFields } from "./ui-schema/generator.js";
+export { generateUiSchema } from "./ui-schema/generator.js";
 
 /**
  * Result of building form schemas.
  */
 export interface BuildResult {
-  /** JSON Schema for validation */
-  readonly jsonSchema: ReturnType<typeof generateJsonSchema>;
+  /** JSON Schema 2020-12 for validation */
+  readonly jsonSchema: JsonSchema2020;
   /** JSON Forms UI Schema for rendering */
-  readonly uiSchema: ReturnType<typeof generateUiSchema>;
+  readonly uiSchema: UISchema;
 }
 
 /**

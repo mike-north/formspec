@@ -1,31 +1,32 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "name": {
       "type": "string",
-      "title": "Full Name",
-      "description": "Your legal name",
       "minLength": 2,
-      "maxLength": 100
+      "maxLength": 100,
+      "title": "Full Name",
+      "description": "Your legal name"
     },
     "email": {
       "type": "string",
+      "pattern": "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$",
       "title": "Email Address",
-      "description": "We'll send a confirmation email",
-      "pattern": "^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"
+      "description": "We'll send a confirmation email"
     },
     "age": {
       "type": "number",
-      "title": "Age",
       "minimum": 13,
-      "maximum": 120
+      "maximum": 120,
+      "title": "Age"
     },
     "username": {
       "type": "string",
-      "title": "Username",
       "minLength": 3,
       "maxLength": 30,
-      "pattern": "^[a-zA-Z0-9_]+$"
+      "pattern": "^[a-zA-Z0-9_]+$",
+      "title": "Username"
     },
     "accountType": {
       "enum": ["personal", "business", "enterprise"],
@@ -45,8 +46,8 @@
     },
     "taxId": {
       "type": "string",
-      "title": "Tax ID",
-      "pattern": "^\\d{2}-\\d{7}$"
+      "pattern": "^\\d{2}-\\d{7}$",
+      "title": "Tax ID"
     },
     "plan": {
       "type": "string",

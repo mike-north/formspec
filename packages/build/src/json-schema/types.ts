@@ -1,5 +1,5 @@
 /**
- * JSON Schema Draft-07 type definitions.
+ * JSON Schema type definitions.
  *
  * These types are a subset of JSON Schema sufficient for form generation.
  */
@@ -17,7 +17,7 @@ export type JSONSchemaType =
   | "null";
 
 /**
- * A JSON Schema definition (draft-07 subset).
+ * A JSON Schema definition (legacy subset used by Zod validator and types.ts).
  */
 export interface JSONSchema7 {
   $schema?: string;
@@ -115,23 +115,22 @@ export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
  * @param value - Extension value
  */
 export function setSchemaExtension(
-  schema: JSONSchema7,
+  schema: object,
   key: `x-formspec-${string}`,
   value: unknown
 ): void {
-  (schema as ExtendedJSONSchema7)[key] = value;
+  (schema as Record<string, unknown>)[key] = value;
 }
 
 /**
  * Reads a FormSpec extension property from a JSON Schema node.
  *
- * Use this to safely read `x-formspec-*` properties from any schema,
- * including nested schemas typed as `JSONSchema7`.
+ * Accepts any schema object — `JSONSchema7`, `JsonSchema2020`, `ExtendedJSONSchema7`, etc.
  *
  * @param schema - Any JSON Schema node
  * @param key - Extension key (must start with `x-formspec-`)
  * @returns The extension value, or `undefined` if not present
  */
-export function getSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`): unknown {
-  return (schema as ExtendedJSONSchema7)[key];
+export function getSchemaExtension(schema: object, key: `x-formspec-${string}`): unknown {
+  return (schema as Record<string, unknown>)[key];
 }

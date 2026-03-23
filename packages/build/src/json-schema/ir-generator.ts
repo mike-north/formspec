@@ -294,9 +294,9 @@ function generateEnumType(type: EnumTypeNode): JsonSchema2020 {
   if (hasDisplayNames) {
     return {
       oneOf: type.members.map((m) => {
-        const entry: Record<string, unknown> = { const: m.value };
+        const entry: JsonSchema2020 = { const: m.value };
         if (m.displayName !== undefined) {
-          entry["title"] = m.displayName;
+          entry.title = m.displayName;
         }
         return entry;
       }),
@@ -364,19 +364,9 @@ function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): Js
  * Generates JSON Schema for a union type.
  *
  * Union handling strategy:
- * - Discriminated unions and literal unions → `oneOf` (mutually exclusive)
- * - Non-discriminated structural unions → `anyOf` (members may overlap)
- *
- * Literal unions: all members are `EnumTypeNode` or `PrimitiveTypeNode` literals
- * (actually, the IR uses `EnumTypeNode` for literal member unions, so if all
- * union members are enum types or const-like, we check for mutual exclusivity).
- *
- * For simplicity and correctness, we check two cases explicitly:
- * 1. Boolean shorthand: `true | false` → `{ type: "boolean" }` (not oneOf)
- * 2. All-literal union → `{ enum: [...] }` (flat form) when no displayNames
- * 3. Discriminated union: all members are objects with a shared required
- *    property having distinct const values → `oneOf`
- * 4. All other cases → `anyOf`
+ * - Boolean shorthand: `true | false` → `{ type: "boolean" }` (not anyOf)
+ * - All other unions → `anyOf` (members may overlap; discriminated union
+ *   detection is deferred to a future phase per design doc 003 §7.4)
  */
 function generateUnionType(type: UnionTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   // Boolean shorthand: union of true-literal and false-literal → type: "boolean"
@@ -384,14 +374,9 @@ function generateUnionType(type: UnionTypeNode, ctx: GeneratorContext): JsonSche
     return { type: "boolean" };
   }
 
-  // Discriminated union detection → oneOf
-  if (isDiscriminatedUnion(type)) {
-    return {
-      oneOf: type.members.map((m) => generateTypeNode(m, ctx)),
-    };
-  }
-
-  // Default: anyOf for non-discriminated unions
+  // Default: anyOf for all non-boolean unions.
+  // Discriminated union detection (shared required property with distinct consts)
+  // is deferred to a future phase.
   return {
     anyOf: type.members.map((m) => generateTypeNode(m, ctx)),
   };
@@ -410,26 +395,6 @@ function isBooleanUnion(type: UnionTypeNode): boolean {
     kinds.every((k) => k === "primitive") &&
     type.members.every((m) => m.kind === "primitive" && m.primitiveKind === "boolean")
   );
-}
-
-/**
- * Returns true if the union is discriminated: all members are ObjectTypeNodes
- * with a shared required property having distinct const/enum values.
- *
- * We detect this heuristically: if every member is an object type, it may be
- * discriminated. Since the IR does not carry a discriminant hint, we conservatively
- * return false and let anyOf handle structural unions.
- *
- * Per design doc 003 §7.4: use oneOf only when members are mutually exclusive.
- * String/number literal unions via EnumTypeNode already handle the flat enum case.
- * Object unions with explicit discriminant detection is a future concern.
- */
-function isDiscriminatedUnion(_type: UnionTypeNode): boolean {
-  // Conservative: only literal unions of string/number values are treated as
-  // discriminated (mutually exclusive) for the oneOf upgrade path.
-  // Full discriminant detection (shared required property with distinct consts)
-  // is deferred to a future phase.
-  return false;
 }
 
 /**
