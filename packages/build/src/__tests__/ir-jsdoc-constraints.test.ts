@@ -371,7 +371,10 @@ describe("extractJSDocAnnotationNodes", () => {
     const result = extractJSDocAnnotationNodes(prop);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ annotationKind: "displayName", value: "Full Name" });
-    expect(result[1]).toMatchObject({ annotationKind: "description", value: "The user's legal name" });
+    expect(result[1]).toMatchObject({
+      annotationKind: "description",
+      value: "The user's legal name",
+    });
   });
 
   it("produces DeprecatedAnnotationNode for @deprecated", () => {

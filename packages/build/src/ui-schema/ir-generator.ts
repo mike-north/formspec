@@ -165,9 +165,8 @@ function irElementsToUiSchema(
 
       default: {
         const _exhaustive: never = element;
-        throw new Error(
-          `Unhandled IR element kind: ${(_exhaustive satisfies never as FormIRElement).kind}`
-        );
+        void _exhaustive;
+        throw new Error("Unhandled IR element kind");
       }
     }
   }

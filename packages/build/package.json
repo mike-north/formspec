@@ -42,6 +42,7 @@
   "dependencies": {
     "@formspec/core": "workspace:*",
     "@microsoft/tsdoc": "^0.16.0",
+    "@microsoft/tsdoc-config": "^0.18.1",
     "zod": "^3.25.0"
   },
   "peerDependencies": {
@@ -50,7 +51,6 @@
   "devDependencies": {
     "@formspec/decorators": "workspace:*",
     "@formspec/dsl": "workspace:*",
-    "@microsoft/tsdoc-config": "^0.18.1",
     "vitest": "^3.0.0"
   },
   "publishConfig": {

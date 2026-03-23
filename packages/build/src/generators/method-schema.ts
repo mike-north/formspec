@@ -1,16 +1,16 @@
 /**
  * Method schema generator.
  *
- * Generates schemas for method parameters and return types:
- * - Parameters using FormSpec (InferSchema<typeof X>) -> runtime generation
- * - Parameters with regular types -> static type conversion
- * - Return types -> static type conversion
+ * Generates schemas for method parameters and return types, routing through
+ * the canonical IR pipeline (TypeScript type → TypeNode → JSON Schema 2020-12).
  */
 
 import type * as ts from "typescript";
 import type { MethodInfo, ParameterInfo } from "../analyzer/class-analyzer.js";
-import { convertType } from "../analyzer/type-converter.js";
-import type { ExtendedJSONSchema7 } from "../json-schema/types.js";
+import { resolveTypeNode } from "../analyzer/class-analyzer.js";
+import type { TypeDefinition } from "@formspec/core";
+import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
+import { IR_VERSION } from "@formspec/core";
 
 /**
  * Runtime-loaded FormSpec schemas, compatible with the CLI's FormSpecSchemas type.
@@ -33,7 +33,7 @@ export interface MethodSchemas {
   /** Parameter schemas (from FormSpec or static analysis) */
   params: MethodParamsSchemas | null;
   /** Return type schema */
-  returnType: ExtendedJSONSchema7;
+  returnType: JsonSchema2020;
 }
 
 /**
@@ -41,7 +41,7 @@ export interface MethodSchemas {
  */
 export interface MethodParamsSchemas {
   /** JSON Schema for parameters */
-  jsonSchema: ExtendedJSONSchema7;
+  jsonSchema: JsonSchema2020;
   /** UI Schema / FormSpec for parameters (if available) */
   uiSchema: object | null;
   /** Name of the FormSpec export used (if any) */
@@ -49,11 +49,53 @@ export interface MethodParamsSchemas {
 }
 
 /**
+ * Resolves a TypeScript type to a JSON Schema 2020-12 sub-schema via the IR.
+ */
+function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema2020 {
+  const typeRegistry: Record<string, TypeDefinition> = {};
+  const visiting = new Set<ts.Type>();
+  const typeNode = resolveTypeNode(type, checker, "", typeRegistry, visiting);
+
+  const fieldProvenance = { surface: "tsdoc" as const, file: "", line: 0, column: 0 };
+
+  // Build a minimal FormIR wrapping a single field to reuse the IR generator.
+  const ir = {
+    kind: "form-ir" as const,
+    irVersion: IR_VERSION,
+    elements: [
+      {
+        kind: "field" as const,
+        name: "__result",
+        type: typeNode,
+        required: true,
+        constraints: [],
+        annotations: [],
+        provenance: fieldProvenance,
+      },
+    ],
+    typeRegistry,
+    provenance: fieldProvenance,
+  };
+
+  const schema = generateJsonSchemaFromIR(ir);
+  // Extract the single field's sub-schema from the wrapper.
+  const fieldSchema = schema.properties?.["__result"];
+  if (fieldSchema) {
+    // If there are $defs, attach them to the field schema for completeness.
+    if (schema.$defs && Object.keys(schema.$defs).length > 0) {
+      return { ...fieldSchema, $defs: schema.$defs };
+    }
+    return fieldSchema;
+  }
+  return { type: "object" };
+}
+
+/**
  * Generates schemas for a method's parameters and return type.
  *
  * If a parameter references a FormSpec via `InferSchema<typeof X>`,
  * the schemas are taken from the loaded FormSpec at runtime.
- * Otherwise, schemas are generated from static type analysis.
+ * Otherwise, schemas are generated from static type analysis via the IR.
  *
  * @param method - The method information from static analysis
  * @param checker - TypeScript type checker
@@ -65,8 +107,8 @@ export function generateMethodSchemas(
   checker: ts.TypeChecker,
   loadedFormSpecs: Map<string, LoadedFormSpecSchemas>
 ): MethodSchemas {
-  // Generate return type schema from static analysis
-  const returnType = convertType(method.returnType, checker).jsonSchema;
+  // Generate return type schema via IR
+  const returnType = typeToJsonSchema(method.returnType, checker);
 
   // Handle parameters
   const params = generateParamsSchemas(method.parameters, checker, loadedFormSpecs);
@@ -95,10 +137,8 @@ function generateParamsSchemas(
     if (param.formSpecExportName) {
       const formSpec = loadedFormSpecs.get(param.formSpecExportName);
       if (formSpec) {
-        // Use runtime-generated schemas from FormSpec
-        // Cast to our ExtendedJSONSchema7 type (structurally compatible)
         return {
-          jsonSchema: formSpec.jsonSchema as ExtendedJSONSchema7,
+          jsonSchema: formSpec.jsonSchema as JsonSchema2020,
           uiSchema: formSpec.uiSchema as object | null,
           formSpecExport: param.formSpecExportName,
         };
@@ -111,11 +151,10 @@ function generateParamsSchemas(
     }
   }
 
-  // Generate from static type analysis
+  // Generate from static type analysis via IR
   if (parameters.length === 1 && parameters[0]) {
-    // Single parameter - use its type directly
     const param = parameters[0];
-    const jsonSchema = convertType(param.type, checker).jsonSchema;
+    const jsonSchema = typeToJsonSchema(param.type, checker);
     return {
       jsonSchema,
       uiSchema: null,
@@ -124,13 +163,12 @@ function generateParamsSchemas(
   }
 
   // Multiple parameters - create object schema
-  const properties: Record<string, ExtendedJSONSchema7> = {};
+  const properties: Record<string, JsonSchema2020> = {};
   const required: string[] = [];
 
   for (const param of parameters) {
-    const paramSchema = convertType(param.type, checker).jsonSchema;
+    const paramSchema = typeToJsonSchema(param.type, checker);
     properties[param.name] = paramSchema;
-    // Only non-optional parameters should be marked as required
     if (!param.optional) {
       required.push(param.name);
     }

@@ -1,40 +1,41 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "name": {
       "type": "string",
-      "title": "Product Name",
       "minLength": 1,
-      "maxLength": 200
+      "maxLength": 200,
+      "title": "Product Name"
     },
     "price": {
       "type": "number",
-      "title": "Price",
       "minimum": 0,
-      "maximum": 99999
+      "maximum": 99999,
+      "title": "Price"
     },
     "weight": {
       "type": "number",
-      "title": "Weight (kg)",
       "minimum": 0.01,
-      "maximum": 1000
+      "maximum": 1000,
+      "title": "Weight (kg)"
     },
     "sku": {
       "type": "string",
-      "title": "SKU",
-      "pattern": "^[A-Z]{3}-\\d{4}$"
+      "pattern": "^[A-Z]{3}-\\d{4}$",
+      "title": "SKU"
     },
     "stock": {
       "type": "number",
-      "title": "Stock Count",
       "minimum": 0,
-      "exclusiveMaximum": 10000
+      "exclusiveMaximum": 10000,
+      "title": "Stock Count"
     },
     "batchCode": {
       "type": "string",
-      "title": "Batch Code",
       "minLength": 5,
-      "maxLength": 20
+      "maxLength": 20,
+      "title": "Batch Code"
     },
     "category": {
       "enum": ["electronics", "clothing", "food", "other"],
@@ -42,9 +43,9 @@
     },
     "expiryDays": {
       "type": "number",
-      "title": "Expiry Days",
       "minimum": 1,
-      "maximum": 365
+      "maximum": 365,
+      "title": "Expiry Days"
     }
   },
   "required": ["name", "price", "weight", "sku", "stock", "category"]

@@ -1,6 +1,5 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
-  "_comment": "IMPORTANT: tagDefinitions here must stay in sync with BUILTIN_CONSTRAINT_DEFINITIONS in packages/core/src/constraints/constraint-definitions.ts. Adding a new constraint tag requires updating both files.",
   "tagDefinitions": [
     {
       "tagName": "@Minimum",

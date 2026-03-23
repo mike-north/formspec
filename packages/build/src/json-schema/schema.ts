@@ -1,10 +1,10 @@
 /**
- * Zod schemas for JSON Schema draft-07 output validation.
+ * Zod schemas for JSON Schema output validation.
  *
- * These schemas cover the subset of JSON Schema draft-07 that FormSpec generates,
+ * These schemas cover the subset of JSON Schema that FormSpec generates,
  * plus the FormSpec-specific `x-formspec-*` extension properties.
  *
- * @see https://json-schema.org/draft-07/schema
+ * @see https://json-schema.org/draft/2020-12/schema
  */
 
 import { z } from "zod";
@@ -28,7 +28,7 @@ export const jsonSchemaTypeSchema = z.enum([
 ]);
 
 // =============================================================================
-// JSON Schema draft-07 schema (recursive)
+// JSON Schema validator schema (recursive)
 // =============================================================================
 
 // We annotate with z.ZodType<JSONSchema7> for the recursive self-reference.

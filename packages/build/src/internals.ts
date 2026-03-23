@@ -15,6 +15,10 @@
 // Canonicalize: DSL → FormIR
 export { canonicalizeChainDSL } from "./canonicalize/index.js";
 
+// Canonicalization: TSDoc → FormIR
+export { canonicalizeTSDoc } from "./canonicalize/index.js";
+export type { TSDocSource } from "./canonicalize/index.js";
+
 // Analyzer: program context and type lookup
 export {
   createProgramContext,
@@ -23,11 +27,7 @@ export {
   findTypeAliasByName,
 } from "./analyzer/program.js";
 
-// Analyzer: class, interface, and type alias analysis (legacy)
-export { analyzeClass, analyzeInterface, analyzeTypeAlias } from "./analyzer/class-analyzer.js";
-export type { AnalyzeTypeAliasResult } from "./analyzer/class-analyzer.js";
-
-// Analyzer: IR output path
+// Analyzer: IR analysis (class, interface, type alias)
 export {
   analyzeClassToIR,
   analyzeInterfaceToIR,
@@ -35,22 +35,18 @@ export {
 } from "./analyzer/class-analyzer.js";
 export type {
   IRClassAnalysis,
+  FieldLayoutMetadata,
   AnalyzeTypeAliasToIRResult,
 } from "./analyzer/class-analyzer.js";
 
-// Canonicalization: TSDoc → FormIR
-export { canonicalizeTSDoc } from "./canonicalize/index.js";
-export type { TSDocSource } from "./canonicalize/index.js";
-
-// Generators: class schema
+// Generators: class schema (now routes through IR)
 export { generateClassSchemas } from "./generators/class-schema.js";
 
 // JSON Schema 2020-12: IR-based generator
 export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";
 export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 
-// UI Schema utilities
-export { generateUiSchemaFromFields } from "./ui-schema/generator.js";
+// UI Schema: IR-based generator
 export { generateUiSchemaFromIR } from "./ui-schema/ir-generator.js";
 
 // Generators: method schema

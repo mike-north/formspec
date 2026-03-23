@@ -273,8 +273,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 /**
  * Checks if a TS AST node has a `@deprecated` tag using the TSDoc parser.
  *
- * Returns false when no `/** ... *\/` doc comment is found on the node.
- * Does not fall back to the TS compiler API (`ts.getJSDocTags`).
+ * Falls back to the TS compiler API for nodes without doc comments.
  */
 export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
   const sourceFile = node.getSourceFile();

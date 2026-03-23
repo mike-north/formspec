@@ -20,7 +20,7 @@ import { runCodegen } from "@formspec/build";
 import {
   createProgramContext,
   findClassByName,
-  analyzeClass,
+  analyzeClassToIR,
   generateClassSchemas,
   generateMethodSchemas,
   collectFormSpecReferences,
@@ -379,7 +379,7 @@ async function main(): Promise<void> {
       }
 
       // Analyze class
-      const analysis = analyzeClass(classDecl, ctx.checker);
+      const analysis = analyzeClassToIR(classDecl, ctx.checker, generateOptions.filePath);
       console.log(
         `✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`
       );
@@ -408,7 +408,7 @@ async function main(): Promise<void> {
       }
 
       // Generate class schemas
-      const classSchemas = generateClassSchemas(analysis, ctx.checker);
+      const classSchemas = generateClassSchemas(analysis, { file: generateOptions.filePath });
 
       // Generate method schemas
       const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);

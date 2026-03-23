@@ -1,15 +1,9 @@
 /**
  * Class analyzer for extracting fields, types, and decorators.
  *
- * This module has two output paths:
- *
- * 1. **IR path** (new): `analyzeClassToIR`, `analyzeInterfaceToIR`, `analyzeTypeAliasToIR`
- *    produce `IRClassAnalysis` containing `FieldNode[]` and `typeRegistry` directly.
- *
- * 2. **Legacy path** (deprecated): `analyzeClass`, `analyzeInterface`, `analyzeTypeAlias`
- *    produce `ClassAnalysis` containing `FieldInfo[]` for backward compatibility
- *    with the existing JSON Schema generators (class-schema.ts, method-schema.ts).
- *    These will be removed in Phase 4 when the IR pipeline replaces the generators.
+ * Produces `IRClassAnalysis` containing `FieldNode[]` and `typeRegistry`
+ * directly from class, interface, or type alias declarations.
+ * All downstream generation routes through the canonical FormIR.
  */
 
 import * as ts from "typescript";
@@ -23,17 +17,14 @@ import type {
   TypeDefinition,
   NumericConstraintNode,
   LengthConstraintNode,
+  JsonValue,
 } from "@formspec/core";
 import { extractDecorators, resolveDecorator, type DecoratorInfo } from "./decorator-extractor.js";
 import {
-  extractJSDocConstraints,
-  extractJSDocFieldMetadata,
   extractJSDocConstraintNodes,
   extractJSDocAnnotationNodes,
-  hasDeprecatedTag,
   extractDefaultValueAnnotation,
 } from "./jsdoc-constraints.js";
-import { parseTSDocTags } from "./tsdoc-parser.js";
 
 // =============================================================================
 // TYPE GUARDS
@@ -53,13 +44,26 @@ function isObjectType(type: ts.Type): type is ts.ObjectType {
  */
 function isTypeReference(type: ts.Type): type is ts.TypeReference {
   // as cast is isolated inside type guard
-  return !!(type.flags & ts.TypeFlags.Object) &&
-    !!((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference);
+  return (
+    !!(type.flags & ts.TypeFlags.Object) &&
+    !!((type as ts.ObjectType).objectFlags & ts.ObjectFlags.Reference)
+  );
 }
 
 // =============================================================================
 // IR OUTPUT TYPES
 // =============================================================================
+
+/**
+ * Layout metadata extracted from `@Group` and `@ShowWhen` decorators.
+ * One entry per field, in the same order as `fields`.
+ */
+export interface FieldLayoutMetadata {
+  /** Group label from `@Group("label")`, or undefined if ungrouped. */
+  readonly groupLabel?: string;
+  /** ShowWhen condition from `@ShowWhen({ field, value })`, or undefined if always visible. */
+  readonly showWhen?: { readonly field: string; readonly value: JsonValue };
+}
 
 /**
  * Result of analyzing a class/interface/type alias into canonical IR.
@@ -69,6 +73,8 @@ export interface IRClassAnalysis {
   readonly name: string;
   /** Analyzed fields as canonical IR FieldNodes */
   readonly fields: readonly FieldNode[];
+  /** Layout metadata per field (same order/length as `fields`). */
+  readonly fieldLayouts: readonly FieldLayoutMetadata[];
   /** Named type definitions referenced by fields */
   readonly typeRegistry: Record<string, TypeDefinition>;
   /** Instance methods (retained for downstream method-schema generation) */
@@ -98,6 +104,7 @@ export function analyzeClassToIR(
 ): IRClassAnalysis {
   const name = classDecl.name?.text ?? "AnonymousClass";
   const fields: FieldNode[] = [];
+  const fieldLayouts: FieldLayoutMetadata[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
@@ -105,9 +112,11 @@ export function analyzeClassToIR(
 
   for (const member of classDecl.members) {
     if (ts.isPropertyDeclaration(member)) {
-      const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
+      const decorators = extractDecorators(member);
+      const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting, decorators);
       if (fieldNode) {
         fields.push(fieldNode);
+        fieldLayouts.push(extractLayoutMetadata(decorators));
       }
     } else if (ts.isMethodDeclaration(member)) {
       const methodInfo = analyzeMethod(member, checker);
@@ -122,7 +131,7 @@ export function analyzeClassToIR(
     }
   }
 
-  return { name, fields, typeRegistry, instanceMethods, staticMethods };
+  return { name, fields, fieldLayouts, typeRegistry, instanceMethods, staticMethods };
 }
 
 /**
@@ -147,7 +156,8 @@ export function analyzeInterfaceToIR(
     }
   }
 
-  return { name, fields, typeRegistry, instanceMethods: [], staticMethods: [] };
+  const fieldLayouts: FieldLayoutMetadata[] = fields.map(() => ({}));
+  return { name, fields, fieldLayouts, typeRegistry, instanceMethods: [], staticMethods: [] };
 }
 
 /**
@@ -185,7 +195,14 @@ export function analyzeTypeAliasToIR(
 
   return {
     ok: true,
-    analysis: { name, fields, typeRegistry, instanceMethods: [], staticMethods: [] },
+    analysis: {
+      name,
+      fields,
+      fieldLayouts: fields.map(() => ({})),
+      typeRegistry,
+      instanceMethods: [],
+      staticMethods: [],
+    },
   };
 }
 
@@ -195,13 +212,19 @@ export function analyzeTypeAliasToIR(
 
 /**
  * Analyzes a class property declaration into a canonical IR FieldNode.
+ *
+ * @param preExtractedDecorators - Optional pre-extracted decorators from the caller.
+ *   When provided, avoids a redundant `extractDecorators` call. Callers that need
+ *   the decorators for other purposes (e.g., layout metadata) should extract once
+ *   and pass the result here.
  */
 function analyzeFieldToIR(
   prop: ts.PropertyDeclaration,
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  preExtractedDecorators?: ReturnType<typeof extractDecorators>
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
     return null;
@@ -223,8 +246,9 @@ function analyzeFieldToIR(
     constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
   }
 
-  // Extract decorator constraints (class properties have decorators)
-  const decorators = extractDecorators(prop);
+  // Extract decorator constraints (class properties have decorators).
+  // Use pre-extracted decorators if provided to avoid redundant AST traversal.
+  const decorators = preExtractedDecorators ?? extractDecorators(prop);
   for (const dec of decorators) {
     if (dec.node) {
       const resolved = resolveDecorator(dec.node, checker);
@@ -235,12 +259,8 @@ function analyzeFieldToIR(
   }
   constraints.push(...extractConstraintsFromDecorators(decorators, provenance));
 
-  // Parse JSDoc/TSDoc tags once and extract both constraints and annotations
-  // to avoid running parseTSDocTags twice for the same node.
-  const jsdocResult = parseTSDocTags(prop, file);
-
   // Extract JSDoc constraint tags (higher precedence)
-  constraints.push(...jsdocResult.constraints);
+  constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations
   const annotations: AnnotationNode[] = [];
@@ -249,7 +269,7 @@ function analyzeFieldToIR(
   annotations.push(...extractAnnotationsFromDecorators(decorators, provenance));
 
   // JSDoc annotations (@Field_displayName, @Field_description, @deprecated)
-  annotations.push(...jsdocResult.annotations);
+  annotations.push(...extractJSDocAnnotationNodes(prop, file));
 
   // Default value annotation
   const defaultAnnotation = extractDefaultValueAnnotation(prop.initializer, file);
@@ -397,12 +417,7 @@ function resolveUnionType(
   const nonNullTypes = allTypes.filter(
     (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
   );
-  // Treat both null and undefined as nullable — undefined is filtered from the
-  // non-null members above (matching JSON Schema null semantics), so it must
-  // also set hasNull so the null union member is included in the output type.
-  const hasNull = allTypes.some(
-    (t) => t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)
-  );
+  const hasNull = allTypes.some((t) => t.flags & ts.TypeFlags.Null);
 
   // Boolean union: true | false → boolean primitive
   const isBooleanUnion =
@@ -653,6 +668,43 @@ function buildFieldNodeInfoMap(
 }
 
 // =============================================================================
+// LAYOUT METADATA EXTRACTION FROM DECORATORS
+// =============================================================================
+
+/**
+ * Extracts `@Group` and `@ShowWhen` decorator metadata from pre-extracted decorator info.
+ *
+ * Accepts the result of `extractDecorators` directly to avoid re-traversing the AST.
+ */
+function extractLayoutMetadata(
+  decorators: ReturnType<typeof extractDecorators>
+): FieldLayoutMetadata {
+  let groupLabel: string | undefined;
+  let showWhen: FieldLayoutMetadata["showWhen"];
+
+  for (const dec of decorators) {
+    if (dec.name === "Group" && typeof dec.args[0] === "string") {
+      groupLabel = dec.args[0];
+    }
+    if (dec.name === "ShowWhen") {
+      const opts = dec.args[0];
+      if (typeof opts === "object" && opts !== null && !Array.isArray(opts)) {
+        const field = opts["field"];
+        const value = opts["value"];
+        if (typeof field === "string") {
+          showWhen = { field, value: value ?? null };
+        }
+      }
+    }
+  }
+
+  return {
+    ...(groupLabel !== undefined && { groupLabel }),
+    ...(showWhen !== undefined && { showWhen }),
+  };
+}
+
+// =============================================================================
 // CONSTRAINT/ANNOTATION EXTRACTION FROM DECORATORS
 // =============================================================================
 
@@ -843,44 +895,8 @@ function getNamedTypeName(type: ts.ObjectType): string | null {
 }
 
 // =============================================================================
-// LEGACY OUTPUT TYPES — backward compatibility
+// SHARED OUTPUT TYPES
 // =============================================================================
-
-/**
- * Analyzed field information from a class.
- * @deprecated Use {@link FieldNode} from the IR analysis path instead.
- */
-export interface FieldInfo {
-  /** Field name */
-  name: string;
-  /** TypeScript type node for the field */
-  typeNode: ts.TypeNode | undefined;
-  /** Resolved type from the type checker */
-  type: ts.Type;
-  /** Whether the field is optional (has ? modifier) */
-  optional: boolean;
-  /** Decorators applied to the field */
-  decorators: DecoratorInfo[];
-  /** Whether the field has a TSDoc @deprecated tag */
-  deprecated: boolean;
-  /** Default value extracted from the property initializer (literal values only) */
-  defaultValue: unknown;
-}
-
-/**
- * Result of analyzing a class declaration.
- * @deprecated Use {@link IRClassAnalysis} instead.
- */
-export interface ClassAnalysis {
-  /** Class name */
-  name: string;
-  /** Analyzed fields */
-  fields: FieldInfo[];
-  /** Instance methods */
-  instanceMethods: MethodInfo[];
-  /** Static methods */
-  staticMethods: MethodInfo[];
-}
 
 /**
  * Analyzed method information.
@@ -910,232 +926,6 @@ export interface ParameterInfo {
   formSpecExportName: string | null;
   /** Whether the parameter is optional (has ? or default value) */
   optional: boolean;
-}
-
-// =============================================================================
-// LEGACY ANALYSIS — backward compatibility
-// =============================================================================
-
-/**
- * Result of analyzing a type alias.
- * @deprecated Use {@link AnalyzeTypeAliasToIRResult} instead.
- */
-export type AnalyzeTypeAliasResult =
-  | { ok: true; analysis: ClassAnalysis }
-  | { ok: false; error: string };
-
-/**
- * Analyzes a class declaration to extract fields and methods.
- * @deprecated Use {@link analyzeClassToIR} for IR output.
- */
-export function analyzeClass(
-  classDecl: ts.ClassDeclaration,
-  checker: ts.TypeChecker
-): ClassAnalysis {
-  const name = classDecl.name?.text ?? "AnonymousClass";
-  const fields: FieldInfo[] = [];
-  const instanceMethods: MethodInfo[] = [];
-  const staticMethods: MethodInfo[] = [];
-
-  for (const member of classDecl.members) {
-    if (ts.isPropertyDeclaration(member)) {
-      const fieldInfo = analyzeField(member, checker);
-      if (fieldInfo) {
-        fields.push(fieldInfo);
-      }
-    } else if (ts.isMethodDeclaration(member)) {
-      const methodInfo = analyzeMethod(member, checker);
-      if (methodInfo) {
-        const isStatic = member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
-        if (isStatic) {
-          staticMethods.push(methodInfo);
-        } else {
-          instanceMethods.push(methodInfo);
-        }
-      }
-    }
-  }
-
-  return { name, fields, instanceMethods, staticMethods };
-}
-
-/**
- * Analyzes a property declaration to extract field info.
- * @deprecated Used by legacy analysis path.
- */
-export function analyzeField(
-  prop: ts.PropertyDeclaration,
-  checker: ts.TypeChecker
-): FieldInfo | null {
-  if (!ts.isIdentifier(prop.name)) {
-    return null;
-  }
-
-  const name = prop.name.text;
-  const typeNode = prop.type;
-  const type = checker.getTypeAtLocation(prop);
-  const optional = prop.questionToken !== undefined;
-  const decorators = extractDecorators(prop);
-
-  for (const dec of decorators) {
-    if (dec.node) {
-      const resolved = resolveDecorator(dec.node, checker);
-      if (resolved) {
-        dec.resolved = resolved;
-      }
-    }
-  }
-
-  if (prop.type) {
-    const aliasConstraints = extractTypeAliasConstraintsLegacy(prop.type, checker);
-    decorators.push(...aliasConstraints);
-  }
-
-  const jsdocConstraints = extractJSDocConstraints(prop);
-  decorators.push(...jsdocConstraints);
-
-  const deprecated = hasDeprecatedTag(prop);
-  const defaultValue = extractDefaultValueLegacy(prop.initializer);
-
-  return { name, typeNode, type, optional, decorators, deprecated, defaultValue };
-}
-
-/**
- * Analyzes an interface declaration.
- * @deprecated Use {@link analyzeInterfaceToIR} for IR output.
- */
-export function analyzeInterface(
-  interfaceDecl: ts.InterfaceDeclaration,
-  checker: ts.TypeChecker
-): ClassAnalysis {
-  const name = interfaceDecl.name.text;
-  const fields: FieldInfo[] = [];
-
-  for (const member of interfaceDecl.members) {
-    if (ts.isPropertySignature(member)) {
-      const fieldInfo = analyzeInterfaceProperty(member, checker);
-      if (fieldInfo) {
-        fields.push(fieldInfo);
-      }
-    }
-  }
-
-  return { name, fields, instanceMethods: [], staticMethods: [] };
-}
-
-/**
- * Analyzes a type alias declaration.
- * @deprecated Use {@link analyzeTypeAliasToIR} for IR output.
- */
-export function analyzeTypeAlias(
-  typeAlias: ts.TypeAliasDeclaration,
-  checker: ts.TypeChecker
-): AnalyzeTypeAliasResult {
-  if (!ts.isTypeLiteralNode(typeAlias.type)) {
-    const sourceFile = typeAlias.getSourceFile();
-    const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- enum reverse mapping can be undefined for compiler-internal kinds
-    const kindDesc = ts.SyntaxKind[typeAlias.type.kind] ?? "unknown";
-    return {
-      ok: false,
-      error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object type literal (found ${kindDesc})`,
-    };
-  }
-
-  const name = typeAlias.name.text;
-  const fields: FieldInfo[] = [];
-
-  for (const member of typeAlias.type.members) {
-    if (ts.isPropertySignature(member)) {
-      const fieldInfo = analyzeInterfaceProperty(member, checker);
-      if (fieldInfo) {
-        fields.push(fieldInfo);
-      }
-    }
-  }
-
-  return {
-    ok: true,
-    analysis: { name, fields, instanceMethods: [], staticMethods: [] },
-  };
-}
-
-/**
- * Analyzes an interface property signature.
- * @deprecated Used by legacy analysis path.
- */
-export function analyzeInterfaceProperty(
-  prop: ts.PropertySignature,
-  checker: ts.TypeChecker
-): FieldInfo | null {
-  if (!ts.isIdentifier(prop.name)) {
-    return null;
-  }
-
-  const name = prop.name.text;
-  const typeNode = prop.type;
-  const type = checker.getTypeAtLocation(prop);
-  const optional = prop.questionToken !== undefined;
-  const decorators: DecoratorInfo[] = [];
-
-  if (typeNode) {
-    const aliasConstraints = extractTypeAliasConstraintsLegacy(typeNode, checker);
-    decorators.push(...aliasConstraints);
-  }
-
-  const fieldMetadata = extractJSDocFieldMetadata(prop);
-  if (fieldMetadata) {
-    decorators.push(fieldMetadata);
-  }
-
-  const jsdocConstraints = extractJSDocConstraints(prop);
-  decorators.push(...jsdocConstraints);
-
-  const deprecated = hasDeprecatedTag(prop);
-
-  return { name, typeNode, type, optional, decorators, deprecated, defaultValue: undefined };
-}
-
-// =============================================================================
-// LEGACY HELPERS
-// =============================================================================
-
-function extractTypeAliasConstraintsLegacy(
-  typeNode: ts.TypeNode,
-  checker: ts.TypeChecker
-): DecoratorInfo[] {
-  if (!ts.isTypeReferenceNode(typeNode)) return [];
-
-  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  if (!symbol?.declarations) return [];
-
-  const aliasDecl = symbol.declarations.find(ts.isTypeAliasDeclaration);
-  if (!aliasDecl) return [];
-
-  if (ts.isTypeLiteralNode(aliasDecl.type)) return [];
-
-  return extractJSDocConstraints(aliasDecl);
-}
-
-function extractDefaultValueLegacy(initializer: ts.Expression | undefined): unknown {
-  if (!initializer) return undefined;
-
-  if (ts.isStringLiteral(initializer)) return initializer.text;
-  if (ts.isNumericLiteral(initializer)) return Number(initializer.text);
-  if (initializer.kind === ts.SyntaxKind.TrueKeyword) return true;
-  if (initializer.kind === ts.SyntaxKind.FalseKeyword) return false;
-  if (initializer.kind === ts.SyntaxKind.NullKeyword) return null;
-
-  if (ts.isPrefixUnaryExpression(initializer)) {
-    if (
-      initializer.operator === ts.SyntaxKind.MinusToken &&
-      ts.isNumericLiteral(initializer.operand)
-    ) {
-      return -Number(initializer.operand.text);
-    }
-  }
-
-  return undefined;
 }
 
 // =============================================================================

@@ -12,7 +12,7 @@ describe("generateJsonSchema", () => {
 
     const schema = generateJsonSchema(form);
 
-    expect(schema.$schema).toBe("https://json-schema.org/draft-07/schema#");
+    expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.type).toBe("object");
     expect(schema.properties).toEqual({
       name: { type: "string", title: "Name" },
@@ -29,7 +29,6 @@ describe("generateJsonSchema", () => {
     const schema = generateJsonSchema(form);
 
     expect(schema.properties?.["status"]).toEqual({
-      type: "string",
       title: "Status",
       enum: ["draft", "sent", "paid"],
     });
@@ -51,7 +50,6 @@ describe("generateJsonSchema", () => {
     const schema = generateJsonSchema(form);
 
     expect(schema.properties?.["priority"]).toEqual({
-      type: "string",
       title: "Priority",
       oneOf: [
         { const: "low", title: "Low Priority" },
@@ -224,6 +222,7 @@ describe("generateJsonSchema - array fields", () => {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           street: { type: "string" },
           city: { type: "string" },
@@ -251,6 +250,7 @@ describe("generateJsonSchema - array fields", () => {
       maxItems: 10,
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           description: { type: "string" },
           quantity: { type: "number" },
@@ -270,6 +270,7 @@ describe("generateJsonSchema - object fields", () => {
 
     expect(schema.properties?.["address"]).toEqual({
       type: "object",
+      additionalProperties: false,
       properties: {
         street: { type: "string" },
         city: { type: "string" },
@@ -292,6 +293,7 @@ describe("generateJsonSchema - object fields", () => {
 
     expect(schema.properties?.["address"]).toMatchObject({
       type: "object",
+      additionalProperties: false,
       properties: {
         street: { type: "string" },
         city: { type: "string" },
@@ -341,7 +343,7 @@ describe("buildFormSchemas", () => {
     const result = buildFormSchemas(form);
 
     expect(result.jsonSchema).toBeDefined();
-    expect(result.jsonSchema.$schema).toBe("https://json-schema.org/draft-07/schema#");
+    expect(result.jsonSchema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(result.uiSchema).toBeDefined();
     expect(result.uiSchema.type).toBe("VerticalLayout");
   });

@@ -16,7 +16,7 @@ import * as os from "node:os";
 import {
   createProgramContext,
   findClassByName,
-  analyzeClass,
+  analyzeClassToIR,
   generateClassSchemas,
 } from "@formspec/build/internals";
 import { loadFormSpecs, isFormSpec } from "../runtime/formspec-loader.js";
@@ -99,8 +99,8 @@ describe("output writer - error handling", () => {
     const ctx = createProgramContext(edgeCasesPath);
     const classDecl = findClassByName(ctx.sourceFile, "NullablePatterns");
     if (!classDecl) throw new Error("NullablePatterns class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-    const schemas = generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+    const schemas = generateClassSchemas(analysis, { file: edgeCasesPath });
 
     const nonExistentDir = path.join(tempDir, "new-dir", "nested");
 
@@ -114,8 +114,8 @@ describe("output writer - error handling", () => {
     const ctx = createProgramContext(edgeCasesPath);
     const classDecl = findClassByName(ctx.sourceFile, "NullablePatterns");
     if (!classDecl) throw new Error("NullablePatterns class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-    const schemas = generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+    const schemas = generateClassSchemas(analysis, { file: edgeCasesPath });
 
     const outputDir = path.join(tempDir, "overwrite-test");
 
@@ -141,8 +141,8 @@ describe("output writer - error handling", () => {
     const ctx = createProgramContext(edgeCasesPath);
     const classDecl = findClassByName(ctx.sourceFile, "MixedUnionTypes");
     if (!classDecl) throw new Error("MixedUnionTypes class not found");
-    const analysis = analyzeClass(classDecl, ctx.checker);
-    const schemas = generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+    const schemas = generateClassSchemas(analysis, { file: edgeCasesPath });
 
     const result = writeClassSchemas(analysis.name, schemas, [], [], { outDir: tempDir });
 

@@ -13,7 +13,7 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export interface BuildResult {
-    readonly jsonSchema: JSONSchema7;
+    readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
 }
 
@@ -57,7 +57,7 @@ export const categorySchema: z.ZodType<Category>;
 
 // @public
 export interface ClassSchemas {
-    jsonSchema: ExtendedJSONSchema7;
+    jsonSchema: JsonSchema2020;
     uiSchema: UISchema;
 }
 
@@ -179,49 +179,6 @@ export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 export function findDecoratedClasses(files: string[], baseDir: string): DecoratedClassInfo[];
 
 // @public
-export interface FormSpecField {
-    // (undocumented)
-    description?: string;
-    // (undocumented)
-    _field: string;
-    // (undocumented)
-    fields?: FormSpecField[];
-    // (undocumented)
-    group?: string;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    label?: string;
-    // (undocumented)
-    max?: number;
-    // (undocumented)
-    maxItems?: number;
-    // (undocumented)
-    maxLength?: number;
-    // (undocumented)
-    min?: number;
-    // (undocumented)
-    minItems?: number;
-    // (undocumented)
-    minLength?: number;
-    // (undocumented)
-    options?: (string | {
-        id: string;
-        label: string;
-    })[];
-    // (undocumented)
-    pattern?: string;
-    // (undocumented)
-    placeholder?: string;
-    // (undocumented)
-    required?: boolean;
-    // (undocumented)
-    showWhen?: object;
-    // (undocumented)
-    step?: number;
-}
-
-// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
@@ -235,12 +192,12 @@ export interface GenerateFromClassOptions {
 
 // @public
 export interface GenerateFromClassResult {
-    jsonSchema: ExtendedJSONSchema7;
+    jsonSchema: JsonSchema2020;
     uiSchema: UISchema;
 }
 
 // @public
-export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>): JSONSchema7;
+export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>): JsonSchema2020;
 
 // @public
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
@@ -258,10 +215,7 @@ export interface GenerateSchemasOptions {
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
 
 // @public
-export function generateUiSchemaFromFields(fields: FormSpecField[]): UISchema;
-
-// @public
-export function getSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`): unknown;
+export function getSchemaExtension(schema: object, key: `x-formspec-${string}`): unknown;
 
 // @public
 export interface GroupLayout {
@@ -298,6 +252,66 @@ export interface HorizontalLayout {
 
 // @public (undocumented)
 export const horizontalLayoutSchema: z.ZodType<HorizontalLayout>;
+
+// @public
+export interface JsonSchema2020 {
+    // (undocumented)
+    $defs?: Record<string, JsonSchema2020>;
+    // (undocumented)
+    $ref?: string;
+    // (undocumented)
+    $schema?: string;
+    // (undocumented)
+    [key: `x-${string}`]: unknown;
+    // (undocumented)
+    additionalProperties?: boolean;
+    // (undocumented)
+    anyOf?: readonly JsonSchema2020[];
+    // (undocumented)
+    const?: string | number | boolean | null;
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    deprecated?: boolean;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    enum?: readonly (string | number)[];
+    // (undocumented)
+    exclusiveMaximum?: number;
+    // (undocumented)
+    exclusiveMinimum?: number;
+    // (undocumented)
+    items?: JsonSchema2020;
+    // (undocumented)
+    maximum?: number;
+    // (undocumented)
+    maxItems?: number;
+    // (undocumented)
+    maxLength?: number;
+    // (undocumented)
+    minimum?: number;
+    // (undocumented)
+    minItems?: number;
+    // (undocumented)
+    minLength?: number;
+    // (undocumented)
+    multipleOf?: number;
+    // (undocumented)
+    oneOf?: readonly JsonSchema2020[];
+    // (undocumented)
+    pattern?: string;
+    // (undocumented)
+    properties?: Record<string, JsonSchema2020>;
+    // (undocumented)
+    required?: string[];
+    // (undocumented)
+    title?: string;
+    // (undocumented)
+    type?: string;
+    // (undocumented)
+    uniqueItems?: boolean;
+}
 
 // @public
 export interface JSONSchema7 {
@@ -556,7 +570,7 @@ export const schemaBasedConditionSchema: z.ZodObject<{
 }>;
 
 // @public
-export function setSchemaExtension(schema: JSONSchema7, key: `x-formspec-${string}`, value: unknown): void;
+export function setSchemaExtension(schema: object, key: `x-formspec-${string}`, value: unknown): void;
 
 // @public
 export interface TypeMetadata {

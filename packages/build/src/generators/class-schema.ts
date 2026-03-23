@@ -1,108 +1,57 @@
 /**
  * Class schema generator.
  *
- * Generates JSON Schema and FormSpec/UI Schema from statically analyzed
- * class fields and decorators.
+ * Generates JSON Schema 2020-12 and JSON Forms UI Schema from statically
+ * analyzed class/interface/type alias declarations, routing through the
+ * canonical FormIR pipeline.
  */
 
-import type * as ts from "typescript";
-import type { ClassAnalysis, FieldInfo } from "../analyzer/class-analyzer.js";
-import {
-  convertType,
-  applyDecoratorsToSchema,
-  createFormSpecField,
-  type FormSpecField,
-} from "../analyzer/type-converter.js";
-import type { ExtendedJSONSchema7 } from "../json-schema/types.js";
 import type { UISchema } from "../ui-schema/types.js";
-import { generateUiSchemaFromFields } from "../ui-schema/generator.js";
 import {
   createProgramContext,
   findClassByName,
   findInterfaceByName,
   findTypeAliasByName,
 } from "../analyzer/program.js";
-import { analyzeClass, analyzeInterface, analyzeTypeAlias } from "../analyzer/class-analyzer.js";
+import {
+  analyzeClassToIR,
+  analyzeInterfaceToIR,
+  analyzeTypeAliasToIR,
+  type IRClassAnalysis,
+} from "../analyzer/class-analyzer.js";
+import { canonicalizeTSDoc, type TSDocSource } from "../canonicalize/index.js";
+import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
+import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 
 /**
  * Generated schemas for a class.
  */
 export interface ClassSchemas {
-  /** JSON Schema for validation */
-  jsonSchema: ExtendedJSONSchema7;
+  /** JSON Schema 2020-12 for validation */
+  jsonSchema: JsonSchema2020;
   /** JSON Forms UI Schema for rendering */
   uiSchema: UISchema;
 }
 
 /**
- * Generates JSON Schema and FormSpec from a class analysis.
+ * Generates JSON Schema 2020-12 and UI Schema from an IR class analysis.
  *
- * Uses static type information and decorator metadata to build
- * complete schema definitions for a class's fields.
+ * Routes through the canonical IR pipeline:
+ *   IRClassAnalysis → canonicalizeTSDoc → FormIR → JSON Schema / UI Schema
  *
- * @param analysis - The class analysis result
- * @param checker - TypeScript type checker
- * @returns Generated JSON Schema and FormSpec
+ * @param analysis - The IR analysis result (from analyzeClassToIR, analyzeInterfaceToIR, or analyzeTypeAliasToIR)
+ * @param source - Optional source file metadata for provenance
+ * @returns Generated JSON Schema and UI Schema
  */
 export function generateClassSchemas(
-  analysis: ClassAnalysis,
-  checker: ts.TypeChecker
+  analysis: IRClassAnalysis,
+  source?: TSDocSource
 ): ClassSchemas {
-  const properties: Record<string, ExtendedJSONSchema7> = {};
-  const required: string[] = [];
-  const uiElements: FormSpecField[] = [];
-
-  for (const field of analysis.fields) {
-    // Generate JSON Schema for field
-    const { jsonSchema: baseSchema } = convertType(field.type, checker);
-    const fieldSchema = applyDecoratorsToSchema(baseSchema, field.decorators, field);
-    properties[field.name] = fieldSchema;
-
-    // Track required fields
-    if (!field.optional) {
-      required.push(field.name);
-    }
-
-    // Generate FormSpec field
-    const formSpecField = createFormSpecField(
-      field.name,
-      field.type,
-      field.decorators,
-      field.optional,
-      checker
-    );
-    uiElements.push(formSpecField);
-  }
-
-  // Build complete JSON Schema
-  const jsonSchema: ExtendedJSONSchema7 = {
-    type: "object",
-    properties,
-    ...(required.length > 0 ? { required } : {}),
+  const ir = canonicalizeTSDoc(analysis, source);
+  return {
+    jsonSchema: generateJsonSchemaFromIR(ir),
+    uiSchema: generateUiSchemaFromIR(ir),
   };
-
-  // Convert FormSpecField[] to JSON Forms UISchema
-  const uiSchema = generateUiSchemaFromFields(uiElements);
-
-  return { jsonSchema, uiSchema };
-}
-
-/**
- * Generates JSON Schema for a single field.
- *
- * Useful for generating schemas for method return types
- * or individual field extraction.
- *
- * @param field - The field information
- * @param checker - TypeScript type checker
- * @returns JSON Schema for the field's type
- */
-export function generateFieldSchema(
-  field: FieldInfo,
-  checker: ts.TypeChecker
-): ExtendedJSONSchema7 {
-  const { jsonSchema: baseSchema } = convertType(field.type, checker);
-  return applyDecoratorsToSchema(baseSchema, field.decorators, field);
 }
 
 /**
@@ -119,17 +68,17 @@ export interface GenerateFromClassOptions {
  * Result of generating schemas from a decorated class.
  */
 export interface GenerateFromClassResult {
-  /** JSON Schema for validation */
-  jsonSchema: ExtendedJSONSchema7;
+  /** JSON Schema 2020-12 for validation */
+  jsonSchema: JsonSchema2020;
   /** JSON Forms UI Schema for rendering */
   uiSchema: UISchema;
 }
 
 /**
- * Generates JSON Schema and FormSpec/UI Schema from a decorated TypeScript class.
+ * Generates JSON Schema and UI Schema from a decorated TypeScript class.
  *
  * This is a high-level entry point that handles the entire pipeline:
- * creating a TypeScript program, finding the class, analyzing it,
+ * creating a TypeScript program, finding the class, analyzing it to IR,
  * and generating schemas — all in one call.
  *
  * @example
@@ -142,7 +91,7 @@ export interface GenerateFromClassResult {
  * ```
  *
  * @param options - File path, class name, and optional compiler options
- * @returns Generated JSON Schema and FormSpec/UI Schema
+ * @returns Generated JSON Schema and UI Schema
  */
 export function generateSchemasFromClass(
   options: GenerateFromClassOptions
@@ -154,8 +103,8 @@ export function generateSchemasFromClass(
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
   }
 
-  const analysis = analyzeClass(classDecl, ctx.checker);
-  return generateClassSchemas(analysis, ctx.checker);
+  const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
+  return generateClassSchemas(analysis, { file: options.filePath });
 }
 
 /**
@@ -169,20 +118,15 @@ export interface GenerateSchemasOptions {
 }
 
 /**
- * Generates JSON Schema and FormSpec/UI Schema from a named TypeScript
+ * Generates JSON Schema and UI Schema from a named TypeScript
  * type — a decorated class, an interface with TSDoc tags, or a type alias.
  *
  * This is the recommended entry point. It automatically detects whether
  * the name resolves to a class, interface, or type alias and uses the
- * appropriate analysis pipeline:
- *
- * - **Classes**: extracts decorators and JSDoc constraints
- * - **Interfaces**: extracts TSDoc tags (`@Field_displayName`, `@Minimum`, etc.)
- * - **Type aliases**: object literal bodies analyzed like interfaces
+ * appropriate IR analysis pipeline.
  *
  * @example
  * ```typescript
- * // Works with both classes and interfaces — caller doesn't need to know
  * const result = generateSchemas({
  *   filePath: "./src/config.ts",
  *   typeName: "DiscountConfig",
@@ -190,31 +134,32 @@ export interface GenerateSchemasOptions {
  * ```
  *
  * @param options - File path and type name
- * @returns Generated JSON Schema and FormSpec/UI Schema
+ * @returns Generated JSON Schema and UI Schema
  */
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
   const ctx = createProgramContext(options.filePath);
+  const source: TSDocSource = { file: options.filePath };
 
   // Try class first
   const classDecl = findClassByName(ctx.sourceFile, options.typeName);
   if (classDecl) {
-    const analysis = analyzeClass(classDecl, ctx.checker);
-    return generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
+    return generateClassSchemas(analysis, source);
   }
 
   // Try interface
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, options.typeName);
   if (interfaceDecl) {
-    const analysis = analyzeInterface(interfaceDecl, ctx.checker);
-    return generateClassSchemas(analysis, ctx.checker);
+    const analysis = analyzeInterfaceToIR(interfaceDecl, ctx.checker, options.filePath);
+    return generateClassSchemas(analysis, source);
   }
 
   // Try type alias
   const typeAlias = findTypeAliasByName(ctx.sourceFile, options.typeName);
   if (typeAlias) {
-    const result = analyzeTypeAlias(typeAlias, ctx.checker);
+    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, options.filePath);
     if (result.ok) {
-      return generateClassSchemas(result.analysis, ctx.checker);
+      return generateClassSchemas(result.analysis, source);
     }
     throw new Error(result.error);
   }

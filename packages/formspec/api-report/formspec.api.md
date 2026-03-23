@@ -43,6 +43,7 @@ import { InferFieldValue } from '@formspec/dsl';
 import { InferFormSchema } from '@formspec/dsl';
 import { InferSchema } from '@formspec/dsl';
 import { is } from '@formspec/dsl';
+import { JsonSchema2020 } from '@formspec/build';
 import { JSONSchema7 } from '@formspec/build';
 import { JSONSchemaType } from '@formspec/build';
 import { logValidationIssues } from '@formspec/dsl';
@@ -148,6 +149,8 @@ export { InferFormSchema }
 export { InferSchema }
 
 export { is }
+
+export { JsonSchema2020 }
 
 export { JSONSchema7 }
 
