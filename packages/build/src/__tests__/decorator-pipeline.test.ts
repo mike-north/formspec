@@ -11,9 +11,7 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "../generators/class-schema.js";
-import { getSchemaExtension } from "../json-schema/types.js";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
-import type { GroupLayout } from "../ui-schema/types.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 
