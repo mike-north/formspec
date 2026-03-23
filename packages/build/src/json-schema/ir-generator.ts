@@ -5,7 +5,6 @@
  * AST or surface syntax directly — only the IR (per the JSON Schema vocabulary spec §1.2).
  *
  * @see https://json-schema.org/draft/2020-12/schema
- * @see https://json-schema.org/draft/2020-12/schema
  */
 
 import type {
@@ -293,13 +292,11 @@ function generateEnumType(type: EnumTypeNode): JsonSchema2020 {
 
   if (hasDisplayNames) {
     return {
-      oneOf: type.members.map((m) => {
-        const entry: Record<string, unknown> = { const: m.value };
-        if (m.displayName !== undefined) {
-          entry["title"] = m.displayName;
-        }
-        return entry;
-      }),
+      oneOf: type.members.map((m): JsonSchema2020 =>
+        m.displayName !== undefined
+          ? { const: m.value, title: m.displayName }
+          : { const: m.value }
+      ),
     };
   }
 
@@ -363,20 +360,17 @@ function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): Js
 /**
  * Generates JSON Schema for a union type.
  *
- * Union handling strategy:
- * - Discriminated unions and literal unions → `oneOf` (mutually exclusive)
- * - Non-discriminated structural unions → `anyOf` (members may overlap)
+ * Union handling strategy (two cases currently implemented):
+ * 1. Boolean shorthand: `true | false` → `{ type: "boolean" }` (not anyOf/oneOf)
+ * 2. All other unions → `anyOf` (members may overlap; no discriminant detection yet)
  *
- * Literal unions: all members are `EnumTypeNode` or `PrimitiveTypeNode` literals
- * (actually, the IR uses `EnumTypeNode` for literal member unions, so if all
- * union members are enum types or const-like, we check for mutual exclusivity).
+ * Discriminated union detection (all-object members with a shared required property
+ * having distinct const values → `oneOf`) is deferred. The IR does not carry a
+ * discriminant hint, so we conservatively emit `anyOf` for structural unions and
+ * let schema validators handle applicability.
  *
- * For simplicity and correctness, we check two cases explicitly:
- * 1. Boolean shorthand: `true | false` → `{ type: "boolean" }` (not oneOf)
- * 2. All-literal union → `{ enum: [...] }` (flat form) when no displayNames
- * 3. Discriminated union: all members are objects with a shared required
- *    property having distinct const values → `oneOf`
- * 4. All other cases → `anyOf`
+ * Literal unions of string/number values are represented as `EnumTypeNode` in the
+ * IR and are not routed through this function.
  */
 function generateUnionType(type: UnionTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   // Boolean shorthand: union of true-literal and false-literal → type: "boolean"
@@ -433,13 +427,27 @@ function isDiscriminatedUnion(_type: UnionTypeNode): boolean {
 }
 
 /**
+ * Escapes a string for use as a JSON Pointer token (RFC 6901).
+ *
+ * `ReferenceTypeNode.name` is a fully-qualified type name that may contain
+ * `/` (path separators) or `~` (the escape character), both of which must be
+ * percent-encoded to produce a valid `$ref` pointer into `$defs`.
+ */
+function escapeJsonPointer(str: string): string {
+  // Order matters: escape "~" first, then "/"
+  return str.replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+/**
  * Generates JSON Schema for a reference type.
  *
  * The referenced type's schema is stored in `$defs` (seeded from the type
  * registry before traversal begins). The reference simply emits a `$ref`.
+ * The type name is escaped per RFC 6901 (JSON Pointer) since fully-qualified
+ * names may contain `/` or `~` characters.
  */
 function generateReferenceType(type: ReferenceTypeNode): JsonSchema2020 {
-  return { $ref: `#/$defs/${type.name}` };
+  return { $ref: `#/$defs/${escapeJsonPointer(type.name)}` };
 }
 
 /**
