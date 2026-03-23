@@ -11,9 +11,8 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "../generators/class-schema.js";
-import { getSchemaExtension } from "../json-schema/types.js";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
-import type { GroupLayout } from "../ui-schema/types.js";
+import type { ControlElement, GroupLayout, UISchemaElement } from "../ui-schema/types.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 
@@ -106,10 +105,43 @@ describe("Decorator Pipeline Integration", () => {
       expect(roleSchema?.title).toBe("Role");
     });
 
-    // @Group and @ShowWhen decorators are not yet mapped to IR GroupLayoutNode
-    // and ConditionalNode. This will be implemented when the decorator DSL is
-    // fully integrated with the IR pipeline.
-    it.todo("should generate correct uiSchema from built-in decorators (groups + showWhen)");
+    it("should generate correct uiSchema from built-in decorators (groups + showWhen)", () => {
+      const result = generateSchemasFromClass({
+        filePath: path.join(fixturesDir, "example-a-builtins.ts"),
+        className: "ExampleAForm",
+      });
+
+      const { uiSchema } = result;
+
+      expect(uiSchema.type).toBe("VerticalLayout");
+
+      // The "Preferences" group collects `country`
+      const preferencesGroup = uiSchema.elements.find(
+        (el): el is GroupLayout => el.type === "Group" && el.label === "Preferences"
+      );
+      expect(preferencesGroup).toBeDefined();
+      // GroupLayout has [k: string]: unknown from passthrough; cast elements back
+      // to the known type so we can filter and map.
+      const groupElements = (preferencesGroup?.elements as UISchemaElement[] | undefined) ?? [];
+      const groupControlScopes = groupElements
+        .filter((e): e is ControlElement => e.type === "Control")
+        .map((e) => e.scope);
+      expect(groupControlScopes).toContain("#/properties/country");
+
+      // `state` has @ShowWhen({ field: "country", value: "us" }) — no @Group,
+      // so it appears as a top-level Control with a SHOW rule.
+      const stateControl = uiSchema.elements.find(
+        (el): el is ControlElement => el.type === "Control" && el.scope === "#/properties/state"
+      );
+      expect(stateControl).toBeDefined();
+      expect(stateControl?.rule).toMatchObject({
+        effect: "SHOW",
+        condition: {
+          scope: "#/properties/country",
+          schema: { const: "us" },
+        },
+      });
+    });
   });
 
   describe("Example B: Extended decorators", () => {

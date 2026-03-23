@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { generateSchemasFromClass } from "@formspec/build";
-import type { UISchemaElement } from "@formspec/build";
 
 const formsPath = path.resolve(import.meta.dirname, "../src/forms.ts");
 const schemasDir = path.resolve(import.meta.dirname, "../schemas");
@@ -75,10 +74,35 @@ describe("ProductForm schemas", () => {
     expect(props["expiryDays"]).toMatchObject({ minimum: 1, maximum: 365 });
   });
 
-  // @Group and @ShowWhen decorators are not yet mapped to IR GroupLayoutNode
-  // and ConditionalNode. This will be implemented when the decorator DSL is
-  // fully integrated with the IR pipeline.
-  it.todo(
-    "includes showWhen in uiSchema for conditional field (requires @Group/@ShowWhen IR support)"
-  );
+  it("includes group assignments and showWhen rule in uiSchema", () => {
+    const elements = result.uiSchema.elements as Array<{
+      type: string;
+      label?: string;
+      elements?: Array<{ type: string; scope?: string; rule?: unknown }>;
+    }>;
+
+    // Top-level elements are the three Group nodes in definition order.
+    expect(elements.map((el) => ({ type: el.type, label: el.label }))).toEqual([
+      { type: "Group", label: "Details" },
+      { type: "Group", label: "Inventory" },
+      { type: "Group", label: "Shipping" },
+    ]);
+
+    // The Shipping group contains expiryDays with a SHOW rule.
+    const shippingGroup = elements[2];
+    expect(shippingGroup?.type).toBe("Group");
+    expect(shippingGroup?.label).toBe("Shipping");
+
+    const expiryControl = shippingGroup?.elements?.find(
+      (el) => el.scope === "#/properties/expiryDays"
+    );
+    expect(expiryControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/expiryDays",
+      rule: {
+        effect: "SHOW",
+        condition: { scope: "#/properties/category", schema: { const: "food" } },
+      },
+    });
+  });
 });

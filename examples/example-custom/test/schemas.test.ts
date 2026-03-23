@@ -62,6 +62,27 @@ describe("TaskForm schemas", () => {
     expect(props["priority"]).toMatchObject({ minimum: 1 });
   });
 
-  // @Group decorators are not yet mapped to IR GroupLayoutNode.
-  it.todo("includes group assignments in uiSchema (requires @Group IR support)");
+  it("includes group assignments in uiSchema", () => {
+    const elements = result.uiSchema.elements as Array<{
+      type: string;
+      label?: string;
+      elements?: Array<{ type: string; scope?: string }>;
+    }>;
+
+    // Top-level elements are the three Group nodes in definition order.
+    expect(elements.map((el) => ({ type: el.type, label: el.label }))).toEqual([
+      { type: "Group", label: "Header" },
+      { type: "Group", label: "Details" },
+      { type: "Group", label: "Actions" },
+    ]);
+
+    // The Details group contains priority, status, and assignee Controls.
+    const detailsGroup = elements[1];
+    expect(detailsGroup?.type).toBe("Group");
+    expect(detailsGroup?.label).toBe("Details");
+    const detailsScopes = detailsGroup?.elements?.map((el) => el.scope) ?? [];
+    expect(detailsScopes).toContain("#/properties/priority");
+    expect(detailsScopes).toContain("#/properties/status");
+    expect(detailsScopes).toContain("#/properties/assignee");
+  });
 });

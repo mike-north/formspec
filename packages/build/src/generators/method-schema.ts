@@ -179,6 +179,7 @@ function generateParamsSchemas(
       type: "object",
       properties,
       ...(required.length > 0 ? { required } : {}),
+      additionalProperties: false,
     },
     uiSchema: null,
     formSpecExport: null,

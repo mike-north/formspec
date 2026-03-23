@@ -166,7 +166,9 @@ function irElementsToUiSchema(
       default: {
         const _exhaustive: never = element;
         void _exhaustive;
-        throw new Error("Unhandled IR element kind");
+        throw new Error(
+          `Unhandled IR element kind: ${(element as { kind: string }).kind}`
+        );
       }
     }
   }
