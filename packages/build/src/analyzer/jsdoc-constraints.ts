@@ -25,9 +25,33 @@ import {
 } from "@formspec/core";
 import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
 
-// Legacy re-exports for backward compatibility with decorator pipeline.
-// These will be removed when the decorator DSL is deleted (Phase 7).
-import type { DecoratorArg, DecoratorInfo } from "./decorator-extractor.js";
+// =============================================================================
+// Legacy types — previously in decorator-extractor.ts, now owned here
+// =============================================================================
+
+/**
+ * A constraint argument value.
+ */
+export type ConstraintArg =
+  | string
+  | number
+  | boolean
+  | null
+  | ConstraintArg[]
+  | { [key: string]: ConstraintArg };
+
+/**
+ * Extracted constraint information from a JSDoc tag.
+ * @deprecated Use {@link ConstraintNode} from the IR path instead.
+ */
+export interface ConstraintInfo {
+  /** Constraint name (e.g., "Minimum", "Pattern", "Field") */
+  name: string;
+  /** Constraint arguments as literal values */
+  args: ConstraintArg[];
+  /** Raw AST node (undefined for synthetic JSDoc constraint entries) */
+  node: ts.Decorator | undefined;
+}
 
 // =============================================================================
 // IR API — uses @microsoft/tsdoc for structured parsing
@@ -133,7 +157,7 @@ export function extractDefaultValueAnnotation(
 // =============================================================================
 
 /**
- * Extracts JSDoc constraint tags and returns synthetic {@link DecoratorInfo}
+ * Extracts JSDoc constraint tags and returns synthetic {@link ConstraintInfo}
  * objects for backward compatibility with the decorator-based pipeline.
  *
  * Uses the TypeScript compiler JSDoc API (not TSDoc parser) to maintain
@@ -141,8 +165,8 @@ export function extractDefaultValueAnnotation(
  *
  * @deprecated Use {@link extractJSDocConstraintNodes} for IR output.
  */
-export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
-  const results: DecoratorInfo[] = [];
+export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
+  const results: ConstraintInfo[] = [];
   const jsDocTags = ts.getJSDocTags(node);
 
   for (const tag of jsDocTags) {
@@ -177,7 +201,7 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
         if (!Array.isArray(parsed)) {
           continue;
         }
-        results.push(createSyntheticDecorator(constraintName, parsed as DecoratorArg));
+        results.push(createSyntheticDecorator(constraintName, parsed as ConstraintArg));
       } catch {
         continue;
       }
@@ -191,12 +215,12 @@ export function extractJSDocConstraints(node: ts.Node): DecoratorInfo[] {
 
 /**
  * Extracts `@Field_displayName` and `@Field_description` TSDoc tags
- * and returns a synthetic `Field` {@link DecoratorInfo} for backward
+ * and returns a synthetic `Field` {@link ConstraintInfo} for backward
  * compatibility with the decorator-based pipeline.
  *
  * @deprecated Use {@link extractJSDocAnnotationNodes} for IR output.
  */
-export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
+export function extractJSDocFieldMetadata(node: ts.Node): ConstraintInfo | null {
   const jsDocTags = ts.getJSDocTags(node);
 
   let displayName: string | undefined;
@@ -222,7 +246,7 @@ export function extractJSDocFieldMetadata(node: ts.Node): DecoratorInfo | null {
     return null;
   }
 
-  const fieldOpts: Record<string, DecoratorArg> = {
+  const fieldOpts: Record<string, ConstraintArg> = {
     ...(displayName !== undefined ? { displayName } : {}),
     ...(description !== undefined ? { description } : {}),
   };
@@ -253,9 +277,9 @@ function getTagCommentText(tag: ts.JSDocTag): string | undefined {
 }
 
 /**
- * Creates a synthetic {@link DecoratorInfo} for backward compatibility.
+ * Creates a synthetic {@link ConstraintInfo} for backward compatibility.
  */
-function createSyntheticDecorator(name: string, value: DecoratorArg): DecoratorInfo {
+function createSyntheticDecorator(name: string, value: ConstraintArg): ConstraintInfo {
   return {
     name,
     args: [value],

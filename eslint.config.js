@@ -31,13 +31,6 @@ export default [
     },
   },
   {
-    // Legacy test file using deprecated extractJSDocConstraints — migrated in a later stack PR
-    files: ["packages/build/src/__tests__/jsdoc-constraints.test.ts"],
-    rules: {
-      "@typescript-eslint/no-deprecated": "off",
-    },
-  },
-  {
     ignores: [
       "**/node_modules/**",
       "**/dist/**",

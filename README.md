@@ -216,7 +216,7 @@ type Schema2 = InferFormSchema<typeof form>;
 // }
 ```
 
-## Choosing a DSL
+## Authoring Approaches
 
 FormSpec offers two ways to define forms:
 
@@ -244,41 +244,31 @@ const { jsonSchema, uiSchema } = buildFormSchemas(form);
 - You want JSON Schema or UI Schema at runtime without a codegen step
 - You want type information available without extra build steps
 
-### Decorator DSL
+### Class/Interface Analysis
 
-The class-based Decorator DSL uses TypeScript decorators:
+TypeScript classes and interfaces can be analyzed statically using the `@formspec/cli` or `@formspec/build` APIs. Constraints are expressed via decorators (no-ops at runtime) or JSDoc/TSDoc tags:
 
 ```typescript
-import { Label, Min, EnumOptions } from "@formspec/decorators";
-
 class InvoiceForm {
-  @Label("Customer Name")
+  /** @MinLength 1 */
   name!: string;
 
-  @Label("Amount")
-  @Min(0)
+  /** @Minimum 0 */
   amount!: number;
 
-  @Label("Status")
-  @EnumOptions([
-    { id: "draft", label: "Draft" },
-    { id: "paid", label: "Paid" },
-  ])
   status!: "draft" | "paid";
 }
 ```
 
-**Use the Decorator DSL when:**
+**Use class/interface analysis when:**
 
 - You prefer class-based domain models
 - Your types are known at build-time (not dynamically fetched)
-- You only need schemas at build-time (no codegen), or you're willing to run `formspec codegen` for runtime access
-
-See [@formspec/decorators](./packages/decorators/README.md) for usage details.
+- You want schemas generated from existing TypeScript type definitions
 
 ### Comparison
 
-| Aspect             | Chain DSL       | Decorator DSL               |
+| Aspect             | Chain DSL       | Class/Interface Analysis    |
 | ------------------ | --------------- | --------------------------- |
 | Runtime schemas    | Works directly  | Requires `formspec codegen` |
 | Build-time schemas | Works directly  | Works directly              |
@@ -321,10 +311,11 @@ FormSpec is organized as a monorepo with the following packages:
 | `formspec`                | Main package with all re-exports (recommended)       |
 | `@formspec/core`          | Core type definitions                                |
 | `@formspec/dsl`           | DSL functions (`field`, `group`, `when`, `formspec`) |
-| `@formspec/build`         | Schema generators                                    |
+| `@formspec/build`         | Schema generators and static analysis pipeline       |
 | `@formspec/runtime`       | Resolver helpers                                     |
 | `@formspec/constraints`   | Constraint definitions and validators                |
 | `@formspec/eslint-plugin` | ESLint rules for FormSpec                            |
+| `@formspec/cli`           | CLI tool for static analysis and schema generation   |
 
 For most use cases, just import from `formspec`:
 

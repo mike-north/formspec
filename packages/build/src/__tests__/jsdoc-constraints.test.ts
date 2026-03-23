@@ -2,9 +2,9 @@
  * Unit tests for JSDoc constraint tag extraction.
  *
  * Verifies that {@link extractJSDocConstraints} correctly parses TSDoc
- * constraint tags into synthetic DecoratorInfo objects.
+ * constraint tags into synthetic ConstraintInfo objects.
  *
- * @see packages/core/src/types/decorators.ts for CONSTRAINT_TAG_DEFINITIONS
+ * @see packages/core/src/types/constraint-tags.ts for CONSTRAINT_TAG_DEFINITIONS
  */
 
 import { describe, it, expect } from "vitest";

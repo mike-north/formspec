@@ -48,8 +48,7 @@ export type {
   EqualsPredicate,
   Predicate,
 
-  // Decorators
-  FormSpecDecoratorName,
+  // Constraint tags
   ConstraintTagName,
 
   // Canonical IR
@@ -92,9 +91,4 @@ export type {
 } from "./types/index.js";
 
 // Re-export functions and constants
-export {
-  createInitialFieldState,
-  FORMSPEC_DECORATOR_NAMES,
-  CONSTRAINT_TAG_DEFINITIONS,
-  IR_VERSION,
-} from "./types/index.js";
+export { createInitialFieldState, CONSTRAINT_TAG_DEFINITIONS, IR_VERSION } from "./types/index.js";

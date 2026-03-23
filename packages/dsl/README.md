@@ -294,9 +294,9 @@ Use `@formspec/dsl` when:
 - **Full type inference needed** - Deriving TypeScript types from form definitions
 - **No build step preferred** - Works directly at runtime without CLI codegen
 
-Consider `@formspec/decorators` when:
+Consider class/interface analysis (via `@formspec/cli`) when:
 
-- **Class-based forms preferred** - Using TypeScript classes with property decorators
+- **Class-based forms preferred** - Using TypeScript classes or interfaces
 - **Type inference from existing types** - Leveraging existing TypeScript class types
 - **Static analysis available** - Using the CLI for build-time schema generation
 

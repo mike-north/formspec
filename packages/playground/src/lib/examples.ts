@@ -129,70 +129,49 @@ const SurveyForm = formspec(
 export default SurveyForm;`,
   },
   {
-    name: "Decorator DSL",
-    description: "Form definition using TypeScript decorators",
-    code: `import {
-  Field,
-  Group,
-  ShowWhen,
-  EnumOptions,
-  Minimum,
-  MaxLength,
-  Pattern,
-  customDecorator,
-} from "@formspec/decorators";
-
-// Create custom decorators via an extension namespace
-const aiExt = customDecorator("ai-assist");
-
-// Marker decorator — no arguments, just flags the field
-const AISuggested = aiExt.marker("AISuggested");
-
-// Parameterized decorator — accepts a confidence threshold
-const AIConfidence = aiExt.as<{ threshold: number }>("AIConfidence");
-
+    name: "JSDoc Constraints",
+    description: "Class-based form with JSDoc constraint tags",
+    code: `/**
+ * Support ticket form with JSDoc constraint tags.
+ *
+ * The FormSpec build pipeline extracts constraints from JSDoc
+ * tags and produces JSON Schema validation rules.
+ */
 class SupportTicketForm {
-  @Field({ displayName: "Full Name", description: "Your legal name" })
-  @MaxLength(100)
+  /** @Field_displayName Full Name
+   *  @Field_description Your legal name
+   *  @MaxLength 100
+   */
   name!: string;
 
-  @Field({ displayName: "Email Address" })
-  @Pattern("^[^@]+@[^@]+\\.[^@]+$")
+  /** @Field_displayName Email Address
+   *  @Pattern ^[^@]+@[^@]+\\.[^@]+$
+   */
   email!: string;
 
-  @Field({ displayName: "Age", description: "Must be 18 or older" })
-  @Minimum(18)
+  /** @Field_displayName Age
+   *  @Field_description Must be 18 or older
+   *  @Minimum 18
+   */
   age!: number;
 
-  @Group("Ticket Details")
-  @Field({ displayName: "Priority", order: 1 })
-  @EnumOptions({ low: "Low", medium: "Medium", high: "High", critical: "Critical" })
+  /** @Field_displayName Priority
+   *  @EnumOptions ["low","medium","high","critical"]
+   */
   priority!: "low" | "medium" | "high" | "critical";
 
-  @Group("Ticket Details")
-  @Field({ displayName: "Category" })
-  @EnumOptions(["billing", "technical", "general"])
+  /** @Field_displayName Category
+   *  @EnumOptions ["billing","technical","general"]
+   */
   category!: "billing" | "technical" | "general";
 
-  @Group("Ticket Details")
-  @Field({ displayName: "Status" })
-  status: "pending" | "active" = "pending";
-
-  @Field({ displayName: "Issue Description", description: "Describe your issue" })
-  @MaxLength(2000)
-  @AISuggested
+  /** @Field_displayName Issue Description
+   *  @Field_description Describe your issue
+   *  @MaxLength 2000
+   */
   description!: string;
 
-  @Field({ displayName: "Suggested Resolution" })
-  @AIConfidence({ threshold: 0.85 })
-  suggestedResolution?: string;
-
-  @ShowWhen({ field: "priority", value: "critical" })
-  @Field({ displayName: "Escalation Contact" })
-  escalationContact?: string;
-
   /** @deprecated Use \`category\` instead. */
-  @Field({ displayName: "Department (Deprecated)" })
   department?: string;
 }
 

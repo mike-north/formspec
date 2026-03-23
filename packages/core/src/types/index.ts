@@ -34,8 +34,8 @@ export type {
 
 export type { EqualsPredicate, Predicate } from "./predicate.js";
 
-export { FORMSPEC_DECORATOR_NAMES, CONSTRAINT_TAG_DEFINITIONS } from "./decorators.js";
-export type { FormSpecDecoratorName, ConstraintTagName } from "./decorators.js";
+export { CONSTRAINT_TAG_DEFINITIONS } from "./constraint-tags.js";
+export type { ConstraintTagName } from "./constraint-tags.js";
 
 export { IR_VERSION } from "./ir.js";
 export type {

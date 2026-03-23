@@ -4,7 +4,6 @@
 "@formspec/build": patch
 "@formspec/runtime": patch
 "@formspec/dsl": patch
-"@formspec/decorators": patch
 "@formspec/cli": patch
 ---
 

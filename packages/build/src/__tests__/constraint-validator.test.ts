@@ -54,12 +54,22 @@ function enumType(values: readonly string[]): EnumTypeNode {
 
 /** Build a minimum constraint. */
 function minConstraint(value: number, line = 1): NumericConstraintNode {
-  return { kind: "constraint", constraintKind: "minimum", value, provenance: prov(line, "minimum") };
+  return {
+    kind: "constraint",
+    constraintKind: "minimum",
+    value,
+    provenance: prov(line, "minimum"),
+  };
 }
 
 /** Build a maximum constraint. */
 function maxConstraint(value: number, line = 2): NumericConstraintNode {
-  return { kind: "constraint", constraintKind: "maximum", value, provenance: prov(line, "maximum") };
+  return {
+    kind: "constraint",
+    constraintKind: "maximum",
+    value,
+    provenance: prov(line, "maximum"),
+  };
 }
 
 /** Build an exclusiveMinimum constraint. */
@@ -156,10 +166,7 @@ function uniqueItemsConstraint(line = 1): ArrayCardinalityConstraintNode {
 }
 
 /** Build a custom constraint. */
-function customConstraint(
-  constraintId: string,
-  line = 1
-): CustomConstraintNode {
+function customConstraint(constraintId: string, line = 1): CustomConstraintNode {
   return {
     kind: "constraint",
     constraintKind: "custom",
@@ -225,9 +232,7 @@ describe("validateIR", () => {
     });
 
     it("returns no diagnostics for a form with valid min < max constraints", () => {
-      const ir = makeIR([
-        makeField("age", NUMBER_TYPE, [minConstraint(0), maxConstraint(120)]),
-      ]);
+      const ir = makeIR([makeField("age", NUMBER_TYPE, [minConstraint(0), maxConstraint(120)])]);
       const result = validateIR(ir);
 
       expect(result.diagnostics).toHaveLength(0);
@@ -235,9 +240,7 @@ describe("validateIR", () => {
     });
 
     it("returns no diagnostics for equal min and max on a number field", () => {
-      const ir = makeIR([
-        makeField("exact", NUMBER_TYPE, [minConstraint(5), maxConstraint(5)]),
-      ]);
+      const ir = makeIR([makeField("exact", NUMBER_TYPE, [minConstraint(5), maxConstraint(5)])]);
       const result = validateIR(ir);
 
       expect(result.diagnostics).toHaveLength(0);
@@ -606,9 +609,7 @@ describe("validateIR", () => {
 
   describe("valid constraint combinations", () => {
     it("accepts valid numeric bounds", () => {
-      const ir = makeIR([
-        makeField("score", NUMBER_TYPE, [minConstraint(0), maxConstraint(100)]),
-      ]);
+      const ir = makeIR([makeField("score", NUMBER_TYPE, [minConstraint(0), maxConstraint(100)])]);
       expect(validateIR(ir).valid).toBe(true);
     });
 
@@ -637,9 +638,7 @@ describe("validateIR", () => {
     });
 
     it("accepts a pattern constraint on a string field", () => {
-      const ir = makeIR([
-        makeField("slug", STRING_TYPE, [patternConstraint("^[a-z0-9-]+$")]),
-      ]);
+      const ir = makeIR([makeField("slug", STRING_TYPE, [patternConstraint("^[a-z0-9-]+$")])]);
       expect(validateIR(ir).valid).toBe(true);
     });
   });
@@ -833,9 +832,7 @@ describe("validateIR", () => {
 
   describe("valid property", () => {
     it("is false when there are error diagnostics", () => {
-      const ir = makeIR([
-        makeField("count", NUMBER_TYPE, [minConstraint(10), maxConstraint(5)]),
-      ]);
+      const ir = makeIR([makeField("count", NUMBER_TYPE, [minConstraint(10), maxConstraint(5)])]);
       expect(validateIR(ir).valid).toBe(false);
     });
 
@@ -847,9 +844,7 @@ describe("validateIR", () => {
     it("is true when there are only warning diagnostics (valid despite warnings)", () => {
       const registry: ExtensionRegistry = new Set(["x-known/ext/constraint"]);
       const ir = makeIR([
-        makeField("field", STRING_TYPE, [
-          customConstraint("x-unknown/ext/constraint", 1),
-        ]),
+        makeField("field", STRING_TYPE, [customConstraint("x-unknown/ext/constraint", 1)]),
       ]);
       const result = validateIR(ir, { extensionRegistry: registry });
 

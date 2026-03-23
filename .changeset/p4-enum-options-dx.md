@@ -1,5 +1,4 @@
 ---
-"@formspec/decorators": minor
 "@formspec/dsl": minor
 "@formspec/build": patch
 "@formspec/cli": patch
@@ -40,4 +39,3 @@ These changes make it faster to define enum fields while maintaining full backwa
 - **@formspec/dsl**: Duplicate field names are now reported as errors instead of warnings
 - **@formspec/build**: Fixed duplicate entries in JSON Schema `required` arrays
 - **@formspec/cli**: Added `--help` for subcommands, warn on unexported decorated classes
-- **@formspec/decorators**: Added `@Group` decorator support for UI schema grouping

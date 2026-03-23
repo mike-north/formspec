@@ -1,24 +1,17 @@
 /**
  * @formspec/eslint-plugin
  *
- * ESLint plugin for FormSpec type safety and constraint validation.
+ * ESLint plugin for FormSpec constraint validation.
  *
  * Provides rules to:
- * - Catch common mistakes when using FormSpec decorators
+ * - Validate JSDoc constraint tags on class/interface fields
  * - Validate Chain DSL usage against project constraints
  * - Ensure forms comply with target environment capabilities
  */
 
 import type { TSESLint } from "@typescript-eslint/utils";
-import { decoratorFieldTypeMismatch } from "./rules/decorator-field-type-mismatch.js";
-import { enumOptionsMatchType } from "./rules/enum-options-match-type.js";
-import { showwhenFieldExists } from "./rules/showwhen-field-exists.js";
-import { showwhenSuggestsOptional } from "./rules/showwhen-suggests-optional.js";
+import { constraintTypeMismatch } from "./rules/constraint-type-mismatch.js";
 import { consistentConstraints } from "./rules/consistent-constraints.js";
-import { noConflictingDecorators } from "./rules/no-conflicting-decorators.js";
-import { noDuplicateDecorators } from "./rules/no-duplicate-decorators.js";
-import { decoratorAllowedFieldTypes } from "./rules/decorator-allowed-field-types.js";
-import { preferCustomDecorator } from "./rules/prefer-custom-decorator.js";
 
 // Constraint rules for Chain DSL
 import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js";
@@ -27,16 +20,9 @@ import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js"
  * All rules provided by this plugin.
  */
 const rules = {
-  // Decorator DSL rules
-  "decorator-field-type-mismatch": decoratorFieldTypeMismatch,
-  "enum-options-match-type": enumOptionsMatchType,
-  "showwhen-field-exists": showwhenFieldExists,
-  "showwhen-suggests-optional": showwhenSuggestsOptional,
+  // JSDoc constraint rules
+  "constraint-type-mismatch": constraintTypeMismatch,
   "consistent-constraints": consistentConstraints,
-  "no-conflicting-decorators": noConflictingDecorators,
-  "no-duplicate-decorators": noDuplicateDecorators,
-  "decorator-allowed-field-types": decoratorAllowedFieldTypes,
-  "prefer-custom-decorator": preferCustomDecorator,
 
   // Constraint rules for Chain DSL
   "constraints-allowed-field-types": allowedFieldTypes,
@@ -71,13 +57,8 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       },
     },
     rules: {
-      "@formspec/decorator-field-type-mismatch": "error",
-      "@formspec/enum-options-match-type": "error",
-      "@formspec/showwhen-field-exists": "error",
-      "@formspec/showwhen-suggests-optional": "warn",
+      "@formspec/constraint-type-mismatch": "error",
       "@formspec/consistent-constraints": "error",
-      "@formspec/no-conflicting-decorators": "error",
-      "@formspec/no-duplicate-decorators": "error",
     },
   },
 ];
@@ -94,13 +75,8 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       },
     },
     rules: {
-      "@formspec/decorator-field-type-mismatch": "error",
-      "@formspec/enum-options-match-type": "error",
-      "@formspec/showwhen-field-exists": "error",
-      "@formspec/showwhen-suggests-optional": "error",
+      "@formspec/constraint-type-mismatch": "error",
       "@formspec/consistent-constraints": "error",
-      "@formspec/no-conflicting-decorators": "error",
-      "@formspec/no-duplicate-decorators": "error",
     },
   },
 ];
@@ -121,16 +97,9 @@ export default plugin;
 
 // Named exports for individual rules
 export {
-  // Decorator DSL rules
-  decoratorFieldTypeMismatch,
-  enumOptionsMatchType,
-  showwhenFieldExists,
-  showwhenSuggestsOptional,
+  // JSDoc constraint rules
+  constraintTypeMismatch,
   consistentConstraints,
-  noConflictingDecorators,
-  noDuplicateDecorators,
-  decoratorAllowedFieldTypes,
-  preferCustomDecorator,
   // Constraint rules for Chain DSL
   allowedFieldTypes,
   allowedLayouts,

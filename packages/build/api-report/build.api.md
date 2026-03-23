@@ -62,13 +62,6 @@ export interface ClassSchemas {
 }
 
 // @public
-export interface CodegenOptions {
-    baseDir?: string;
-    files: string[];
-    output: string;
-}
-
-// @public
 export type ControlElement = z.infer<typeof controlSchema>;
 
 // @public
@@ -165,24 +158,10 @@ export const controlSchema: z.ZodObject<{
 }, z.ZodTypeAny, "passthrough">>;
 
 // @public
-export interface DecoratedClassInfo {
-    isExported: boolean;
-    name: string;
-    sourcePath: string;
-    typeMetadata: Record<string, TypeMetadata>;
-}
-
-// @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
 // @public
-export function findDecoratedClasses(files: string[], baseDir: string): DecoratedClassInfo[];
-
-// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
-
-// @public
-export function generateCodegenOutput(classes: DecoratedClassInfo[], outputPath: string, baseDir: string): string;
 
 // @public
 export interface GenerateFromClassOptions {
@@ -552,9 +531,6 @@ export const ruleSchema: z.ZodObject<{
 }>;
 
 // @public
-export function runCodegen(options: CodegenOptions): void;
-
-// @public
 export type SchemaBasedCondition = z.infer<typeof schemaBasedConditionSchema>;
 
 // @public
@@ -571,16 +547,6 @@ export const schemaBasedConditionSchema: z.ZodObject<{
 
 // @public
 export function setSchemaExtension(schema: object, key: `x-formspec-${string}`, value: unknown): void;
-
-// @public
-export interface TypeMetadata {
-    itemType?: TypeMetadata;
-    nullable?: boolean;
-    optional?: boolean;
-    properties?: Record<string, TypeMetadata>;
-    type: string;
-    values?: unknown[];
-}
 
 // @public
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
