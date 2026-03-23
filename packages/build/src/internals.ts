@@ -36,6 +36,7 @@ export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 
 // UI Schema utilities
 export { generateUiSchemaFromFields } from "./ui-schema/generator.js";
+export { generateUiSchemaFromIR } from "./ui-schema/ir-generator.js";
 
 // Generators: method schema
 export { generateMethodSchemas, collectFormSpecReferences } from "./generators/method-schema.js";
