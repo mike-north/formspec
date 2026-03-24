@@ -1,7 +1,6 @@
 ---
 "@formspec/build": patch
 "@formspec/cli": patch
-"@formspec/decorators": patch
 "@formspec/dsl": patch
 "@formspec/eslint-plugin": patch
 "@formspec/runtime": patch

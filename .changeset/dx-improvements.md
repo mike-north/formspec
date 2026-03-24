@@ -1,5 +1,4 @@
 ---
-"@formspec/decorators": minor
 "@formspec/cli": patch
 ---
 
