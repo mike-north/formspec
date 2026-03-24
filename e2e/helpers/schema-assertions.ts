@@ -15,7 +15,7 @@ export function loadExpected(relativePath: string): unknown {
 
 /**
  * Assert that a schema is a valid FormSpec-generated JSON Schema object.
- * Currently validates draft-07 structure; will be updated for 2020-12 migration.
+ * Currently validates 2020-12 structure.
  */
 export function assertValidJsonSchema(schema: Record<string, unknown>): void {
   expect(schema).toHaveProperty("type", "object");

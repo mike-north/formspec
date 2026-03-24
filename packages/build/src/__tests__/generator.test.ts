@@ -12,7 +12,7 @@ describe("generateJsonSchema", () => {
 
     const schema = generateJsonSchema(form);
 
-    expect(schema.$schema).toBe("https://json-schema.org/draft-07/schema#");
+    expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.type).toBe("object");
     expect(schema.properties).toEqual({
       name: { type: "string", title: "Name" },
@@ -442,7 +442,7 @@ describe("buildFormSchemas", () => {
     const result = buildFormSchemas(form);
 
     expect(result.jsonSchema).toBeDefined();
-    expect(result.jsonSchema.$schema).toBe("https://json-schema.org/draft-07/schema#");
+    expect(result.jsonSchema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(result.uiSchema).toBeDefined();
     expect(result.uiSchema.type).toBe("VerticalLayout");
   });
@@ -465,6 +465,93 @@ describe("generateJsonSchema - multipleOf", () => {
     const form = formspec(field.number("quantity"));
     const { jsonSchema } = buildFormSchemas(form);
     expect(jsonSchema.properties?.["quantity"]).not.toHaveProperty("multipleOf");
+  });
+});
+
+describe("UI Schema - nested group/conditional inside object", () => {
+  it("renders group inside object field", () => {
+    const form = formspec(
+      field.objectWithConfig(
+        "order",
+        { label: "Order" },
+        group(
+          "Customer Info",
+          field.text("name", { label: "Name" }),
+          field.text("email", { label: "Email" })
+        ),
+        field.number("total", { label: "Total" })
+      )
+    );
+    const { uiSchema } = buildFormSchemas(form);
+    const elements = (uiSchema as { elements: unknown[] }).elements;
+    // order should be a Group with nested elements
+    const orderGroup = elements.find(
+      (e): e is { label: string; elements: unknown[] } =>
+        typeof e === "object" &&
+        e !== null &&
+        "label" in e &&
+        (e as { label: unknown }).label === "Order"
+    );
+    expect(orderGroup).toBeDefined();
+    // Inside order, there should be a nested Group for "Customer Info"
+    const customerGroup = orderGroup?.elements.find(
+      (e): e is { type: string; label: string; elements: unknown[] } =>
+        typeof e === "object" &&
+        e !== null &&
+        "type" in e &&
+        (e as { type: unknown }).type === "Group" &&
+        "label" in e &&
+        (e as { label: unknown }).label === "Customer Info"
+    );
+    expect(customerGroup).toBeDefined();
+    expect(customerGroup?.elements).toHaveLength(2);
+    // And a Control for total
+    const totalControl = orderGroup?.elements.find(
+      (e) =>
+        typeof e === "object" &&
+        e !== null &&
+        "scope" in e &&
+        typeof (e as { scope: unknown }).scope === "string" &&
+        (e as { scope: string }).scope.endsWith("/total")
+    );
+    expect(totalControl).toBeDefined();
+  });
+
+  it("renders conditional inside object field", () => {
+    const form = formspec(
+      field.objectWithConfig(
+        "payment",
+        { label: "Payment" },
+        field.enum("method", ["card", "bank"] as const, { label: "Method" }),
+        when(
+          is("method", "card"),
+          field.text("cardNumber", { label: "Card Number" })
+        )
+      )
+    );
+    const { uiSchema } = buildFormSchemas(form);
+    const elements = (uiSchema as { elements: unknown[] }).elements;
+    const paymentGroup = elements.find(
+      (e): e is { label: string; elements: unknown[] } =>
+        typeof e === "object" &&
+        e !== null &&
+        "label" in e &&
+        (e as { label: unknown }).label === "Payment"
+    );
+    expect(paymentGroup).toBeDefined();
+    // Should have method control + conditional cardNumber control with rule
+    const cardControl = paymentGroup?.elements.find(
+      (e) =>
+        typeof e === "object" &&
+        e !== null &&
+        "scope" in e &&
+        typeof (e as { scope: unknown }).scope === "string" &&
+        (e as { scope: string }).scope.endsWith("/cardNumber")
+    );
+    expect(cardControl).toBeDefined();
+    const cardControlTyped = cardControl as { rule?: { effect: string } } | undefined;
+    expect(cardControlTyped?.rule).toBeDefined();
+    expect(cardControlTyped?.rule?.effect).toBe("SHOW");
   });
 });
 

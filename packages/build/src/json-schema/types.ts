@@ -1,7 +1,10 @@
 /**
- * JSON Schema Draft-07 type definitions.
+ * JSON Schema type definitions.
  *
- * These types are a subset of JSON Schema sufficient for form generation.
+ * These types are a subset of JSON Schema 2020-12 sufficient for form generation.
+ * Note: This interface is named JSONSchema7 for historical reasons; it now targets
+ * the 2020-12 dialect. The shape is compatible — 2020-12 is a superset of draft-07
+ * for the keywords we use.
  */
 
 /**

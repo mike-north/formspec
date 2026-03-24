@@ -151,12 +151,12 @@ export interface FormSpecOutput {
 }
 
 /**
- * JSON Schema type (subset of JSON Schema draft-07).
+ * JSON Schema type (subset of JSON Schema 2020-12).
  *
  * Used for validation schema output from `buildFormSchemas()`.
  * Only includes properties used by FormSpec; not a complete JSON Schema type.
  *
- * @see https://json-schema.org/draft-07/schema
+ * @see https://json-schema.org/draft/2020-12/schema
  */
 export interface JSONSchema7 {
   /** JSON Schema dialect identifier */
@@ -932,7 +932,7 @@ function generateJsonSchemaFromElements(elements: FormSpecField[]): JSONSchema7 
   }
 
   return {
-    $schema: "https://json-schema.org/draft-07/schema#",
+    $schema: "https://json-schema.org/draft/2020-12/schema",
     type: "object",
     properties,
     ...(required.length > 0 && { required }),

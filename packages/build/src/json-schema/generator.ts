@@ -198,7 +198,7 @@ function collectFields(
  *
  * const schema = generateJsonSchema(form);
  * // {
- * //   $schema: "https://json-schema.org/draft-07/schema#",
+ * //   $schema: "https://json-schema.org/draft/2020-12/schema",
  * //   type: "object",
  * //   properties: {
  * //     name: { type: "string", title: "Name" },
@@ -224,7 +224,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   const uniqueRequired = [...new Set(required)];
 
   return {
-    $schema: "https://json-schema.org/draft-07/schema#",
+    $schema: "https://json-schema.org/draft/2020-12/schema",
     type: "object",
     properties,
     ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
