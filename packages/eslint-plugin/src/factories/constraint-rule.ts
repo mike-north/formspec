@@ -91,7 +91,7 @@ type MessageIds = "typeMismatch" | "invalidValue";
  * @param options - Configuration for the generated rule
  * @returns A typed `@typescript-eslint` rule module
  */
-export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds> {
+export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []> {
   const { tagName, applicableTypes, validateValue } = options;
 
   const applicableTypesLabel = applicableTypes.length > 0 ? applicableTypes.join(", ") : "(any)";

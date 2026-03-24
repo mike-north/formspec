@@ -2,12 +2,12 @@
  * Parity testing utilities.
  *
  * Provides:
- * - `ProvenanceFree*` type-level mappers that strip `provenance` fields from IR nodes
+ * - `ProvenanceFree<T>` — type-level mapper that strips `provenance` fields from IR nodes
  * - `stripProvenance(ir)` — runtime equivalent for `FormIR`
  * - `compareIR(a, b)` — structured IR comparison after stripping provenance
  *
- * The provenance-free variants are implemented as explicit per-type mapped interfaces
- * rather than a generic deep-recursive mapped type. This keeps the type system's structural
+ * `ProvenanceFree<T>` is implemented as explicit per-type mapped interfaces rather
+ * than a generic deep-recursive mapped type. This keeps the type system's structural
  * guarantees intact: if an IR node gains or loses a field, the provenance-free variants
  * here will fail to compile, catching shape regressions at type-check time.
  */
@@ -420,14 +420,10 @@ export function compareIR(a: FormIR, b: FormIR): IRDifference[] {
 function collectDifferences(a: unknown, b: unknown, path: string, out: IRDifference[]): void {
   if (a === b) return;
 
-  // Both strictly equal (handles null === null, undefined === undefined, etc.)
-  // Note: null and undefined are intentionally NOT treated as equivalent here —
-  // one surface emitting explicit null while the other omits the property
-  // (yielding undefined) would mask a real IR divergence.
-  if (a === null && b === null) return;
-  if (a === undefined && b === undefined) return;
+  // Both null/undefined — equal
+  if (a == null && b == null) return;
 
-  // One is null/undefined, the other is not (including null vs undefined)
+  // One is null/undefined, the other is not
   if (a == null || b == null) {
     out.push({ path, expected: a, actual: b });
     return;

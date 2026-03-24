@@ -63,6 +63,15 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
 
+  packages/ajv-vocab:
+    devDependencies:
+      ajv:
+        specifier: ^8.13.0
+        version: 8.18.0
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/build:
     dependencies:
       '@formspec/core':
@@ -3692,8 +3701,8 @@ snapshots:
   '@jsonforms/core@3.7.0':
     dependencies:
       '@types/json-schema': 7.0.15
-      ajv: 8.13.0
-      ajv-formats: 2.1.1(ajv@8.13.0)
+      ajv: 8.18.0
+      ajv-formats: 2.1.1(ajv@8.18.0)
       lodash: 4.17.23
 
   '@jsonforms/material-renderers@3.7.0(ef020a6c33ee75d15264e1b79ea6a27d)':
@@ -4400,9 +4409,9 @@ snapshots:
     optionalDependencies:
       ajv: 8.13.0
 
-  ajv-formats@2.1.1(ajv@8.13.0):
+  ajv-formats@2.1.1(ajv@8.18.0):
     optionalDependencies:
-      ajv: 8.13.0
+      ajv: 8.18.0
 
   ajv-formats@3.0.1(ajv@8.13.0):
     optionalDependencies:

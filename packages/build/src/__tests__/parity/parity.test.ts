@@ -33,7 +33,7 @@ import { expectedIR as userRegistrationExpected } from "./fixtures/user-registra
 import { expectedIR as productConfigExpected } from "./fixtures/product-config/expected-ir.js";
 
 // Base directory for TSDoc fixture files
-const fixturesDir = nodePath.join(__dirname, "fixtures");
+const fixturesDir = nodePath.join(import.meta.dirname, "fixtures");
 
 // =============================================================================
 // Helpers
