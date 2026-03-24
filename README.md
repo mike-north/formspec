@@ -479,17 +479,17 @@ For quick generation without writing a script, use the CLI:
 # Install the CLI
 npm install -D @formspec/cli
 
-# Generate schemas from a file that exports a FormSpec
-npx formspec generate src/forms/product.ts -o ./schemas -n product
+# Generate schemas from all FormSpec exports in a file (requires compiled JS)
+tsc && npx formspec generate src/forms/product.ts -o ./schemas
 ```
 
-The input file should export the form as default or named `form`:
+The CLI detects all named `FormSpec` exports from the compiled module:
 
 ```typescript
 // src/forms/product.ts
 import { formspec, field } from "formspec";
 
-export default formspec(
+export const ProductForm = formspec(
   field.text("name", { required: true }),
   field.enum("status", ["draft", "active"])
 );
