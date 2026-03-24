@@ -49,27 +49,52 @@ describe("TSDoc Inherited Constraints", () => {
   });
 
   describe("JSON Schema — constraint inheritance", () => {
-    it("cpuUsage inherits maximum from Percentage, minimum is overridden by field tag", () => {
-      // Percentage has @minimum 0 @maximum 100, field has @minimum 10
-      // Result: minimum = max(0, 10) = 10, maximum = 100
-      expect(properties["cpuUsage"]?.["minimum"]).toBe(10);
-      expect(properties["cpuUsage"]?.["maximum"]).toBe(100);
+    it("cpuUsage uses allOf with $ref to Percentage and field-level minimum override", () => {
+      // cpuUsage has field-level @minimum 10, so: allOf[$ref Percentage, {minimum: 10}]
+      const cpuUsage = properties["cpuUsage"];
+      expect(cpuUsage?.["allOf"]).toBeDefined();
+      const allOf = cpuUsage?.["allOf"] as Record<string, unknown>[] | undefined;
+      expect(allOf?.some((item) => item["$ref"] === "#/$defs/Percentage")).toBe(true);
+      expect(allOf?.some((item) => item["minimum"] === 10)).toBe(true);
     });
 
-    it("cpuUsage inherits multipleOf from Integer via Percentage chain", () => {
-      expect(properties["cpuUsage"]?.["multipleOf"]).toBe(1);
+    it("cpuUsage field-level schema does not include maximum (inherited via $ref chain)", () => {
+      // The maximum is not on the field schema itself — it is in $defs/Percentage
+      const cpuUsage = properties["cpuUsage"];
+      const allOf = cpuUsage?.["allOf"] as Record<string, unknown>[] | undefined;
+      // None of the allOf items should have maximum — that comes from $defs/Percentage
+      expect(
+        allOf?.every((item) => item["maximum"] === undefined)
+      ).toBe(true);
     });
 
-    it("memoryUsage inherits all constraints from Percentage and Integer", () => {
-      expect(properties["memoryUsage"]?.["minimum"]).toBe(0);
-      expect(properties["memoryUsage"]?.["maximum"]).toBe(100);
-      expect(properties["memoryUsage"]?.["multipleOf"]).toBe(1);
+    it("memoryUsage uses $ref to Percentage (no field-level constraints)", () => {
+      expect(properties["memoryUsage"]?.["$ref"]).toBe("#/$defs/Percentage");
     });
 
-    it("diskUsage (optional) inherits all constraints from Percentage and Integer", () => {
-      expect(properties["diskUsage"]?.["minimum"]).toBe(0);
-      expect(properties["diskUsage"]?.["maximum"]).toBe(100);
-      expect(properties["diskUsage"]?.["multipleOf"]).toBe(1);
+    it("diskUsage (optional) uses $ref to Percentage", () => {
+      expect(properties["diskUsage"]?.["$ref"]).toBe("#/$defs/Percentage");
+    });
+
+    it("$defs/Percentage uses allOf with $ref to Integer and min/max constraints", () => {
+      const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
+      expect(defs).toBeDefined();
+      const pctDef = defs?.["Percentage"];
+      expect(pctDef?.["allOf"]).toBeDefined();
+      const allOf = pctDef?.["allOf"] as Record<string, unknown>[] | undefined;
+      expect(allOf?.some((item) => item["$ref"] === "#/$defs/Integer")).toBe(true);
+      expect(
+        allOf?.some(
+          (item) => item["minimum"] === 0 && item["maximum"] === 100
+        )
+      ).toBe(true);
+    });
+
+    it("$defs/Integer has base type number with multipleOf 1", () => {
+      const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
+      const intDef = defs?.["Integer"];
+      expect(intDef?.["type"]).toBe("number");
+      expect(intDef?.["multipleOf"]).toBe(1);
     });
 
     it("required contains only the non-optional fields", () => {

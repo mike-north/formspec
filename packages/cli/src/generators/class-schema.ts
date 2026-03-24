@@ -5,7 +5,7 @@
  * class fields and decorators.
  */
 
-import type * as ts from "typescript";
+import * as ts from "typescript";
 import type { ClassAnalysis, FieldInfo } from "../analyzer/class-analyzer.js";
 import {
   convertType,
@@ -16,7 +16,10 @@ import {
   type FormSpecField,
 } from "../analyzer/type-converter.js";
 import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
-import { resolveTypeConstraints } from "../analyzer/constraint-resolver.js";
+import {
+  resolveTypeConstraints,
+  type AliasChainEntry,
+} from "../analyzer/constraint-resolver.js";
 import { validateConstraints, type ConstraintViolation } from "../analyzer/constraint-validator.js";
 import { checkTypeApplicability } from "../analyzer/type-applicability.js";
 
@@ -55,17 +58,66 @@ export function generateClassSchemas(
   const allDiagnostics: ConstraintViolation[] = [];
 
   for (const field of analysis.fields) {
-    // Generate JSON Schema for field — pass defsRegistry to lift named types
-    const { jsonSchema: baseSchema } = convertType(field.type, checker, defsRegistry);
-    // Apply decorator constraints first
-    const withDecorators = applyDecoratorsToSchema(baseSchema, field.decorators);
+    // Resolve constraints from type alias chain — also returns aliasChain for
+    // allOf + $ref composition, and diagnostics for broadening violations.
+    const {
+      tags: typeAliasTags,
+      diagnostics: resolverDiagnostics,
+      aliasChain,
+    } = resolveTypeConstraints(field.typeNode, checker);
 
-    // Resolve constraints inherited from type alias chain, then merge with
-    // field-level comment tags (field tags override type alias tags)
-    const { tags: typeAliasTags } = resolveTypeConstraints(field.typeNode, checker);
-    const allCommentTags = [...typeAliasTags, ...field.commentTags];
+    // Surface broadening diagnostics as constraint violations
+    for (const d of resolverDiagnostics) {
+      allDiagnostics.push({
+        fieldName: field.name,
+        severity: d.severity,
+        message: d.message,
+      });
+    }
 
-    const fieldSchema = applyCommentTagsToSchema(withDecorators, allCommentTags);
+    // Determine whether this field uses a constrained type alias chain.
+    // If so, register each alias in $defs and use $ref/$allOf for the field.
+    const constrainedAliasChain = aliasChain.filter((e) => e.tags.length > 0);
+    const hasConstrainedAlias = constrainedAliasChain.length > 0;
+
+    // All comment tags for this field (alias chain + field-level)
+    // Used for type applicability checking and UX schema generation.
+    const allCommentTags: CommentTagInfo[] = [...typeAliasTags, ...field.commentTags];
+
+    let fieldSchema: JsonSchema;
+
+    if (hasConstrainedAlias) {
+      // Register the alias chain in $defs (root-first)
+      registerAliasChainInDefs(aliasChain, field.type, checker, defsRegistry);
+
+      // The leaf alias is the first entry (aliasChain is leaf-first).
+      // aliasChain is non-empty here because hasConstrainedAlias is true,
+      // which requires constrainedAliasChain.length > 0, which requires aliasChain.length > 0.
+      const leafAlias = aliasChain[0];
+      if (!leafAlias) throw new Error("Invariant violation: aliasChain is empty despite hasConstrainedAlias being true");
+
+      // Apply any decorator constraints
+      const decoratorSchema = applyDecoratorsToSchema({}, field.decorators);
+      const hasDecoratorConstraints = Object.keys(decoratorSchema).length > 0;
+      const hasFieldCommentConstraints = field.commentTags.length > 0;
+
+      if (hasFieldCommentConstraints || hasDecoratorConstraints) {
+        // Field adds its own constraints on top of the alias — wrap in allOf
+        const useSiteSchema = applyCommentTagsToSchema(decoratorSchema, field.commentTags);
+        fieldSchema = {
+          allOf: [{ $ref: `#/$defs/${leafAlias.name}` }, useSiteSchema],
+        };
+      } else {
+        // Field has no additional constraints — plain $ref
+        fieldSchema = { $ref: `#/$defs/${leafAlias.name}` };
+      }
+    } else {
+      // No constrained alias — use the existing flat approach
+      const { jsonSchema: baseSchema } = convertType(field.type, checker, defsRegistry);
+      const withDecorators = applyDecoratorsToSchema(baseSchema, field.decorators);
+      fieldSchema = applyCommentTagsToSchema(withDecorators, allCommentTags);
+    }
+
     properties[field.name] = fieldSchema;
 
     // Check type applicability — verify tags match the field's TypeScript type
@@ -86,7 +138,8 @@ export function generateClassSchemas(
       required.push(field.name);
     }
 
-    // Generate FormSpec field — UI schema always inlines nested fields
+    // Generate FormSpec field — UI schema always inlines nested fields.
+    // The UX schema uses all resolved constraint values (alias chain + field-level).
     const formSpecField = createFormSpecField(
       field.name,
       field.type,
@@ -130,6 +183,55 @@ export function generateFieldSchema(
 ): JsonSchema {
   const { jsonSchema: baseSchema } = convertType(field.type, checker);
   return applyDecoratorsToSchema(baseSchema, field.decorators);
+}
+
+/**
+ * Registers all constrained type aliases in a chain as $defs entries.
+ *
+ * The chain is expected in leaf-first order (as returned by resolveTypeConstraints).
+ * This function processes from root to leaf so that parent $defs entries exist
+ * before a child alias references them via $ref.
+ *
+ * Root aliases (no parent alias) get: `{ type: "<base>", ...constraints }`
+ * Derived aliases (has parent alias) get: `{ allOf: [{ $ref: "#/$defs/<parent>" }, constraints] }`
+ *
+ * Aliases without constraints are only registered if they appear as a parent
+ * of a constrained alias (to keep the $ref chain intact).
+ */
+function registerAliasChainInDefs(
+  aliasChain: AliasChainEntry[],
+  fieldType: ts.Type,
+  checker: ts.TypeChecker,
+  defsRegistry: DefsRegistry
+): void {
+  // aliasChain is leaf-first; process root-first to register parents before children
+  const rootFirst = [...aliasChain].reverse();
+
+  for (const entry of rootFirst) {
+    if (defsRegistry.has(entry.name)) continue;
+
+    if (entry.parentName !== undefined && defsRegistry.has(entry.parentName)) {
+      // This alias has a registered parent — use allOf + $ref
+      if (entry.tags.length > 0) {
+        const constraintSchema = applyCommentTagsToSchema({}, entry.tags);
+        defsRegistry.set(entry.name, {
+          allOf: [{ $ref: `#/$defs/${entry.parentName}` }, constraintSchema],
+        });
+      } else {
+        // Plain alias with no own constraints but a named parent — just $ref
+        defsRegistry.set(entry.name, { $ref: `#/$defs/${entry.parentName}` });
+      }
+    } else {
+      // Root of chain (parent is a primitive or no registered parent alias)
+      if (entry.tags.length > 0) {
+        // Derive the base type schema from the TypeScript type of the field
+        const { jsonSchema: baseSchema } = convertType(fieldType, checker);
+        const constrained = applyCommentTagsToSchema({ ...baseSchema }, entry.tags);
+        defsRegistry.set(entry.name, constrained);
+      }
+      // Aliases with no tags and no named parent don't need a $defs entry
+    }
+  }
 }
 
 /**

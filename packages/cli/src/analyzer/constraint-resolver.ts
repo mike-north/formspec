@@ -14,6 +14,21 @@ import * as ts from "typescript";
 import { extractCommentTags, type CommentTagInfo } from "./comment-tag-extractor.js";
 
 /**
+ * A single entry in a type alias chain, describing one alias level.
+ */
+export interface AliasChainEntry {
+  /** The alias name (e.g. "Integer", "Percentage") */
+  name: string;
+  /** TSDoc constraint tags declared directly on this alias */
+  tags: CommentTagInfo[];
+  /**
+   * The name of the parent alias if this alias extends another named type alias.
+   * Undefined when the parent is a plain primitive (number, string, etc.).
+   */
+  parentName: string | undefined;
+}
+
+/**
  * Collected constraints from a type alias chain.
  */
 export interface ResolvedConstraints {
@@ -21,6 +36,11 @@ export interface ResolvedConstraints {
   tags: CommentTagInfo[];
   /** Diagnostic messages (warnings/errors) */
   diagnostics: ConstraintDiagnostic[];
+  /**
+   * Per-level alias chain info for allOf + $ref composition.
+   * Ordered leaf-first (most specific alias first, root alias last).
+   */
+  aliasChain: AliasChainEntry[];
 }
 
 export interface ConstraintDiagnostic {
@@ -44,35 +64,40 @@ export function resolveTypeConstraints(
   checker: ts.TypeChecker
 ): ResolvedConstraints {
   if (!typeNode) {
-    return { tags: [], diagnostics: [] };
+    return { tags: [], diagnostics: [], aliasChain: [] };
   }
 
   const allTagSets: CommentTagInfo[][] = [];
+  const aliasChain: AliasChainEntry[] = [];
   const diagnostics: ConstraintDiagnostic[] = [];
   const visited = new Set<ts.Symbol>();
 
-  collectTagsFromTypeNode(typeNode, checker, allTagSets, visited);
+  collectTagsFromTypeNode(typeNode, checker, allTagSets, aliasChain, visited);
 
   if (allTagSets.length === 0) {
-    return { tags: [], diagnostics };
+    return { tags: [], diagnostics, aliasChain };
   }
 
   // allTagSets is in leaf-first order; reverse so root comes first,
   // then leaf constraints win on scalar overrides.
   const merged = mergeConstraintSets(allTagSets.reverse(), diagnostics);
 
-  return { tags: merged, diagnostics };
+  return { tags: merged, diagnostics, aliasChain };
 }
 
 /**
  * Walks a TypeNode to collect constraint tags from the alias chain.
  * For TypeReferenceNodes, looks up the symbol and recurses into its declaration.
  * Results are appended in leaf-first order (current level before parents).
+ *
+ * Also populates `aliasChain` with per-level information for allOf + $ref
+ * composition. aliasChain entries are appended leaf-first.
  */
 function collectTagsFromTypeNode(
   typeNode: ts.TypeNode,
   checker: ts.TypeChecker,
   tagSets: CommentTagInfo[][],
+  aliasChain: AliasChainEntry[],
   visited: Set<ts.Symbol>
 ): void {
   if (!ts.isTypeReferenceNode(typeNode)) return;
@@ -96,21 +121,45 @@ function collectTagsFromTypeNode(
       tagSets.push(tags);
     }
 
+    // Determine parent alias name (if the aliased type is itself a named alias)
+    let parentName: string | undefined;
+    if (ts.isTypeReferenceNode(decl.type)) {
+      const parentSymbol = checker.getSymbolAtLocation(decl.type.typeName);
+      if (parentSymbol) {
+        const parentDecls = parentSymbol.getDeclarations();
+        if (parentDecls?.some((d) => ts.isTypeAliasDeclaration(d))) {
+          // Parent is a type alias — capture its name
+          parentName = ts.isIdentifier(decl.type.typeName)
+            ? decl.type.typeName.text
+            : undefined;
+        }
+      }
+    }
+
+    // Add entry for this alias (even if no tags, so the chain is complete
+    // for $ref purposes when a child alias needs to know its parent)
+    aliasChain.push({ name: decl.name.text, tags, parentName });
+
     // Recurse into the aliased type node if it's also a type reference
     if (ts.isTypeReferenceNode(decl.type)) {
-      collectTagsFromTypeNode(decl.type, checker, tagSets, visited);
+      collectTagsFromTypeNode(decl.type, checker, tagSets, aliasChain, visited);
     }
   }
 }
 
 /**
- * Merges multiple sets of constraint tags.
+ * Merges multiple sets of constraint tags and detects broadening violations.
+ *
  * Sets should be ordered from root (most general) to leaf (most specific).
  * Leaf-level constraints override root-level for scalar tags.
+ *
+ * Broadening is when a derived alias attempts to relax a parent constraint:
+ * - min-like tags (minimum, minLength, minItems): broadening = child value < parent value
+ * - max-like tags (maximum, maxLength, maxItems): broadening = child value > parent value
  */
 function mergeConstraintSets(
   tagSets: CommentTagInfo[][],
-  _diagnostics: ConstraintDiagnostic[]
+  diagnostics: ConstraintDiagnostic[]
 ): CommentTagInfo[] {
   const merged = new Map<string, CommentTagInfo>();
   const multipleOfs: number[] = [];
@@ -129,6 +178,13 @@ function mergeConstraintSets(
             typeof existing.value === "number" &&
             typeof tag.value === "number"
           ) {
+            if (tag.value < existing.value) {
+              // Derived alias lowers the minimum — that is broadening
+              diagnostics.push({
+                severity: "error",
+                message: `CONSTRAINT_BROADENING — @${tag.tagName} ${String(tag.value)} attempts to broaden inherited @${tag.tagName} ${String(existing.value)}. Constraints can only narrow, not broaden (S1).`,
+              });
+            }
             merged.set(tag.tagName, {
               tagName: tag.tagName,
               value: Math.max(existing.value, tag.value),
@@ -149,6 +205,13 @@ function mergeConstraintSets(
             typeof existing.value === "number" &&
             typeof tag.value === "number"
           ) {
+            if (tag.value > existing.value) {
+              // Derived alias raises the maximum — that is broadening
+              diagnostics.push({
+                severity: "error",
+                message: `CONSTRAINT_BROADENING — @${tag.tagName} ${String(tag.value)} attempts to broaden inherited @${tag.tagName} ${String(existing.value)}. Constraints can only narrow, not broaden (S1).`,
+              });
+            }
             merged.set(tag.tagName, {
               tagName: tag.tagName,
               value: Math.min(existing.value, tag.value),

@@ -2,26 +2,41 @@
   "type": "object",
   "properties": {
     "cpuUsage": {
-      "type": "number",
-      "minimum": 10,
-      "maximum": 100,
-      "multipleOf": 1
+      "allOf": [
+        {
+          "$ref": "#/$defs/Percentage"
+        },
+        {
+          "minimum": 10
+        }
+      ]
     },
     "memoryUsage": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 100,
-      "multipleOf": 1
+      "$ref": "#/$defs/Percentage"
     },
     "diskUsage": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 100,
-      "multipleOf": 1
+      "$ref": "#/$defs/Percentage"
     }
   },
   "required": [
     "cpuUsage",
     "memoryUsage"
-  ]
+  ],
+  "$defs": {
+    "Integer": {
+      "type": "number",
+      "multipleOf": 1
+    },
+    "Percentage": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Integer"
+        },
+        {
+          "minimum": 0,
+          "maximum": 100
+        }
+      ]
+    }
+  }
 }

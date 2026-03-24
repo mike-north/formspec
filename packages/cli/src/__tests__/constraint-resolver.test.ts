@@ -251,3 +251,181 @@ describe("resolveTypeConstraints - no constraints", () => {
     expect(tags).toHaveLength(0);
   });
 });
+
+// ============================================================================
+// Broadening detection (spec 005 §3.4)
+// ============================================================================
+
+describe("resolveTypeConstraints - broadening detection", () => {
+  it("detects broadening of minimum (child lowers the floor)", () => {
+    // Base has @minimum 5; derived tries @minimum 0 → ERROR: broadening
+    const source = `
+      /** @minimum 5 */
+      type HighBound = number;
+
+      /** @minimum 0 */
+      type Broadened = HighBound;
+
+      class TestClass {
+        x!: Broadened;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("allows narrowing of minimum (child raises the floor)", () => {
+    const source = `
+      /** @minimum 0 */
+      type LowBound = number;
+
+      /** @minimum 5 */
+      type Narrowed = LowBound;
+
+      class TestClass {
+        x!: Narrowed;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const broadenErrors = diagnostics.filter((d) => d.message.includes("broaden"));
+    expect(broadenErrors).toHaveLength(0);
+  });
+
+  it("detects broadening of maximum (child raises the ceiling)", () => {
+    const source = `
+      /** @maximum 100 */
+      type Capped = number;
+
+      /** @maximum 200 */
+      type Broadened = Capped;
+
+      class TestClass {
+        x!: Broadened;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("allows narrowing of maximum (child lowers the ceiling)", () => {
+    const source = `
+      /** @maximum 100 */
+      type Capped = number;
+
+      /** @maximum 80 */
+      type Narrowed = Capped;
+
+      class TestClass {
+        x!: Narrowed;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const broadenErrors = diagnostics.filter((d) => d.message.includes("broaden"));
+    expect(broadenErrors).toHaveLength(0);
+  });
+
+  it("detects broadening of minLength", () => {
+    const source = `
+      /** @minLength 5 */
+      type LongString = string;
+
+      /** @minLength 1 */
+      type BroadenedString = LongString;
+
+      class TestClass {
+        x!: BroadenedString;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("detects broadening of maxLength", () => {
+    const source = `
+      /** @maxLength 10 */
+      type ShortString = string;
+
+      /** @maxLength 100 */
+      type BroadenedString = ShortString;
+
+      class TestClass {
+        x!: BroadenedString;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("detects broadening of minItems", () => {
+    const source = `
+      /** @minItems 3 */
+      type NonEmptyList = string;
+
+      /** @minItems 1 */
+      type BroadenedList = NonEmptyList;
+
+      class TestClass {
+        x!: BroadenedList;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("detects broadening of maxItems", () => {
+    const source = `
+      /** @maxItems 5 */
+      type SmallList = string;
+
+      /** @maxItems 50 */
+      type BroadenedList = SmallList;
+
+      class TestClass {
+        x!: BroadenedList;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
+      true
+    );
+  });
+
+  it("broadening diagnostic includes the tag name and values", () => {
+    const source = `
+      /** @minimum 10 */
+      type Base = number;
+
+      /** @minimum 1 */
+      type Derived = Base;
+
+      class TestClass {
+        x!: Derived;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const broadenDiag = diagnostics.find((d) => d.message.includes("broaden"));
+    expect(broadenDiag).toBeDefined();
+    if (!broadenDiag) throw new Error("No broadening diagnostic found");
+    // Message should mention the tag and the conflicting values
+    expect(broadenDiag.message).toContain("minimum");
+  });
+});
