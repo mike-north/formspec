@@ -10,7 +10,9 @@
     "@formspec/runtime": "0.0.1",
     "formspec": "0.0.1",
     "@formspec/constraints": "0.1.0-alpha.0",
-    "@formspec/playground": "0.1.0-alpha.0"
+    "@formspec/language-server": "0.1.0-alpha.0",
+    "@formspec/playground": "0.1.0-alpha.0",
+    "@formspec/validator": "0.1.0-alpha.0"
   },
   "changesets": [
     "add-constraints-package",
@@ -28,7 +30,6 @@
     "interface-type-alias-schemas",
     "p4-enum-options-dx",
     "predicate-when-api",
-    "runtime-type-metadata-warning",
     "tsup-dual-cjs-esm",
     "zod-validated-ui-schema"
   ]
