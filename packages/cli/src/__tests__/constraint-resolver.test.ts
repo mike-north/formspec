@@ -77,14 +77,14 @@ describe("resolveTypeConstraints - simple alias", () => {
 
   it("resolves multipleOf from a direct type alias", () => {
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagNames(tags)).toContain("multipleOf");
     expect(tagValue(tags, "multipleOf")).toBe(1);
   });
 
   it("returns no diagnostics for valid constraints", () => {
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics).toHaveLength(0);
   });
 });
@@ -108,7 +108,7 @@ describe("resolveTypeConstraints - two-level alias chain", () => {
 
   it("collects constraints from both levels", () => {
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagNames(tags)).toContain("minimum");
     expect(tagNames(tags)).toContain("maximum");
     expect(tagNames(tags)).toContain("multipleOf");
@@ -116,14 +116,14 @@ describe("resolveTypeConstraints - two-level alias chain", () => {
 
   it("minimum comes from Percentage alias", () => {
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagValue(tags, "minimum")).toBe(0);
     expect(tagValue(tags, "maximum")).toBe(100);
   });
 
   it("multipleOf comes from Integer alias", () => {
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagValue(tags, "multipleOf")).toBe(1);
   });
 });
@@ -149,7 +149,7 @@ describe("resolveTypeConstraints - merge logic", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagValue(tags, "minimum")).toBe(5);
   });
 
@@ -167,7 +167,7 @@ describe("resolveTypeConstraints - merge logic", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tagValue(tags, "maximum")).toBe(80);
   });
 
@@ -184,7 +184,7 @@ describe("resolveTypeConstraints - merge logic", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     const multipleOfs = tags.filter((t) => t.tagName === "multipleOf").map((t) => t.value);
     expect(multipleOfs).toContain(2);
     expect(multipleOfs).toContain(3);
@@ -204,7 +204,7 @@ describe("resolveTypeConstraints - merge logic", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     const patterns = tags.filter((t) => t.tagName === "pattern").map((t) => t.value);
     expect(patterns).toContain("^[a-z]");
     expect(patterns).toContain("[a-z]$");
@@ -225,7 +225,7 @@ describe("resolveTypeConstraints - no constraints", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tags).toHaveLength(0);
   });
 
@@ -236,7 +236,7 @@ describe("resolveTypeConstraints - no constraints", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
     expect(tags).toHaveLength(0);
   });
 
@@ -247,7 +247,7 @@ describe("resolveTypeConstraints - no constraints", () => {
       }
     `;
     const { checker } = makeFieldTypeNode(source);
-    const { tags } = resolveTypeConstraints(undefined, checker);
+    const { tags } = resolveTypeConstraints("value", undefined, checker);
     expect(tags).toHaveLength(0);
   });
 });
@@ -271,10 +271,27 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
+  });
+
+  it("includes fieldName in broadening diagnostics", () => {
+    const source = `
+      /** @minimum 5 */
+      type HighBound = number;
+
+      /** @minimum 0 */
+      type Broadened = HighBound;
+
+      class TestClass {
+        myField!: Broadened;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints("myField", typeNode, checker);
+    expect(diagnostics.every((d) => d.fieldName === "myField")).toBe(true);
   });
 
   it("allows narrowing of minimum (child raises the floor)", () => {
@@ -290,7 +307,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     const broadenErrors = diagnostics.filter((d) => d.message.includes("broaden"));
     expect(broadenErrors).toHaveLength(0);
   });
@@ -308,7 +325,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
@@ -327,7 +344,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     const broadenErrors = diagnostics.filter((d) => d.message.includes("broaden"));
     expect(broadenErrors).toHaveLength(0);
   });
@@ -345,7 +362,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
@@ -364,7 +381,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
@@ -383,7 +400,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
@@ -402,7 +419,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     expect(diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))).toBe(
       true
     );
@@ -421,7 +438,7 @@ describe("resolveTypeConstraints - broadening detection", () => {
       }
     `;
     const { typeNode, checker } = makeFieldTypeNode(source);
-    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    const { diagnostics } = resolveTypeConstraints("x", typeNode, checker);
     const broadenDiag = diagnostics.find((d) => d.message.includes("broaden"));
     expect(broadenDiag).toBeDefined();
     if (!broadenDiag) throw new Error("No broadening diagnostic found");

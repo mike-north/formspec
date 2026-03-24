@@ -49,6 +49,17 @@ export interface JsonSchema {
 export class DefsRegistry {
   private readonly defs = new Map<string, JsonSchema>();
   private readonly processing = new Set<string>();
+  /**
+   * Tracks the current highest suffix counter for each base name.
+   * Used by registerAndGetName to generate _2, _3, ... dedup keys.
+   */
+  private readonly nameCounters = new Map<string, number>();
+
+  /**
+   * Warning messages emitted when a name collision is resolved by deduplication.
+   * Consumers (e.g. generateClassSchemas) should surface these as diagnostics.
+   */
+  readonly warnings: string[] = [];
 
   /** Check if a type has already been registered. */
   has(name: string): boolean {
@@ -80,6 +91,51 @@ export class DefsRegistry {
     return this.processing.has(name);
   }
 
+  /**
+   * Registers a schema under the given base name and returns the actual key used.
+   *
+   * - First registration for a name: stores as-is, returns the name unchanged.
+   * - Same name with identical schema: idempotent, returns the existing name.
+   * - Same name with a different schema (collision): stores under `<name>_2`,
+   *   `<name>_3`, etc., annotates the deduplicated entry with `title: name` so
+   *   the original name is preserved, records a warning, and returns the new key.
+   *
+   * This mirrors the API Extractor convention for resolving `$defs` name
+   * collisions that arise when two generic type specialisations share the same
+   * symbol name (e.g. `Box<string>` and `Box<number>` both resolve to "Box").
+   */
+  registerAndGetName(name: string, schema: JsonSchema): string {
+    const existing = this.defs.get(name);
+
+    if (existing !== undefined) {
+      // Idempotent: same schema already stored under this name -- reuse it.
+      if (this.schemasEqual(existing, schema)) {
+        return name;
+      }
+
+      // Collision: different schema for the same name -- deduplicate.
+      const counter = (this.nameCounters.get(name) ?? 1) + 1;
+      this.nameCounters.set(name, counter);
+      const dedupName = `${name}_${String(counter)}`;
+
+      // Annotate with the original name so downstream consumers can recover it.
+      const annotated: JsonSchema = { ...schema, title: name };
+      this.defs.set(dedupName, annotated);
+
+      this.warnings.push(
+        `$defs name collision: "${name}" registered with different schemas. ` +
+          `Using "${dedupName}" for the second registration. ` +
+          `Consider using unique type names to avoid this.`
+      );
+
+      return dedupName;
+    }
+
+    // First registration for this name.
+    this.defs.set(name, schema);
+    return name;
+  }
+
   /** Get all $defs as a plain object. */
   toObject(): Record<string, JsonSchema> {
     const result: Record<string, JsonSchema> = {};
@@ -92,6 +148,15 @@ export class DefsRegistry {
   /** Check if there are any $defs registered. */
   get size(): number {
     return this.defs.size;
+  }
+
+  /**
+   * Compares two JSON Schema objects for structural equality using JSON
+   * serialisation. Key ordering must match because schemas are constructed
+   * deterministically within a single run.
+   */
+  private schemasEqual(a: JsonSchema, b: JsonSchema): boolean {
+    return JSON.stringify(a) === JSON.stringify(b);
   }
 }
 
@@ -391,7 +456,7 @@ function convertObjectType(
   const typeName = getNamedTypeName(type, checker);
 
   if (typeName && defsRegistry) {
-    // Already registered — return $ref directly
+    // Already registered -- return $ref directly
     if (defsRegistry.has(typeName)) {
       return {
         jsonSchema: { $ref: `#/$defs/${typeName}` },
@@ -399,7 +464,7 @@ function convertObjectType(
       };
     }
 
-    // Currently processing (circular reference) — return $ref; resolution happens after
+    // Currently processing (circular reference) -- return $ref; resolution happens after
     if (defsRegistry.isProcessing(typeName)) {
       return {
         jsonSchema: { $ref: `#/$defs/${typeName}` },
@@ -423,7 +488,7 @@ function convertObjectType(
     };
   }
 
-  // No registry or unnamed type — inline the schema
+  // No registry or unnamed type -- inline the schema
   return {
     jsonSchema: buildObjectSchema(type, checker, defsRegistry),
     formSpecFieldType: "object",
@@ -461,7 +526,7 @@ export function createFormSpecField(
 
   // For object types, recursively add nested fields.
   // Note: the UI schema always inlines nested fields regardless of $defs/
-  // $ref usage in the JSON Schema — the UI schema is resolved separately.
+  // $ref usage in the JSON Schema -- the UI schema is resolved separately.
   if (formSpecFieldType === "object" && type.flags & ts.TypeFlags.Object) {
     const objectType = type as ts.ObjectType;
     const nestedFields: FormSpecField[] = [];

@@ -35,6 +35,49 @@ export interface ClassSchemas {
 }
 
 /**
+ * Describes how a TSDoc tag maps to JSON Schema and FormSpec field properties.
+ */
+export interface TagMapping {
+  /** JSON Schema property name (e.g., "minimum", "title") */
+  jsonSchemaKey?: string;
+  /** FormSpec field property name (e.g., "min", "label") */
+  formSpecKey?: string;
+  /** Extension keyword for vendor-specific keywords (e.g., "x-formspec-maxSigFig") */
+  extensionKey?: string;
+  /** Value type expected from the tag */
+  valueType: "number" | "string" | "boolean" | "bare";
+}
+
+/**
+ * Mapping table from TSDoc tag names to their JSON Schema and FormSpec targets.
+ */
+export const TAG_MAPPINGS: Record<string, TagMapping> = {
+  minimum: { jsonSchemaKey: "minimum", formSpecKey: "min", valueType: "number" },
+  maximum: { jsonSchemaKey: "maximum", formSpecKey: "max", valueType: "number" },
+  exclusiveMinimum: { jsonSchemaKey: "exclusiveMinimum", valueType: "number" },
+  exclusiveMaximum: { jsonSchemaKey: "exclusiveMaximum", valueType: "number" },
+  multipleOf: { jsonSchemaKey: "multipleOf", valueType: "number" },
+  minLength: { jsonSchemaKey: "minLength", formSpecKey: "minLength", valueType: "number" },
+  maxLength: { jsonSchemaKey: "maxLength", formSpecKey: "maxLength", valueType: "number" },
+  pattern: { jsonSchemaKey: "pattern", formSpecKey: "pattern", valueType: "string" },
+  minItems: { jsonSchemaKey: "minItems", formSpecKey: "minItems", valueType: "number" },
+  maxItems: { jsonSchemaKey: "maxItems", formSpecKey: "maxItems", valueType: "number" },
+  uniqueItems: { jsonSchemaKey: "uniqueItems", valueType: "bare" },
+  displayName: { jsonSchemaKey: "title", formSpecKey: "label", valueType: "string" },
+  description: { jsonSchemaKey: "description", formSpecKey: "description", valueType: "string" },
+  defaultValue: { jsonSchemaKey: "default", valueType: "string" },
+  deprecated: { jsonSchemaKey: "deprecated", valueType: "bare" },
+  const: { jsonSchemaKey: "const", valueType: "string" },
+  format: { jsonSchemaKey: "format", valueType: "string" },
+  placeholder: { formSpecKey: "placeholder", valueType: "string" },
+  group: { formSpecKey: "group", valueType: "string" },
+  order: { formSpecKey: "order", valueType: "number" },
+  maxSigFig: { extensionKey: "x-formspec-maxSigFig", valueType: "number" },
+  maxDecimalPlaces: { extensionKey: "x-formspec-maxDecimalPlaces", valueType: "number" },
+};
+
+
+/**
  * Generates JSON Schema and FormSpec from a class analysis.
  *
  * Uses static type information and decorator metadata to build
@@ -61,16 +104,10 @@ export function generateClassSchemas(
       tags: typeAliasTags,
       diagnostics: resolverDiagnostics,
       aliasChain,
-    } = resolveTypeConstraints(field.typeNode, checker);
+    } = resolveTypeConstraints(field.name, field.typeNode, checker);
 
-    // Surface broadening diagnostics as constraint violations
-    for (const d of resolverDiagnostics) {
-      allDiagnostics.push({
-        fieldName: field.name,
-        severity: d.severity,
-        message: d.message,
-      });
-    }
+    // Surface broadening diagnostics (already include fieldName from the resolver)
+    allDiagnostics.push(...resolverDiagnostics);
 
     // Determine whether this field uses a constrained type alias chain.
     // If so, register each alias in $defs and use $ref/$allOf for the field.
@@ -149,6 +186,15 @@ export function generateClassSchemas(
     );
     applyCommentTagsToFormSpecField(formSpecField, allCommentTags);
     uxElements.push(formSpecField);
+  }
+
+  // Surface any $defs name-collision warnings from the registry as diagnostics.
+  for (const warning of defsRegistry.warnings) {
+    allDiagnostics.push({
+      fieldName: "(type-system)",
+      severity: "warning",
+      message: warning,
+    });
   }
 
   // Build complete JSON Schema, including $defs if any named types were found
@@ -232,156 +278,74 @@ function registerAliasChainInDefs(
 }
 
 /**
- * Applies TSDoc comment tag constraints to a JSON Schema.
+ * Applies TSDoc comment tag constraints to a JSON Schema using TAG_MAPPINGS.
  */
 function applyCommentTagsToSchema(schema: JsonSchema, commentTags: CommentTagInfo[]): JsonSchema {
-  const result = { ...schema };
+  const result: Record<string, unknown> = { ...schema };
 
   for (const tag of commentTags) {
-    switch (tag.tagName) {
-      // Numeric constraints
-      case "minimum":
-        if (typeof tag.value === "number") result.minimum = tag.value;
-        break;
-      case "maximum":
-        if (typeof tag.value === "number") result.maximum = tag.value;
-        break;
-      case "exclusiveMinimum":
-        if (typeof tag.value === "number") result.exclusiveMinimum = tag.value;
-        break;
-      case "exclusiveMaximum":
-        if (typeof tag.value === "number") result.exclusiveMaximum = tag.value;
-        break;
-      case "multipleOf":
-        if (typeof tag.value === "number") result.multipleOf = tag.value;
-        break;
+    const mapping = TAG_MAPPINGS[tag.tagName];
+    if (!mapping) continue;
 
-      // String constraints
-      case "minLength":
-        if (typeof tag.value === "number") result.minLength = tag.value;
-        break;
-      case "maxLength":
-        if (typeof tag.value === "number") result.maxLength = tag.value;
-        break;
-      case "pattern":
-        if (typeof tag.value === "string") result.pattern = tag.value;
-        break;
-
-      // Array constraints
-      case "minItems":
-        if (typeof tag.value === "number") result.minItems = tag.value;
-        break;
-      case "maxItems":
-        if (typeof tag.value === "number") result.maxItems = tag.value;
-        break;
-      case "uniqueItems":
-        result.uniqueItems = true;
-        break;
-
-      // Annotations
-      case "displayName":
-        if (typeof tag.value === "string") result.title = tag.value;
-        break;
-      case "description":
-        if (typeof tag.value === "string") result.description = tag.value;
-        break;
-      case "defaultValue":
-        if (tag.value !== undefined) result.default = tag.value;
-        break;
-      case "deprecated":
-        result.deprecated = true;
-        break;
-      case "const":
-        if (tag.value !== undefined) result.const = tag.value;
-        break;
-      case "format":
-        if (typeof tag.value === "string") result.format = tag.value;
-        break;
-      case "maxSigFig":
-        if (typeof tag.value === "number") {
-          (result as Record<string, unknown>)["x-formspec-maxSigFig"] = tag.value;
+    if (mapping.jsonSchemaKey) {
+      if (mapping.valueType === "bare") {
+        result[mapping.jsonSchemaKey] = true;
+      } else if (tag.value !== undefined) {
+        const valueTypeMatches =
+          mapping.valueType === "number"
+            ? typeof tag.value === "number"
+            : mapping.valueType === "string"
+              ? typeof tag.value === "string"
+              : typeof tag.value === "boolean";
+        if (valueTypeMatches || tag.tagName === "defaultValue" || tag.tagName === "const") {
+          result[mapping.jsonSchemaKey] = tag.value;
         }
-        break;
-      case "maxDecimalPlaces":
-        if (typeof tag.value === "number") {
-          (result as Record<string, unknown>)["x-formspec-maxDecimalPlaces"] = tag.value;
-        }
-        break;
+      }
+    }
+
+    if (mapping.extensionKey !== undefined && typeof tag.value === "number") {
+      result[mapping.extensionKey] = tag.value;
     }
   }
 
-  return result;
+  return result as JsonSchema;
 }
 
 /**
- * Applies TSDoc comment tag constraints to a FormSpec field.
+ * Applies TSDoc comment tag constraints to a FormSpec field using TAG_MAPPINGS.
+ *
+ * Note: showWhen and hideWhen are compound-value tags that cannot be expressed
+ * in the simple TAG_MAPPINGS table; they are handled separately.
  */
 function applyCommentTagsToFormSpecField(
   field: FormSpecField,
   commentTags: CommentTagInfo[]
 ): void {
+  const fieldRecord = field as unknown as Record<string, unknown>;
+
   for (const tag of commentTags) {
-    switch (tag.tagName) {
-      case "displayName":
-        if (typeof tag.value === "string") field.label = tag.value;
-        break;
-      case "description":
-        if (typeof tag.value === "string") field.description = tag.value;
-        break;
-      case "minimum":
-        if (typeof tag.value === "number") field.min = tag.value;
-        break;
-      case "maximum":
-        if (typeof tag.value === "number") field.max = tag.value;
-        break;
-      case "minLength":
-        if (typeof tag.value === "number") field.minLength = tag.value;
-        break;
-      case "maxLength":
-        if (typeof tag.value === "number") field.maxLength = tag.value;
-        break;
-      case "minItems":
-        if (typeof tag.value === "number") field.minItems = tag.value;
-        break;
-      case "maxItems":
-        if (typeof tag.value === "number") field.maxItems = tag.value;
-        break;
-      case "pattern":
-        if (typeof tag.value === "string") field.pattern = tag.value;
-        break;
-      case "placeholder":
-        if (typeof tag.value === "string") field.placeholder = tag.value;
-        break;
-      case "group":
-        if (typeof tag.value === "string") field.group = tag.value;
-        break;
-      case "order":
-        if (typeof tag.value === "number") field.order = tag.value;
-        break;
-      case "showWhen": {
-        if (typeof tag.value === "string") {
-          const spaceIdx = tag.value.indexOf(" ");
-          if (spaceIdx > 0) {
-            field.showWhen = {
-              field: tag.value.substring(0, spaceIdx),
-              value: tag.value.substring(spaceIdx + 1),
-            };
-          }
-        }
-        break;
+    const mapping = TAG_MAPPINGS[tag.tagName];
+    if (mapping?.formSpecKey) {
+      if (mapping.valueType === "bare") continue;
+      // After the bare-guard, mapping.valueType is narrowed to "number" | "string" | "boolean"
+      const valueTypeMatches = typeof tag.value === mapping.valueType;
+      if (valueTypeMatches) {
+        fieldRecord[mapping.formSpecKey] = tag.value;
       }
-      case "hideWhen": {
-        if (typeof tag.value === "string") {
-          const spaceIdx = tag.value.indexOf(" ");
-          if (spaceIdx > 0) {
-            field.hideWhen = {
-              field: tag.value.substring(0, spaceIdx),
-              value: tag.value.substring(spaceIdx + 1),
-            };
-          }
-        }
-        break;
-      }
+    }
+  }
+
+  for (const tag of commentTags) {
+    if (tag.tagName === "showWhen" || tag.tagName === "hideWhen") {
+      if (typeof tag.value !== "string") continue;
+      const spaceIdx = tag.value.indexOf(" ");
+      if (spaceIdx <= 0) continue;
+      const parsed = {
+        field: tag.value.substring(0, spaceIdx),
+        value: tag.value.substring(spaceIdx + 1),
+      };
+      if (tag.tagName === "showWhen") field.showWhen = parsed;
+      else field.hideWhen = parsed;
     }
   }
 }

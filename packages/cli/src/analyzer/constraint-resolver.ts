@@ -12,6 +12,7 @@
 
 import * as ts from "typescript";
 import { extractCommentTags, type CommentTagInfo } from "./comment-tag-extractor.js";
+import type { ConstraintViolation } from "./constraint-validator.js";
 
 /**
  * A single entry in a type alias chain, describing one alias level.
@@ -34,18 +35,13 @@ export interface AliasChainEntry {
 export interface ResolvedConstraints {
   /** Merged constraint tags */
   tags: CommentTagInfo[];
-  /** Diagnostic messages (warnings/errors) */
-  diagnostics: ConstraintDiagnostic[];
+  /** Diagnostic messages (warnings/errors), including fieldName from the call site */
+  diagnostics: ConstraintViolation[];
   /**
    * Per-level alias chain info for allOf + $ref composition.
    * Ordered leaf-first (most specific alias first, root alias last).
    */
   aliasChain: AliasChainEntry[];
-}
-
-export interface ConstraintDiagnostic {
-  severity: "error" | "warning";
-  message: string;
 }
 
 /**
@@ -56,10 +52,12 @@ export interface ConstraintDiagnostic {
  * tags. Field-level tags (passed separately to applyCommentTagsToSchema)
  * override type-level tags for scalar constraints.
  *
+ * @param fieldName - The name of the field being resolved (included in diagnostics)
  * @param typeNode - The type node from the field declaration
  * @param checker - TypeScript type checker
  */
 export function resolveTypeConstraints(
+  fieldName: string,
   typeNode: ts.TypeNode | undefined,
   checker: ts.TypeChecker
 ): ResolvedConstraints {
@@ -69,7 +67,7 @@ export function resolveTypeConstraints(
 
   const allTagSets: CommentTagInfo[][] = [];
   const aliasChain: AliasChainEntry[] = [];
-  const diagnostics: ConstraintDiagnostic[] = [];
+  const diagnostics: ConstraintViolation[] = [];
   const visited = new Set<ts.Symbol>();
 
   collectTagsFromTypeNode(typeNode, checker, allTagSets, aliasChain, visited);
@@ -80,7 +78,7 @@ export function resolveTypeConstraints(
 
   // allTagSets is in leaf-first order; reverse so root comes first,
   // then leaf constraints win on scalar overrides.
-  const merged = mergeConstraintSets(allTagSets.reverse(), diagnostics);
+  const merged = mergeConstraintSets(fieldName, allTagSets.reverse(), diagnostics);
 
   return { tags: merged, diagnostics, aliasChain };
 }
@@ -156,8 +154,9 @@ function collectTagsFromTypeNode(
  * - max-like tags (maximum, maxLength, maxItems): broadening = child value > parent value
  */
 function mergeConstraintSets(
+  fieldName: string,
   tagSets: CommentTagInfo[][],
-  diagnostics: ConstraintDiagnostic[]
+  diagnostics: ConstraintViolation[]
 ): CommentTagInfo[] {
   const merged = new Map<string, CommentTagInfo>();
   const multipleOfs: number[] = [];
@@ -179,6 +178,7 @@ function mergeConstraintSets(
             if (tag.value < existing.value) {
               // Derived alias lowers the minimum — that is broadening
               diagnostics.push({
+                fieldName,
                 severity: "error",
                 message: `CONSTRAINT_BROADENING — @${tag.tagName} ${String(tag.value)} attempts to broaden inherited @${tag.tagName} ${String(existing.value)}. Constraints can only narrow, not broaden (S1).`,
               });
@@ -206,6 +206,7 @@ function mergeConstraintSets(
             if (tag.value > existing.value) {
               // Derived alias raises the maximum — that is broadening
               diagnostics.push({
+                fieldName,
                 severity: "error",
                 message: `CONSTRAINT_BROADENING — @${tag.tagName} ${String(tag.value)} attempts to broaden inherited @${tag.tagName} ${String(existing.value)}. Constraints can only narrow, not broaden (S1).`,
               });
