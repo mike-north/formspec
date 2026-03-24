@@ -1,0 +1,36 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "name",
+      "required": true,
+      "label": "Full Name"
+    },
+    {
+      "_field": "number",
+      "id": "age",
+      "required": true,
+      "min": 0,
+      "max": 150
+    },
+    {
+      "_field": "text",
+      "id": "email",
+      "required": true,
+      "minLength": 5,
+      "maxLength": 100,
+      "pattern": "^[^@]+@[^@]+$"
+    },
+    {
+      "_field": "array",
+      "id": "tags",
+      "required": true,
+      "minItems": 1,
+      "maxItems": 10
+    },
+    {
+      "_field": "text",
+      "id": "legacyField"
+    }
+  ]
+}

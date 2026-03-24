@@ -14,6 +14,7 @@ import {
   type JsonSchema,
   type FormSpecField,
 } from "../analyzer/type-converter.js";
+import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
 
 /**
  * Generated schemas for a class.
@@ -48,7 +49,9 @@ export function generateClassSchemas(
   for (const field of analysis.fields) {
     // Generate JSON Schema for field
     const { jsonSchema: baseSchema } = convertType(field.type, checker);
-    const fieldSchema = applyDecoratorsToSchema(baseSchema, field.decorators);
+    // Apply decorator constraints first, then comment tag constraints
+    const withDecorators = applyDecoratorsToSchema(baseSchema, field.decorators);
+    const fieldSchema = applyCommentTagsToSchema(withDecorators, field.commentTags);
     properties[field.name] = fieldSchema;
 
     // Track required fields
@@ -64,6 +67,7 @@ export function generateClassSchemas(
       field.optional,
       checker
     );
+    applyCommentTagsToFormSpecField(formSpecField, field.commentTags);
     uxElements.push(formSpecField);
   }
 
@@ -98,4 +102,116 @@ export function generateFieldSchema(
 ): JsonSchema {
   const { jsonSchema: baseSchema } = convertType(field.type, checker);
   return applyDecoratorsToSchema(baseSchema, field.decorators);
+}
+
+/**
+ * Applies TSDoc comment tag constraints to a JSON Schema.
+ */
+function applyCommentTagsToSchema(
+  schema: JsonSchema,
+  commentTags: CommentTagInfo[]
+): JsonSchema {
+  const result = { ...schema };
+
+  for (const tag of commentTags) {
+    switch (tag.tagName) {
+      // Numeric constraints
+      case "minimum":
+        if (typeof tag.value === "number") result.minimum = tag.value;
+        break;
+      case "maximum":
+        if (typeof tag.value === "number") result.maximum = tag.value;
+        break;
+      case "exclusiveMinimum":
+        if (typeof tag.value === "number") result.exclusiveMinimum = tag.value;
+        break;
+      case "exclusiveMaximum":
+        if (typeof tag.value === "number") result.exclusiveMaximum = tag.value;
+        break;
+      case "multipleOf":
+        if (typeof tag.value === "number") result.multipleOf = tag.value;
+        break;
+
+      // String constraints
+      case "minLength":
+        if (typeof tag.value === "number") result.minLength = tag.value;
+        break;
+      case "maxLength":
+        if (typeof tag.value === "number") result.maxLength = tag.value;
+        break;
+      case "pattern":
+        if (typeof tag.value === "string") result.pattern = tag.value;
+        break;
+
+      // Array constraints
+      case "minItems":
+        if (typeof tag.value === "number") result.minItems = tag.value;
+        break;
+      case "maxItems":
+        if (typeof tag.value === "number") result.maxItems = tag.value;
+        break;
+      case "uniqueItems":
+        result.uniqueItems = true;
+        break;
+
+      // Annotations
+      case "displayName":
+        if (typeof tag.value === "string") result.title = tag.value;
+        break;
+      case "description":
+        if (typeof tag.value === "string") result.description = tag.value;
+        break;
+      case "defaultValue":
+        if (tag.value !== undefined) result.default = tag.value;
+        break;
+      case "deprecated":
+        result.deprecated = true;
+        break;
+      case "const":
+        if (tag.value !== undefined) result.const = tag.value;
+        break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Applies TSDoc comment tag constraints to a FormSpec field.
+ */
+function applyCommentTagsToFormSpecField(
+  field: FormSpecField,
+  commentTags: CommentTagInfo[]
+): void {
+  for (const tag of commentTags) {
+    switch (tag.tagName) {
+      case "displayName":
+        if (typeof tag.value === "string") field.label = tag.value;
+        break;
+      case "description":
+        if (typeof tag.value === "string") field.description = tag.value;
+        break;
+      case "minimum":
+        if (typeof tag.value === "number") field.min = tag.value;
+        break;
+      case "maximum":
+        if (typeof tag.value === "number") field.max = tag.value;
+        break;
+      case "minLength":
+        if (typeof tag.value === "number") field.minLength = tag.value;
+        break;
+      case "maxLength":
+        if (typeof tag.value === "number") field.maxLength = tag.value;
+        break;
+      case "minItems":
+        if (typeof tag.value === "number") field.minItems = tag.value;
+        break;
+      case "maxItems":
+        if (typeof tag.value === "number") field.maxItems = tag.value;
+        break;
+      case "pattern":
+        if (typeof tag.value === "string") field.pattern = tag.value;
+        break;
+    }
+  }
 }

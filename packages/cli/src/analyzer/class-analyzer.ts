@@ -9,6 +9,7 @@
 
 import * as ts from "typescript";
 import { extractDecorators, type DecoratorInfo } from "./decorator-extractor.js";
+import { extractCommentTags, type CommentTagInfo } from "./comment-tag-extractor.js";
 
 /**
  * Analyzed field information from a class.
@@ -24,6 +25,8 @@ export interface FieldInfo {
   optional: boolean;
   /** Decorators applied to the field */
   decorators: DecoratorInfo[];
+  /** TSDoc comment tags extracted from JSDoc */
+  commentTags: CommentTagInfo[];
 }
 
 /**
@@ -132,6 +135,7 @@ function analyzeField(
   const type = checker.getTypeAtLocation(prop);
   const optional = prop.questionToken !== undefined;
   const decorators = extractDecorators(prop);
+  const commentTags = extractCommentTags(prop);
 
   return {
     name,
@@ -139,6 +143,7 @@ function analyzeField(
     type,
     optional,
     decorators,
+    commentTags,
   };
 }
 

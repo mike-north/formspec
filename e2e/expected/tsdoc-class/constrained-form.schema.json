@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Full Name"
+    },
+    "age": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 150
+    },
+    "email": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 100,
+      "pattern": "^[^@]+@[^@]+$"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 10
+    },
+    "legacyField": {
+      "type": "string",
+      "deprecated": true
+    }
+  },
+  "required": ["name", "age", "email", "tags"]
+}
