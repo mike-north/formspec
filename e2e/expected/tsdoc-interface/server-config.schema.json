@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "properties": {
+    "hostname": {
+      "type": "string"
+    },
+    "port": {
+      "type": "number"
+    },
+    "protocol": {
+      "enum": ["http", "https"]
+    },
+    "maxConnections": {
+      "type": "number"
+    },
+    "enableLogging": {
+      "type": "boolean"
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": ["host", "port", "name"]
+    },
+    "allowedOrigins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["hostname", "port", "protocol", "enableLogging", "database"]
+}

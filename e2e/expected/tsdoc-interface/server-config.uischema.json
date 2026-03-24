@@ -1,0 +1,54 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "hostname",
+      "required": true
+    },
+    {
+      "_field": "number",
+      "id": "port",
+      "required": true
+    },
+    {
+      "_field": "enum",
+      "id": "protocol",
+      "required": true
+    },
+    {
+      "_field": "number",
+      "id": "maxConnections"
+    },
+    {
+      "_field": "boolean",
+      "id": "enableLogging",
+      "required": true
+    },
+    {
+      "_field": "object",
+      "id": "database",
+      "required": true,
+      "fields": [
+        {
+          "_field": "text",
+          "id": "host",
+          "required": true
+        },
+        {
+          "_field": "number",
+          "id": "port",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "name",
+          "required": true
+        }
+      ]
+    },
+    {
+      "_field": "array",
+      "id": "allowedOrigins"
+    }
+  ]
+}

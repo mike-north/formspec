@@ -1,0 +1,36 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "name",
+      "required": true
+    },
+    {
+      "_field": "text",
+      "id": "description"
+    },
+    {
+      "_field": "number",
+      "id": "price",
+      "required": true
+    },
+    {
+      "_field": "enum",
+      "id": "currency",
+      "required": true
+    },
+    {
+      "_field": "boolean",
+      "id": "active",
+      "required": true
+    },
+    {
+      "_field": "array",
+      "id": "tags"
+    },
+    {
+      "_field": "object",
+      "id": "metadata"
+    }
+  ]
+}

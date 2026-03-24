@@ -1,0 +1,32 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "name",
+      "required": true
+    },
+    {
+      "_field": "text",
+      "id": "nickname",
+      "required": true
+    },
+    {
+      "_field": "number",
+      "id": "age"
+    },
+    {
+      "_field": "number",
+      "id": "score",
+      "required": true
+    },
+    {
+      "_field": "enum",
+      "id": "status",
+      "required": true
+    },
+    {
+      "_field": "array",
+      "id": "tags"
+    }
+  ]
+}

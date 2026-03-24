@@ -1,0 +1,56 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "orderId",
+      "required": true
+    },
+    {
+      "_field": "object",
+      "id": "customer",
+      "required": true,
+      "fields": [
+        {
+          "_field": "text",
+          "id": "name",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "email",
+          "required": true
+        },
+        {
+          "_field": "object",
+          "id": "address",
+          "fields": [
+            {
+              "_field": "text",
+              "id": "street",
+              "required": true
+            },
+            {
+              "_field": "text",
+              "id": "city",
+              "required": true
+            },
+            {
+              "_field": "text",
+              "id": "country",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_field": "array",
+      "id": "items",
+      "required": true
+    },
+    {
+      "_field": "text",
+      "id": "notes"
+    }
+  ]
+}

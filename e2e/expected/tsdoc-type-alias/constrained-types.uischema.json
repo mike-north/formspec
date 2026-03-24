@@ -1,0 +1,33 @@
+{
+  "elements": [
+    {
+      "_field": "number",
+      "id": "cpuThreshold",
+      "required": true
+    },
+    {
+      "_field": "number",
+      "id": "memoryThreshold",
+      "required": true
+    },
+    {
+      "_field": "text",
+      "id": "adminEmail",
+      "required": true
+    },
+    {
+      "_field": "boolean",
+      "id": "enableAlerts",
+      "required": true
+    },
+    {
+      "_field": "array",
+      "id": "alertChannels",
+      "required": true
+    },
+    {
+      "_field": "object",
+      "id": "retryPolicy"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "firstName": {
+      "title": "First Name",
+      "type": "string"
+    },
+    "lastName": {
+      "title": "Last Name",
+      "type": "string"
+    },
+    "email": {
+      "title": "Email",
+      "type": "string"
+    },
+    "contactMethod": {
+      "title": "Preferred Contact Method",
+      "type": "string",
+      "enum": ["email", "phone", "mail"]
+    },
+    "phoneNumber": {
+      "title": "Phone Number",
+      "type": "string"
+    },
+    "age": {
+      "title": "Age",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 150
+    },
+    "newsletter": {
+      "title": "Subscribe to Newsletter",
+      "type": "boolean"
+    }
+  },
+  "required": ["firstName", "lastName", "contactMethod"]
+}

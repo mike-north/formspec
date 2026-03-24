@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "customerName": {
+      "title": "Name",
+      "type": "string"
+    },
+    "billingAddress": {
+      "title": "Billing Address",
+      "type": "object",
+      "properties": {
+        "street": {
+          "title": "Street",
+          "type": "string"
+        },
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "zip": {
+          "title": "ZIP",
+          "type": "string"
+        }
+      },
+      "required": ["street", "city"]
+    },
+    "shippingAddress": {
+      "title": "Shipping Address",
+      "type": "object",
+      "properties": {
+        "street": {
+          "title": "Street",
+          "type": "string"
+        },
+        "city": {
+          "title": "City",
+          "type": "string"
+        },
+        "zip": {
+          "title": "ZIP",
+          "type": "string"
+        }
+      },
+      "required": ["street", "city"]
+    },
+    "lineItems": {
+      "title": "Line Items",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Qty",
+            "type": "number",
+            "minimum": 1,
+            "maximum": 9999
+          },
+          "unitPrice": {
+            "title": "Price",
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": ["description"]
+      },
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": ["customerName", "billingAddress", "lineItems"]
+}
