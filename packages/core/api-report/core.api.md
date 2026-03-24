@@ -71,6 +71,7 @@ export interface DynamicSchemaField<N extends string> {
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
+    readonly params?: readonly string[];
     readonly required?: boolean;
     readonly schemaSource: string;
     readonly _type: "field";
@@ -135,6 +136,39 @@ export interface Group<Elements extends readonly FormElement[]> {
     readonly _type: "group";
 }
 
+// @public (undocumented)
+export function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
+
+// @public (undocumented)
+export function isBooleanField(element: FormElement): element is BooleanField<string>;
+
+// @public (undocumented)
+export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
+
+// @public (undocumented)
+export function isDynamicEnumField(element: FormElement): element is DynamicEnumField<string, string>;
+
+// @public (undocumented)
+export function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string>;
+
+// @public (undocumented)
+export function isField(element: FormElement): element is AnyField;
+
+// @public (undocumented)
+export function isGroup(element: FormElement): element is Group<readonly FormElement[]>;
+
+// @public (undocumented)
+export function isNumberField(element: FormElement): element is NumberField<string>;
+
+// @public (undocumented)
+export function isObjectField(element: FormElement): element is ObjectField<string, readonly FormElement[]>;
+
+// @public (undocumented)
+export function isStaticEnumField(element: FormElement): element is StaticEnumField<string, readonly EnumOptionValue[]>;
+
+// @public (undocumented)
+export function isTextField(element: FormElement): element is TextField<string>;
+
 // @public
 export interface NumberField<N extends string> {
     readonly _field: "number";
@@ -173,7 +207,10 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 export interface TextField<N extends string> {
     readonly _field: "text";
     readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
     readonly name: N;
+    readonly pattern?: string;
     readonly placeholder?: string;
     readonly required?: boolean;
     readonly _type: "field";

@@ -54,11 +54,11 @@ describe("Chain DSL Conditionals", () => {
     // when the condition is met (C3, S8)."
     // BUG: Currently cardNumber and accountNumber leak into the top-level required
     // array unconditionally. A paymentMethod=crypto submission would fail validation.
-    it.fails("C3/S8: conditional fields are NOT in top-level required (cardNumber)", () => {
+    it("C3/S8: conditional fields are NOT in top-level required (cardNumber)", () => {
       expect(required).not.toContain("cardNumber");
     });
 
-    it.fails("C3/S8: conditional fields are NOT in top-level required (accountNumber)", () => {
+    it("C3/S8: conditional fields are NOT in top-level required (accountNumber)", () => {
       expect(required).not.toContain("accountNumber");
     });
 

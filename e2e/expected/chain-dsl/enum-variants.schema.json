@@ -9,7 +9,6 @@
     },
     "labeledPriority": {
       "title": "Priority",
-      "type": "string",
       "oneOf": [
         {
           "const": "low",

@@ -45,7 +45,13 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
 
   switch (field._field) {
     case "text":
-      return { ...base, type: "string" };
+      return {
+        ...base,
+        type: "string",
+        ...(field.minLength !== undefined && { minLength: field.minLength }),
+        ...(field.maxLength !== undefined && { maxLength: field.maxLength }),
+        ...(field.pattern !== undefined && { pattern: field.pattern }),
+      };
 
     case "number":
       return {
@@ -68,9 +74,9 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
         );
       if (isObjectOptions) {
         // Object options with id/label: use oneOf with const/title
+        // Per JSON Schema spec: type alongside oneOf is redundant/incorrect
         return {
-          ...base,
-          type: "string",
+          ...(base.title !== undefined && { title: base.title }),
           oneOf: opts.map((o) => ({
             const: o.id,
             title: o.label,
@@ -96,11 +102,14 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
     case "dynamic_schema":
       // Dynamic schemas are objects with unknown properties
       // x-formspec-schemaSource indicates where to load the schema from
+      // x-formspec-params indicates dependent field names for configuring the schema
       return {
         ...base,
         type: "object",
         additionalProperties: true,
         "x-formspec-schemaSource": field.schemaSource,
+        ...(field.params !== undefined &&
+          field.params.length > 0 && { "x-formspec-params": field.params }),
       };
 
     case "array": {
@@ -137,13 +146,15 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
 function collectFields(
   elements: readonly FormElement[],
   properties: Record<string, JSONSchema7>,
-  required: string[]
+  required: string[],
+  insideConditional = false
 ): void {
   for (const element of elements) {
     switch (element._type) {
       case "field":
         properties[element.name] = fieldToJsonSchema(element);
-        if (element.required === true) {
+        // Per spec: "a conditional field is optional even when condition is met" (C3, S8)
+        if (element.required === true && !insideConditional) {
           required.push(element.name);
         }
         break;
@@ -153,18 +164,21 @@ function collectFields(
         collectFields(
           (element as Group<readonly FormElement[]>).elements,
           properties,
-          required
+          required,
+          insideConditional
         );
         break;
 
       case "conditional":
         // Conditional fields are still part of the schema
         // They're just hidden/shown in the UI
+        // But they are never required — pass insideConditional=true
         collectFields(
           (element as Conditional<string, unknown, readonly FormElement[]>)
             .elements,
           properties,
-          required
+          required,
+          true
         );
         break;
     }

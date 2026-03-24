@@ -179,9 +179,10 @@ describe("Edge cases: Enum options", () => {
     const { jsonSchema } = buildFormSchemas(form);
 
     expect(jsonSchema.properties?.["singleObj"]).toMatchObject({
-      type: "string",
       oneOf: [{ const: "only", title: "Only Option" }],
     });
+    // Per spec: type is not emitted alongside oneOf
+    expect(jsonSchema.properties?.["singleObj"]).not.toHaveProperty("type");
   });
 
   it("should handle enum with empty string option", () => {

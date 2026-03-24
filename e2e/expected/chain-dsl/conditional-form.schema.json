@@ -28,5 +28,5 @@
       "type": "boolean"
     }
   },
-  "required": ["paymentMethod", "cardNumber", "accountNumber"]
+  "required": ["paymentMethod"]
 }

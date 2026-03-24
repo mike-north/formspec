@@ -47,7 +47,6 @@ describe("generateJsonSchema", () => {
     const schema = generateJsonSchema(form);
 
     expect(schema.properties?.["priority"]).toEqual({
-      type: "string",
       title: "Priority",
       oneOf: [
         { const: "low", title: "Low Priority" },
@@ -55,6 +54,8 @@ describe("generateJsonSchema", () => {
         { const: "high", title: "High Priority" },
       ],
     });
+    // Per spec: type is not emitted alongside oneOf
+    expect(schema.properties?.["priority"]).not.toHaveProperty("type");
   });
 
   it("should handle required fields", () => {
@@ -160,6 +161,118 @@ describe("generateJsonSchema", () => {
       additionalProperties: true,
       "x-formspec-schemaSource": "stripe-payment-form",
     });
+  });
+
+  // Task #19: DynamicSchemaField params
+  it("should include x-formspec-params for dynamic schema with params", () => {
+    const form = formspec(
+      field.dynamicSchema("settings", "app_settings", { params: ["appId"] }),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties?.["settings"]).toMatchObject({
+      type: "object",
+      additionalProperties: true,
+      "x-formspec-schemaSource": "app_settings",
+      "x-formspec-params": ["appId"],
+    });
+  });
+
+  it("should NOT include x-formspec-params for dynamic schema without params", () => {
+    const form = formspec(
+      field.dynamicSchema("settings", "app_settings"),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties?.["settings"]).not.toHaveProperty("x-formspec-params");
+  });
+
+  it("should NOT include x-formspec-params for dynamic schema with empty params array", () => {
+    const form = formspec(
+      field.dynamicSchema("settings", "app_settings", { params: [] }),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties?.["settings"]).not.toHaveProperty("x-formspec-params");
+  });
+
+  // Task #5: String constraints on TextField
+  it("should emit string constraints on text fields", () => {
+    const form = formspec(
+      field.text("email", {
+        minLength: 5,
+        maxLength: 100,
+        pattern: "^[^@]+@[^@]+$",
+      }),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties?.["email"]).toEqual({
+      type: "string",
+      minLength: 5,
+      maxLength: 100,
+      pattern: "^[^@]+@[^@]+$",
+    });
+  });
+
+  it("should emit only provided string constraints on text fields", () => {
+    const form = formspec(
+      field.text("name", { minLength: 1 }),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    const prop = schema.properties?.["name"];
+    expect(prop).toMatchObject({ type: "string", minLength: 1 });
+    expect(prop).not.toHaveProperty("maxLength");
+    expect(prop).not.toHaveProperty("pattern");
+  });
+
+  it("should not emit string constraints when not specified", () => {
+    const form = formspec(
+      field.text("notes"),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    const prop = schema.properties?.["notes"];
+    expect(prop).toEqual({ type: "string" });
+  });
+
+  // Task #13: Conditional required leak
+  it("should not include conditional fields in required array", () => {
+    const form = formspec(
+      field.enum("type", ["a", "b"] as const, { required: true }),
+      when(is("type", "a"),
+        field.text("extra", { required: true }),
+      ),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.required).toContain("type");
+    expect(schema.required).not.toContain("extra");
+  });
+
+  // Task #18: Type alongside oneOf
+  it("should not include type alongside oneOf for object options", () => {
+    const form = formspec(
+      field.enum("priority", [
+        { id: "low", label: "Low" },
+        { id: "high", label: "High" },
+      ] as const),
+    );
+
+    const schema = generateJsonSchema(form);
+
+    const prop = schema.properties?.["priority"];
+    expect(prop).toHaveProperty("oneOf");
+    expect(prop).not.toHaveProperty("type");
+    expect(prop).not.toHaveProperty("enum");
   });
 });
 
