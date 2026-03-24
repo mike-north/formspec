@@ -11,16 +11,48 @@
           "label": "Name"
         },
         {
-          "type": "Control",
-          "scope": "#/properties/billingAddress",
-          "label": "Billing Address"
+          "type": "Group",
+          "label": "Billing Address",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/billingAddress/properties/street",
+              "label": "Street"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/billingAddress/properties/city",
+              "label": "City"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/billingAddress/properties/zip",
+              "label": "ZIP"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "Control",
-      "scope": "#/properties/shippingAddress",
-      "label": "Shipping Address"
+      "type": "Group",
+      "label": "Shipping Address",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/shippingAddress/properties/street",
+          "label": "Street"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/shippingAddress/properties/city",
+          "label": "City"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/shippingAddress/properties/zip",
+          "label": "ZIP"
+        }
+      ]
     },
     {
       "type": "Control",

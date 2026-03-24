@@ -9,7 +9,6 @@ import { NestedForm } from "../fixtures/chain-dsl/nested-form.js";
 import {
   assertValidJsonSchema,
   assertNestedProperty,
-  findUiElement,
   loadExpected,
 } from "../helpers/schema-assertions.js";
 import * as fs from "node:fs";
@@ -119,36 +118,45 @@ describe("Chain DSL Nesting", () => {
       expect(billingGroup).toBeDefined();
     });
 
-    it("Billing group contains customerName and billingAddress controls", () => {
+    it("Billing group contains customerName control and billingAddress group", () => {
       const billingGroup = elements.find(
         (el) => el["type"] === "Group" && el["label"] === "Billing"
       );
       expect(billingGroup).toBeDefined();
       if (!billingGroup) return;
       const groupElements = billingGroup["elements"] as Record<string, unknown>[];
-      const scopes = groupElements.map((el) => el["scope"]);
-      expect(scopes).toContain("#/properties/customerName");
-      expect(scopes).toContain("#/properties/billingAddress");
+      // customerName is a Control
+      const customerControl = groupElements.find((el) => el["scope"] === "#/properties/customerName");
+      expect(customerControl).toBeDefined();
+      // billingAddress is now a Group with nested controls
+      const addressGroup = groupElements.find(
+        (el) => el["type"] === "Group" && el["label"] === "Billing Address"
+      );
+      expect(addressGroup).toBeDefined();
     });
 
-    it("has scope paths for top-level objects and arrays", () => {
+    it("has scope paths for nested object fields and arrays", () => {
       const allScopes = collectScopes(ui);
-      expect(allScopes).toContain("#/properties/billingAddress");
-      expect(allScopes).toContain("#/properties/shippingAddress");
+      expect(allScopes).toContain("#/properties/billingAddress/properties/street");
+      expect(allScopes).toContain("#/properties/shippingAddress/properties/street");
       expect(allScopes).toContain("#/properties/lineItems");
     });
 
-    // BUG: billingAddress emits as a flat Control — sub-field labels (Street, City, ZIP)
-    // defined via field.text("street", { label: "Street" }) are lost in the UI Schema.
-    // The CLI surface correctly nests sub-fields via `fields: [...]` in ux_spec.json.
-    // JSON Forms would auto-render but with no author control over child layout.
-    it.fails("billingAddress control should have sub-elements for child fields", () => {
-      const billingControl = findUiElement(ui, "#/properties/billingAddress");
-      expect(billingControl).toBeDefined();
-      if (!billingControl) return;
-      const subElements = billingControl["elements"] as Record<string, unknown>[] | undefined;
+    it("billingAddress has sub-elements for child fields", () => {
+      const billingGroup = elements.find(
+        (el) => el["type"] === "Group" && el["label"] === "Billing"
+      );
+      expect(billingGroup).toBeDefined();
+      if (!billingGroup) return;
+      const groupElements = billingGroup["elements"] as Record<string, unknown>[];
+      const addressGroup = groupElements.find(
+        (el) => el["type"] === "Group" && el["label"] === "Billing Address"
+      );
+      expect(addressGroup).toBeDefined();
+      if (!addressGroup) return;
+      const subElements = addressGroup["elements"] as Record<string, unknown>[];
       expect(subElements).toBeDefined();
-      expect(subElements?.length).toBeGreaterThan(0);
+      expect(subElements.length).toBeGreaterThan(0);
     });
   });
 

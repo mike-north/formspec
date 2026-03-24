@@ -7,6 +7,7 @@ import type {
   FormSpec,
   Group,
   Conditional,
+  ObjectField,
 } from "@formspec/core";
 import type {
   UISchemaElement,
@@ -21,6 +22,54 @@ import type {
  */
 function fieldToScope(fieldName: string): string {
   return `#/properties/${fieldName}`;
+}
+
+/**
+ * Appends a child property segment to a parent scope path.
+ */
+function nestedScope(parentScope: string, childName: string): string {
+  return `${parentScope}/properties/${childName}`;
+}
+
+/**
+ * Recursively converts an ObjectField to a GroupLayout containing nested Controls.
+ */
+function objectFieldToUiSchema(
+  objectField: ObjectField<string, readonly FormElement[]>,
+  parentScope: string,
+  parentRule?: Rule
+): GroupLayout {
+  const elements: UISchemaElement[] = [];
+
+  for (const element of objectField.properties) {
+    if (element._type === "field") {
+      if (element._field === "object") {
+        const nestedObj = element as ObjectField<string, readonly FormElement[]>;
+        elements.push(
+          objectFieldToUiSchema(
+            nestedObj,
+            nestedScope(parentScope, element.name),
+            parentRule
+          )
+        );
+      } else {
+        const control: ControlElement = {
+          type: "Control",
+          scope: nestedScope(parentScope, element.name),
+          ...(element.label !== undefined && { label: element.label }),
+          ...(parentRule !== undefined && { rule: parentRule }),
+        };
+        elements.push(control);
+      }
+    }
+  }
+
+  return {
+    type: "Group",
+    label: objectField.label ?? objectField.name,
+    elements,
+    ...(parentRule !== undefined && { rule: parentRule }),
+  };
 }
 
 /**
@@ -86,13 +135,24 @@ function elementsToUiSchema(
   for (const element of elements) {
     switch (element._type) {
       case "field": {
-        const control: ControlElement = {
-          type: "Control",
-          scope: fieldToScope(element.name),
-          ...(element.label !== undefined && { label: element.label }),
-          ...(parentRule !== undefined && { rule: parentRule }),
-        };
-        result.push(control);
+        if (element._field === "object") {
+          const objectField = element as ObjectField<string, readonly FormElement[]>;
+          result.push(
+            objectFieldToUiSchema(
+              objectField,
+              fieldToScope(element.name),
+              parentRule
+            )
+          );
+        } else {
+          const control: ControlElement = {
+            type: "Control",
+            scope: fieldToScope(element.name),
+            ...(element.label !== undefined && { label: element.label }),
+            ...(parentRule !== undefined && { rule: parentRule }),
+          };
+          result.push(control);
+        }
         break;
       }
 
