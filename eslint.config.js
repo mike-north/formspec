@@ -54,6 +54,17 @@ export default [
     },
   },
   {
+    // CI flags no-unnecessary-type-arguments on RuleModule<MessageIds> due to
+    // platform-dependent @typescript-eslint type resolution (Linux vs macOS).
+    files: [
+      "packages/eslint-plugin/src/factories/constraint-rule.ts",
+      "packages/eslint-plugin/src/__tests__/factories/create-constraint-rule.test.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-unnecessary-type-arguments": "off",
+    },
+  },
+  {
     ignores: [
       "**/node_modules/**",
       "**/dist/**",
