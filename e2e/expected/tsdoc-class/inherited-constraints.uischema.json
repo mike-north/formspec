@@ -1,0 +1,24 @@
+{
+  "elements": [
+    {
+      "_field": "number",
+      "id": "cpuUsage",
+      "required": true,
+      "min": 10,
+      "max": 100
+    },
+    {
+      "_field": "number",
+      "id": "memoryUsage",
+      "required": true,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "_field": "number",
+      "id": "diskUsage",
+      "min": 0,
+      "max": 100
+    }
+  ]
+}

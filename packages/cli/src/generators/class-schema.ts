@@ -16,6 +16,8 @@ import {
   type FormSpecField,
 } from "../analyzer/type-converter.js";
 import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
+import { resolveTypeConstraints } from "../analyzer/constraint-resolver.js";
+import { validateConstraints, type ConstraintViolation } from "../analyzer/constraint-validator.js";
 
 /**
  * Generated schemas for a class.
@@ -27,6 +29,8 @@ export interface ClassSchemas {
   uxSpec: {
     elements: FormSpecField[];
   };
+  /** Constraint violations found during schema generation */
+  diagnostics: ConstraintViolation[];
 }
 
 /**
@@ -47,14 +51,25 @@ export function generateClassSchemas(
   const required: string[] = [];
   const uxElements: FormSpecField[] = [];
   const defsRegistry = new DefsRegistry();
+  const allDiagnostics: ConstraintViolation[] = [];
 
   for (const field of analysis.fields) {
     // Generate JSON Schema for field — pass defsRegistry to lift named types
     const { jsonSchema: baseSchema } = convertType(field.type, checker, defsRegistry);
-    // Apply decorator constraints first, then comment tag constraints
+    // Apply decorator constraints first
     const withDecorators = applyDecoratorsToSchema(baseSchema, field.decorators);
-    const fieldSchema = applyCommentTagsToSchema(withDecorators, field.commentTags);
+
+    // Resolve constraints inherited from type alias chain, then merge with
+    // field-level comment tags (field tags override type alias tags)
+    const { tags: typeAliasTags } = resolveTypeConstraints(field.typeNode, checker);
+    const allCommentTags = [...typeAliasTags, ...field.commentTags];
+
+    const fieldSchema = applyCommentTagsToSchema(withDecorators, allCommentTags);
     properties[field.name] = fieldSchema;
+
+    // Validate merged constraints for contradictions
+    const violations = validateConstraints(field.name, fieldSchema);
+    allDiagnostics.push(...violations);
 
     // Track required fields
     if (!field.optional) {
@@ -69,7 +84,7 @@ export function generateClassSchemas(
       field.optional,
       checker
     );
-    applyCommentTagsToFormSpecField(formSpecField, field.commentTags);
+    applyCommentTagsToFormSpecField(formSpecField, allCommentTags);
     uxElements.push(formSpecField);
   }
 
@@ -86,7 +101,7 @@ export function generateClassSchemas(
     elements: uxElements,
   };
 
-  return { jsonSchema, uxSpec };
+  return { jsonSchema, uxSpec, diagnostics: allDiagnostics };
 }
 
 /**

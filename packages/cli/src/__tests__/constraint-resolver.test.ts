@@ -1,0 +1,253 @@
+/**
+ * Unit tests for the type alias constraint resolver.
+ */
+
+import { describe, it, expect } from "vitest";
+import * as ts from "typescript";
+import { resolveTypeConstraints } from "../analyzer/constraint-resolver.js";
+import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
+
+/**
+ * Creates an in-memory TypeScript program from source and returns the
+ * checker and the type node for the first field of the first class.
+ */
+function makeFieldTypeNode(source: string): {
+  typeNode: ts.TypeNode | undefined;
+  checker: ts.TypeChecker;
+} {
+  const fileName = "test.ts";
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+
+  const host = ts.createCompilerHost({});
+  const originalGetSourceFile = host.getSourceFile.bind(host);
+  host.getSourceFile = (
+    name: string,
+    ...args: Parameters<typeof host.getSourceFile> extends [string, ...infer R] ? R : never
+  ) => {
+    if (name === fileName) return sourceFile;
+    return originalGetSourceFile(name, ...args);
+  };
+
+  const program = ts.createProgram([fileName], {}, host);
+  const checker = program.getTypeChecker();
+  const sf = program.getSourceFile(fileName);
+  if (!sf) throw new Error("Source file not found");
+
+  let typeNode: ts.TypeNode | undefined;
+  ts.forEachChild(sf, (node) => {
+    if (ts.isClassDeclaration(node)) {
+      for (const member of node.members) {
+        if (ts.isPropertyDeclaration(member) && typeNode === undefined) {
+          typeNode = member.type;
+        }
+      }
+    }
+  });
+
+  return { typeNode, checker };
+}
+
+function tagNames(tags: CommentTagInfo[]): string[] {
+  return tags.map((t) => t.tagName);
+}
+
+function tagValue(tags: CommentTagInfo[], name: string): number | string | boolean | undefined {
+  return tags.find((t) => t.tagName === name)?.value;
+}
+
+// ============================================================================
+// Simple alias: Integer = number
+// ============================================================================
+
+describe("resolveTypeConstraints - simple alias", () => {
+  const source = `
+    /** @multipleOf 1 */
+    type Integer = number;
+
+    class TestClass {
+      value!: Integer;
+    }
+  `;
+
+  it("resolves multipleOf from a direct type alias", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagNames(tags)).toContain("multipleOf");
+    expect(tagValue(tags, "multipleOf")).toBe(1);
+  });
+
+  it("returns no diagnostics for valid constraints", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints(typeNode, checker);
+    expect(diagnostics).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// Two-level alias: Percentage → Integer → number
+// ============================================================================
+
+describe("resolveTypeConstraints - two-level alias chain", () => {
+  const source = `
+    /** @multipleOf 1 */
+    type Integer = number;
+
+    /** @minimum 0 @maximum 100 */
+    type Percentage = Integer;
+
+    class TestClass {
+      usage!: Percentage;
+    }
+  `;
+
+  it("collects constraints from both levels", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagNames(tags)).toContain("minimum");
+    expect(tagNames(tags)).toContain("maximum");
+    expect(tagNames(tags)).toContain("multipleOf");
+  });
+
+  it("minimum comes from Percentage alias", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagValue(tags, "minimum")).toBe(0);
+    expect(tagValue(tags, "maximum")).toBe(100);
+  });
+
+  it("multipleOf comes from Integer alias", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagValue(tags, "multipleOf")).toBe(1);
+  });
+});
+
+// ============================================================================
+// Merge logic: field-level @minimum overrides type's @minimum
+// (handled in class-schema.ts by putting typeAliasTags before field tags,
+//  but this tests the resolver's own merge for multi-level alias conflicts)
+// ============================================================================
+
+describe("resolveTypeConstraints - merge logic", () => {
+  it("uses most restrictive minimum across alias levels (higher value wins)", () => {
+    // Child alias has @minimum 5, parent has @minimum 0 → merged = max(0,5) = 5
+    const source = `
+      /** @minimum 0 */
+      type Base = number;
+
+      /** @minimum 5 */
+      type Derived = Base;
+
+      class TestClass {
+        value!: Derived;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagValue(tags, "minimum")).toBe(5);
+  });
+
+  it("uses most restrictive maximum across alias levels (lower value wins)", () => {
+    // Child has @maximum 80, parent has @maximum 100 → merged = min(100,80) = 80
+    const source = `
+      /** @maximum 100 */
+      type Base = number;
+
+      /** @maximum 80 */
+      type Derived = Base;
+
+      class TestClass {
+        value!: Derived;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tagValue(tags, "maximum")).toBe(80);
+  });
+
+  it("collects all multipleOf values (does not deduplicate)", () => {
+    const source = `
+      /** @multipleOf 2 */
+      type Even = number;
+
+      /** @multipleOf 3 */
+      type EvenAndTriple = Even;
+
+      class TestClass {
+        value!: EvenAndTriple;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const multipleOfs = tags.filter((t) => t.tagName === "multipleOf").map((t) => t.value);
+    expect(multipleOfs).toContain(2);
+    expect(multipleOfs).toContain(3);
+  });
+
+  it("collects all pattern values", () => {
+    // Note: avoid type alias names that shadow TypeScript built-ins (e.g. `Lowercase`).
+    const source = `
+      /** @pattern ^[a-z] */
+      type StartsLower = string;
+
+      /** @pattern [a-z]$ */
+      type EndsLower = StartsLower;
+
+      class TestClass {
+        value!: EndsLower;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    const patterns = tags.filter((t) => t.tagName === "pattern").map((t) => t.value);
+    expect(patterns).toContain("^[a-z]");
+    expect(patterns).toContain("[a-z]$");
+  });
+});
+
+// ============================================================================
+// No constraints on alias
+// ============================================================================
+
+describe("resolveTypeConstraints - no constraints", () => {
+  it("returns empty tags when alias has no JSDoc tags", () => {
+    const source = `
+      type PlainAlias = number;
+
+      class TestClass {
+        value!: PlainAlias;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tags).toHaveLength(0);
+  });
+
+  it("returns empty tags for primitive field types (no alias)", () => {
+    const source = `
+      class TestClass {
+        value!: number;
+      }
+    `;
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(typeNode, checker);
+    expect(tags).toHaveLength(0);
+  });
+
+  it("returns empty tags when typeNode is undefined", () => {
+    const source = `
+      class TestClass {
+        value!: number;
+      }
+    `;
+    const { checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints(undefined, checker);
+    expect(tags).toHaveLength(0);
+  });
+});
