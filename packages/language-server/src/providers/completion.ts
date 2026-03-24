@@ -7,7 +7,6 @@
  * filtering will be added in a future phase.
  */
 
-import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
 /**
