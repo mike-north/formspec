@@ -1,5 +1,46 @@
 # @formspec/constraints
 
+## 0.1.0-alpha.12
+
+### Patch Changes
+
+- [`4d1b327`](https://github.com/mike-north/formspec/commit/4d1b327b420f52115bcd66367ee901a23b371890) Thanks [@mike-north](https://github.com/mike-north)! - Rewrite build pipeline around Canonical IR with constraint validation and extension API
+
+  **@formspec/core**
+  - Add Canonical IR type definitions (`FormIR`, `FieldIR`, `GroupIR`, `ConditionalIR`) and `IR_VERSION` constant
+  - Add Extension API types (`ExtensionDefinition`, `ExtensionRegistry`)
+
+  **@formspec/build**
+  - Rewrite TSDoc analyzer to produce IR directly (replaces legacy `FormElement` intermediate)
+  - Add IR → JSON Schema 2020-12 generator with `$defs`/`$ref` support
+  - Add IR → JSON Forms UI Schema generator
+  - Wire full pipeline through IR, delete legacy code paths
+  - Add constraint validator with contradiction detection
+  - Add extension registry and validator integration
+  - Add chain DSL and TSDoc parity test suite
+
+  **@formspec/cli**
+  - Add `--emit-ir` flag to output Canonical IR
+  - Add `--validate-only` flag for schema validation without writing files
+
+  **@formspec/eslint-plugin**
+  - Add constraint rule factory for type-aware constraint validation
+
+  **@formspec/playground**
+  - Add IR viewer and constraint validation panels
+
+  **@formspec/constraints**
+  - Fix constraint propagation through nested class types
+
+  **@formspec/runtime**
+  - Adjust exports after decorator DSL removal
+
+  **formspec**
+  - Update umbrella re-exports for new public API surface
+
+- Updated dependencies [[`4d1b327`](https://github.com/mike-north/formspec/commit/4d1b327b420f52115bcd66367ee901a23b371890)]:
+  - @formspec/core@0.1.0-alpha.12
+
 ## 0.1.0-alpha.11
 
 ### Patch Changes

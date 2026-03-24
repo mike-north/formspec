@@ -16,8 +16,10 @@
   },
   "changesets": [
     "add-constraints-package",
+    "add-language-server",
     "add-package-readmes",
     "add-playground-package",
+    "add-validator-package",
     "build-integration-tools",
     "cli-static-analysis",
     "constraints-fixes",
@@ -31,6 +33,7 @@
     "p4-enum-options-dx",
     "predicate-when-api",
     "tsup-dual-cjs-esm",
+    "v2-pipeline-rewrite",
     "zod-validated-ui-schema"
   ]
 }
