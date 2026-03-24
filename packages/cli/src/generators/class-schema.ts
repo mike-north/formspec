@@ -185,6 +185,7 @@ export function generateClassSchemas(
       checker
     );
     applyCommentTagsToFormSpecField(formSpecField, allCommentTags);
+    resolveConditionValueTypes(formSpecField, analysis, checker);
     uxElements.push(formSpecField);
   }
 
@@ -347,5 +348,125 @@ function applyCommentTagsToFormSpecField(
       if (tag.tagName === "showWhen") field.showWhen = parsed;
       else field.hideWhen = parsed;
     }
+  }
+}
+
+/**
+ * Resolves the TypeScript type of a field by name from a ClassAnalysis.
+ *
+ * @param fieldName - The field name to look up
+ * @param analysis - The class analysis containing all fields
+ * @returns The resolved TypeScript type, or undefined if the field is not found
+ */
+function resolveFieldType(
+  fieldName: string,
+  analysis: ClassAnalysis
+): ts.Type | undefined {
+  const field = analysis.fields.find((f) => f.name === fieldName);
+  return field?.type;
+}
+
+/**
+ * Parses a showWhen/hideWhen condition value to match the TypeScript type of the
+ * referenced target field.
+ *
+ * - boolean field → parse "true"/"false" to boolean
+ * - number field → parse via Number()
+ * - string / string-literal-union field → keep as string
+ * - unresolvable field (targetFieldType is undefined) → keep as string
+ *
+ * @param rawValue - The raw string value from the TSDoc tag
+ * @param targetFieldType - The resolved TypeScript type of the referenced field
+ * @returns The parsed value with the appropriate JavaScript type
+ */
+function parseConditionValue(
+  rawValue: string,
+  targetFieldType: ts.Type | undefined
+): unknown {
+  if (!targetFieldType) return rawValue;
+
+  // Unwrap nullable (T | null | undefined → T) so we check the core type
+  let effectiveType = targetFieldType;
+  if (targetFieldType.isUnion()) {
+    const nonNull = targetFieldType.types.filter(
+      (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
+    );
+    if (nonNull.length === 1 && nonNull[0] !== undefined) {
+      effectiveType = nonNull[0];
+    }
+  }
+
+  // Boolean (intrinsic boolean type or a BooleanLiteral)
+  if (
+    effectiveType.flags & ts.TypeFlags.Boolean ||
+    effectiveType.flags & ts.TypeFlags.BooleanLiteral
+  ) {
+    if (rawValue === "true") return true;
+    if (rawValue === "false") return false;
+    return rawValue;
+  }
+
+  // Boolean expressed as a union of true | false (TS represents boolean as BooleanLiteral union)
+  if (effectiveType.isUnion()) {
+    const isBooleanUnion =
+      effectiveType.types.length === 2 &&
+      effectiveType.types.every((t) => Boolean(t.flags & ts.TypeFlags.BooleanLiteral));
+    if (isBooleanUnion) {
+      if (rawValue === "true") return true;
+      if (rawValue === "false") return false;
+      return rawValue;
+    }
+  }
+
+  // Number (intrinsic number type or NumberLiteral)
+  if (
+    effectiveType.flags & ts.TypeFlags.Number ||
+    effectiveType.flags & ts.TypeFlags.NumberLiteral
+  ) {
+    const num = Number(rawValue);
+    if (Number.isFinite(num)) return num;
+    return rawValue;
+  }
+
+  // Number literal union — all members are number literals
+  if (effectiveType.isUnion()) {
+    const allNumbers = effectiveType.types.every(
+      (t) => Boolean(t.flags & ts.TypeFlags.NumberLiteral)
+    );
+    if (allNumbers) {
+      const num = Number(rawValue);
+      if (Number.isFinite(num)) return num;
+    }
+  }
+
+  // String / string-literal union → keep as string
+  return rawValue;
+}
+
+/**
+ * Post-processes showWhen/hideWhen on a FormSpec field to apply type-aware value
+ * parsing based on the referenced field's TypeScript type.
+ *
+ * Must be called after applyCommentTagsToFormSpecField so that showWhen/hideWhen
+ * have already been populated with their raw string values.
+ *
+ * @param field - The FormSpec field whose showWhen/hideWhen to post-process
+ * @param analysis - The class analysis used to look up referenced field types
+ * @param checker - TypeScript type checker (passed for symmetry with surrounding API)
+ */
+function resolveConditionValueTypes(
+  field: FormSpecField,
+  analysis: ClassAnalysis,
+  _checker: ts.TypeChecker
+): void {
+  if (field.showWhen !== undefined && typeof field.showWhen === "object") {
+    const sw = field.showWhen as { field: string; value: unknown };
+    const targetType = resolveFieldType(sw.field, analysis);
+    sw.value = parseConditionValue(String(sw.value), targetType);
+  }
+  if (field.hideWhen !== undefined && typeof field.hideWhen === "object") {
+    const hw = field.hideWhen as { field: string; value: unknown };
+    const targetType = resolveFieldType(hw.field, analysis);
+    hw.value = parseConditionValue(String(hw.value), targetType);
   }
 }
