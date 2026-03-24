@@ -11,6 +11,7 @@
       "type": "number"
     },
     "currency": {
+      "type": "string",
       "enum": ["usd", "eur", "gbp"]
     },
     "active": {

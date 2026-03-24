@@ -174,11 +174,11 @@ function convertUnionType(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.StringLiteralType).value);
     const result: TypeConversionResult = {
-      jsonSchema: { enum: enumValues },
+      jsonSchema: { type: "string", enum: enumValues },
       formSpecFieldType: "enum",
     };
     if (hasNull) {
-      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
+      result.jsonSchema = { oneOf: [{ type: "string", enum: enumValues }, { type: "null" }] };
     }
     return result;
   }
@@ -189,11 +189,11 @@ function convertUnionType(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.NumberLiteralType).value);
     const result: TypeConversionResult = {
-      jsonSchema: { enum: enumValues },
+      jsonSchema: { type: "number", enum: enumValues },
       formSpecFieldType: "enum",
     };
     if (hasNull) {
-      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
+      result.jsonSchema = { oneOf: [{ type: "number", enum: enumValues }, { type: "null" }] };
     }
     return result;
   }

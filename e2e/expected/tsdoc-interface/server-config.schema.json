@@ -8,6 +8,7 @@
       "type": "number"
     },
     "protocol": {
+      "type": "string",
       "enum": ["http", "https"]
     },
     "maxConnections": {

@@ -28,6 +28,7 @@
       ]
     },
     "status": {
+      "type": "string",
       "enum": ["active", "inactive"]
     },
     "tags": {
