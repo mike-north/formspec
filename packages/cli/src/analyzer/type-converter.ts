@@ -231,31 +231,33 @@ function convertUnionType(
   }
 
   // Check if all types are string literals (enum pattern)
+  // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
   const allStringLiterals = nonNullTypes.every((t) => t.isStringLiteral());
   if (allStringLiterals && nonNullTypes.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.StringLiteralType).value);
     const result: TypeConversionResult = {
-      jsonSchema: { type: "string", enum: enumValues },
+      jsonSchema: { enum: enumValues },
       formSpecFieldType: "enum",
     };
     if (hasNull) {
-      result.jsonSchema = { oneOf: [{ type: "string", enum: enumValues }, { type: "null" }] };
+      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
     }
     return result;
   }
 
   // Check if all types are number literals
+  // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
   const allNumberLiterals = nonNullTypes.every((t) => t.isNumberLiteral());
   if (allNumberLiterals && nonNullTypes.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- TypeScript doesn't narrow array types from `every` predicate
     const enumValues = nonNullTypes.map((t) => (t as ts.NumberLiteralType).value);
     const result: TypeConversionResult = {
-      jsonSchema: { type: "number", enum: enumValues },
+      jsonSchema: { enum: enumValues },
       formSpecFieldType: "enum",
     };
     if (hasNull) {
-      result.jsonSchema = { oneOf: [{ type: "number", enum: enumValues }, { type: "null" }] };
+      result.jsonSchema = { oneOf: [{ enum: enumValues }, { type: "null" }] };
     }
     return result;
   }

@@ -16,7 +16,6 @@
     },
     "contactMethod": {
       "title": "Preferred Contact Method",
-      "type": "string",
       "enum": ["email", "phone", "mail"]
     },
     "phoneNumber": {

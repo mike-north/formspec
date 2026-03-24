@@ -16,7 +16,6 @@
     "alertChannels": {
       "type": "array",
       "items": {
-        "type": "string",
         "enum": ["email", "slack", "pagerduty"]
       }
     },

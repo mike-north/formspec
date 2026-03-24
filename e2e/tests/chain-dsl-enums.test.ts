@@ -30,11 +30,13 @@ describe("Chain DSL Enums", () => {
     });
 
     // 003 §2.3: "No per-member metadata → use flat enum: [a, b, c]"
+    // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
     it("simpleStatus: no metadata → flat enum array", () => {
       assertPropertyConstraints(schema, "simpleStatus", {
-        type: "string",
         enum: ["draft", "active", "archived"],
       });
+      const prop = properties["simpleStatus"];
+      expect(prop["type"]).toBeUndefined();
     });
 
     // 003 §2.3: "Per-member metadata → oneOf with const + title/description"

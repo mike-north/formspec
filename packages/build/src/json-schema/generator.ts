@@ -59,6 +59,7 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
         type: "number",
         ...(field.min !== undefined && { minimum: field.min }),
         ...(field.max !== undefined && { maximum: field.max }),
+        ...(field.multipleOf !== undefined && { multipleOf: field.multipleOf }),
       };
 
     case "boolean":
@@ -83,7 +84,8 @@ function fieldToJsonSchema(field: AnyField): JSONSchema7 {
           })),
         };
       }
-      return { ...base, type: "string", enum: opts as readonly string[] };
+      // Per JSON Schema spec: enum values are self-constraining; type is redundant
+      return { ...base, enum: opts as readonly string[] };
     }
 
     case "dynamic_enum":

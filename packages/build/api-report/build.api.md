@@ -102,6 +102,8 @@ export interface JSONSchema7 {
     // (undocumented)
     minLength?: number;
     // (undocumented)
+    multipleOf?: number;
+    // (undocumented)
     not?: JSONSchema7;
     // (undocumented)
     oneOf?: JSONSchema7[];

@@ -28,8 +28,8 @@ describe("generateJsonSchema", () => {
 
     const schema = generateJsonSchema(form);
 
+    // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
     expect(schema.properties?.["status"]).toEqual({
-      type: "string",
       title: "Status",
       enum: ["draft", "sent", "paid"],
     });
@@ -482,5 +482,51 @@ describe("buildFormSchemas", () => {
     expect(result.jsonSchema.$schema).toBe("https://json-schema.org/draft-07/schema#");
     expect(result.uiSchema).toBeDefined();
     expect(result.uiSchema.type).toBe("VerticalLayout");
+  });
+});
+
+// Issue 1: multipleOf on number fields
+describe("generateJsonSchema - multipleOf", () => {
+  it("emits multipleOf on number fields", () => {
+    const form = formspec(
+      field.number("quantity", { multipleOf: 1 }),
+      field.number("price", { multipleOf: 0.01 }),
+    );
+    const { jsonSchema } = buildFormSchemas(form);
+    expect(jsonSchema.properties?.["quantity"]?.multipleOf).toBe(1);
+    expect(jsonSchema.properties?.["quantity"]?.type).toBe("number"); // NOT "integer" — that's a higher-layer concern
+    expect(jsonSchema.properties?.["price"]?.multipleOf).toBe(0.01);
+  });
+
+  it("does not emit multipleOf when not specified", () => {
+    const form = formspec(
+      field.number("quantity"),
+    );
+    const { jsonSchema } = buildFormSchemas(form);
+    expect(jsonSchema.properties?.["quantity"]).not.toHaveProperty("multipleOf");
+  });
+});
+
+// Issue 4: enum fields must NOT emit type alongside enum
+describe("generateJsonSchema - enum type omission", () => {
+  it("string literal enum has no type property", () => {
+    const form = formspec(
+      field.enum("status", ["draft", "active"] as const),
+    );
+    const { jsonSchema } = buildFormSchemas(form);
+    expect(jsonSchema.properties?.["status"]?.enum).toEqual(["draft", "active"]);
+    expect(jsonSchema.properties?.["status"]?.type).toBeUndefined();
+  });
+
+  it("string literal enum with label has no type property", () => {
+    const form = formspec(
+      field.enum("status", ["draft", "sent", "paid"] as const, { label: "Status" }),
+    );
+    const schema = generateJsonSchema(form);
+    expect(schema.properties?.["status"]).toEqual({
+      title: "Status",
+      enum: ["draft", "sent", "paid"],
+    });
+    expect(schema.properties?.["status"]).not.toHaveProperty("type");
   });
 });

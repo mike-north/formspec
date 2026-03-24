@@ -5,7 +5,24 @@
 ```ts
 
 import { ESLintUtils } from '@typescript-eslint/utils';
+import { FieldTypeConstraints } from '@formspec/constraints/browser';
+import { LayoutConstraints } from '@formspec/constraints/browser';
 import type { TSESLint } from '@typescript-eslint/utils';
+
+// Warning: (ae-forgotten-export) The symbol "Options" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", Options, unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
+// Warning: (ae-forgotten-export) The symbol "MessageIds_4" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "Options_2" needs to be exported by the entry point index.d.ts
+//
+// @public (undocumented)
+export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_4, Options_2, unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
 
 // Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
 //
@@ -63,6 +80,12 @@ const plugin: {
             name: string;
         };
         readonly "no-duplicate-decorators": TSESLint.RuleModule<"duplicateDecorator", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
+        readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
+        readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", Options_2, unknown, TSESLint.RuleListener> & {
             name: string;
         };
     };

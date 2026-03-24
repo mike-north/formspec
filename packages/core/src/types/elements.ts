@@ -53,6 +53,8 @@ export interface NumberField<N extends string> {
   readonly min?: number;
   /** Maximum allowed value */
   readonly max?: number;
+  /** Value must be a multiple of this number */
+  readonly multipleOf?: number;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
 }

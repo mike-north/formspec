@@ -80,11 +80,11 @@ describe("Integration: Complete form workflow", () => {
       },
     });
 
-    // Verify enum
+    // Verify enum — per JSON Schema spec: type is redundant alongside enum
     expect(jsonSchema.properties?.["status"]).toMatchObject({
-      type: "string",
       enum: ["draft", "sent", "paid", "overdue"],
     });
+    expect(jsonSchema.properties?.["status"]).not.toHaveProperty("type");
 
     // Verify UI Schema structure
     expect(uiSchema.type).toBe("VerticalLayout");

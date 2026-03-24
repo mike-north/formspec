@@ -175,6 +175,7 @@ export interface NumberField<N extends string> {
     readonly label?: string;
     readonly max?: number;
     readonly min?: number;
+    readonly multipleOf?: number;
     readonly name: N;
     readonly required?: boolean;
     readonly _type: "field";

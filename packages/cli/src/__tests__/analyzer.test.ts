@@ -194,7 +194,8 @@ describe("convertType", () => {
     if (!statusField) throw new Error("status field not found");
     const result = convertType(statusField.type, ctx.checker);
 
-    expect(result.jsonSchema.type).toBe("string");
+    // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
+    expect(result.jsonSchema.type).toBeUndefined();
     expect(result.jsonSchema.enum).toEqual(["active", "paused", "canceled"]);
     expect(result.formSpecFieldType).toBe("enum");
   });

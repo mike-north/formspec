@@ -165,10 +165,11 @@ describe("Edge cases: Enum options", () => {
 
     const { jsonSchema } = buildFormSchemas(form);
 
+    // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
     expect(jsonSchema.properties?.["singleOption"]).toMatchObject({
-      type: "string",
       enum: ["only"],
     });
+    expect(jsonSchema.properties?.["singleOption"]).not.toHaveProperty("type");
   });
 
   it("should handle single object option enum", () => {
@@ -192,10 +193,11 @@ describe("Edge cases: Enum options", () => {
 
     const { jsonSchema } = buildFormSchemas(form);
 
+    // Per JSON Schema spec: enum values are self-constraining; type is redundant alongside enum
     expect(jsonSchema.properties?.["withEmpty"]).toMatchObject({
-      type: "string",
       enum: ["", "value"],
     });
+    expect(jsonSchema.properties?.["withEmpty"]).not.toHaveProperty("type");
   });
 });
 

@@ -41,6 +41,7 @@ export interface JSONSchema7 {
   maximum?: number;
   exclusiveMinimum?: number;
   exclusiveMaximum?: number;
+  multipleOf?: number;
 
   // Enum
   enum?: readonly (string | number | boolean | null)[];
