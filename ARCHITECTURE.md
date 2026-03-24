@@ -110,9 +110,9 @@ Key insight: **Groups are transparent** (fields pass through for schema), while 
 
 ```
 FormSpec definition
-  → canonicalizeChainDSL()   // Convert to Canonical IR
-  → generateJsonSchema(ir)    // Walk IR, map to JSON Schema
-  → generateUiSchema(ir)      // Walk IR, generate JSON Forms controls + layouts
+  → canonicalizeChainDSL()        // Convert to Canonical IR
+  → generateJsonSchemaFromIR(ir)  // Walk IR, map to JSON Schema
+  → generateUiSchemaFromIR(ir)    // Walk IR, generate JSON Forms controls + layouts
 ```
 
 The JSON Schema generator maps field types directly:

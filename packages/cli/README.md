@@ -40,7 +40,7 @@ formspec generate ./src/forms.ts UserForm -o ./generated
 # Generate schemas from chain DSL exports
 formspec generate ./src/forms.ts -o ./generated
 
-# Output Canonical IR instead of schemas
+# Also emit Canonical IR alongside schemas
 formspec generate ./src/forms.ts UserForm --emit-ir -o ./generated
 
 # Validate without writing files
@@ -68,7 +68,7 @@ formspec generate <file> [className] [options]
 | --- | --- | --- |
 | `-o, --output <dir>` | Output directory | `./generated` |
 | `-c, --compiled <path>` | Path to compiled JS file | auto-detected |
-| `--emit-ir` | Output Canonical IR as JSON | |
+| `--emit-ir` | Emit Canonical IR as JSON alongside generated schemas | |
 | `--validate-only` | Validate input without writing files | |
 | `-h, --help` | Show help message | |
 
@@ -81,7 +81,7 @@ formspec generate ./src/forms.ts UserForm -o ./generated
 # Generate from chain DSL exports (requires compiled JS)
 tsc && formspec generate ./src/forms.ts -o ./generated
 
-# Inspect Canonical IR
+# Generate schemas and also emit Canonical IR
 formspec generate ./src/forms.ts UserForm --emit-ir
 
 # Validate only (no file output)
@@ -192,7 +192,7 @@ class PaymentPlan {
 generated/
 ├── ClassName/
 │   ├── schema.json
-│   ├── uischema.json
+│   ├── ui_schema.json
 │   ├── instance_methods/
 │   │   └── methodName/
 │   │       ├── params.schema.json
@@ -203,7 +203,7 @@ generated/
 └── formspecs/
     └── ExportName/
         ├── schema.json
-        └── uischema.json
+        └── ui_schema.json
 ```
 
 ## Troubleshooting

@@ -54,8 +54,8 @@ export default [
 | --- | --- | --- | --- |
 | [`constraint-type-mismatch`](#constraint-type-mismatch) | JSDoc constraint tags must match field type | error | error |
 | [`consistent-constraints`](#consistent-constraints) | Constraint ranges must be valid (min ≤ max) | error | error |
-| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml` | error | error |
-| [`constraints-allowed-layouts`](#constraints-allowed-layouts) | Layout elements validated against `.formspec.yml` | error | error |
+| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml` | — | — |
+| [`constraints-allowed-layouts`](#constraints-allowed-layouts) | Layout elements validated against `.formspec.yml` | — | — |
 
 ### constraint-type-mismatch
 
@@ -110,11 +110,11 @@ when(is("type", "a"), field.text("extra")); // Error: conditionals are not allow
 
 ### Recommended
 
-Sensible defaults — all rules enabled as errors.
+Enables `constraint-type-mismatch` and `consistent-constraints` as errors. The `constraints-allowed-*` rules must be enabled manually when using `.formspec.yml` constraints.
 
 ### Strict
 
-All rules enabled as errors with stricter settings.
+Same as Recommended. The `constraints-allowed-*` rules must be enabled manually when using `.formspec.yml` constraints.
 
 ```javascript
 import formspec from "@formspec/eslint-plugin";

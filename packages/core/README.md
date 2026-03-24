@@ -144,13 +144,13 @@ const myExtension = defineExtension({
       constraintName: "Precision",
       applicableTypes: ["primitive"],
       compositionRule: "override",
-      toJsonSchema: (payload, prefix) => ({ [`x-${prefix}-precision`]: payload }),
+      toJsonSchema: (payload, vendorPrefix) => ({ [`${vendorPrefix}-precision`]: payload }),
     },
   ],
   annotations: [
     {
       annotationName: "HelpUrl",
-      toJsonSchema: (value, prefix) => ({ [`x-${prefix}-help-url`]: value }),
+      toJsonSchema: (value, vendorPrefix) => ({ [`${vendorPrefix}-help-url`]: value }),
     },
   ],
 });

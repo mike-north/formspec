@@ -74,8 +74,8 @@ Standard JSON Schema validators like Ajv use `new Function()` internally, which 
 
 ```typescript
 interface CreateValidatorOptions {
-  draft?: SchemaDraft;    // JSON Schema draft version (default: auto-detect)
-  shortCircuit?: boolean; // Stop on first error (default: false)
+  draft?: SchemaDraft;    // JSON Schema draft version (default: "2020-12")
+  shortCircuit?: boolean; // Stop on first error (default: true)
 }
 ```
 

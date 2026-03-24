@@ -39,7 +39,7 @@ This package provides language server features for FormSpec's JSDoc constraint t
 
 - **Completion** — Autocomplete for constraint tag names inside JSDoc comments
 - **Hover** — Documentation on hover for constraint tags
-- **Go to Definition** — Navigate to constraint definitions
+- **Go to Definition** — Navigate to constraint definitions *(placeholder — not yet implemented)*
 
 ## API Reference
 
@@ -71,7 +71,7 @@ Returns completion items for all known FormSpec constraint tags.
 import { getCompletionItems } from "@formspec/language-server";
 
 const items = getCompletionItems();
-// [{ label: "@Minimum", kind: CompletionItemKind.Property, ... }, ...]
+// [{ label: "@Minimum", kind: CompletionItemKind.Keyword, ... }, ...]
 ```
 
 ### `getHoverForTag(tagName)`

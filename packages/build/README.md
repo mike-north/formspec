@@ -114,11 +114,11 @@ The analyzer extracts type information and JSDoc constraint tags (e.g., `/** @Mi
 
 ## Generated Output
 
-### JSON Schema (Draft-07)
+### JSON Schema (2020-12)
 
 ```json
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "name": { "type": "string", "title": "Name" },
