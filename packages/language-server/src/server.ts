@@ -39,11 +39,8 @@ export function createServer(): Connection {
           // Trigger completions inside JSDoc comments when `@` is typed
           triggerCharacters: ["@"],
         },
-        // Hover and go-to-definition are not yet implemented (token extraction
-        // from _params is required). Disabled until those features are wired up
-        // so clients don't enable UI affordances that never resolve.
-        hoverProvider: false,
-        definitionProvider: false,
+        hoverProvider: true,
+        definitionProvider: true,
       },
       serverInfo: {
         name: "formspec-language-server",

@@ -8,10 +8,13 @@ import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
+import type { FormIR } from "@formspec/core";
 
 export interface OutputProps {
   jsonSchema: JsonSchema2020 | null;
   uiSchema: UISchema | null;
+  /** The canonical FormIR to display in the IR tab. */
+  ir: FormIR | null;
 }
 
 interface TabPanelProps {
@@ -138,7 +141,7 @@ function syntaxHighlight(json: string): string {
   );
 }
 
-export function Output({ jsonSchema, uiSchema }: OutputProps): React.ReactElement {
+export function Output({ jsonSchema, uiSchema, ir }: OutputProps): React.ReactElement {
   const [tab, setTab] = useState(0);
 
   return (
@@ -161,6 +164,7 @@ export function Output({ jsonSchema, uiSchema }: OutputProps): React.ReactElemen
         >
           <Tab label="JSON Schema" />
           <Tab label="UI Schema" />
+          <Tab label="IR" />
         </Tabs>
       </Box>
       <TabPanel value={tab} index={0}>
@@ -168,6 +172,9 @@ export function Output({ jsonSchema, uiSchema }: OutputProps): React.ReactElemen
       </TabPanel>
       <TabPanel value={tab} index={1}>
         <JsonViewer data={uiSchema} label="Generated JSON Forms UI Schema" />
+      </TabPanel>
+      <TabPanel value={tab} index={2}>
+        <JsonViewer data={ir} label="FormSpec IR (Intermediate Representation)" />
       </TabPanel>
     </Box>
   );

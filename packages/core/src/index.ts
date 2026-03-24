@@ -91,7 +91,11 @@ export type {
 } from "./types/index.js";
 
 // Re-export functions and constants
-export { createInitialFieldState, BUILTIN_CONSTRAINT_DEFINITIONS, IR_VERSION } from "./types/index.js";
+export {
+  createInitialFieldState,
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  IR_VERSION,
+} from "./types/index.js";
 
 // Extension API
 export type {
@@ -102,4 +106,9 @@ export type {
   VocabularyKeywordRegistration,
 } from "./extensions/index.js";
 
-export { defineExtension, defineCustomType, defineConstraint, defineAnnotation } from "./extensions/index.js";
+export {
+  defineExtension,
+  defineCustomType,
+  defineConstraint,
+  defineAnnotation,
+} from "./extensions/index.js";

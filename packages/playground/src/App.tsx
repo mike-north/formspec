@@ -58,9 +58,10 @@ function App(): React.ReactElement {
   const [exampleAnchor, setExampleAnchor] = useState<null | HTMLElement>(null);
 
   // Compile FormSpec with constraint validation
-  const { isCompiling, jsonSchema, uiSchema, errors } = useFormspecCompilation(code, {
-    constraints,
-  });
+  const { isCompiling, jsonSchema, uiSchema, ir, irDiagnostics, errors } = useFormspecCompilation(
+    code,
+    { constraints }
+  );
 
   // Save to localStorage on change
   useEffect(() => {
@@ -197,7 +198,7 @@ function App(): React.ReactElement {
                     </Box>
                   </Allotment.Pane>
                   <Allotment.Pane minSize={100} preferredSize="25%">
-                    <Lint errors={errors} isCompiling={isCompiling} />
+                    <Lint errors={errors} isCompiling={isCompiling} irDiagnostics={irDiagnostics} />
                   </Allotment.Pane>
                 </Allotment>
               </Box>
@@ -206,7 +207,7 @@ function App(): React.ReactElement {
             {/* Middle Panel - Schema Output */}
             <Allotment.Pane minSize={250} preferredSize="30%">
               <Box sx={{ height: "100%", p: 1 }}>
-                <Output jsonSchema={jsonSchema} uiSchema={uiSchema} />
+                <Output jsonSchema={jsonSchema} uiSchema={uiSchema} ir={ir} />
               </Box>
             </Allotment.Pane>
 
