@@ -552,4 +552,61 @@ export default formspec(
       expect(result.jsonSchema.required).not.toContain("optional");
     });
   });
+
+  describe("IR output", () => {
+    it("includes FormIR in successful compilation result", () => {
+      const code = `
+        import { field, formspec } from "@formspec/dsl";
+        export default formspec(
+          field.text("name"),
+          field.number("age")
+        );
+      `;
+
+      const result = compileFormSpec(code);
+      expectSuccess(result);
+
+      expect(result.ir).toBeDefined();
+      expect(result.ir.kind).toBe("form-ir");
+      expect(result.ir.provenance.surface).toBe("chain-dsl");
+      expect(result.ir.elements).toHaveLength(2);
+    });
+
+    it("IR elements match the form fields", () => {
+      const code = `
+        import { field, formspec } from "@formspec/dsl";
+        export default formspec(
+          field.text("firstName"),
+          field.boolean("active")
+        );
+      `;
+
+      const result = compileFormSpec(code);
+      expectSuccess(result);
+
+      const fieldNames = result.ir.elements
+        .filter(
+          (el): el is Extract<(typeof result.ir.elements)[number], { kind: "field" }> =>
+            el.kind === "field"
+        )
+        .map((el) => el.name);
+
+      expect(fieldNames).toContain("firstName");
+      expect(fieldNames).toContain("active");
+    });
+
+    it("irDiagnostics is empty for valid FormSpec", () => {
+      const code = `
+        import { field, formspec } from "@formspec/dsl";
+        export default formspec(
+          field.number("price", { min: 0, max: 1000 })
+        );
+      `;
+
+      const result = compileFormSpec(code);
+      expectSuccess(result);
+
+      expect(result.irDiagnostics).toHaveLength(0);
+    });
+  });
 });

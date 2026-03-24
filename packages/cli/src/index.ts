@@ -23,15 +23,22 @@ import {
   generateClassSchemas,
   generateMethodSchemas,
   collectFormSpecReferences,
+  canonicalizeTSDoc,
+  canonicalizeChainDSL,
+  validateIR,
 } from "@formspec/build/internals";
-import type { LoadedFormSpecSchemas } from "@formspec/build/internals";
+import type { LoadedFormSpecSchemas, ValidationResult } from "@formspec/build/internals";
+import type { FormIR } from "@formspec/core";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,
   resolveCompiledPath,
+  isFormSpec,
   type FormSpecSchemas,
 } from "./runtime/formspec-loader.js";
 import { writeClassSchemas, writeFormSpecSchemas } from "./output/writer.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 /**
  * CLI options parsed from arguments.
@@ -42,6 +49,10 @@ interface CliOptions {
   className: string | undefined;
   outDir: string;
   compiledPath: string | undefined;
+  /** Emit FormIR JSON alongside generated schemas. */
+  emitIr: boolean;
+  /** Run constraint validation only; do not write schema files. */
+  validateOnly: boolean;
 }
 
 /**
@@ -72,6 +83,8 @@ function parseArgs(args: string[]): CliOptions {
   let className: string | undefined;
   let outDir = "./generated";
   let compiledPath: string | undefined;
+  let emitIr = false;
+  let validateOnly = false;
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i];
@@ -83,6 +96,10 @@ function parseArgs(args: string[]): CliOptions {
     } else if (arg === "--compiled" || arg === "-c") {
       const nextArg = rest[++i];
       if (nextArg) compiledPath = nextArg;
+    } else if (arg === "--emit-ir") {
+      emitIr = true;
+    } else if (arg === "--validate-only") {
+      validateOnly = true;
     } else if (arg.startsWith("-")) {
       console.error(`Unknown option: ${arg}`);
       process.exit(1);
@@ -105,6 +122,8 @@ function parseArgs(args: string[]): CliOptions {
     className,
     outDir,
     compiledPath,
+    emitIr,
+    validateOnly,
   };
 }
 
@@ -139,6 +158,8 @@ ARGUMENTS:
 OPTIONS:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+  --emit-ir             Emit FormIR JSON alongside generated schemas
+  --validate-only       Validate constraints only; do not write schema files
   -h, --help            Show this help message
 
 EXAMPLES:
@@ -179,6 +200,39 @@ function toLoadedSchemas(
 }
 
 /**
+ * Writes a FormIR JSON file to the output directory.
+ */
+function writeIrFile(ir: FormIR, name: string, outDir: string): void {
+  fs.mkdirSync(outDir, { recursive: true });
+  const filePath = path.join(outDir, `${name}.ir.json`);
+  fs.writeFileSync(filePath, JSON.stringify(ir, null, 2) + "\n");
+  console.log(`✓ Wrote IR: ${filePath}`);
+}
+
+/**
+ * Prints validation results and returns true if any error-severity diagnostics
+ * were found (which should cause the CLI to exit non-zero).
+ *
+ * Warnings are always printed even when `result.valid` is true, since `valid`
+ * only reflects the absence of error-severity diagnostics.
+ */
+function printValidationResult(result: ValidationResult, label: string): boolean {
+  const diagnostics = result.diagnostics;
+
+  if (diagnostics.length === 0) {
+    console.log(`✓ ${label}: no constraint violations`);
+    return false;
+  }
+
+  console.warn(`⚠️  ${label}: ${String(diagnostics.length)} diagnostic(s)`);
+  for (const diag of diagnostics) {
+    const severity = diag.severity === "error" ? "ERROR" : "WARN";
+    console.warn(`  [${severity}] ${diag.message}`);
+  }
+  return diagnostics.some((d) => d.severity === "error");
+}
+
+/**
  * Main CLI entry point.
  */
 async function main(): Promise<void> {
@@ -200,12 +254,16 @@ async function main(): Promise<void> {
     // Step 2: Resolve compiled JS path for runtime loading
     const compiledPath = options.compiledPath ?? resolveCompiledPath(options.filePath);
 
-    // Step 3: Load all FormSpec exports from compiled module
+    // Step 3: Load all FormSpec exports from compiled module.
+    // Retain the raw module reference so Step 5 can access exports by name
+    // without a second loadFormSpecs call.
     let loadedFormSpecs = new Map<string, FormSpecSchemas>();
+    let rawModuleFromLoad: Record<string, unknown> | undefined;
     let loadError: string | undefined;
     try {
-      const { formSpecs } = await loadFormSpecs(compiledPath);
+      const { formSpecs, module } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
+      rawModuleFromLoad = module;
       console.log(`✓ Loaded ${String(formSpecs.size)} FormSpec export(s) from module`);
     } catch (error) {
       // Track load errors for better messaging later
@@ -245,6 +303,9 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
+    // Track whether any validation found errors (for --validate-only exit code)
+    let hasValidationErrors = false;
+
     if (options.className) {
       const classDecl = findClassByName(ctx.sourceFile, options.className);
 
@@ -253,7 +314,7 @@ async function main(): Promise<void> {
         process.exit(1);
       }
 
-      // Analyze class
+      // Analyze class via IR pipeline
       const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
       console.log(
         `✓ Analyzed class "${analysis.name}" with ${String(analysis.fields.length)} field(s)`
@@ -261,66 +322,125 @@ async function main(): Promise<void> {
       console.log(`  Instance methods: ${String(analysis.instanceMethods.length)}`);
       console.log(`  Static methods: ${String(analysis.staticMethods.length)}`);
 
-      // Collect FormSpec references from methods
-      const allMethods = [...analysis.instanceMethods, ...analysis.staticMethods];
-      const formSpecRefs = collectFormSpecReferences(allMethods);
+      // Canonicalize to IR only when needed for --emit-ir or --validate-only.
+      // This avoids an unnecessary canonicalization failure blocking normal
+      // schema-generation runs.
+      if (options.validateOnly || options.emitIr) {
+        const ir = canonicalizeTSDoc(analysis, { file: options.filePath });
 
-      if (formSpecRefs.size > 0) {
-        console.log(`  FormSpec refs: ${Array.from(formSpecRefs).join(", ")}`);
+        const validationResult = validateIR(ir);
+        const hadErrors = printValidationResult(validationResult, `Class "${analysis.name}"`);
+        if (hadErrors) hasValidationErrors = true;
 
-        // Load specific FormSpecs if not already loaded
-        const missing = Array.from(formSpecRefs).filter((name) => !loadedFormSpecs.has(name));
-        if (missing.length > 0) {
-          try {
-            const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
-            for (const [name, schemas] of namedFormSpecs) {
-              loadedFormSpecs.set(name, schemas);
+        if (options.emitIr) {
+          writeIrFile(ir, analysis.name, options.outDir);
+        }
+      }
+
+      if (!options.validateOnly) {
+        // Collect FormSpec references from methods
+        const allMethods = [...analysis.instanceMethods, ...analysis.staticMethods];
+        const formSpecRefs = collectFormSpecReferences(allMethods);
+
+        if (formSpecRefs.size > 0) {
+          console.log(`  FormSpec refs: ${Array.from(formSpecRefs).join(", ")}`);
+
+          // Load specific FormSpecs if not already loaded
+          const missing = Array.from(formSpecRefs).filter((name) => !loadedFormSpecs.has(name));
+          if (missing.length > 0) {
+            try {
+              const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
+              for (const [name, schemas] of namedFormSpecs) {
+                loadedFormSpecs.set(name, schemas);
+              }
+            } catch {
+              // Already warned about module loading
             }
-          } catch {
-            // Already warned about module loading
+          }
+        }
+
+        // Generate class schemas
+        const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
+
+        // Generate method schemas
+        const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
+        const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
+        );
+        const staticMethodSchemas = analysis.staticMethods.map((m) =>
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
+        );
+
+        // Write class output
+        const classResult = writeClassSchemas(
+          analysis.name,
+          classSchemas,
+          instanceMethodSchemas,
+          staticMethodSchemas,
+          { outDir: options.outDir }
+        );
+
+        console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
+      }
+    }
+
+    // Step 5: Process standalone FormSpec exports (chain DSL)
+    if (loadedFormSpecs.size > 0) {
+      // Validate and/or emit IR for chain DSL exports.
+      // Reuse the module captured in Step 3 to avoid a redundant dynamic import.
+      if (options.validateOnly || options.emitIr) {
+        if (rawModuleFromLoad !== undefined) {
+          for (const [name] of loadedFormSpecs) {
+            const rawFormSpec = rawModuleFromLoad[name];
+            // Use isFormSpec for a stronger duck-type check than the previous
+            // object + "elements" check, and wrap each export individually so
+            // one bad export emits a diagnostic instead of aborting the whole run.
+            if (!isFormSpec(rawFormSpec)) continue;
+            try {
+              const chainIr = canonicalizeChainDSL(rawFormSpec as never);
+
+              const validationResult = validateIR(chainIr);
+              const hadErrors = printValidationResult(validationResult, `FormSpec "${name}"`);
+              if (hadErrors) hasValidationErrors = true;
+
+              if (options.emitIr) {
+                writeIrFile(chainIr, name, options.outDir);
+              }
+            } catch (error) {
+              console.warn(
+                `⚠️  FormSpec "${name}": canonicalization failed — ${error instanceof Error ? error.message : String(error)}`
+              );
+              hasValidationErrors = true;
+            }
           }
         }
       }
 
-      // Generate class schemas
-      const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
+      if (!options.validateOnly) {
+        const formSpecResult = writeFormSpecSchemas(loadedFormSpecs, {
+          outDir: options.outDir,
+        });
 
-      // Generate method schemas
-      const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
-      const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-        generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
-      );
-      const staticMethodSchemas = analysis.staticMethods.map((m) =>
-        generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
-      );
-
-      // Write class output
-      const classResult = writeClassSchemas(
-        analysis.name,
-        classSchemas,
-        instanceMethodSchemas,
-        staticMethodSchemas,
-        { outDir: options.outDir }
-      );
-
-      console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
-    }
-
-    // Step 5: Write standalone FormSpec exports (chain DSL)
-    if (loadedFormSpecs.size > 0) {
-      const formSpecResult = writeFormSpecSchemas(loadedFormSpecs, {
-        outDir: options.outDir,
-      });
-
-      if (formSpecResult.files.length > 0) {
-        console.log(
-          `✓ Wrote ${String(formSpecResult.files.length)} FormSpec file(s) to ${formSpecResult.dir}`
-        );
+        if (formSpecResult.files.length > 0) {
+          console.log(
+            `✓ Wrote ${String(formSpecResult.files.length)} FormSpec file(s) to ${formSpecResult.dir}`
+          );
+        }
       }
     }
 
     console.log();
-    console.log("Done!");
+
+    if (options.validateOnly) {
+      if (hasValidationErrors) {
+        console.log("Validation failed: constraint violations found.");
+        process.exit(1);
+      } else {
+        console.log("Validation passed: no constraint violations.");
+      }
+    } else {
+      console.log("Done!");
+    }
   } catch (error) {
     console.error("Error:", error instanceof Error ? error.message : error);
     process.exit(1);

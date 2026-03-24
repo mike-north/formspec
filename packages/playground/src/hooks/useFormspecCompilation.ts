@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { compileFormSpec, type CompileResult, type DiagnosticMessage } from "../lib/compiler";
-import type { FormSpec, FormElement } from "@formspec/core";
-import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
+import type { FormSpec, FormElement, FormIR } from "@formspec/core";
+import type { JsonSchema2020, UISchema, ValidationDiagnostic } from "@formspec/build/browser";
 import type { ConstraintsConfig } from "../components/Constraints";
 import { toConstraintConfig } from "../lib/constraintAdapter";
 
@@ -68,6 +68,10 @@ export interface UseFormspecCompilationResult {
   jsonSchema: JsonSchema2020 | null;
   /** The generated UI Schema, if successful */
   uiSchema: UISchema | null;
+  /** The canonical FormIR, if compilation succeeded */
+  ir: FormIR | null;
+  /** IR-level constraint validation diagnostics */
+  irDiagnostics: readonly ValidationDiagnostic[];
   /** Compilation errors, if any */
   errors: DiagnosticMessage[];
   /** Manually trigger recompilation */
@@ -89,6 +93,8 @@ export function useFormspecCompilation(
   const [formSpec, setFormSpec] = useState<FormSpec<readonly FormElement[]> | null>(null);
   const [jsonSchema, setJsonSchema] = useState<JsonSchema2020 | null>(null);
   const [uiSchema, setUiSchema] = useState<UISchema | null>(null);
+  const [ir, setIr] = useState<FormIR | null>(null);
+  const [irDiagnostics, setIrDiagnostics] = useState<readonly ValidationDiagnostic[]>([]);
   const [errors, setErrors] = useState<DiagnosticMessage[]>([]);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,6 +142,8 @@ export function useFormspecCompilation(
         setFormSpec(result.formSpec);
         setJsonSchema(result.jsonSchema);
         setUiSchema(result.uiSchema);
+        setIr(result.ir);
+        setIrDiagnostics(result.irDiagnostics);
         // Show lint errors even if compilation succeeded
         setErrors(lintErrors);
       } else {
@@ -192,6 +200,8 @@ export function useFormspecCompilation(
     formSpec,
     jsonSchema,
     uiSchema,
+    ir,
+    irDiagnostics,
     errors,
     recompile: compile,
   };

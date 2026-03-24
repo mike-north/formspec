@@ -159,9 +159,7 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
  * @param reg - The custom constraint registration.
  * @returns The same registration, validated at the type level.
  */
-export function defineConstraint(
-  reg: CustomConstraintRegistration
-): CustomConstraintRegistration {
+export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration {
   return reg;
 }
 
@@ -172,8 +170,6 @@ export function defineConstraint(
  * @param reg - The custom annotation registration.
  * @returns The same registration, validated at the type level.
  */
-export function defineAnnotation(
-  reg: CustomAnnotationRegistration
-): CustomAnnotationRegistration {
+export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration {
   return reg;
 }

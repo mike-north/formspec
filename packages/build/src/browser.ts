@@ -76,6 +76,17 @@ export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js
 export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
 
+// IR canonicalization (browser-safe: no Node.js dependencies)
+export { canonicalizeChainDSL } from "./canonicalize/chain-dsl-canonicalizer.js";
+
+// IR validation (browser-safe: no Node.js dependencies)
+export { validateIR } from "./validate/constraint-validator.js";
+export type {
+  ValidationDiagnostic,
+  ValidationResult,
+  ValidateIROptions,
+} from "./validate/constraint-validator.js";
+
 /**
  * Result of building form schemas.
  */

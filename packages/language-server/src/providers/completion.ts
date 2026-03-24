@@ -7,8 +7,7 @@
  * filtering will be added in a future phase.
  */
 
-import type { CompletionItem } from "vscode-languageserver/node.js";
-import { CompletionItemKind } from "vscode-languageserver/node.js";
+import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
 /**
  * Human-readable detail strings for each built-in constraint tag.

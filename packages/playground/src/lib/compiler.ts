@@ -8,9 +8,16 @@
  * 4. Validating FormSpec against constraints
  */
 
-import type { FormSpec, FormElement } from "@formspec/core";
+import type { FormSpec, FormElement, FormIR } from "@formspec/core";
 import * as dsl from "@formspec/dsl";
-import { buildFormSchemas, type JsonSchema2020, type UISchema } from "@formspec/build/browser";
+import {
+  buildFormSchemas,
+  canonicalizeChainDSL,
+  validateIR,
+  type JsonSchema2020,
+  type UISchema,
+  type ValidationDiagnostic,
+} from "@formspec/build/browser";
 import { validateFormSpec, type ConstraintConfig } from "@formspec/constraints/browser";
 import ts from "typescript";
 
@@ -19,6 +26,10 @@ export interface CompilationResult {
   formSpec: FormSpec<readonly FormElement[]>;
   jsonSchema: JsonSchema2020;
   uiSchema: UISchema;
+  /** The canonical FormIR produced from the chain DSL canonicalizer. */
+  ir: FormIR;
+  /** IR-level constraint validation diagnostics (may be warnings or errors). */
+  irDiagnostics: readonly ValidationDiagnostic[];
 }
 
 export interface CompilationError {
@@ -103,12 +114,17 @@ export function compileFormSpec(code: string, options: CompileOptions = {}): Com
     }
 
     // Step 3: Generate schemas
-    const { jsonSchema, uiSchema } = buildFormSchemas(formSpec as FormSpec<readonly FormElement[]>);
+    const typedFormSpec = formSpec as FormSpec<readonly FormElement[]>;
+    const { jsonSchema, uiSchema } = buildFormSchemas(typedFormSpec);
 
-    // Step 4: Validate against constraints
+    // Step 4: Canonicalize to FormIR and run IR-level constraint validation
+    const ir = canonicalizeChainDSL(typedFormSpec);
+    const irValidation = validateIR(ir);
+
+    // Step 5: Validate against constraints
     const constraintErrors: DiagnosticMessage[] = [];
     if (options.constraints) {
-      const validationResult = validateFormSpec(formSpec as FormSpec<readonly FormElement[]>, {
+      const validationResult = validateFormSpec(typedFormSpec, {
         constraints: options.constraints,
       });
 
@@ -134,9 +150,11 @@ export function compileFormSpec(code: string, options: CompileOptions = {}): Com
 
     return {
       success: true,
-      formSpec: formSpec as FormSpec<readonly FormElement[]>,
+      formSpec: typedFormSpec,
       jsonSchema,
       uiSchema,
+      ir,
+      irDiagnostics: irValidation.diagnostics,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
