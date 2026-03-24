@@ -31,7 +31,7 @@ const ruleTester = new RuleTester({
  * RuleTester.run expects AnyRuleModule. The underlying shape is compatible —
  * this cast bridges the two TypeScript signatures.
  */
-function asTestableRule(rule: RuleModule<"typeMismatch" | "invalidValue", []>): AnyRuleModule {
+function asTestableRule(rule: RuleModule<"typeMismatch" | "invalidValue">): AnyRuleModule {
   // @ts-expect-error -- RuleModule<specific messageIds> narrows the type more
   // than AnyRuleModule requires. The runtime shape is identical.
   return rule;
