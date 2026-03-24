@@ -20,38 +20,92 @@ function nestedScope(parentScope: string, childName: string): string {
 }
 
 /**
- * Recursively converts an ObjectField to a GroupLayout containing nested Controls.
+ * Converts elements inside an object field to UI Schema elements,
+ * with scoped paths relative to the object's scope.
+ *
+ * Handles all three element types (field, group, conditional) so that
+ * group() and when() nesting inside field.object() works correctly.
  */
-function objectFieldToUiSchema(
-  objectField: ObjectField<string, readonly FormElement[]>,
-  parentScope: string,
-  parentRule?: Rule
-): GroupLayout {
-  const elements: UISchemaElement[] = [];
+function objectElementsToUiSchema(
+  elements: readonly FormElement[],
+  objectScope: string,
+  parentRule?: Rule,
+): UISchemaElement[] {
+  const result: UISchemaElement[] = [];
 
-  for (const element of objectField.properties) {
-    if (element._type === "field") {
-      if (element._field === "object") {
-        const nestedObj = element as ObjectField<string, readonly FormElement[]>;
-        elements.push(
-          objectFieldToUiSchema(nestedObj, nestedScope(parentScope, element.name), parentRule)
-        );
-      } else {
-        const control: ControlElement = {
-          type: "Control",
-          scope: nestedScope(parentScope, element.name),
-          ...(element.label !== undefined && { label: element.label }),
+  for (const element of elements) {
+    switch (element._type) {
+      case "field": {
+        if (element._field === "object") {
+          const nestedObj = element as ObjectField<string, readonly FormElement[]>;
+          result.push(
+            objectFieldToUiSchema(nestedObj, nestedScope(objectScope, element.name), parentRule),
+          );
+        } else {
+          const control: ControlElement = {
+            type: "Control",
+            scope: nestedScope(objectScope, element.name),
+            ...(element.label !== undefined && { label: element.label }),
+            ...(parentRule !== undefined && { rule: parentRule }),
+          };
+          result.push(control);
+        }
+        break;
+      }
+
+      case "group": {
+        const groupElement = element as Group<readonly FormElement[]>;
+        const groupLayout: GroupLayout = {
+          type: "Group",
+          label: groupElement.label,
+          elements: objectElementsToUiSchema(groupElement.elements, objectScope, parentRule),
           ...(parentRule !== undefined && { rule: parentRule }),
         };
-        elements.push(control);
+        result.push(groupLayout);
+        break;
+      }
+
+      case "conditional": {
+        const conditionalElement = element as Conditional<string, unknown, readonly FormElement[]>;
+        // The scope for the condition references the field within the object's properties
+        const nestedRule: Rule = {
+          effect: "SHOW",
+          condition: {
+            scope: nestedScope(objectScope, conditionalElement.field),
+            schema: { const: conditionalElement.value },
+          },
+        };
+        const combinedRule =
+          parentRule !== undefined ? combineRules(parentRule, nestedRule) : nestedRule;
+        const childElements = objectElementsToUiSchema(
+          conditionalElement.elements,
+          objectScope,
+          combinedRule,
+        );
+        result.push(...childElements);
+        break;
       }
     }
   }
 
+  return result;
+}
+
+/**
+ * Recursively converts an ObjectField to a GroupLayout containing nested Controls.
+ *
+ * Delegates to objectElementsToUiSchema to handle all element types (field, group,
+ * conditional) inside the object, not just plain fields.
+ */
+function objectFieldToUiSchema(
+  objectField: ObjectField<string, readonly FormElement[]>,
+  parentScope: string,
+  parentRule?: Rule,
+): GroupLayout {
   return {
     type: "Group",
     label: objectField.label ?? objectField.name,
-    elements,
+    elements: objectElementsToUiSchema(objectField.properties, parentScope, parentRule),
     ...(parentRule !== undefined && { rule: parentRule }),
   };
 }
@@ -112,7 +166,7 @@ function combineRules(parentRule: Rule, childRule: Rule): Rule {
  */
 function elementsToUiSchema(
   elements: readonly FormElement[],
-  parentRule?: Rule
+  parentRule?: Rule,
 ): UISchemaElement[] {
   const result: UISchemaElement[] = [];
 
