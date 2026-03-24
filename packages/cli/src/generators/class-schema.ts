@@ -11,6 +11,7 @@ import {
   convertType,
   applyDecoratorsToSchema,
   createFormSpecField,
+  DefsRegistry,
   type JsonSchema,
   type FormSpecField,
 } from "../analyzer/type-converter.js";
@@ -45,10 +46,11 @@ export function generateClassSchemas(
   const properties: Record<string, JsonSchema> = {};
   const required: string[] = [];
   const uxElements: FormSpecField[] = [];
+  const defsRegistry = new DefsRegistry();
 
   for (const field of analysis.fields) {
-    // Generate JSON Schema for field
-    const { jsonSchema: baseSchema } = convertType(field.type, checker);
+    // Generate JSON Schema for field — pass defsRegistry to lift named types
+    const { jsonSchema: baseSchema } = convertType(field.type, checker, defsRegistry);
     // Apply decorator constraints first, then comment tag constraints
     const withDecorators = applyDecoratorsToSchema(baseSchema, field.decorators);
     const fieldSchema = applyCommentTagsToSchema(withDecorators, field.commentTags);
@@ -59,7 +61,7 @@ export function generateClassSchemas(
       required.push(field.name);
     }
 
-    // Generate FormSpec field
+    // Generate FormSpec field — UI schema always inlines nested fields
     const formSpecField = createFormSpecField(
       field.name,
       field.type,
@@ -71,11 +73,12 @@ export function generateClassSchemas(
     uxElements.push(formSpecField);
   }
 
-  // Build complete JSON Schema
+  // Build complete JSON Schema, including $defs if any named types were found
   const jsonSchema: JsonSchema = {
     type: "object",
     properties,
     ...(required.length > 0 ? { required } : {}),
+    ...(defsRegistry.size > 0 ? { $defs: defsRegistry.toObject() } : {}),
   };
 
   // Build FormSpec/UI Schema

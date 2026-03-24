@@ -1,0 +1,67 @@
+{
+  "elements": [
+    {
+      "_field": "text",
+      "id": "orderId",
+      "required": true
+    },
+    {
+      "_field": "object",
+      "id": "billingAddress",
+      "required": true,
+      "fields": [
+        {
+          "_field": "text",
+          "id": "street",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "city",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "zip",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "country",
+          "required": true
+        }
+      ]
+    },
+    {
+      "_field": "object",
+      "id": "shippingAddress",
+      "required": true,
+      "fields": [
+        {
+          "_field": "text",
+          "id": "street",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "city",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "zip",
+          "required": true
+        },
+        {
+          "_field": "text",
+          "id": "country",
+          "required": true
+        }
+      ]
+    },
+    {
+      "_field": "text",
+      "id": "notes"
+    }
+  ]
+}

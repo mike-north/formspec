@@ -36,9 +36,62 @@ export interface JsonSchema {
   default?: unknown;
   deprecated?: boolean;
   $ref?: string;
+  $defs?: Record<string, JsonSchema>;
   oneOf?: JsonSchema[];
   anyOf?: JsonSchema[];
   allOf?: JsonSchema[];
+}
+
+/**
+ * Registry for tracking named types that should be emitted as $defs.
+ */
+export class DefsRegistry {
+  private readonly defs = new Map<string, JsonSchema>();
+  private readonly processing = new Set<string>();
+
+  /** Check if a type has already been registered. */
+  has(name: string): boolean {
+    return this.defs.has(name);
+  }
+
+  /** Get a registered schema. */
+  get(name: string): JsonSchema | undefined {
+    return this.defs.get(name);
+  }
+
+  /** Register a named type's schema. */
+  set(name: string, schema: JsonSchema): void {
+    this.defs.set(name, schema);
+  }
+
+  /** Mark a type as currently being processed (for cycle detection). */
+  markProcessing(name: string): void {
+    this.processing.add(name);
+  }
+
+  /** Unmark a type as being processed. */
+  unmarkProcessing(name: string): void {
+    this.processing.delete(name);
+  }
+
+  /** Check if a type is currently being processed (cycle). */
+  isProcessing(name: string): boolean {
+    return this.processing.has(name);
+  }
+
+  /** Get all $defs as a plain object. */
+  toObject(): Record<string, JsonSchema> {
+    const result: Record<string, JsonSchema> = {};
+    for (const [name, schema] of this.defs) {
+      result[name] = schema;
+    }
+    return result;
+  }
+
+  /** Check if there are any $defs registered. */
+  get size(): number {
+    return this.defs.size;
+  }
 }
 
 /**
@@ -80,11 +133,13 @@ export interface TypeConversionResult {
  *
  * @param type - The TypeScript type to convert
  * @param checker - TypeScript type checker
+ * @param defsRegistry - Optional registry for tracking named types as $defs
  * @returns Conversion result with JSON Schema and FormSpec type
  */
 export function convertType(
   type: ts.Type,
-  checker: ts.TypeChecker
+  checker: ts.TypeChecker,
+  defsRegistry?: DefsRegistry
 ): TypeConversionResult {
   // Handle primitive types
   if (type.flags & ts.TypeFlags.String) {
@@ -124,17 +179,17 @@ export function convertType(
 
   // Handle union types (including string literal unions for enums)
   if (type.isUnion()) {
-    return convertUnionType(type, checker);
+    return convertUnionType(type, checker, defsRegistry);
   }
 
   // Handle array types
   if (checker.isArrayType(type)) {
-    return convertArrayType(type, checker);
+    return convertArrayType(type, checker, defsRegistry);
   }
 
   // Handle object types
   if (type.flags & ts.TypeFlags.Object) {
-    return convertObjectType(type as ts.ObjectType, checker);
+    return convertObjectType(type as ts.ObjectType, checker, defsRegistry);
   }
 
   // Fallback
@@ -146,7 +201,8 @@ export function convertType(
  */
 function convertUnionType(
   type: ts.UnionType,
-  checker: ts.TypeChecker
+  checker: ts.TypeChecker,
+  defsRegistry?: DefsRegistry
 ): TypeConversionResult {
   const types = type.types;
 
@@ -206,7 +262,7 @@ function convertUnionType(
 
   // Handle nullable types (T | null or T | undefined) with single non-null type
   if (nonNullTypes.length === 1 && nonNullTypes[0]) {
-    const result = convertType(nonNullTypes[0], checker);
+    const result = convertType(nonNullTypes[0], checker, defsRegistry);
     // Make it nullable in JSON Schema
     if (hasNull) {
       result.jsonSchema = { oneOf: [result.jsonSchema, { type: "null" }] };
@@ -215,7 +271,7 @@ function convertUnionType(
   }
 
   // General union - use oneOf (filter out undefined which isn't valid in JSON Schema)
-  const schemas = nonNullTypes.map((t) => convertType(t, checker).jsonSchema);
+  const schemas = nonNullTypes.map((t) => convertType(t, checker, defsRegistry).jsonSchema);
   if (hasNull) {
     schemas.push({ type: "null" });
   }
@@ -230,13 +286,14 @@ function convertUnionType(
  */
 function convertArrayType(
   type: ts.Type,
-  checker: ts.TypeChecker
+  checker: ts.TypeChecker,
+  defsRegistry?: DefsRegistry
 ): TypeConversionResult {
   const typeArgs = (type as ts.TypeReference).typeArguments;
   const elementType = typeArgs?.[0];
 
   const itemSchema = elementType
-    ? convertType(elementType, checker).jsonSchema
+    ? convertType(elementType, checker, defsRegistry).jsonSchema
     : {};
 
   return {
@@ -249,12 +306,45 @@ function convertArrayType(
 }
 
 /**
- * Converts an object type to JSON Schema.
+ * Returns the declared name for a named type (interface, class, type alias),
+ * or null for anonymous/built-in types.
  */
-function convertObjectType(
+function getNamedTypeName(type: ts.ObjectType, _checker: ts.TypeChecker): string | null {
+  // Try the type's own symbol first, then aliasSymbol for type aliases
+  const symbol = type.getSymbol() ?? (type as ts.Type & { aliasSymbol?: ts.Symbol }).aliasSymbol;
+  if (!symbol) return null;
+
+  const name = symbol.getName();
+
+  // Skip anonymous and built-in types
+  if (!name || name === "__type" || name === "__object" || name === "Array") {
+    return null;
+  }
+
+  const declarations = symbol.getDeclarations();
+  if (!declarations || declarations.length === 0) return null;
+
+  const decl = declarations[0];
+  if (
+    decl &&
+    (ts.isInterfaceDeclaration(decl) ||
+      ts.isClassDeclaration(decl) ||
+      ts.isTypeAliasDeclaration(decl))
+  ) {
+    return name;
+  }
+
+  return null;
+}
+
+/**
+ * Builds the inline object schema from a TypeScript object type.
+ */
+function buildObjectSchema(
   type: ts.ObjectType,
-  checker: ts.TypeChecker
-): TypeConversionResult {
+  checker: ts.TypeChecker,
+  defsRegistry?: DefsRegistry
+): JsonSchema {
   const properties: Record<string, JsonSchema> = {};
   const required: string[] = [];
 
@@ -266,7 +356,7 @@ function convertObjectType(
       prop.valueDeclaration ?? prop.declarations?.[0] ?? ({} as ts.Node)
     );
 
-    const propSchema = convertType(propType, checker).jsonSchema;
+    const propSchema = convertType(propType, checker, defsRegistry).jsonSchema;
     properties[prop.name] = propSchema;
 
     // Check if property is optional
@@ -277,11 +367,62 @@ function convertObjectType(
   }
 
   return {
-    jsonSchema: {
-      type: "object",
-      properties,
-      ...(required.length > 0 ? { required } : {}),
-    },
+    type: "object",
+    properties,
+    ...(required.length > 0 ? { required } : {}),
+  };
+}
+
+/**
+ * Converts an object type to JSON Schema.
+ *
+ * Named types (interfaces, classes, type aliases) are registered in the
+ * defsRegistry and returned as $ref pointers to avoid inlining the same
+ * schema multiple times. Anonymous inline types are always inlined.
+ */
+function convertObjectType(
+  type: ts.ObjectType,
+  checker: ts.TypeChecker,
+  defsRegistry?: DefsRegistry
+): TypeConversionResult {
+  const typeName = getNamedTypeName(type, checker);
+
+  if (typeName && defsRegistry) {
+    // Already registered — return $ref directly
+    if (defsRegistry.has(typeName)) {
+      return {
+        jsonSchema: { $ref: `#/$defs/${typeName}` },
+        formSpecFieldType: "object",
+      };
+    }
+
+    // Currently processing (circular reference) — return $ref; resolution happens after
+    if (defsRegistry.isProcessing(typeName)) {
+      return {
+        jsonSchema: { $ref: `#/$defs/${typeName}` },
+        formSpecFieldType: "object",
+      };
+    }
+
+    // Mark as processing to detect cycles
+    defsRegistry.markProcessing(typeName);
+
+    // Build the full schema (may recurse)
+    const schema = buildObjectSchema(type, checker, defsRegistry);
+
+    // Register and unmark
+    defsRegistry.set(typeName, schema);
+    defsRegistry.unmarkProcessing(typeName);
+
+    return {
+      jsonSchema: { $ref: `#/$defs/${typeName}` },
+      formSpecFieldType: "object",
+    };
+  }
+
+  // No registry or unnamed type — inline the schema
+  return {
+    jsonSchema: buildObjectSchema(type, checker, defsRegistry),
     formSpecFieldType: "object",
   };
 }
@@ -315,7 +456,9 @@ export function createFormSpecField(
     field.required = true;
   }
 
-  // For object types, recursively add nested fields
+  // For object types, recursively add nested fields.
+  // Note: the UI schema always inlines nested fields regardless of $defs/
+  // $ref usage in the JSON Schema — the UI schema is resolved separately.
   if (formSpecFieldType === "object" && type.flags & ts.TypeFlags.Object) {
     const objectType = type as ts.ObjectType;
     const nestedFields: FormSpecField[] = [];
