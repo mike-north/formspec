@@ -63,15 +63,6 @@ importers:
         specifier: ^3.24.0
         version: 3.25.76
 
-  packages/ajv-vocab:
-    devDependencies:
-      ajv:
-        specifier: ^8.13.0
-        version: 8.18.0
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
-
   packages/build:
     dependencies:
       '@formspec/core':
@@ -308,6 +299,16 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/validator:
+    dependencies:
+      '@cfworker/json-schema':
+        specifier: ^4.1.0
+        version: 4.1.1
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
+
 packages:
 
   '@api-extractor-tools/declaration-file-normalizer@0.1.0-alpha.6':
@@ -404,6 +405,9 @@ packages:
   '@babel/types@7.29.0':
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
+
+  '@cfworker/json-schema@4.1.1':
+    resolution: {integrity: sha512-gAmrUZSGtKc3AiBL71iNWxDsyUC5uMaKKGdvzYsBoTW/xi42JQHl7eKV2OYzCUqvc+D2RCcf7EXY2iCyFIk6og==}
 
   '@changesets/apply-release-plan@7.0.14':
     resolution: {integrity: sha512-ddBvf9PHdy2YY0OUiEl3TV78mH9sckndJR14QAt87KLEbIov81XO0q0QAmvooBxXlqRRP8I9B7XOzZwQG7JkWA==}
@@ -3231,6 +3235,8 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
+
+  '@cfworker/json-schema@4.1.1': {}
 
   '@changesets/apply-release-plan@7.0.14':
     dependencies:

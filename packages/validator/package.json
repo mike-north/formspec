@@ -1,14 +1,14 @@
 {
-  "name": "@formspec/ajv-vocab",
+  "name": "@formspec/validator",
   "version": "0.1.0-alpha.11",
-  "description": "Ajv vocabulary registration for FormSpec annotation keywords",
+  "description": "JSON Schema validator for FormSpec — backed by @cfworker/json-schema, safe for secure runtimes",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/ajv-vocab.d.ts",
+  "types": "./dist/validator.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/ajv-vocab.d.ts",
+      "types": "./dist/validator.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
@@ -26,11 +26,10 @@
     "api-extractor:local": "api-extractor run --local",
     "api-documenter": "api-documenter markdown -i temp -o docs"
   },
-  "peerDependencies": {
-    "ajv": "^8.0.0"
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.0"
   },
   "devDependencies": {
-    "ajv": "^8.13.0",
     "vitest": "^3.0.0"
   },
   "publishConfig": {
@@ -38,9 +37,9 @@
   },
   "keywords": [
     "formspec",
-    "ajv",
-    "vocabulary",
-    "jsonschema"
+    "validator",
+    "jsonschema",
+    "cloudflare-workers"
   ],
   "license": "UNLICENSED"
 }

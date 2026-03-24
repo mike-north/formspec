@@ -23,6 +23,8 @@ formspec (umbrella — re-exports everything)
 ├── @formspec/constraints
 └── @formspec/core
 
+@formspec/validator        (JSON Schema validator — @cfworker/json-schema)
+
 @formspec/playground       (interactive browser editor — private)
 └── [all packages]
 ```
