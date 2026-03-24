@@ -176,8 +176,7 @@ function collectFields(
         // They're just hidden/shown in the UI
         // But they are never required — pass insideConditional=true
         collectFields(
-          (element as Conditional<string, unknown, readonly FormElement[]>)
-            .elements,
+          (element as Conditional<string, unknown, readonly FormElement[]>).elements,
           properties,
           required,
           true

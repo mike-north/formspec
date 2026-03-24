@@ -88,30 +88,16 @@ const INTEGER_TAGS = new Set([
 ]);
 
 /** Positive integer constraint tags (value must be >= 1). */
-const POSITIVE_INTEGER_TAGS = new Set([
-  "maxSigFig",
-]);
+const POSITIVE_INTEGER_TAGS = new Set(["maxSigFig"]);
 
 /** Bare tags (no value). */
-const BARE_TAGS = new Set([
-  "uniqueItems",
-  "deprecated",
-]);
+const BARE_TAGS = new Set(["uniqueItems", "deprecated"]);
 
 /** Text annotation tags. */
-const TEXT_TAGS = new Set([
-  "displayName",
-  "description",
-  "format",
-  "placeholder",
-  "group",
-]);
+const TEXT_TAGS = new Set(["displayName", "description", "format", "placeholder", "group"]);
 
 /** Condition tags — raw text preserved as-is. */
-const CONDITION_TAGS = new Set([
-  "showWhen",
-  "hideWhen",
-]);
+const CONDITION_TAGS = new Set(["showWhen", "hideWhen"]);
 
 function getTagComment(tag: ts.JSDocTag): string | undefined {
   if (typeof tag.comment === "string") {
@@ -182,11 +168,7 @@ function parseTag(tagName: string, comment: string | undefined): CommentTagInfo 
     // Try JSON.parse first, fallback to string
     try {
       const parsed: unknown = JSON.parse(comment);
-      if (
-        typeof parsed === "number" ||
-        typeof parsed === "string" ||
-        typeof parsed === "boolean"
-      ) {
+      if (typeof parsed === "number" || typeof parsed === "string" || typeof parsed === "boolean") {
         return { tagName, value: parsed };
       }
       // For complex JSON, store as string representation
@@ -201,11 +183,7 @@ function parseTag(tagName: string, comment: string | undefined): CommentTagInfo 
     // Try JSON.parse first, fallback to string
     try {
       const parsed: unknown = JSON.parse(comment);
-      if (
-        typeof parsed === "number" ||
-        typeof parsed === "string" ||
-        typeof parsed === "boolean"
-      ) {
+      if (typeof parsed === "number" || typeof parsed === "string" || typeof parsed === "boolean") {
         return { tagName, value: parsed };
       }
       return { tagName, value: comment };

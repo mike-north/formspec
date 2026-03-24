@@ -26,21 +26,12 @@ const NUMERIC_ONLY_TAGS = new Set([
 /**
  * Tags that are only valid on string types (string, string literals).
  */
-const STRING_ONLY_TAGS = new Set([
-  "minLength",
-  "maxLength",
-  "pattern",
-  "format",
-]);
+const STRING_ONLY_TAGS = new Set(["minLength", "maxLength", "pattern", "format"]);
 
 /**
  * Tags that are only valid on array types.
  */
-const ARRAY_ONLY_TAGS = new Set([
-  "minItems",
-  "maxItems",
-  "uniqueItems",
-]);
+const ARRAY_ONLY_TAGS = new Set(["minItems", "maxItems", "uniqueItems"]);
 
 /**
  * Checks whether comment tags are applicable to the given TypeScript type.
@@ -76,10 +67,8 @@ export function checkTypeApplicability(
     }
   }
 
-  const isNumeric =
-    !!(effectiveType.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral));
-  const isString =
-    !!(effectiveType.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral));
+  const isNumeric = !!(effectiveType.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral));
+  const isString = !!(effectiveType.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral));
   const isArray = checker.isArrayType(effectiveType);
 
   // Detect union enums: all non-null members are string or number literals

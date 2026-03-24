@@ -18,10 +18,7 @@
       "$ref": "#/$defs/Percentage"
     }
   },
-  "required": [
-    "cpuUsage",
-    "memoryUsage"
-  ],
+  "required": ["cpuUsage", "memoryUsage"],
   "$defs": {
     "Integer": {
       "type": "number",

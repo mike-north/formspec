@@ -7,7 +7,7 @@ describe("generateJsonSchema", () => {
     const form = formspec(
       field.text("name", { label: "Name" }),
       field.number("age", { min: 0, max: 150 }),
-      field.boolean("active"),
+      field.boolean("active")
     );
 
     const schema = generateJsonSchema(form);
@@ -23,7 +23,7 @@ describe("generateJsonSchema", () => {
 
   it("should generate schema for enum fields", () => {
     const form = formspec(
-      field.enum("status", ["draft", "sent", "paid"] as const, { label: "Status" }),
+      field.enum("status", ["draft", "sent", "paid"] as const, { label: "Status" })
     );
 
     const schema = generateJsonSchema(form);
@@ -37,11 +37,15 @@ describe("generateJsonSchema", () => {
 
   it("should generate schema for enum fields with object options", () => {
     const form = formspec(
-      field.enum("priority", [
-        { id: "low", label: "Low Priority" },
-        { id: "medium", label: "Medium Priority" },
-        { id: "high", label: "High Priority" },
-      ] as const, { label: "Priority" }),
+      field.enum(
+        "priority",
+        [
+          { id: "low", label: "Low Priority" },
+          { id: "medium", label: "Medium Priority" },
+          { id: "high", label: "High Priority" },
+        ] as const,
+        { label: "Priority" }
+      )
     );
 
     const schema = generateJsonSchema(form);
@@ -59,10 +63,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should handle required fields", () => {
-    const form = formspec(
-      field.text("name", { required: true }),
-      field.text("optional"),
-    );
+    const form = formspec(field.text("name", { required: true }), field.text("optional"));
 
     const schema = generateJsonSchema(form);
 
@@ -70,12 +71,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should extract fields from groups", () => {
-    const form = formspec(
-      group("Customer",
-        field.text("name"),
-        field.text("email"),
-      ),
-    );
+    const form = formspec(group("Customer", field.text("name"), field.text("email")));
 
     const schema = generateJsonSchema(form);
 
@@ -85,9 +81,7 @@ describe("generateJsonSchema", () => {
   it("should extract fields from conditionals", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const),
-      when(is("type", "a"),
-        field.text("extra"),
-      ),
+      when(is("type", "a"), field.text("extra"))
     );
 
     const schema = generateJsonSchema(form);
@@ -99,26 +93,26 @@ describe("generateJsonSchema", () => {
     const form = formspec(
       field.enum("type", ["a", "b", "c"] as const, { required: true }),
       field.text("name", { required: true }), // required at root
-      when(is("type", "a"),
-        field.text("name", { required: true }), // same field in conditional
+      when(
+        is("type", "a"),
+        field.text("name", { required: true }) // same field in conditional
       ),
-      when(is("type", "b"),
-        field.text("name", { required: true }), // same field in another conditional
-      ),
+      when(
+        is("type", "b"),
+        field.text("name", { required: true }) // same field in another conditional
+      )
     );
 
     const schema = generateJsonSchema(form);
 
     // "name" should only appear once in required array, not 3 times
     expect(schema.required).toBeDefined();
-    expect(schema.required?.filter(r => r === "name")).toHaveLength(1);
-    expect(schema.required?.filter(r => r === "type")).toHaveLength(1);
+    expect(schema.required?.filter((r) => r === "name")).toHaveLength(1);
+    expect(schema.required?.filter((r) => r === "type")).toHaveLength(1);
   });
 
   it("should include x-formspec-source for dynamic enum fields", () => {
-    const form = formspec(
-      field.dynamicEnum("country", "countries", { label: "Country" }),
-    );
+    const form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
     const schema = generateJsonSchema(form);
 
@@ -134,7 +128,7 @@ describe("generateJsonSchema", () => {
       field.dynamicEnum("city", "cities", {
         label: "City",
         params: ["country", "state"],
-      }),
+      })
     );
 
     const schema = generateJsonSchema(form);
@@ -150,7 +144,7 @@ describe("generateJsonSchema", () => {
     const form = formspec(
       field.dynamicSchema("paymentDetails", "stripe-payment-form", {
         label: "Payment Details",
-      }),
+      })
     );
 
     const schema = generateJsonSchema(form);
@@ -165,9 +159,7 @@ describe("generateJsonSchema", () => {
 
   // Task #19: DynamicSchemaField params
   it("should include x-formspec-params for dynamic schema with params", () => {
-    const form = formspec(
-      field.dynamicSchema("settings", "app_settings", { params: ["appId"] }),
-    );
+    const form = formspec(field.dynamicSchema("settings", "app_settings", { params: ["appId"] }));
 
     const schema = generateJsonSchema(form);
 
@@ -180,9 +172,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should NOT include x-formspec-params for dynamic schema without params", () => {
-    const form = formspec(
-      field.dynamicSchema("settings", "app_settings"),
-    );
+    const form = formspec(field.dynamicSchema("settings", "app_settings"));
 
     const schema = generateJsonSchema(form);
 
@@ -190,9 +180,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should NOT include x-formspec-params for dynamic schema with empty params array", () => {
-    const form = formspec(
-      field.dynamicSchema("settings", "app_settings", { params: [] }),
-    );
+    const form = formspec(field.dynamicSchema("settings", "app_settings", { params: [] }));
 
     const schema = generateJsonSchema(form);
 
@@ -206,7 +194,7 @@ describe("generateJsonSchema", () => {
         minLength: 5,
         maxLength: 100,
         pattern: "^[^@]+@[^@]+$",
-      }),
+      })
     );
 
     const schema = generateJsonSchema(form);
@@ -220,9 +208,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should emit only provided string constraints on text fields", () => {
-    const form = formspec(
-      field.text("name", { minLength: 1 }),
-    );
+    const form = formspec(field.text("name", { minLength: 1 }));
 
     const schema = generateJsonSchema(form);
 
@@ -233,9 +219,7 @@ describe("generateJsonSchema", () => {
   });
 
   it("should not emit string constraints when not specified", () => {
-    const form = formspec(
-      field.text("notes"),
-    );
+    const form = formspec(field.text("notes"));
 
     const schema = generateJsonSchema(form);
 
@@ -247,9 +231,7 @@ describe("generateJsonSchema", () => {
   it("should not include conditional fields in required array", () => {
     const form = formspec(
       field.enum("type", ["a", "b"] as const, { required: true }),
-      when(is("type", "a"),
-        field.text("extra", { required: true }),
-      ),
+      when(is("type", "a"), field.text("extra", { required: true }))
     );
 
     const schema = generateJsonSchema(form);
@@ -264,7 +246,7 @@ describe("generateJsonSchema", () => {
       field.enum("priority", [
         { id: "low", label: "Low" },
         { id: "high", label: "High" },
-      ] as const),
+      ] as const)
     );
 
     const schema = generateJsonSchema(form);
@@ -278,9 +260,7 @@ describe("generateJsonSchema", () => {
 
 describe("generateUiSchema", () => {
   it("should generate vertical layout for basic fields", () => {
-    const form = formspec(
-      field.text("name", { label: "Name" }),
-    );
+    const form = formspec(field.text("name", { label: "Name" }));
 
     const uiSchema = generateUiSchema(form);
 
@@ -294,29 +274,21 @@ describe("generateUiSchema", () => {
   });
 
   it("should generate groups", () => {
-    const form = formspec(
-      group("Customer Info",
-        field.text("name"),
-      ),
-    );
+    const form = formspec(group("Customer Info", field.text("name")));
 
     const uiSchema = generateUiSchema(form);
 
     expect(uiSchema.elements[0]).toMatchObject({
       type: "Group",
       label: "Customer Info",
-      elements: [
-        { type: "Control", scope: "#/properties/name" },
-      ],
+      elements: [{ type: "Control", scope: "#/properties/name" }],
     });
   });
 
   it("should generate rules for conditionals", () => {
     const form = formspec(
       field.enum("status", ["draft", "sent"] as const),
-      when(is("status", "draft"),
-        field.text("notes", { label: "Notes" }),
-      ),
+      when(is("status", "draft"), field.text("notes", { label: "Notes" }))
     );
 
     const uiSchema = generateUiSchema(form);
@@ -345,12 +317,7 @@ describe("generateUiSchema", () => {
 
 describe("generateJsonSchema - array fields", () => {
   it("should generate schema for array fields", () => {
-    const form = formspec(
-      field.array("addresses",
-        field.text("street"),
-        field.text("city"),
-      ),
-    );
+    const form = formspec(field.array("addresses", field.text("street"), field.text("city")));
 
     const schema = generateJsonSchema(form);
 
@@ -368,10 +335,12 @@ describe("generateJsonSchema - array fields", () => {
 
   it("should handle array fields with min/max items", () => {
     const form = formspec(
-      field.arrayWithConfig("items", { label: "Line Items", minItems: 1, maxItems: 10 },
+      field.arrayWithConfig(
+        "items",
+        { label: "Line Items", minItems: 1, maxItems: 10 },
         field.text("description"),
-        field.number("quantity"),
-      ),
+        field.number("quantity")
+      )
     );
 
     const schema = generateJsonSchema(form);
@@ -395,11 +364,7 @@ describe("generateJsonSchema - array fields", () => {
 describe("generateJsonSchema - object fields", () => {
   it("should generate schema for object fields", () => {
     const form = formspec(
-      field.object("address",
-        field.text("street"),
-        field.text("city"),
-        field.text("zip"),
-      ),
+      field.object("address", field.text("street"), field.text("city"), field.text("zip"))
     );
 
     const schema = generateJsonSchema(form);
@@ -416,11 +381,12 @@ describe("generateJsonSchema - object fields", () => {
 
   it("should handle required fields within object fields", () => {
     const form = formspec(
-      field.object("address",
+      field.object(
+        "address",
         field.text("street", { required: true }),
         field.text("city", { required: true }),
-        field.text("zip"),
-      ),
+        field.text("zip")
+      )
     );
 
     const schema = generateJsonSchema(form);
@@ -442,11 +408,10 @@ describe("generateUiSchema - nested conditionals", () => {
     const form = formspec(
       field.enum("country", ["US", "CA"] as const),
       field.enum("paymentMethod", ["card", "bank"] as const),
-      when(is("country", "US"),
-        when(is("paymentMethod", "bank"),
-          field.text("routingNumber", { label: "Routing Number" }),
-        ),
-      ),
+      when(
+        is("country", "US"),
+        when(is("paymentMethod", "bank"), field.text("routingNumber", { label: "Routing Number" }))
+      )
     );
 
     const uiSchema = generateUiSchema(form);
@@ -472,9 +437,7 @@ describe("generateUiSchema - nested conditionals", () => {
 
 describe("buildFormSchemas", () => {
   it("should return both schemas", () => {
-    const form = formspec(
-      field.text("name"),
-    );
+    const form = formspec(field.text("name"));
 
     const result = buildFormSchemas(form);
 
@@ -490,7 +453,7 @@ describe("generateJsonSchema - multipleOf", () => {
   it("emits multipleOf on number fields", () => {
     const form = formspec(
       field.number("quantity", { multipleOf: 1 }),
-      field.number("price", { multipleOf: 0.01 }),
+      field.number("price", { multipleOf: 0.01 })
     );
     const { jsonSchema } = buildFormSchemas(form);
     expect(jsonSchema.properties?.["quantity"]?.multipleOf).toBe(1);
@@ -499,9 +462,7 @@ describe("generateJsonSchema - multipleOf", () => {
   });
 
   it("does not emit multipleOf when not specified", () => {
-    const form = formspec(
-      field.number("quantity"),
-    );
+    const form = formspec(field.number("quantity"));
     const { jsonSchema } = buildFormSchemas(form);
     expect(jsonSchema.properties?.["quantity"]).not.toHaveProperty("multipleOf");
   });
@@ -510,9 +471,7 @@ describe("generateJsonSchema - multipleOf", () => {
 // Issue 4: enum fields must NOT emit type alongside enum
 describe("generateJsonSchema - enum type omission", () => {
   it("string literal enum has no type property", () => {
-    const form = formspec(
-      field.enum("status", ["draft", "active"] as const),
-    );
+    const form = formspec(field.enum("status", ["draft", "active"] as const));
     const { jsonSchema } = buildFormSchemas(form);
     expect(jsonSchema.properties?.["status"]?.enum).toEqual(["draft", "active"]);
     expect(jsonSchema.properties?.["status"]?.type).toBeUndefined();
@@ -520,7 +479,7 @@ describe("generateJsonSchema - enum type omission", () => {
 
   it("string literal enum with label has no type property", () => {
     const form = formspec(
-      field.enum("status", ["draft", "sent", "paid"] as const, { label: "Status" }),
+      field.enum("status", ["draft", "sent", "paid"] as const, { label: "Status" })
     );
     const schema = generateJsonSchema(form);
     expect(schema.properties?.["status"]).toEqual({

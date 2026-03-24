@@ -92,7 +92,21 @@ export type {
   Predicate,
 } from "@formspec/core";
 
-export { createInitialFieldState } from "@formspec/core";
+export {
+  createInitialFieldState,
+  // Type guards
+  isField,
+  isTextField,
+  isNumberField,
+  isBooleanField,
+  isStaticEnumField,
+  isDynamicEnumField,
+  isDynamicSchemaField,
+  isArrayField,
+  isObjectField,
+  isGroup,
+  isConditional,
+} from "@formspec/core";
 
 // =============================================================================
 // DSL functions

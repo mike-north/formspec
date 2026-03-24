@@ -52,7 +52,9 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      expect(diags.some(d => d.message.includes("@minLength") && d.message.includes("string"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@minLength") && d.message.includes("string"))
+      ).toBe(true);
     });
 
     it("rejects @maxLength on number field", () => {
@@ -62,7 +64,9 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      expect(diags.some(d => d.message.includes("@maxLength") && d.message.includes("string"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@maxLength") && d.message.includes("string"))
+      ).toBe(true);
     });
 
     it("rejects @pattern on number field", () => {
@@ -72,7 +76,9 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      expect(diags.some(d => d.message.includes("@pattern") && d.message.includes("string"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@pattern") && d.message.includes("string"))
+      ).toBe(true);
     });
 
     it("rejects @format on number field", () => {
@@ -82,7 +88,9 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      expect(diags.some(d => d.message.includes("@format") && d.message.includes("string"))).toBe(true);
+      expect(diags.some((d) => d.message.includes("@format") && d.message.includes("string"))).toBe(
+        true
+      );
     });
   });
 
@@ -94,7 +102,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@minimum") && d.message.includes("numeric"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@minimum") && d.message.includes("numeric"))
+      ).toBe(true);
     });
 
     it("rejects @maximum on string field", () => {
@@ -104,7 +114,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@maximum") && d.message.includes("numeric"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@maximum") && d.message.includes("numeric"))
+      ).toBe(true);
     });
 
     it("rejects @multipleOf on string field", () => {
@@ -114,7 +126,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@multipleOf") && d.message.includes("numeric"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@multipleOf") && d.message.includes("numeric"))
+      ).toBe(true);
     });
 
     it("rejects @maxSigFig on string field", () => {
@@ -124,7 +138,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@maxSigFig") && d.message.includes("numeric"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@maxSigFig") && d.message.includes("numeric"))
+      ).toBe(true);
     });
 
     it("rejects @maxDecimalPlaces on string field", () => {
@@ -134,7 +150,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@maxDecimalPlaces") && d.message.includes("numeric"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@maxDecimalPlaces") && d.message.includes("numeric"))
+      ).toBe(true);
     });
   });
 
@@ -146,7 +164,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@minItems") && d.message.includes("array"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@minItems") && d.message.includes("array"))
+      ).toBe(true);
     });
 
     it("rejects @maxItems on number field", () => {
@@ -156,7 +176,9 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      expect(diags.some(d => d.message.includes("@maxItems") && d.message.includes("array"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@maxItems") && d.message.includes("array"))
+      ).toBe(true);
     });
 
     it("rejects @uniqueItems on string field", () => {
@@ -166,7 +188,9 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      expect(diags.some(d => d.message.includes("@uniqueItems") && d.message.includes("array"))).toBe(true);
+      expect(
+        diags.some((d) => d.message.includes("@uniqueItems") && d.message.includes("array"))
+      ).toBe(true);
     });
   });
 
@@ -178,7 +202,7 @@ describe("Type Applicability", () => {
           count!: number;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -189,7 +213,7 @@ describe("Type Applicability", () => {
           name!: string;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -200,7 +224,7 @@ describe("Type Applicability", () => {
           items!: string[];
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -211,7 +235,7 @@ describe("Type Applicability", () => {
           email!: string;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -222,7 +246,7 @@ describe("Type Applicability", () => {
           value!: number;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -233,7 +257,7 @@ describe("Type Applicability", () => {
           name!: string | null;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
 
@@ -244,7 +268,7 @@ describe("Type Applicability", () => {
           count?: number;
         }
       `);
-      const typeErrors = diags.filter(d => d.message.includes("only applicable"));
+      const typeErrors = diags.filter((d) => d.message.includes("only applicable"));
       expect(typeErrors).toHaveLength(0);
     });
   });

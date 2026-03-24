@@ -118,7 +118,7 @@ export interface FormSpecField {
   showWhen?: object;
   hideWhen?: object;
   group?: string;
-  fields?: FormSpecField[];  // Nested fields for object types
+  fields?: FormSpecField[]; // Nested fields for object types
 }
 
 /**
@@ -219,8 +219,8 @@ function convertUnionType(
 
   // Check if this is a boolean type (true | false in TypeScript)
   // TypeScript represents `boolean` as a union of `true | false` literal types
-  const isBooleanUnion = nonNullTypes.length === 2 &&
-    nonNullTypes.every((t) => t.flags & ts.TypeFlags.BooleanLiteral);
+  const isBooleanUnion =
+    nonNullTypes.length === 2 && nonNullTypes.every((t) => t.flags & ts.TypeFlags.BooleanLiteral);
 
   if (isBooleanUnion) {
     const result: TypeConversionResult = {
@@ -297,9 +297,7 @@ function convertArrayType(
   const typeArgs = (type as ts.TypeReference).typeArguments;
   const elementType = typeArgs?.[0];
 
-  const itemSchema = elementType
-    ? convertType(elementType, checker, defsRegistry).jsonSchema
-    : {};
+  const itemSchema = elementType ? convertType(elementType, checker, defsRegistry).jsonSchema : {};
 
   return {
     jsonSchema: {
@@ -477,9 +475,7 @@ export function createFormSpecField(
 
       // Note: We don't have access to decorators on nested class properties here
       // since we're analyzing the type, not the class declaration
-      nestedFields.push(
-        createFormSpecField(prop.name, propType, [], propOptional, checker)
-      );
+      nestedFields.push(createFormSpecField(prop.name, propType, [], propOptional, checker));
     }
 
     if (nestedFields.length > 0) {

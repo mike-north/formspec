@@ -19,7 +19,10 @@ function extractTagsFromSource(source: string): ReturnType<typeof extractComment
   // Create a host that serves our in-memory source file
   const host = ts.createCompilerHost({});
   const originalGetSourceFile = host.getSourceFile.bind(host);
-  host.getSourceFile = (name: string, ...args: Parameters<typeof host.getSourceFile> extends [string, ...infer R] ? R : never) => {
+  host.getSourceFile = (
+    name: string,
+    ...args: Parameters<typeof host.getSourceFile> extends [string, ...infer R] ? R : never
+  ) => {
     if (name === fileName) return sourceFile;
     return originalGetSourceFile(name, ...args);
   };

@@ -25,11 +25,22 @@ describe("FormElement type guards", () => {
     field.array("items", field.text("item")),
     field.object("address", field.text("street")),
     group("Group", field.text("grouped")),
-    when(is("name", "test"), field.text("conditional")),
+    when(is("name", "test"), field.text("conditional"))
   );
 
   const elements = form.elements;
-  const [textEl, numberEl, boolEl, enumEl, dynEnumEl, dynSchemaEl, arrayEl, objectEl, groupEl, conditionalEl] = elements;
+  const [
+    textEl,
+    numberEl,
+    boolEl,
+    enumEl,
+    dynEnumEl,
+    dynSchemaEl,
+    arrayEl,
+    objectEl,
+    groupEl,
+    conditionalEl,
+  ] = elements;
 
   describe("isField", () => {
     it("returns true for all field types", () => {

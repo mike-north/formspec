@@ -129,9 +129,7 @@ function collectTagsFromTypeNode(
         const parentDecls = parentSymbol.getDeclarations();
         if (parentDecls?.some((d) => ts.isTypeAliasDeclaration(d))) {
           // Parent is a type alias — capture its name
-          parentName = ts.isIdentifier(decl.type.typeName)
-            ? decl.type.typeName.text
-            : undefined;
+          parentName = ts.isIdentifier(decl.type.typeName) ? decl.type.typeName.text : undefined;
         }
       }
     }

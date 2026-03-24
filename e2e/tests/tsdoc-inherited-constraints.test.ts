@@ -63,9 +63,7 @@ describe("TSDoc Inherited Constraints", () => {
       const cpuUsage = properties["cpuUsage"];
       const allOf = cpuUsage?.["allOf"] as Record<string, unknown>[] | undefined;
       // None of the allOf items should have maximum — that comes from $defs/Percentage
-      expect(
-        allOf?.every((item) => item["maximum"] === undefined)
-      ).toBe(true);
+      expect(allOf?.every((item) => item["maximum"] === undefined)).toBe(true);
     });
 
     it("memoryUsage uses $ref to Percentage (no field-level constraints)", () => {
@@ -83,11 +81,7 @@ describe("TSDoc Inherited Constraints", () => {
       expect(pctDef?.["allOf"]).toBeDefined();
       const allOf = pctDef?.["allOf"] as Record<string, unknown>[] | undefined;
       expect(allOf?.some((item) => item["$ref"] === "#/$defs/Integer")).toBe(true);
-      expect(
-        allOf?.some(
-          (item) => item["minimum"] === 0 && item["maximum"] === 100
-        )
-      ).toBe(true);
+      expect(allOf?.some((item) => item["minimum"] === 0 && item["maximum"] === 100)).toBe(true);
     });
 
     it("$defs/Integer has base type number with multipleOf 1", () => {

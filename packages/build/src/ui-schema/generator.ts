@@ -2,20 +2,8 @@
  * JSON Forms UI Schema generator for FormSpec forms.
  */
 
-import type {
-  FormElement,
-  FormSpec,
-  Group,
-  Conditional,
-  ObjectField,
-} from "@formspec/core";
-import type {
-  UISchemaElement,
-  UISchema,
-  ControlElement,
-  GroupLayout,
-  Rule,
-} from "./types.js";
+import type { FormElement, FormSpec, Group, Conditional, ObjectField } from "@formspec/core";
+import type { UISchemaElement, UISchema, ControlElement, GroupLayout, Rule } from "./types.js";
 
 /**
  * Converts a field name to a JSON Pointer scope.
@@ -46,11 +34,7 @@ function objectFieldToUiSchema(
       if (element._field === "object") {
         const nestedObj = element as ObjectField<string, readonly FormElement[]>;
         elements.push(
-          objectFieldToUiSchema(
-            nestedObj,
-            nestedScope(parentScope, element.name),
-            parentRule
-          )
+          objectFieldToUiSchema(nestedObj, nestedScope(parentScope, element.name), parentRule)
         );
       } else {
         const control: ControlElement = {
@@ -137,13 +121,7 @@ function elementsToUiSchema(
       case "field": {
         if (element._field === "object") {
           const objectField = element as ObjectField<string, readonly FormElement[]>;
-          result.push(
-            objectFieldToUiSchema(
-              objectField,
-              fieldToScope(element.name),
-              parentRule
-            )
-          );
+          result.push(objectFieldToUiSchema(objectField, fieldToScope(element.name), parentRule));
         } else {
           const control: ControlElement = {
             type: "Control",
@@ -169,25 +147,13 @@ function elementsToUiSchema(
       }
 
       case "conditional": {
-        const conditionalElement = element as Conditional<
-          string,
-          unknown,
-          readonly FormElement[]
-        >;
+        const conditionalElement = element as Conditional<string, unknown, readonly FormElement[]>;
         // Create a rule for this conditional
-        const newRule = createShowRule(
-          conditionalElement.field,
-          conditionalElement.value
-        );
+        const newRule = createShowRule(conditionalElement.field, conditionalElement.value);
         // Combine with parent rule if present (for nested conditionals)
-        const combinedRule = parentRule !== undefined
-          ? combineRules(parentRule, newRule)
-          : newRule;
+        const combinedRule = parentRule !== undefined ? combineRules(parentRule, newRule) : newRule;
         // Apply the combined rule to all children
-        const childElements = elementsToUiSchema(
-          conditionalElement.elements,
-          combinedRule
-        );
+        const childElements = elementsToUiSchema(conditionalElement.elements, combinedRule);
         result.push(...childElements);
         break;
       }
@@ -238,9 +204,7 @@ function elementsToUiSchema(
  * @param form - The FormSpec to convert
  * @returns A JSON Forms UI Schema
  */
-export function generateUiSchema<E extends readonly FormElement[]>(
-  form: FormSpec<E>
-): UISchema {
+export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema {
   return {
     type: "VerticalLayout",
     elements: elementsToUiSchema(form.elements),

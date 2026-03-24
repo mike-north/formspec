@@ -39,7 +39,9 @@ function getSchemaFromSource(source: string): ReturnType<typeof generateClassSch
   if (!classDecl) throw new Error("No class found");
 
   const analysis = analyzeClass(classDecl, checker);
-  return generateClassSchemas(analysis, checker);
+  const result = generateClassSchemas(analysis, checker);
+  fs.rmSync(tmpDir, { recursive: true });
+  return result;
 }
 
 // ============================================================================
@@ -85,11 +87,7 @@ describe("allOf + $ref composition — two-level chain", () => {
 
     const allOf = pctDef["allOf"] as Record<string, unknown>[];
     expect(allOf.some((item) => item["$ref"] === "#/$defs/Integer")).toBe(true);
-    expect(
-      allOf.some(
-        (item) => item["minimum"] === 0 && item["maximum"] === 100
-      )
-    ).toBe(true);
+    expect(allOf.some((item) => item["minimum"] === 0 && item["maximum"] === 100)).toBe(true);
   });
 
   it("field using constrained alias gets a $ref, not flat constraints", () => {

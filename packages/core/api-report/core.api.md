@@ -136,37 +136,37 @@ export interface Group<Elements extends readonly FormElement[]> {
     readonly _type: "group";
 }
 
-// @public (undocumented)
+// @public
 export function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
 
-// @public (undocumented)
+// @public
 export function isBooleanField(element: FormElement): element is BooleanField<string>;
 
-// @public (undocumented)
+// @public
 export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
 
-// @public (undocumented)
+// @public
 export function isDynamicEnumField(element: FormElement): element is DynamicEnumField<string, string>;
 
-// @public (undocumented)
+// @public
 export function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string>;
 
-// @public (undocumented)
+// @public
 export function isField(element: FormElement): element is AnyField;
 
-// @public (undocumented)
+// @public
 export function isGroup(element: FormElement): element is Group<readonly FormElement[]>;
 
-// @public (undocumented)
+// @public
 export function isNumberField(element: FormElement): element is NumberField<string>;
 
-// @public (undocumented)
+// @public
 export function isObjectField(element: FormElement): element is ObjectField<string, readonly FormElement[]>;
 
-// @public (undocumented)
+// @public
 export function isStaticEnumField(element: FormElement): element is StaticEnumField<string, readonly EnumOptionValue[]>;
 
-// @public (undocumented)
+// @public
 export function isTextField(element: FormElement): element is TextField<string>;
 
 // @public

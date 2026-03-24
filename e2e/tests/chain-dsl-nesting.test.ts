@@ -126,7 +126,9 @@ describe("Chain DSL Nesting", () => {
       if (!billingGroup) return;
       const groupElements = billingGroup["elements"] as Record<string, unknown>[];
       // customerName is a Control
-      const customerControl = groupElements.find((el) => el["scope"] === "#/properties/customerName");
+      const customerControl = groupElements.find(
+        (el) => el["scope"] === "#/properties/customerName"
+      );
       expect(customerControl).toBeDefined();
       // billingAddress is now a Group with nested controls
       const addressGroup = groupElements.find(

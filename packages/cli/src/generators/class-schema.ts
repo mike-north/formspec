@@ -16,10 +16,7 @@ import {
   type FormSpecField,
 } from "../analyzer/type-converter.js";
 import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
-import {
-  resolveTypeConstraints,
-  type AliasChainEntry,
-} from "../analyzer/constraint-resolver.js";
+import { resolveTypeConstraints, type AliasChainEntry } from "../analyzer/constraint-resolver.js";
 import { validateConstraints, type ConstraintViolation } from "../analyzer/constraint-validator.js";
 import { checkTypeApplicability } from "../analyzer/type-applicability.js";
 
@@ -94,7 +91,10 @@ export function generateClassSchemas(
       // aliasChain is non-empty here because hasConstrainedAlias is true,
       // which requires constrainedAliasChain.length > 0, which requires aliasChain.length > 0.
       const leafAlias = aliasChain[0];
-      if (!leafAlias) throw new Error("Invariant violation: aliasChain is empty despite hasConstrainedAlias being true");
+      if (!leafAlias)
+        throw new Error(
+          "Invariant violation: aliasChain is empty despite hasConstrainedAlias being true"
+        );
 
       // Apply any decorator constraints
       const decoratorSchema = applyDecoratorsToSchema({}, field.decorators);
@@ -177,10 +177,7 @@ export function generateClassSchemas(
  * @param checker - TypeScript type checker
  * @returns JSON Schema for the field's type
  */
-export function generateFieldSchema(
-  field: FieldInfo,
-  checker: ts.TypeChecker
-): JsonSchema {
+export function generateFieldSchema(field: FieldInfo, checker: ts.TypeChecker): JsonSchema {
   const { jsonSchema: baseSchema } = convertType(field.type, checker);
   return applyDecoratorsToSchema(baseSchema, field.decorators);
 }
@@ -237,10 +234,7 @@ function registerAliasChainInDefs(
 /**
  * Applies TSDoc comment tag constraints to a JSON Schema.
  */
-function applyCommentTagsToSchema(
-  schema: JsonSchema,
-  commentTags: CommentTagInfo[]
-): JsonSchema {
+function applyCommentTagsToSchema(schema: JsonSchema, commentTags: CommentTagInfo[]): JsonSchema {
   const result = { ...schema };
 
   for (const tag of commentTags) {

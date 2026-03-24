@@ -23,9 +23,7 @@ describe("Edge cases: Empty and minimal forms", () => {
   });
 
   it("should handle empty group", () => {
-    const form = formspec(
-      group("Empty Group"),
-    );
+    const form = formspec(group("Empty Group"));
 
     const { jsonSchema, uiSchema } = buildFormSchemas(form);
 
@@ -39,10 +37,7 @@ describe("Edge cases: Empty and minimal forms", () => {
   });
 
   it("should handle empty conditional", () => {
-    const form = formspec(
-      field.enum("type", ["a", "b"] as const),
-      when(is("type", "a")),
-    );
+    const form = formspec(field.enum("type", ["a", "b"] as const), when(is("type", "a")));
 
     const { jsonSchema, uiSchema } = buildFormSchemas(form);
 
@@ -52,9 +47,7 @@ describe("Edge cases: Empty and minimal forms", () => {
   });
 
   it("should handle empty array field", () => {
-    const form = formspec(
-      field.array("items"),
-    );
+    const form = formspec(field.array("items"));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -68,9 +61,7 @@ describe("Edge cases: Empty and minimal forms", () => {
   });
 
   it("should handle empty object field", () => {
-    const form = formspec(
-      field.object("data"),
-    );
+    const form = formspec(field.object("data"));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -86,7 +77,7 @@ describe("Edge cases: Field names", () => {
     const form = formspec(
       field.text("field_with_underscore"),
       field.text("field-with-dash"),
-      field.text("field123"),
+      field.text("field123")
     );
 
     const { jsonSchema, uiSchema } = buildFormSchemas(form);
@@ -105,11 +96,7 @@ describe("Edge cases: Field names", () => {
   });
 
   it("should handle single character field names", () => {
-    const form = formspec(
-      field.text("a"),
-      field.number("b"),
-      field.boolean("c"),
-    );
+    const form = formspec(field.text("a"), field.number("b"), field.boolean("c"));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -122,7 +109,7 @@ describe("Edge cases: Number constraints", () => {
     const form = formspec(
       field.number("zeroMin", { min: 0 }),
       field.number("zeroMax", { max: 0 }),
-      field.number("zeroRange", { min: 0, max: 0 }),
+      field.number("zeroRange", { min: 0, max: 0 })
     );
 
     const { jsonSchema } = buildFormSchemas(form);
@@ -143,9 +130,7 @@ describe("Edge cases: Number constraints", () => {
   });
 
   it("should handle negative min/max", () => {
-    const form = formspec(
-      field.number("temperature", { min: -273, max: 1000000 }),
-    );
+    const form = formspec(field.number("temperature", { min: -273, max: 1000000 }));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -159,9 +144,7 @@ describe("Edge cases: Number constraints", () => {
 
 describe("Edge cases: Enum options", () => {
   it("should handle single option enum", () => {
-    const form = formspec(
-      field.enum("singleOption", ["only"] as const),
-    );
+    const form = formspec(field.enum("singleOption", ["only"] as const));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -173,9 +156,7 @@ describe("Edge cases: Enum options", () => {
   });
 
   it("should handle single object option enum", () => {
-    const form = formspec(
-      field.enum("singleObj", [{ id: "only", label: "Only Option" }] as const),
-    );
+    const form = formspec(field.enum("singleObj", [{ id: "only", label: "Only Option" }] as const));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -187,9 +168,7 @@ describe("Edge cases: Enum options", () => {
   });
 
   it("should handle enum with empty string option", () => {
-    const form = formspec(
-      field.enum("withEmpty", ["", "value"] as const),
-    );
+    const form = formspec(field.enum("withEmpty", ["", "value"] as const));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -205,9 +184,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle boolean conditional value", () => {
     const form = formspec(
       field.boolean("enabled"),
-      when(is("enabled", true),
-        field.text("config"),
-      ),
+      when(is("enabled", true), field.text("config"))
     );
 
     const { uiSchema } = buildFormSchemas(form);
@@ -223,9 +200,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle null conditional value", () => {
     const form = formspec(
       field.text("optional"),
-      when(is("optional", null),
-        field.text("fallback"),
-      ),
+      when(is("optional", null), field.text("fallback"))
     );
 
     const { uiSchema } = buildFormSchemas(form);
@@ -241,9 +216,7 @@ describe("Edge cases: Conditional values", () => {
   it("should handle number conditional value", () => {
     const form = formspec(
       field.number("quantity"),
-      when(is("quantity", 0),
-        field.text("zeroReason", { label: "Why zero?" }),
-      ),
+      when(is("quantity", 0), field.text("zeroReason", { label: "Why zero?" }))
     );
 
     const { uiSchema } = buildFormSchemas(form);
@@ -259,11 +232,7 @@ describe("Edge cases: Conditional values", () => {
 
 describe("Edge cases: Array min/max items", () => {
   it("should handle minItems of 0", () => {
-    const form = formspec(
-      field.arrayWithConfig("items", { minItems: 0 },
-        field.text("name"),
-      ),
-    );
+    const form = formspec(field.arrayWithConfig("items", { minItems: 0 }, field.text("name")));
 
     const { jsonSchema } = buildFormSchemas(form);
 
@@ -275,9 +244,7 @@ describe("Edge cases: Array min/max items", () => {
 
   it("should handle minItems equal to maxItems", () => {
     const form = formspec(
-      field.arrayWithConfig("exactFive", { minItems: 5, maxItems: 5 },
-        field.text("item"),
-      ),
+      field.arrayWithConfig("exactFive", { minItems: 5, maxItems: 5 }, field.text("item"))
     );
 
     const { jsonSchema } = buildFormSchemas(form);
@@ -293,20 +260,15 @@ describe("Edge cases: Array min/max items", () => {
 describe("Edge cases: Deeply nested structures", () => {
   it("should handle 3+ levels of nesting", () => {
     const form = formspec(
-      field.object("level1",
-        field.object("level2",
-          field.object("level3",
-            field.text("deepValue"),
-          ),
-        ),
-      ),
+      field.object(
+        "level1",
+        field.object("level2", field.object("level3", field.text("deepValue")))
+      )
     );
 
     const { jsonSchema } = buildFormSchemas(form);
 
-    expect(
-      jsonSchema.properties?.["level1"]
-    ).toMatchObject({
+    expect(jsonSchema.properties?.["level1"]).toMatchObject({
       type: "object",
       properties: {
         level2: {
@@ -327,14 +289,14 @@ describe("Edge cases: Deeply nested structures", () => {
   it("should handle conditionals inside groups inside conditionals", () => {
     const form = formspec(
       field.enum("outer", ["a", "b"] as const),
-      when(is("outer", "a"),
-        group("Inner Group",
+      when(
+        is("outer", "a"),
+        group(
+          "Inner Group",
           field.enum("inner", ["x", "y"] as const),
-          when(is("inner", "x"),
-            field.text("deepest"),
-          ),
-        ),
-      ),
+          when(is("inner", "x"), field.text("deepest"))
+        )
+      )
     );
 
     const { jsonSchema, uiSchema } = buildFormSchemas(form);
@@ -349,9 +311,7 @@ describe("Edge cases: Deeply nested structures", () => {
       if (el.type === "Group") {
         return el.elements.some(
           (inner) =>
-            inner.type === "Control" &&
-            "scope" in inner &&
-            inner.scope === "#/properties/deepest"
+            inner.type === "Control" && "scope" in inner && inner.scope === "#/properties/deepest"
         );
       }
       return false;

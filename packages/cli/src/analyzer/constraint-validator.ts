@@ -18,10 +18,7 @@ export interface ConstraintViolation {
  *
  * Returns an array of violations; an empty array means no issues found.
  */
-export function validateConstraints(
-  fieldName: string,
-  schema: JsonSchema
-): ConstraintViolation[] {
+export function validateConstraints(fieldName: string, schema: JsonSchema): ConstraintViolation[] {
   const violations: ConstraintViolation[] = [];
 
   // Inverted numeric bounds
@@ -91,11 +88,7 @@ export function validateConstraints(
   }
 
   // Empty integer range: multipleOf:1 means integer; check if [min, max] contains one
-  if (
-    schema.multipleOf === 1 &&
-    schema.minimum !== undefined &&
-    schema.maximum !== undefined
-  ) {
+  if (schema.multipleOf === 1 && schema.minimum !== undefined && schema.maximum !== undefined) {
     const minInt = Math.ceil(schema.minimum);
     const maxInt = Math.floor(schema.maximum);
     if (minInt > maxInt) {

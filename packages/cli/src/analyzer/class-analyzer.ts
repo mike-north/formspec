@@ -98,9 +98,7 @@ export function analyzeClass(
     } else if (ts.isMethodDeclaration(member)) {
       const methodInfo = analyzeMethod(member, checker);
       if (methodInfo) {
-        const isStatic = member.modifiers?.some(
-          (m) => m.kind === ts.SyntaxKind.StaticKeyword
-        );
+        const isStatic = member.modifiers?.some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
         if (isStatic) {
           staticMethods.push(methodInfo);
         } else {
@@ -121,10 +119,7 @@ export function analyzeClass(
 /**
  * Analyzes a property declaration to extract field info.
  */
-function analyzeField(
-  prop: ts.PropertyDeclaration,
-  checker: ts.TypeChecker
-): FieldInfo | null {
+function analyzeField(prop: ts.PropertyDeclaration, checker: ts.TypeChecker): FieldInfo | null {
   // Skip computed property names
   if (!ts.isIdentifier(prop.name)) {
     return null;
@@ -150,10 +145,7 @@ function analyzeField(
 /**
  * Analyzes a method declaration to extract method info.
  */
-function analyzeMethod(
-  method: ts.MethodDeclaration,
-  checker: ts.TypeChecker
-): MethodInfo | null {
+function analyzeMethod(method: ts.MethodDeclaration, checker: ts.TypeChecker): MethodInfo | null {
   // Skip computed method names
   if (!ts.isIdentifier(method.name)) {
     return null;
@@ -186,17 +178,13 @@ function analyzeMethod(
 /**
  * Analyzes a parameter declaration.
  */
-function analyzeParameter(
-  param: ts.ParameterDeclaration,
-  checker: ts.TypeChecker
-): ParameterInfo {
+function analyzeParameter(param: ts.ParameterDeclaration, checker: ts.TypeChecker): ParameterInfo {
   const name = ts.isIdentifier(param.name) ? param.name.text : "param";
   const typeNode = param.type;
   const type = checker.getTypeAtLocation(param);
   const formSpecExportName = detectFormSpecReference(typeNode);
   // Parameter is optional if it has a question token or a default value
-  const optional =
-    param.questionToken !== undefined || param.initializer !== undefined;
+  const optional = param.questionToken !== undefined || param.initializer !== undefined;
 
   return {
     name,

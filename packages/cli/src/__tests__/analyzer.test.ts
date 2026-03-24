@@ -110,17 +110,11 @@ describe("analyzeClass", () => {
     if (!classDecl) throw new Error("InstallmentPlan class not found");
     const analysis = analyzeClass(classDecl, ctx.checker);
 
-    const activateMethod = analysis.instanceMethods.find(
-      (m) => m.name === "activate"
-    );
+    const activateMethod = analysis.instanceMethods.find((m) => m.name === "activate");
     expect(activateMethod?.parameters).toHaveLength(1);
-    expect(activateMethod?.parameters[0]?.formSpecExportName).toBe(
-      "ActivateParams"
-    );
+    expect(activateMethod?.parameters[0]?.formSpecExportName).toBe("ActivateParams");
 
-    const cancelMethod = analysis.instanceMethods.find(
-      (m) => m.name === "cancelPlan"
-    );
+    const cancelMethod = analysis.instanceMethods.find((m) => m.name === "cancelPlan");
     expect(cancelMethod?.parameters[0]?.formSpecExportName).toBe("CancelParams");
   });
 
