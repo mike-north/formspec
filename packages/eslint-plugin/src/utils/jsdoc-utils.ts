@@ -165,13 +165,7 @@ export function getArbitraryJSDocTag(
   // Build a per-call regex to avoid shared mutable `lastIndex` state.
   // Escape the tag name to handle special regex characters (e.g., `.`, `$`).
   const escapedTag = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Stop on the next whitespace-prefixed @ (another tag), end of block comment
-  // (*/) or end of line/input. This ensures multiple tags in the same comment
-  // are each matched independently (e.g. `@Foo 1 @Bar 2` yields two matches).
-  const tagRegex = new RegExp(
-    `@(${escapedTag})(?:\\s+([\\s\\S]*?))?(?=\\s*@|\\s*\\*\\/|\\s*$)`,
-    "gm"
-  );
+  const tagRegex = new RegExp(`@(${escapedTag})(?:\\s+(.+?))?(?=\\s*\\*\\/|\\s*$)`, "gm");
 
   for (const comment of comments) {
     // Only process JSDoc-style block comments (/** ... */)

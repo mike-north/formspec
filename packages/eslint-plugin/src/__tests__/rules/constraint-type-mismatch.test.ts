@@ -92,7 +92,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // @Minimum on optional number field — valid (number | undefined strips to number)
+    // @Minimum on optional number field — valid (string | undefined strips to number)
     {
       code: `
         class Form {
