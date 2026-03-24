@@ -34,12 +34,22 @@ export interface CommentTagInfo {
  * - `maxItems` — JSON Schema maxItems
  * - `uniqueItems` — JSON Schema uniqueItems (bare tag, no value)
  * - `const` — JSON Schema const
+ * - `maxSigFig` — Maximum significant figures (positive integer)
+ * - `maxDecimalPlaces` — Maximum decimal places (non-negative integer)
  *
  * Supported annotation tags:
  * - `displayName` — Maps to JSON Schema title
  * - `description` — Maps to JSON Schema description
  * - `defaultValue` — Maps to JSON Schema default
  * - `deprecated` — Maps to JSON Schema deprecated: true (bare tag)
+ * - `format` — JSON Schema format (e.g., "email", "date", "uri")
+ * - `placeholder` — UI placeholder text
+ * - `group` — UI group name
+ * - `order` — UI display order (non-negative integer)
+ *
+ * Supported condition tags:
+ * - `showWhen` — Raw condition text (e.g., "paymentMethod card")
+ * - `hideWhen` — Raw condition text (e.g., "premium true")
  */
 export function extractCommentTags(node: ts.Node): CommentTagInfo[] {
   const tags: CommentTagInfo[] = [];
@@ -67,12 +77,19 @@ const NUMERIC_TAGS = new Set([
   "multipleOf",
 ]);
 
-/** Integer constraint tags. */
+/** Integer constraint tags (non-negative). */
 const INTEGER_TAGS = new Set([
   "minLength",
   "maxLength",
   "minItems",
   "maxItems",
+  "order",
+  "maxDecimalPlaces",
+]);
+
+/** Positive integer constraint tags (value must be >= 1). */
+const POSITIVE_INTEGER_TAGS = new Set([
+  "maxSigFig",
 ]);
 
 /** Bare tags (no value). */
@@ -85,6 +102,15 @@ const BARE_TAGS = new Set([
 const TEXT_TAGS = new Set([
   "displayName",
   "description",
+  "format",
+  "placeholder",
+  "group",
+]);
+
+/** Condition tags — raw text preserved as-is. */
+const CONDITION_TAGS = new Set([
+  "showWhen",
+  "hideWhen",
 ]);
 
 function getTagComment(tag: ts.JSDocTag): string | undefined {
@@ -117,6 +143,18 @@ function parseTag(tagName: string, comment: string | undefined): CommentTagInfo 
     const num = Number(comment);
     if (!Number.isInteger(num) || num < 0) return null;
     return { tagName, value: num };
+  }
+
+  if (POSITIVE_INTEGER_TAGS.has(tagName)) {
+    if (comment === undefined || comment === "") return null;
+    const num = Number(comment);
+    if (!Number.isInteger(num) || num < 1) return null;
+    return { tagName, value: num };
+  }
+
+  if (CONDITION_TAGS.has(tagName)) {
+    if (comment === undefined || comment === "") return null;
+    return { tagName, value: comment };
   }
 
   if (BARE_TAGS.has(tagName)) {

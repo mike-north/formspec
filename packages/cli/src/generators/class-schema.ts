@@ -18,6 +18,7 @@ import {
 import type { CommentTagInfo } from "../analyzer/comment-tag-extractor.js";
 import { resolveTypeConstraints } from "../analyzer/constraint-resolver.js";
 import { validateConstraints, type ConstraintViolation } from "../analyzer/constraint-validator.js";
+import { checkTypeApplicability } from "../analyzer/type-applicability.js";
 
 /**
  * Generated schemas for a class.
@@ -66,6 +67,15 @@ export function generateClassSchemas(
 
     const fieldSchema = applyCommentTagsToSchema(withDecorators, allCommentTags);
     properties[field.name] = fieldSchema;
+
+    // Check type applicability — verify tags match the field's TypeScript type
+    const applicabilityViolations = checkTypeApplicability(
+      field.name,
+      field.type,
+      allCommentTags,
+      checker
+    );
+    allDiagnostics.push(...applicabilityViolations);
 
     // Validate merged constraints for contradictions
     const violations = validateConstraints(field.name, fieldSchema);
@@ -188,6 +198,19 @@ function applyCommentTagsToSchema(
       case "const":
         if (tag.value !== undefined) result.const = tag.value;
         break;
+      case "format":
+        if (typeof tag.value === "string") result.format = tag.value;
+        break;
+      case "maxSigFig":
+        if (typeof tag.value === "number") {
+          (result as Record<string, unknown>)["x-formspec-maxSigFig"] = tag.value;
+        }
+        break;
+      case "maxDecimalPlaces":
+        if (typeof tag.value === "number") {
+          (result as Record<string, unknown>)["x-formspec-maxDecimalPlaces"] = tag.value;
+        }
+        break;
     }
   }
 
@@ -230,6 +253,39 @@ function applyCommentTagsToFormSpecField(
       case "pattern":
         if (typeof tag.value === "string") field.pattern = tag.value;
         break;
+      case "placeholder":
+        if (typeof tag.value === "string") field.placeholder = tag.value;
+        break;
+      case "group":
+        if (typeof tag.value === "string") field.group = tag.value;
+        break;
+      case "order":
+        if (typeof tag.value === "number") field.order = tag.value;
+        break;
+      case "showWhen": {
+        if (typeof tag.value === "string") {
+          const spaceIdx = tag.value.indexOf(" ");
+          if (spaceIdx > 0) {
+            field.showWhen = {
+              field: tag.value.substring(0, spaceIdx),
+              value: tag.value.substring(spaceIdx + 1),
+            };
+          }
+        }
+        break;
+      }
+      case "hideWhen": {
+        if (typeof tag.value === "string") {
+          const spaceIdx = tag.value.indexOf(" ");
+          if (spaceIdx > 0) {
+            field.hideWhen = {
+              field: tag.value.substring(0, spaceIdx),
+              value: tag.value.substring(spaceIdx + 1),
+            };
+          }
+        }
+        break;
+      }
     }
   }
 }

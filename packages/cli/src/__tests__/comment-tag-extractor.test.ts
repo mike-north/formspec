@@ -283,6 +283,174 @@ describe("Comment Tag Extractor", () => {
     });
   });
 
+  describe("new annotation tags", () => {
+    it("extracts @format", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @format email */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "format", value: "email" });
+    });
+
+    it("extracts @placeholder", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @placeholder Enter your name */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "placeholder", value: "Enter your name" });
+    });
+
+    it("extracts @group", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @group billing */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "group", value: "billing" });
+    });
+
+    it("ignores @format with empty comment", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @format */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
+  describe("new integer annotation tags", () => {
+    it("extracts @order", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @order 5 */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "order", value: 5 });
+    });
+
+    it("ignores @order with negative value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @order -1 */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+
+    it("ignores @order with fractional value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @order 1.5 */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
+  describe("new constraint tags", () => {
+    it("extracts @maxSigFig", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @maxSigFig 8 */
+          x!: number;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "maxSigFig", value: 8 });
+    });
+
+    it("extracts @maxDecimalPlaces", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @maxDecimalPlaces 2 */
+          x!: number;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "maxDecimalPlaces", value: 2 });
+    });
+
+    it("ignores @maxSigFig with zero value (must be positive)", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @maxSigFig 0 */
+          x!: number;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+
+    it("allows @maxDecimalPlaces with zero value (non-negative)", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @maxDecimalPlaces 0 */
+          x!: number;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "maxDecimalPlaces", value: 0 });
+    });
+
+    it("ignores @maxSigFig with negative value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @maxSigFig -1 */
+          x!: number;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
+  describe("condition tags", () => {
+    it("extracts @showWhen", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @showWhen paymentMethod card */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "showWhen", value: "paymentMethod card" });
+    });
+
+    it("extracts @hideWhen", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @hideWhen premium true */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "hideWhen", value: "premium true" });
+    });
+
+    it("ignores @showWhen with empty comment", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @showWhen */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+
+    it("ignores @hideWhen with empty comment", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @hideWhen */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
   describe("unknown tags", () => {
     it("ignores unknown tags", () => {
       const tags = extractTagsFromSource(`

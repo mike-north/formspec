@@ -31,6 +31,7 @@ export interface JsonSchema {
   maxItems?: number;
   uniqueItems?: boolean;
   pattern?: string;
+  format?: string;
   title?: string;
   description?: string;
   default?: unknown;
@@ -113,7 +114,9 @@ export interface FormSpecField {
   maxItems?: number;
   pattern?: string;
   options?: (string | { id: string; label: string })[];
+  order?: number;
   showWhen?: object;
+  hideWhen?: object;
   group?: string;
   fields?: FormSpecField[];  // Nested fields for object types
 }
