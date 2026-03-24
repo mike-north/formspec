@@ -42,6 +42,8 @@ This package provides the foundational types used throughout the FormSpec ecosys
 - **State types**: `FieldState`, `FormState`, `Validity`
 - **Data source types**: `DataSourceRegistry`, `DataSourceOption`, `FetchOptionsResponse`
 - **Predicate types**: `EqualsPredicate`, `Predicate`
+- **IR types**: `FormIR`, `FormIRElement`, `FieldNode`, `LayoutNode`, `TypeNode`, `ConstraintNode`, `AnnotationNode`, `Provenance`, `IR_VERSION`
+- **Extension API**: `defineExtension`, `defineConstraint`, `defineAnnotation`, `defineCustomType`
 
 ## Usage
 
@@ -105,6 +107,54 @@ function processForm(form: FormSpec<readonly FormElement[]>) {
 | `Validity`      | `"valid"`, `"invalid"`, `"unknown"` |
 | `FieldState<T>` | Runtime state of a single field     |
 | `FormState<S>`  | Runtime state of entire form        |
+
+### IR Types
+
+| Type             | Description                                                                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FormIR`         | Root IR node — contains elements, type registry, IR version                                                                                                                       |
+| `FormIRElement`  | Union of `FieldNode` and `LayoutNode`                                                                                                                                             |
+| `FieldNode`      | IR field with name, type, constraints, annotations                                                                                                                                |
+| `LayoutNode`     | Union of `GroupLayoutNode` and `ConditionalLayoutNode`                                                                                                                            |
+| `TypeNode`       | Union: `PrimitiveTypeNode`, `EnumTypeNode`, `ArrayTypeNode`, `ObjectTypeNode`, `UnionTypeNode`, `ReferenceTypeNode`, `DynamicTypeNode`, `CustomTypeNode`                          |
+| `ConstraintNode` | Union: `NumericConstraintNode`, `LengthConstraintNode`, `PatternConstraintNode`, `ArrayCardinalityConstraintNode`, `EnumMemberConstraintNode`, `CustomConstraintNode`             |
+| `AnnotationNode` | Union: `DisplayNameAnnotationNode`, `DescriptionAnnotationNode`, `PlaceholderAnnotationNode`, `DefaultValueAnnotationNode`, `DeprecatedAnnotationNode`, `FormatHintAnnotationNode`, `CustomAnnotationNode` |
+| `Provenance`     | Source location tracking — file, line, column, surface                                                                                                                            |
+| `IR_VERSION`     | Current IR version (`"0.1.0"`)                                                                                                                                                    |
+
+### Extension API
+
+FormSpec's type system is extensible via registration functions:
+
+| Function                  | Description                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `defineExtension(def)`    | Register a complete extension with constraints, annotations, types, and vocabulary keywords |
+| `defineConstraint(reg)`   | Register a custom constraint (e.g., `multipleOf`, `uniqueItems`)                 |
+| `defineAnnotation(reg)`   | Register a custom annotation (e.g., tooltip, help URL)                           |
+| `defineCustomType(reg)`   | Register a custom type node for JSON Schema generation                            |
+
+```typescript
+import { defineExtension, defineConstraint, defineAnnotation } from "@formspec/core";
+
+// Register a complete extension
+const myExtension = defineExtension({
+  extensionId: "my-ext",
+  constraints: [
+    {
+      constraintName: "Precision",
+      applicableTypes: ["primitive"],
+      compositionRule: "override",
+      toJsonSchema: (payload, prefix) => ({ [`x-${prefix}-precision`]: payload }),
+    },
+  ],
+  annotations: [
+    {
+      annotationName: "HelpUrl",
+      toJsonSchema: (value, prefix) => ({ [`x-${prefix}-help-url`]: value }),
+    },
+  ],
+});
+```
 
 ## License
 
