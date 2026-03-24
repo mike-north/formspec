@@ -6,6 +6,8 @@ Interactive playground for FormSpec - write forms and see generated schemas live
 
 - **Real-time compilation** - TypeScript transpilation and FormSpec validation as you type
 - **Live schema generation** - See JSON Schema and UI Schema output instantly
+- **Canonical IR viewer** - Inspect the intermediate representation of your form
+- **Validation panel** - See validation results and constraint issues
 - **Interactive form preview** - Rendered forms using JSON Forms + Material UI
 - **Monaco editor** - Full TypeScript support with FormSpec type definitions
 - **ESLint integration** - Constraint violations shown as editor markers
@@ -31,15 +33,16 @@ User Code (Monaco) ──► TypeScript Compile ──► Execute ──► Form
 Constraints Config ─────────────────────────────────────────►│
                                                               ▼
                                               ┌───────────────────────────┐
+                                              │    canonicalizeChainDSL() │
                                               │    generateJsonSchema()   │
                                               │    generateUiSchema()     │
                                               │    validateFormSpec()     │
                                               └───────────────────────────┘
                                                               │
-                    ┌─────────────────┬───────────────────────┼───────────────────┐
-                    ▼                 ▼                       ▼                   ▼
-              JSON Schema       UI Schema             Lint Issues          Form Preview
-                Panel             Panel                 Panel              (JSON Forms)
+                    ┌────────────┬─────────────┬──────────────┼───────────────────┐
+                    ▼            ▼             ▼              ▼                   ▼
+              Canonical IR  JSON Schema   UI Schema     Lint Issues          Form Preview
+                Panel         Panel        Panel          Panel              (JSON Forms)
 ```
 
 ### Key Components

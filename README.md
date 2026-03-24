@@ -216,13 +216,9 @@ type Schema2 = InferFormSchema<typeof form>;
 // }
 ```
 
-## Choosing a DSL
+## Using the DSL
 
-FormSpec offers two ways to define forms:
-
-### Chain DSL (Recommended)
-
-The builder-based Chain DSL is the primary approach:
+FormSpec uses a builder-based DSL for defining forms:
 
 ```typescript
 import { formspec, field, group, buildFormSchemas } from "formspec";
@@ -238,52 +234,7 @@ const { jsonSchema, uiSchema } = buildFormSchemas(form);
 // Also works at runtime - no codegen needed
 ```
 
-**Use the Chain DSL when:**
-
-- You're working with dynamically fetched schema data (the only option for this)
-- You want JSON Schema or UI Schema at runtime without a codegen step
-- You want type information available without extra build steps
-
-### Decorator DSL
-
-The class-based Decorator DSL uses TypeScript decorators:
-
-```typescript
-import { Label, Min, EnumOptions } from "@formspec/decorators";
-
-class InvoiceForm {
-  @Label("Customer Name")
-  name!: string;
-
-  @Label("Amount")
-  @Min(0)
-  amount!: number;
-
-  @Label("Status")
-  @EnumOptions([
-    { id: "draft", label: "Draft" },
-    { id: "paid", label: "Paid" },
-  ])
-  status!: "draft" | "paid";
-}
-```
-
-**Use the Decorator DSL when:**
-
-- You prefer class-based domain models
-- Your types are known at build-time (not dynamically fetched)
-- You only need schemas at build-time (no codegen), or you're willing to run `formspec codegen` for runtime access
-
-See [@formspec/decorators](./packages/decorators/README.md) for usage details.
-
-### Comparison
-
-| Aspect             | Chain DSL       | Decorator DSL               |
-| ------------------ | --------------- | --------------------------- |
-| Runtime schemas    | Works directly  | Requires `formspec codegen` |
-| Build-time schemas | Works directly  | Works directly              |
-| Dynamic data       | Native support  | N/A                         |
-| Type source        | Builder methods | TypeScript types            |
+The DSL works directly at both build-time and runtime without any code generation step. It provides full TypeScript type inference and supports dynamic data through resolvers.
 
 ## JSON Schema Extensions
 
@@ -316,15 +267,18 @@ Added to dynamic enum fields with dependencies. Lists field names whose values a
 
 FormSpec is organized as a monorepo with the following packages:
 
-| Package                   | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| `formspec`                | Main package with all re-exports (recommended)       |
-| `@formspec/core`          | Core type definitions                                |
-| `@formspec/dsl`           | DSL functions (`field`, `group`, `when`, `formspec`) |
-| `@formspec/build`         | Schema generators                                    |
-| `@formspec/runtime`       | Resolver helpers                                     |
-| `@formspec/constraints`   | Constraint definitions and validators                |
-| `@formspec/eslint-plugin` | ESLint rules for FormSpec                            |
+| Package | Description |
+| --- | --- |
+| `formspec` | Main package with all re-exports (recommended) |
+| `@formspec/core` | Core type definitions |
+| `@formspec/dsl` | DSL functions (`field`, `group`, `when`, `formspec`) |
+| `@formspec/build` | Schema generators |
+| `@formspec/runtime` | Resolver helpers |
+| `@formspec/constraints` | Constraint definitions and validators |
+| `@formspec/validator` | JSON Schema validation for secure runtimes |
+| `@formspec/eslint-plugin` | ESLint rules for FormSpec |
+| `@formspec/language-server` | Language server for editor integration |
+| `@formspec/playground` | Interactive browser editor (private) |
 
 For most use cases, just import from `formspec`:
 
@@ -522,20 +476,20 @@ for (const { form, name } of forms) {
 For quick generation without writing a script, use the CLI:
 
 ```bash
-# Install @formspec/build (provides the formspec-build command)
-npm install -D @formspec/build
+# Install the CLI
+npm install -D @formspec/cli
 
-# Generate schemas from a file that exports a FormSpec
-npx formspec-build src/forms/product.ts -o ./schemas -n product
+# Generate schemas from all FormSpec exports in a file (requires compiled JS)
+tsc && npx formspec generate src/forms/product.ts -o ./schemas
 ```
 
-The input file should export the form as default or named `form`:
+The CLI detects all named `FormSpec` exports from the compiled module:
 
 ```typescript
 // src/forms/product.ts
 import { formspec, field } from "formspec";
 
-export default formspec(
+export const ProductForm = formspec(
   field.text("name", { required: true }),
   field.enum("status", ["draft", "active"])
 );

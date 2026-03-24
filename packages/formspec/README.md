@@ -147,10 +147,14 @@ You can import from the umbrella package for convenience, or from individual pac
 
 ## Related Packages
 
-| Package                | Description                                       |
-| ---------------------- | ------------------------------------------------- |
-| `@formspec/decorators` | Decorator-based API for class definitions         |
-| `@formspec/cli`        | CLI tool for static analysis of decorated classes |
+| Package | Description |
+| --- | --- |
+| `@formspec/constraints` | Constraint definitions and validators |
+| `@formspec/validator` | JSON Schema validation for secure runtimes |
+| `@formspec/eslint-plugin` | ESLint rules for FormSpec |
+| `@formspec/language-server` | Language server for editor integration |
+| `@formspec/cli` | CLI tool for build-time schema generation |
+| `@formspec/playground` | Interactive browser editor (private) |
 
 ## License
 

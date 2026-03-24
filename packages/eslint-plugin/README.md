@@ -1,6 +1,6 @@
 # @formspec/eslint-plugin
 
-ESLint plugin for validating FormSpec decorator DSL usage in TypeScript projects. This plugin catches common mistakes by ensuring decorators match their field types and enforcing consistency rules.
+ESLint plugin for validating FormSpec usage in TypeScript projects. Catches constraint mismatches, invalid ranges, and enforces project-level restrictions from `.formspec.yml`.
 
 ## Installation
 
@@ -14,18 +14,16 @@ pnpm add -D @formspec/eslint-plugin
 
 - ESLint v9+ (flat config)
 - TypeScript v5+
+- `@typescript-eslint/parser`
 
 ## Usage
 
 ### Recommended Configuration
 
-Add the plugin to your `eslint.config.js`:
-
 ```javascript
 import formspec from "@formspec/eslint-plugin";
 
 export default [
-  // ... other configs
   ...formspec.configs.recommended,
 ];
 ```
@@ -41,13 +39,10 @@ export default [
       "@formspec": formspec,
     },
     rules: {
-      "@formspec/decorator-field-type-mismatch": "error",
-      "@formspec/enum-options-match-type": "error",
-      "@formspec/showwhen-field-exists": "error",
-      "@formspec/showwhen-suggests-optional": "warn",
-      "@formspec/min-max-valid-range": "error",
-      "@formspec/no-conflicting-decorators": "error",
-      "@formspec/no-duplicate-decorators": "error",
+      "@formspec/constraint-type-mismatch": "error",
+      "@formspec/consistent-constraints": "error",
+      "@formspec/constraints-allowed-field-types": "error",
+      "@formspec/constraints-allowed-layouts": "error",
     },
   },
 ];
@@ -55,155 +50,71 @@ export default [
 
 ## Rules
 
-| Rule                                                              | Description                                                    | Recommended | Strict |
-| ----------------------------------------------------------------- | -------------------------------------------------------------- | ----------- | ------ |
-| [`decorator-field-type-mismatch`](#decorator-field-type-mismatch) | Ensures decorators are applied to fields with compatible types | error       | error  |
-| [`enum-options-match-type`](#enum-options-match-type)             | Ensures @EnumOptions values match the field's union type       | error       | error  |
-| [`showwhen-field-exists`](#showwhen-field-exists)                 | Ensures @ShowWhen references a field that exists               | error       | error  |
-| [`showwhen-suggests-optional`](#showwhen-suggests-optional)       | Suggests @ShowWhen fields should be optional                   | warn        | error  |
-| [`min-max-valid-range`](#min-max-valid-range)                     | Ensures @Min/@Max have valid ranges                            | error       | error  |
-| [`no-conflicting-decorators`](#no-conflicting-decorators)         | Prevents decorators that imply conflicting types               | error       | error  |
-| [`no-duplicate-decorators`](#no-duplicate-decorators)             | Prevents duplicate decorators on the same field                | error       | error  |
+| Rule | Description | Recommended | Strict |
+| --- | --- | --- | --- |
+| [`constraint-type-mismatch`](#constraint-type-mismatch) | JSDoc constraint tags must match field type | error | error |
+| [`consistent-constraints`](#consistent-constraints) | Constraint ranges must be valid (min ≤ max) | error | error |
+| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml` | — | — |
+| [`constraints-allowed-layouts`](#constraints-allowed-layouts) | Layout elements validated against `.formspec.yml` | — | — |
 
-### decorator-field-type-mismatch
+### constraint-type-mismatch
 
-Ensures FormSpec decorators are applied to fields with compatible types.
+Ensures JSDoc constraint tags are applied to fields with compatible types.
 
 ```typescript
-// Valid
-@Min(0)
-@Max(100)
+// Valid — @Minimum on a number field
+/** @Minimum 0 */
 age!: number;
 
-@Placeholder("Enter name")
+/** @MinLength 1 */
 name!: string;
 
-@MinItems(1)
-@MaxItems(10)
-items!: string[];
-
-// Invalid - @Min requires number field
-@Min(0)
-name!: string; // Error: @Min can only be used on number fields
+// Invalid — @Minimum requires a number field
+/** @Minimum 0 */
+name!: string; // Error: @Minimum can only be used on number fields
 ```
 
-### enum-options-match-type
+### consistent-constraints
 
-Ensures @EnumOptions values match the field's TypeScript union type.
-
-```typescript
-// Valid - options match type
-@EnumOptions(["draft", "published", "archived"])
-status!: "draft" | "published" | "archived";
-
-// Valid - object options with id property
-@EnumOptions([{ id: "a", label: "Option A" }, { id: "b", label: "Option B" }])
-type!: "a" | "b";
-
-// Valid - string type accepts any options
-@EnumOptions(["any", "options"])
-value!: string;
-
-// Invalid - missing option "archived"
-@EnumOptions(["draft", "published"])
-status!: "draft" | "published" | "archived"; // Error: missing "archived"
-```
-
-### showwhen-field-exists
-
-Ensures @ShowWhen references a field that exists in the same class.
+Ensures constraint values form valid ranges.
 
 ```typescript
 // Valid
-@EnumOptions(["a", "b"])
-type!: "a" | "b";
-
-@ShowWhen({ _predicate: "equals", field: "type", value: "a" })
-conditionalField?: string;
-
-// Invalid - "nonexistent" field doesn't exist
-@ShowWhen({ _predicate: "equals", field: "nonexistent", value: "x" })
-conditionalField?: string; // Error: field "nonexistent" does not exist
-```
-
-### showwhen-suggests-optional
-
-Suggests that fields with @ShowWhen should be marked as optional since they may not be present in the output.
-
-```typescript
-// Valid
-@ShowWhen({ _predicate: "equals", field: "type", value: "a" })
-conditionalField?: string; // Good - optional
-
-// Warning
-@ShowWhen({ _predicate: "equals", field: "type", value: "a" })
-conditionalField!: string; // Warning: should be optional
-```
-
-### min-max-valid-range
-
-Ensures @Min value is less than or equal to @Max value.
-
-```typescript
-// Valid
-@Min(0)
-@Max(100)
+/** @Minimum 0 @Maximum 100 */
 value!: number;
 
-@Min(5)
-@Max(5) // Equal is valid
-exact!: number;
-
-// Invalid
-@Min(100)
-@Max(50) // Error: @Min(100) > @Max(50)
-invalid!: number;
+// Invalid — minimum > maximum
+/** @Minimum 100 @Maximum 50 */
+value!: number; // Error: @Minimum(100) > @Maximum(50)
 ```
 
-### no-conflicting-decorators
+### constraints-allowed-field-types
 
-Prevents using decorators that imply conflicting field types.
+Validates chain DSL field types against your `.formspec.yml` configuration.
 
 ```typescript
-// Valid - both imply number
-@Min(0)
-@Max(100)
-value!: number;
-
-// Invalid - @Min implies number, @Placeholder implies string
-@Min(0)
-@Placeholder("Enter value") // Error: conflicting decorators
-field!: string;
+// With .formspec.yml: fieldTypes: { dynamicEnum: error }
+field.dynamicEnum("country", "fetch_countries"); // Error: dynamicEnum fields are not allowed
 ```
 
-### no-duplicate-decorators
+### constraints-allowed-layouts
 
-Prevents applying the same decorator multiple times to a field.
+Validates layout elements against your `.formspec.yml` configuration.
 
 ```typescript
-// Valid
-@Label("Name")
-@Placeholder("Enter name")
-name!: string;
-
-// Invalid
-@Label("First")
-@Label("Second") // Error: duplicate @Label
-name!: string;
+// With .formspec.yml: layout: { conditionals: error }
+when(is("type", "a"), field.text("extra")); // Error: conditionals are not allowed
 ```
 
 ## Configurations
 
 ### Recommended
 
-Sensible defaults for most projects:
-
-- All type safety rules enabled as errors
-- `showwhen-suggests-optional` as warning (not blocking)
+Enables `constraint-type-mismatch` and `consistent-constraints` as errors. The `constraints-allowed-*` rules must be enabled manually when using `.formspec.yml` constraints.
 
 ### Strict
 
-All rules enabled as errors for maximum type safety enforcement.
+Same as Recommended. The `constraints-allowed-*` rules must be enabled manually when using `.formspec.yml` constraints.
 
 ```javascript
 import formspec from "@formspec/eslint-plugin";

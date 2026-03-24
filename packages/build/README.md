@@ -79,13 +79,46 @@ const jsonSchema = generateJsonSchema(ContactForm);
 const uiSchema = generateUiSchema(ContactForm);
 ```
 
+### Canonical IR Pipeline
+
+The build pipeline now flows through a Canonical Intermediate Representation (IR). When you call `buildFormSchemas()`, the form definition is first converted to IR, then the IR is compiled to JSON Schema and UI Schema:
+
+```
+FormSpec definition → Canonical IR → JSON Schema + UI Schema
+```
+
+This enables consistent processing regardless of whether forms are defined via the Chain DSL or analyzed from TypeScript source files.
+
+### Generate from TypeScript Classes
+
+Generate schemas from TypeScript class definitions using static analysis of JSDoc constraint tags:
+
+```typescript
+import { generateSchemasFromClass } from "@formspec/build";
+
+const { jsonSchema, uiSchema } = generateSchemasFromClass({
+  filePath: "./src/forms.ts",
+  className: "UserForm",
+});
+```
+
+The analyzer extracts type information and JSDoc constraint tags (e.g., `/** @Minimum 0 @Maximum 100 */`) from class properties to generate schemas.
+
+### Entry Points
+
+| Entry Point               | Audience           | Description                                                                                       |
+| ------------------------- | ------------------ | ------------------------------------------------------------------------------------------------- |
+| `@formspec/build`         | Public API         | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators                 |
+| `@formspec/build/browser` | Browser (playground) | Schema generators without Node.js `fs`/`path` — safe for bundlers                              |
+| `@formspec/build/internals` | CLI (unstable)   | Internal APIs: `createProgramContext`, `analyzeClass`, `generateClassSchemas`                     |
+
 ## Generated Output
 
-### JSON Schema (Draft-07)
+### JSON Schema (2020-12)
 
 ```json
 {
-  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "name": { "type": "string", "title": "Name" },
@@ -116,22 +149,25 @@ const uiSchema = generateUiSchema(ContactForm);
 
 ### Functions
 
-| Function                      | Description                             |
-| ----------------------------- | --------------------------------------- |
-| `buildFormSchemas(form)`      | Generate both JSON Schema and UI Schema |
-| `generateJsonSchema(form)`    | Generate only JSON Schema               |
-| `generateUiSchema(form)`      | Generate only UI Schema                 |
-| `writeSchemas(form, options)` | Build and write schemas to disk         |
+| Function                             | Description                                                        |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| `buildFormSchemas(form)`             | Generate both JSON Schema and UI Schema                            |
+| `generateJsonSchema(form)`           | Generate only JSON Schema                                          |
+| `generateUiSchema(form)`             | Generate only UI Schema                                            |
+| `writeSchemas(form, options)`        | Build and write schemas to disk                                    |
+| `generateSchemasFromClass(options)`  | Generate schemas from a TypeScript class via static analysis       |
+| `generateSchemas(options)`           | Generate schemas from a TypeScript type via static analysis        |
 
 ### Types
 
-| Type                  | Description                       |
-| --------------------- | --------------------------------- |
-| `BuildResult`         | Return type of `buildFormSchemas` |
-| `WriteSchemasOptions` | Options for `writeSchemas`        |
-| `WriteSchemasResult`  | Return type of `writeSchemas`     |
-| `JSONSchema7`         | JSON Schema Draft-07 type         |
-| `UISchema`            | JSON Forms UI Schema type         |
+| Type                      | Description                             |
+| ------------------------- | --------------------------------------- |
+| `BuildResult`             | Return type of `buildFormSchemas`       |
+| `WriteSchemasOptions`     | Options for `writeSchemas`              |
+| `WriteSchemasResult`      | Return type of `writeSchemas`           |
+| `JsonSchema2020`          | JSON Schema 2020-12 type                |
+| `GenerateFromClassOptions` | Options for `generateSchemasFromClass` |
+| `UISchema`                | JSON Forms UI Schema type               |
 
 ## License
 
