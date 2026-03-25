@@ -77,6 +77,9 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../packages/dsl
+      '@formspec/validator':
+        specifier: workspace:*
+        version: link:../packages/validator
     devDependencies:
       vitest:
         specifier: ^3.0.0

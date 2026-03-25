@@ -11,7 +11,8 @@
     "@formspec/build": "workspace:*",
     "@formspec/cli": "workspace:*",
     "@formspec/core": "workspace:*",
-    "@formspec/dsl": "workspace:*"
+    "@formspec/dsl": "workspace:*",
+    "@formspec/validator": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
