@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "paymentMethod": {
+      "enum": [
+        "card",
+        "bank_transfer",
+        "crypto"
+      ],
+      "title": "Payment Method"
+    },
+    "cardNumber": {
+      "type": "string",
+      "title": "Card Number"
+    },
+    "expiryDate": {
+      "type": "string",
+      "title": "Expiry"
+    },
+    "accountNumber": {
+      "type": "string",
+      "title": "Account Number"
+    },
+    "routingNumber": {
+      "type": "string",
+      "title": "Routing Number"
+    },
+    "savePaymentMethod": {
+      "type": "boolean",
+      "title": "Save for later"
+    }
+  },
+  "required": [
+    "paymentMethod",
+    "cardNumber",
+    "accountNumber"
+  ]
+}

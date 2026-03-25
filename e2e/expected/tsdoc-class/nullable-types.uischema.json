@@ -1,0 +1,29 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/name"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/nickname"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/age"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/score"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/status"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/tags"
+    }
+  ]
+}

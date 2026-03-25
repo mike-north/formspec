@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "orderId": {
+      "type": "string"
+    },
+    "billingAddress": {
+      "$ref": "#/$defs/Address"
+    },
+    "shippingAddress": {
+      "$ref": "#/$defs/Address"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "orderId",
+    "billingAddress",
+    "shippingAddress"
+  ],
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "zip": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "street",
+        "city",
+        "zip",
+        "country"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
