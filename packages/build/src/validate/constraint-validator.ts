@@ -321,9 +321,12 @@ function checkTypeApplicability(
     // not the field itself. Skip type-applicability checks for these — the
     // constraint applies to the resolved sub-field type, not the declared field type.
     if (constraint.path) {
-      // However, when the declared field type cannot be traversed (primitives or
-      // enums), a path-targeted constraint is inherently invalid.
-      if (type.kind === "primitive" || type.kind === "enum") {
+      // Path-targeted constraints are only meaningful on traversable types
+      // (objects, arrays, references). All other kinds (primitives, enums,
+      // unions, dynamic, custom) cannot be traversed.
+      const isTraversable =
+        type.kind === "object" || type.kind === "array" || type.kind === "reference";
+      if (!isTraversable) {
         addTypeMismatch(
           ctx,
           `Field "${fieldName}": path-targeted constraint "${constraint.constraintKind}" is invalid because type "${label}" cannot be traversed`,
