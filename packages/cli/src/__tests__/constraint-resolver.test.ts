@@ -446,3 +446,98 @@ describe("resolveTypeConstraints - broadening detection", () => {
     expect(broadenDiag.message).toContain("minimum");
   });
 });
+
+// ============================================================================
+// 3+ level alias chains
+// ============================================================================
+
+describe("3+ level alias chains", () => {
+  const source = `
+    /** @multipleOf 1 */
+    type Integer = number;
+
+    /** @minimum 0 */
+    type NonNegative = Integer;
+
+    /** @maximum 100 */
+    type Percentage = NonNegative;
+
+    export class Form {
+      /** @minimum 10 */
+      value!: Percentage;
+    }
+  `;
+
+  it("collects constraints from all 3 levels", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
+    // Should have multipleOf:1 from Integer, minimum:0 from NonNegative, maximum:100 from Percentage
+    expect(tags.find((t) => t.tagName === "multipleOf" && t.value === 1)).toBeDefined();
+    expect(tags.find((t) => t.tagName === "minimum")).toBeDefined();
+    expect(tags.find((t) => t.tagName === "maximum" && t.value === 100)).toBeDefined();
+  });
+
+  it("merges minimum correctly across 3 levels (type-level minimum comes through)", () => {
+    // NonNegative has @minimum 0; the field itself has @minimum 10 (applied separately).
+    // The resolver sees only the type chain — minimum from NonNegative is 0.
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
+    const min = tags.find((t) => t.tagName === "minimum");
+    expect(min?.value).toBe(0); // type-level minimum from NonNegative
+  });
+});
+
+describe("4-level alias chain", () => {
+  const source = `
+    /** @multipleOf 1 */
+    type Integer = number;
+
+    /** @minimum 0 */
+    type NonNegativeInteger = Integer;
+
+    /** @maximum 100 */
+    type Percentage = NonNegativeInteger;
+
+    /** @maximum 50 */
+    type LowPercentage = Percentage;
+
+    export class Form {
+      value!: LowPercentage;
+    }
+  `;
+
+  it("collects constraints from all 4 levels", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { tags } = resolveTypeConstraints("value", typeNode, checker);
+    expect(tags.find((t) => t.tagName === "multipleOf" && t.value === 1)).toBeDefined();
+    expect(tags.find((t) => t.tagName === "minimum" && t.value === 0)).toBeDefined();
+    // maximum should be 50 (most restrictive of 100 and 50)
+    const max = tags.find((t) => t.tagName === "maximum");
+    expect(max?.value).toBe(50);
+  });
+});
+
+describe("3-level broadening detection", () => {
+  const source = `
+    /** @minimum 50 */
+    type HighBound = number;
+
+    /** @minimum 100 */
+    type HigherBound = HighBound;
+
+    /** @minimum 0 */
+    type Broadened = HigherBound;
+
+    export class Form {
+      value!: Broadened;
+    }
+  `;
+
+  it("detects broadening at 3rd level", () => {
+    const { typeNode, checker } = makeFieldTypeNode(source);
+    const { diagnostics } = resolveTypeConstraints("value", typeNode, checker);
+    expect(
+      diagnostics.some((d) => d.severity === "error" && d.message.includes("broaden"))
+    ).toBe(true);
+  });
+});

@@ -9,6 +9,7 @@
 import * as ts from "typescript";
 import type { CommentTagInfo } from "./comment-tag-extractor.js";
 import type { ConstraintViolation } from "./constraint-validator.js";
+import { stripNullableTypes, isStringLiteralUnion, isNumberLiteralUnion } from "./ts-type-utils.js";
 
 /**
  * Tags that are only valid on numeric types (number, number literals).
@@ -59,9 +60,7 @@ export function checkTypeApplicability(
   // If there's exactly one non-null/undefined member, that's the effective type.
   let effectiveType = fieldType;
   if (fieldType.isUnion()) {
-    const nonNullTypes = fieldType.types.filter(
-      (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
-    );
+    const nonNullTypes = stripNullableTypes(fieldType.types);
     if (nonNullTypes.length === 1 && nonNullTypes[0]) {
       effectiveType = nonNullTypes[0];
     }
@@ -75,11 +74,9 @@ export function checkTypeApplicability(
   let isStringEnum = false;
   let isNumberEnum = false;
   if (effectiveType.isUnion()) {
-    const nonNull = effectiveType.types.filter(
-      (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
-    );
-    isStringEnum = nonNull.length > 0 && nonNull.every((t) => t.isStringLiteral());
-    isNumberEnum = nonNull.length > 0 && nonNull.every((t) => t.isNumberLiteral());
+    const nonNull = stripNullableTypes(effectiveType.types);
+    isStringEnum = isStringLiteralUnion(nonNull);
+    isNumberEnum = isNumberLiteralUnion(nonNull);
   }
 
   const typeString = checker.typeToString(fieldType);

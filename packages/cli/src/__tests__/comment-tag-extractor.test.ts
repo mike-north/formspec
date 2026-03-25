@@ -454,6 +454,83 @@ describe("Comment Tag Extractor", () => {
     });
   });
 
+  describe("@remarks tag", () => {
+    it("extracts @remarks", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @remarks Additional context about this field */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({
+        tagName: "remarks",
+        value: "Additional context about this field",
+      });
+    });
+
+    it("ignores @remarks with empty comment", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @remarks */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
+  describe("@example tag", () => {
+    it("extracts @example with a quoted string value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @example "hello world" */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "example", value: "hello world" });
+    });
+
+    it("extracts @example with a numeric value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @example 42 */
+          x!: number;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "example", value: 42 });
+    });
+
+    it("extracts @example with plain text (non-JSON)", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @example my-value */
+          x!: string;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "example", value: "my-value" });
+    });
+
+    it("extracts @example with a boolean value", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @example true */
+          x!: boolean;
+        }
+      `);
+      expect(tags).toContainEqual({ tagName: "example", value: true });
+    });
+
+    it("ignores @example with empty comment", () => {
+      const tags = extractTagsFromSource(`
+        class Foo {
+          /** @example */
+          x!: string;
+        }
+      `);
+      expect(tags).toEqual([]);
+    });
+  });
+
   describe("unknown tags", () => {
     it("ignores unknown tags", () => {
       const tags = extractTagsFromSource(`

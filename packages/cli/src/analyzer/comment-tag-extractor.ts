@@ -94,7 +94,10 @@ const POSITIVE_INTEGER_TAGS = new Set(["maxSigFig"]);
 const BARE_TAGS = new Set(["uniqueItems", "deprecated"]);
 
 /** Text annotation tags. */
-const TEXT_TAGS = new Set(["displayName", "description", "format", "placeholder", "group"]);
+const TEXT_TAGS = new Set(["displayName", "description", "format", "placeholder", "group", "remarks"]);
+
+/** Example tags — values are collected as JSON Schema `examples` entries. */
+const EXAMPLE_TAGS = new Set(["example"]);
 
 /** Condition tags — raw text preserved as-is. */
 const CONDITION_TAGS = new Set(["showWhen", "hideWhen"]);
@@ -181,6 +184,20 @@ function parseTag(tagName: string, comment: string | undefined): CommentTagInfo 
   if (tagName === "defaultValue") {
     if (comment === undefined || comment === "") return null;
     // Try JSON.parse first, fallback to string
+    try {
+      const parsed: unknown = JSON.parse(comment);
+      if (typeof parsed === "number" || typeof parsed === "string" || typeof parsed === "boolean") {
+        return { tagName, value: parsed };
+      }
+      return { tagName, value: comment };
+    } catch {
+      return { tagName, value: comment };
+    }
+  }
+
+  if (EXAMPLE_TAGS.has(tagName)) {
+    if (comment === undefined || comment === "") return null;
+    // Try JSON parse for numbers, booleans, and quoted strings; fall back to plain text.
     try {
       const parsed: unknown = JSON.parse(comment);
       if (typeof parsed === "number" || typeof parsed === "string" || typeof parsed === "boolean") {
