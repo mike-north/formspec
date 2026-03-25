@@ -47,6 +47,7 @@ export interface JsonSchema2020 {
   additionalProperties?: boolean;
   enum?: readonly (string | number)[];
   const?: string | number | boolean | null;
+  allOf?: readonly JsonSchema2020[];
   oneOf?: readonly JsonSchema2020[];
   anyOf?: readonly JsonSchema2020[];
   // Constraints
@@ -215,14 +216,101 @@ function collectFields(
 function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchema2020 {
   const schema = generateTypeNode(field.type, ctx);
 
-  // Apply constraints. multipleOf:1 on a number type is a special case: it
-  // promotes the type to "integer" and removes the multipleOf keyword.
-  applyConstraints(schema, field.constraints);
+  // Partition constraints into direct (no path) and path-targeted.
+  const directConstraints: ConstraintNode[] = [];
+  const pathConstraints: ConstraintNode[] = [];
+  for (const c of field.constraints) {
+    if (c.path) {
+      pathConstraints.push(c);
+    } else {
+      directConstraints.push(c);
+    }
+  }
+
+  // Apply direct constraints. multipleOf:1 on a number type is a special case:
+  // it promotes the type to "integer" and removes the multipleOf keyword.
+  applyConstraints(schema, directConstraints);
 
   // Apply annotations (title, description, default, deprecated, etc.).
   applyAnnotations(schema, field.annotations);
 
-  return schema;
+  // If no path-targeted constraints, return as-is.
+  if (pathConstraints.length === 0) {
+    return schema;
+  }
+
+  return applyPathTargetedConstraints(schema, pathConstraints);
+}
+
+/**
+ * Applies path-targeted constraints to a schema via allOf composition.
+ *
+ * For $ref schemas: wraps in allOf with property overrides.
+ * For inline object schemas: applies directly to nested properties.
+ * For array schemas: applies path constraints to the items sub-schema.
+ */
+function applyPathTargetedConstraints(
+  schema: JsonSchema2020,
+  pathConstraints: readonly ConstraintNode[]
+): JsonSchema2020 {
+  // Array transparency: path-targeted constraints target the item type.
+  if (schema.type === "array" && schema.items) {
+    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints);
+    return schema;
+  }
+
+  // Group path constraints by target field name (first path segment).
+  // Callers guarantee all entries have a defined `path` (filtered upstream).
+  const byTarget = new Map<string, ConstraintNode[]>();
+  for (const c of pathConstraints) {
+    const target = c.path?.segments[0];
+    if (!target) continue;
+    const group = byTarget.get(target) ?? [];
+    group.push(c);
+    byTarget.set(target, group);
+  }
+
+  // Build the property overrides object.
+  const propertyOverrides: Record<string, JsonSchema2020> = {};
+  for (const [target, constraints] of byTarget) {
+    const subSchema: JsonSchema2020 = {};
+    applyConstraints(subSchema, constraints);
+    propertyOverrides[target] = subSchema;
+  }
+
+  // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
+  if (schema.$ref) {
+    const { $ref, ...rest } = schema;
+    const refPart: JsonSchema2020 = { $ref };
+    const overridePart: JsonSchema2020 = {
+      properties: propertyOverrides,
+      ...rest,
+    };
+    return { allOf: [refPart, overridePart] };
+  }
+
+  // Inline object schema: merge property overrides directly.
+  if (schema.type === "object" && schema.properties) {
+    for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
+      if (schema.properties[target]) {
+        Object.assign(schema.properties[target], overrideSchema);
+      } else {
+        schema.properties[target] = overrideSchema;
+      }
+    }
+    return schema;
+  }
+
+  // allOf schema (already composed): add property overrides as another member.
+  if (schema.allOf) {
+    schema.allOf = [...schema.allOf, { properties: propertyOverrides }];
+    return schema;
+  }
+
+  // Fallback: wrap in allOf.
+  return {
+    allOf: [schema, { properties: propertyOverrides }],
+  };
 }
 
 // =============================================================================
@@ -455,8 +543,7 @@ function generateCustomType(_type: CustomTypeNode): JsonSchema2020 {
  * promotes to `"integer"` and suppresses the `multipleOf` keyword (integer is a
  * subtype of number; expressing it via multipleOf:1 is redundant).
  *
- * Path-targeted constraints (e.g., `@minimum :value 0`) are emitted at the field
- * level here; full sub-field targeting via allOf composition is a Phase 4 concern.
+ * Path-targeted constraints are handled separately by `applyPathTargetedConstraints`.
  */
 function applyConstraints(schema: JsonSchema2020, constraints: readonly ConstraintNode[]): void {
   for (const constraint of constraints) {

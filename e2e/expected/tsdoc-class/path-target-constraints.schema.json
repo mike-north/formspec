@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "total": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MonetaryAmount"
+        },
+        {
+          "properties": {
+            "value": {
+              "minimum": 0,
+              "maximum": 9999999.99
+            }
+          }
+        }
+      ]
+    },
+    "discount": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/MonetaryAmount"
+        },
+        {
+          "properties": {
+            "currency": {
+              "minLength": 3,
+              "maxLength": 3,
+              "pattern": "^[A-Z]{3}$"
+            }
+          }
+        }
+      ]
+    },
+    "lineItems": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/MonetaryAmount"
+          },
+          {
+            "properties": {
+              "value": {
+                "minimum": 0
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": ["total", "discount", "lineItems"],
+  "$defs": {
+    "MonetaryAmount": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        }
+      },
+      "required": ["value", "currency"],
+      "additionalProperties": false
+    }
+  }
+}

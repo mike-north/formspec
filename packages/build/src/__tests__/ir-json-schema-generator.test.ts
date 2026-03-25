@@ -1330,4 +1330,251 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
   });
+
+  // =============================================================================
+  // PATH-TARGETED CONSTRAINTS
+  // =============================================================================
+
+  describe("path-targeted constraints", () => {
+    const MONETARY_AMOUNT_REGISTRY = {
+      MonetaryAmount: {
+        name: "MonetaryAmount",
+        type: {
+          kind: "object" as const,
+          properties: [
+            {
+              name: "value",
+              type: { kind: "primitive" as const, primitiveKind: "number" as const },
+              optional: false,
+              constraints: [] as ConstraintNode[],
+              annotations: [] as AnnotationNode[],
+              provenance: PROVENANCE,
+            },
+            {
+              name: "currency",
+              type: { kind: "primitive" as const, primitiveKind: "string" as const },
+              optional: false,
+              constraints: [] as ConstraintNode[],
+              annotations: [] as AnnotationNode[],
+              provenance: PROVENANCE,
+            },
+          ],
+          additionalProperties: false,
+        } satisfies TypeNode,
+        provenance: PROVENANCE,
+      },
+    };
+
+    it("emits allOf with $ref and property overrides for path-targeted constraints on reference types", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "total",
+            { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Minimum",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
+        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+      });
+    });
+
+    it("applies path-targeted constraints directly to inline object properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "address",
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "zip",
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: false,
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["zip"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Pattern",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      expect((schema.properties as Record<string, unknown>)["address"]).toMatchObject({
+        type: "object",
+        properties: {
+          zip: { type: "string", pattern: "^\\d{5}$" },
+        },
+      });
+    });
+
+    it("applies path-targeted constraints to items schema for array types", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "lineItems",
+            {
+              kind: "array",
+              items: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Minimum",
+                },
+              },
+              {
+                kind: "constraint",
+                constraintKind: "minItems",
+                value: 1,
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@MinItems",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      const lineItems = (schema.properties as Record<string, unknown>)["lineItems"] as Record<
+        string,
+        unknown
+      >;
+      expect(lineItems).toMatchObject({
+        type: "array",
+        minItems: 1,
+      });
+      expect(lineItems["items"]).toEqual({
+        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+      });
+    });
+
+    it("handles mixed path-targeted and direct constraints on the same field", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "total",
+            { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Minimum",
+                },
+              },
+              {
+                kind: "constraint",
+                constraintKind: "maximum",
+                value: 999999,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Maximum",
+                },
+              },
+            ],
+            [
+              {
+                kind: "annotation",
+                annotationKind: "displayName",
+                value: "Total Amount",
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Field_displayName",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
+        allOf: [
+          { $ref: "#/$defs/MonetaryAmount" },
+          {
+            title: "Total Amount",
+            properties: { value: { minimum: 0, maximum: 999999 } },
+          },
+        ],
+      });
+    });
+  });
 });

@@ -69,7 +69,6 @@ export interface ValidateIROptions {
   readonly extensionRegistry?: ExtensionRegistry;
 }
 
-
 // =============================================================================
 // CONTEXT
 // =============================================================================
@@ -106,11 +105,7 @@ function addContradiction(
   });
 }
 
-function addTypeMismatch(
-  ctx: ValidationContext,
-  message: string,
-  primary: Provenance
-): void {
+function addTypeMismatch(ctx: ValidationContext, message: string, primary: Provenance): void {
   ctx.diagnostics.push({
     code: makeCode(ctx, "TYPE_MISMATCH", 1),
     message,
@@ -120,11 +115,7 @@ function addTypeMismatch(
   });
 }
 
-function addUnknownExtension(
-  ctx: ValidationContext,
-  message: string,
-  primary: Provenance
-): void {
+function addUnknownExtension(ctx: ValidationContext, message: string, primary: Provenance): void {
   ctx.diagnostics.push({
     code: makeCode(ctx, "UNKNOWN_EXTENSION", 1),
     message,
@@ -143,9 +134,7 @@ function findNumeric(
   constraints: readonly ConstraintNode[],
   constraintKind: NumericConstraintNode["constraintKind"]
 ): NumericConstraintNode | undefined {
-  return constraints.find(
-    (c): c is NumericConstraintNode => c.constraintKind === constraintKind
-  );
+  return constraints.find((c): c is NumericConstraintNode => c.constraintKind === constraintKind);
 }
 
 /** Extract the first length constraint with the given kind, if present. */
@@ -153,9 +142,7 @@ function findLength(
   constraints: readonly ConstraintNode[],
   constraintKind: LengthConstraintNode["constraintKind"]
 ): LengthConstraintNode | undefined {
-  return constraints.find(
-    (c): c is LengthConstraintNode => c.constraintKind === constraintKind
-  );
+  return constraints.find((c): c is LengthConstraintNode => c.constraintKind === constraintKind);
 }
 
 /** Extract all allowedMembers constraints. */
@@ -330,6 +317,11 @@ function checkTypeApplicability(
   const label = typeLabel(type);
 
   for (const constraint of constraints) {
+    // Path-targeted constraints (e.g., `@Minimum :value 0`) target a sub-field,
+    // not the field itself. Skip type-applicability checks for these — the
+    // constraint applies to the resolved sub-field type, not the declared field type.
+    if (constraint.path) continue;
+
     const ck = constraint.constraintKind;
 
     switch (ck) {
@@ -539,4 +531,3 @@ export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationR
     valid: ctx.diagnostics.every((d) => d.severity !== "error"),
   };
 }
-
