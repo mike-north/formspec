@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "simpleStatus": {
+      "enum": [
+        "draft",
+        "active",
+        "archived"
+      ],
+      "title": "Status"
+    },
+    "labeledPriority": {
+      "oneOf": [
+        {
+          "const": "low",
+          "title": "Low Priority"
+        },
+        {
+          "const": "medium",
+          "title": "Medium Priority"
+        },
+        {
+          "const": "high",
+          "title": "High Priority"
+        }
+      ],
+      "title": "Priority"
+    },
+    "country": {
+      "type": "string",
+      "x-formspec-source": "countries",
+      "title": "Country"
+    },
+    "city": {
+      "type": "string",
+      "x-formspec-source": "cities",
+      "x-formspec-params": [
+        "country"
+      ],
+      "title": "City"
+    }
+  },
+  "required": [
+    "labeledPriority"
+  ]
+}

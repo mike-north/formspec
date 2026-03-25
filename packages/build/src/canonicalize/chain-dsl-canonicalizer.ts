@@ -41,6 +41,7 @@ import type {
   LengthConstraintNode,
   NumericConstraintNode,
   ObjectProperty,
+  PatternConstraintNode,
   ObjectTypeNode,
   PlaceholderAnnotationNode,
   PrimitiveTypeNode,
@@ -165,11 +166,44 @@ function canonicalizeField(field: AnyField): FieldNode {
 
 function canonicalizeTextField(field: TextField<string>): FieldNode {
   const type: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "string" };
+  const constraints: ConstraintNode[] = [];
+
+  if (field.minLength !== undefined) {
+    const c: LengthConstraintNode = {
+      kind: "constraint",
+      constraintKind: "minLength",
+      value: field.minLength,
+      provenance: CHAIN_DSL_PROVENANCE,
+    };
+    constraints.push(c);
+  }
+
+  if (field.maxLength !== undefined) {
+    const c: LengthConstraintNode = {
+      kind: "constraint",
+      constraintKind: "maxLength",
+      value: field.maxLength,
+      provenance: CHAIN_DSL_PROVENANCE,
+    };
+    constraints.push(c);
+  }
+
+  if (field.pattern !== undefined) {
+    const c: PatternConstraintNode = {
+      kind: "constraint",
+      constraintKind: "pattern",
+      pattern: field.pattern,
+      provenance: CHAIN_DSL_PROVENANCE,
+    };
+    constraints.push(c);
+  }
+
   return buildFieldNode(
     field.name,
     type,
     field.required,
-    buildAnnotations(field.label, field.placeholder)
+    buildAnnotations(field.label, field.placeholder),
+    constraints
   );
 }
 
@@ -192,6 +226,16 @@ function canonicalizeNumberField(field: NumberField<string>): FieldNode {
       kind: "constraint",
       constraintKind: "maximum",
       value: field.max,
+      provenance: CHAIN_DSL_PROVENANCE,
+    };
+    constraints.push(c);
+  }
+
+  if (field.multipleOf !== undefined) {
+    const c: NumericConstraintNode = {
+      kind: "constraint",
+      constraintKind: "multipleOf",
+      value: field.multipleOf,
       provenance: CHAIN_DSL_PROVENANCE,
     };
     constraints.push(c);

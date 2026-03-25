@@ -1,0 +1,29 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/cpuThreshold"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/memoryThreshold"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/adminEmail"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/enableAlerts"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/alertChannels"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/retryPolicy"
+    }
+  ]
+}

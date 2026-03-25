@@ -12,6 +12,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r run test",
+    "test:e2e": "pnpm run build && pnpm --filter @formspec/e2e run test",
     "typecheck": "pnpm -r run typecheck",
     "api-extractor": "pnpm -r run api-extractor",
     "api-extractor:local": "pnpm -r run api-extractor:local",

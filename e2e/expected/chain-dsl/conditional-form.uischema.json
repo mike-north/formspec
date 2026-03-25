@@ -1,0 +1,71 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/paymentMethod",
+      "label": "Payment Method"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/cardNumber",
+      "label": "Card Number",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "scope": "#/properties/paymentMethod",
+          "schema": {
+            "const": "card"
+          }
+        }
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/expiryDate",
+      "label": "Expiry",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "scope": "#/properties/paymentMethod",
+          "schema": {
+            "const": "card"
+          }
+        }
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/accountNumber",
+      "label": "Account Number",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "scope": "#/properties/paymentMethod",
+          "schema": {
+            "const": "bank_transfer"
+          }
+        }
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/routingNumber",
+      "label": "Routing Number",
+      "rule": {
+        "effect": "SHOW",
+        "condition": {
+          "scope": "#/properties/paymentMethod",
+          "schema": {
+            "const": "bank_transfer"
+          }
+        }
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/savePaymentMethod",
+      "label": "Save for later"
+    }
+  ]
+}

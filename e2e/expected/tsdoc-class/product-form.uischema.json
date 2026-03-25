@@ -1,0 +1,33 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/name"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/description"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/price"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/currency"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/active"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/tags"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/metadata"
+    }
+  ]
+}
