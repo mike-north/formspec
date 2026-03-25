@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
 
@@ -43,25 +43,16 @@ export interface RunCliResult {
 
 export function runCli(args: string[], opts?: { cwd?: string }): RunCliResult {
   const cliPath = resolveCliPath();
-  try {
-    const stdout = execFileSync("node", [cliPath, ...args], {
-      encoding: "utf-8",
-      cwd: opts?.cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    return { stdout, stderr: "", exitCode: 0 };
-  } catch (error) {
-    const execError = error as {
-      status: number | null;
-      stdout: string | undefined;
-      stderr: string | undefined;
-    };
-    return {
-      stdout: execError.stdout ?? "",
-      stderr: execError.stderr ?? "",
-      exitCode: execError.status ?? 1,
-    };
-  }
+  const result = spawnSync("node", [cliPath, ...args], {
+    encoding: "utf-8",
+    cwd: opts?.cwd,
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.status ?? 1,
+  };
 }
 
 export function resolveFixture(...segments: string[]): string {

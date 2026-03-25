@@ -39,6 +39,7 @@ import {
 import { writeClassSchemas, writeFormSpecSchemas } from "./output/writer.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as ts from "typescript";
 
 /**
  * CLI options parsed from arguments.
@@ -164,7 +165,7 @@ OPTIONS:
 
 OUTPUT FILES:
   - Class outputs include schema.json and ui_schema.json
-  - When available, method parameter UI schemas are written as params.ui_schema.json
+  - FormSpec-based method params emit params.ui_schema.json when a params UI schema is available
   - FormSpec export UI schemas are written as ui_schema.json
 
 EXAMPLES:
@@ -202,6 +203,26 @@ function toLoadedSchemas(
     });
   }
   return result;
+}
+
+/**
+ * Throws if the analyzed source file has syntactic TypeScript errors.
+ *
+ * The CLI uses this to surface parse failures as a readable user error
+ * instead of continuing into class lookup and reporting "class not found".
+ */
+function assertNoSyntacticErrors(program: ts.Program, sourceFile: ts.SourceFile, filePath: string): void {
+  const diagnostics = program.getSyntacticDiagnostics(sourceFile);
+  if (diagnostics.length === 0) return;
+
+  const lines = diagnostics.map((diag) => {
+    const message = ts.flattenDiagnosticMessageText(diag.messageText, "\n");
+    const start = diag.start;
+    const { line, character } = sourceFile.getLineAndCharacterOfPosition(start);
+    return `  ${sourceFile.fileName}:${String(line + 1)}:${String(character + 1)} - ${message}`;
+  });
+
+  throw new Error(`TypeScript syntax error(s) in ${filePath}:\n${lines.join("\n")}`);
 }
 
 /**
@@ -255,6 +276,7 @@ async function main(): Promise<void> {
     // Step 1: Static analysis with TypeScript
     const ctx = createProgramContext(options.filePath);
     console.log("✓ Created TypeScript program");
+    assertNoSyntacticErrors(ctx.program, ctx.sourceFile, options.filePath);
 
     // Step 2: Resolve compiled JS path for runtime loading
     const compiledPath = options.compiledPath ?? resolveCompiledPath(options.filePath);
@@ -265,17 +287,28 @@ async function main(): Promise<void> {
     let loadedFormSpecs = new Map<string, FormSpecSchemas>();
     let rawModuleFromLoad: Record<string, unknown> | undefined;
     let loadError: string | undefined;
+    let reportedRuntimeLoadFailure = false;
+    const warnRuntimeLoadFailureOnce = (): void => {
+      if (loadError === undefined || reportedRuntimeLoadFailure) {
+        return;
+      }
+
+      console.warn(
+        "⚠️  Runtime FormSpec loading failed; method schemas that reference FormSpec exports may fall back to static analysis."
+      );
+      console.warn(`   ${loadError}`);
+      reportedRuntimeLoadFailure = true;
+    };
     try {
       const { formSpecs, module } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
       console.log(`✓ Loaded ${String(formSpecs.size)} FormSpec export(s) from module`);
     } catch (error) {
-      // Track load errors for better messaging later
-      // Runtime loading is only needed for chain DSL exports and method parameters
-      if (error instanceof Error && error.message.includes("Cannot find module")) {
-        loadError = `Compiled file not found at: ${compiledPath}`;
-      }
+      // Track load errors for better messaging later. Runtime loading is only
+      // needed for chain DSL exports and method parameters, so a failure here
+      // should still allow class-only analysis to continue.
+      loadError = error instanceof Error ? error.message : String(error);
     }
 
     // Step 4: If className specified, analyze the class
@@ -285,8 +318,8 @@ async function main(): Promise<void> {
       console.warn();
 
       if (loadError) {
-        // Compiled file doesn't exist - suggest building first
-        console.warn("   For chain DSL forms, compile your TypeScript first:");
+        // The compiled JavaScript could not be loaded for chain DSL exports.
+        console.warn("   For chain DSL forms, the compiled JavaScript could not be loaded:");
         console.warn(`     ${loadError}`);
         console.warn();
         console.warn("   Run your build tool (tsc, esbuild, swc, etc.) then try again.");
@@ -353,6 +386,7 @@ async function main(): Promise<void> {
           // Load specific FormSpecs if not already loaded
           const missing = Array.from(formSpecRefs).filter((name) => !loadedFormSpecs.has(name));
           if (missing.length > 0) {
+            warnRuntimeLoadFailureOnce();
             try {
               const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
               for (const [name, schemas] of namedFormSpecs) {
