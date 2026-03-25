@@ -1,5 +1,22 @@
 # @formspec/build
 
+## 0.1.0-alpha.14
+
+### Minor Changes
+
+- [#72](https://github.com/mike-north/formspec/pull/72) [`ed89d72`](https://github.com/mike-north/formspec/commit/ed89d72863ad475e811d0d9c0c406816d65fda6d) Thanks [@mike-north](https://github.com/mike-north)! - Add path-target syntax for constraint tags: `:fieldName` modifier targets a specific subproperty of a complex-typed field (e.g., `@minimum :value 0` constrains the `value` subproperty of a named type)
+
+### Patch Changes
+
+- [#83](https://github.com/mike-north/formspec/pull/83) [`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec) Thanks [@mike-north](https://github.com/mike-north)! - Fix path-target constraint traversability check: validation now correctly rejects constraints targeting non-traversable types (e.g., primitives) via the `:path` modifier
+
+- [#83](https://github.com/mike-north/formspec/pull/83) [`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec) Thanks [@mike-north](https://github.com/mike-north)! - Fix prototype pollution vulnerability in `isBuiltinConstraintName`: guard now uses `Object.hasOwn()` instead of the `in` operator, preventing `__proto__` and inherited properties from being treated as valid constraint names
+
+- [#83](https://github.com/mike-north/formspec/pull/83) [`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec) Thanks [@mike-north](https://github.com/mike-north)! - Internal: replace `as` casts with type guards and TypeScript narrowing in the TSDoc analyzer pipeline; extract `tryParseJson` utility to eliminate duplicated JSON parsing patterns
+
+- Updated dependencies [[`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec)]:
+  - @formspec/core@0.1.0-alpha.14
+
 ## 0.1.0-alpha.13
 
 ### Minor Changes

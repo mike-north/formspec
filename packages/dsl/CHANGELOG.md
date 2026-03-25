@@ -1,5 +1,12 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.14
+
+### Patch Changes
+
+- Updated dependencies [[`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec)]:
+  - @formspec/core@0.1.0-alpha.14
+
 ## 0.1.0-alpha.13
 
 ### Patch Changes
