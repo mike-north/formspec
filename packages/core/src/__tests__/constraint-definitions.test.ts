@@ -1,15 +1,12 @@
 /**
- * Tests for constraint definition utilities exported from @formspec/core.
- *
- * Covers normalizeConstraintTagName and isBuiltinConstraintName.
+ * Runtime tests for constraint definition utilities.
  */
-
 import { describe, it, expect } from "vitest";
 import {
   normalizeConstraintTagName,
   isBuiltinConstraintName,
   BUILTIN_CONSTRAINT_DEFINITIONS,
-} from "@formspec/core";
+} from "../types/constraint-definitions.js";
 
 describe("normalizeConstraintTagName", () => {
   it("lowercases a PascalCase tag name", () => {
@@ -81,5 +78,9 @@ describe("isBuiltinConstraintName", () => {
 
   it("returns false for 'hasOwnProperty' (prototype property)", () => {
     expect(isBuiltinConstraintName("hasOwnProperty")).toBe(false);
+  });
+
+  it("returns false for '__proto__' (prototype property)", () => {
+    expect(isBuiltinConstraintName("__proto__")).toBe(false);
   });
 });
