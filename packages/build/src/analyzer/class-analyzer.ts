@@ -109,7 +109,7 @@ export function analyzeClassToIR(
   const staticMethods: MethodInfo[] = [];
 
   for (const member of classDecl.members) {
-    if (ts.isPropertyDeclaration(member)) {
+    if (ts.isPropertyDeclaration(member) && isPublicInstanceProperty(member)) {
       const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
       if (fieldNode) {
         fields.push(fieldNode);
@@ -629,7 +629,11 @@ function getNamedTypeFieldNodeInfoMap(
     if (classDecl) {
       const map = new Map<string, FieldNodeInfo>();
       for (const member of classDecl.members) {
-        if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
+        if (
+          ts.isPropertyDeclaration(member) &&
+          ts.isIdentifier(member.name) &&
+          isPublicInstanceProperty(member)
+        ) {
           const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
           if (fieldNode) {
             map.set(fieldNode.name, {
@@ -686,6 +690,22 @@ function buildFieldNodeInfoMap(
     }
   }
   return map;
+}
+
+/**
+ * Returns true when a class property should participate in schema generation.
+ *
+ * FormSpec only models public instance data fields. Private/protected members
+ * are implementation details, and static members live on the constructor
+ * rather than the instance shape.
+ */
+function isPublicInstanceProperty(member: ts.PropertyDeclaration): boolean {
+  const flags = ts.getCombinedModifierFlags(member);
+  return (
+    (flags & ts.ModifierFlags.Private) === 0 &&
+    (flags & ts.ModifierFlags.Protected) === 0 &&
+    (flags & ts.ModifierFlags.Static) === 0
+  );
 }
 
 // =============================================================================
