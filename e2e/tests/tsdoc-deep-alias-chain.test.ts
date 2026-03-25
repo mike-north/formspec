@@ -186,6 +186,36 @@ describe("TSDoc Deep Alias Chain (3 levels)", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Spec-expected $defs structure (BUG-4: not yet implemented)
+  // -------------------------------------------------------------------------
+
+  describe("Spec-expected $defs structure (BUG-4: not yet implemented)", () => {
+    /**
+     * Per spec 003 §5.2 and 005 §3.3, named type aliases should be emitted
+     * as $defs entries referenced via $ref. The expected structure is:
+     *
+     * $defs: {
+     *   Percentage: { allOf: [{ type: "number" }, { minimum: 0, maximum: 100 }] },
+     *   RoundedPercentage: { allOf: [{ $ref: "#/$defs/Percentage" }, { multipleOf: 5 }] },
+     *   HighPercentage: { allOf: [{ $ref: "#/$defs/RoundedPercentage" }, { minimum: 10 }] }
+     * }
+     *
+     * Fields should reference these via $ref with field-level constraints in allOf.
+     */
+    it.skip("should emit Percentage, RoundedPercentage, HighPercentage in $defs", () => {
+      expect(schema).toHaveProperty("$defs");
+      const defs = schema["$defs"] as Record<string, unknown>;
+      expect(defs).toHaveProperty("Percentage");
+      expect(defs).toHaveProperty("RoundedPercentage");
+      expect(defs).toHaveProperty("HighPercentage");
+    });
+
+    it.skip("confidence field should use $ref to HighPercentage", () => {
+      expect(properties["confidence"]).toHaveProperty("$ref", "#/$defs/HighPercentage");
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Gold-master comparison
   // -------------------------------------------------------------------------
 
