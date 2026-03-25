@@ -76,9 +76,9 @@ describe("Type Mappings — comprehensive", () => {
 
     // Document current (non-spec) behavior so tests don't silently fail
     it("nullableString uses anyOf [current behavior, not spec-compliant]", () => {
-      // BUG: spec says oneOf — see skip above
+      // spec 003 §2.3: T | null → oneOf; current impl emits anyOf
       const prop = properties["nullableString"];
-      const union = (prop["anyOf"] ?? prop["oneOf"]) as unknown[] | undefined;
+      const union = prop["anyOf"] as unknown[] | undefined;
       expect(union).toBeDefined();
       expect(union).toContainEqual({ type: "string" });
       expect(union).toContainEqual({ type: "null" });

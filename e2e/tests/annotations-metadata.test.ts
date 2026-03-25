@@ -13,7 +13,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
-  let uischema: Record<string, unknown>;
+  let uischema: Record<string, unknown> | undefined;
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-metadata-"));
