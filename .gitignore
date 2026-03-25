@@ -150,3 +150,6 @@ vite.config.ts.timestamp-*
 
 scratch
 .worktrees
+
+# CLI output generated during E2E test development / manual probing
+e2e/generated

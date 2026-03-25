@@ -1,0 +1,17 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/confidence"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/score"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/ratio"
+    }
+  ]
+}
