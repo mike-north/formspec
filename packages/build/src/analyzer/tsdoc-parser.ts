@@ -47,6 +47,7 @@ import {
   type Provenance,
   type NumericConstraintNode,
   type LengthConstraintNode,
+  type PathTarget,
 } from "@formspec/core";
 
 // =============================================================================
@@ -300,6 +301,30 @@ export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
 }
 
 // =============================================================================
+// PUBLIC HELPERS — path target extraction
+// =============================================================================
+
+/**
+ * Extracts a path-target prefix (`:fieldName`) from constraint tag text.
+ * Returns the parsed PathTarget and remaining text, or null if no path target.
+ *
+ * @example
+ * extractPathTarget(":value 0") // → { path: { segments: ["value"] }, remainingText: "0" }
+ * extractPathTarget("42")       // → null
+ */
+export function extractPathTarget(
+  text: string
+): { path: PathTarget; remainingText: string } | null {
+  const trimmed = text.trimStart();
+  const match = /^:([a-zA-Z_]\w*)\s+([\s\S]*)$/.exec(trimmed);
+  if (!match?.[1] || !match[2]) return null;
+  return {
+    path: { segments: [match[1]] },
+    remainingText: match[2],
+  };
+}
+
+// =============================================================================
 // PRIVATE HELPERS — TSDoc text extraction
 // =============================================================================
 
@@ -345,10 +370,15 @@ function parseConstraintValue(
     return null;
   }
 
+  // Extract optional path target (e.g., ":value 0" → path=["value"], text="0")
+  const pathResult = extractPathTarget(text);
+  const effectiveText = pathResult ? pathResult.remainingText : text;
+  const path = pathResult?.path;
+
   const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[tagName];
 
   if (expectedType === "number") {
-    const value = Number(text);
+    const value = Number(effectiveText);
     if (Number.isNaN(value)) {
       return null;
     }
@@ -359,6 +389,7 @@ function parseConstraintValue(
         kind: "constraint",
         constraintKind: numericKind,
         value,
+        ...(path && { path }),
         provenance,
       };
     }
@@ -369,6 +400,7 @@ function parseConstraintValue(
         kind: "constraint",
         constraintKind: lengthKind,
         value,
+        ...(path && { path }),
         provenance,
       };
     }
@@ -378,7 +410,7 @@ function parseConstraintValue(
 
   if (expectedType === "json") {
     try {
-      const parsed: unknown = JSON.parse(text);
+      const parsed: unknown = JSON.parse(effectiveText);
       if (!Array.isArray(parsed)) {
         return null;
       }
@@ -397,6 +429,7 @@ function parseConstraintValue(
         kind: "constraint",
         constraintKind: "allowedMembers",
         members,
+        ...(path && { path }),
         provenance,
       };
     } catch {
@@ -408,7 +441,8 @@ function parseConstraintValue(
   return {
     kind: "constraint",
     constraintKind: "pattern",
-    pattern: text,
+    pattern: effectiveText,
+    ...(path && { path }),
     provenance,
   };
 }

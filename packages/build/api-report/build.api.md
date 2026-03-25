@@ -245,6 +245,8 @@ export interface JsonSchema2020 {
     // (undocumented)
     additionalProperties?: boolean;
     // (undocumented)
+    allOf?: readonly JsonSchema2020[];
+    // (undocumented)
     anyOf?: readonly JsonSchema2020[];
     // (undocumented)
     const?: string | number | boolean | null;

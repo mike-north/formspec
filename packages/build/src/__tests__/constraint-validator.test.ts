@@ -954,4 +954,68 @@ describe("validateIR", () => {
       expect(result.diagnostics.every((d) => d.severity === "warning")).toBe(true);
     });
   });
+
+  describe("path-targeted constraints on non-traversable types", () => {
+    it("emits TYPE_MISMATCH for path-targeted constraint on primitive field", () => {
+      const ir = makeIR([
+        makeField("count", NUMBER_TYPE, [
+          {
+            ...minConstraint(0),
+            path: { segments: ["value"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.message).toContain("cannot be traversed");
+    });
+
+    it("emits TYPE_MISMATCH for path-targeted constraint on enum field", () => {
+      const ir = makeIR([
+        makeField("status", enumType(["active", "inactive"]), [
+          {
+            ...patternConstraint("^[A-Z]+$"),
+            path: { segments: ["code"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0]?.message).toContain("cannot be traversed");
+    });
+
+    it("allows path-targeted constraints on object/reference/array fields without TYPE_MISMATCH", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [
+          {
+            name: "value",
+            type: NUMBER_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: prov(1),
+          },
+        ],
+        additionalProperties: false,
+      };
+      const ir = makeIR([
+        makeField("amount", objectType, [
+          {
+            ...minConstraint(0),
+            path: { segments: ["value"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      // Should NOT produce a "cannot be traversed" diagnostic
+      expect(result.diagnostics.filter((d) => d.message.includes("cannot be traversed"))).toHaveLength(0);
+    });
+  });
 });
