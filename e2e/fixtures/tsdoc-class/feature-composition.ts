@@ -24,7 +24,7 @@ export class FeatureComposition {
 
   /**
    * Constraints on nullable field.
-   * Per spec: constraints apply to the non-null branch of oneOf.
+   * Per spec: constraints apply to the non-null branch of anyOf.
    * @minimum 0
    * @maximum 150
    */
