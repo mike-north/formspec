@@ -141,6 +141,15 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
+    // Path-targeted constraints should be skipped
+    {
+      code: `
+        class Form {
+          /** @minimum :value 100 @maximum :value 50 */
+          amount!: { value: number };
+        }
+      `,
+    },
   ],
   invalid: [
     // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
