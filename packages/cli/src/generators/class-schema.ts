@@ -385,18 +385,26 @@ function parseConditionValue(
 ): unknown {
   if (!targetFieldType) return rawValue;
 
-  // Unwrap nullable (T | null | undefined → T) so we check the core type
+  // Strip null/undefined from unions to get the effective non-nullable types.
+  // For `boolean | null` TypeScript emits `true | false | null` (3 members).
+  // We must perform all type checks on the stripped set, not on the original
+  // union, so that nullable variants are handled identically to their non-
+  // nullable counterparts.
   let effectiveType = targetFieldType;
+  let nonNullTypes: ts.Type[] | undefined;
   if (targetFieldType.isUnion()) {
-    const nonNull = targetFieldType.types.filter(
+    nonNullTypes = targetFieldType.types.filter(
       (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
     );
-    if (nonNull.length === 1 && nonNull[0] !== undefined) {
-      effectiveType = nonNull[0];
+    if (nonNullTypes.length === 1 && nonNullTypes[0] !== undefined) {
+      // Single non-null type — unwrap to a scalar for the checks below.
+      effectiveType = nonNullTypes[0];
     }
+    // NOTE: if nonNullTypes.length > 1 (e.g. true | false after stripping null),
+    // we do NOT set effectiveType — instead we check nonNullTypes directly below.
   }
 
-  // Boolean (intrinsic boolean type or a BooleanLiteral)
+  // Boolean (intrinsic boolean type or a BooleanLiteral after unwrapping)
   if (
     effectiveType.flags & ts.TypeFlags.Boolean ||
     effectiveType.flags & ts.TypeFlags.BooleanLiteral
@@ -406,11 +414,14 @@ function parseConditionValue(
     return rawValue;
   }
 
-  // Boolean expressed as a union of true | false (TS represents boolean as BooleanLiteral union)
-  if (effectiveType.isUnion()) {
+  // Boolean expressed as a union of true | false — check the non-null filtered
+  // types so that `boolean | null` (true | false | null after stripping → [true, false])
+  // is correctly identified as boolean, not left as the 3-member original union.
+  const typesToCheck = nonNullTypes ?? (effectiveType.isUnion() ? effectiveType.types : undefined);
+  if (typesToCheck !== undefined) {
     const isBooleanUnion =
-      effectiveType.types.length === 2 &&
-      effectiveType.types.every((t) => Boolean(t.flags & ts.TypeFlags.BooleanLiteral));
+      typesToCheck.length === 2 &&
+      typesToCheck.every((t) => Boolean(t.flags & ts.TypeFlags.BooleanLiteral));
     if (isBooleanUnion) {
       if (rawValue === "true") return true;
       if (rawValue === "false") return false;
@@ -418,7 +429,7 @@ function parseConditionValue(
     }
   }
 
-  // Number (intrinsic number type or NumberLiteral)
+  // Number (intrinsic number type or NumberLiteral after unwrapping)
   if (
     effectiveType.flags & ts.TypeFlags.Number ||
     effectiveType.flags & ts.TypeFlags.NumberLiteral
@@ -428,11 +439,11 @@ function parseConditionValue(
     return rawValue;
   }
 
-  // Number literal union — all members are number literals
-  if (effectiveType.isUnion()) {
-    const allNumbers = effectiveType.types.every(
-      (t) => Boolean(t.flags & ts.TypeFlags.NumberLiteral)
-    );
+  // Number literal union — check non-null filtered types
+  if (typesToCheck !== undefined) {
+    const allNumbers =
+      typesToCheck.length > 0 &&
+      typesToCheck.every((t) => Boolean(t.flags & ts.TypeFlags.NumberLiteral));
     if (allNumbers) {
       const num = Number(rawValue);
       if (Number.isFinite(num)) return num;

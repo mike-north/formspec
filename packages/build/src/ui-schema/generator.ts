@@ -124,34 +124,74 @@ function createShowRule(fieldName: string, value: unknown): Rule {
 }
 
 /**
+ * Converts a JSON Forms scope string into a nested properties condition schema.
+ *
+ * A scope like `#/properties/payment/properties/method` becomes:
+ * `{ properties: { payment: { properties: { method: <schema> } } } }`.
+ *
+ * A scope of `#` (already a combined condition) passes through its schema
+ * unchanged — callers must handle that case before calling this function.
+ *
+ * @param scope - The JSON Pointer scope string (e.g. "#/properties/foo/properties/bar")
+ * @param schema - The condition schema to embed at the leaf
+ */
+function scopeToConditionSchema(
+  scope: string,
+  schema: import("./types.js").RuleConditionSchema
+): import("./types.js").RuleConditionSchema {
+  // Strip the leading "#/properties/" prefix and split on "/properties/"
+  // to get an array of field name segments, innermost-last.
+  const withoutHash = scope.replace(/^#\//, "");
+  // Split by "/properties/" — the first segment is also "properties/<name>".
+  // We extract just the names: remove the leading "properties/" prefix then split.
+  const withoutLeadingProp = withoutHash.replace(/^properties\//, "");
+  const fieldNames = withoutLeadingProp.split("/properties/");
+
+  // Build the nested properties structure from inside out (rightmost field first).
+  let result: import("./types.js").RuleConditionSchema = schema;
+  for (let i = fieldNames.length - 1; i >= 0; i--) {
+    const name = fieldNames[i];
+    if (name !== undefined) {
+      result = { properties: { [name]: result } };
+    }
+  }
+  return result;
+}
+
+/**
  * Combines two rules into one using allOf.
  *
  * When elements are nested inside multiple conditionals, all conditions
  * must be met for the element to be visible.
+ *
+ * Handles nested-scope conditions (e.g. `#/properties/payment/properties/method`)
+ * by converting each scope into a properly nested properties structure rather
+ * than relying on `replace("#/properties/", "")`, which only strips the first
+ * occurrence and produces broken keys like `"payment/properties/method"`.
  */
 function combineRules(parentRule: Rule, childRule: Rule): Rule {
-  // Both rules should have the same effect (SHOW)
-  // Combine conditions using allOf
   const parentCondition = parentRule.condition;
   const childCondition = childRule.condition;
+
+  // Build the condition schema for each rule, accounting for both
+  // flat scopes (#/properties/foo) and nested scopes
+  // (#/properties/foo/properties/bar).
+  const parentSchema =
+    parentCondition.scope === "#"
+      ? parentCondition.schema
+      : scopeToConditionSchema(parentCondition.scope, parentCondition.schema);
+
+  const childSchema =
+    childCondition.scope === "#"
+      ? childCondition.schema
+      : scopeToConditionSchema(childCondition.scope, childCondition.schema);
 
   return {
     effect: "SHOW",
     condition: {
       scope: "#",
       schema: {
-        allOf: [
-          {
-            properties: {
-              [parentCondition.scope.replace("#/properties/", "")]: parentCondition.schema,
-            },
-          },
-          {
-            properties: {
-              [childCondition.scope.replace("#/properties/", "")]: childCondition.schema,
-            },
-          },
-        ],
+        allOf: [parentSchema, childSchema],
       },
     },
   };
