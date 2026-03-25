@@ -42,9 +42,9 @@ export function assertPropertyConstraints(
 }
 
 export interface RunCliResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly exitCode: number;
 }
 
 export function runCli(args: string[], opts?: { cwd?: string }): RunCliResult {

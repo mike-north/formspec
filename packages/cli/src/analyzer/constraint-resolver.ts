@@ -19,14 +19,14 @@ import type { ConstraintViolation } from "./constraint-validator.js";
  */
 export interface AliasChainEntry {
   /** The alias name (e.g. "Integer", "Percentage") */
-  name: string;
+  readonly name: string;
   /** TSDoc constraint tags declared directly on this alias */
-  tags: CommentTagInfo[];
+  readonly tags: CommentTagInfo[];
   /**
    * The name of the parent alias if this alias extends another named type alias.
    * Undefined when the parent is a plain primitive (number, string, etc.).
    */
-  parentName: string | undefined;
+  readonly parentName: string | undefined;
 }
 
 /**
@@ -34,14 +34,14 @@ export interface AliasChainEntry {
  */
 export interface ResolvedConstraints {
   /** Merged constraint tags */
-  tags: CommentTagInfo[];
+  readonly tags: CommentTagInfo[];
   /** Diagnostic messages (warnings/errors), including fieldName from the call site */
-  diagnostics: ConstraintViolation[];
+  readonly diagnostics: ConstraintViolation[];
   /**
    * Per-level alias chain info for allOf + $ref composition.
    * Ordered leaf-first (most specific alias first, root alias last).
    */
-  aliasChain: AliasChainEntry[];
+  readonly aliasChain: AliasChainEntry[];
 }
 
 /**

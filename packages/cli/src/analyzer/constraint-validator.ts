@@ -8,9 +8,9 @@
 import type { JsonSchema } from "./type-converter.js";
 
 export interface ConstraintViolation {
-  fieldName: string;
-  severity: "error" | "warning";
-  message: string;
+  readonly fieldName: string;
+  readonly severity: "error" | "warning";
+  readonly message: string;
 }
 
 /**

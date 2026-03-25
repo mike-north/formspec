@@ -13,9 +13,9 @@ import * as ts from "typescript";
  */
 export interface CommentTagInfo {
   /** Tag name without @ prefix (e.g., "minimum", "displayName") */
-  tagName: string;
+  readonly tagName: string;
   /** Parsed value (number, string, boolean, or undefined for bare tags) */
-  value: number | string | boolean | undefined;
+  readonly value: number | string | boolean | undefined;
 }
 
 /**
