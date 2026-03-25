@@ -35,6 +35,7 @@ describe("Generator Determinism", () => {
     const schemaFile1 = findSchemaFile(tempDir1, "schema.json");
     expect(schemaFile1).toBeDefined();
     if (!schemaFile1) throw new Error("Schema file not found in run 1");
+    expect(path.basename(schemaFile1)).toBe("schema.json");
     const schema1 = fs.readFileSync(schemaFile1, "utf-8");
 
     const tempDir2 = makeTempDir("formspec-det-run2-");
@@ -43,6 +44,7 @@ describe("Generator Determinism", () => {
     const schemaFile2 = findSchemaFile(tempDir2, "schema.json");
     expect(schemaFile2).toBeDefined();
     if (!schemaFile2) throw new Error("Schema file not found in run 2");
+    expect(path.basename(schemaFile2)).toBe("schema.json");
     const schema2 = fs.readFileSync(schemaFile2, "utf-8");
 
     expect(schema1).toBe(schema2);
@@ -52,14 +54,16 @@ describe("Generator Determinism", () => {
     const fixture = resolveFixture("tsdoc-class", "constrained-form.ts");
 
     const tempDir1 = makeTempDir("formspec-det-ui-run1-");
-    runCli(["generate", fixture, "ConstrainedForm", "-o", tempDir1]);
+    const result1 = runCli(["generate", fixture, "ConstrainedForm", "-o", tempDir1]);
+    expect(result1.exitCode).toBe(0);
     const uiFile1 = findSchemaFile(tempDir1, "ui_schema.json");
     expect(uiFile1).toBeDefined();
     if (!uiFile1) throw new Error("UI Schema file not found in run 1");
     const ui1 = fs.readFileSync(uiFile1, "utf-8");
 
     const tempDir2 = makeTempDir("formspec-det-ui-run2-");
-    runCli(["generate", fixture, "ConstrainedForm", "-o", tempDir2]);
+    const result2 = runCli(["generate", fixture, "ConstrainedForm", "-o", tempDir2]);
+    expect(result2.exitCode).toBe(0);
     const uiFile2 = findSchemaFile(tempDir2, "ui_schema.json");
     expect(uiFile2).toBeDefined();
     if (!uiFile2) throw new Error("UI Schema file not found in run 2");
@@ -77,6 +81,7 @@ describe("Generator Determinism", () => {
     const schemaFile1 = findSchemaFile(tempDir1, "schema.json");
     expect(schemaFile1).toBeDefined();
     if (!schemaFile1) throw new Error("Schema file not found in run 1");
+    expect(path.basename(schemaFile1)).toBe("schema.json");
     const schema1 = fs.readFileSync(schemaFile1, "utf-8");
 
     const tempDir2 = makeTempDir("formspec-det-iface-run2-");
@@ -85,6 +90,7 @@ describe("Generator Determinism", () => {
     const schemaFile2 = findSchemaFile(tempDir2, "schema.json");
     expect(schemaFile2).toBeDefined();
     if (!schemaFile2) throw new Error("Schema file not found in run 2");
+    expect(path.basename(schemaFile2)).toBe("schema.json");
     const schema2 = fs.readFileSync(schemaFile2, "utf-8");
 
     expect(schema1).toBe(schema2);

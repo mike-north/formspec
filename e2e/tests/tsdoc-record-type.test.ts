@@ -8,7 +8,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
+import {
+  runCli,
+  resolveFixture,
+  findSchemaFile,
+  loadExpected,
+} from "../helpers/schema-assertions.js";
 
 describe("Record<string, T> Type Mapping", () => {
   let tempDir: string;
@@ -25,6 +30,7 @@ describe("Record<string, T> Type Mapping", () => {
     const schemaFile = findSchemaFile(tempDir, "schema.json");
     expect(schemaFile).toBeDefined();
     if (!schemaFile) throw new Error("Schema file not found");
+    expect(path.basename(schemaFile)).toBe("schema.json");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
     defs = schema["$defs"] as Record<string, Record<string, unknown>>;
@@ -68,10 +74,10 @@ describe("Record<string, T> Type Mapping", () => {
       expect(defs["Record"]).toHaveProperty("properties");
     });
 
-    it("Record def has additionalProperties set", () => {
-      // The generator emits additionalProperties: false for Record<string, T>
-      // (the value type T is not yet reflected in additionalProperties schema)
-      expect(defs["Record"]).toHaveProperty("additionalProperties");
+    it("Record def has additionalProperties: false", () => {
+      // TODO: Record<string, string> should emit additionalProperties: { type: "string" }
+      // Current behavior emits additionalProperties: false (value type T not reflected)
+      expect(defs["Record"]?.["additionalProperties"]).toBe(false);
     });
   });
 
@@ -93,6 +99,13 @@ describe("Record<string, T> Type Mapping", () => {
       expect(properties["tags"]?.["items"]).toEqual({ type: "string" });
       const required = schema["required"] as string[];
       expect(required).not.toContain("tags");
+    });
+  });
+
+  describe("Gold-master comparison", () => {
+    it("matches expected JSON Schema", () => {
+      const expected = loadExpected("tsdoc-class/product-form.schema.json");
+      expect(schema).toEqual(expected);
     });
   });
 });

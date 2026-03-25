@@ -30,6 +30,7 @@ describe("TSDoc Deprecated Fields", () => {
     const schemaFile = findSchemaFile(tempDir, "schema.json");
     expect(schemaFile).toBeDefined();
     if (!schemaFile) throw new Error("Schema file not found");
+    expect(path.basename(schemaFile)).toBe("schema.json");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
   });
