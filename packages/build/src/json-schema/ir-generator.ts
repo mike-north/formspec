@@ -462,8 +462,9 @@ function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): Js
 /**
  * Generates JSON Schema for a union type.
  *
- * Union handling strategy:
- * - Boolean shorthand: `true | false` → `{ type: "boolean" }` (not anyOf)
+ * Union handling strategy (per spec 003):
+ * - Boolean shorthand: `true | false` → `{ type: "boolean" }` (not oneOf/anyOf)
+ * - Nullable unions: `T | null` → `{ "oneOf": [<T schema>, { "type": "null" }] }` (§2.3)
  * - All other unions → `anyOf` (members may overlap; discriminated union
  *   detection is deferred to a future phase per design doc 003 §7.4)
  */
@@ -473,7 +474,15 @@ function generateUnionType(type: UnionTypeNode, ctx: GeneratorContext): JsonSche
     return { type: "boolean" };
   }
 
-  // Default: anyOf for all non-boolean unions.
+  // Nullable union: `T | null` → oneOf per spec 003 §2.3.
+  // A nullable union is any union where exactly one member is the null primitive.
+  if (isNullableUnion(type)) {
+    return {
+      oneOf: type.members.map((m) => generateTypeNode(m, ctx)),
+    };
+  }
+
+  // Default: anyOf for non-discriminated object unions (spec 003 §7.4).
   // Discriminated union detection (shared required property with distinct consts)
   // is deferred to a future phase.
   return {
@@ -494,6 +503,16 @@ function isBooleanUnion(type: UnionTypeNode): boolean {
     kinds.every((k) => k === "primitive") &&
     type.members.every((m) => m.kind === "primitive" && m.primitiveKind === "boolean")
   );
+}
+
+/**
+ * Returns true if the union is a nullable union (`T | null` for any T).
+ *
+ * A nullable union has exactly one member that is the `null` primitive type.
+ * Per spec 003 §2.3, nullable unions map to `oneOf` (not `anyOf`).
+ */
+function isNullableUnion(type: UnionTypeNode): boolean {
+  return type.members.some((m) => m.kind === "primitive" && m.primitiveKind === "null");
 }
 
 /**

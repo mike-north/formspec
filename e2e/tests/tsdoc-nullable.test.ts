@@ -1,5 +1,5 @@
 /**
- * @see 003-json-schema-vocabulary.md — "T | null → { anyOf: [<T schema>, { type: 'null' }] }"
+ * @see 003-json-schema-vocabulary.md §2.3 — "T | null → { oneOf: [<T schema>, { type: 'null' }] }"
  * @see 003-json-schema-vocabulary.md — "undefined → Not emitted (optionality via required, per S8)"
  * @see 003-json-schema-vocabulary.md — "String literal union → enum"
  */
@@ -41,15 +41,15 @@ describe("TSDoc Nullable Types", () => {
     }
   });
 
-  // V2: "T | null → { anyOf: [<T schema>, { type: null }] }"
-  it("nickname (required, string | null) → anyOf[string, null]", () => {
-    expect(properties["nickname"]["anyOf"]).toEqual([{ type: "string" }, { type: "null" }]);
-    // Should NOT have a top-level type (anyOf is the constraint)
+  // 003 §2.3: "T | null → { oneOf: [<T schema>, { type: 'null' }] }"
+  it("nickname (required, string | null) → oneOf[string, null]", () => {
+    expect(properties["nickname"]["oneOf"]).toEqual([{ type: "string" }, { type: "null" }]);
+    // Should NOT have a top-level type (oneOf is the constraint)
     expect(properties["nickname"]["type"]).toBeUndefined();
   });
 
-  it("score (required, number | null) → anyOf[number, null]", () => {
-    expect(properties["score"]["anyOf"]).toEqual([{ type: "number" }, { type: "null" }]);
+  it("score (required, number | null) → oneOf[number, null]", () => {
+    expect(properties["score"]["oneOf"]).toEqual([{ type: "number" }, { type: "null" }]);
     expect(properties["score"]["type"]).toBeUndefined();
   });
 
