@@ -9,32 +9,32 @@
 
 export interface SimpleConfig {
   /**
-   * @Field_displayName Full Name
-   * @Field_description The user's legal name
+   * @displayName Full Name
+   * @description The user's legal name
    * @minLength 1
    * @maxLength 200
    */
   name: string;
 
-  /** @Field_displayName Age @minimum 0 @maximum 150 */
+  /** @displayName Age @minimum 0 @maximum 150 */
   age: number;
 
-  /** @Field_displayName Email @pattern ^[^@]+@[^@]+$ */
+  /** @displayName Email @pattern ^[^@]+@[^@]+$ */
   email?: string;
 
-  /** @Field_displayName Active */
+  /** @displayName Active */
   active: boolean;
 }
 
 export interface WithEnumOptions {
   /**
-   * @Field_displayName Status
+   * @displayName Status
    * @enumOptions ["draft","active","archived"]
    */
   status: "draft" | "active" | "archived";
 
   /**
-   * @Field_displayName Priority
+   * @displayName Priority
    * @enumOptions [{"id":"low","label":"Low Priority"},{"id":"high","label":"High Priority"}]
    */
   priority: "low" | "high";
@@ -44,9 +44,9 @@ export interface WithEnumOptions {
 export interface EmptyInterface {}
 
 export interface OnlyOptionalFields {
-  /** @Field_displayName Notes */
+  /** @displayName Notes */
   notes?: string;
-  /** @Field_displayName Tags */
+  /** @displayName Tags */
   tags?: string;
 }
 
@@ -55,7 +55,7 @@ export interface DeprecatedFieldInterface {
   /** @deprecated Use fullName instead */
   name?: string;
 
-  /** @Field_displayName Full Name */
+  /** @displayName Full Name */
   fullName: string;
 }
 
@@ -63,20 +63,20 @@ export interface DeprecatedFieldInterface {
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing type alias analysis
 export type SimpleTypeAlias = {
-  /** @Field_displayName Label @minLength 1 */
+  /** @displayName Label @minLength 1 */
   label: string;
 
-  /** @Field_displayName Count @minimum 0 */
+  /** @displayName Count @minimum 0 */
   count: number;
 
-  /** @Field_displayName Description */
+  /** @displayName Description */
   description?: string;
 };
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing type alias analysis
 export type TypeAliasWithEnumOptions = {
   /**
-   * @Field_displayName Color
+   * @displayName Color
    * @enumOptions ["red","green","blue"]
    */
   color: "red" | "green" | "blue";
@@ -94,44 +94,44 @@ export type Percent = number;
 /** @minLength 1 @maxLength 255 @pattern ^[^@]+@[^@]+$ */
 export type Email = string;
 
-/** @Field_displayName Discount Rate @Field_description Percentage discount applied @minimum 0 @maximum 100 */
+/** @displayName Discount Rate @description Percentage discount applied @minimum 0 @maximum 100 */
 export type AnnotatedPercent = number;
 
 export interface ConfigWithAliasedTypes {
-  /** @Field_displayName Discount */
+  /** @displayName Discount */
   discount: Percent;
 
-  /** @Field_displayName Contact Email */
+  /** @displayName Contact Email */
   contactEmail: Email;
 
-  /** @Field_displayName Tax Rate */
+  /** @displayName Tax Rate */
   taxRate: AnnotatedPercent;
 }
 
 // --- Nested types ---
 
 export interface Address {
-  /** @Field_displayName Street @minLength 1 @maxLength 200 */
+  /** @displayName Street @minLength 1 @maxLength 200 */
   street: string;
-  /** @Field_displayName City @minLength 1 */
+  /** @displayName City @minLength 1 */
   city: string;
-  /** @Field_displayName Zip @pattern ^[0-9]{5}$ */
+  /** @displayName Zip @pattern ^[0-9]{5}$ */
   zip?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing type alias analysis
 export type ContactInfo = {
-  /** @Field_displayName Email @pattern ^[^@]+@[^@]+$ */
+  /** @displayName Email @pattern ^[^@]+@[^@]+$ */
   email: string;
-  /** @Field_displayName Phone @maxLength 20 */
+  /** @displayName Phone @maxLength 20 */
   phone?: string;
 };
 
 export interface NestedConfig {
-  /** @Field_displayName Name */
+  /** @displayName Name */
   name: string;
-  /** @Field_displayName Address */
+  /** @displayName Address */
   address: Address;
-  /** @Field_displayName Contact */
+  /** @displayName Contact */
   contact: ContactInfo;
 }

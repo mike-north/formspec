@@ -1732,7 +1732,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Field_displayName",
+                  tagName: "@displayName",
                 },
               },
             ]

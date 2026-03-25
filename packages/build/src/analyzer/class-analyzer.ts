@@ -53,7 +53,7 @@ function isTypeReference(type: ts.Type): type is ts.TypeReference {
 // =============================================================================
 
 /**
- * Layout metadata extracted from `@Group` and `@ShowWhen` decorators.
+ * Layout metadata extracted from `@Group` and `@ShowWhen` TSDoc tags.
  * One entry per field, in the same order as `fields`.
  */
 export interface FieldLayoutMetadata {
@@ -243,7 +243,7 @@ function analyzeFieldToIR(
   // Collect annotations
   const annotations: AnnotationNode[] = [];
 
-  // JSDoc annotations (@Field_displayName, @Field_description, @deprecated)
+  // JSDoc annotations (@displayName, @description, @deprecated)
   annotations.push(...extractJSDocAnnotationNodes(prop, file));
 
   // Default value annotation
@@ -299,7 +299,7 @@ function analyzeInterfacePropertyToIR(
   // Collect annotations
   const annotations: AnnotationNode[] = [];
 
-  // JSDoc annotations (@Field_displayName, @Field_description, @deprecated)
+  // JSDoc annotations (@displayName, @description, @deprecated)
   annotations.push(...extractJSDocAnnotationNodes(prop, file));
 
   return {

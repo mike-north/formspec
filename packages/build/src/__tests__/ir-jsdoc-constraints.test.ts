@@ -324,10 +324,10 @@ describe("extractJSDocConstraintNodes", () => {
 // =============================================================================
 
 describe("extractJSDocAnnotationNodes", () => {
-  it("produces DisplayNameAnnotationNode for @Field_displayName", () => {
+  it("produces DisplayNameAnnotationNode for @displayName", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @Field_displayName Full Name */
+        /** @displayName Full Name */
         name: string;
       }
     `);
@@ -341,10 +341,10 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
-  it("produces DescriptionAnnotationNode for @Field_description", () => {
+  it("produces DescriptionAnnotationNode for @description", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @Field_description Help text for this field */
+        /** @description Help text for this field */
         name: string;
       }
     `);
@@ -362,8 +362,8 @@ describe("extractJSDocAnnotationNodes", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
         /**
-         * @Field_displayName Full Name
-         * @Field_description The user's legal name
+         * @displayName Full Name
+         * @description The user's legal name
          */
         name: string;
       }
@@ -421,7 +421,7 @@ describe("extractJSDocAnnotationNodes", () => {
   it("skips tags with empty values", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @Field_displayName */
+        /** @displayName */
         name: string;
       }
     `);
@@ -433,14 +433,14 @@ describe("extractJSDocAnnotationNodes", () => {
   it("includes provenance with tag name", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @Field_displayName Full Name */
+        /** @displayName Full Name */
         name: string;
       }
     `);
 
     const result = extractJSDocAnnotationNodes(prop, "/test.ts");
     expect(result).toHaveLength(1);
-    expect(result[0]?.provenance.tagName).toBe("@Field_displayName");
+    expect(result[0]?.provenance.tagName).toBe("@displayName");
     expect(result[0]?.provenance.file).toBe("/test.ts");
     expect(result[0]?.provenance.surface).toBe("tsdoc");
   });
@@ -448,7 +448,7 @@ describe("extractJSDocAnnotationNodes", () => {
   it("works on class properties too", () => {
     const prop = getPropertyFromSource(`
       class Foo {
-        /** @Field_displayName Class Field */
+        /** @displayName Class Field */
         x!: string;
       }
     `);
