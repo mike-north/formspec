@@ -137,15 +137,15 @@ describe("TSDoc Feature Composition", () => {
     });
   });
 
-  // spec 003 §2.3: Nullable type T | null → anyOf with null branch.
-  // Constraints are applied to the anyOf wrapper (current implementation behavior).
+  // spec 003 §2.3: Nullable type T | null → oneOf with null branch.
+  // Constraints are applied as siblings to the oneOf wrapper.
   describe("age field — constraints on nullable field (spec 003 §2.3 + §2.6)", () => {
-    it("uses anyOf for nullable number type", () => {
+    it("uses oneOf for nullable number type (spec 003 §2.3)", () => {
       const age = properties["age"];
-      expect(age).toHaveProperty("anyOf");
-      const anyOf = age?.["anyOf"] as unknown[];
-      expect(anyOf).toContainEqual({ type: "number" });
-      expect(anyOf).toContainEqual({ type: "null" });
+      expect(age).toHaveProperty("oneOf");
+      const oneOf = age?.["oneOf"] as unknown[];
+      expect(oneOf).toContainEqual({ type: "number" });
+      expect(oneOf).toContainEqual({ type: "null" });
     });
 
     it("has @minimum constraint (spec 003 §2.6)", () => {

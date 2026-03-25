@@ -11,7 +11,7 @@
       "deprecated": true
     },
     "age": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "number"
         },
