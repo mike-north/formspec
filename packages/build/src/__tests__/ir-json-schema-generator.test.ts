@@ -1509,6 +1509,96 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
+    it("uses allOf for inline object path targets that don't exist in properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "address",
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "city",
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: false,
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 1,
+                path: { segments: ["missing"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@MinLength",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      const address = (schema.properties as Record<string, unknown>)["address"] as Record<
+        string,
+        unknown
+      >;
+      // Missing property should NOT be added directly — uses allOf to preserve
+      // additionalProperties semantics on the base object.
+      expect(address["allOf"]).toBeDefined();
+      expect(address["type"]).toBeUndefined(); // base object is inside allOf[0]
+    });
+
+    it("returns schema unchanged for path-targeted constraints on non-traversable types", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "count",
+            { kind: "primitive", primitiveKind: "number" },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@Minimum",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+      // Path-targeted constraint on a primitive should be a no-op —
+      // the schema should just be the primitive type without allOf wrapping.
+      expect((schema.properties as Record<string, unknown>)["count"]).toEqual({
+        type: "number",
+      });
+    });
+
     it("handles mixed path-targeted and direct constraints on the same field", () => {
       const ir: FormIR = {
         kind: "form-ir",

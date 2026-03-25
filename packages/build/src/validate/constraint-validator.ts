@@ -320,7 +320,18 @@ function checkTypeApplicability(
     // Path-targeted constraints (e.g., `@Minimum :value 0`) target a sub-field,
     // not the field itself. Skip type-applicability checks for these — the
     // constraint applies to the resolved sub-field type, not the declared field type.
-    if (constraint.path) continue;
+    if (constraint.path) {
+      // However, when the declared field type cannot be traversed (primitives or
+      // enums), a path-targeted constraint is inherently invalid.
+      if (type.kind === "primitive" || type.kind === "enum") {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": path-targeted constraint "${constraint.constraintKind}" is invalid because type "${label}" cannot be traversed`,
+          constraint.provenance
+        );
+      }
+      continue;
+    }
 
     const ck = constraint.constraintKind;
 

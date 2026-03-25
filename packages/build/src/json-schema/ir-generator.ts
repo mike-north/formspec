@@ -289,16 +289,27 @@ function applyPathTargetedConstraints(
     return { allOf: [refPart, overridePart] };
   }
 
-  // Inline object schema: merge property overrides directly.
+  // Inline object schema: merge property overrides directly where possible.
   if (schema.type === "object" && schema.properties) {
+    const missingOverrides: Record<string, JsonSchema2020> = {};
+
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
       if (schema.properties[target]) {
         Object.assign(schema.properties[target], overrideSchema);
       } else {
-        schema.properties[target] = overrideSchema;
+        // Do not introduce new properties directly; compose via allOf instead
+        // to preserve additionalProperties semantics on the base object.
+        missingOverrides[target] = overrideSchema;
       }
     }
-    return schema;
+
+    if (Object.keys(missingOverrides).length === 0) {
+      return schema;
+    }
+
+    return {
+      allOf: [schema, { properties: missingOverrides }],
+    };
   }
 
   // allOf schema (already composed): add property overrides as another member.
@@ -307,10 +318,10 @@ function applyPathTargetedConstraints(
     return schema;
   }
 
-  // Fallback: wrap in allOf.
-  return {
-    allOf: [schema, { properties: propertyOverrides }],
-  };
+  // Fallback: for non-object/non-$ref schemas, path-targeted constraints do not
+  // apply in a meaningful way. Return the original schema unchanged and rely
+  // on validation diagnostics to surface misuse of path-based constraints.
+  return schema;
 }
 
 // =============================================================================
