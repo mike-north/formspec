@@ -74,6 +74,9 @@ export const TAG_MAPPINGS: Record<string, TagMapping> = {
   order: { formSpecKey: "order", valueType: "number" },
   maxSigFig: { extensionKey: "x-formspec-maxSigFig", valueType: "number" },
   maxDecimalPlaces: { extensionKey: "x-formspec-maxDecimalPlaces", valueType: "number" },
+  // Note: @remarks and @example are handled specially in applyCommentTagsToSchema,
+  // not through TAG_MAPPINGS. @remarks is a fallback for @description (only applied
+  // if no explicit @description is present). @example values are collected into an array.
 };
 
 
@@ -283,8 +286,23 @@ function registerAliasChainInDefs(
  */
 function applyCommentTagsToSchema(schema: JsonSchema, commentTags: CommentTagInfo[]): JsonSchema {
   const result: Record<string, unknown> = { ...schema };
+  const examples: unknown[] = [];
 
   for (const tag of commentTags) {
+    // Collect @example values into an array (JSON Schema "examples")
+    if (tag.tagName === "example" && tag.value !== undefined) {
+      examples.push(tag.value);
+      continue;
+    }
+
+    // @remarks is a fallback for @description — only apply if no @description present
+    if (tag.tagName === "remarks" && typeof tag.value === "string") {
+      if (result["description"] === undefined) {
+        result["description"] = tag.value;
+      }
+      continue;
+    }
+
     const mapping = TAG_MAPPINGS[tag.tagName];
     if (!mapping) continue;
 
@@ -307,6 +325,11 @@ function applyCommentTagsToSchema(schema: JsonSchema, commentTags: CommentTagInf
     if (mapping.extensionKey !== undefined && typeof tag.value === "number") {
       result[mapping.extensionKey] = tag.value;
     }
+  }
+
+  // Emit collected examples
+  if (examples.length > 0) {
+    result["examples"] = examples;
   }
 
   return result as JsonSchema;

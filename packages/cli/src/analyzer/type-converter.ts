@@ -41,6 +41,8 @@ export interface JsonSchema {
   oneOf?: JsonSchema[];
   anyOf?: JsonSchema[];
   allOf?: JsonSchema[];
+  /** Vendor extension keywords (x-formspec-*, x-stripe-*, etc.) */
+  [key: `x-${string}`]: unknown;
 }
 
 /**
