@@ -44,8 +44,11 @@
 - `@pattern` with complex regex
 - `@format` annotation
 - Required vs optional field distinction
+- Class-based models with `strictPropertyInitialization: false`
 - Error cases (contradictions, type-mismatch, invalid path targets)
 - Parity fixtures (TSDoc and chain DSL producing identical output)
+- Mixed-authoring composition (TSDoc-derived data model plus ChainDSL-only dynamic fields)
+- User-authored confidence tests for data-model conformance, dynamic options, and dynamic schema
 
 ---
 
@@ -82,7 +85,7 @@ export class UserProfileForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/annotations-display-name.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -127,7 +130,7 @@ export class UserProfileForm {
 - [ ] `language` has `"title": "Preferred Language"` as field-level title (spec 002 §3.2)
 - [ ] `required` contains `["fullName", "email", "status", "language"]`, NOT `age` (spec 003 §2.5)
 
-**Note:** `[AMBIGUOUS]` Whether the class-level `@displayName` maps to the root schema's `title` — the spec shows this in examples (003 §9 full example) but does not explicitly state class-level `@displayName` → root `title`. The full example in 003 §9 shows `"title": "Invoice Form"` on the root, implying yes.
+**Note:** Class-level `@displayName` maps to the root schema's `title`. If the class uses a bare `@displayName`, that bare value is the title source. If the class uses `@displayName` specifiers, the `:singular` value is the title source.
 
 ---
 
@@ -160,7 +163,7 @@ export class FeedbackForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/annotations-description.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -245,7 +248,7 @@ export class MetadataForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/annotations-metadata.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -259,7 +262,8 @@ export class MetadataForm {
     },
     "oldField": {
       "type": "string",
-      "deprecated": true
+      "deprecated": true,
+      "x-formspec-deprecation-description": "Use newField instead"
     },
     "anotherOldField": {
       "type": "string",
@@ -292,7 +296,7 @@ export class MetadataForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/annotations-metadata.uischema.json
+#### Expected UI Schema
 ```json
 {
   "type": "VerticalLayout",
@@ -321,7 +325,7 @@ export class MetadataForm {
 #### Test assertions (e2e/tests/annotations-metadata.test.ts)
 - [ ] `@placeholder` does NOT appear in JSON Schema — it's UI-only (spec 002 §2.2, 003 — no `placeholder` mapping)
 - [ ] `@placeholder` appears in UI Schema `options.placeholder` (spec 002 §2.2)
-- [ ] `@deprecated` with message still emits `"deprecated": true` in JSON Schema (spec 003 §2.8)
+- [ ] `@deprecated` with message emits `"deprecated": true` and `"x-<vendor>-deprecation-description"` in JSON Schema (spec 003 §2.8, 003 §3)
 - [ ] `@deprecated` bare emits `"deprecated": true` (spec 003 §2.8)
 - [ ] `@defaultValue "pending"` → `"default": "pending"` (spec 002 §3.2, 003 §2.8)
 - [ ] `@defaultValue 0` → `"default": 0` (spec 002 §3.2)
@@ -330,7 +334,69 @@ export class MetadataForm {
 - [ ] `nickname` uses `oneOf` for `T | null` (spec 003 §2.3) [BUG: current impl uses `anyOf` — see nullable-types fixture]
 - [ ] `requiredField` is in `required` array, all `@defaultValue` fields are NOT (all are optional)
 
-**Note:** `[AMBIGUOUS]` Whether `@deprecated` message text is stored anywhere in JSON Schema output. Spec 002 §3.2 says the message is stored in the IR `DeprecatedAnnotation`, but 003 §2.8 only maps it to `"deprecated": true`. The message may only surface in IDE hover / diagnostics.
+**Note:** Deprecation message text is preserved in JSON Schema using `x-<vendor>-deprecation-description`. The expected schema above uses the default vendor prefix.
+
+---
+
+### Fixture: class-fields-without-definite-assignment
+
+This fixture verifies that class-based schema extraction works when the fixture is compiled with `strictPropertyInitialization: false` and fields are declared without `!` because another system is responsible for hydrating instances.
+
+#### Files
+
+- `e2e/fixtures/tsdoc-class/class-fields-without-definite-assignment.ts`
+- fixture-local `tsconfig.json` with `"strictPropertyInitialization": false`
+
+#### File: e2e/fixtures/tsdoc-class/class-fields-without-definite-assignment.ts
+```typescript
+/**
+ * @displayName Customer Profile
+ */
+export class CustomerProfile {
+  /** @displayName Customer ID */
+  customerId: string;
+
+  /** @displayName Email Address */
+  email: string;
+
+  /** @displayName Loyalty Tier */
+  tier?: 'bronze' | 'silver' | 'gold';
+}
+```
+
+#### Expected structure
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Customer Profile",
+  "properties": {
+    "customerId": {
+      "type": "string",
+      "title": "Customer ID"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email Address"
+    },
+    "tier": {
+      "enum": ["bronze", "silver", "gold"],
+      "title": "Loyalty Tier"
+    }
+  },
+  "required": ["customerId", "email"]
+}
+```
+
+#### Test assertions (e2e/tests/class-fields-without-definite-assignment.test.ts)
+- [ ] Fixture compiles and schema generation succeeds with `strictPropertyInitialization: false`
+- [ ] Class fields declared without `!` are still recognized as fields in the generated schema
+- [ ] Requiredness is determined by `?` optionality, not by definite-assignment syntax
+- [ ] `customerId` and `email` are in `required`
+- [ ] `tier` is omitted from `required`
+- [ ] Display names still map to JSON Schema `title` normally
+
+**Note:** This fixture exists for the authoring style where the class acts as a field model and some other runtime hydrates instances. The lack of `!` must not be treated as a signal that the field is optional.
 
 ---
 
@@ -381,7 +447,7 @@ export class NumericConstraintsForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/numeric-constraints-comprehensive.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -519,7 +585,7 @@ export class StringConstraintsForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/string-constraints-comprehensive.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -634,7 +700,7 @@ export class ArrayConstraintsForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/array-constraints-comprehensive.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -737,7 +803,7 @@ export class TypeMappingsForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/type-mappings-comprehensive.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -775,8 +841,7 @@ export class TypeMappingsForm {
         "x": { "type": "number" },
         "y": { "type": "number" }
       },
-      "required": ["x", "y"],
-      "additionalProperties": false
+      "required": ["x", "y"]
     },
     "namedType": {
       "$ref": "#/$defs/Address"
@@ -803,8 +868,7 @@ export class TypeMappingsForm {
         "city": { "type": "string" },
         "country": { "type": "string" }
       },
-      "required": ["street", "city", "country"],
-      "additionalProperties": false
+      "required": ["street", "city", "country"]
     }
   }
 }
@@ -852,7 +916,7 @@ export class NetworkForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/alias-chain-3-level.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -885,7 +949,7 @@ export class NetworkForm {
 - [ ] `serverPort`: inherits full chain `@minimum 0 @maximum 65535` (spec 005 §7.3)
 - [ ] `rawCount`: only `"type": "integer"` — no min/max from `Integer` (it has none) (spec 005 §3.1)
 
-**Note:** `[AMBIGUOUS]` Whether alias chains produce `$defs` + `$ref` or inline. Spec 005 §3.3 shows `$defs` for `Integer` and `USDCents` with `allOf` + `$ref`. However the existing `inherited-constraints` fixture inlines everything. The expected schema above assumes inline (matching current behavior). Per spec, named types SHOULD use `$defs` (PP7, 003 §5.2). The correct spec-compliant output would be:
+**Normative expectation:** Named types use `$defs` + `$ref`. The canonical expected shape for this fixture is:
 
 ```json
 {
@@ -931,7 +995,7 @@ export class PromotionForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/alias-chain-multipleOf.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -981,6 +1045,10 @@ interface MonetaryAmount {
   currency: string;
 }
 
+interface Shipment {
+  lineItems: string[];
+}
+
 export class PathTargetExpandedForm {
   /**
    * @minimum :width 0
@@ -1008,12 +1076,21 @@ export class PathTargetExpandedForm {
    */
   lineItems!: MonetaryAmount[];
 
+  /**
+   * @minItems 1
+   * @maxItems 100
+   * @minItems :lineItems 1
+   * @maxItems :lineItems 25
+   * @uniqueItems :lineItems
+   */
+  shipments!: Shipment[];
+
   /** @minimum :value 0 */
   optionalAmount?: MonetaryAmount;
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/path-target-expanded.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1064,6 +1141,25 @@ export class PathTargetExpandedForm {
         ]
       }
     },
+    "shipments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/Shipment" },
+          {
+            "properties": {
+              "lineItems": {
+                "minItems": 1,
+                "maxItems": 25,
+                "uniqueItems": true
+              }
+            }
+          }
+        ]
+      }
+    },
     "optionalAmount": {
       "allOf": [
         { "$ref": "#/$defs/MonetaryAmount" },
@@ -1084,8 +1180,7 @@ export class PathTargetExpandedForm {
         "height": { "type": "number" },
         "unit": { "type": "string" }
       },
-      "required": ["width", "height", "unit"],
-      "additionalProperties": false
+      "required": ["width", "height", "unit"]
     },
     "MonetaryAmount": {
       "type": "object",
@@ -1093,8 +1188,17 @@ export class PathTargetExpandedForm {
         "value": { "type": "number" },
         "currency": { "type": "string" }
       },
-      "required": ["value", "currency"],
-      "additionalProperties": false
+      "required": ["value", "currency"]
+    },
+    "Shipment": {
+      "type": "object",
+      "properties": {
+        "lineItems": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["lineItems"]
     }
   }
 }
@@ -1105,6 +1209,8 @@ export class PathTargetExpandedForm {
 - [ ] Multiple constraint types on same subfield (`:width` has both `@minimum` and `@maximum`) (spec 002 §4.4, C1)
 - [ ] Mixed constraint types across subfields: numeric on `:value`, string on `:currency` (spec 002 §4.3, S4)
 - [ ] Array transparency: `lineItems` has path-targeted constraints applied to `items` (spec 002 §4.3)
+- [ ] Untargeted `@minItems` / `@maxItems` on `shipments` constrain the outer array itself (spec 002 §4.3)
+- [ ] Path-targeted `@minItems :lineItems` / `@maxItems :lineItems` / `@uniqueItems :lineItems` constrain the nested array field on each shipment item (spec 002 §4.3)
 - [ ] Optional field with path target: `optionalAmount` emits `allOf` and is NOT in `required` (spec S8)
 - [ ] All named types appear in `$defs` (spec 003 §5.2, PP7)
 - [ ] `allOf` contains `$ref` + constraint object (spec 003 §5.4)
@@ -1145,7 +1251,7 @@ export class InvoiceForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/enum-display-names.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1191,7 +1297,7 @@ export class InvoiceForm {
 - [ ] `simpleEnum` uses flat `enum` — no per-member metadata (spec 003 §2.3)
 - [ ] `@defaultValue "draft"` → `"default": "draft"` (spec 003 §2.8)
 
-**Note:** `[AMBIGUOUS]` The spec shows `@defaultValue active` (without quotes) in 006 §2.4 PlanStatus example, but 002 §3.2 says the parser first tries JSON parsing. `"draft"` (with quotes) will parse as JSON string `draft`. Without quotes, `draft` falls back to string literal. Both should produce `"default": "draft"`. The fixture uses `"draft"` (JSON form) to be unambiguous.
+**Note:** Quoted `@defaultValue` values are always explicit strings. Unquoted values are parsed against the resolved target type, preferring valid non-string interpretations before falling back to string. This fixture uses `"draft"` to force a string explicitly.
 
 ---
 
@@ -1236,7 +1342,7 @@ export class ParityContactForm {
 - [ ] Both have identical constraint keywords on all fields
 - [ ] Both have identical `title` annotations
 
-**Note:** The existing chain DSL fixture uses `when(is("contactMethod", "phone"), ...)` for conditional phoneNumber, which creates a SHOW rule. The TSDoc surface would need `@showWhen` to match. Since the TSDoc parity fixture above does NOT include the conditional (it can't in a class declaration without `@showWhen`), the JSON Schema should match except for the conditional fields' required status. `[AMBIGUOUS]` Full parity testing requires matching conditional behavior.
+**Note:** This fixture should first rewrite the TSDoc surface to get as close as possible to the chain DSL fixture, including `@showWhen` where supported. Any remaining chain-only feature gap should be escalated for an explicit product decision rather than treated as parity by default.
 
 ---
 
@@ -1269,8 +1375,149 @@ export const ParityConstrainedForm = formspec(
 **Counterpart TSDoc fixture:** `e2e/fixtures/tsdoc-class/constrained-form.ts` (already exists)
 
 #### Test assertions
-- [ ] Chain DSL output matches existing `constrained-form.schema.json` gold master (spec PP5, A3)
+- [ ] Chain DSL output matches the TSDoc counterpart structurally using hand-authored normative expectations (spec PP5, A3)
 - [ ] Both surfaces produce identical constraint keywords (spec A1)
+
+---
+
+## Fixture Group 9A: Mixed-Authoring Composition
+
+### Fixture: mixed-authoring-dynamic-options
+
+This fixture verifies the supported near-term composition pattern:
+
+- a class or interface provides the static data model
+- one or more fields with runtime option retrieval are authored in ChainDSL
+- the final generated JSON Schema and UI Schema reflect the composed form
+
+#### Files
+
+- `e2e/fixtures/tsdoc-class/mixed-authoring-shipping-address.ts`
+- `e2e/fixtures/chain-dsl/mixed-authoring-shipping-address.ts`
+
+#### Scenario
+
+Most fields come from a TSDoc-authored address model:
+
+- `country: string`
+- `city: string`
+- `postalCode?: string`
+
+The `city` field is then overlaid with ChainDSL dynamic option behavior:
+
+- dynamic option provider key: `cities`
+- parameter fields: `country`
+
+#### Test assertions (e2e/tests/mixed-authoring-dynamic-options.test.ts)
+
+- [ ] The composed JSON Schema retains the static field type for `city` (`"type": "string"`)
+- [ ] The composed JSON Schema emits the dynamic option annotation keys on `city`
+- [ ] The composed JSON Schema emits the dynamic option parameter list in declared order
+- [ ] The composed UI Schema preserves field order, labels, and other static metadata from the TSDoc-derived model
+- [ ] The test does not assert parity between two pure surfaces; it asserts correctness of the composed result
+- [ ] No decorators are used to attach ChainDSL behavior to class fields
+
+**Note:** This fixture is intentionally not a parity fixture. It verifies the supported composition boundary where the data model remains type-driven while runtime field behavior is authored in ChainDSL.
+
+---
+
+## Fixture Group 9B: User-Authored Confidence Tests
+
+These fixtures exist to verify that FormSpec users can write their own tests effectively. They are not parity tests. They model the three distinct testing concerns we expect real adopters to have:
+
+- data-model conformance tests
+- dynamic option behavior tests
+- dynamic schema resolver tests
+
+### Fixture: user-test-data-model-conformance
+
+This fixture demonstrates the expected testing style for the static data model: users validate that example payloads do and do not conform to the generated JSON Schema.
+
+#### Files
+
+- `e2e/fixtures/tsdoc-class/user-test-data-model-conformance.ts`
+- `e2e/tests/user-test-data-model-conformance.test.ts`
+
+#### Scenario
+
+A class-derived checkout model generates a static JSON Schema. The test then validates:
+
+- known-good payloads that should be accepted
+- known-bad payloads that should be rejected
+
+#### Test assertions
+
+- [ ] A valid fixture payload passes validation against the generated JSON Schema
+- [ ] A payload with a missing required field fails validation
+- [ ] A payload with a wrong primitive type fails validation
+- [ ] A payload violating a declared constraint fails validation
+- [ ] This test is framed as a user confidence test for the data model, not as a generator snapshot
+
+**Note:** This is the baseline testing style for class/interface/type-derived models. It verifies the contract boundary: whether candidate data conforms to the generated schema.
+
+---
+
+### Fixture: user-test-dynamic-options
+
+This fixture demonstrates the expected testing style for dynamic option retrieval against a statically known field type.
+
+#### Files
+
+- `e2e/fixtures/tsdoc-class/user-test-dynamic-options-model.ts`
+- `e2e/fixtures/chain-dsl/user-test-dynamic-options-form.ts`
+- `e2e/tests/user-test-dynamic-options.test.ts`
+
+#### Scenario
+
+The static model defines fields such as:
+
+- `country: string`
+- `city: string`
+
+The form overlays `city` with dynamic option retrieval using a ChainDSL resolver such as `cities(country)`.
+
+The test exercises resolver-driven option loading rather than just schema emission.
+
+#### Test assertions
+
+- [ ] The dynamic option resolver returns options for the expected field
+- [ ] Every returned option value is a valid instance of the field's stored type
+- [ ] The option labels are present and correctly paired with their stored values
+- [ ] Changing parameter fields (for example `country`) changes the retrieved option set appropriately
+- [ ] Invalid option payloads from the resolver are surfaced as test failures
+- [ ] The generated JSON Schema still records the correct static field type while the form/runtime path handles option retrieval
+
+**Note:** This is a form-behavior test, not a data-model conformance test. The user is testing confidence in the option retrieval path and the shape of the resulting options.
+
+---
+
+### Fixture: user-test-dynamic-schema
+
+This fixture demonstrates the expected testing style for runtime-discovered schema and UI schema.
+
+#### Files
+
+- `e2e/fixtures/chain-dsl/user-test-dynamic-schema.ts`
+- `e2e/tests/user-test-dynamic-schema.test.ts`
+
+#### Scenario
+
+A ChainDSL-authored resolver fetches some source data and converts it into:
+
+- a JSON Schema fragment
+- a JSON Forms UI schema fragment
+
+The test exercises the resolver logic itself, not just the final emitted annotation key.
+
+#### Test assertions
+
+- [ ] The dynamic schema resolver returns JSON Schema that is structurally valid for the expected object/value
+- [ ] The dynamic schema resolver returns JSON Forms UI schema that matches the generated schema fragment
+- [ ] Resolver output reflects the source data it was derived from
+- [ ] Invalid resolver output is surfaced clearly as a test failure
+- [ ] The test distinguishes runtime schema discovery from ordinary static schema validation
+
+**Note:** This is neither a parity test nor a plain data-model test. It is a resolver-confidence test for the runtime path that turns source data into schema and UI schema.
 
 ---
 
@@ -1289,7 +1536,7 @@ export class ContradictingForm {
 ```
 
 #### Test assertions (e2e/tests/error-contradicting-constraints.test.ts)
-- [ ] CLI exits with non-zero exit code OR produces a diagnostic (spec S2, 002 §6 `<VENDOR>-501`)
+- [ ] CLI exits with non-zero exit code OR produces a diagnostic (spec S2, 002 §6 `CONSTRAINT_CONTRADICTION`)
 - [ ] Diagnostic references both `@minimum 10` and `@maximum 5` (spec D2)
 - [ ] Diagnostic message is actionable (spec D4)
 
@@ -1312,9 +1559,9 @@ export class TypeMismatchForm {
 ```
 
 #### Test assertions (e2e/tests/error-type-mismatch.test.ts)
-- [ ] `@minimum` on string field produces diagnostic `<VENDOR>-301` (spec S4, 002 §6)
-- [ ] `@minLength` on number field produces diagnostic `<VENDOR>-301` (spec S4, 002 §6)
-- [ ] `@minItems` on non-array field produces diagnostic `<VENDOR>-301` (spec S4, 002 §6)
+- [ ] `@minimum` on string field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
+- [ ] `@minLength` on number field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
+- [ ] `@minItems` on non-array field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
 
 ---
 
@@ -1337,8 +1584,8 @@ export class InvalidPathTargetForm {
 ```
 
 #### Test assertions (e2e/tests/error-invalid-path-target.test.ts)
-- [ ] Path target `:nonexistent` on unknown subfield → diagnostic `<VENDOR>-401` (spec 002 §6)
-- [ ] `@minimum` on string subfield `:name` → diagnostic `<VENDOR>-301` (spec S4 — type checked against subfield)
+- [ ] Path target `:nonexistent` on unknown subfield → diagnostic `UNKNOWN_PATH_TARGET` (spec 002 §6)
+- [ ] `@minimum` on string subfield `:name` → diagnostic `TYPE_MISMATCH` (spec S4 — type checked against subfield)
 
 ---
 
@@ -1359,7 +1606,7 @@ export class BroadeningForm {
 - [ ] `@minimum -10` on `NonNegative` (which has `@minimum 0`) → error diagnostic (spec S1, 005 §3.4)
 - [ ] Diagnostic is `CONSTRAINT_BROADENING` type (spec 005 §3.4)
 
-**Note:** `[AMBIGUOUS]` Whether field-level `@minimum 10` (NARROWER) on `NonNegative` produces `minimum: 10` (field value wins because it's narrower) or `minimum: 0` (inherited wins). Spec says narrowing is valid (S1, 005 §7.1, 005 §7.3): take the maximum of all minimum values. So `@minimum 10` on a field of type `NonNegative` (which has `@minimum 0`) should produce `minimum: 10`. The existing `inherited-constraints` fixture confirms this: `cpuUsage` has `@minimum 10` which overrides Percentage's `@minimum 0`.
+**Note:** Narrowing is valid. For a field of type `NonNegative` with inherited `@minimum 0`, a field-level `@minimum 10` produces `minimum: 10`.
 
 ---
 
@@ -1386,7 +1633,7 @@ export class ConstForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/const-constraints.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1441,9 +1688,7 @@ export class LineItem {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/parity-usd-cents.schema.json
-
-Per spec 005 §3.3, named types should use `$defs`. But current implementation inlines. The spec-compliant output:
+#### Expected JSON Schema
 
 ```json
 {
@@ -1451,23 +1696,33 @@ Per spec 005 §3.3, named types should use `$defs`. But current implementation i
   "type": "object",
   "properties": {
     "unitPrice": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 99999999999999,
+      "$ref": "#/$defs/USDCents",
       "title": "Unit Price"
     },
     "quantity": {
-      "type": "integer",
+      "allOf": [
+        { "$ref": "#/$defs/USDCents" }
+      ],
       "minimum": 1,
       "maximum": 9999,
       "title": "Quantity"
     }
   },
-  "required": ["unitPrice", "quantity"]
+  "required": ["unitPrice", "quantity"],
+  "$defs": {
+    "Integer": {
+      "type": "integer",
+      "maximum": 99999999999999
+    },
+    "USDCents": {
+      "allOf": [
+        { "$ref": "#/$defs/Integer" },
+        { "minimum": 0 }
+      ]
+    }
+  }
 }
 ```
-
-[BUG: Per spec, `unitPrice` should use `$ref` to `USDCents` `$defs` entry (PP7, 003 §5.2). The above inlined form matches current implementation behavior, not spec.]
 
 #### Test assertions
 - [ ] `unitPrice`: inherits `@minimum 0` from USDCents, `@maximum 99999999999999` and `@multipleOf 1` from Integer (spec 005 §7.3, 006 §2.2)
@@ -1496,7 +1751,7 @@ export class Subscription {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/parity-plan-status.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1566,7 +1821,7 @@ export class CustomerForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/parity-address.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1608,8 +1863,7 @@ export class CustomerForm {
           "title": "Postal Code"
         }
       },
-      "required": ["street", "city", "country"],
-      "additionalProperties": false
+      "required": ["street", "city", "country"]
     }
   }
 }
@@ -1646,7 +1900,7 @@ export class ExclusiveBoundsForm {
 }
 ```
 
-#### Expected: e2e/expected/tsdoc-class/exclusive-bound-edge-cases.schema.json
+#### Expected JSON Schema
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1701,9 +1955,9 @@ export class ExclusiveBoundsForm {
 | Area | Fixture | Question | Recommendation |
 |------|---------|----------|----------------|
 | AMB-1 | annotations-display-name | Class-level `@displayName` → root `title`? | Yes, per 003 §9 full example |
-| AMB-2 | annotations-metadata | `@deprecated` message in JSON Schema? | Only `"deprecated": true`; message is IR/tooling only |
+| AMB-2 | annotations-metadata | `@deprecated` message in JSON Schema? | Emit standard `"deprecated": true` plus `x-<vendor>-deprecation-description` when message text exists |
 | AMB-3 | enum-display-names | `@defaultValue draft` vs `@defaultValue "draft"`? | Both produce string "draft" per 002 §3.2 fallback |
-| AMB-4 | parity-contact-form | Conditional behavior parity? | Need `@showWhen` for full parity, separate fixture |
+| AMB-4 | parity-contact-form | Conditional behavior parity? | Rewrite the TSDoc surface toward the chain DSL fixture first; until then, treat this as blocked on surface alignment rather than unconditional parity |
 | AMB-5 | alias-chain-3-level | Inline vs `$defs` for type aliases? | Spec says `$defs` (PP7); current impl inlines |
 
 ---
@@ -1713,13 +1967,23 @@ export class ExclusiveBoundsForm {
 All TSDoc fixtures use the pattern:
 1. Run CLI: `formspec generate <fixture> <className> -o <tempDir>`
 2. Parse output schema JSON
-3. Assert structure and gold-master match
+3. Assert structure against hand-authored expectations
 
 All chain DSL fixtures use the pattern:
 1. Import `buildFormSchemas` from `@formspec/build`
 2. Call with the DSL form definition
-3. Assert structure and gold-master match
+3. Assert structure against hand-authored expectations
 
 Parity tests should:
 1. Generate from both surfaces
 2. Assert `jsonSchema` output is `toEqual` between them (spec PP5, A3)
+
+Mixed-authoring composition tests should:
+1. Generate the composed form from the static type-derived model plus ChainDSL overlays
+2. Assert the resulting JSON Schema and UI Schema are correct for the composed form
+3. Assert against hand-authored normative expectations derived from the spec
+
+User-authored confidence tests should be split by concern:
+1. Data-model conformance tests validate example payloads against generated JSON Schema
+2. Dynamic-option tests exercise resolver behavior and verify returned options match the field's stored type
+3. Dynamic-schema tests exercise resolver logic that turns source data into JSON Schema and JSON Forms UI schema

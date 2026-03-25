@@ -20,7 +20,7 @@ This document specifies the test strategy for verifying that FormSpec's two auth
 
 ### What Parity Means
 
-**PP5** states: _"The TSDoc-annotated type surface and the chain DSL surface are alternative syntaxes for the same semantic model. Neither surface has capabilities the other lacks."_
+**PP5** states: _"The TSDoc-annotated type surface and the chain DSL surface are alternative syntaxes for the same semantic model for the shared static feature set. Enumerated exceptions are allowed only when this specification calls them out explicitly. Outside those explicit exceptions, neither surface has capabilities the other lacks."_
 
 **A3** states: _"Given an identical canonical IR, JSON Schema and UI Schema generators produce identical output."_
 
@@ -34,10 +34,28 @@ Parity is **not** about bit-for-bit identical IR objects. The IR records surface
 
 **NP1** defines the scope boundary: _"No decorator-based authoring."_ The decorator DSL is removed. Parity tests cover exactly two surfaces: TSDoc and chain DSL. There is no decorator parity surface to test.
 
+**Enumerated parity exceptions in this revision:**
+
+- dynamic option retrieval against a statically known field
+- runtime-discovered JSON Schema
+- runtime-discovered UI schema
+
+These are ChainDSL-owned capabilities in this revision. They are excluded from strict TSDoc ↔ ChainDSL parity.
+
+**Mixed-authoring note:** Some near-term product scenarios are not pure parity cases. In particular, a form may be authored primarily as a TSDoc-annotated class while using ChainDSL-only constructs for a small number of dynamic option fields. Those cases should be covered by dedicated mixed-authoring composition tests, not by strict TSDoc ↔ ChainDSL parity tests. The assertion target for such tests is correct generated JSON Schema and UI Schema for the composed form, not identical IR from two independently authored surfaces. The composition mechanism must remain explicit; decorators are not a substitute authoring surface.
+
+**User-authored testing note:** End-to-end coverage should also demonstrate how adopters test their own systems. Those tests split into three different categories:
+
+- data-model conformance tests: does example payload data validate against the generated JSON Schema?
+- dynamic-option tests: does resolver-driven option retrieval return values compatible with the field's stored type?
+- dynamic-schema tests: does resolver logic correctly transform source data into JSON Schema and JSON Forms UI schema fragments?
+
+These are confidence tests for user integrations, not parity tests.
+
 ### Relationship to Other Documents
 
 - **001 (Canonical IR):** Parity tests compare `FieldNode` and `ConstraintNode` instances by structural equality on semantic fields. This document relies on 001's IR type definitions.
-- **002 (TSDoc Grammar):** Each tag in the tag inventory (§2) has a corresponding chain DSL option. Parity tests verify this correspondence exhaustively.
+- **002 (TSDoc Grammar):** Each shared static TSDoc tag in the tag inventory (§2) has a corresponding chain DSL option. Runtime-capable ChainDSL-only constructs are excluded from parity and instead covered by mixed-authoring composition tests.
 - **003 (JSON Schema Vocabulary):** Parity at the JSON Schema output level verifies A3. The test fixtures from this document exercise the full mapping in 003 §2.
 - **005 (Numeric Types):** Extension stress-test fixtures (`Decimal`, `DateOnly`) validate that parity holds across the extension boundary — not just for built-in types.
 
@@ -58,7 +76,7 @@ A good parity fixture:
 
 ### 2.2 Fixture: USDCents
 
-**What it tests:** `number`-based integer type (via `$defs/Integer` with `multipleOf: 1`), type alias constraint inheritance (PP3), bounded integer type.
+**What it tests:** integer semantics derived from a `number` alias in TSDoc, type alias constraint inheritance (PP3), bounded integer type.
 
 Source: see 005 §3 for the TypeScript definition and JSON Schema output.
 
@@ -66,7 +84,7 @@ Source: see 005 §3 for the TypeScript definition and JSON Schema output.
 
 **Why this is a good fixture:** It exercises the full type alias chain (`quantity: USDCents` inherits `@minimum 0` from `USDCents` and `@maximum 99_999_999_999_999` from `Integer`) and adds a use-site `@minimum 1` refinement. The expected IR for `quantity` has three numeric constraints from three different provenance levels. The expected IR for `unitPrice` has two constraints from the alias chain with no use-site additions.
 
-Under the current integer model (Finding #1), `Integer` is represented in the IR as `{ kind: "primitive", primitiveKind: "number" }` with a `multipleOf: 1` constraint, and flows through `$defs/Integer` as a named type. It is not `primitiveKind: "integer"`.
+Under the current integer model, `Integer` is represented in the IR as `{ kind: "primitive", primitiveKind: "integer" }`. On the TSDoc surface this commonly originates from a `number` alias carrying `@multipleOf 1`, but the canonical model treats the result as integer, not as a plain number with an output-only optimization.
 
 **Expected IR excerpt for `quantity`:**
 
@@ -89,7 +107,7 @@ Under the current integer model (Finding #1), `Integer` is represented in the IR
 
 ### 2.3 Fixture: Percent
 
-**What it tests:** `number`-based integer type (via `$defs/Integer` with `multipleOf: 1`) with [0, 100] range, `@multipleOf` composition on a `number`+`multipleOf:1` field, contradiction detection between use-site and alias chain.
+**What it tests:** integer type derivation and refinement with [0, 100] range, `@multipleOf` composition on an integer-valued field, contradiction detection between use-site and alias chain.
 
 ```typescript
 // TSDoc surface
@@ -111,7 +129,7 @@ interface Promotion {
 }
 ```
 
-**Why this is a good fixture:** `discountPercent` inherits bounds from `Percent` (which inherits `@maximum` and the `multipleOf: 1` integer constraint from `Integer`) and adds a `@multipleOf 5` constraint at the use site. The use-site `@maximum 100` from `Percent` overrides the `Integer` alias chain's `@maximum 99_999_999_999_999` in the effective bound — testing that the Validate phase takes the minimum of all upper bounds. The `multipleOf: 1` from `Integer` and `multipleOf: 5` from the use site compose to an effective `multipleOf: 5` (since every multiple of 5 is also a multiple of 1).
+**Why this is a good fixture:** `discountPercent` inherits bounds from `Percent` (which inherits `@maximum` and integer semantics from `Integer`) and adds a `@multipleOf 5` constraint at the use site. The use-site `@maximum 100` from `Percent` overrides the `Integer` alias chain's `@maximum 99_999_999_999_999` in the effective bound — testing that the Validate phase takes the minimum of all upper bounds. The `@multipleOf 1` on `Integer` and `@multipleOf 5` at the use site compose to an effective `multipleOf: 5` (since every multiple of 5 is also a multiple of 1).
 
 ### 2.4 Fixture: PlanStatus
 
@@ -139,7 +157,7 @@ interface Subscription {
 
 ```json
 {
-  "allOf": [{ "$ref": "#/$defs/PlanStatus" }],
+  "$ref": "#/$defs/PlanStatus",
   "default": "active"
 }
 ```
@@ -275,7 +293,7 @@ import { field, formspec } from '@formspec/dsl';
 // The DSL consumer names the type and the build pipeline resolves it to
 // the same IR that the TSDoc extractor produces.
 // Integer semantics are expressed through the named type reference —
-// the "Integer" $defs entry carries multipleOf: 1.
+// the "Integer" $defs entry resolves to JSON Schema type "integer".
 
 const lineItemForm = formspec(
   field.number('unitPrice', { displayName: 'Unit Price', type: 'USDCents' }),
@@ -290,7 +308,7 @@ const lineItemForm = formspec(
 export { lineItemForm };
 ```
 
-**Note on chain DSL type references:** The chain DSL references type names (e.g., `type: "USDCents"`) that are resolved against the project's registered type aliases. The type alias registration (`USDCents = Integer = number` with bounds, where `Integer` carries `multipleOf: 1`) is defined in a shared configuration file and loaded by the build pipeline. This is how constraint inheritance propagates through the chain DSL: the type name carries the alias chain's constraints.
+**Note on chain DSL type references:** The chain DSL references type names (e.g., `type: "USDCents"`) that are resolved against the project's registered type aliases. The type alias registration (`USDCents = Integer = number` with bounds, where `Integer` canonicalizes to integer semantics) is defined in a shared configuration file and loaded by the build pipeline. This is how constraint inheritance propagates through the chain DSL: the type name carries the alias chain's constraints.
 
 ### 3.3 PlanStatus: Both Surfaces
 
@@ -468,9 +486,8 @@ The transformation type is `ProvenanceFree<FieldNode>`, which is `Omit<FieldNode
 | Structural assertion (hand-written expected IR) | Intent is explicit and readable; failures clearly describe what changed       | Requires hand-writing and maintaining expected values                             | Canonical parity tests where the expected value is the specification |
 | `compareIR` helper                              | Structured diff output; provenance excluded by design; clear failure messages | More infrastructure than a simple `expect().toEqual()`                            | Parity tests comparing two IR instances                              |
 
-**Decision:** Canonical parity fixtures use hand-written expected IR (the `expected-ir.ts` files). The hand-written expected values serve as the specification for what the correct IR looks like. Snapshot tests are used as a secondary regression net for large or complex IR structures where hand-authoring every field would be impractical.
-
-When a snapshot test fails, the developer must review the diff to determine whether the change is intentional (in which case the snapshot is updated) or a regression (in which case the source is fixed). Structural assertions fail with specific field-path information that makes the cause immediately clear.
+**Decision:** Canonical parity fixtures use hand-written expected IR (the `expected-ir.ts` files). The hand-written expected values serve as the specification for what the correct IR looks like. Snapshot tests are not part of the normative parity strategy.
+Structural assertions fail with specific field-path information that makes the cause immediately clear.
 
 ### 4.4 Fields Compared in Detail
 
@@ -716,7 +733,7 @@ This satisfies the E1 ("built-in types use the same extension API") acceptance c
 
 ## 7. Diagnostic Consistency Tests
 
-**PP5** requires that both surfaces have the same semantic model. This extends to error behavior: the same invalid input through both surfaces must produce equivalent diagnostics — same diagnostic codes, same severity, same actionable message text.
+**PP5** requires that both surfaces have the same semantic model for the shared static feature set. This extends to error behavior: the same invalid input through both shared surfaces must produce equivalent diagnostics — same diagnostic codes and same severity.
 
 ### 7.1 What "Equivalent Diagnostics" Means
 
@@ -724,7 +741,8 @@ Two diagnostic sets are equivalent when:
 
 - They contain the same number of diagnostics
 - Diagnostics are matched by `code` (machine-readable identifier, e.g., `CONSTRAINT_BROADENING`)
-- For matched diagnostics: `severity`, `message` text, and `fixSuggestion` (if present) are identical
+- For matched diagnostics: `severity` is identical
+- Message text and `fixSuggestion` are verified separately against surface-appropriate expected values; they are not part of parity comparison
 - **Excluded from comparison:** `location` (file, line, column) — the TSDoc surface points to a comment in a `.ts` file; the chain DSL surface points to a method call site. Surface-specific source locations are expected and intentional (A4).
 
 ### 7.2 Contradiction Test Pattern
@@ -913,6 +931,6 @@ The `expected-ir.ts` and `expected-schema.json` files are the specification. Cha
 | #    | Section  | Question                                                                                                                                           | Status                                                                                                                                                                                                                                                                                                                                                   |
 | ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OD-1 | §3.2     | How does the chain DSL express type alias constraint inheritance — by name reference resolved at build time, or by explicit constraint repetition? | By name reference — `type: "USDCents"` loads the alias chain from the project's type registry                                                                                                                                                                                                                                                            |
-| OD-2 | §4.3     | Should snapshot tests be the primary or secondary mechanism for parity validation?                                                                 | Secondary — hand-authored `expected-ir.ts` and `expected-schema.json` are primary; snapshots are a regression net for complex structures                                                                                                                                                                                                                 |
+| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                 | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                          |
 | OD-3 | §6, §8.2 | Should extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests?                                            | **DECIDED:** In `packages/test-fixtures/` as a private, unpublished workspace package. This allows the fixture extensions to have their own `package.json`, `tsconfig.json`, and build step, while remaining clearly separated from distributable code. Tests in `packages/build/src/__tests__/` reference the fixture package via workspace dependency. |
 | OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                                                       | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                                                                                                                                        |

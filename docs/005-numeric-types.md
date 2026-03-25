@@ -1,6 +1,6 @@
 # 005 — Numeric Types: Integer, Decimal, and Extension Numerics
 
-This document specifies how FormSpec handles built-in numeric types (`number`), how integer semantics are expressed through `multipleOf: 1` type aliases, and how the extension API enables downstream consumers to introduce custom numeric domains — `Decimal`, `Currency`, `MonetaryAmount`, `DateOnly`, and similar types — without forking FormSpec core. It covers strategic workstream F.
+This document specifies how FormSpec handles built-in numeric types (`number`, `integer`, `bigint`), how integer semantics can be derived from `number` where TypeScript authoring requires it, and how the extension API enables downstream consumers to introduce custom numeric domains — `Decimal`, `Currency`, `MonetaryAmount`, `DateOnly`, and similar types — without forking FormSpec core. It covers strategic workstream F.
 
 ---
 
@@ -11,7 +11,7 @@ This document specifies how FormSpec handles built-in numeric types (`number`), 
 | Section                               | Principles              |
 | ------------------------------------- | ----------------------- |
 | Built-in numeric types                | PP2, PP3, S4, S7, B3    |
-| Integer semantics via `multipleOf: 1` | PP3, S1, S2, S4, C1     |
+| Integer semantics and derivation      | PP3, S1, S2, S4, C1     |
 | Extension numeric types               | E1, E2, E3, E4, E5, PP3 |
 | Type alias chains                     | PP3, S1, C1             |
 | Extension case study: DateOnly        | E1, E5, S5              |
@@ -22,15 +22,15 @@ This document specifies how FormSpec handles built-in numeric types (`number`), 
 
 This document complements the following:
 
-- **001 (Canonical IR):** The `PrimitiveTypeNode` taxonomy includes `"integer"` as a distinct kind (§2.2). This document specifies how `number` fields with `MultipleOfConstraint(1)` map to that kind and how extensions introduce `CustomTypeNode` entries for types outside the built-in taxonomy.
+- **001 (Canonical IR):** The `PrimitiveTypeNode` taxonomy includes `"number"`, `"integer"`, and `"bigint"` as built-in numeric kinds (§2.2). This document specifies how TypeScript-authored integer patterns map to that taxonomy and how extensions introduce `CustomTypeNode` entries for types outside the built-in set.
 - **002 (TSDoc Grammar):** The constraint tag table in §2.1 lists `@minimum`, `@maximum`, etc. as extensible to custom numeric types. This document specifies how that extensibility is exercised.
 - **003 (JSON Schema Vocabulary):** §6.1 establishes the eight required extension outcomes for `Decimal`. This document provides a concrete walk-through of each outcome.
 
 ### Design Philosophy
 
-FormSpec's numeric story is deliberately narrow at the core. One numeric type is built in: `number` (floating-point, maps to JSON Schema `number`). Integer semantics are expressed through user-defined type aliases carrying `@multipleOf 1` — no special `bigint` treatment, no `@integer` tag. Everything else — `Decimal`, `Currency`, `MonetaryAmount`, `DateOnly` — is an extensibility concern.
+FormSpec's numeric story is deliberately small but complete at the core. Three built-in numeric kinds are supported: `number`, `integer`, and `bigint`. `number` maps to JSON Schema `number`; `integer` and `bigint` both map to JSON Schema `integer`. There is still no `@integer` tag — TypeScript-authored TSDoc surfaces typically reach integer semantics through a derived `number` alias carrying `@multipleOf 1`, while the canonical model and chain DSL treat integer as a first-class type. Everything else — `Decimal`, `Currency`, `MonetaryAmount`, `DateOnly` — is an extensibility concern.
 
-This narrowness is intentional (PP8: progressive complexity). Simple forms with price fields and quantities work immediately with `number`. Teams with sophisticated numeric requirements — integer-only values, auditable financial precision, string-backed decimal serialization, date-only wire formats — introduce exactly the type aliases or extensions they need. No simple form pays ceremony for capabilities it does not use.
+This narrowness is intentional (PP8: progressive complexity). Simple forms with prices, counts, and identifiers work immediately with the built-in numeric kinds. Teams with sophisticated numeric requirements — auditable financial precision, string-backed decimal serialization, date-only wire formats — introduce exactly the extensions they need. No simple form pays ceremony for capabilities it does not use.
 
 The narrowness also acts as an extensibility pressure test (E1): if a downstream `Decimal` type can be added without privileged access to FormSpec internals, then any domain-specific type can be. The extension API must be expressive enough for `Decimal` to be indistinguishable from a hypothetical built-in.
 
@@ -79,20 +79,39 @@ Applying a string constraint (`@minLength`, `@pattern`) to a `number` field is a
 
 **Precision note (B3):** `number` carries no precision guarantee beyond IEEE 754 double precision. Consumers with precision requirements beyond what `number` provides should define a custom type (see §4). The system does not silently introduce precision-affecting behavior on `number` fields.
 
-### 2.2 Integer Semantics via `multipleOf: 1`
+### 2.2 `integer` — First-Class Integer Semantics
 
-FormSpec does not give `bigint` special treatment. Authors who want integer semantics should define a `number` type alias annotated with `@multipleOf 1`:
+FormSpec supports `integer` as a first-class numeric kind because JSON Schema does. The generated schema for an integer field is always:
+
+```json
+{ "type": "integer" }
+```
+
+There is still no `@integer` tag. On TSDoc-authored TypeScript surfaces, integer semantics are usually derived from `number` because TypeScript has no native integer type:
 
 ```typescript
 /** @multipleOf 1 */
 type Integer = number;
 ```
 
-The analyzer detects `multipleOf: 1` on a `number` field and emits `{ "type": "integer" }` in the generated JSON Schema rather than `{ "type": "number", "multipleOf": 1 }`. This gives a clean schema output while keeping the source representation in the TypeScript type system (PP3).
+The analyzer recognizes this pattern and canonicalizes it to the built-in integer kind. The generated JSON Schema is `{ "type": "integer" }`, not `{ "type": "number", "multipleOf": 1 }`.
 
-There is no `@integer` tag in FormSpec. Integer semantics are expressed through the type alias pattern above — the `@multipleOf 1` constraint carries the information; a dedicated tag would be redundant and create a surface for disagreement (PP2).
+This makes `Integer = number + @multipleOf 1` the canonical example of a simple derived type that lands on a built-in JSON Schema primitive.
 
-**`bigint` note:** FormSpec does not map `bigint` to JSON Schema `integer`. Authors who want integer semantics should use `number` with `@multipleOf 1` as shown above. `bigint` fields are treated as unrecognized types and produce a diagnostic.
+### 2.3 `bigint` — Exact Integer Input Surface
+
+TypeScript `bigint` is also supported. It emits to the same JSON Schema primitive as `integer`:
+
+```json
+{ "type": "integer" }
+```
+
+The distinction matters on the authoring side, not in JSON Schema:
+
+- `integer` is the canonical FormSpec numeric kind for integer-valued data
+- `bigint` is a TypeScript-origin authoring kind that also represents integer-valued data
+
+For `bigint`-origin constraints, literal values may be preserved as decimal strings in the IR to avoid precision loss.
 
 ---
 
@@ -100,20 +119,20 @@ There is no `@integer` tag in FormSpec. Integer semantics are expressed through 
 
 ### 3.1 The `Integer` Type Alias Pattern
 
-Integer semantics in FormSpec come from a user-defined type alias, not from a built-in type or special annotation. The canonical pattern is:
+The most common TSDoc authoring pattern for integer semantics is still a user-defined type alias:
 
 ```typescript
 /** @multipleOf 1 */
 type Integer = number;
 ```
 
-The analyzer sees a `number` field with a `MultipleOfConstraint(1)` and a named type reference. The generator detects `multipleOf: 1` on a `number` and emits `{ "type": "integer" }` in the JSON Schema output rather than `{ "type": "number", "multipleOf": 1 }`. The named type flows through `$defs`/`$ref` like any other named type (PP7).
+The analyzer sees a `number` field with a `MultipleOfConstraint(1)` and a named type reference. It canonicalizes that pattern to the built-in integer kind. The named type then flows through `$defs`/`$ref` like any other named type (PP7).
 
-**Chain DSL path:** The chain DSL exposes `field.integer(name)` as a convenience for integer fields. Internally this records `{ kind: "primitive", primitiveKind: "integer" }` in the form element — equivalent to a `number` field whose resolved alias carries `MultipleOfConstraint(1)`.
+**Chain DSL path:** The chain DSL exposes `field.integer(name)` as the direct authoring surface for integer fields. Internally this records `{ kind: "primitive", primitiveKind: "integer" }` in the form element. This is semantically equivalent to the TypeScript alias pattern above.
 
 ### 3.2 IR Representation
 
-The IR captures the integer semantic at the `PrimitiveTypeNode` level. Named aliases appear as `ReferenceTypeNode` entries in the `$defs` registry — the primitive kind lives inside the resolved definition, not on the reference itself.
+The IR captures integer semantics at the `PrimitiveTypeNode` level. Named aliases appear as `ReferenceTypeNode` entries in the `$defs` registry — the primitive kind lives inside the resolved definition, not on the reference itself.
 
 ```typescript
 // Canonical IR for `amount: USDCents` with `@minimum 1`
@@ -175,7 +194,7 @@ Generated `$defs`:
 }
 ```
 
-The `allOf` + `$ref` pattern (003 §7.2) handles constraint narrowing at each level of the alias chain. `USDCents` inherits the `integer` type from `Integer` and adds `@minimum 0`. A field of type `USDCents` inherits both (PP3, S1, C1).
+The `allOf` + `$ref` pattern (003 §7.2) handles constraint narrowing at each level of the alias chain. `USDCents` inherits the integer type from `Integer` and adds `@minimum 0`. A field of type `USDCents` inherits both (PP3, S1, C1).
 
 ### 3.4 Type Alias Patterns
 
@@ -235,7 +254,7 @@ A `Decimal` type requires decisions FormSpec cannot make on behalf of consumers:
 3. **Rounding policy (B3):** When a decimal value with more precision than allowed must be constrained, how is precision loss handled? `"error"`, `"warn"`, `"allow"` — this is a high-stakes consumer decision, especially in financial contexts.
 4. **JSON Schema representation:** A string-backed decimal has `{ "type": "string" }` in JSON Schema plus a custom vocabulary keyword for precision constraints. A number-backed decimal has `{ "type": "number" }` plus `multipleOf`. The right choice depends on the consumer's schema consumers.
 
-These decisions are domain-specific, not FormSpec concerns. Decimal is therefore a downstream concern and an intentional extensibility pressure test (E1): if a consumer can introduce `Decimal` — with its own constraint tags, custom vocabulary keywords, Ajv validators, and ESLint rules — then the extension API is sufficiently expressive for any custom numeric domain.
+These decisions are domain-specific, not FormSpec concerns. Decimal is therefore a downstream concern and an intentional extensibility pressure test (E1): if a consumer can introduce `Decimal` — with its own constraint tags, custom vocabulary keywords, runtime-validator integrations, and ESLint rules — then the extension API is sufficiently expressive for any custom numeric domain.
 
 ### 4.2 Extension API Function Signatures
 
@@ -462,29 +481,30 @@ The `defineConstraintTag` call provides all information FormSpec needs to:
 - Preserve provenance for diagnostic messages (S3)
 - Compose with other constraints via intersection (C1)
 
-**Outcome 4: Write ESLint rules with minimal boilerplate.**
+**Outcome 4: Declarative constraint tags are the primary path.**
 
-FormSpec's ESLint plugin base provides rule infrastructure for constraint validation. The consumer writes only the extension-specific logic:
+For tags like `@maxSigFig`, `defineConstraintTag` is the primary extension surface. It is enough for applicability checking, parsing, contradiction detection, provenance, and composition. Most extension tags should stop here and should not require custom ESLint rule code.
+
+Rule code is only needed when an extension wants authoring-time checks that go beyond what the declarative tag registration can express:
 
 ```typescript
 // In the extension's ESLint plugin
 import { createConstraintTagRule } from '@formspec/eslint-plugin/base';
 
-// This rule validates @maxSigFig usage without reimplementing
-// type resolution, path-target syntax, provenance tracking, or
-// contradiction detection infrastructure.
-export const maxSigFigRule = createConstraintTagRule({
+// Optional: only needed for richer, domain-specific authoring checks
+// beyond what defineConstraintTag already declares.
+export const decimalWarningRule = createConstraintTagRule({
   tag: '@maxSigFig',
-  applicableTypes: ['Decimal'],
-  valueParser: parsePositiveInt,
-  contradictionCheck: (accumulated, proposed) =>
-    proposed > accumulated
-      ? `@maxSigFig ${proposed} cannot broaden inherited @maxSigFig ${accumulated}`
-      : null,
+  customValidate: ({ value }) => {
+    if (value > 18) {
+      return 'Values above 18 significant figures may be impractical for this renderer.';
+    }
+    return null;
+  },
 });
 ```
 
-The `createConstraintTagRule` factory handles the boilerplate: tag location extraction, type applicability checking, path-target resolution, provenance attachment, diagnostic emission (D1–D4). The extension provides the domain-specific decisions.
+The `createConstraintTagRule` factory handles the boilerplate for these optional richer checks. It is not required to make the base constraint tag work.
 
 **Outcome 5: Custom vocabulary keyword in JSON Schema output.**
 
@@ -524,18 +544,19 @@ Output for a `Decimal` field with `@minimum 0.01` and `@maxSigFig 8`:
 
 Note that `@minimum` on a `Decimal` field emits as `x-myorg-minimum` (a custom keyword with a string value) rather than the standard `minimum` keyword (which applies to JSON numbers). The extension's `jsonSchemaBase` of `{ "type": "string" }` makes this correct — the validation keyword validates the string representation, not a JSON number.
 
-**Outcome 6: Ajv validator for runtime validation.**
+**Outcome 6: Runtime validator integration.**
 
-The extension provides Ajv keyword definitions in a separate entry point, isolated per A8:
+The extension provides validator integration in a separate entry point, isolated per A8. FormSpec's default validator stack is based on `@cfworker/json-schema`; consumers may also adapt the same keyword semantics to other validators if needed:
 
 ```typescript
-// @myorg/formspec-decimal/ajv-keywords
-import type { KeywordDefinition } from 'ajv';
+// @myorg/formspec-decimal/runtime-validation
+interface DecimalKeywordDefinition {
+  readonly keyword: string;
+  readonly validate: (schema: unknown, data: unknown) => boolean;
+}
 
-export const maxSigFigKeyword: KeywordDefinition = {
+export const maxSigFigKeyword: DecimalKeywordDefinition = {
   keyword: 'x-myorg-maxSigFig',
-  type: 'string',
-  schemaType: 'integer',
   validate: function validateMaxSigFig(schema: number, data: string): boolean {
     // Consumer provides their own precision library here.
     // FormSpec provides no opinion on how to count sig figs.
@@ -545,24 +566,21 @@ export const maxSigFigKeyword: KeywordDefinition = {
   errors: true,
 };
 
-export const minimumDecimalKeyword: KeywordDefinition = {
+export const minimumDecimalKeyword: DecimalKeywordDefinition = {
   keyword: 'x-myorg-minimum',
-  type: 'string',
-  schemaType: 'string',
   validate: function validateDecimalMinimum(schema: string, data: string): boolean {
     return compareDecimal(data, schema) >= 0;
   },
-  errors: true,
 };
 ```
 
-Consumers who need runtime validation install both the extension and Ajv:
+Consumers who need runtime validation install the extension and connect its keyword validators to the runtime they use:
 
 ```bash
-pnpm add @myorg/formspec-decimal ajv
+pnpm add @myorg/formspec-decimal
 ```
 
-Consumers who only need schema generation install only the extension (no Ajv dependency at build time, consistent with A8).
+Consumers who only need schema generation install only the extension (no validator dependency at build time, consistent with A8).
 
 **Outcome 7: Constraint inheritance works identically to built-in types.**
 
@@ -767,6 +785,6 @@ This composition is performed in the Validate phase of the pipeline (A5), after 
 | #    | Section | Question                                                                                                                                                             | Status                                                                                                    |
 | ---- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | OD-1 | §3.1    | Should type alias resolution be eager (at analysis time) or lazy (at generation time)?                                                                               | Eager — resolved at Canonicalize phase to enable Validate phase contradiction detection                   |
-| OD-2 | §3.3    | Should the generator emit `{ "type": "integer" }` or `{ "type": "number", "multipleOf": 1 }` for aliases with `MultipleOfConstraint(1)`?                             | `{ "type": "integer" }` — cleaner output; the `multipleOf: 1` constraint is the source of truth in the IR |
+| OD-2 | §3.3    | Should the generator emit `{ "type": "integer" }` or `{ "type": "number", "multipleOf": 1 }` for aliases with `MultipleOfConstraint(1)`?                             | **DECIDED:** `{ "type": "integer" }`. Integer is a first-class FormSpec numeric kind; `number + @multipleOf 1` is a TSDoc authoring path that canonicalizes to it |
 | OD-3 | §4.3    | Should `broadenConstraintTag` be a compile-time registration or a runtime registration?                                                                              | Compile-time, via extension npm package loaded at build time (E5)                                         |
 | OD-4 | §6      | When a type alias inherits subfield constraints, should the generator always emit `allOf` + `$ref`, or inline when the alias adds only a single subfield constraint? | Always `allOf` + `$ref` for consistency and high-fidelity output (PP7)                                    |

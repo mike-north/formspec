@@ -15,11 +15,11 @@ This document specifies the Canonical Intermediate Representation (IR) for FormS
 The current codebase has two independent generation paths:
 
 - The **chain DSL path** walks `FormSpec<Elements>` directly in `generateJsonSchema` and `generateUiSchema`, treating `FormElement` as the final representation.
-- The **TSDoc-annotated type path** (currently tied to the decorator DSL being removed per NP1) walks `FieldInfo[]` produced by the TypeScript static analyzer and applies constraints through `applyDecoratorsToSchema`.
+- The **TSDoc-annotated type path** walks `FieldInfo[]` produced by the TypeScript static analyzer.
 
 Both paths produce `JSONSchema7` and `UISchema` objects, but they do so independently, with no shared intermediate structure. This means:
 
-- The same constraint logic is duplicated across `applyDecoratorsToSchema` (decorator path) and `fieldToJsonSchema` (chain DSL path).
+- The same constraint logic is duplicated across the legacy TSDoc generation path and `fieldToJsonSchema` (chain DSL path).
 - There is no single place to run contradiction detection, validate constraint composition, or attach provenance.
 - "Two surfaces, one semantic model" (PP5) is an aspiration, not yet an architectural reality.
 
@@ -66,11 +66,11 @@ Primitives map directly to JSON Schema primitive types.
 ```typescript
 interface PrimitiveTypeNode {
   readonly kind: 'primitive';
-  readonly primitiveKind: 'string' | 'number' | 'boolean' | 'null';
+  readonly primitiveKind: 'string' | 'number' | 'integer' | 'bigint' | 'boolean' | 'null';
 }
 ```
 
-**Design note:** The IR has no special `integer` primitive kind. Integer semantics are expressed via a `MultipleOfConstraint` with `value: 1` on a `number` type node. The JSON Schema generator detects this pattern and promotes `"type": "number"` to `"type": "integer"` in output (see 005). This keeps the IR model minimal — there is no footgun from a redundant integer kind that diverges from the constraint representation.
+**Design note:** The IR includes a first-class `integer` primitive kind so FormSpec can represent the full JSON Schema primitive type set directly. On TypeScript-authored surfaces, this often arises by canonicalizing a `number` alias constrained with `@multipleOf 1` (see 005), because TypeScript itself has no native integer type. `bigint` is also represented explicitly in the IR even though it emits to the same JSON Schema primitive type as `integer`.
 
 ### 2.3 Enum Types
 
@@ -81,11 +81,11 @@ interface EnumMember {
   /** The serialized value stored in data. */
   readonly value: string | number;
   /**
-   * Optional per-member display name.
+   * Optional per-member label.
    * Populated when the source author annotated individual members via
-   * the path-target grammar (S5): `@displayName :draft Draft`.
+   * member-target syntax (S5): `@displayName :draft Draft`.
    */
-  readonly displayName?: string;
+  readonly label?: string;
 }
 
 interface EnumTypeNode {
@@ -94,7 +94,7 @@ interface EnumTypeNode {
 }
 ```
 
-**Design note:** Enum member identity is the `value`. Display names on members are stored here rather than as annotations on the parent field because they are intrinsic to the member — a union member's label is part of what that member _is_, not a presentation preference on the containing field.
+**Design note:** Enum member identity is the `value`. Member labels are stored here rather than as annotations on the parent field because they are intrinsic to the member — a union member's label is part of what that member _is_, not a presentation preference on the containing field.
 
 ### 2.4 Array Types
 
@@ -118,10 +118,22 @@ interface ObjectTypeNode {
    */
   readonly properties: readonly ObjectProperty[];
   /**
-   * Whether additional properties beyond those listed are permitted.
-   * Defaults to false — object types in FormSpec are closed.
+   * Value type for unconstrained additional properties when the source type
+   * includes an unrestricted string/number index signature
+   * (e.g. `{ [k: string]: T }` or `Record<string, T>`).
+   *
+   * When absent, openness is determined later by JSON Schema emission policy
+   * and project configuration rather than by the IR node alone.
    */
-  readonly additionalProperties: boolean;
+  readonly additionalProperties?: TypeNode;
+  /**
+   * Constrained key families inferred from TypeScript key types that describe
+   * pattern-shaped object keys (for example `Record<\`env_${string}\`, T>`).
+   *
+   * Finite key sets such as `Record<'a' | 'b', T>` do not appear here; they
+   * are normalized to ordinary named properties.
+   */
+  readonly patternProperties?: readonly PatternProperty[];
 }
 
 interface ObjectProperty {
@@ -136,6 +148,16 @@ interface ObjectProperty {
    */
   readonly constraints: readonly ConstraintNode[];
   readonly annotations: readonly AnnotationNode[];
+  readonly provenance: Provenance;
+}
+
+interface PatternProperty {
+  /**
+   * ECMA-262 regular expression, without delimiters, suitable for JSON Schema
+   * `patternProperties`.
+   */
+  readonly keyPattern: string;
+  readonly valueType: TypeNode;
   readonly provenance: Provenance;
 }
 ```
@@ -176,27 +198,24 @@ interface ReferenceTypeNode {
 
 The IR registry (section 9) maintains a `TypeDefinition` map from reference names to their resolved `TypeNode`. Generators walk this map to emit `$defs` in JSON Schema (PP7).
 
-**OPEN DECISION:** Should circular references be represented with a `ReferenceTypeNode` pointing back to an entry in the registry (idiomatic for recursive types like `TreeNode`), or should the IR forbid circular type graphs entirely? The current implementation detects cycles and emits `{ type: "object" }` as a fallback. The principled approach is reference-based — this enables correct `$ref` emission per PP7 — but requires the registry to be constructed before cycle resolution.
+**Current rule:** Circular type graphs are not supported in this revision. The analyzer should emit a clear source-located diagnostic rather than silently degrading to a fallback object schema. Future support for registry-backed recursive references is tracked in [issue #105](https://github.com/mike-north/formspec/issues/105).
 
 ### 2.8 Dynamic Types
 
-Dynamic fields have no static type — their schema is resolved at runtime from a named data source.
+Dynamic types are reserved for fields whose schema is discovered at runtime.
 
 ```typescript
 interface DynamicTypeNode {
   readonly kind: 'dynamic';
-  readonly dynamicKind: 'enum' | 'schema';
+  readonly dynamicKind: 'schema';
   /**
-   * Key identifying the runtime data source or schema provider.
+   * Key identifying the runtime schema provider.
    */
   readonly sourceKey: string;
-  /**
-   * For dynamic enums: field names whose current values are passed as
-   * parameters to the data source resolver.
-   */
-  readonly parameterFields: readonly string[];
 }
 ```
+
+Dynamic option retrieval does **not** use `DynamicTypeNode`. The field's stored value type remains statically known (for example `string`), and runtime option-provider metadata is layered onto that static field definition by the chain DSL or mixed-authoring composition.
 
 ### 2.9 Custom Types
 
@@ -247,7 +266,7 @@ type ConstraintNode =
 
 ### 3.2 Numeric Constraints
 
-Apply to `number` fields (including those that express integer semantics via `multipleOf: 1`). `minimum` and `maximum` are inclusive; `exclusiveMinimum` and `exclusiveMaximum` are exclusive bounds (matching JSON Schema 2020-12 semantics, PP6).
+Apply to `number`, `integer`, and `bigint` fields. `minimum` and `maximum` are inclusive; `exclusiveMinimum` and `exclusiveMaximum` are exclusive bounds (matching JSON Schema 2020-12 semantics, PP6).
 
 ```typescript
 interface NumericConstraintNode {
@@ -258,12 +277,14 @@ interface NumericConstraintNode {
     | 'exclusiveMinimum'
     | 'exclusiveMaximum'
     | 'multipleOf';
-  readonly value: number;
+  readonly value: number | string;
   readonly provenance: Provenance;
 }
 ```
 
-**Type applicability (S4):** `NumericConstraintNode` may only attach to fields with `PrimitiveTypeNode("number")` or a `ReferenceTypeNode` that resolves to one. Attaching to any other type is a static error.
+**Value representation:** `number` and `integer` constraints use numeric values. `bigint`-origin constraints may preserve the parsed decimal text as a string to avoid precision loss.
+
+**Type applicability (S4):** `NumericConstraintNode` may only attach to fields with `PrimitiveTypeNode("number" | "integer" | "bigint")` or a `ReferenceTypeNode` that resolves to one. Attaching to any other type is a static error.
 
 ### 3.3 Length Constraints
 
@@ -294,7 +315,7 @@ interface PatternConstraintNode {
 }
 ```
 
-**OPEN DECISION:** Should the IR support the JSON Schema 2020-12 `patternProperties` keyword for object fields, or only `pattern` for strings? If `patternProperties` is in scope, it should live here as a `PatternConstraintNode` variant, not as a structural concern on `ObjectTypeNode`.
+`PatternConstraintNode` is for string values, not object keys. Object-key patterns are represented structurally on `ObjectTypeNode.patternProperties`.
 
 ### 3.5 Array Cardinality Constraints
 
@@ -452,7 +473,7 @@ interface FormatHintAnnotationNode {
 }
 ```
 
-**Ecosystem tag alignment (S6):** `displayName` derives from `@displayName` (following TSDoc conventions), `description` from `@description`, `defaultValue` from `@defaultValue`, `deprecated` from `@deprecated`. These are standard tags that editors already understand.
+**Ecosystem tag alignment (S6):** `description` derives from the standard `@description`/`@remarks` family, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName` is FormSpec-specific rather than a standard TSDoc tag.
 
 ### 4.3 Custom Annotations
 
@@ -598,19 +619,19 @@ interface NumericConstraintNode {
 
 The `path` field is available on all constraint kinds — it is not specific to numeric constraints (S5, PP8).
 
-### 6.3 Path Targeting for Annotations
+### 6.3 Member Targeting for Annotations
 
-The same grammar applies to annotations. The per-member `@displayName` syntax in the principles document is a specific form of path targeting for union members:
+The same colon-based grammar applies to annotations. The per-member `@displayName` syntax in the principles document is a specific form of member targeting for union members:
 
 ```typescript
 /**
- * @displayName :sync Synchronous
- * @displayName :async Asynchronous
+ * @displayName :draft Draft
+ * @displayName :paid Paid in Full
  */
-mode: 'sync' | 'async';
+status: 'draft' | 'paid';
 ```
 
-Here, `:sync` is syntactic sugar for targeting the `sync` member of the union. In the IR, these become `DisplayNameAnnotationNode` entries on the individual `EnumMember` records within the `EnumTypeNode`, not annotations on the parent field. The canonicalization phase (A5) resolves the path-target syntax into the correct IR placement.
+Here, `:draft` is syntactic sugar for targeting the `draft` member of the union. In the IR, the resolved member-level display-name metadata is stored on the individual `EnumMember` records within the `EnumTypeNode`, not as annotations on the parent field. The canonicalization phase (A5) resolves the member-target syntax into the correct IR placement.
 
 ### 6.4 Path Validation
 
@@ -884,7 +905,7 @@ The extension registration system substitutes the configured prefix at emit time
 interface GenerationContext {
   /**
    * The configured vendor prefix, e.g., "x-stripe".
-   * Use this to construct output keyword names: `${vendorPrefix}-my-keyword`.
+   * Use this to construct JSON Schema custom-key names: `${vendorPrefix}-my-keyword`.
    */
   readonly vendorPrefix: string;
   // ... other generation context
@@ -1017,96 +1038,15 @@ interface FormIR {
 
 ---
 
-## 11. Migration Mapping
+## Maintainer Note
 
-This section maps current codebase types to the new IR. It is the bridge between the existing implementation and the target architecture, satisfying A1 (both surfaces produce the same IR) and NP1 (decorators are removed).
-
-### 11.1 `FormElement` → `FormIRElement`
-
-The current `FormElement` discriminated union maps to `FormIRElement` as follows:
-
-| Current Type                  | Maps to IR                                                   |
-| ----------------------------- | ------------------------------------------------------------ |
-| `TextField<N>`                | `FieldNode` with `PrimitiveTypeNode("string")`               |
-| `NumberField<N>`              | `FieldNode` with `PrimitiveTypeNode("number")`               |
-| `BooleanField<N>`             | `FieldNode` with `PrimitiveTypeNode("boolean")`              |
-| `StaticEnumField<N, O>`       | `FieldNode` with `EnumTypeNode` (members from `options`)     |
-| `DynamicEnumField<N, Source>` | `FieldNode` with `DynamicTypeNode("enum", source)`           |
-| `DynamicSchemaField<N>`       | `FieldNode` with `DynamicTypeNode("schema", schemaSource)`   |
-| `ArrayField<N, Items>`        | `FieldNode` with `ArrayTypeNode` (items from elements)       |
-| `ObjectField<N, Props>`       | `FieldNode` with `ObjectTypeNode` (properties from elements) |
-| `Group<Elements>`             | `GroupLayoutNode`                                            |
-| `Conditional<K, V, Elements>` | `ConditionalLayoutNode`                                      |
-
-The chain DSL canonicalizer walks the `FormSpec<Elements>` structure and produces `FormIR`. Inline options on chain DSL fields (`label`, `min`, `max`, `required`, etc.) become `AnnotationNode` and `ConstraintNode` entries with `surface: "chain-dsl"` provenance.
-
-Specifically:
-
-- `label` → `DisplayNameAnnotationNode`
-- `placeholder` → `PlaceholderAnnotationNode`
-- `required` → sets `FieldNode.required`
-- `min` / `max` → `NumericConstraintNode("minimum")` / `NumericConstraintNode("maximum")`
-- `minItems` / `maxItems` → `LengthConstraintNode("minItems")` / `LengthConstraintNode("maxItems")`
-
-### 11.2 `FieldInfo` + `DecoratorInfo` → `FieldNode`
-
-The current TSDoc-annotated type path produces `FieldInfo[]` via static analysis. Under the new architecture, this analysis still runs, but its output is canonicalized to `FieldNode` rather than passed directly to `applyDecoratorsToSchema`.
-
-| Current `FieldInfo` property   | Maps to IR                                                  |
-| ------------------------------ | ----------------------------------------------------------- |
-| `name`                         | `FieldNode.name`                                            |
-| `type` (ts.Type)               | Resolved to a `TypeNode` by the type-to-IR converter        |
-| `optional`                     | `FieldNode.required = !optional`                            |
-| `deprecated`                   | `DeprecatedAnnotationNode`                                  |
-| `defaultValue`                 | `DefaultValueAnnotationNode`                                |
-| `decorators` (DecoratorInfo[]) | Each decorator becomes `ConstraintNode` or `AnnotationNode` |
-
-The `DecoratorInfo` entries (including synthetic JSDoc ones) map as follows:
-
-| Current Decorator Name   | Maps to IR                                     |
-| ------------------------ | ---------------------------------------------- |
-| `Minimum(n)`             | `NumericConstraintNode("minimum", n)`          |
-| `Maximum(n)`             | `NumericConstraintNode("maximum", n)`          |
-| `ExclusiveMinimum(n)`    | `NumericConstraintNode("exclusiveMinimum", n)` |
-| `ExclusiveMaximum(n)`    | `NumericConstraintNode("exclusiveMaximum", n)` |
-| `MinLength(n)`           | `LengthConstraintNode("minLength", n)`         |
-| `MaxLength(n)`           | `LengthConstraintNode("maxLength", n)`         |
-| `Pattern(s)`             | `PatternConstraintNode(s)`                     |
-| `Field({ displayName })` | `DisplayNameAnnotationNode(displayName)`       |
-| `Field({ description })` | `DescriptionAnnotationNode(description)`       |
-| `Field({ placeholder })` | `PlaceholderAnnotationNode(placeholder)`       |
-| `EnumOptions([...])`     | Overrides enum members on the `EnumTypeNode`   |
-
-**NP1 note:** `@formspec/decorators` and all decorator-specific resolution logic (`resolveDecorator`, branded type reading, `FORMSPEC_EXTENDS`/`FORMSPEC_EXTENSION` symbols) are removed. The decorator names in the table above survive only as TSDoc tag names — the same semantic content, different surface syntax.
-
-### 11.3 `CONSTRAINT_TAG_DEFINITIONS` → IR Constraint Kinds
-
-The current `CONSTRAINT_TAG_DEFINITIONS` map in `@formspec/core` serves as the source of truth for recognized TSDoc constraint tags. Under the new architecture, this map is superseded by the extension registry: built-in constraint registrations declare their TSDoc tag names, and the tag parser looks up registrations by name.
-
-`CONSTRAINT_TAG_DEFINITIONS` can be preserved as a compatibility export during migration, but it is no longer the authoritative list.
-
-### 11.4 `ConstraintConfig` → Profile-Based IR Filtering
-
-The current `ConstraintConfig` type (in `@formspec/constraints`) governs which FormSpec features are allowed at all in a project (PP9). Under the new architecture, `ConstraintConfig` becomes a **profile** that filters the Validate phase: after contradiction checking, the validator checks that every feature used is permitted by the active profile.
-
-The current `FieldTypeConstraints`, `LayoutConstraints`, etc. map naturally to constraints on the IR's node kinds:
-
-| Current `ConstraintConfig` key    | IR enforcement                                         |
-| --------------------------------- | ------------------------------------------------------ |
-| `fieldTypes.dynamicEnum: "error"` | Error if any `FieldNode` has `DynamicTypeNode("enum")` |
-| `layout.group: "off"`             | No restriction if any `GroupLayoutNode` is present     |
-| `layout.conditionals: "warn"`     | Warning if any `ConditionalLayoutNode` is present      |
-| `layout.maxNestingDepth: N`       | Error if object nesting depth exceeds N                |
-
-This enforcement happens during the Validate phase on the IR — not during canonicalization and not in the generators (A5, B1).
+Implementation-bridge and migration guidance has been moved out of this normative spec and into [maintainer-migration-notes.md](/Users/mnorth/Development/formspec/scratch/maintainer-migration-notes.md). This document now describes only the target IR contract, not how current codebase types should be mechanically translated during migration.
 
 ---
 
 ## Appendix: Open Decisions Summary
 
-| ID   | Section | Decision                                                                |
-| ---- | ------- | ----------------------------------------------------------------------- |
-| OD-1 | 2.7     | Circular type representation: registry-based `$ref` vs. forbidden cycle |
-| OD-2 | 3.4     | `patternProperties` support for object types                            |
+| ID   | Section | Decision |
+| ---- | ------- | -------- |
 
 Open decisions are resolved before implementation begins on affected sections. Resolution is recorded by amending this document.

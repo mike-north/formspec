@@ -20,18 +20,18 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 | **D1** (structured diagnostics)                     | Every FormSpec diagnostic carries source location, severity, machine-readable code, and human-readable message                                                                                    |
 | **D2** (source-located diagnostics)                 | Diagnostics point to author source, not IR or generated output. Multi-source diagnostics (contradictions) reference all participating locations                                                   |
 | **D3** (deterministic diagnostics)                  | The same input always produces the same diagnostic set in the same order. No non-deterministic map/set iteration                                                                                  |
-| **D4** (actionable diagnostics)                     | Every diagnostic message explains what is wrong and what the author should do. Codes like `FSP-501` carry structured context (the conflicting values, both source locations)                      |
+| **D4** (actionable diagnostics)                     | Every diagnostic message explains what is wrong and what the author should do. Codes like `CONSTRAINT_CONTRADICTION` carry structured context (the conflicting values, both source locations)     |
 | **D5** (auto-fixes when unambiguous)                | Rules offer auto-fixes only when intent is unambiguous. The confidence threshold is explicit: if more than one reasonable fix exists, the diagnostic describes the issue and defers to the author |
 | **D6** (machine-consumable diagnostics)             | The diagnostic format supports LSP, SARIF, and ESLint's RuleTester. Structured codes enable filtering and aggregation in CI                                                                       |
 | **PP9** (configurable surface area)                 | Every FormSpec diagnostic severity is overridable via project configuration. Rules can be set to `off`, `warn`, or `error` per project                                                            |
-| **PP10** (white-labelable)                          | The `<VENDOR>` prefix in all diagnostic codes is configurable. Default is `FSP`; organizations override to their own token (e.g., `STRIPE`)                                                       |
+| **PP10** (white-labelable)                          | Diagnostic presentation is configurable for downstream organizations, while canonical machine-readable diagnostic codes remain stable symbolic identifiers                                           |
 | **PP11** (consumer-controlled messaging)            | Diagnostic message templates are overridable via project configuration. Organizations can substitute their own terminology, instructional text, and style                                         |
 | **E1** (built-in types use the same extension API)  | The ESLint rule infrastructure described here is the same API used by built-in rules. Extensions get tag-on-type validation, contradiction detection, and path-target resolution for free         |
 
 ### Relationship to Other Documents
 
 - **001 (Canonical IR):** The shared analysis pipeline (§2) produces canonical IR nodes as output. All tooling consumes the IR, never the raw AST directly.
-- **002 (TSDoc Grammar):** The diagnostic codes in §2 of this document correspond 1-to-1 with the 1xx–5xx categories defined in 002 §6. The tooling layer is the runtime enforcement point for those grammar rules.
+- **002 (TSDoc Grammar):** The diagnostic codes in §2 of this document correspond to the symbolic machine-readable codes defined in 002 §6. The tooling layer is the runtime enforcement point for those grammar rules.
 - **003 (JSON Schema Vocabulary):** Extension rules (§4) follow the same extension registration model described in 003 §6.1 Outcome 4. A downstream consumer adding a `Decimal` type writes ESLint rules by expressing only extension-specific logic.
 
 ---
@@ -81,8 +81,8 @@ For each raw tag token, this phase:
 
 1. Looks up the tag name in the registered tag inventory (built-in + extensions, per E1)
 2. Applies the per-tag argument grammar (as specified in 002 §3)
-3. Produces either a parsed `TagNode` or a `ParseError` with a 1xx/2xx diagnostic code
-4. Respects the project's disabled-tag configuration (PP9), emitting `FSP-103` for disabled tags
+3. Produces either a parsed `TagNode` or a `ParseError` with a symbolic diagnostic code
+4. Respects the project's disabled-tag configuration (PP9), emitting `TAG_DISABLED` for disabled tags
 
 The tag inventory is a registry, not a hard-coded list. Extension packages contribute entries at initialization time.
 
@@ -91,11 +91,11 @@ The tag inventory is a registry, not a hard-coded list. Extension packages contr
 This phase links each parsed tag to the TypeScript type it applies to:
 
 1. Resolves the field's declared TypeScript type via the TypeScript compiler API
-2. Checks tag applicability against the resolved type (producing `FSP-301` for type mismatches, per S4)
+2. Checks tag applicability against the resolved type (producing `TYPE_MISMATCH`, per S4)
 3. Resolves path-target (`:subfield`) and member-target (`:member`) modifiers:
-   - Path-targets: look up the property on the field's object type; produce `FSP-401` if absent
-   - Member-targets: look up the member in the field's union/enum; produce `FSP-402` if absent
-4. Produces `FSP-403`/`FSP-404` for modifiers used on tags that do not accept them, or on incompatible types
+   - Path-targets: look up the property on the field's object type; produce `UNKNOWN_PATH_TARGET` if absent
+   - Member-targets: look up the member in the field's string literal union; produce `UNKNOWN_MEMBER_TARGET` if absent
+4. Produces `UNSUPPORTED_TARGETING_SYNTAX` / `MEMBER_TARGET_ON_NON_UNION` for modifiers used on tags that do not accept them, or on incompatible types
 
 The TypeScript compiler API is accessed via a shared `TypeResolutionContext` that both ESLint (which receives a `parserServices` TypeScript program) and the language server (which maintains its own TS program) provide.
 
@@ -109,9 +109,9 @@ This phase validates constraint composition across the resolved IR nodes:
    - String length: `@minLength` > `@maxLength`
    - Array length: `@minItems` > `@maxItems`
    - Rule effects: `@showWhen` + `@hideWhen` on same field; `@enableWhen` + `@disableWhen`
-3. Checks for duplicate tags where only one instance is meaningful (producing `FSP-502`)
-4. Checks for annotation conflicts (producing `FSP-503` for `@description` + `@remarks`)
-5. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `FSP-501` with both source locations per D2)
+3. Checks for duplicate tags where only one instance is meaningful (producing `DUPLICATE_TAG`)
+4. Checks for annotation conflicts (producing `DESCRIPTION_REMARKS_CONFLICT` for `@description` + `@remarks`)
+5. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
 
 Extension-registered constraints participate in contradiction detection by declaring their contradiction predicate (see §4.2).
 
@@ -162,15 +162,15 @@ Per A7, ESLint owns all validation and auto-fix logic. The `@formspec/eslint-plu
 
 ### 3.1 Rule Categories
 
-Each rule category maps directly to a diagnostic code range from 002 §6:
+Each rule category maps directly to a diagnostic category from 002 §6:
 
-| Rule category           | Diagnostic codes | Responsibility                                    |
-| ----------------------- | ---------------- | ------------------------------------------------- |
-| `tag-recognition`       | 1xx              | Unknown tags, missing arguments, disabled tags    |
-| `value-parsing`         | 2xx              | Malformed numeric, regex, JSON, and date values   |
-| `type-compatibility`    | 3xx              | Tags applied to incompatible field types          |
-| `target-resolution`     | 4xx              | Invalid path-target and member-target references  |
-| `constraint-validation` | 5xx              | Contradictions, duplicates, rule effect conflicts |
+| Rule category           | Diagnostic families                                                  | Responsibility                                    |
+| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
+| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`                | Unknown tags, missing arguments, disabled tags    |
+| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related     | Malformed numeric, regex, JSON, and date values   |
+| `type-compatibility`    | `TYPE_MISMATCH`                                                      | Tags applied to incompatible field types          |
+| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related              | Invalid path-target and member-target references  |
+| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                 | Contradictions, duplicates, rule effect conflicts |
 
 Rules within each category are named `formspec/<category>/<specific-rule>`, for example:
 
@@ -189,7 +189,7 @@ import type { Rule } from 'eslint';
 import { analyzeDeclaration } from '@formspec/build/analysis';
 
 /**
- * Example built-in rule: reports constraint contradictions (FSP-501).
+ * Example built-in rule: reports constraint contradictions (`CONSTRAINT_CONTRADICTION`).
  * The rule is thin — all analysis lives in the pipeline.
  */
 const noContradictions: Rule.RuleModule = {
@@ -236,24 +236,24 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 
 **`formspec/recommended` rule set:**
 
-| Rule                                            | Codes   | Default severity |
+| Rule                                            | Codes                                           | Default severity |
 | ----------------------------------------------- | ------- | ---------------- |
-| `tag-recognition/no-unknown-tags`               | FSP-101 | warn             |
-| `tag-recognition/require-tag-arguments`         | FSP-102 | error            |
-| `tag-recognition/no-disabled-tags`              | FSP-103 | warn             |
-| `value-parsing/valid-numeric-value`             | FSP-201 | error            |
-| `value-parsing/valid-integer-value`             | FSP-202 | error            |
-| `value-parsing/valid-regex-pattern`             | FSP-203 | error            |
-| `value-parsing/valid-json-value`                | FSP-204 | error            |
-| `type-compatibility/tag-type-check`             | FSP-301 | error            |
-| `target-resolution/valid-path-target`           | FSP-401 | error            |
-| `target-resolution/valid-member-target`         | FSP-402 | error            |
-| `target-resolution/no-unsupported-targeting`    | FSP-403 | error            |
-| `target-resolution/no-member-target-on-object`  | FSP-404 | error            |
-| `constraint-validation/no-contradictions`       | FSP-501 | error            |
-| `constraint-validation/no-duplicate-tags`       | FSP-502 | warn             |
-| `constraint-validation/no-description-conflict` | FSP-503 | info             |
-| `constraint-validation/no-contradictory-rules`  | FSP-504 | error            |
+| `tag-recognition/no-unknown-tags`               | `UNKNOWN_TAG`                                   | warn             |
+| `tag-recognition/require-tag-arguments`         | `MISSING_TAG_ARGUMENT`                          | error            |
+| `tag-recognition/no-disabled-tags`              | `TAG_DISABLED`                                  | warn             |
+| `value-parsing/valid-numeric-value`             | `INVALID_NUMERIC_VALUE`                         | error            |
+| `value-parsing/valid-integer-value`             | `INVALID_NON_NEGATIVE_INTEGER`                  | error            |
+| `value-parsing/valid-regex-pattern`             | `INVALID_REGEX_PATTERN`                         | error            |
+| `value-parsing/valid-json-value`                | `INVALID_JSON_VALUE`                            | error            |
+| `type-compatibility/tag-type-check`             | `TYPE_MISMATCH`                                 | error            |
+| `target-resolution/valid-path-target`           | `UNKNOWN_PATH_TARGET`                           | error            |
+| `target-resolution/valid-member-target`         | `UNKNOWN_MEMBER_TARGET`                         | error            |
+| `target-resolution/no-unsupported-targeting`    | `UNSUPPORTED_TARGETING_SYNTAX`                  | error            |
+| `target-resolution/no-member-target-on-object`  | `MEMBER_TARGET_ON_NON_UNION`                    | error            |
+| `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`                      | error            |
+| `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                                 | warn             |
+| `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT`                  | info             |
+| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULES`                           | error            |
 
 ### 3.4 Rule Configuration Interface
 
@@ -296,8 +296,8 @@ For message template overrides (PP11), the consumer configures them in `.formspe
 # .formspec.yml
 diagnostics:
   messages:
-    FSP-101: 'Unrecognized tag "@{tagName}". Valid tags: {validTags}.'
-    FSP-501: 'Conflicting constraints detected: {details}'
+    UNKNOWN_TAG: 'Unrecognized tag "@{tagName}". Valid tags: {validTags}.'
+    CONSTRAINT_CONTRADICTION: 'Conflicting constraints detected: {details}'
 ```
 
 Message templates use `{placeholder}` syntax. The available placeholders for each code are documented in 002 §6 and are part of the stable public API.
@@ -314,14 +314,14 @@ The design goal is Outcome 4 from 003 §6.1: **extension authors express only ex
 
 Extensions declare their constraint tags using `defineConstraintTag` from `@formspec/core` inside a `defineExtension` call (see 005 §4 for the full API shape). The `defineConstraintTag` registration is the authoritative source for everything the shared analysis pipeline needs:
 
-- `applicableTypes` — which TypeScript types the tag may appear on (enforced as FSP-301)
-- `valueParser` — validates and parses the tag's argument (failure emits the appropriate 2xx code)
-- `contradictionCheck` — predicate called for all constraint pairs; returning a non-null result produces FSP-501
-- `composition` — determines duplicate semantics: `"intersection"` tags with the same target produce FSP-502
+- `applicableTypes` — which TypeScript types the tag may appear on (enforced as `TYPE_MISMATCH`)
+- `valueParser` — validates and parses the tag's argument (failure emits the appropriate symbolic parse code)
+- `contradictionCheck` — predicate called for all constraint pairs; returning a non-null result produces `CONSTRAINT_CONTRADICTION`
+- `composition` — determines duplicate semantics: `"intersection"` tags with the same target produce `DUPLICATE_TAG`
 
 The analysis pipeline reads these declarations automatically. Extension authors do **not** write custom ESLint rules for type applicability, value parsing, or contradiction detection — those diagnostics are emitted by the built-in rules whenever a registered tag violates its own declared constraints.
 
-For example, a `@maxSigFig` tag declared with `applicableTypes: ["Decimal"]` automatically produces FSP-301 if the author applies it to a `number` field. No extension rule code is required for that check.
+For example, a `@maxSigFig` tag declared with `applicableTypes: ["Decimal"]` automatically produces `TYPE_MISMATCH` if the author applies it to a `number` field. No extension rule code is required for that check.
 
 ### 4.2 ESLint Rule Infrastructure for Extension-Specific Logic
 
@@ -344,7 +344,7 @@ export const maxSigFigRule = createConstraintTagRule({
 });
 ```
 
-Extension rules receive an `AnalysisResult` from the shared pipeline. Tags that already produced pipeline diagnostics (FSP-301, FSP-401, etc.) are excluded from the result — the extension only sees tags that passed all pipeline phases and are ready for domain-level inspection.
+Extension rules receive an `AnalysisResult` from the shared pipeline. Tags that already produced pipeline diagnostics (`TYPE_MISMATCH`, `UNKNOWN_PATH_TARGET`, etc.) are excluded from the result — the extension only sees tags that passed all pipeline phases and are ready for domain-level inspection.
 
 ### 4.3 What Extensions Get for Free
 
@@ -352,12 +352,12 @@ By declaring a tag via `defineConstraintTag` (see 005 §4), an extension gets th
 
 | Capability                                      | Mechanism                                                                       |
 | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| Parse error reporting (FSP-201 through FSP-204) | `valueParser` declaration → pipeline runs the right parser                      |
-| Type applicability checking (FSP-301)           | `applicableTypes` declaration → pipeline checks tag against field type          |
-| Path-target validation (FSP-401/FSP-403)        | Pipeline resolves `:subfield` modifiers; produces errors for unknown properties |
-| Member-target validation (FSP-402/FSP-403)      | Pipeline validates `:member` references against union/enum members              |
-| Contradiction detection (FSP-501)               | `contradictionCheck` predicate → pipeline compares constraint pairs             |
-| Duplicate detection (FSP-502)                   | `composition: "intersection"` on same target → pipeline emits duplicate warning |
+| Parse error reporting (`INVALID_*`)                  | `valueParser` declaration → pipeline runs the right parser                           |
+| Type applicability checking (`TYPE_MISMATCH`)       | `applicableTypes` declaration → pipeline checks tag against field type               |
+| Path-target validation (`UNKNOWN_PATH_TARGET`, related) | Pipeline resolves `:subfield` modifiers; produces errors for unknown properties  |
+| Member-target validation (`UNKNOWN_MEMBER_TARGET`, related) | Pipeline validates `:member` references against string literal union members |
+| Contradiction detection (`CONSTRAINT_CONTRADICTION`) | `contradictionCheck` predicate → pipeline compares constraint pairs                  |
+| Duplicate detection (`DUPLICATE_TAG`)              | `composition: "intersection"` on same target → pipeline emits duplicate warning      |
 | Provenance tracking (S3, D2)                    | Pipeline records source location for every constraint node automatically        |
 
 The extension rule only needs to express logic that is genuinely specific to its domain.
@@ -388,9 +388,9 @@ Completion items include:
 - The tag name with the leading `@`
 - A brief description (taken from the tag's documentation in the registry)
 - A snippet template for the tag's required arguments (e.g., `@minimum ${1:value}`)
-- The tag's applicability information (shown in the completion detail: "Applies to: number, bigint")
+- The tag's applicability information (shown in the completion detail: "Applies to: number")
 
-The completion list is filtered based on the field's TypeScript type at the cursor position. If the author is in the comment for a `string` field, `@minimum` is not offered (it is only applicable to `number` and `bigint`). This filtering surfaces the right subset of tags for the current context (S4, PP2).
+The completion list is filtered based on the field's TypeScript type at the cursor position. If the author is in the comment for a `string` field, `@minimum` is not offered (it is only applicable to `number` in core FormSpec). This filtering surfaces the right subset of tags for the current context (S4, PP2).
 
 ### 5.2 Path-Target Completions
 
@@ -401,11 +401,11 @@ For example, on a field of type `MonetaryAmount { value: number; currency: strin
 - `@minimum :` → offers `:value` and `:currency`
 - After selecting `:value`, the list is further filtered to show only tags applicable to `number`
 
-For union/enum fields, the same `:` trigger offers member names for tags that accept member-target syntax (§5 in 002):
+For string literal union fields, the same `:` trigger offers member names for tags that accept member-target syntax (§5 in 002):
 
 - On `'draft' | 'sent' | 'paid'`, `@displayName :` → offers `:draft`, `:sent`, `:paid`
 
-This completion is particularly valuable because path-target identifiers must exactly match property names — a typo produces `FSP-401`. Completions eliminate the typo source (A7: completions are an authoring-experience concern, not a validation concern).
+This completion is particularly valuable because path-target identifiers must exactly match property names — a typo produces `UNKNOWN_PATH_TARGET`. Completions eliminate the typo source (A7: completions are an authoring-experience concern, not a validation concern).
 
 ### 5.3 Hover Information
 
@@ -423,7 +423,7 @@ When the author hovers over a FormSpec tag, the language server displays:
 
 3. **Current effective value:** When a field's type has multiple constraints on the same property (from the field itself and from type inheritance), hover shows the composed effective constraint, not just the locally-declared one.
 
-4. **Conflict warnings:** If a constraint is in contradiction with another (the same pair that `FSP-501` reports in ESLint), hover shows a warning indicator and links to the conflicting location. This gives authors immediate feedback without requiring a full lint run.
+4. **Conflict warnings:** If a constraint is in contradiction with another (the same pair that `CONSTRAINT_CONTRADICTION` reports in ESLint), hover shows a warning indicator and links to the conflicting location. This gives authors immediate feedback without requiring a full lint run.
 
 ### 5.4 Go-to-Definition
 
@@ -463,7 +463,7 @@ The FormSpec language server does **not** re-run the analysis pipeline for diagn
 
 The FormSpec LS responsibilities are strictly:
 
-- **Completions:** tag names (filtered by field type), path-target field names, enum member names (§5.1–§5.2)
+- **Completions:** tag names (filtered by field type), path-target field names, string-literal union member names (§5.1–§5.2)
 - **Go-to-definition:** `{@link}` type references in `@showWhen`/`@hideWhen`/`@enableWhen`/`@disableWhen` (§5.4)
 - **Hover:** tag documentation, constraint provenance, effective composed value (§5.3)
 - **Signature help:** expected tag arguments, argument descriptions, path/member-target indicator (§5.5)
@@ -476,18 +476,15 @@ Source-level diagnostics — tag recognition, value parsing, type compatibility,
 
 ### 6.1 Code Structure
 
-All FormSpec diagnostics use the format `<VENDOR>-<CATEGORY><NNN>`:
+All FormSpec diagnostics use stable symbolic machine-readable codes such as:
 
-- `<VENDOR>` — configurable vendor prefix, default `FSP` (per PP10). Organizations override this in `.formspec.yml` to match their internal tooling conventions.
-- `<CATEGORY><NNN>` — a three-digit code where the leading digit identifies the category (per 002 §6):
-  - `1xx` — Tag recognition
-  - `2xx` — Value parsing
-  - `3xx` — Type compatibility
-  - `4xx` — Target resolution
-  - `5xx` — Constraint validation
+- `UNKNOWN_TAG`
+- `TYPE_MISMATCH`
+- `UNKNOWN_PATH_TARGET`
+- `UNKNOWN_MEMBER_TARGET`
+- `CONSTRAINT_CONTRADICTION`
 
-Examples with default vendor prefix: `FSP-101`, `FSP-301`, `FSP-501`.
-Examples with overridden vendor prefix: `STRIPE-101`, `STRIPE-501`.
+Branding belongs in displayed messages and surrounding tooling presentation, not in the canonical `code` field.
 
 ### 6.2 Structured Diagnostic Type
 
@@ -499,8 +496,7 @@ Examples with overridden vendor prefix: `STRIPE-101`, `STRIPE-501`.
  */
 interface FormSpecDiagnostic {
   /**
-   * The machine-readable code, e.g., "FSP-501".
-   * The vendor prefix reflects the configured prefix (PP10).
+   * The machine-readable code, e.g., "CONSTRAINT_CONTRADICTION".
    * Category is one of: tag-recognition, value-parsing, type-compatibility,
    * target-resolution, constraint-validation.
    */
@@ -534,7 +530,7 @@ interface FormSpecDiagnostic {
   readonly location: SourceLocation;
 
   /**
-   * Additional source locations for multi-source diagnostics (e.g., FSP-501
+   * Additional source locations for multi-source diagnostics (e.g., `CONSTRAINT_CONTRADICTION`
    * contradiction, which involves two constraints at potentially different locations).
    * The first entry is the "other" constraint; the second and beyond are context.
    * May be empty.
@@ -634,12 +630,12 @@ Fixes are offered only when the intent is unambiguous and the transformation is 
 | Unknown tag with close match (edit distance ≤ 2)          | Yes — rename to the matched tag  | Only one plausible intent                        |
 | Disabled tag present                                      | Yes — remove the tag             | Only one valid action: remove it                 |
 | Float passed to integer-only tag (e.g., `@minLength 1.0`) | Yes — truncate to `1`            | Clearly a formatting mistake                     |
-| Duplicate tag (FSP-502) — second instance wins            | Yes — remove first               | Composition rule is clear (C1)                   |
-| `@description` + `@remarks` conflict (FSP-503)            | Yes — remove `@remarks`          | `@description` always wins per C1                |
+| Duplicate tag (`DUPLICATE_TAG`) — second instance wins    | Yes — remove first               | Composition rule is clear (C1)                   |
+| `@description` + `@remarks` conflict (`DESCRIPTION_REMARKS_CONFLICT`) | Yes — remove `@remarks` | `@description` always wins per C1                |
 | Unknown path-target with close match (≤ 2 edits)          | Yes — rename to matched property | Only one plausible property                      |
-| Constraint contradiction (FSP-501)                        | No                               | The author must decide which constraint is wrong |
-| Tag applied to wrong type (FSP-301)                       | No                               | The author must change the field type or the tag |
-| Missing required argument (FSP-102)                       | No                               | The intent (which value?) is unknown             |
+| Constraint contradiction (`CONSTRAINT_CONTRADICTION`)     | No                               | The author must decide which constraint is wrong |
+| Tag applied to wrong type (`TYPE_MISMATCH`)               | No                               | The author must change the field type or the tag |
+| Missing required argument (`MISSING_TAG_ARGUMENT`)        | No                               | The intent (which value?) is unknown             |
 
 ### 7.2 ESLint Fixer
 
@@ -700,19 +696,9 @@ The language server supports "Fix All" actions via the `source.fixAll.formspec` 
 
 ## 8. Configuration
 
-### 8.1 Vendor Prefix (PP10)
+### 8.1 Diagnostic Branding (PP10)
 
-The vendor prefix for diagnostic codes is configured in `.formspec.yml`:
-
-```yaml
-# .formspec.yml
-diagnostics:
-  vendorPrefix:
-    'STRIPE' # Override default "FSP"
-    # Produces codes like STRIPE-101, STRIPE-501
-```
-
-All diagnostic codes emitted by built-in rules and extension rules use the configured prefix. The prefix must match `[A-Z][A-Z0-9_]*` — an error is reported at initialization if the format is invalid.
+Diagnostic branding is configurable in `.formspec.yml`, but it does not change the canonical machine-readable `code`. It affects displayed message wrappers, help links, and organization-specific presentation.
 
 ### 8.2 Per-Rule Severity Overrides (PP9)
 
@@ -749,12 +735,12 @@ Diagnostic message templates are overridable in `.formspec.yml`. Templates use `
 diagnostics:
   messages:
     # Override the unknown-tag message to match internal documentation style
-    FSP-101: >
+    UNKNOWN_TAG: >
       "@{tagName}" is not a recognized annotation in this project.
       See go/formspec-tags for the complete tag reference.
 
     # Override the contradiction message to reference internal runbooks
-    FSP-501: >
+    CONSTRAINT_CONTRADICTION: >
       Constraint conflict: {details}.
       To resolve, see go/formspec-constraint-conflicts.
 ```
@@ -763,7 +749,7 @@ Template overrides apply to both ESLint rule reports and language server hover/d
 
 ### 8.4 Disabled Tags (PP9)
 
-Tags can be disabled project-wide in `.formspec.yml`. Disabled tags that appear in source produce `<VENDOR>-103` at the configured severity (default `warn`):
+Tags can be disabled project-wide in `.formspec.yml`. Disabled tags that appear in source produce `TAG_DISABLED` at the configured severity (default `warn`):
 
 ```yaml
 # .formspec.yml
@@ -792,17 +778,17 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 ---
 
-## Appendix A: Diagnostic Code Quick Reference
+## Appendix A: Diagnostic Category Quick Reference
 
-| Code range | Category              | Responsibility                                    |
-| ---------- | --------------------- | ------------------------------------------------- |
-| `<V>-1xx`  | Tag recognition       | Unknown tags, missing arguments, disabled tags    |
-| `<V>-2xx`  | Value parsing         | Malformed numeric, regex, JSON, and date values   |
-| `<V>-3xx`  | Type compatibility    | Tags applied to incompatible field types          |
-| `<V>-4xx`  | Target resolution     | Invalid path-target and member-target references  |
-| `<V>-5xx`  | Constraint validation | Contradictions, duplicates, rule effect conflicts |
+| Category              | Representative symbolic codes                               | Responsibility                                    |
+| --------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
+| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`       | Unknown tags, missing arguments, disabled tags    |
+| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related   | Malformed numeric, regex, JSON, and date values   |
+| Type compatibility    | `TYPE_MISMATCH`                                             | Tags applied to incompatible field types          |
+| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related     | Invalid path-target and member-target references  |
+| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related        | Contradictions, duplicates, rule effect conflicts |
 
-`<V>` is the configured vendor prefix (default `FSP`). See 002 §6 for individual diagnostic code definitions.
+See 002 §6 for the individual diagnostic code definitions.
 
 ---
 
@@ -810,9 +796,9 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 | Capability                        | ESLint        | Language Server           | Notes                                                 |
 | --------------------------------- | ------------- | ------------------------- | ----------------------------------------------------- |
-| Parse error detection (2xx)       | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Type applicability checking (3xx) | Yes           | No                        | ESLint rule `tag-type-check`                          |
-| Contradiction detection (5xx)     | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Parse error detection             | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Type applicability checking       | Yes           | No                        | ESLint rule `tag-type-check`                          |
+| Contradiction detection           | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
 | Auto-fix application              | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
 | Tag name completions              | No            | Yes                       | LS-only authoring experience (A7)                     |
 | Path/member-target completions    | No            | Yes                       | LS-only authoring experience (A7)                     |

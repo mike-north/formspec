@@ -1,0 +1,191 @@
+# Spec Changelog
+
+This file tracks agreed changes and clarifications to the spec documents in `scratch/`.
+
+## Usage
+
+- Add entries only when a contradiction, ambiguity, or implementation blocker is resolved.
+- Group entries by the spec document being changed.
+- Link each entry back to the corresponding item in `scratch/spec-risk-log.md` when applicable.
+
+## 000-principles.md
+
+- Added a naming principle for TSDoc tags.
+  - FormSpec TSDoc tags should read as complete thoughts, even when they are not full sentences.
+  - Generic names like `@data` are disfavored when they obscure the primary meaning being captured at the comment site.
+  - `@displayName` and `@apiName` are the canonical positive examples because the semantic role is explicit in the tag name itself.
+- Refined PP5 and related wording.
+  - PP5 now allows only explicitly enumerated parity exceptions.
+  - The shared static feature set remains parity-bound; runtime-capable exceptions must be named explicitly in the spec.
+  - Provenance examples and IR wording no longer mention decorator paths as active authoring surfaces.
+
+## 001-canonical-ir.md
+
+- Terminology tightened.
+  - Generic phrases like "output keyword names" should be replaced with explicit JSON Schema terminology such as "JSON Schema custom-key names".
+- Enum member metadata naming tightened.
+  - `EnumMember.displayName` has been renamed to `EnumMember.label` in the IR sketch to avoid overloading the term "display name" across both annotation concepts and per-member stored metadata.
+- Migration material moved out of the normative spec.
+  - Section 11 has been removed from `001-canonical-ir.md`.
+  - Its implementation-bridge content now lives in [maintainer-migration-notes.md](/Users/mnorth/Development/formspec/scratch/maintainer-migration-notes.md) as non-normative maintainer guidance.
+
+## 002-tsdoc-grammar.md
+
+- Resolved contradiction from `spec-risk-log.md` item 1.
+  - Sections 5.5 and 9.4 are canonical.
+  - `:member` syntax is only valid for string-literal unions.
+  - `enum` and `const enum` must use declaration-site annotations.
+  - The conflicting section 5.2 examples for `enum` / `const enum` should be removed or rewritten.
+- Resolved contradiction from `spec-risk-log.md` item 2.
+  - Validation tags may use path-target syntax when they target nested fields within a structured type.
+  - For array-valued nested fields, this includes `@minItems`, `@maxItems`, and `@uniqueItems`.
+  - Section 4.3 should be clarified so array-level constraints do not need path-target syntax on the array field itself, but may target an array-valued nested field via path-target syntax.
+  - The spec should explicitly distinguish untargeted array constraints on an outer array field from path-targeted array constraints on an array-valued property of each array item.
+  - Example:
+    - `@minItems 1` on `orders: Order[]` constrains the number of `orders`
+    - `@minItems :lineItems 1` constrains the `lineItems` array on every `Order` in `orders`
+- Resolved contradiction from `spec-risk-log.md` item 3.
+  - Diagnostic codes should be symbolic machine-readable identifiers only.
+  - No numeric or vendor-prefixed diagnostic IDs.
+  - 002 and 006 should use the same symbolic code scheme.
+- Resolved ambiguity from `spec-risk-log.md` item 6.
+  - The base spec should not promise cross-axis conditional combinations on a single field yet.
+  - Normative behavior is restricted to one rule axis per field for now.
+  - Cross-axis combinations are deferred to future work.
+- Resolved ambiguity from `spec-risk-log.md` item 7.
+  - Multiple `@description` tags use last-one-wins semantics.
+  - 002 should state explicit override behavior for repeated `@description` tags.
+- Resolved ambiguity from `spec-risk-log.md` item 8.
+  - Class-level `@displayName` maps to the root schema `title`.
+  - On classes/interfaces, bare `@displayName Foo` is the singular form and is equivalent to `@displayName :singular Foo`.
+  - The root schema `title` uses the singular display name.
+- Resolved ambiguity from `spec-risk-log.md` item 9.
+  - `@deprecated` message text must be preserved.
+  - The extracted message maps to the JSON Schema custom annotation `x-<vendor>-deprecation-description`.
+- Resolved ambiguity from `spec-risk-log.md` item 10.
+  - Quoted `@defaultValue` values are always explicit strings.
+  - Unquoted values are parsed against the resolved target type, preferring a valid non-string interpretation before falling back to string.
+  - This preserves a low-noise path for string defaults while keeping quoted syntax as the explicit string escape hatch.
+- Resolved the shared `:` modifier syntax decision.
+  - The spec keeps a single `:` syntax for path-targets, member-targets, and reserved qualifiers.
+  - This is documented as an intentional limitation: each declaration surface must keep those modifier namespaces non-intersecting.
+  - If a future feature creates a collision, the implementation should lint it and migrate authors to a new non-colliding syntax via a mechanical rewrite.
+- Terminology tightened.
+  - Generic labels like "Output keyword" should be replaced with explicit terms such as "JSON Schema annotation key", "JSON Schema validation keyword", or "UI Schema target" depending on what the column actually means.
+- Runtime option tags clarified and renamed.
+  - Superseded by a cleaner authoring boundary.
+  - Built-in TSDoc tags for dynamic option retrieval have been removed from the spec.
+  - Dynamic option retrieval, runtime-discovered schema, and runtime-discovered UI are ChainDSL-owned capabilities in this revision.
+  - Mixed-authoring composition is the supported path when a mostly TSDoc-derived form needs ChainDSL-only runtime behavior.
+  - Decorators are explicitly not the escape hatch for this capability.
+- Clarified extension-example status for `@maxSigFig`.
+  - Section 2.1 now treats `@maxSigFig` as a canonical example of an extension-defined constraint tag.
+  - The file no longer implies that decimal precision tags are required built-ins of core FormSpec.
+
+## 003-json-schema-vocabulary.md
+
+- Resolved drift from `spec-risk-log.md` item 5.
+  - 003 is normative for `additionalProperties`.
+  - Default output omits `additionalProperties: false` unless strict mode is explicitly configured.
+- Resolved ambiguity from `spec-risk-log.md` item 9.
+  - Deprecation message text is preserved in JSON Schema using the vendor-prefixed custom annotation `x-<vendor>-deprecation-description`.
+  - `deprecated: true` remains the standard keyword; the custom annotation carries the descriptive message for SDK/tooling consumers.
+- Terminology tightened.
+  - Mapping tables should distinguish between JSON Schema validation keywords and JSON Schema annotation keys rather than using a generic "keyword" label.
+- Runtime option annotation keys clarified and renamed.
+  - The normative JSON Schema annotation keys for dynamic option retrieval remain `x-<vendor>-option-source` and `x-<vendor>-option-source-params`.
+  - These keys are emitted by ChainDSL-authored dynamic fields, including mixed-authoring composition output, not by built-in TSDoc tags in this revision.
+  - The spec states explicitly that option providers may be local or remote; the schema carries only the declarative provider key and parameter-field list.
+
+## 004-tooling.md
+
+- No entries yet.
+
+## 005-numeric-types.md
+
+- No entries yet.
+
+## 006-parity-testing.md
+
+- Resolved contradiction from `spec-risk-log.md` item 3.
+  - Diagnostic parity should compare symbolic machine-readable codes only.
+  - No numeric or vendor-prefixed diagnostic IDs.
+- Resolved ambiguity from `spec-risk-log.md` item 11.
+  - Parity fixtures should first rewrite the TSDoc surface to get as close as possible to the chain DSL fixture.
+  - Any remaining chain-only features should be reviewed explicitly to decide whether to remove them or add TSDoc support.
+- Refined parity scope and test mechanics.
+  - Parity now applies to the shared static feature set, with explicitly enumerated ChainDSL-only exceptions for runtime-capable behavior.
+  - Mixed-authoring composition tests are separate from strict TSDoc ↔ ChainDSL parity tests.
+  - Snapshot tests are no longer part of the normative parity strategy.
+  - Diagnostic parity compares code and severity; message text is verified separately.
+
+## Matrix
+
+- Resolved drift from `spec-risk-log.md` item 5.
+  - Matrix examples that include `additionalProperties: false` without explicit strict-mode context should be corrected.
+- Resolved ambiguity from `spec-risk-log.md` item 8.
+  - Matrix expectations for class-level `@displayName` should treat the root schema `title` as the singular display name.
+- Resolved ambiguity from `spec-risk-log.md` item 11.
+  - `parity-contact-form` should be rewritten so the TSDoc side gets as close as possible to the chain DSL fixture before any parity judgment is made.
+- Expanded the `path-target-expanded` fixture so it covers both:
+  - outer-array constraints applied directly to an array field
+  - nested array constraints applied via path-target to an array-valued property on each array item
+- Added a mixed-authoring composition fixture track.
+  - A mostly TSDoc-derived data model plus ChainDSL-only dynamic option fields must be tested as composition, not parity.
+  - Matrix guidance now rejects checked-in gold masters for these cases in favor of hand-authored structural assertions.
+- Added user-authored confidence test tracks.
+  - The matrix now distinguishes data-model conformance tests from dynamic-option tests and dynamic-schema resolver tests.
+  - These are explicitly framed as user integration-confidence tests rather than parity tests.
+# 2026-03-25
+
+## 001-canonical-ir
+
+- Added first-class `integer` and `bigint` primitive kinds to the canonical IR.
+- Updated numeric constraint nodes to allow exact string-valued literals for bigint-origin constraints.
+- Resolved circular references for the current revision: reject them with a diagnostic for now; future recursive `$ref` support is tracked in [#105](https://github.com/mike-north/formspec/issues/105).
+- Resolved object-key pattern support in favor of structural `patternProperties` on object types rather than treating object-key patterns as string-value constraints.
+
+## 002-tsdoc-grammar
+
+- Clarified that there is still no `@integer` tag, but integer is now a first-class canonical type and TSDoc commonly reaches it through `number` plus `@multipleOf 1`.
+- Fixed the quick-reference table so it matches the normative member-target and path-target rules:
+  - `@minItems`, `@maxItems`, and `@uniqueItems` allow path targeting.
+  - `@apiName` and `@description` allow member targeting.
+  - `@defaultValue` does not allow member targeting.
+- Resolved multi-level path targeting in favor of dot-separated paths like `:address.street`.
+- Resolved `@displayName` on classes/interfaces to singular-only. Plural display-name variants remain supported on array fields, but not on classes, interfaces, or type aliases in this revision.
+
+## 003-json-schema-vocabulary
+
+- Added explicit primitive-type rows for `integer` and `bigint`.
+- Clarified that `number + @multipleOf 1` is a canonicalization path to integer, not merely an output quirk.
+- Documented `x-<vendor>-schema-source` as an explicit exception to strict `additionalProperties: false` emission.
+- Updated extension applicability language so built-in numeric constraints apply to `number`, `integer`, and `bigint`.
+- Aligned the circular-reference section with the current product decision: circular graphs are a diagnostic for now, with future recursive `$ref` support tracked in [#105](https://github.com/mike-north/formspec/issues/105).
+- Made object-key mapping explicit:
+  - unconstrained records/index signatures -> `additionalProperties`
+  - finite constrained key sets -> explicit `properties`
+  - pattern-shaped constrained key families -> `patternProperties`
+
+## 004-tooling
+
+- Narrowed member-target completion wording to string-literal union members only.
+
+## 005-numeric-types
+
+- Reworked the numeric model around first-class support for `integer`.
+- Kept `number + @multipleOf 1` as the canonical TSDoc authoring example that derives integer semantics.
+- Added support language for `bigint` as an authoring-side integer surface.
+- Replaced Ajv-specific runtime-validation guidance with validator-agnostic guidance that matches the current `@cfworker/json-schema` direction.
+- Aligned extension-tag authoring guidance so `defineConstraintTag` is the primary path and custom ESLint rules are optional for richer domain-specific checks.
+
+## 006-parity-testing
+
+- Updated parity fixture prose so integer fixtures describe canonical integer semantics instead of treating integer as a number-only output optimization.
+- Standardized referenced-type defaults on direct `$ref` with sibling `default`.
+
+## e2e-test-matrix
+
+- Removed the remaining gold-master wording.
+- Rephrased alias-chain expectations as normative `$defs`/`$ref` expectations.
+- Standardized referenced-type defaults on direct `$ref` with sibling `default`.

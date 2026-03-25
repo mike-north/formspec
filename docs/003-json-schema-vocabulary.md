@@ -1,6 +1,6 @@
 # 003 — JSON Schema Vocabulary
 
-This document specifies how FormSpec's canonical IR maps to JSON Schema 2020-12 keywords, what custom vocabulary keywords are required and how they are named, and how the Ajv validator integrates with the custom vocabulary. It covers strategic workstream C.
+This document specifies how FormSpec's canonical IR maps to JSON Schema 2020-12 keywords, what custom vocabulary keywords are required and how they are named, and how validator/runtime consumers interact with those keywords.
 
 ---
 
@@ -11,7 +11,7 @@ This document specifies how FormSpec's canonical IR maps to JSON Schema 2020-12 
 | Principle                                          | How this document satisfies it                                                                                                                                              |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **PP6** (JSON Schema as normative output)          | All generated output targets JSON Schema 2020-12. The meta-schema validates every generated document. Custom keywords are declared as a proper vocabulary                   |
-| **PP7** (High-fidelity JSON Schema output)         | Named types are emitted as `$defs` with `$ref`. Custom keywords are registered as executable vocabulary keywords in Ajv, not opaque metadata. The output works standalone   |
+| **PP7** (High-fidelity JSON Schema output)         | Named types are emitted as `$defs` with `$ref`. Custom keywords are emitted as proper namespaced vocabulary members rather than undocumented metadata. The output works standalone   |
 | **E3** (Custom vocabulary keywords are namespaced) | All custom keywords use a configurable `x-<vendor>-` prefix (default `x-formspec-`). The vocabulary URI also includes the vendor prefix                                     |
 | **PP10** (White-labelable)                         | The vendor prefix, vocabulary URI, and `$schema` annotation are all configurable. No hard-coded "formspec" strings appear in generated output when the vendor is overridden |
 | **PP9** (Configurable surface area)                | Custom keywords that represent features disabled by project configuration are not emitted                                                                                   |
@@ -40,7 +40,9 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `string`                                          | `{ "type": "string" }`                                                                                                                                              |
 | `number`                                          | `{ "type": "number" }`                                                                                                                                              |
-| `number` with `MultipleOfConstraint { value: 1 }` | `{ "type": "integer" }` (generator promotes `"number"` → `"integer"` when `multipleOf: 1` is present; the `multipleOf` keyword is omitted from output as redundant) |
+| `integer`                                         | `{ "type": "integer" }`                                                                                                                                             |
+| `bigint`                                          | `{ "type": "integer" }` (schema-level integer semantics; runtime transport/serialization is outside the JSON Schema contract)                                     |
+| `number` with `MultipleOfConstraint { value: 1 }` | `{ "type": "integer" }` (the canonicalization pipeline recognizes this common TypeScript authoring pattern and emits integer semantics; the redundant `multipleOf: 1` keyword is omitted) |
 | `boolean`                                         | `{ "type": "boolean" }`                                                                                                                                             |
 | `null`                                            | `{ "type": "null" }`                                                                                                                                                |
 | `undefined`                                       | Not emitted (optionality is expressed via `required`, per S8)                                                                                                       |
@@ -65,7 +67,7 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 | Heterogeneous union `A \| B`             | `{ "oneOf": [<A schema>, <B schema>] }`         |
 | Boolean shorthand (`true \| false`)      | `{ "type": "boolean" }` (not `oneOf`)           |
 
-**Note on `enum` vs `oneOf[const]`:** When enum members carry per-member metadata (via `@displayName`, `@description`, or `@enumOptions`), the generator uses `oneOf` with per-member `const`/`title`/`description` instead of the flat `enum` keyword. This preserves the member metadata in a way that is standard-compliant and usable by form renderers:
+**Note on `enum` vs `oneOf[const]`:** When enum members carry per-member metadata (via member-level `@displayName` or `@description`), the generator uses `oneOf` with per-member `const`/`title`/`description` instead of the flat `enum` keyword. This preserves the member metadata in a way that is standard-compliant and usable by form renderers:
 
 ```json
 {
@@ -97,25 +99,37 @@ When no per-member metadata exists, the flat `enum` form is preferred (simpler, 
 | Required property                    | Listed in `"required"` array                                   |
 | Optional property                    | Absent from `"required"` array                                 |
 | Index signature `{ [k: string]: T }` | `{ "type": "object", "additionalProperties": <T schema> }`     |
+| `Record<string, T>` / unconstrained string key type | `{ "type": "object", "additionalProperties": <T schema> }` |
+| Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries |
+| Pattern-shaped constrained key type (e.g. `Record<\`env_${string}\`, T>`) | `{ "type": "object", "patternProperties": { "<regex>": <T schema> } }` |
 | Mixed (known + index signature)      | `"properties"` + `"additionalProperties"` combined             |
+| Mixed (known + constrained key family) | `"properties"` + `"patternProperties"` combined             |
 
 **`additionalProperties` policy:** When a TypeScript type has only known properties and no index signature, `additionalProperties` is **not** set to `false` by default. Setting it to `false` would cause validation failures when form renderers add extra fields (e.g., `_id`, `_timestamp`). This is intentional and matches B4 (the JSON Schema represents the data contract, not the full TypeScript structural check).
 
 **DECIDED:** The `additionalProperties` policy is configurable. Projects can set `schema.additionalProperties: "strict" | "allow"` in their FormSpec configuration. `"allow"` (the default) omits `additionalProperties`; `"strict"` sets it to `false` on all generated object schemas. This is a PP9-style constraint setting.
 
+**Constrained key-type rule:** FormSpec derives object-key behavior from what TypeScript can actually express:
+
+- Unconstrained string/number index signatures become `additionalProperties`
+- Finite key sets become explicit named `properties`
+- Pattern-shaped key families become `patternProperties`
+
+FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-regex equivalence. `patternProperties` is limited to the subset of key constraints that can be expressed clearly and canonically in TypeScript, primarily template-literal key families and similarly unambiguous constrained key types.
+
 ### 2.6 Numeric Constraints
 
-| IR constraint                                           | JSON Schema keyword                                                                                                                                         |
+| IR constraint                                           | JSON Schema validation keyword                                                                                                                              |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NumericBoundConstraint { bound: "minimum" }`           | `"minimum"`                                                                                                                                                 |
 | `NumericBoundConstraint { bound: "maximum" }`           | `"maximum"`                                                                                                                                                 |
 | `NumericBoundConstraint { bound: "exclusive-minimum" }` | `"exclusiveMinimum"`                                                                                                                                        |
 | `NumericBoundConstraint { bound: "exclusive-maximum" }` | `"exclusiveMaximum"`                                                                                                                                        |
-| `MultipleOfConstraint`                                  | `"multipleOf"` (when `value` is `1`, the generator also promotes `"type": "number"` to `"type": "integer"` and omits the `"multipleOf"` keyword — see §2.1) |
+| `MultipleOfConstraint`                                  | `"multipleOf"` (when the resolved type is integer and the only source of that integer semantic is `value = 1` on a `number`-derived alias, the redundant `"multipleOf": 1` keyword is omitted — see §2.1) |
 
 ### 2.7 String Constraints
 
-| IR constraint                                   | JSON Schema keyword |
+| IR constraint                                   | JSON Schema validation keyword |
 | ----------------------------------------------- | ------------------- |
 | `StringLengthConstraint { bound: "minLength" }` | `"minLength"`       |
 | `StringLengthConstraint { bound: "maxLength" }` | `"maxLength"`       |
@@ -124,13 +138,13 @@ When no per-member metadata exists, the flat `enum` form is preferred (simpler, 
 
 ### 2.8 Annotation → Metadata Keywords
 
-| IR annotation            | JSON Schema keyword                                |
+| IR annotation            | JSON Schema annotation key                         |
 | ------------------------ | -------------------------------------------------- |
 | `DisplayNameAnnotation`  | `"title"`                                          |
 | `DescriptionAnnotation`  | `"description"`                                    |
 | `DefaultValueAnnotation` | `"default"`                                        |
 | `ExampleAnnotation[]`    | `"examples"` (array)                               |
-| `DeprecatedAnnotation`   | `"deprecated": true` (2020-12 standard annotation) |
+| `DeprecatedAnnotation`   | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
 | `ReadOnlyAnnotation`     | `"readOnly"`                                       |
 | `WriteOnlyAnnotation`    | `"writeOnly"`                                      |
 | `ConstConstraint`        | `"const"`                                          |
@@ -141,15 +155,15 @@ When no per-member metadata exists, the flat `enum` form is preferred (simpler, 
 
 ### 3.1 Vendor Prefix Configuration
 
-All FormSpec custom keywords use a configurable vendor prefix. The default is `x-formspec-`. Organizations override this via project configuration:
+All FormSpec custom keywords use the shape `x-<vendor>-<local-name>`, where `<local-name>` is kebab-case. The default vendor segment is `formspec`. Organizations override the vendor segment via project configuration:
 
 ```yaml
 # .formspec.yml
 schema:
-  vendorPrefix: 'x-stripe-' # Override default "x-formspec-"
+  vendorPrefix: 'x-stripe-' # Current config form; yields keywords like "x-stripe-option-source"
 ```
 
-Throughout this document, the placeholder `<vendor>` represents the configured prefix (e.g., `x-formspec-` or `x-stripe-`).
+Throughout this document, the placeholder `<vendor>` represents the vendor segment that appears between `x-` and the next dash. For example, `x-formspec-option-source` uses `<vendor> = formspec`, and `x-stripe-option-source` uses `<vendor> = stripe`.
 
 The vocabulary URI also includes the vendor prefix:
 
@@ -158,74 +172,98 @@ The vocabulary URI also includes the vendor prefix:
 
 **DECIDED:** The vocabulary URI is fully configurable. Organizations can override the entire URI in configuration (not just the prefix portion), enabling internal registries and documentation URLs. The default is derived from the vendor prefix (e.g., `https://formspec.dev/vocab/x-formspec`).
 
-### 3.2 Dynamic Data Source Keywords
+### 3.2 Built-in Custom Annotation Keywords
 
-These keywords support the `field.dynamicEnum()` and `field.dynamicSchema()` Chain DSL features, where options or schemas are loaded at runtime.
+FormSpec ships a small set of built-in custom annotation keywords. Some support chain-DSL-authored runtime-capable fields, while others preserve metadata needed by downstream tooling such as SDK generators.
 
-#### `<vendor>source`
+#### `x-<vendor>-option-source`
 
 **Type:** string
 **Applies to:** `{ "type": "string" }` schemas
-**Semantics:** The value is a data source key registered in the runtime resolver registry. At runtime, a form renderer uses this key to fetch the available enum options.
-**Validation behavior in Ajv:** The Ajv keyword annotation-only — it does not constrain the value at validation time (the value is a string, validated by the `type` keyword). The keyword carries its value as an annotation for runtime use.
+**Semantics:** The value is an option-provider key registered in the runtime option registry. At runtime, a renderer/client uses this key to obtain the available selectable options for the field.
+**Provider model:** The option provider may be local (for example, filtering a statically known list) or remote (for example, calling a service). The schema carries only the provider key; it does not encode whether the provider is local or remote.
+**Contract boundary:** This key is declarative metadata. It identifies which option provider to use, but it does not by itself define the runtime resolver registry, transport, invocation lifecycle, or returned option payload shape.
+**Authoring-surface note:** This key is emitted by chain-DSL-authored dynamic option fields, including mixed-authoring composition where a dynamic field is layered onto an otherwise TSDoc-derived data model. There is no built-in TSDoc tag that emits this key in this revision.
+**Validation behavior:** Annotation-only. It does not constrain the value at validation time; the keyword carries its value as an annotation for runtime use.
 
 Example:
 
 ```json
 {
   "type": "string",
-  "x-formspec-source": "countries"
+  "x-formspec-option-source": "countries"
 }
 ```
 
-#### `<vendor>params`
+#### `x-<vendor>-option-source-params`
 
 **Type:** `string[]`
-**Applies to:** Schemas that also carry `<vendor>source`
-**Semantics:** An ordered list of field names whose current values are passed as parameters to the data source resolver at runtime.
-**Validation behavior in Ajv:** Annotation-only.
+**Applies to:** Schemas that also carry `x-<vendor>-option-source`
+**Semantics:** An ordered list of field names whose current values are passed as parameters to the option provider at runtime.
+**Contract boundary:** This key only names the sibling fields whose values must be supplied to the option provider. It does not define how those values are collected, memoized, or transported.
+**Authoring-surface note:** This key follows the same authoring boundary as `x-<vendor>-option-source`: ChainDSL and mixed-authoring composition only, not built-in TSDoc tags.
+**Validation behavior:** Annotation-only.
 
 Example:
 
 ```json
 {
   "type": "string",
-  "x-formspec-source": "cities",
-  "x-formspec-params": ["country"]
+  "x-formspec-option-source": "cities",
+  "x-formspec-option-source-params": ["country"]
 }
 ```
 
-#### `<vendor>schemaSource`
+#### `x-<vendor>-schema-source`
 
 **Type:** string
 **Applies to:** `{ "type": "object" }` schemas
 **Semantics:** The key for a runtime schema provider that returns the full JSON Schema for this field's value.
-**Validation behavior in Ajv:** Annotation-only. The `additionalProperties: true` on the containing schema permits any object shape (since the actual schema is runtime-determined).
+**Validation behavior:** Annotation-only. Because the actual object shape is runtime-determined, schemas carrying this key are an explicit exception to project-wide strict `additionalProperties: false` emission.
+
+**Authoring-surface note:** This key is chain-DSL-only in this revision. It may appear in mixed-authoring composition output, but it does not have a built-in TSDoc tag equivalent.
+
+#### `x-<vendor>-deprecation-description`
+
+**Type:** string
+**Applies to:** Schemas that also carry `"deprecated": true`
+**Semantics:** Carries the human-readable deprecation explanation from `@deprecated` text so SDK generators, documentation generators, and other tooling can surface richer guidance.
+**Validation behavior:** Annotation-only.
+
+Example:
+
+```json
+{
+  "type": "string",
+  "deprecated": true,
+  "x-formspec-deprecation-description": "Use paymentMethod instead"
+}
+```
 
 ### 3.3 Extension-Defined Vocabulary Keywords (e.g., Decimal Precision)
 
 FormSpec does not ship built-in decimal or precision vocabulary keywords. Instead, the `@maxSigFig` tag and its corresponding JSON Schema keyword are designed to be introduced by downstream consumers via the extension API (E1, E5). This is an intentional extensibility pressure test — a consumer defining a decimal type must be able to:
 
-1. Register a custom vocabulary keyword (e.g., `<vendor>maxSigFig`) with its JSON Schema type, applicable types, and validation semantics
+1. Register a custom vocabulary keyword (e.g., `x-<vendor>-max-sig-fig`) with its JSON Schema type, applicable types, and validation semantics
 2. Broaden the `@maxSigFig` TSDoc tag to apply to their custom decimal type (see 002 §2.1)
-3. Provide an Ajv keyword definition that executes validation at runtime (see §8)
+3. Provide validator/runtime integration for that keyword when needed (see §8)
 4. Have the generator emit the keyword in the JSON Schema output when the tag is present
 
 This pattern applies to any domain-specific vocabulary keyword — decimal precision is just the motivating example. The extension registration interface (see 001 §9) provides the hooks for all four steps.
 
-**Note:** `<vendor>maxSigFig` (when registered) is a validation keyword, not an annotation keyword. It affects whether a value is accepted by Ajv. This distinguishes it from `<vendor>source` and `<vendor>params`, which are annotation-only.
+**Note:** `x-<vendor>-max-sig-fig` (when registered) is a validation keyword, not an annotation keyword. It affects whether a value is accepted by a validator that implements it. This distinguishes it from `x-<vendor>-option-source` and `x-<vendor>-option-source-params`, which are annotation-only.
 
 ### 3.4 Extension Keywords
 
-Custom decorators (and in the TSDoc surface, custom extension tags — a future capability) emit extension keywords. The naming convention is:
+Extension-defined annotations emit extension keywords. The naming convention is:
 
 ```
-<vendor><extension-name>
+x-<vendor>-<extension-name>
 ```
 
 For example, a `sensitive` extension emits `x-formspec-sensitive` (or `x-stripe-sensitive` with a configured prefix).
 
-Extension keywords are always annotation-only unless the extension registers an Ajv validator. Per E2, extensions must declare whether their keywords are validation keywords or annotation keywords at registration time.
+Extension keywords are always annotation-only unless the extension also provides validator/runtime support. Per E2, extensions must declare whether their keywords are validation keywords or annotation keywords at registration time.
 
 ---
 
@@ -235,9 +273,9 @@ JSON Schema 2020-12 distinguishes between keywords that affect validation and ke
 
 ### 4.1 Validation Keywords
 
-These keywords determine whether a value is valid. An Ajv keyword registered as a validation keyword returns `true` or `false` from its validate function, and `false` causes validation to fail.
+These keywords determine whether a value is valid. A validator that understands such a keyword uses it to participate in acceptance or rejection of instance data.
 
-FormSpec core ships no custom validation keywords. Extension packages may register validation keywords (e.g., `<vendor>maxSigFig` for decimal precision) via the extension API (see §3.3 and §8.3).
+FormSpec core ships no built-in custom validation keywords. Extension packages may define validation keywords (e.g., `x-<vendor>-max-sig-fig` for decimal precision) via the extension API (see §3.3 and §8.3).
 
 Standard 2020-12 validation keywords used by FormSpec:
 
@@ -254,10 +292,13 @@ These keywords carry metadata that downstream consumers (form renderers, documen
 
 FormSpec custom annotation keywords:
 
-- `<vendor>source`
-- `<vendor>params`
-- `<vendor>schemaSource`
+- `x-<vendor>-option-source`
+- `x-<vendor>-option-source-params`
+- `x-<vendor>-schema-source`
+- `x-<vendor>-deprecation-description`
 - Extension-specific keywords (unless the extension registers a validator)
+
+The first three may be absent from purely TSDoc-authored forms because their built-in authoring surface is ChainDSL or mixed-authoring composition rather than TSDoc comments.
 
 Standard annotation keywords used by FormSpec:
 
@@ -347,31 +388,13 @@ When an author applies subfield constraints (via `@minimum :value 0` on a `Monet
 
 **Decision: Option A (inline `allOf` at the use site) is the default.** Option B is reserved for future work when multiple fields share the same constraint profile and deduplication is beneficial. Option A is simpler, more readable, and correctly represents that the constraints are field-specific, not type-specific.
 
-The `allOf` + `$ref` pattern is standard 2020-12 and is the idiomatic way to express "this type, but with additional constraints." Ajv and other validators handle it correctly.
+The `allOf` + `$ref` pattern is standard 2020-12 and is the idiomatic way to express "this type, but with additional constraints." Standards-compliant validators handle it correctly.
 
 ### 5.5 Circular Reference Handling
 
-Circular types (e.g., `type TreeNode = { value: number; children?: TreeNode[] }`) are represented using `$defs` and `$ref`, which naturally handles cycles:
+Circular types are not supported in this revision. When the analyzer detects a recursive type graph (for example, `type TreeNode = { value: number; children?: TreeNode[] }`), it should emit a clear source-located diagnostic instead of attempting fallback generation.
 
-```json
-{
-  "$defs": {
-    "TreeNode": {
-      "type": "object",
-      "properties": {
-        "value": { "type": "number" },
-        "children": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/TreeNode" }
-        }
-      },
-      "required": ["value"]
-    }
-  }
-}
-```
-
-The generator must maintain a `visited` set of type names to detect cycles and emit `$ref` back to the in-progress `$defs` entry rather than recursing infinitely.
+Future support for recursive `$defs` + `$ref` emission is tracked in [issue #105](https://github.com/mike-north/formspec/issues/105).
 
 ---
 
@@ -387,7 +410,7 @@ A downstream consumer introducing a `Decimal` type must be able to achieve all o
 The consumer defines `type Decimal = string` (or a branded string type). FormSpec's analyzer recognizes it as a registered extension type. Fields of type `Decimal` are extracted and included in the IR and generated JSON Schema.
 
 **Outcome 2: Broaden existing built-in constraint tags to apply to the custom type.**
-Built-in tags like `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, and `@multipleOf` — which FormSpec ships for `number` and `bigint` — must also become applicable to `Decimal` fields. The extension declares this broadening; FormSpec's analyzer and ESLint rules respect it. Applying `@minimum 0` to a `Decimal` field is valid, not a type-compatibility error.
+Built-in tags like `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, and `@multipleOf` — which FormSpec ships for `number`, `integer`, and `bigint` — must also become applicable to `Decimal` fields. The extension declares this broadening; FormSpec's analyzer and ESLint rules respect it. Applying `@minimum 0` to a `Decimal` field is valid, not a type-compatibility error.
 
 **Outcome 3: Introduce a new custom constraint tag.**
 The consumer introduces `@maxSigFig` as a new constraint tag. It is set-influencing (narrows the valid value set) and composes via intersection (C1) — if a base type declares `@maxSigFig 8` and a derived type declares `@maxSigFig 4`, the result is `@maxSigFig 4`. An attempt to broaden (`@maxSigFig 12` on a type inheriting `@maxSigFig 8`) is a contradiction error (S1, S2).
@@ -396,18 +419,18 @@ The consumer introduces `@maxSigFig` as a new constraint tag. It is set-influenc
 The consumer writes ESLint rules for `Decimal` and `@maxSigFig` by expressing only the extension-specific logic — which types the tag applies to, what values are valid, what contradictions look like. FormSpec provides foundational rule infrastructure: tag-on-type validation, contradiction detection for set-influencing constraints, path-target resolution, provenance tracking. The consumer should not have to reimplement any of this.
 
 **Outcome 5: Custom vocabulary keyword in JSON Schema output.**
-The generator emits `<vendor>maxSigFig` as a custom vocabulary keyword in the JSON Schema output. The keyword is namespaced per E3 and registered as a validation keyword (not opaque metadata) per PP7.
+The generator emits `x-<vendor>-max-sig-fig` as a custom vocabulary keyword in the JSON Schema output. The keyword is namespaced per E3 and participates in validation when a validator/runtime integration implements it.
 
 ```json
 {
   "type": "string",
-  "x-stripe-maxSigFig": 8,
+  "x-stripe-max-sig-fig": 8,
   "x-stripe-minimum": "0"
 }
 ```
 
-**Outcome 6: Ajv validator for runtime validation.**
-The consumer provides an Ajv keyword definition for `<vendor>maxSigFig` that executes at runtime. FormSpec's Ajv integration package provides the registration hook (see §8.3). The validator is isolated in the consumer's package — it does not pollute FormSpec core's dependency graph (A8).
+**Outcome 6: Validator/runtime support for custom validation keywords.**
+The consumer provides validator/runtime support for `x-<vendor>-max-sig-fig` when runtime enforcement is required. This integration is isolated in the consumer's package — it does not pollute FormSpec core's dependency graph (A8).
 
 **Outcome 7: Constraint inheritance works identically to built-in types.**
 Type alias chains work the same way as built-in types (PP3):
@@ -550,98 +573,65 @@ Unions that are not discriminated (no common property that identifies the branch
 
 ---
 
-## 8. Ajv Integration Strategy
+## 8. Validator Integration Strategy
 
-### 8.1 Custom Vocabulary Registration
+### 8.1 Default FormSpec Validator Behavior
 
-FormSpec's custom vocabulary is registered with Ajv as a vocabulary object. This enables custom keywords to function as proper executable validators, not just annotations that Ajv silently ignores (satisfying PP7).
+FormSpec's default validator package is [@formspec/validator](/Users/mnorth/Development/formspec/packages/validator), which is backed by `@cfworker/json-schema`. This validator ignores unknown `x-*` extension keywords by default, so annotation keys such as `x-formspec-option-source`, `x-formspec-option-source-params`, `x-formspec-schema-source`, and `x-formspec-deprecation-description` require no extra registration to coexist with validation.
 
-The vocabulary is distributed as part of the FormSpec runtime package (`@formspec/runtime` or a dedicated `@formspec/ajv-vocab` package — see §8.4). Consumers who only need schema generation (not runtime validation) do not pay for Ajv (per A7).
+Consumers who only need schema generation do not need the validator package at all (per A7).
 
 ```typescript
-// Conceptual API — see @formspec/runtime for implementation
-import Ajv from 'ajv';
-import { formspecVocabulary } from '@formspec/ajv-vocab';
+import { createFormSpecValidator } from "@formspec/validator";
 
-const ajv = new Ajv();
-ajv.addVocabulary(formspecVocabulary);
-
-const validate = ajv.compile(myFormSchema);
-const valid = validate(userData);
+const validator = createFormSpecValidator(myFormSchema);
+const result = validator.validate(userData);
 ```
 
-### 8.2 Vocabulary Definition
+### 8.2 Annotation Keyword Handling
 
-The vocabulary object passed to `ajv.addVocabulary` contains keyword definitions for each custom validation keyword. Annotation keywords are also registered so Ajv does not emit "unknown keyword" warnings.
+Annotation keywords are carried through the schema as namespaced JSON Schema vocabulary members. Consumers that use validators which ignore unknown `x-*` keywords need no extra setup for these built-in annotation-only fields.
 
 ```typescript
-// Vocabulary definition sketch — FormSpec core keywords (annotation-only)
-// Extension-defined validation keywords (e.g., maxSigFig) are registered
-// by the extension package, not by FormSpec core.
-const formspecVocabulary: Vocabulary = [
-  // Annotation keywords (no validation effect)
-  {
-    keyword: 'x-formspec-source',
-    schemaType: 'string',
-  },
-  {
-    keyword: 'x-formspec-params',
-    schemaType: 'array',
-  },
-  {
-    keyword: 'x-formspec-schemaSource',
-    schemaType: 'string',
-  },
+const builtInAnnotationKeywords = [
+  "x-formspec-option-source",
+  "x-formspec-option-source-params",
+  "x-formspec-schema-source",
+  "x-formspec-deprecation-description",
 ];
 ```
 
-### 8.3 Extension Validator Pattern
+### 8.3 Extension Validation Keyword Pattern
 
-Extension packages register their own validation keywords. For example, a decimal extension would register `maxSigFig`:
+Extension packages that introduce custom validation keywords are responsible for providing whatever validator/runtime support those keywords need. For example, a decimal extension might introduce `x-stripe-max-sig-fig` and pair it with custom runtime validation logic.
 
 ```typescript
-// In the extension package, NOT in FormSpec core
-const decimalVocabulary: Vocabulary = [
-  {
-    keyword: 'x-stripe-maxSigFig', // vendor prefix from config
-    type: 'number',
-    schemaType: 'number',
-    validate: validateMaxSigFig,
-    errors: true,
-  },
-];
-
-function validateMaxSigFig(schema: number, data: number): boolean {
-  const sigFigs = countSignificantFigures(data);
-  return sigFigs <= schema;
-}
+const keyword = "x-stripe-max-sig-fig";
+// Validator-specific integration lives in the extension package.
+// FormSpec core only defines the schema-emission contract.
 ```
 
 #### Significant figure counting is extension-provided
 
-FormSpec core does not implement significant figure counting. The `validateMaxSigFig` function shown above is illustrative — the actual implementation is the extension consumer's responsibility. The consumer chooses the precision library appropriate to their domain (e.g., a bigint-based library for financial contexts, `decimal.js` for scientific contexts). FormSpec provides the Ajv keyword registration hook; the validation logic is entirely within the extension package.
+FormSpec core does not implement significant figure counting. The actual implementation is the extension consumer's responsibility. The consumer chooses the precision library appropriate to their domain (e.g., a bigint-based library for financial contexts, `decimal.js` for scientific contexts). FormSpec defines the emitted keyword shape; the validation logic is entirely within the extension package.
 
 This is consistent with the overall extensibility model: FormSpec provides infrastructure (keyword registration, composition rules, diagnostic codes), and the extension provides domain-specific semantics (how to count significant figures, what precision library to use, what edge cases to handle).
 
-### 8.4 Package Structure for Ajv Integration
+### 8.4 Package Structure for Validator Integration
 
-Per A7 (pay only for what you use) and NP2 (runtime validation is an independent concern), the Ajv vocabulary is isolated in a package that does not transitively depend on Ajv in the schema-generation path:
+Per A7 (pay only for what you use) and NP2 (runtime validation is an independent concern), schema generation and runtime validation remain separate concerns:
 
 ```
-@formspec/ajv-vocab          — vocabulary definition + keyword validators
-  peerDependency: ajv ^8
-  depends on: nothing (standalone)
-
+@formspec/build              — schema generation (no validator dependency)
 @formspec/runtime            — dynamic resolver helpers (defineResolvers)
-  optionally re-exports @formspec/ajv-vocab utilities
-
-@formspec/build              — schema generation (no Ajv dependency)
+@formspec/validator          — runtime validation backed by @cfworker/json-schema
+extension packages           — optional validator/runtime support for extension-defined validation keywords
 ```
 
 Consumers who want runtime validation:
 
 ```bash
-pnpm add @formspec/ajv-vocab ajv
+pnpm add @formspec/validator
 ```
 
 Consumers who only need schema generation:
@@ -654,11 +644,11 @@ pnpm add @formspec/build
 
 The JSON Schema output is usable as a standalone artifact without any FormSpec-aware tooling (PP7). A consumer who receives a FormSpec-generated schema can:
 
-1. Use it with standard Ajv (standard keywords validate correctly; custom keywords are unknown and silently ignored, or produce "unknown keyword" warnings depending on Ajv's `strict` mode)
-2. Register the FormSpec vocabulary to get full custom keyword validation
-3. Use it with any other JSON Schema validator — standard keywords behave as expected; custom keywords are ignored per the JSON Schema specification's handling of unrecognized keywords
+1. Use it with `@formspec/validator` and get standard JSON Schema validation while built-in `x-*` annotation keywords are ignored safely
+2. Use it with any other standards-compliant JSON Schema validator — standard keywords behave as expected; unrecognized custom keywords are validator-specific but are typically ignored
+3. Layer in extension-specific runtime support only when extension-defined validation keywords need executable behavior
 
-To minimize noise with standard Ajv (without vocabulary registration), custom keyword names follow the `x-` convention, which signals "extension keyword" to JSON Schema tooling and causes some validators to skip them without warnings.
+To minimize noise across validators, custom keyword names follow the `x-` convention, which signals "extension keyword" to JSON Schema tooling.
 
 ---
 
@@ -804,12 +794,12 @@ interface InvoiceFormData {
 
 | Keyword (default prefix)  | Type     | Validation?                         | Applies to                     |
 | ------------------------- | -------- | ----------------------------------- | ------------------------------ |
-| `x-formspec-source`       | string   | Annotation only                     | `type: "string"`               |
-| `x-formspec-params`       | string[] | Annotation only                     | `type: "string"` with `source` |
-| `x-formspec-schemaSource` | string   | Annotation only                     | `type: "object"`               |
-| `x-<vendor>-maxSigFig`    | integer  | Yes — validates (extension-defined) | Extension-defined types        |
+| `x-formspec-option-source`        | string   | Annotation only                     | `type: "string"`                             |
+| `x-formspec-option-source-params` | string[] | Annotation only                     | `type: "string"` with `x-formspec-option-source` |
+| `x-formspec-schema-source`        | string   | Annotation only                     | `type: "object"`                             |
+| `x-<vendor>-max-sig-fig`          | integer  | Yes — validates (extension-defined) | Extension-defined types                      |
 
-Extension-specific keywords follow the pattern `x-<vendor>-<extension-name>` and are annotation-only unless the extension registers an Ajv validator per E2.
+Extension-specific keywords follow the pattern `x-<vendor>-<extension-name>` and are annotation-only unless the extension also provides validator/runtime support per E2.
 
 ---
 

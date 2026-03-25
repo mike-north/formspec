@@ -34,35 +34,37 @@ Tags are organized into four categories: **constraint tags** (set-influencing, p
 
 Constraint tags narrow the set of valid values for a field. Per S1, constraints can only narrow — an attempt to broaden a constraint inherited from a base type is a static error. Per S4, each tag is only valid on fields whose type is compatible with the constraint. Per C1, multiple constraint tags on the same field compose by intersection.
 
-| Tag                 | Applicable types                                        | IR node kind                 | Maps to JSON Schema keyword      |
-| ------------------- | ------------------------------------------------------- | ---------------------------- | -------------------------------- |
-| `@minimum`          | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `minimum`                        |
-| `@maximum`          | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `maximum`                        |
-| `@exclusiveMinimum` | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMinimum`               |
-| `@exclusiveMaximum` | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMaximum`               |
-| `@multipleOf`       | `number`, `bigint` (extensible to custom numeric types) | `MultipleOfConstraint`       | `multipleOf`                     |
-| `@minLength`        | `string`                                                | `StringLengthConstraint`     | `minLength`                      |
-| `@maxLength`        | `string`                                                | `StringLengthConstraint`     | `maxLength`                      |
-| `@pattern`          | `string`                                                | `PatternConstraint`          | `pattern`                        |
-| `@minItems`         | `T[]`                                                   | `ArrayLengthConstraint`      | `minItems`                       |
-| `@maxItems`         | `T[]`                                                   | `ArrayLengthConstraint`      | `maxItems`                       |
-| `@uniqueItems`      | `T[]`                                                   | `UniquenessConstraint`       | `uniqueItems`                    |
-| `@maxSigFig`        | `number` (extensible to custom types)                   | `DecimalPrecisionConstraint` | `x-<vendor>-maxSigFig` (see 003) |
-| `@const`            | any                                                     | `ConstConstraint`            | `const`                          |
+| Tag                                   | Applicable types                                        | IR node kind                 | JSON Schema validation keyword      |
+| ------------------------------------- | ------------------------------------------------------- | ---------------------------- | ----------------------------------- |
+| `@minimum`                            | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `minimum`                           |
+| `@maximum`                            | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `maximum`                           |
+| `@exclusiveMinimum`                   | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMinimum`                  |
+| `@exclusiveMaximum`                   | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMaximum`                  |
+| `@multipleOf`                         | `number`, `bigint` (extensible to custom numeric types) | `MultipleOfConstraint`       | `multipleOf`                        |
+| `@minLength`                          | `string`                                                | `StringLengthConstraint`     | `minLength`                         |
+| `@maxLength`                          | `string`                                                | `StringLengthConstraint`     | `maxLength`                         |
+| `@pattern`                            | `string`                                                | `PatternConstraint`          | `pattern`                           |
+| `@minItems`                           | `T[]`                                                   | `ArrayLengthConstraint`      | `minItems`                          |
+| `@maxItems`                           | `T[]`                                                   | `ArrayLengthConstraint`      | `maxItems`                          |
+| `@uniqueItems`                        | `T[]`                                                   | `UniquenessConstraint`       | `uniqueItems`                       |
+| `@maxSigFig` (example extension tag)  | extension-defined numeric-like types                    | `DecimalPrecisionConstraint` | `x-<vendor>-max-sig-fig` (see 003)  |
+| `@const`                              | any                                                     | `ConstConstraint`            | `const`                             |
 
-**Note on integer representation:** There is no `@integer` tag. Integer semantics are expressed via `@multipleOf 1` on a `number` field. The JSON Schema generator detects `multipleOf: 1` on a number type and promotes the output to `"type": "integer"` (see 003 §2.1). This is consistent with PP3 — `@multipleOf` is the constraint; integer is an output optimization.
+**Note on integer representation:** There is no `@integer` tag. FormSpec supports `integer` as a first-class data type in the canonical model and JSON Schema output, but TypeScript has no native integer type. On TSDoc-authored TypeScript surfaces, the common pattern is a `number` alias constrained with `@multipleOf 1`; the analyzer canonicalizes that pattern to integer semantics (see 003 §2.1 and 005 §2). Chain DSL may also author integer fields directly.
 
-**Note on date range constraints (`@before`, `@after`):** These tags are not built into FormSpec core. They are introduced by a date extension via the extension API (E1, E5), following the same pattern as `@maxSigFig` for Decimal. A downstream consumer registers the tags, provides the IR node kind, the JSON Schema vocabulary keyword, and the Ajv validator. The FormSpec test suite uses a date extension as a fixture to validate this extensibility path.
+**Note on `@maxSigFig`:** `@maxSigFig` is included here as a canonical example of an extension-defined constraint tag, not as a required core built-in. It demonstrates the shape of a downstream tag that introduces a custom numeric constraint, a custom IR node kind, and a custom JSON Schema vocabulary keyword via the extension API.
 
-**Note on `decimal`:** FormSpec does not ship a built-in `decimal` type. Decimal is a downstream concern — consumers define their own string-backed decimal type (e.g., `type Decimal = string`) with custom serialization logic. This is an intentional extensibility pressure test (E1, E5): a consumer adding decimal support must be able to (1) define a new type, (2) broaden `@maxSigFig` to apply to it, (3) register ESLint rules that understand the tag is valid on this type, and (4) provide custom serialization from the decimal representation to a JSON Schema string. All of these should be achievable through FormSpec's extension API without forking the core. The `@maxSigFig` tag is built-in (it has clear JSON Schema vocabulary semantics), but the set of types it applies to is extensible.
+**Note on date range constraints (`@before`, `@after`):** These tags are not built into FormSpec core. They are introduced by a date extension via the extension API (E1, E5), following the same extension pattern illustrated by `@maxSigFig`. A downstream consumer registers the tags, provides the IR node kind, the JSON Schema vocabulary keyword, and any validator/runtime support needed for executable enforcement. The FormSpec test suite uses a date extension as a fixture to validate this extensibility path.
+
+**Note on `decimal`:** FormSpec does not ship a built-in `decimal` type. Decimal is a downstream concern — consumers define their own string-backed decimal type (e.g., `type Decimal = string`) with custom serialization logic. This is an intentional extensibility pressure test (E1, E5): a consumer adding decimal support must be able to (1) define a new type, (2) register a tag such as `@maxSigFig`, (3) make tooling understand that tag is valid on the custom type, and (4) provide custom serialization from the decimal representation to a JSON Schema string. All of these should be achievable through FormSpec's extension API without forking the core.
 
 ### 2.2 Annotation Tags
 
 Annotation tags carry a single scalar value. Per C1, they compose via override — the most-specific declaration wins. Annotations do not affect the valid value set.
 
-| Tag            | IR node kind            | Emitted in                               | Notes                                                                                               |
+| Tag            | IR node kind            | Primary schema/UI target                 | Notes                                                                                               |
 | -------------- | ----------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `@displayName` | `DisplayNameAnnotation` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), and per-variant (`:plural`, `:singular`)                  |
+| `@displayName` | `DisplayNameAnnotation` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields |
 | `@apiName`     | `ApiNameAnnotation`     | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields |
 | `@description` | `DescriptionAnnotation` | JSON Schema `description`                | Longer prose; fallback to TSDoc `@remarks` if absent                                                |
 | `@placeholder` | `PlaceholderAnnotation` | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                           |
@@ -99,6 +101,25 @@ Structure tags control UI presentation without affecting the data schema (per C2
 
 **Note on JSON Forms layout types:** JSON Forms supports several layout types (`VerticalLayout`, `HorizontalLayout`, `Categorization`, `Category`). These are deliberately **not** represented as TSDoc tags. Layout type selection is a generation-time configuration concern — for example, a consumer can configure FormSpec to wrap all top-level elements in a `VerticalLayout` at build time. This keeps the authoring surface focused on data semantics and constraints, and moves presentational framing to the build configuration where each consumer can make their own choices (per C2, PP9). Layout tags may be added in a future version if authoring-time layout control proves necessary.
 
+### 2.5 Boundary: Dynamic Runtime Capabilities
+
+Dynamic runtime capabilities are intentionally outside the TSDoc comment surface in this revision.
+
+This includes:
+
+- runtime option retrieval for a statically known field
+- runtime-discovered JSON Schema
+- runtime-discovered UI schema
+
+The reason is architectural, not cosmetic: comment tags are inert. They can describe static metadata, but they do not provide an executable attachment point for resolver registration, lifecycle, caching, or transport. Rather than define half of that story in TSDoc and the other half elsewhere, FormSpec assigns these runtime-capable features to the chain DSL surface.
+
+**Normative boundary:**
+
+- TSDoc remains the static declarative surface.
+- Chain DSL owns runtime-capable field behavior.
+- Mixed-authoring composition is the supported path when a form is mostly derived from a TSDoc-annotated type but one or more fields need chain-DSL-only runtime behavior.
+- Decorators are not the escape hatch for this. The legacy decorator DSL remains out of scope (NP1).
+
 ---
 
 ## 3. Argument Grammar Per Tag
@@ -131,7 +152,7 @@ fraction-part  ::= [0-9]+
 exponent       ::= ( "e" | "E" ) [ "+" | "-" ] [0-9]+
 ```
 
-The grammar supports values of arbitrary magnitude and precision — the same literal syntax works whether the target field is `number` or `bigint`. The parser preserves the literal text for `bigint` fields to avoid precision loss (B3); for `number` fields it parses with JavaScript's `Number()`. Values that produce `NaN` or `Infinity` are parse errors (ERR-002). Custom numeric types registered via extensions (e.g., a string-backed decimal) can also opt into these constraint tags — the extension declares which tags are applicable and how literal values are parsed.
+The grammar supports values of arbitrary magnitude and precision — the same literal syntax works whether the target field is `number` or `bigint`. The parser preserves the literal text for `bigint` fields to avoid precision loss (B3); for `number` fields it parses with JavaScript's `Number()`. Values that produce `NaN` or `Infinity` are parse errors (`INVALID_NUMERIC_VALUE`). Custom numeric types registered via extensions (e.g., a string-backed decimal) can also opt into these constraint tags — the extension declares which tags are applicable and how literal values are parsed.
 
 Examples:
 
@@ -197,7 +218,7 @@ value ::= non-negative-integer
 non-negative-integer ::= "0" | [1-9][0-9]*
 ```
 
-Non-integer or negative values are parse errors (ERR-003).
+Non-integer or negative values are parse errors (`INVALID_NON_NEGATIVE_INTEGER`).
 
 #### `@minItems`, `@maxItems`
 
@@ -218,11 +239,13 @@ tags: string[];
 value ::= regex-string
 ```
 
-The value is the entire remaining comment text after trimming. It is treated as an ECMAScript regex pattern string. The extractor validates that it compiles without error (via `new RegExp(value)`); invalid patterns are parse errors (ERR-004).
+The value is the entire remaining comment text after trimming. It is treated as an ECMAScript regex pattern string. The extractor validates that it compiles without error (via `new RegExp(value)`); invalid patterns are parse errors (`INVALID_REGEX_PATTERN`).
 
 #### `@maxSigFig`
 
-Same grammar as `@minLength`/`@maxLength` — positive integer only. Zero is a parse error (ERR-003) because zero significant figures is meaningless.
+Same grammar as `@minLength`/`@maxLength` — positive integer only. Zero is a parse error (`INVALID_NON_NEGATIVE_INTEGER`) because zero significant figures is meaningless.
+
+**Extension note:** `@maxSigFig` is a canonical example of an extension-defined constraint tag. It is included here so the grammar can show what a downstream extension tag looks like, not because core FormSpec is required to ship decimal precision semantics.
 
 **Note:** There is no `@minSigFig` tag. Minimum precision requirements are better expressed via `@minimum`/`@maximum` value bounds or `@pattern` constraints on the string representation. `@maxSigFig` constrains the maximum precision a value may carry, which is the meaningful direction for precision control (e.g., "at most 2 significant figures for currency").
 
@@ -233,9 +256,9 @@ value ::= json-value
 json-value ::= string-literal | number-literal | boolean-literal | "null" | json-object | json-array
 ```
 
-The entire remaining comment text is parsed as JSON. Parse failures are ERR-005.
+The entire remaining comment text is parsed as JSON. Parse failures are `INVALID_JSON_VALUE`.
 
-**Note on enum member display names:** There is no `@enumOptions` tag. Enum member display names use `@displayName` with member-target syntax — the same tag and grammar used everywhere else (S5). This avoids introducing a bespoke tag with its own `key=value` or JSON syntax. See the `@displayName` grammar below and examples in §9.4–9.6.
+**Note on enum member display names:** There is no `@enumOptions` tag. String literal unions use `@displayName` with member-target syntax. `enum` and `const enum` declarations annotate members directly at the declaration site (see §9.4). This avoids introducing a bespoke tag with its own `key=value` or JSON syntax.
 
 #### `@displayName`
 
@@ -250,7 +273,7 @@ The entire remaining comment text after the modifier (if any) is the display nam
 amount: MonetaryAmount;
 ```
 
-With member-target syntax (for union/enum members):
+With member-target syntax (for string-literal union members):
 
 ```typescript
 /**
@@ -260,13 +283,12 @@ With member-target syntax (for union/enum members):
 mode: 'sync' | 'async';
 ```
 
-**Variant qualifiers** — `:singular` and `:plural` — provide context-specific display names. These are only valid on classes/interfaces and array fields, where the distinction between "one of these" and "many of these" is meaningful:
+**Variant qualifiers** — `:singular` and `:plural` — provide context-specific display names for array fields. Classes and interfaces do **not** support plural display names in this revision; they accept only the singular form, either bare or via `:singular`.
 
 ```typescript
 /**
  * A car rental
- * @displayName :plural Rentals
- * @displayName :singular Car Rental
+ * @displayName Car Rental
  */
 class VehicleRental { ... }
 
@@ -279,37 +301,48 @@ items: LineItem[];
 
 **Inference cascade** (per PP2 — inference over declaration):
 
-Display names follow a three-tier resolution with increasing explicitness:
+Display names follow different resolution rules depending on the declaration surface.
 
-1. **Fully implicit** — no `@displayName` tag. The consumer-provided inference function derives both singular and plural forms from the identifier (e.g., `HouseLocation` → "House Location" / "House Locations"). The inference function is configurable per PP11 (consumer-controlled messaging) — the default splits PascalCase/camelCase, but consumers can provide a custom function (e.g., one backed by a proper inflector library -- `inflected`).
+**Classes/interfaces:**
 
-2. **Bare `@displayName`** — explicit singular, plural inferred via the consumer's inflector. `@displayName Home` sets the singular to "Home"; the plural is derived automatically (e.g., "Homes").
+1. **Fully implicit** — no `@displayName` tag. The consumer-provided inference function derives a singular display name from the identifier (e.g., `HouseLocation` → "House Location"). The inference function is configurable per PP11 (consumer-controlled messaging) — the default splits PascalCase/camelCase, but consumers can provide a custom function.
 
-3. **Explicit variants** — `@displayName :singular Home` + `@displayName :plural Properties`. No inference; both forms are author-specified.
+2. **Bare `@displayName`** — explicit singular. `@displayName Home` sets the singular display name to "Home". On classes/interfaces, this bare form is equivalent to `@displayName :singular Home`.
+
+3. **Explicit singular** — `@displayName :singular Home`. This is equivalent to the bare form and exists for explicitness and consistency with array-field variant syntax.
 
 ```typescript
 class HouseLocation {}
-// → inferred: singular "House Location", plural "House Locations"
+// → inferred singular "House Location"
 
 /** @displayName Home */
 class HouseLocation {}
-// → explicit singular "Home", inferred plural "Homes"
+// → explicit singular "Home"
 
-/**
- * @displayName :singular Home
- * @displayName :plural Properties
- */
+/** @displayName :singular Home */
 class HouseLocation {}
-// → fully explicit, no inference
+// → explicit singular "Home"
 ```
 
-Using `:singular` or `:plural` on a primitive field or a non-array, non-class context is a static error.
+**Array fields:**
+
+Array fields retain the full singular/plural distinction because they can naturally represent both “one item” and “many items”.
+
+1. **Fully implicit** — no `@displayName` tag. The consumer-provided inference function derives both singular and plural forms from the identifier.
+
+2. **Bare `@displayName`** — explicit singular, plural inferred via the consumer's inflector.
+
+3. **Explicit variants** — `@displayName :singular Home` + `@displayName :plural Properties`. No inference; both forms are author-specified.
+
+Using `:plural` on classes, interfaces, type aliases, primitive fields, or other non-array contexts is a static error. Using `:singular` outside classes/interfaces and array fields is also a static error.
+
+**Schema mapping:** On classes/interfaces, the singular display name is used for the root schema's `"title"`. This means `@displayName Insurance Plan` and `@displayName :singular Insurance Plan` both yield a root schema title of `"Insurance Plan"`.
 
 **Lint diagnostics for display name number agreement:**
 
-- **Warning** if a bare `@displayName` (no specifier) appears to be plural — the inflector checks whether the provided name looks plural and suggests using `:plural` if intentional, or correcting to the singular form. Auto-fixable (D5) when the inflector can confidently derive the singular.
+- **Warning** if a bare `@displayName` on a class/interface appears to be plural — suggests correcting it to the singular form.
 - **Warning** if `@displayName :singular` appears to be plural — likely a copy-paste mistake.
-- **Warning** if `@displayName :plural` appears to be singular — likely a mistake in the other direction.
+- **Warning** if `@displayName :plural` on an array field appears to be singular — likely a mistake in the other direction.
 - All three warnings are configurable (severity can be set to `off` per PP9) and bypassable with an inline suppression comment. These are intended to catch mistakes, not enforce a naming convention.
 
 #### `@apiName`
@@ -374,9 +407,7 @@ Using `:singular` or `:plural` on a field (as opposed to a class/interface or ar
 
 #### `@description`
 
-Same grammar as `@displayName`. Multi-line descriptions are formed by multiple `@description` tags on the same field — they are concatenated with a newline separator. Maximum length is configurable (per PP9), independently from `@displayName` — description limits are typically longer.
-
-**OPEN DECISION:** Should multiple `@description` tags concatenate, or should the last one win? Concatenation is consistent with how TSDoc `@remarks` works in practice, but override semantics (per C1 annotation rule) would have the last one win. Recommendation: concatenate, with the understanding that authors who want to override a base type's description should use exactly one `@description` tag on the derived type.
+Same grammar as `@displayName`. If multiple `@description` tags appear on the same declaration, the last one wins. This follows the general annotation override model (C1). Maximum length is configurable (per PP9), independently from `@displayName` — description limits are typically longer.
 
 #### `@placeholder`
 
@@ -413,13 +444,19 @@ interface Settings {
 
 This is distinct from a TypeScript class field initializer (`optIn = false`), which sets a runtime value in memory. The two concepts may coincide, but they serve different audiences: `@defaultValue` informs consumers of the schema (API callers, form renderers, documentation generators), while a field initializer informs the TypeScript runtime.
 
-The extractor first attempts JSON parsing. If the text is not valid JSON, it falls back to treating the content as a string literal. This matches the behavior of TypeScript's own `@defaultValue` documentation tag (S6).
+Parsing is type-directed against the resolved target type (the field itself, or the targeted subfield when path-target syntax is used).
+
+- Quoted JSON strings are always explicit strings.
+- For unquoted values, the extractor first attempts to coerce to a valid non-string type permitted by the resolved target type.
+- Only if no valid non-string interpretation fits does the extractor fall back to string.
+- If multiple non-string interpretations would be valid and ambiguous, explicit JSON syntax is required.
 
 ```typescript
 /** @defaultValue 0 */ // number default
 /** @defaultValue "pending" */ // string default (JSON string)
-/** @defaultValue pending */ // also a string default (fallback path)
+/** @defaultValue pending */ // string default when no valid non-string interpretation fits
 /** @defaultValue false */ // boolean default
+/** @defaultValue "6" */ // explicit string, even for a target like string | number
 ```
 
 **Lint diagnostics:**
@@ -435,7 +472,7 @@ The extractor first attempts JSON parsing. If the text is not valid JSON, it fal
 value ::= text-until-end-of-line?
 ```
 
-The optional text is the deprecation message. When present, it is stored in the `DeprecatedAnnotation` and may be surfaced in IDE hover text.
+The optional text is the deprecation message. When present, it is stored in the `DeprecatedAnnotation`, may be surfaced in IDE hover text, and is emitted to JSON Schema using the vendor-prefixed annotation keyword `x-<vendor>-deprecation-description` alongside the standard `"deprecated": true` keyword.
 
 ```typescript
 /** @deprecated Use paymentMethod instead */
@@ -449,6 +486,16 @@ value ::= text-until-end-of-line | fenced-code-block
 ```
 
 Multiple `@example` tags on the same field each add an entry to the `examples` array in the IR. The value of each entry is parsed as JSON; if JSON parsing fails, the text is stored as a string.
+
+#### No built-in TSDoc tags for runtime option or schema providers
+
+FormSpec intentionally defines no built-in TSDoc tags for:
+
+- runtime option-provider lookup
+- runtime schema-provider lookup
+- runtime UI-schema-provider lookup
+
+Those behaviors are authored through the chain DSL and then composed with static type-derived form structure where needed. This keeps the comment surface fully static and avoids reintroducing decorator-style runtime hooks through a different syntax.
 
 #### `@group`
 
@@ -496,7 +543,7 @@ region?: string;  // only shown once a country is selected
 amount?: number;  // visible but non-editable once sent
 ```
 
-The `scope` must resolve to a field on the same enclosing type. The extractor validates this (ERR-008). The `{@link}` must resolve to a type in scope; the extractor compiles it to JSON Schema and validates it is a valid condition schema.
+The `scope` must resolve to a field on the same enclosing type. The extractor validates this as a target-resolution error. The `{@link}` must resolve to a type in scope; the extractor compiles it to JSON Schema and validates it is a valid condition schema.
 
 **Stacking rules (AND semantics):**
 
@@ -517,13 +564,14 @@ city?: string;  // only shown when both country AND state are selected
 | `@showWhen` + `@hideWhen` on same field      | Contradictory effects on the same axis (visibility)    | Yes — static tag check |
 | `@enableWhen` + `@disableWhen` on same field | Contradictory effects on the same axis (interactivity) | Yes — static tag check |
 
-**Valid but constrained combinations:**
+**Valid combinations within the current spec revision:**
 
-| Combination                                | Semantics                                     | Notes                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Multiple `@showWhen` on same field         | AND — all must be true to show                | Compiles to `allOf` condition                                                                                                                                                                                                                                                                                                                 |
-| Multiple `@disableWhen` on same field      | AND — all must be true to disable             | Compiles to `allOf` condition                                                                                                                                                                                                                                                                                                                 |
-| `@showWhen` + `@disableWhen` on same field | Independent axes — visibility + interactivity | JSON Forms supports only one `rule` per element; this compiles to a SHOW rule with the AND of show conditions, and the disable condition is expressed as a nested element rule or via the renderer's extension mechanism. **OPEN DECISION:** How to handle cross-axis rule combinations given JSON Forms' single-rule-per-element limitation. |
+| Combination                           | Semantics                      | Notes                        |
+| ------------------------------------- | ------------------------------ | ---------------------------- |
+| Multiple `@showWhen` on same field    | AND — all must be true to show | Compiles to `allOf` condition |
+| Multiple `@disableWhen` on same field | AND — all must be true to disable | Compiles to `allOf` condition |
+
+**Cross-axis combinations are invalid in this revision.** A field may use at most one conditional rule axis. Combinations such as `@showWhen` + `@disableWhen` are deferred future work and should currently produce a static error rather than being treated as partially supported behavior.
 
 Per C3, all four rule types affect **presentation only** — the field is always present in the JSON Schema regardless of the rule effect. Per C2, no rule alters the schema shape.
 
@@ -542,28 +590,54 @@ Without path-target syntax, there would be no way to constrain the `value` subfi
 A path-target modifier is a `:` followed by an identifier immediately before the tag's value argument:
 
 ```
-path-modifier ::= ":" identifier
+path-modifier ::= ":" path
+path ::= identifier ( "." identifier )*
 ```
 
-The identifier names a direct property of the field's type. Nested paths (`:address.street`) are not supported in this revision.
-
-**OPEN DECISION:** Should multi-level paths (`:address.street`) be supported? Arguments for: enables constraints on deeply nested fields without wrapping each level. Arguments against: increases grammar complexity significantly; authors can instead annotate the intermediate type. Recommendation: defer to a subsequent revision; this document specifies single-level paths only.
+The path is a dot-separated property chain rooted at the field's type. For example, `:address.street` targets the `street` property of the `address` property.
 
 ### 4.3 Semantics
 
 When a path-target modifier is present:
 
 1. The extractor resolves the field's type to its declaration. **For array fields**, the extractor resolves through the array to the item type — the array is transparent for path targeting, similar to how groups are transparent for schema (C2).
-2. It looks up the named subproperty on that type (or on the array's item type).
-3. It validates that the tag is applicable to the subproperty's type (S4).
-4. It creates a `ConstraintNode` targeted at the subfield, not the field itself.
+2. It walks the path one segment at a time.
+3. At each step, it looks up the named subproperty on the current type (or on the current array item type).
+4. It validates that the final resolved target type is compatible with the tag (S4).
+5. It creates a `ConstraintNode` targeted at the resolved subfield path, not just the outer field.
+
+If any segment does not resolve, the analyzer emits `UNKNOWN_PATH_TARGET` naming the full path and the segment where resolution failed.
 
 **Array field behavior:**
 
 Constraints on array fields fall into two categories:
 
-- **Array-level constraints** (`@minItems`, `@maxItems`, `@uniqueItems`) — constrain the array itself (length, uniqueness). No path target needed or accepted.
+- **Array-level constraints** (`@minItems`, `@maxItems`, `@uniqueItems`) — constrain the array itself (length, uniqueness). No path target is needed when the field itself is an array, but path-target syntax is allowed when it resolves to an array-valued nested field inside a structured type.
 - **Item-level constraints** (all other constraint tags) — apply uniformly to every element of the array. There is no per-index targeting; a constraint applies to all items or none.
+
+When both appear on the same array field, the distinction is:
+
+- An untargeted array-level constraint applies to the **outer array field itself**.
+- A path-targeted array-level constraint applies to the **nested array-valued property on each array item**.
+
+For example, given `orders: Order[]` where `Order` has `lineItems: LineItem[]`:
+
+```typescript
+/**
+ * @minItems 1
+ * @maxItems 100
+ * @minItems :lineItems 1
+ * @maxItems :lineItems 25
+ */
+orders!: Order[];
+```
+
+The semantics are:
+
+- `@minItems 1` / `@maxItems 100` constrain the number of `orders`
+- `@minItems :lineItems 1` / `@maxItems :lineItems 25` constrain the length of `lineItems` on every `Order` in `orders`
+
+This is valid because array fields are transparent for path targeting: the path target resolves against the item type (`Order`), and the resolved property (`lineItems`) is itself an array-valued field.
 
 For primitive arrays, item constraints are applied directly — no path target needed since there's no subfield to navigate:
 
@@ -584,6 +658,48 @@ lineItems: MonetaryAmount[];
 ```
 
 This compiles to JSON Schema's `items` keyword, which applies its schema to every array element.
+
+For arrays of objects that themselves contain arrays, the generated schema composes both levels:
+
+```typescript
+interface Order {
+  lineItems: string[];
+}
+
+class CheckoutBatch {
+  /**
+   * @minItems 1
+   * @maxItems 100
+   * @minItems :lineItems 1
+   * @maxItems :lineItems 25
+   * @uniqueItems :lineItems
+   */
+  orders!: Order[];
+}
+```
+
+This yields outer-array constraints on `orders`, plus nested constraints under `items.properties.lineItems`:
+
+```json
+{
+  "type": "array",
+  "minItems": 1,
+  "maxItems": 100,
+  "items": {
+    "type": "object",
+    "properties": {
+      "lineItems": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 25,
+        "uniqueItems": true
+      }
+    }
+  }
+}
+```
+
+Single-level path-target syntax still applies: `:lineItems` is valid because it is a direct property of the item type. Deeper forms such as `:lineItems.skuCodes` remain out of scope in this revision.
 
 In the IR, path-targeted constraints are stored as children of the field's IR node under the `subfield` key, keyed by property name:
 
@@ -631,7 +747,7 @@ Path-target syntax is for **constraint tags only** — tags that narrow the vali
 
 The following tags accept path-target syntax:
 
-- All constraint tags: `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf`, `@minLength`, `@maxLength`, `@pattern`, `@minItems`, `@maxItems`, `@uniqueItems`, `@const`, `@maxSigFig`
+- All constraint tags: `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf`, `@minLength`, `@maxLength`, `@pattern`, `@minItems`, `@maxItems`, `@uniqueItems`, `@const`, plus extension-defined tags such as `@maxSigFig`
 
 The following tags do **not** accept path-target syntax:
 
@@ -646,11 +762,25 @@ The following tags do **not** accept path-target syntax:
 
 ### 5.1 Motivation
 
-Member-target syntax allows a tag to annotate a specific member of a union type, `const enum`, or `enum`. Like path-target syntax, it uses the `:` prefix — the grammar is identical, but the semantics differ: path-target navigates into an object's subfield, while member-target selects a variant of a union.
+Member-target syntax allows a tag to annotate a specific member of a string literal union. Like path-target syntax, it uses the `:` prefix — the grammar is identical, but the semantics differ: path-target navigates into an object's subfield, while member-target selects a variant of a union.
 
-The two syntaxes are distinguished at resolution time: if the field's type is an object (interface, class, type alias with object literal body), `:name` is resolved as a path-target. If the field's type is a union, enum, or string-literal union, `:name` is resolved as a member-target.
+The two syntaxes are distinguished at resolution time: if the field's type is an object (interface, class, type alias with object literal body), `:name` is resolved as a path-target. If the field's type is a string-literal union, `:name` is resolved as a member-target.
 
-**OPEN DECISION:** Should the two syntaxes be syntactically distinct (e.g., `:.member` vs `:subfield`) to avoid ambiguity when a type is both an object and a discriminated union? The current proposal relies on type resolution to disambiguate. A syntactic distinction would make parsing deterministic before type resolution but adds surface area. Recommendation: keep the single `:` syntax; the grammar is simpler, and ambiguity only arises for discriminated unions that are also object types, which can be handled with a static error when the intent is unclear.
+**Decision:** Keep a single `:` modifier syntax. The colon should be understood as a general "modifier/option" slot whose meaning is determined by the tag and the declaration context. This keeps the grammar compact and makes the authoring surface more uniform.
+
+**Known limitation:** Because `:` is shared by multiple modifier forms, reserved qualifier names such as `:singular` and `:plural` must not be introduced on declaration surfaces that also support member-target syntax. In practice:
+
+- `:singular` / `:plural` are valid only where the spec explicitly defines them as variant qualifiers
+- member-target syntax remains the meaning of `:name` on string-literal unions
+- the two namespaces must remain non-intersecting on any given declaration surface
+
+If a future feature would introduce a collision between reserved qualifiers and member names on the same surface, the implementation should:
+
+1. lint the ambiguous form as an error
+2. require authors to use a new non-colliding syntax
+3. treat the migration as a mechanical source rewrite, not a semantic behavior change
+
+This means the current revision intentionally does **not** support singular/plural qualifier syntax on string-literal union surfaces that use `:member`.
 
 ### 5.2 Syntax
 
@@ -664,37 +794,7 @@ Same as path-target — `:` followed by an identifier:
 mode: 'sync' | 'async';
 ```
 
-For `const enum`:
-
-```typescript
-const enum Color {
-  Red = 'red',
-  Green = 'green',
-  Blue = 'blue',
-}
-
-/**
- * @displayName :Red Crimson
- * @displayName :Green Emerald
- * @displayName :Blue Sapphire
- */
-favoriteColor: Color;
-```
-
-For regular `enum`:
-
-```typescript
-enum Status {
-  Draft = 'draft',
-  Sent = 'sent',
-}
-
-/**
- * @displayName :Draft Draft Invoice
- * @displayName :Sent Sent to Customer
- */
-status: Status;
-```
+This syntax is not used for `enum` or `const enum`. Those types annotate members directly at the declaration site instead (see §9.4).
 
 ### 5.3 Semantics
 
@@ -715,7 +815,7 @@ Member-target constraints and annotations are stored in the IR as an array on th
 
 ### 5.4 Validation
 
-The extractor validates that the member identifier after `:` is a recognized member of the field's type. Unrecognized member names produce ERR-007. This catches typos at build time, satisfying D4 (actionable diagnostics).
+The extractor validates that the member identifier after `:` is a recognized member of the field's string literal union type. Unrecognized member names produce `UNKNOWN_MEMBER_TARGET`. This catches typos at build time, satisfying D4 (actionable diagnostics).
 
 ### 5.5 Tags That Accept Member-Target Syntax
 
@@ -742,35 +842,35 @@ The following tags explicitly **do not** accept member-target syntax:
 
 ## 6. Parse Error Taxonomy and Diagnostics
 
-All diagnostic codes are prefixed with a configurable vendor token (per PP10, default `FSP`). The diagnostic structure satisfies D1 (structured), D2 (source-located), D3 (deterministic), D4 (actionable), and D6 (machine-consumable).
+Diagnostic codes are symbolic machine-readable identifiers. The diagnostic structure satisfies D1 (structured), D2 (source-located), D3 (deterministic), D4 (actionable), and D6 (machine-consumable).
 
-Diagnostic codes use a category prefix within the code to group related errors. The format is `<VENDOR>-<CATEGORY><NNN>` where the category indicates the kind of issue:
+The following categories group the symbolic codes conceptually:
 
-| Category prefix | Meaning                                                                         |
-| --------------- | ------------------------------------------------------------------------------- |
-| `1xx`           | **Tag recognition** — unknown tags, missing arguments, disabled tags            |
-| `2xx`           | **Value parsing** — malformed numeric, regex, JSON, or date values              |
-| `3xx`           | **Type compatibility** — tags applied to incompatible types                     |
-| `4xx`           | **Target resolution** — invalid path-target, member-target, or scope references |
-| `5xx`           | **Constraint validation** — contradictions, duplicates, conflicts               |
+| Diagnostic category       | Meaning                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| Tag recognition           | Unknown tags, missing arguments, disabled tags                                  |
+| Value parsing             | Malformed numeric, regex, JSON, or date values                                  |
+| Type compatibility        | Tags applied to incompatible types                                              |
+| Target resolution         | Invalid path-target, member-target, or scope references                         |
+| Constraint validation     | Contradictions, duplicates, conflicts                                           |
 
 ---
 
-### Tag recognition (1xx)
+### Tag recognition
 
-**`<VENDOR>-101`: Unknown tag**
+**`UNKNOWN_TAG`: Unknown tag**
 **Severity:** warning (configurable to error or off per PP9)
 **Condition:** A tag is encountered that matches FormSpec's `@` prefix convention but is not in the recognized tag inventory.
 **Message:** `Unknown FormSpec tag "@{tagName}". Did you mean "@{suggestion}"?`
 **Auto-fix (D5):** If a known tag with edit distance ≤ 2 exists, offer to replace.
 
-**`<VENDOR>-102`: Missing required tag argument**
+**`MISSING_TAG_ARGUMENT`: Missing required tag argument**
 **Severity:** error
 **Condition:** A tag that requires an argument (e.g., `@minimum`) has an empty comment body.
 **Message:** `"@{tagName}" requires an argument but none was provided.`
 **Auto-fix:** None.
 
-**`<VENDOR>-103`: Tag disabled by project configuration**
+**`TAG_DISABLED`: Tag disabled by project configuration**
 **Severity:** As configured in `.formspec.yml` (warning by default)
 **Condition:** A tag is present but has been disabled via project constraints (PP9).
 **Message:** `"@{tagName}" is disabled in this project's FormSpec configuration. Remove the tag or update .formspec.yml.`
@@ -778,27 +878,27 @@ Diagnostic codes use a category prefix within the code to group related errors. 
 
 ---
 
-### Value parsing (2xx)
+### Value parsing
 
-**`<VENDOR>-201`: Invalid numeric value**
+**`INVALID_NUMERIC_VALUE`: Invalid numeric value**
 **Severity:** error
 **Condition:** A numeric tag receives a value that does not parse as a finite number (`NaN`, `Infinity`, or non-numeric text).
 **Message:** `"@{tagName}" expects a finite number, but received "{value}".`
 **Auto-fix:** None (intent is unclear).
 
-**`<VENDOR>-202`: Invalid non-negative integer**
+**`INVALID_NON_NEGATIVE_INTEGER`: Invalid non-negative integer**
 **Severity:** error
-**Condition:** A tag expecting a non-negative integer (`@minLength`, `@maxLength`, `@minItems`, `@maxItems`, `@maxSigFig`) receives a fractional, negative, or non-numeric value.
+**Condition:** A tag expecting a non-negative integer (`@minLength`, `@maxLength`, `@minItems`, `@maxItems`, and extension-defined tags such as `@maxSigFig`) receives a fractional, negative, or non-numeric value.
 **Message:** `"@{tagName}" expects a non-negative integer, but received "{value}".`
 **Auto-fix (D5):** If the value is a non-negative float (e.g., `1.0`), offer to truncate to integer.
 
-**`<VENDOR>-203`: Invalid regex pattern**
+**`INVALID_REGEX_PATTERN`: Invalid regex pattern**
 **Severity:** error
 **Condition:** The value of `@pattern` does not compile as an ECMAScript regex.
 **Message:** `"@pattern" value "{value}" is not a valid ECMAScript regex: {regexError}.`
 **Auto-fix:** None.
 
-**`<VENDOR>-204`: Invalid JSON value**
+**`INVALID_JSON_VALUE`: Invalid JSON value**
 **Severity:** error
 **Condition:** A tag expecting a JSON value (`@const`, `@defaultValue` in JSON mode) receives text that is not valid JSON.
 **Message:** `"@{tagName}" value is not valid JSON: {jsonError}. Received: "{value}".`
@@ -806,9 +906,9 @@ Diagnostic codes use a category prefix within the code to group related errors. 
 
 ---
 
-### Type compatibility (3xx)
+### Type compatibility
 
-**`<VENDOR>-301`: Tag not applicable to field type**
+**`TYPE_MISMATCH`: Tag not applicable to field type**
 **Severity:** error
 **Condition:** A constraint tag is applied to a field whose TypeScript type is not compatible (S4). For example, `@minLength` on a `number` field.
 **Message:** `"@{tagName}" cannot be applied to a field of type "{typeName}". Valid types: {validTypes}.`
@@ -816,27 +916,27 @@ Diagnostic codes use a category prefix within the code to group related errors. 
 
 ---
 
-### Target resolution (4xx)
+### Target resolution
 
-**`<VENDOR>-401`: Unknown path-target identifier**
+**`UNKNOWN_PATH_TARGET`: Unknown path-target identifier**
 **Severity:** error
 **Condition:** A path-target `:name` does not correspond to a property of the field's object type (or array item type).
 **Message:** `":{propName}" is not a property of type "{typeName}". Known properties: {properties}.`
 **Auto-fix (D5):** If a property with edit distance ≤ 2 exists, offer to replace.
 
-**`<VENDOR>-402`: Unknown member-target identifier**
+**`UNKNOWN_MEMBER_TARGET`: Unknown member-target identifier**
 **Severity:** error
-**Condition:** A member-target `:name` does not correspond to a recognized member of the field's union/enum type.
+**Condition:** A member-target `:name` does not correspond to a recognized member of the field's string literal union type.
 **Message:** `":{memberName}" is not a member of type "{typeName}". Known members: {members}.`
 **Auto-fix (D5):** If a member with edit distance ≤ 2 exists, offer to replace.
 
-**`<VENDOR>-403`: Tag does not accept targeting syntax**
+**`UNSUPPORTED_TARGETING_SYNTAX`: Tag does not accept targeting syntax**
 **Severity:** error
 **Condition:** A path-target or member-target modifier is used on a tag that does not accept it (see §4.6 and §5.5).
 **Message:** `"@{tagName}" does not support the ":{modifier}" targeting syntax.`
 **Auto-fix (D5):** Offer to remove the modifier.
 
-**`<VENDOR>-404`: Member-target on non-union type**
+**`MEMBER_TARGET_ON_NON_UNION`: Member-target on non-union type**
 **Severity:** error
 **Condition:** A member-target `:name` is used on a field whose type is not a string literal union.
 **Message:** `":{memberName}" member-target syntax is only valid on string literal union types. For enum/const enum, annotate members at the declaration site.`
@@ -844,27 +944,27 @@ Diagnostic codes use a category prefix within the code to group related errors. 
 
 ---
 
-### Constraint validation (5xx)
+### Constraint validation
 
-**`<VENDOR>-501`: Constraint contradiction**
+**`CONSTRAINT_CONTRADICTION`: Constraint contradiction**
 **Severity:** error
 **Condition:** Two or more constraints on the same field (or subfield) produce a provably empty valid set (S2). For example, `@minimum 10` and `@maximum 5` on the same field.
 **Message:** `Constraint contradiction: "@minimum {a}" and "@maximum {b}" cannot both be satisfied ({a} > {b}).`
 **Notes:** The diagnostic references both source locations (D2). Both constraint provenance records are included in the structured diagnostic output (D6).
 
-**`<VENDOR>-502`: Duplicate tag**
+**`DUPLICATE_TAG`: Duplicate tag**
 **Severity:** warning (configurable to error)
 **Condition:** The same tag appears more than once on a field where only one instance is meaningful (e.g., two `@minimum` tags without different path/member targets).
 **Message:** `Duplicate "@{tagName}" tag. The second occurrence at {location} will be used; the first at {location} is ignored.`
 **Auto-fix (D5):** Offer to remove the first occurrence.
 
-**`<VENDOR>-503`: Remarks/description conflict**
+**`DESCRIPTION_REMARKS_CONFLICT`: Remarks/description conflict**
 **Severity:** info
 **Condition:** Both `@description` and `@remarks` are present on the same field.
 **Message:** `Both "@description" and "@remarks" are present. "@description" takes precedence. Consider removing "@remarks" to avoid confusion.`
 **Auto-fix (D5):** Offer to remove `@remarks`.
 
-**`<VENDOR>-504`: Contradictory rule effects**
+**`CONTRADICTORY_RULE_EFFECTS`: Contradictory rule effects**
 **Severity:** error
 **Condition:** `@showWhen` + `@hideWhen` or `@enableWhen` + `@disableWhen` on the same field.
 **Message:** `Contradictory rule effects: "@{tagA}" and "@{tagB}" cannot both apply to the same field.`
@@ -940,14 +1040,14 @@ interface AnnotationNode {
 ### 7.3 Ecosystem tag → specialized nodes
 
 - `@deprecated` → `DeprecatedAnnotation` (boolean + optional message string)
-- `@defaultValue` → `DefaultValueAnnotation` (parsed value; type must be assignable to field type — ERR-006 variant)
+- `@defaultValue` → `DefaultValueAnnotation` (parsed value; type must be assignable to field type — type mismatch otherwise)
 - `@example` → appended to `ExampleAnnotation[]`
 
 ### 7.4 Composition in the IR (per C1)
 
 **Constraints compose by intersection.** When the canonicalization phase encounters multiple `ConstraintNode`s of the same kind on the same field/subfield/member, it:
 
-1. Validates that they do not contradict (S2 — emits ERR-010 if they do)
+1. Validates that they do not contradict (S2 — emits `CONSTRAINT_CONTRADICTION` if they do)
 2. Keeps all constraints (they all apply — the valid set is their intersection)
 3. Records both provenance entries in the combined node
 
@@ -1158,18 +1258,18 @@ tags: Tag[];
 | `@minLength`        | constraint | non-neg int     | yes   | no      |
 | `@maxLength`        | constraint | non-neg int     | yes   | no      |
 | `@pattern`          | constraint | regex string    | yes   | no      |
-| `@minItems`         | constraint | non-neg int     | no    | no      |
-| `@maxItems`         | constraint | non-neg int     | no    | no      |
-| `@uniqueItems`      | constraint | none (marker)   | no    | no      |
-| `@maxSigFig`        | constraint | pos int         | yes   | no      |
+| `@minItems`         | constraint | non-neg int     | yes   | no      |
+| `@maxItems`         | constraint | non-neg int     | yes   | no      |
+| `@uniqueItems`      | constraint | none (marker)   | yes   | no      |
+| `@maxSigFig` (example extension tag) | constraint | pos int | yes | no |
 | `@const`            | constraint | JSON value      | no    | no      |
 | `@displayName`      | annotation | text            | no    | yes     |
-| `@apiName`          | annotation | identifier      | no    | no      |
-| `@description`      | annotation | text            | no    | no      |
+| `@apiName`          | annotation | identifier      | no    | yes     |
+| `@description`      | annotation | text            | no    | yes     |
 | `@placeholder`      | annotation | text            | no    | no      |
 | `@format`           | annotation | identifier      | yes   | no      |
 | `@order`            | annotation | integer         | no    | no      |
-| `@defaultValue`     | ecosystem  | JSON/text       | yes   | yes     |
+| `@defaultValue`     | ecosystem  | JSON/text       | yes   | no      |
 | `@deprecated`       | ecosystem  | text?           | no    | yes     |
 | `@example`          | ecosystem  | JSON/text       | no    | no      |
 | `@remarks`          | ecosystem  | text            | no    | no      |

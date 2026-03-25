@@ -14,11 +14,11 @@ This document establishes the invariants that all FormSpec design and implementa
 
 **PP4: Static analysis first.** All metadata needed to produce schemas is extractable at build time via the TypeScript compiler API. Runtime reflection is not required and is not used for schema generation.
 
-**PP5: Two surfaces, one semantic model.** The TSDoc-annotated type surface and the chain DSL surface are alternative syntaxes for the same semantic model. Neither surface has capabilities the other lacks (modulo ergonomic differences).
+**PP5: Two surfaces, one semantic model, with explicit exceptions.** The TSDoc-annotated type surface and the chain DSL surface are alternative syntaxes for the same semantic model for the shared static feature set. Enumerated exceptions are allowed only when this specification calls them out explicitly. Outside those explicit exceptions, neither surface has capabilities the other lacks (modulo ergonomic differences).
 
 **PP6: JSON Schema as the normative output.** FormSpec compiles to standard JSON Schema (2020-12 vocabulary where possible, with a documented custom vocabulary for FormSpec-specific semantics). JSON Schema output must validate against the JSON Schema meta-schema.
 
-**PP7: High-fidelity JSON Schema output.** The generated JSON Schema should faithfully represent the structure and semantics of the TypeScript source, not just produce something that validates correctly. Named types should appear as `$defs` with `$ref` — not inlined — so that the difference between a reusable interface and an ad hoc object literal is preserved. Custom validators (e.g., decimal precision) should be registered as proper JSON Schema vocabulary keywords that validators like Ajv can execute, not opaque metadata that downstream systems must interpret through convention. The JSON Schema output should work as a standalone artifact, not require a FormSpec-aware consumer to be useful.
+**PP7: High-fidelity JSON Schema output.** The generated JSON Schema should faithfully represent the structure and semantics of the TypeScript source, not just produce something that validates correctly. Named types should appear as `$defs` with `$ref` — not inlined — so that the difference between a reusable interface and an ad hoc object literal is preserved. Custom validators (e.g., decimal precision) should be registered as proper JSON Schema vocabulary keywords that validators can execute, not opaque metadata that downstream systems must interpret through convention. The JSON Schema output should work as a standalone artifact, not require a FormSpec-aware consumer to be useful.
 
 **PP8: Progressive complexity.** A simple form (a few text fields) requires minimal code. Advanced features (custom constraints, dynamic fields, conditional visibility) are opt-in and do not add ceremony to simple cases.
 
@@ -30,6 +30,15 @@ This document establishes the invariants that all FormSpec design and implementa
 
 **PP12: Pre-1.0 freedom.** Breaking changes are acceptable. The system prioritizes getting the model right over backward compatibility with alpha-era APIs.
 
+**PP13: TSDoc tags should read as complete thoughts.** A FormSpec TSDoc tag does not need to be a grammatically complete sentence, but it should express the primary idea being captured without requiring the reader to infer a missing qualifier. Tag names should therefore be semantically specific enough that the comment reads naturally and unambiguously at the point of use.
+
+Good built-in examples:
+
+- `@displayName` = a human-friendly name that is displayed to people (for example in a GUI)
+- `@apiName` = a name used in programmatic, machine-oriented contracts (for example REST APIs, webhooks, or restricted API key permissions)
+
+These names are good because the semantic role is visible in the tag itself. By contrast, generic names like `@data` are weak when they obscure the primary meaning at the point of use — for example, `@data countries` says almost nothing about whether the comment is describing selectable options, backing records, provenance, or some other unrelated notion of "data". This principle applies to both built-in tags and extension tags.
+
 ---
 
 ## 2. Semantic Properties
@@ -40,7 +49,7 @@ These are invariants the type and constraint system must satisfy.
 
 **S2: Contradiction detection is decidable.** For all built-in constraint combinations, the system can determine at build time whether a set of constraints is satisfiable (e.g., `@minimum 10 @maximum 5` is a detectable contradiction). Custom constraints may opt into decidable contradiction checking but are not required to.
 
-**S3: Constraint provenance is preserved.** Every constraint in the canonical IR records where it came from (which TSDoc tag, which decorator, which chain DSL call, which line/column). This enables diagnostics that point to the source of contradictions rather than the point of detection.
+**S3: Constraint provenance is preserved.** Every constraint in the canonical IR records where it came from (which TSDoc tag, which chain DSL call, which line/column). This enables diagnostics that point to the source of contradictions rather than the point of detection.
 
 **S4: Type determines applicable constraints.** The set of constraints that may be applied to a field is determined by its type. Applying `@minLength` to a number field is a static error, not a runtime no-op.
 
@@ -84,7 +93,7 @@ Structural invariants for the system's internal design.
 
 **A3: Generation is a pure function of the IR.** Given an identical canonical IR, JSON Schema and UI Schema generators produce identical output. No ambient state, no configuration leakage between runs.
 
-**A4: The IR captures semantics, not syntax.** The canonical IR does not preserve whether a constraint was authored as a TSDoc tag, a decorator, or a chain DSL option. Surface-specific details belong to provenance metadata, not the semantic model.
+**A4: The IR captures semantics, not syntax.** The canonical IR does not preserve whether a constraint was authored as a TSDoc tag or a chain DSL option. Surface-specific details belong to provenance metadata, not the semantic model.
 
 **A5: Build pipeline is stratified.** The pipeline has clear phases: Parse → Analyze → Canonicalize (to IR) → Validate (constraints/contradictions) → Generate (JSON Schema, UI Schema). Each phase's output is the next phase's input. No phase reaches back into an earlier phase's data structures.
 
