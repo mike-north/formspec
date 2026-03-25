@@ -52,8 +52,8 @@ describe("Chain DSL Enums", () => {
     });
 
     // 003 §2.3: Spec example shows oneOf WITHOUT type: "string" alongside it.
-    // BUG: Current output has both type: "string" and oneOf — type is redundant
-    // when oneOf constrains to const string values.
+    // Labeled enums use oneOf with const values — type: "string" must be omitted
+    // since oneOf already constrains the type.
     it("labeledPriority: oneOf should NOT have type alongside it", () => {
       const prop = properties["labeledPriority"];
       expect(prop["type"]).toBeUndefined();

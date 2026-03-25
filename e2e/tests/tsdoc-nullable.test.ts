@@ -1,5 +1,5 @@
 /**
- * @see 003-json-schema-vocabulary.md — "T | null → { oneOf: [<T schema>, { type: null }] }"
+ * @see 003-json-schema-vocabulary.md — "T | null → { anyOf: [<T schema>, { type: 'null' }] }"
  * @see 003-json-schema-vocabulary.md — "undefined → Not emitted (optionality via required, per S8)"
  * @see 003-json-schema-vocabulary.md — "String literal union → enum"
  */

@@ -203,7 +203,7 @@ function canonicalizeTextField(field: TextField<string>): FieldNode {
     type,
     field.required,
     buildAnnotations(field.label, field.placeholder),
-    constraints.length > 0 ? constraints : undefined
+    constraints
   );
 }
 

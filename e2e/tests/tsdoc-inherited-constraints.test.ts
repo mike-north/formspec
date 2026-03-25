@@ -1,9 +1,9 @@
 /**
- * Tests type alias constraint inheritance in TSDoc-annotated classes.
+ * Tests fields typed with constrained type aliases in TSDoc-annotated classes.
  *
- * Verifies that constraints defined on type aliases propagate to fields
- * that use those types, with field-level constraints taking precedence
- * for scalar bounds (minimum, maximum, etc.).
+ * The current V2 pipeline resolves aliases to their base types but does not
+ * propagate TSDoc constraints from type alias declarations. Fields typed to
+ * Percentage or Integer aliases receive only `type: "number"` in the output.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
