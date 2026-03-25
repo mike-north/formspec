@@ -11,7 +11,7 @@ import { assertValidJsonSchema, assertPropertyConstraints } from "../helpers/sch
 
 describe("Chain DSL Enums", () => {
   const result = buildFormSchemas(EnumVariantsForm);
-  const { jsonSchema, uiSchema } = result;
+  const { jsonSchema, uiSchema: _uiSchema } = result;
   const schema = jsonSchema as Record<string, unknown>;
   const properties = schema["properties"] as Record<string, Record<string, unknown>>;
 
