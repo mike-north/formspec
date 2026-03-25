@@ -27,6 +27,12 @@ export interface TextField<N extends string> {
   readonly placeholder?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
+  /** Minimum string length */
+  readonly minLength?: number;
+  /** Maximum string length */
+  readonly maxLength?: number;
+  /** Regular expression pattern the value must match */
+  readonly pattern?: string;
 }
 
 /**
@@ -49,6 +55,8 @@ export interface NumberField<N extends string> {
   readonly max?: number;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
+  /** Value must be a multiple of this number (use 1 for integer semantics) */
+  readonly multipleOf?: number;
 }
 
 /**
@@ -148,6 +156,8 @@ export interface DynamicSchemaField<N extends string> {
   readonly label?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
+  /** Field names whose values are needed to configure the schema */
+  readonly params?: readonly string[];
 }
 
 /**

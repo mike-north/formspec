@@ -43,6 +43,17 @@ import { InferFieldValue } from '@formspec/dsl';
 import { InferFormSchema } from '@formspec/dsl';
 import { InferSchema } from '@formspec/dsl';
 import { is } from '@formspec/dsl';
+import { isArrayField } from '@formspec/core';
+import { isBooleanField } from '@formspec/core';
+import { isConditional } from '@formspec/core';
+import { isDynamicEnumField } from '@formspec/core';
+import { isDynamicSchemaField } from '@formspec/core';
+import { isField } from '@formspec/core';
+import { isGroup } from '@formspec/core';
+import { isNumberField } from '@formspec/core';
+import { isObjectField } from '@formspec/core';
+import { isStaticEnumField } from '@formspec/core';
+import { isTextField } from '@formspec/core';
 import { JsonSchema2020 } from '@formspec/build';
 import { JSONSchema7 } from '@formspec/build';
 import { JSONSchemaType } from '@formspec/build';
@@ -149,6 +160,28 @@ export { InferFormSchema }
 export { InferSchema }
 
 export { is }
+
+export { isArrayField }
+
+export { isBooleanField }
+
+export { isConditional }
+
+export { isDynamicEnumField }
+
+export { isDynamicSchemaField }
+
+export { isField }
+
+export { isGroup }
+
+export { isNumberField }
+
+export { isObjectField }
+
+export { isStaticEnumField }
+
+export { isTextField }
 
 export { JsonSchema2020 }
 

@@ -112,3 +112,18 @@ export {
   defineConstraint,
   defineAnnotation,
 } from "./extensions/index.js";
+
+// Re-export type guards
+export {
+  isField,
+  isTextField,
+  isNumberField,
+  isBooleanField,
+  isStaticEnumField,
+  isDynamicEnumField,
+  isDynamicSchemaField,
+  isArrayField,
+  isObjectField,
+  isGroup,
+  isConditional,
+} from "./guards.js";

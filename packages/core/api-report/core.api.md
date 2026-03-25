@@ -239,6 +239,7 @@ export interface DynamicSchemaField<N extends string> {
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
+    readonly params?: readonly string[];
     readonly required?: boolean;
     readonly schemaSource: string;
     readonly _type: "field";
@@ -405,6 +406,39 @@ export interface GroupLayoutNode {
 export const IR_VERSION: "0.1.0";
 
 // @public
+export function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
+
+// @public
+export function isBooleanField(element: FormElement): element is BooleanField<string>;
+
+// @public
+export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export function isDynamicEnumField(element: FormElement): element is DynamicEnumField<string, string>;
+
+// @public
+export function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string>;
+
+// @public
+export function isField(element: FormElement): element is AnyField;
+
+// @public
+export function isGroup(element: FormElement): element is Group<readonly FormElement[]>;
+
+// @public
+export function isNumberField(element: FormElement): element is NumberField<string>;
+
+// @public
+export function isObjectField(element: FormElement): element is ObjectField<string, readonly FormElement[]>;
+
+// @public
+export function isStaticEnumField(element: FormElement): element is StaticEnumField<string, readonly EnumOptionValue[]>;
+
+// @public
+export function isTextField(element: FormElement): element is TextField<string>;
+
+// @public
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | {
     readonly [key: string]: JsonValue;
 };
@@ -432,6 +466,7 @@ export interface NumberField<N extends string> {
     readonly label?: string;
     readonly max?: number;
     readonly min?: number;
+    readonly multipleOf?: number;
     readonly name: N;
     readonly required?: boolean;
     readonly _type: "field";
@@ -555,7 +590,10 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 export interface TextField<N extends string> {
     readonly _field: "text";
     readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
     readonly name: N;
+    readonly pattern?: string;
     readonly placeholder?: string;
     readonly required?: boolean;
     readonly _type: "field";

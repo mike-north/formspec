@@ -94,6 +94,21 @@ export type {
 
 export { createInitialFieldState } from "@formspec/core";
 
+// Type guards
+export {
+  isField,
+  isTextField,
+  isNumberField,
+  isBooleanField,
+  isStaticEnumField,
+  isDynamicEnumField,
+  isDynamicSchemaField,
+  isArrayField,
+  isObjectField,
+  isGroup,
+  isConditional,
+} from "@formspec/core";
+
 // =============================================================================
 // DSL functions
 // =============================================================================
