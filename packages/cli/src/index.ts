@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * FormSpec CLI - Generate JSON Schema and FormSpec from TypeScript
+ * FormSpec CLI - Generate JSON Schema and JSON Forms UI Schema from TypeScript
  *
  * Usage:
  *   formspec generate <file> [className] [-o <outDir>]
@@ -132,7 +132,7 @@ function parseArgs(args: string[]): CliOptions {
  */
 function printHelp(): void {
   console.log(`
-FormSpec CLI - Generate JSON Schema and FormSpec from TypeScript
+FormSpec CLI - Generate JSON Schema and JSON Forms UI Schema from TypeScript
 
 USAGE:
   formspec generate <file> [className] [options]
@@ -146,7 +146,7 @@ Use 'formspec generate --help' for more information.
  */
 function printGenerateHelp(): void {
   console.log(`
-formspec generate - Generate JSON Schema and UI Schema files from TypeScript
+formspec generate - Generate JSON Schema and JSON Forms UI Schema files from TypeScript
 
 USAGE:
   formspec generate <file> [className] [options]
@@ -161,6 +161,11 @@ OPTIONS:
   --emit-ir             Emit FormIR JSON alongside generated schemas
   --validate-only       Validate constraints only; do not write schema files
   -h, --help            Show this help message
+
+OUTPUT FILES:
+  - Class outputs include schema.json and ui_schema.json
+  - When available, method parameter UI schemas are written as params.ui_schema.json
+  - FormSpec export UI schemas are written as ui_schema.json
 
 EXAMPLES:
   # Generate from a class with JSDoc constraints (static analysis only)
