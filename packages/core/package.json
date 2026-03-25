@@ -21,14 +21,15 @@
     "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
-    "test": "tsd",
+    "test": "vitest run && tsd",
     "test:types": "tsd",
     "api-extractor": "api-extractor run",
     "api-extractor:local": "api-extractor run --local",
     "api-documenter": "api-documenter markdown -i temp -o docs"
   },
   "devDependencies": {
-    "tsd": "^0.31.0"
+    "tsd": "^0.31.0",
+    "vitest": "^3.2.4"
   },
   "tsd": {
     "directory": "src/__tests__"
