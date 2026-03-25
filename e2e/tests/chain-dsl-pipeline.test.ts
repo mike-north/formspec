@@ -1,38 +1,42 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
 import { ContactForm } from "../fixtures/chain-dsl/contact-form.js";
-import { assertValidJsonSchema, assertPropertyConstraints } from "../helpers/schema-assertions.js";
+import {
+  assertValidJsonSchema,
+  assertPropertyConstraints,
+} from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Pipeline", () => {
-  const result = buildFormSchemas(ContactForm);
-  const { jsonSchema, uiSchema } = result;
+  const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
+  const schema = jsonSchema as Record<string, unknown>;
+  const ui = uiSchema as Record<string, unknown>;
 
   describe("JSON Schema", () => {
     it("produces a valid object schema", () => {
-      assertValidJsonSchema(jsonSchema as Record<string, unknown>);
+      assertValidJsonSchema(schema);
     });
 
     it("has correct required fields", () => {
-      expect(jsonSchema.required).toContain("firstName");
-      expect(jsonSchema.required).toContain("lastName");
-      expect(jsonSchema.required).toContain("contactMethod");
+      expect(schema["required"]).toContain("firstName");
+      expect(schema["required"]).toContain("lastName");
+      expect(schema["required"]).toContain("contactMethod");
     });
 
     it("has age with min/max constraints", () => {
-      assertPropertyConstraints(jsonSchema as Record<string, unknown>, "age", {
+      assertPropertyConstraints(schema, "age", {
         minimum: 0,
         maximum: 150,
       });
     });
 
     it("has contactMethod enum values", () => {
-      assertPropertyConstraints(jsonSchema as Record<string, unknown>, "contactMethod", {
+      assertPropertyConstraints(schema, "contactMethod", {
         enum: ["email", "phone", "mail"],
       });
     });
 
     it("has all expected properties", () => {
-      const props = Object.keys(jsonSchema.properties ?? {});
+      const props = Object.keys((schema["properties"] as Record<string, unknown> | undefined) ?? {});
       expect(props).toContain("firstName");
       expect(props).toContain("lastName");
       expect(props).toContain("email");
@@ -45,8 +49,8 @@ describe("Chain DSL Pipeline", () => {
 
   describe("UI Schema", () => {
     it("has group elements", () => {
-      expect(uiSchema).toHaveProperty("elements");
-      const elements = (uiSchema as { elements: unknown[] }).elements;
+      expect(ui).toHaveProperty("elements");
+      const elements = ui["elements"] as unknown[];
       expect(elements.length).toBeGreaterThan(0);
     });
   });

@@ -9,12 +9,18 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
+import {
+  findUiElement,
+  runCli,
+  resolveFixture,
+  findSchemaFile,
+} from "../helpers/schema-assertions.js";
 
 describe("TSDoc Constrained Class", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
+  let uiSchema: Record<string, unknown>;
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-constrained-"));
@@ -27,6 +33,11 @@ describe("TSDoc Constrained Class", () => {
     if (!schemaFile) throw new Error("Schema file not found");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
+
+    const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
+    expect(uischemaFile).toBeDefined();
+    if (!uischemaFile) throw new Error("UI Schema file not found");
+    uiSchema = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as Record<string, unknown>;
   });
 
   afterAll(() => {
@@ -43,6 +54,13 @@ describe("TSDoc Constrained Class", () => {
   describe("name field — @displayName annotation (no constraint assertions)", () => {
     it("has string type", () => {
       expect(properties["name"]?.["type"]).toBe("string");
+      expect(properties["name"]?.["title"]).toBe("Full Name");
+    });
+
+    it("renders the display name in the UI schema", () => {
+      const nameControl = findUiElement(uiSchema, "#/properties/name");
+      expect(nameControl).toBeDefined();
+      expect(nameControl?.["label"]).toBe("Full Name");
     });
   });
 

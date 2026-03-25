@@ -4,18 +4,17 @@
  * Extracts constraints and annotation tags from JSDoc comments on
  * class/interface fields and returns canonical IR nodes directly:
  * - {@link ConstraintNode} for set-influencing tags (@minimum, @pattern, etc.)
- * - {@link AnnotationNode} for value-influencing tags (@displayName, @description, etc.)
+ * - {@link AnnotationNode} for value-influencing tags (@displayName, etc.)
  *
  * The IR extraction path uses the official `@microsoft/tsdoc` parser for
- * constraints (all TSDoc-compliant alphanumeric names) and the TypeScript
- * compiler JSDoc API for annotation tags (@displayName, @description).
+ * all canonical tags.
  *
- * Supported constraints correspond to keys in {@link BUILTIN_CONSTRAINT_DEFINITIONS}
- * from `@formspec/core` (e.g., `@minimum`, `@maximum`, `@pattern`).
+ * Supported constraints correspond to the built-in FormSpec constraint tags
+ * (e.g., `@minimum`, `@maximum`, `@pattern`).
  */
 
 import * as ts from "typescript";
-import { type ConstraintNode, type AnnotationNode, type JsonValue } from "@formspec/core";
+import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core";
 import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
 
 // =============================================================================
@@ -39,8 +38,8 @@ export function extractJSDocConstraintNodes(node: ts.Node, file = ""): Constrain
 }
 
 /**
- * Extracts `@displayName`, `@description`, and `@deprecated`
- * TSDoc tags from a node and returns canonical {@link AnnotationNode} objects.
+ * Extracts canonical annotation tags from a node and returns
+ * {@link AnnotationNode} objects.
  *
  * @param node - The AST node to inspect for annotation tags
  * @param file - Absolute path to the source file for provenance
