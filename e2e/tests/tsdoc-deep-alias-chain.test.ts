@@ -38,12 +38,14 @@ describe("TSDoc Deep Alias Chain (3 levels)", () => {
     const schemaFile = findSchemaFile(tempDir, "schema.json");
     expect(schemaFile).toBeDefined();
     if (!schemaFile) throw new Error("Schema file not found");
+    expect(path.basename(schemaFile)).toBe("schema.json");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
 
     const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
     expect(uischemaFile).toBeDefined();
     if (!uischemaFile) throw new Error("UI Schema file not found");
+    expect(path.basename(uischemaFile)).toBe("ui_schema.json");
     uischema = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as Record<string, unknown>;
   });
 

@@ -106,6 +106,11 @@ export function assertNestedProperty(
   }
 }
 
+/** Extract the combined stdout+stderr text for a CLI result. */
+export function combinedOutput(result: RunCliResult): string {
+  return result.stdout + result.stderr;
+}
+
 /**
  * Recursively find a file matching a suffix in a directory.
  * Extracted from individual test files into shared helper.
