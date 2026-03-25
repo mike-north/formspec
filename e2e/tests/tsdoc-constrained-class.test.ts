@@ -5,15 +5,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { fileURLToPath } from "node:url";
 import {
   runCli,
   resolveFixture,
   findSchemaFile,
   loadExpected,
 } from "../helpers/schema-assertions.js";
-
-const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("TSDoc Constrained Class", () => {
   let tempDir: string;
