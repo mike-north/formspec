@@ -137,7 +137,7 @@
   - Improved error messages to distinguish between "compiled file missing" and "no FormSpec exports found"
   - Error messages now use `npx formspec` for users without CLI in PATH
   - Added documentation for `codegen` command
-  - Added documentation explaining `ux_spec.json` vs JSON Forms `uiSchema` format
+  - Added documentation explaining the JSON Forms UI Schema output contract and the `ui_schema.json` / `params.ui_schema.json` file names
 
   **@formspec/dsl:**
   - Fixed type inference so fields inside `when()` conditionals are correctly typed as optional
@@ -239,11 +239,11 @@
   ```
   generated/ClassName/
   ├── schema.json           # JSON Schema for class fields
-  ├── ux_spec.json          # UI Schema
+  ├── ui_schema.json        # JSON Forms UI Schema
   ├── instance_methods/
   │   └── methodName/
   │       ├── params.schema.json
-  │       ├── params.ux_spec.json
+  │       ├── params.ui_schema.json
   │       └── return_type.schema.json
   └── static_methods/
       └── ...
@@ -251,7 +251,7 @@
   generated/formspecs/
   └── ExportName/
       ├── schema.json
-      └── ux_spec.json
+      └── ui_schema.json
   ```
 
   This approach eliminates the need for type-hint decorators like `@Boolean()` since types are inferred directly from TypeScript.

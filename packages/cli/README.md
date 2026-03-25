@@ -191,6 +191,9 @@ class PaymentPlan {
 
 ## Output Structure
 
+The CLI writes JSON Schema plus JSON Forms UI Schema files using the current
+contract:
+
 ```
 generated/
 ├── ClassName/
@@ -199,6 +202,7 @@ generated/
 │   ├── instance_methods/
 │   │   └── methodName/
 │   │       ├── params.schema.json
+│   │       ├── params.ui_schema.json
 │   │       └── return_type.schema.json
 │   └── static_methods/
 │       └── methodName/
