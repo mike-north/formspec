@@ -418,11 +418,11 @@ function parseConstraintValue(
         return null;
       }
       const members: (string | number)[] = [];
-      for (const item of parsed) {
+      for (const item of parsed as unknown[]) {
         if (typeof item === "string" || typeof item === "number") {
           members.push(item);
         } else if (typeof item === "object" && item !== null && "id" in item) {
-          const id: unknown = item.id;
+          const id = (item as Record<string, unknown>)["id"];
           if (typeof id === "string" || typeof id === "number") {
             members.push(id);
           }
