@@ -9,6 +9,8 @@
  * - Path-targeted constraints skipped entirely
  * - Edge values (negative, float, zero)
  *
+ * @see docs/002-tsdoc-grammar.md §2.1 (constraint contradiction detection)
+ * @see docs/005-numeric-types.md §7.2 (numeric bound consistency)
  * @see https://json-schema.org/understanding-json-schema/reference/numeric#range
  */
 

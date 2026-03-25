@@ -24,7 +24,7 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 | **D5** (auto-fixes when unambiguous)                | Rules offer auto-fixes only when intent is unambiguous. The confidence threshold is explicit: if more than one reasonable fix exists, the diagnostic describes the issue and defers to the author |
 | **D6** (machine-consumable diagnostics)             | The diagnostic format supports LSP, SARIF, and ESLint's RuleTester. Structured codes enable filtering and aggregation in CI                                                                       |
 | **PP9** (configurable surface area)                 | Every FormSpec diagnostic severity is overridable via project configuration. Rules can be set to `off`, `warn`, or `error` per project                                                            |
-| **PP10** (white-labelable)                          | Diagnostic presentation is configurable for downstream organizations, while canonical machine-readable diagnostic codes remain stable symbolic identifiers                                           |
+| **PP10** (white-labelable)                          | Diagnostic presentation is configurable for downstream organizations, while canonical machine-readable diagnostic codes remain stable symbolic identifiers                                        |
 | **PP11** (consumer-controlled messaging)            | Diagnostic message templates are overridable via project configuration. Organizations can substitute their own terminology, instructional text, and style                                         |
 | **E1** (built-in types use the same extension API)  | The ESLint rule infrastructure described here is the same API used by built-in rules. Extensions get tag-on-type validation, contradiction detection, and path-target resolution for free         |
 
@@ -123,8 +123,8 @@ Extension-registered constraints participate in contradiction detection by decla
  * Both surfaces supply their own TypeScript program and type checker.
  */
 interface TypeResolutionContext {
-  readonly program: import('typescript').Program;
-  readonly checker: import('typescript').TypeChecker;
+  readonly program: import("typescript").Program;
+  readonly checker: import("typescript").TypeChecker;
 }
 
 /**
@@ -138,7 +138,7 @@ interface AnalysisResult {
   /** Raw parsed tags, even if some produced errors. Used by the language server. */
   readonly parsedTags: readonly ParsedTag[];
   /** The resolved TypeScript type of the field, used by language server hover. */
-  readonly resolvedType: import('typescript').Type | undefined;
+  readonly resolvedType: import("typescript").Type | undefined;
 }
 
 /**
@@ -146,7 +146,7 @@ interface AnalysisResult {
  * Both ESLint rules and language server handlers call this function.
  */
 declare function analyzeDeclaration(
-  node: import('typescript').Declaration,
+  node: import("typescript").Declaration,
   context: TypeResolutionContext,
   config: FormSpecConfig
 ): AnalysisResult;
@@ -164,13 +164,13 @@ Per A7, ESLint owns all validation and auto-fix logic. The `@formspec/eslint-plu
 
 Each rule category maps directly to a diagnostic category from 002 §6:
 
-| Rule category           | Diagnostic families                                                  | Responsibility                                    |
-| ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
-| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`                | Unknown tags, missing arguments, disabled tags    |
-| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related     | Malformed numeric, regex, JSON, and date values   |
-| `type-compatibility`    | `TYPE_MISMATCH`                                                      | Tags applied to incompatible field types          |
-| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related              | Invalid path-target and member-target references  |
-| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                 | Contradictions, duplicates, rule effect conflicts |
+| Rule category           | Diagnostic families                                              | Responsibility                                    |
+| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`            | Unknown tags, missing arguments, disabled tags    |
+| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related | Malformed numeric, regex, JSON, and date values   |
+| `type-compatibility`    | `TYPE_MISMATCH`                                                  | Tags applied to incompatible field types          |
+| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related          | Invalid path-target and member-target references  |
+| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related             | Contradictions, duplicates, rule effect conflicts |
 
 Rules within each category are named `formspec/<category>/<specific-rule>`, for example:
 
@@ -185,8 +185,8 @@ Every FormSpec ESLint rule follows the same pattern: it registers an AST visitor
 Rules do not parse TSDoc themselves. They do not call the TypeScript compiler API directly for tag-related lookups. All of that lives in the shared pipeline — rules only interpret the `AnalysisResult`.
 
 ```typescript
-import type { Rule } from 'eslint';
-import { analyzeDeclaration } from '@formspec/build/analysis';
+import type { Rule } from "eslint";
+import { analyzeDeclaration } from "@formspec/build/analysis";
 
 /**
  * Example built-in rule: reports constraint contradictions (`CONSTRAINT_CONTRADICTION`).
@@ -194,10 +194,10 @@ import { analyzeDeclaration } from '@formspec/build/analysis';
  */
 const noContradictions: Rule.RuleModule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     schema: [],
     messages: {
-      contradiction: '{{ message }}',
+      contradiction: "{{ message }}",
     },
   },
   create(context) {
@@ -209,16 +209,16 @@ const noContradictions: Rule.RuleModule = {
 
     return {
       // Visit all TypeScript property/member declarations
-      'PropertyDeclaration, PropertySignature'(node) {
+      "PropertyDeclaration, PropertySignature"(node) {
         const tsNode = parserServices.esTreeNodeToTSNodeMap.get(node);
         const result = analyzeDeclaration(tsNode, tsContext, getConfig(context));
 
         for (const diag of result.diagnostics) {
-          if (diag.category !== 'constraint-validation') continue;
+          if (diag.category !== "constraint-validation") continue;
 
           context.report({
             node,
-            messageId: 'contradiction',
+            messageId: "contradiction",
             data: { message: diag.message },
             // Auto-fixes are attached by the diagnostic itself (see §7)
             fix: diag.fix ? (fixer) => applyFormSpecFix(fixer, diag.fix!) : undefined,
@@ -236,24 +236,24 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 
 **`formspec/recommended` rule set:**
 
-| Rule                                            | Codes                                           | Default severity |
-| ----------------------------------------------- | ------- | ---------------- |
-| `tag-recognition/no-unknown-tags`               | `UNKNOWN_TAG`                                   | warn             |
-| `tag-recognition/require-tag-arguments`         | `MISSING_TAG_ARGUMENT`                          | error            |
-| `tag-recognition/no-disabled-tags`              | `TAG_DISABLED`                                  | warn             |
-| `value-parsing/valid-numeric-value`             | `INVALID_NUMERIC_VALUE`                         | error            |
-| `value-parsing/valid-integer-value`             | `INVALID_NON_NEGATIVE_INTEGER`                  | error            |
-| `value-parsing/valid-regex-pattern`             | `INVALID_REGEX_PATTERN`                         | error            |
-| `value-parsing/valid-json-value`                | `INVALID_JSON_VALUE`                            | error            |
-| `type-compatibility/tag-type-check`             | `TYPE_MISMATCH`                                 | error            |
-| `target-resolution/valid-path-target`           | `UNKNOWN_PATH_TARGET`                           | error            |
-| `target-resolution/valid-member-target`         | `UNKNOWN_MEMBER_TARGET`                         | error            |
-| `target-resolution/no-unsupported-targeting`    | `UNSUPPORTED_TARGETING_SYNTAX`                  | error            |
-| `target-resolution/no-member-target-on-object`  | `MEMBER_TARGET_ON_NON_UNION`                    | error            |
-| `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`                      | error            |
-| `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                                 | warn             |
-| `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT`                  | info             |
-| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULES`                           | error            |
+| Rule                                            | Codes                          | Default severity |
+| ----------------------------------------------- | ------------------------------ | ---------------- |
+| `tag-recognition/no-unknown-tags`               | `UNKNOWN_TAG`                  | warn             |
+| `tag-recognition/require-tag-arguments`         | `MISSING_TAG_ARGUMENT`         | error            |
+| `tag-recognition/no-disabled-tags`              | `TAG_DISABLED`                 | warn             |
+| `value-parsing/valid-numeric-value`             | `INVALID_NUMERIC_VALUE`        | error            |
+| `value-parsing/valid-integer-value`             | `INVALID_NON_NEGATIVE_INTEGER` | error            |
+| `value-parsing/valid-regex-pattern`             | `INVALID_REGEX_PATTERN`        | error            |
+| `value-parsing/valid-json-value`                | `INVALID_JSON_VALUE`           | error            |
+| `type-compatibility/tag-type-check`             | `TYPE_MISMATCH`                | error            |
+| `target-resolution/valid-path-target`           | `UNKNOWN_PATH_TARGET`          | error            |
+| `target-resolution/valid-member-target`         | `UNKNOWN_MEMBER_TARGET`        | error            |
+| `target-resolution/no-unsupported-targeting`    | `UNSUPPORTED_TARGETING_SYNTAX` | error            |
+| `target-resolution/no-member-target-on-object`  | `MEMBER_TARGET_ON_NON_UNION`   | error            |
+| `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`     | error            |
+| `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                | warn             |
+| `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT` | info             |
+| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULES`          | error            |
 
 ### 3.4 Rule Configuration Interface
 
@@ -263,7 +263,7 @@ Per PP9, every rule's severity is overridable in the project's ESLint configurat
 
 ```typescript
 // In the consumer's eslint.config.js — minimal setup using the recommended flat config
-import formspec from '@formspec/eslint-plugin';
+import formspec from "@formspec/eslint-plugin";
 
 export default [
   // Spread the recommended config to enable all built-in rules at their default severities
@@ -275,16 +275,16 @@ Rules can then be adjusted individually:
 
 ```typescript
 // In the consumer's eslint.config.js
-import formspec from '@formspec/eslint-plugin';
+import formspec from "@formspec/eslint-plugin";
 
 export default [
   ...formspec.configs.recommended,
   {
     rules: {
       // Override a specific rule's severity
-      'formspec/tag-recognition/no-unknown-tags': 'error',
+      "formspec/tag-recognition/no-unknown-tags": "error",
       // Disable a rule entirely
-      'formspec/constraint-validation/no-duplicate-tags': 'off',
+      "formspec/constraint-validation/no-duplicate-tags": "off",
     },
   },
 ];
@@ -297,7 +297,7 @@ For message template overrides (PP11), the consumer configures them in `.formspe
 diagnostics:
   messages:
     UNKNOWN_TAG: 'Unrecognized tag "@{tagName}". Valid tags: {validTags}.'
-    CONSTRAINT_CONTRADICTION: 'Conflicting constraints detected: {details}'
+    CONSTRAINT_CONTRADICTION: "Conflicting constraints detected: {details}"
 ```
 
 Message templates use `{placeholder}` syntax. The available placeholders for each code are documented in 002 §6 and are part of the stable public API.
@@ -328,14 +328,14 @@ For example, a `@maxSigFig` tag declared with `applicableTypes: ["Decimal"]` aut
 Extensions write ESLint rules only for domain logic that goes beyond what `defineConstraintTag` can express declaratively. The `createConstraintTagRule` factory from `@formspec/eslint-plugin/base` handles all the boilerplate (tag location extraction, type applicability, path-target resolution, provenance attachment, diagnostic emission per D1–D4); the extension provides only the domain-specific predicate:
 
 ```typescript
-import { createConstraintTagRule } from '@formspec/eslint-plugin/base';
+import { createConstraintTagRule } from "@formspec/eslint-plugin/base";
 
 // This rule validates @maxSigFig usage beyond what defineConstraintTag declares.
 // It does NOT need to re-implement type resolution, path-target syntax,
 // provenance tracking, or contradiction detection — the pipeline handles those.
 export const maxSigFigRule = createConstraintTagRule({
-  tag: '@maxSigFig',
-  applicableTypes: ['Decimal'],
+  tag: "@maxSigFig",
+  applicableTypes: ["Decimal"],
   valueParser: parsePositiveInt,
   contradictionCheck: (accumulated, proposed) =>
     proposed > accumulated
@@ -350,15 +350,15 @@ Extension rules receive an `AnalysisResult` from the shared pipeline. Tags that 
 
 By declaring a tag via `defineConstraintTag` (see 005 §4), an extension gets the following without writing any rule code:
 
-| Capability                                      | Mechanism                                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| Parse error reporting (`INVALID_*`)                  | `valueParser` declaration → pipeline runs the right parser                           |
-| Type applicability checking (`TYPE_MISMATCH`)       | `applicableTypes` declaration → pipeline checks tag against field type               |
-| Path-target validation (`UNKNOWN_PATH_TARGET`, related) | Pipeline resolves `:subfield` modifiers; produces errors for unknown properties  |
-| Member-target validation (`UNKNOWN_MEMBER_TARGET`, related) | Pipeline validates `:member` references against string literal union members |
-| Contradiction detection (`CONSTRAINT_CONTRADICTION`) | `contradictionCheck` predicate → pipeline compares constraint pairs                  |
-| Duplicate detection (`DUPLICATE_TAG`)              | `composition: "intersection"` on same target → pipeline emits duplicate warning      |
-| Provenance tracking (S3, D2)                    | Pipeline records source location for every constraint node automatically        |
+| Capability                                                  | Mechanism                                                                       |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Parse error reporting (`INVALID_*`)                         | `valueParser` declaration → pipeline runs the right parser                      |
+| Type applicability checking (`TYPE_MISMATCH`)               | `applicableTypes` declaration → pipeline checks tag against field type          |
+| Path-target validation (`UNKNOWN_PATH_TARGET`, related)     | Pipeline resolves `:subfield` modifiers; produces errors for unknown properties |
+| Member-target validation (`UNKNOWN_MEMBER_TARGET`, related) | Pipeline validates `:member` references against string literal union members    |
+| Contradiction detection (`CONSTRAINT_CONTRADICTION`)        | `contradictionCheck` predicate → pipeline compares constraint pairs             |
+| Duplicate detection (`DUPLICATE_TAG`)                       | `composition: "intersection"` on same target → pipeline emits duplicate warning |
+| Provenance tracking (S3, D2)                                | Pipeline records source location for every constraint node automatically        |
 
 The extension rule only needs to express logic that is genuinely specific to its domain.
 
@@ -506,16 +506,16 @@ interface FormSpecDiagnostic {
    * The category string corresponding to the code prefix.
    */
   readonly category:
-    | 'tag-recognition'
-    | 'value-parsing'
-    | 'type-compatibility'
-    | 'target-resolution'
-    | 'constraint-validation';
+    | "tag-recognition"
+    | "value-parsing"
+    | "type-compatibility"
+    | "target-resolution"
+    | "constraint-validation";
 
   /**
    * The diagnostic severity. Configurable per PP9.
    */
-  readonly severity: 'error' | 'warning' | 'info';
+  readonly severity: "error" | "warning" | "info";
 
   /**
    * The human-readable message. Overridable via PP11.
@@ -599,12 +599,12 @@ For IDE display (D6), the language server maps `FormSpecDiagnostic` to the LSP `
 ```typescript
 function toLanguageServerDiagnostic(
   diag: FormSpecDiagnostic
-): import('vscode-languageclient').Diagnostic {
+): import("vscode-languageclient").Diagnostic {
   return {
     range: sourceLocationToRange(diag.location),
     severity: severityToLSP(diag.severity),
     code: diag.code,
-    source: 'formspec',
+    source: "formspec",
     message: diag.message,
     relatedInformation: diag.relatedLocations.map((loc, i) => ({
       location: { uri: fileUri(loc.file), range: sourceLocationToRange(loc) },
@@ -625,17 +625,17 @@ The `data` field carries the `fix` payload for use by LSP code action requests �
 
 Fixes are offered only when the intent is unambiguous and the transformation is purely mechanical (D5). The guiding question is: "Is there exactly one reasonable thing the author should do here?"
 
-| Scenario                                                  | Fix offered?                     | Rationale                                        |
-| --------------------------------------------------------- | -------------------------------- | ------------------------------------------------ |
-| Unknown tag with close match (edit distance ≤ 2)          | Yes — rename to the matched tag  | Only one plausible intent                        |
-| Disabled tag present                                      | Yes — remove the tag             | Only one valid action: remove it                 |
-| Float passed to integer-only tag (e.g., `@minLength 1.0`) | Yes — truncate to `1`            | Clearly a formatting mistake                     |
-| Duplicate tag (`DUPLICATE_TAG`) — second instance wins    | Yes — remove first               | Composition rule is clear (C1)                   |
-| `@description` + `@remarks` conflict (`DESCRIPTION_REMARKS_CONFLICT`) | Yes — remove `@remarks` | `@description` always wins per C1                |
-| Unknown path-target with close match (≤ 2 edits)          | Yes — rename to matched property | Only one plausible property                      |
-| Constraint contradiction (`CONSTRAINT_CONTRADICTION`)     | No                               | The author must decide which constraint is wrong |
-| Tag applied to wrong type (`TYPE_MISMATCH`)               | No                               | The author must change the field type or the tag |
-| Missing required argument (`MISSING_TAG_ARGUMENT`)        | No                               | The intent (which value?) is unknown             |
+| Scenario                                                              | Fix offered?                     | Rationale                                        |
+| --------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------ |
+| Unknown tag with close match (edit distance ≤ 2)                      | Yes — rename to the matched tag  | Only one plausible intent                        |
+| Disabled tag present                                                  | Yes — remove the tag             | Only one valid action: remove it                 |
+| Float passed to integer-only tag (e.g., `@minLength 1.0`)             | Yes — truncate to `1`            | Clearly a formatting mistake                     |
+| Duplicate tag (`DUPLICATE_TAG`) — second instance wins                | Yes — remove first               | Composition rule is clear (C1)                   |
+| `@description` + `@remarks` conflict (`DESCRIPTION_REMARKS_CONFLICT`) | Yes — remove `@remarks`          | `@description` always wins per C1                |
+| Unknown path-target with close match (≤ 2 edits)                      | Yes — rename to matched property | Only one plausible property                      |
+| Constraint contradiction (`CONSTRAINT_CONTRADICTION`)                 | No                               | The author must decide which constraint is wrong |
+| Tag applied to wrong type (`TYPE_MISMATCH`)                           | No                               | The author must change the field type or the tag |
+| Missing required argument (`MISSING_TAG_ARGUMENT`)                    | No                               | The intent (which value?) is unknown             |
 
 ### 7.2 ESLint Fixer
 
@@ -647,9 +647,9 @@ Auto-fixes that modify source code go through ESLint's `RuleFixer` API. This ens
  * Called from the rule's create() function when building the report.
  */
 function applyFormSpecFix(
-  fixer: import('eslint').Rule.RuleFixer,
+  fixer: import("eslint").Rule.RuleFixer,
   fix: DiagnosticFix
-): import('eslint').Rule.Fix | import('eslint').Rule.Fix[] {
+): import("eslint").Rule.Fix | import("eslint").Rule.Fix[] {
   return fix.changes.map((change) =>
     fixer.replaceTextRange([change.range.start, change.range.end], change.newText)
   );
@@ -666,10 +666,8 @@ The same `fix` payload from `FormSpecDiagnostic` is also surfaced as an LSP `Cod
 /**
  * Converts a DiagnosticFix into an LSP WorkspaceEdit for the code action response.
  */
-function toWorkspaceEdit(
-  fix: DiagnosticFix
-): import('vscode-languageserver').WorkspaceEdit {
-  const changes: Record<string, import('vscode-languageserver').TextEdit[]> = {};
+function toWorkspaceEdit(fix: DiagnosticFix): import("vscode-languageserver").WorkspaceEdit {
+  const changes: Record<string, import("vscode-languageserver").TextEdit[]> = {};
 
   for (const change of fix.changes) {
     const uri = fileUri(change.file);
@@ -714,13 +712,13 @@ export default [
       ...formspec.configs.recommended.rules,
 
       // Upgrade a warning to an error for this project
-      'formspec/tag-recognition/no-unknown-tags': 'error',
+      "formspec/tag-recognition/no-unknown-tags": "error",
 
       // Downgrade an error to a warning (e.g., during migration)
-      'formspec/type-compatibility/tag-type-check': 'warn',
+      "formspec/type-compatibility/tag-type-check": "warn",
 
       // Disable a rule entirely
-      'formspec/constraint-validation/no-duplicate-tags': 'off',
+      "formspec/constraint-validation/no-duplicate-tags": "off",
     },
   },
 ];
@@ -771,7 +769,7 @@ Extensions can declare configuration keys that appear under the `extensions:` na
 extensions:
   decimal:
     maxSigFigUpperLimit: 38 # Passed to the extension at initialization
-    precisionLoss: 'error' # B3 — configurable lossy transformation policy
+    precisionLoss: "error" # B3 — configurable lossy transformation policy
 ```
 
 This enables the Outcome 8 scenario from 003 §6.1 without requiring the extension to define its own configuration file or parsing logic.
@@ -780,13 +778,13 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 ## Appendix A: Diagnostic Category Quick Reference
 
-| Category              | Representative symbolic codes                               | Responsibility                                    |
-| --------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
-| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`       | Unknown tags, missing arguments, disabled tags    |
-| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related   | Malformed numeric, regex, JSON, and date values   |
-| Type compatibility    | `TYPE_MISMATCH`                                             | Tags applied to incompatible field types          |
-| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related     | Invalid path-target and member-target references  |
-| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related        | Contradictions, duplicates, rule effect conflicts |
+| Category              | Representative symbolic codes                             | Responsibility                                    |
+| --------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`     | Unknown tags, missing arguments, disabled tags    |
+| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related | Malformed numeric, regex, JSON, and date values   |
+| Type compatibility    | `TYPE_MISMATCH`                                           | Tags applied to incompatible field types          |
+| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related   | Invalid path-target and member-target references  |
+| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related      | Contradictions, duplicates, rule effect conflicts |
 
 See 002 §6 for the individual diagnostic code definitions.
 
@@ -794,17 +792,17 @@ See 002 §6 for the individual diagnostic code definitions.
 
 ## Appendix B: ESLint vs. Language Server Responsibility Matrix
 
-| Capability                        | ESLint        | Language Server           | Notes                                                 |
-| --------------------------------- | ------------- | ------------------------- | ----------------------------------------------------- |
-| Parse error detection             | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Type applicability checking       | Yes           | No                        | ESLint rule `tag-type-check`                          |
-| Contradiction detection           | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Auto-fix application              | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
-| Tag name completions              | No            | Yes                       | LS-only authoring experience (A7)                     |
-| Path/member-target completions    | No            | Yes                       | LS-only authoring experience (A7)                     |
-| Hover (tag docs, provenance)      | No            | Yes                       | Requires cursor position                              |
-| Go-to-definition (`{@link}`)      | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
-| Signature help                    | No            | Yes                       | Requires cursor position and incremental state        |
-| Bulk fix (fix-all)                | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                    |
+| Capability                     | ESLint        | Language Server           | Notes                                                 |
+| ------------------------------ | ------------- | ------------------------- | ----------------------------------------------------- |
+| Parse error detection          | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Type applicability checking    | Yes           | No                        | ESLint rule `tag-type-check`                          |
+| Contradiction detection        | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Auto-fix application           | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
+| Tag name completions           | No            | Yes                       | LS-only authoring experience (A7)                     |
+| Path/member-target completions | No            | Yes                       | LS-only authoring experience (A7)                     |
+| Hover (tag docs, provenance)   | No            | Yes                       | Requires cursor position                              |
+| Go-to-definition (`{@link}`)   | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
+| Signature help                 | No            | Yes                       | Requires cursor position and incremental state        |
+| Bulk fix (fix-all)             | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                    |
 
 The asymmetry is intentional (A7): if a capability requires cursor position, incremental typing state, or live feedback during composition, it belongs in the language server. Everything else belongs in ESLint where it can run in CI without an editor.

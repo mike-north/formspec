@@ -8,17 +8,17 @@ This document specifies how FormSpec's canonical IR maps to JSON Schema 2020-12 
 
 ### Principles Satisfied
 
-| Principle                                          | How this document satisfies it                                                                                                                                              |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PP6** (JSON Schema as normative output)          | All generated output targets JSON Schema 2020-12. The meta-schema validates every generated document. Custom keywords are declared as a proper vocabulary                   |
-| **PP7** (High-fidelity JSON Schema output)         | Named types are emitted as `$defs` with `$ref`. Custom keywords are emitted as proper namespaced vocabulary members rather than undocumented metadata. The output works standalone   |
-| **E3** (Custom vocabulary keywords are namespaced) | All custom keywords use a configurable `x-<vendor>-` prefix (default `x-formspec-`). The vocabulary URI also includes the vendor prefix                                     |
-| **PP10** (White-labelable)                         | The vendor prefix, vocabulary URI, and `$schema` annotation are all configurable. No hard-coded "formspec" strings appear in generated output when the vendor is overridden |
-| **PP9** (Configurable surface area)                | Custom keywords that represent features disabled by project configuration are not emitted                                                                                   |
-| **B3** (Lossy transformations are configurable)    | Extension-defined precision keywords (e.g., `maxSigFig`) must support configurable precision-loss policies; the default should reject, not silently round                   |
-| **B4** (JSON Schema is the contract boundary)      | The IR is the source of truth; the JSON Schema is derived from it. If they disagree, fix the generator                                                                      |
-| **S1** (Specialization narrows)                    | `allOf` composition preserves and narrows constraints when types specialize                                                                                                 |
-| **PP2** (Inference over declaration)               | Standard JSON Schema keywords are inferred from TypeScript types without requiring author annotation where possible                                                         |
+| Principle                                          | How this document satisfies it                                                                                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PP6** (JSON Schema as normative output)          | All generated output targets JSON Schema 2020-12. The meta-schema validates every generated document. Custom keywords are declared as a proper vocabulary                          |
+| **PP7** (High-fidelity JSON Schema output)         | Named types are emitted as `$defs` with `$ref`. Custom keywords are emitted as proper namespaced vocabulary members rather than undocumented metadata. The output works standalone |
+| **E3** (Custom vocabulary keywords are namespaced) | All custom keywords use a configurable `x-<vendor>-` prefix (default `x-formspec-`). The vocabulary URI also includes the vendor prefix                                            |
+| **PP10** (White-labelable)                         | The vendor prefix, vocabulary URI, and `$schema` annotation are all configurable. No hard-coded "formspec" strings appear in generated output when the vendor is overridden        |
+| **PP9** (Configurable surface area)                | Custom keywords that represent features disabled by project configuration are not emitted                                                                                          |
+| **B3** (Lossy transformations are configurable)    | Extension-defined precision keywords (e.g., `maxSigFig`) must support configurable precision-loss policies; the default should reject, not silently round                          |
+| **B4** (JSON Schema is the contract boundary)      | The IR is the source of truth; the JSON Schema is derived from it. If they disagree, fix the generator                                                                             |
+| **S1** (Specialization narrows)                    | `allOf` composition preserves and narrows constraints when types specialize                                                                                                        |
+| **PP2** (Inference over declaration)               | Standard JSON Schema keywords are inferred from TypeScript types without requiring author annotation where possible                                                                |
 
 ### Relationship to 001 (Canonical IR)
 
@@ -36,18 +36,18 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 
 ### 2.1 Primitive Types
 
-| IR type                                           | JSON Schema output                                                                                                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `string`                                          | `{ "type": "string" }`                                                                                                                                              |
-| `number`                                          | `{ "type": "number" }`                                                                                                                                              |
-| `integer`                                         | `{ "type": "integer" }`                                                                                                                                             |
-| `bigint`                                          | `{ "type": "integer" }` (schema-level integer semantics; runtime transport/serialization is outside the JSON Schema contract)                                     |
+| IR type                                           | JSON Schema output                                                                                                                                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`                                          | `{ "type": "string" }`                                                                                                                                                                    |
+| `number`                                          | `{ "type": "number" }`                                                                                                                                                                    |
+| `integer`                                         | `{ "type": "integer" }`                                                                                                                                                                   |
+| `bigint`                                          | `{ "type": "integer" }` (schema-level integer semantics; runtime transport/serialization is outside the JSON Schema contract)                                                             |
 | `number` with `MultipleOfConstraint { value: 1 }` | `{ "type": "integer" }` (the canonicalization pipeline recognizes this common TypeScript authoring pattern and emits integer semantics; the redundant `multipleOf: 1` keyword is omitted) |
-| `boolean`                                         | `{ "type": "boolean" }`                                                                                                                                             |
-| `null`                                            | `{ "type": "null" }`                                                                                                                                                |
-| `undefined`                                       | Not emitted (optionality is expressed via `required`, per S8)                                                                                                       |
-| `unknown` / `any`                                 | `{}` (accepts any value)                                                                                                                                            |
-| `never`                                           | `{ "not": {} }`                                                                                                                                                     |
+| `boolean`                                         | `{ "type": "boolean" }`                                                                                                                                                                   |
+| `null`                                            | `{ "type": "null" }`                                                                                                                                                                      |
+| `undefined`                                       | Not emitted (optionality is expressed via `required`, per S8)                                                                                                                             |
+| `unknown` / `any`                                 | `{}` (accepts any value)                                                                                                                                                                  |
+| `never`                                           | `{ "not": {} }`                                                                                                                                                                           |
 
 ### 2.2 String Literal, Number Literal, Boolean Literal
 
@@ -93,17 +93,17 @@ When no per-member metadata exists, the flat `enum` form is preferred (simpler, 
 
 ### 2.5 Object Types
 
-| IR node                              | JSON Schema output                                             |
-| ------------------------------------ | -------------------------------------------------------------- |
-| Object with known properties         | `{ "type": "object", "properties": {...}, "required": [...] }` |
-| Required property                    | Listed in `"required"` array                                   |
-| Optional property                    | Absent from `"required"` array                                 |
-| Index signature `{ [k: string]: T }` | `{ "type": "object", "additionalProperties": <T schema> }`     |
-| `Record<string, T>` / unconstrained string key type | `{ "type": "object", "additionalProperties": <T schema> }` |
-| Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries |
-| Pattern-shaped constrained key type (e.g. `Record<\`env_${string}\`, T>`) | `{ "type": "object", "patternProperties": { "<regex>": <T schema> } }` |
-| Mixed (known + index signature)      | `"properties"` + `"additionalProperties"` combined             |
-| Mixed (known + constrained key family) | `"properties"` + `"patternProperties"` combined             |
+| IR node                                                                                      | JSON Schema output                                                     |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Object with known properties                                                                 | `{ "type": "object", "properties": {...}, "required": [...] }`         |
+| Required property                                                                            | Listed in `"required"` array                                           |
+| Optional property                                                                            | Absent from `"required"` array                                         |
+| Index signature `{ [k: string]: T }`                                                         | `{ "type": "object", "additionalProperties": <T schema> }`             |
+| `Record<string, T>` / unconstrained string key type                                          | `{ "type": "object", "additionalProperties": <T schema> }`             |
+| Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries           |
+| Pattern-shaped constrained key type (e.g. `Record<\`env\_${string}\`, T>`)                   | `{ "type": "object", "patternProperties": { "<regex>": <T schema> } }` |
+| Mixed (known + index signature)                                                              | `"properties"` + `"additionalProperties"` combined                     |
+| Mixed (known + constrained key family)                                                       | `"properties"` + `"patternProperties"` combined                        |
 
 **`additionalProperties` policy:** When a TypeScript type has only known properties and no index signature, `additionalProperties` is **not** set to `false` by default. Setting it to `false` would cause validation failures when form renderers add extra fields (e.g., `_id`, `_timestamp`). This is intentional and matches B4 (the JSON Schema represents the data contract, not the full TypeScript structural check).
 
@@ -119,35 +119,35 @@ FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-reg
 
 ### 2.6 Numeric Constraints
 
-| IR constraint                                           | JSON Schema validation keyword                                                                                                                              |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NumericBoundConstraint { bound: "minimum" }`           | `"minimum"`                                                                                                                                                 |
-| `NumericBoundConstraint { bound: "maximum" }`           | `"maximum"`                                                                                                                                                 |
-| `NumericBoundConstraint { bound: "exclusive-minimum" }` | `"exclusiveMinimum"`                                                                                                                                        |
-| `NumericBoundConstraint { bound: "exclusive-maximum" }` | `"exclusiveMaximum"`                                                                                                                                        |
+| IR constraint                                           | JSON Schema validation keyword                                                                                                                                                                            |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NumericBoundConstraint { bound: "minimum" }`           | `"minimum"`                                                                                                                                                                                               |
+| `NumericBoundConstraint { bound: "maximum" }`           | `"maximum"`                                                                                                                                                                                               |
+| `NumericBoundConstraint { bound: "exclusive-minimum" }` | `"exclusiveMinimum"`                                                                                                                                                                                      |
+| `NumericBoundConstraint { bound: "exclusive-maximum" }` | `"exclusiveMaximum"`                                                                                                                                                                                      |
 | `MultipleOfConstraint`                                  | `"multipleOf"` (when the resolved type is integer and the only source of that integer semantic is `value = 1` on a `number`-derived alias, the redundant `"multipleOf": 1` keyword is omitted — see §2.1) |
 
 ### 2.7 String Constraints
 
 | IR constraint                                   | JSON Schema validation keyword |
-| ----------------------------------------------- | ------------------- |
-| `StringLengthConstraint { bound: "minLength" }` | `"minLength"`       |
-| `StringLengthConstraint { bound: "maxLength" }` | `"maxLength"`       |
-| `PatternConstraint`                             | `"pattern"`         |
-| `FormatAnnotation`                              | `"format"`          |
+| ----------------------------------------------- | ------------------------------ |
+| `StringLengthConstraint { bound: "minLength" }` | `"minLength"`                  |
+| `StringLengthConstraint { bound: "maxLength" }` | `"maxLength"`                  |
+| `PatternConstraint`                             | `"pattern"`                    |
+| `FormatAnnotation`                              | `"format"`                     |
 
 ### 2.8 Annotation → Metadata Keywords
 
-| IR annotation            | JSON Schema annotation key                         |
-| ------------------------ | -------------------------------------------------- |
-| `DisplayNameAnnotation`  | `"title"`                                          |
-| `DescriptionAnnotation`  | `"description"`                                    |
-| `DefaultValueAnnotation` | `"default"`                                        |
-| `ExampleAnnotation[]`    | `"examples"` (array)                               |
+| IR annotation            | JSON Schema annotation key                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `DisplayNameAnnotation`  | `"title"`                                                                                  |
+| `DescriptionAnnotation`  | `"description"`                                                                            |
+| `DefaultValueAnnotation` | `"default"`                                                                                |
+| `ExampleAnnotation[]`    | `"examples"` (array)                                                                       |
 | `DeprecatedAnnotation`   | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
-| `ReadOnlyAnnotation`     | `"readOnly"`                                       |
-| `WriteOnlyAnnotation`    | `"writeOnly"`                                      |
-| `ConstConstraint`        | `"const"`                                          |
+| `ReadOnlyAnnotation`     | `"readOnly"`                                                                               |
+| `WriteOnlyAnnotation`    | `"writeOnly"`                                                                              |
+| `ConstConstraint`        | `"const"`                                                                                  |
 
 ---
 
@@ -160,7 +160,7 @@ All FormSpec custom keywords use the shape `x-<vendor>-<local-name>`, where `<lo
 ```yaml
 # .formspec.yml
 schema:
-  vendorPrefix: 'x-stripe-' # Current config form; yields keywords like "x-stripe-option-source"
+  vendorPrefix: "x-stripe-" # Current config form; yields keywords like "x-stripe-option-source"
 ```
 
 Throughout this document, the placeholder `<vendor>` represents the vendor segment that appears between `x-` and the next dash. For example, `x-formspec-option-source` uses `<vendor> = formspec`, and `x-stripe-option-source` uses `<vendor> = stripe`.
@@ -455,7 +455,7 @@ The extension can register a configurable policy for precision-loss behavior (B3
 # Consumer's .formspec.yml
 extensions:
   decimal:
-    precisionLoss: 'error' # default: fail on any precision loss
+    precisionLoss: "error" # default: fail on any precision loss
     # precisionLoss: "warn"  # emit warning but continue
     # precisionLoss: "allow" # allow silently (not recommended for financial contexts)
 ```
@@ -510,8 +510,8 @@ Discriminated unions are emitted as `oneOf` with a `required` discriminant in ea
 
 ```typescript
 type Shape =
-  | { kind: 'circle'; radius: number }
-  | { kind: 'rectangle'; width: number; height: number };
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number };
 ```
 
 ```json
@@ -688,7 +688,7 @@ interface InvoiceFormData {
    * @displayName :paid Paid in Full
    * @defaultValue draft
    */
-  status: 'draft' | 'sent' | 'paid';
+  status: "draft" | "sent" | "paid";
 
   /**
    * @displayName Total Amount
@@ -792,12 +792,12 @@ interface InvoiceFormData {
 
 ## Appendix A: Custom Keyword Summary
 
-| Keyword (default prefix)  | Type     | Validation?                         | Applies to                     |
-| ------------------------- | -------- | ----------------------------------- | ------------------------------ |
-| `x-formspec-option-source`        | string   | Annotation only                     | `type: "string"`                             |
+| Keyword (default prefix)          | Type     | Validation?                         | Applies to                                       |
+| --------------------------------- | -------- | ----------------------------------- | ------------------------------------------------ |
+| `x-formspec-option-source`        | string   | Annotation only                     | `type: "string"`                                 |
 | `x-formspec-option-source-params` | string[] | Annotation only                     | `type: "string"` with `x-formspec-option-source` |
-| `x-formspec-schema-source`        | string   | Annotation only                     | `type: "object"`                             |
-| `x-<vendor>-max-sig-fig`          | integer  | Yes — validates (extension-defined) | Extension-defined types                      |
+| `x-formspec-schema-source`        | string   | Annotation only                     | `type: "object"`                                 |
+| `x-<vendor>-max-sig-fig`          | integer  | Yes — validates (extension-defined) | Extension-defined types                          |
 
 Extension-specific keywords follow the pattern `x-<vendor>-<extension-name>` and are annotation-only unless the extension also provides validator/runtime support per E2.
 

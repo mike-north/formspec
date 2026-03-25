@@ -34,21 +34,21 @@ Tags are organized into four categories: **constraint tags** (set-influencing, p
 
 Constraint tags narrow the set of valid values for a field. Per S1, constraints can only narrow — an attempt to broaden a constraint inherited from a base type is a static error. Per S4, each tag is only valid on fields whose type is compatible with the constraint. Per C1, multiple constraint tags on the same field compose by intersection.
 
-| Tag                                   | Applicable types                                        | IR node kind                 | JSON Schema validation keyword      |
-| ------------------------------------- | ------------------------------------------------------- | ---------------------------- | ----------------------------------- |
-| `@minimum`                            | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `minimum`                           |
-| `@maximum`                            | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `maximum`                           |
-| `@exclusiveMinimum`                   | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMinimum`                  |
-| `@exclusiveMaximum`                   | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMaximum`                  |
-| `@multipleOf`                         | `number`, `bigint` (extensible to custom numeric types) | `MultipleOfConstraint`       | `multipleOf`                        |
-| `@minLength`                          | `string`                                                | `StringLengthConstraint`     | `minLength`                         |
-| `@maxLength`                          | `string`                                                | `StringLengthConstraint`     | `maxLength`                         |
-| `@pattern`                            | `string`                                                | `PatternConstraint`          | `pattern`                           |
-| `@minItems`                           | `T[]`                                                   | `ArrayLengthConstraint`      | `minItems`                          |
-| `@maxItems`                           | `T[]`                                                   | `ArrayLengthConstraint`      | `maxItems`                          |
-| `@uniqueItems`                        | `T[]`                                                   | `UniquenessConstraint`       | `uniqueItems`                       |
-| `@maxSigFig` (example extension tag)  | extension-defined numeric-like types                    | `DecimalPrecisionConstraint` | `x-<vendor>-max-sig-fig` (see 003)  |
-| `@const`                              | any                                                     | `ConstConstraint`            | `const`                             |
+| Tag                                  | Applicable types                                        | IR node kind                 | JSON Schema validation keyword     |
+| ------------------------------------ | ------------------------------------------------------- | ---------------------------- | ---------------------------------- |
+| `@minimum`                           | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `minimum`                          |
+| `@maximum`                           | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `maximum`                          |
+| `@exclusiveMinimum`                  | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMinimum`                 |
+| `@exclusiveMaximum`                  | `number`, `bigint` (extensible to custom numeric types) | `NumericBoundConstraint`     | `exclusiveMaximum`                 |
+| `@multipleOf`                        | `number`, `bigint` (extensible to custom numeric types) | `MultipleOfConstraint`       | `multipleOf`                       |
+| `@minLength`                         | `string`                                                | `StringLengthConstraint`     | `minLength`                        |
+| `@maxLength`                         | `string`                                                | `StringLengthConstraint`     | `maxLength`                        |
+| `@pattern`                           | `string`                                                | `PatternConstraint`          | `pattern`                          |
+| `@minItems`                          | `T[]`                                                   | `ArrayLengthConstraint`      | `minItems`                         |
+| `@maxItems`                          | `T[]`                                                   | `ArrayLengthConstraint`      | `maxItems`                         |
+| `@uniqueItems`                       | `T[]`                                                   | `UniquenessConstraint`       | `uniqueItems`                      |
+| `@maxSigFig` (example extension tag) | extension-defined numeric-like types                    | `DecimalPrecisionConstraint` | `x-<vendor>-max-sig-fig` (see 003) |
+| `@const`                             | any                                                     | `ConstConstraint`            | `const`                            |
 
 **Note on integer representation:** There is no `@integer` tag. FormSpec supports `integer` as a first-class data type in the canonical model and JSON Schema output, but TypeScript has no native integer type. On TSDoc-authored TypeScript surfaces, the common pattern is a `number` alias constrained with `@multipleOf 1`; the analyzer canonicalizes that pattern to integer semantics (see 003 §2.1 and 005 §2). Chain DSL may also author integer fields directly.
 
@@ -62,14 +62,14 @@ Constraint tags narrow the set of valid values for a field. Per S1, constraints 
 
 Annotation tags carry a single scalar value. Per C1, they compose via override — the most-specific declaration wins. Annotations do not affect the valid value set.
 
-| Tag            | IR node kind            | Primary schema/UI target                 | Notes                                                                                               |
-| -------------- | ----------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Tag            | IR node kind            | Primary schema/UI target                 | Notes                                                                                                          |
+| -------------- | ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `@displayName` | `DisplayNameAnnotation` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields |
-| `@apiName`     | `ApiNameAnnotation`     | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields |
-| `@description` | `DescriptionAnnotation` | JSON Schema `description`                | Longer prose; fallback to TSDoc `@remarks` if absent                                                |
-| `@placeholder` | `PlaceholderAnnotation` | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                           |
-| `@format`      | `FormatAnnotation`      | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                     |
-| `@order`       | `FieldOrderAnnotation`  | UI Schema element order                  | Integer; lower values appear first                                                                  |
+| `@apiName`     | `ApiNameAnnotation`     | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields            |
+| `@description` | `DescriptionAnnotation` | JSON Schema `description`                | Longer prose; fallback to TSDoc `@remarks` if absent                                                           |
+| `@placeholder` | `PlaceholderAnnotation` | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                      |
+| `@format`      | `FormatAnnotation`      | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                                |
+| `@order`       | `FieldOrderAnnotation`  | UI Schema element order                  | Integer; lower values appear first                                                                             |
 
 ### 2.3 Ecosystem Tags (Reused Without Modification)
 
@@ -280,7 +280,7 @@ With member-target syntax (for string-literal union members):
  * @displayName :sync Synchronous
  * @displayName :async Asynchronous
  */
-mode: 'sync' | 'async';
+mode: "sync" | "async";
 ```
 
 **Variant qualifiers** — `:singular` and `:plural` — provide context-specific display names for array fields. Classes and interfaces do **not** support plural display names in this revision; they accept only the singular form, either bare or via `:singular`.
@@ -566,9 +566,9 @@ city?: string;  // only shown when both country AND state are selected
 
 **Valid combinations within the current spec revision:**
 
-| Combination                           | Semantics                      | Notes                        |
-| ------------------------------------- | ------------------------------ | ---------------------------- |
-| Multiple `@showWhen` on same field    | AND — all must be true to show | Compiles to `allOf` condition |
+| Combination                           | Semantics                         | Notes                         |
+| ------------------------------------- | --------------------------------- | ----------------------------- |
+| Multiple `@showWhen` on same field    | AND — all must be true to show    | Compiles to `allOf` condition |
 | Multiple `@disableWhen` on same field | AND — all must be true to disable | Compiles to `allOf` condition |
 
 **Cross-axis combinations are invalid in this revision.** A field may use at most one conditional rule axis. Combinations such as `@showWhen` + `@disableWhen` are deferred future work and should currently produce a static error rather than being treated as partially supported behavior.
@@ -791,7 +791,7 @@ Same as path-target — `:` followed by an identifier:
  * @displayName :sync Synchronous Processing
  * @displayName :async Asynchronous Processing
  */
-mode: 'sync' | 'async';
+mode: "sync" | "async";
 ```
 
 This syntax is not used for `enum` or `const enum`. Those types annotate members directly at the declaration site instead (see §9.4).
@@ -846,13 +846,13 @@ Diagnostic codes are symbolic machine-readable identifiers. The diagnostic struc
 
 The following categories group the symbolic codes conceptually:
 
-| Diagnostic category       | Meaning                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| Tag recognition           | Unknown tags, missing arguments, disabled tags                                  |
-| Value parsing             | Malformed numeric, regex, JSON, or date values                                  |
-| Type compatibility        | Tags applied to incompatible types                                              |
-| Target resolution         | Invalid path-target, member-target, or scope references                         |
-| Constraint validation     | Contradictions, duplicates, conflicts                                           |
+| Diagnostic category   | Meaning                                                 |
+| --------------------- | ------------------------------------------------------- |
+| Tag recognition       | Unknown tags, missing arguments, disabled tags          |
+| Value parsing         | Malformed numeric, regex, JSON, or date values          |
+| Type compatibility    | Tags applied to incompatible types                      |
+| Target resolution     | Invalid path-target, member-target, or scope references |
+| Constraint validation | Contradictions, duplicates, conflicts                   |
 
 ---
 
@@ -1007,7 +1007,7 @@ Each constraint tag instance produces one `ConstraintNode`:
 // Conceptual mapping (see 001 for authoritative IR types)
 interface ConstraintNode {
   kind: ConstraintKind; // e.g., "NumericBound", "StringLength", "Pattern"
-  bound?: 'minimum' | 'maximum' | 'exclusive-minimum' | 'exclusive-maximum';
+  bound?: "minimum" | "maximum" | "exclusive-minimum" | "exclusive-maximum";
   value: number | string | boolean | null;
   path?: string; // Present when path-target syntax used
   member?: string; // Present when member-target syntax used
@@ -1015,7 +1015,7 @@ interface ConstraintNode {
 }
 
 interface ProvenanceRecord {
-  surface: 'tsdoc'; // vs "chain-dsl"
+  surface: "tsdoc"; // vs "chain-dsl"
   file: string;
   line: number;
   column: number;
@@ -1080,7 +1080,7 @@ type Percent = Integer;
  * @displayName :suspended Suspended
  * @displayName :cancelled Cancelled
  */
-type PlanStatus = 'active' | 'suspended' | 'cancelled';
+type PlanStatus = "active" | "suspended" | "cancelled";
 ```
 
 These compose when used on fields — the field inherits all constraints from the type alias chain:
@@ -1172,25 +1172,25 @@ For `enum` and `const enum` types, display names are annotated directly on each 
 ```typescript
 enum PaymentCardBrand {
   /** @displayName Visa */
-  VISA = 'visa',
+  VISA = "visa",
   /** @displayName MasterCard */
-  MASTERCARD = 'mc',
+  MASTERCARD = "mc",
   /** @displayName American Express */
-  AMEX = 'amex',
+  AMEX = "amex",
 }
 
 const enum OrderStatus {
   /** @displayName Awaiting Processing */
-  Pending = 'pending',
+  Pending = "pending",
   /** @displayName In Progress */
-  Processing = 'processing',
+  Processing = "processing",
   /**
    * @displayName On Its Way
    * @deprecated Use Delivered instead
    */
-  Shipped = 'shipped',
+  Shipped = "shipped",
   /** @displayName Complete */
-  Delivered = 'delivered',
+  Delivered = "delivered",
 }
 ```
 
@@ -1208,7 +1208,7 @@ String literal unions don't have declaration sites for individual members, so th
  * @displayName :batch Batch Processing
  * @description :batch Batched nightly at 2am UTC.
  */
-mode: 'sync' | 'async' | 'batch';
+mode: "sync" | "async" | "batch";
 ```
 
 The `:member` syntax also works on type alias unions:
@@ -1219,7 +1219,7 @@ The `:member` syntax also works on type alias unions:
  * @displayName :suspended Suspended
  * @displayName :cancelled Cancelled
  */
-type PlanStatus = 'active' | 'suspended' | 'cancelled';
+type PlanStatus = "active" | "suspended" | "cancelled";
 ```
 
 **Summary:** For `enum`/`const enum`, annotate members directly at their declaration site — no `:member` syntax needed. The `:member` syntax exists specifically for string literal unions, which have no per-member declaration site. Both approaches produce the same IR.
@@ -1248,34 +1248,34 @@ tags: Tag[];
 
 ## Appendix A: Tag Quick Reference
 
-| Tag                 | Category   | Argument        | Path? | Member? |
-| ------------------- | ---------- | --------------- | ----- | ------- |
-| `@minimum`          | constraint | numeric literal | yes   | no      |
-| `@maximum`          | constraint | numeric literal | yes   | no      |
-| `@exclusiveMinimum` | constraint | numeric literal | yes   | no      |
-| `@exclusiveMaximum` | constraint | numeric literal | yes   | no      |
-| `@multipleOf`       | constraint | numeric literal | yes   | no      |
-| `@minLength`        | constraint | non-neg int     | yes   | no      |
-| `@maxLength`        | constraint | non-neg int     | yes   | no      |
-| `@pattern`          | constraint | regex string    | yes   | no      |
-| `@minItems`         | constraint | non-neg int     | yes   | no      |
-| `@maxItems`         | constraint | non-neg int     | yes   | no      |
-| `@uniqueItems`      | constraint | none (marker)   | yes   | no      |
-| `@maxSigFig` (example extension tag) | constraint | pos int | yes | no |
-| `@const`            | constraint | JSON value      | no    | no      |
-| `@displayName`      | annotation | text            | no    | yes     |
-| `@apiName`          | annotation | identifier      | no    | yes     |
-| `@description`      | annotation | text            | no    | yes     |
-| `@placeholder`      | annotation | text            | no    | no      |
-| `@format`           | annotation | identifier      | yes   | no      |
-| `@order`            | annotation | integer         | no    | no      |
-| `@defaultValue`     | ecosystem  | JSON/text       | yes   | no      |
-| `@deprecated`       | ecosystem  | text?           | no    | yes     |
-| `@example`          | ecosystem  | JSON/text       | no    | no      |
-| `@remarks`          | ecosystem  | text            | no    | no      |
-| `@see`              | ecosystem  | text            | no    | no      |
-| `@group`            | structure  | text            | no    | no      |
-| `@showWhen`         | structure  | field=value     | no    | no      |
-| `@hideWhen`         | structure  | field=value     | no    | no      |
-| `@enableWhen`       | structure  | field=value     | no    | no      |
-| `@disableWhen`      | structure  | field=value     | no    | no      |
+| Tag                                  | Category   | Argument        | Path? | Member? |
+| ------------------------------------ | ---------- | --------------- | ----- | ------- |
+| `@minimum`                           | constraint | numeric literal | yes   | no      |
+| `@maximum`                           | constraint | numeric literal | yes   | no      |
+| `@exclusiveMinimum`                  | constraint | numeric literal | yes   | no      |
+| `@exclusiveMaximum`                  | constraint | numeric literal | yes   | no      |
+| `@multipleOf`                        | constraint | numeric literal | yes   | no      |
+| `@minLength`                         | constraint | non-neg int     | yes   | no      |
+| `@maxLength`                         | constraint | non-neg int     | yes   | no      |
+| `@pattern`                           | constraint | regex string    | yes   | no      |
+| `@minItems`                          | constraint | non-neg int     | yes   | no      |
+| `@maxItems`                          | constraint | non-neg int     | yes   | no      |
+| `@uniqueItems`                       | constraint | none (marker)   | yes   | no      |
+| `@maxSigFig` (example extension tag) | constraint | pos int         | yes   | no      |
+| `@const`                             | constraint | JSON value      | no    | no      |
+| `@displayName`                       | annotation | text            | no    | yes     |
+| `@apiName`                           | annotation | identifier      | no    | yes     |
+| `@description`                       | annotation | text            | no    | yes     |
+| `@placeholder`                       | annotation | text            | no    | no      |
+| `@format`                            | annotation | identifier      | yes   | no      |
+| `@order`                             | annotation | integer         | no    | no      |
+| `@defaultValue`                      | ecosystem  | JSON/text       | yes   | no      |
+| `@deprecated`                        | ecosystem  | text?           | no    | yes     |
+| `@example`                           | ecosystem  | JSON/text       | no    | no      |
+| `@remarks`                           | ecosystem  | text            | no    | no      |
+| `@see`                               | ecosystem  | text            | no    | no      |
+| `@group`                             | structure  | text            | no    | no      |
+| `@showWhen`                          | structure  | field=value     | no    | no      |
+| `@hideWhen`                          | structure  | field=value     | no    | no      |
+| `@enableWhen`                        | structure  | field=value     | no    | no      |
+| `@disableWhen`                       | structure  | field=value     | no    | no      |

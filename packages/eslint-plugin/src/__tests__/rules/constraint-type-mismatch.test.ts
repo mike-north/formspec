@@ -11,6 +11,8 @@
  * - PascalCase tag equivalence (@Minimum identical to @minimum)
  * - Path-targeted constraints (@minimum :prop value) skipped entirely
  *
+ * @see docs/002-tsdoc-grammar.md §2.1 (constraint tag type applicability)
+ * @see docs/003-json-schema-vocabulary.md §2.6-§2.7 (constraint → keyword mapping)
  * @see https://json-schema.org/understanding-json-schema/reference/numeric#range
  * @see https://json-schema.org/understanding-json-schema/reference/string#length
  * @see https://json-schema.org/understanding-json-schema/reference/array#length

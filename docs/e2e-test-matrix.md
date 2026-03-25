@@ -8,6 +8,7 @@
 ## Coverage Gap Summary
 
 ### Already covered by existing fixtures
+
 - Basic primitive types: string, number, boolean (product-form, constrained-form)
 - String literal union → `enum` (product-form, nullable-types)
 - `T | null` → `anyOf` [BUG: spec says `oneOf`, existing output uses `anyOf`] (nullable-types)
@@ -27,6 +28,7 @@
 - Chain DSL: groups, conditionals, labeled enums, dynamic enums, objects, arrays (chain-dsl fixtures)
 
 ### NOT yet covered (this matrix adds these)
+
 - `@displayName` (all variants: bare, `:singular`/`:plural`, `:member`, absence/inference)
 - `@description` / `@remarks` fallback
 - `@placeholder`
@@ -57,6 +59,7 @@
 ### Fixture: annotations-display-name
 
 #### File: e2e/fixtures/tsdoc-class/annotations-display-name.ts
+
 ```typescript
 /**
  * @displayName User Profile Form
@@ -76,16 +79,17 @@ export class UserProfileForm {
    * @displayName :suspended Suspended
    * @displayName :closed Permanently Closed
    */
-  status!: 'active' | 'suspended' | 'closed';
+  status!: "active" | "suspended" | "closed";
 
   /**
    * @displayName Preferred Language
    */
-  language!: 'en' | 'fr' | 'de';
+  language!: "en" | "fr" | "de";
 }
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -120,6 +124,7 @@ export class UserProfileForm {
 ```
 
 #### Test assertions (e2e/tests/annotations-display-name.test.ts)
+
 - [ ] Root schema has `"title": "User Profile Form"` from class-level `@displayName` (spec 002 §3.2, 003 §2.8)
 - [ ] `fullName` has `"title": "Full Legal Name"` (spec 002 §3.2)
 - [ ] `email` has `"title": "Email Address"` (spec 002 §3.2)
@@ -137,6 +142,7 @@ export class UserProfileForm {
 ### Fixture: annotations-description
 
 #### File: e2e/fixtures/tsdoc-class/annotations-description.ts
+
 ```typescript
 /**
  * Form for collecting user feedback.
@@ -164,6 +170,7 @@ export class FeedbackForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -191,6 +198,7 @@ export class FeedbackForm {
 ```
 
 #### Test assertions (e2e/tests/annotations-description.test.ts)
+
 - [ ] Root schema has `"description"` from class-level `@description` (spec 002 §3.2)
 - [ ] `name` has `"description"` from field-level `@description` (spec 002 §3.2)
 - [ ] `comments` has `"description"` derived from `@remarks` fallback (spec 002 §2.3 — `@remarks` treated as `@description` when no explicit `@description`)
@@ -202,6 +210,7 @@ export class FeedbackForm {
 ### Fixture: annotations-metadata
 
 #### File: e2e/fixtures/tsdoc-class/annotations-metadata.ts
+
 ```typescript
 export class MetadataForm {
   /**
@@ -249,6 +258,7 @@ export class MetadataForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -282,10 +292,7 @@ export class MetadataForm {
       "default": false
     },
     "nickname": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
-      ],
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
       "default": null
     },
     "requiredField": {
@@ -297,6 +304,7 @@ export class MetadataForm {
 ```
 
 #### Expected UI Schema
+
 ```json
 {
   "type": "VerticalLayout",
@@ -323,6 +331,7 @@ export class MetadataForm {
 ```
 
 #### Test assertions (e2e/tests/annotations-metadata.test.ts)
+
 - [ ] `@placeholder` does NOT appear in JSON Schema — it's UI-only (spec 002 §2.2, 003 — no `placeholder` mapping)
 - [ ] `@placeholder` appears in UI Schema `options.placeholder` (spec 002 §2.2)
 - [ ] `@deprecated` with message emits `"deprecated": true` and `"x-<vendor>-deprecation-description"` in JSON Schema (spec 003 §2.8, 003 §3)
@@ -348,6 +357,7 @@ This fixture verifies that class-based schema extraction works when the fixture 
 - fixture-local `tsconfig.json` with `"strictPropertyInitialization": false`
 
 #### File: e2e/fixtures/tsdoc-class/class-fields-without-definite-assignment.ts
+
 ```typescript
 /**
  * @displayName Customer Profile
@@ -360,11 +370,12 @@ export class CustomerProfile {
   email: string;
 
   /** @displayName Loyalty Tier */
-  tier?: 'bronze' | 'silver' | 'gold';
+  tier?: "bronze" | "silver" | "gold";
 }
 ```
 
 #### Expected structure
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -389,6 +400,7 @@ export class CustomerProfile {
 ```
 
 #### Test assertions (e2e/tests/class-fields-without-definite-assignment.test.ts)
+
 - [ ] Fixture compiles and schema generation succeeds with `strictPropertyInitialization: false`
 - [ ] Class fields declared without `!` are still recognized as fields in the generated schema
 - [ ] Requiredness is determined by `?` optionality, not by definite-assignment syntax
@@ -405,6 +417,7 @@ export class CustomerProfile {
 ### Fixture: numeric-constraints-comprehensive
 
 #### File: e2e/fixtures/tsdoc-class/numeric-constraints-comprehensive.ts
+
 ```typescript
 export class NumericConstraintsForm {
   /** @minimum 0 */
@@ -448,6 +461,7 @@ export class NumericConstraintsForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -513,15 +527,25 @@ export class NumericConstraintsForm {
     }
   },
   "required": [
-    "nonNegative", "allowsNegative", "exactlyZero", "floatBounds",
-    "strictlyPositive", "strictlyBelow100", "openInterval",
-    "mixedBounds", "mixedBoundsReverse", "currency", "steppedBy5",
-    "percentStepped", "unconstrained"
+    "nonNegative",
+    "allowsNegative",
+    "exactlyZero",
+    "floatBounds",
+    "strictlyPositive",
+    "strictlyBelow100",
+    "openInterval",
+    "mixedBounds",
+    "mixedBoundsReverse",
+    "currency",
+    "steppedBy5",
+    "percentStepped",
+    "unconstrained"
   ]
 }
 ```
 
 #### Test assertions (e2e/tests/numeric-constraints-comprehensive.test.ts)
+
 - [ ] `@minimum 0` → `"minimum": 0` (spec 003 §2.6)
 - [ ] `@minimum -100` → `"minimum": -100` — negative values allowed (spec 002 §3.2)
 - [ ] `@minimum 0 @maximum 0` → both keywords emitted, valid (spec 003 §2.6)
@@ -543,6 +567,7 @@ export class NumericConstraintsForm {
 ### Fixture: string-constraints-comprehensive
 
 #### File: e2e/fixtures/tsdoc-class/string-constraints-comprehensive.ts
+
 ```typescript
 export class StringConstraintsForm {
   /** @minLength 1 */
@@ -586,6 +611,7 @@ export class StringConstraintsForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -648,14 +674,25 @@ export class StringConstraintsForm {
     }
   },
   "required": [
-    "nonEmpty", "bounded", "allowsEmpty", "exactLength", "combinedBounds",
-    "lowercaseOnly", "emailPattern", "ssnPattern", "constrainedEmail",
-    "emailFormat", "dateFormat", "uriFormat", "unconstrained"
+    "nonEmpty",
+    "bounded",
+    "allowsEmpty",
+    "exactLength",
+    "combinedBounds",
+    "lowercaseOnly",
+    "emailPattern",
+    "ssnPattern",
+    "constrainedEmail",
+    "emailFormat",
+    "dateFormat",
+    "uriFormat",
+    "unconstrained"
   ]
 }
 ```
 
 #### Test assertions
+
 - [ ] `@minLength 1` → `"minLength": 1` (spec 003 §2.7)
 - [ ] `@maxLength 255` → `"maxLength": 255` (spec 003 §2.7)
 - [ ] `@minLength 0` is valid — emits `"minLength": 0` (spec 002 §3.2 — non-negative integer)
@@ -673,6 +710,7 @@ export class StringConstraintsForm {
 ### Fixture: array-constraints-comprehensive
 
 #### File: e2e/fixtures/tsdoc-class/array-constraints-comprehensive.ts
+
 ```typescript
 export class ArrayConstraintsForm {
   /** @minItems 1 */
@@ -701,6 +739,7 @@ export class ArrayConstraintsForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -749,13 +788,20 @@ export class ArrayConstraintsForm {
     }
   },
   "required": [
-    "nonEmpty", "bounded", "allowsEmpty", "combinedBounds",
-    "uniqueTags", "allConstraints", "itemConstrained", "unconstrained"
+    "nonEmpty",
+    "bounded",
+    "allowsEmpty",
+    "combinedBounds",
+    "uniqueTags",
+    "allConstraints",
+    "itemConstrained",
+    "unconstrained"
   ]
 }
 ```
 
 #### Test assertions
+
 - [ ] `@minItems 1` → `"minItems": 1` (spec 003 §2.4)
 - [ ] `@maxItems 100` → `"maxItems": 100` (spec 003 §2.4)
 - [ ] `@minItems 0` is valid (spec 002 §3.2)
@@ -772,6 +818,7 @@ export class ArrayConstraintsForm {
 ### Fixture: type-mappings-comprehensive
 
 #### File: e2e/fixtures/tsdoc-class/type-mappings-comprehensive.ts
+
 ```typescript
 interface Address {
   street: string;
@@ -790,7 +837,7 @@ export class TypeMappingsForm {
   optionalString?: string;
   optionalNumber?: number;
 
-  stringLiteralUnion!: 'a' | 'b' | 'c';
+  stringLiteralUnion!: "a" | "b" | "c";
   numberArray!: number[];
   stringArray!: string[];
 
@@ -804,6 +851,7 @@ export class TypeMappingsForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -813,16 +861,10 @@ export class TypeMappingsForm {
     "numberField": { "type": "number" },
     "booleanField": { "type": "boolean" },
     "nullableString": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
-      ]
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
     },
     "nullableNumber": {
-      "oneOf": [
-        { "type": "number" },
-        { "type": "null" }
-      ]
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "optionalString": { "type": "string" },
     "optionalNumber": { "type": "number" },
@@ -855,10 +897,17 @@ export class TypeMappingsForm {
     }
   },
   "required": [
-    "stringField", "numberField", "booleanField",
-    "nullableString", "nullableNumber",
-    "stringLiteralUnion", "numberArray", "stringArray",
-    "inlineObject", "namedType", "recordType"
+    "stringField",
+    "numberField",
+    "booleanField",
+    "nullableString",
+    "nullableNumber",
+    "stringLiteralUnion",
+    "numberArray",
+    "stringArray",
+    "inlineObject",
+    "namedType",
+    "recordType"
   ],
   "$defs": {
     "Address": {
@@ -875,6 +924,7 @@ export class TypeMappingsForm {
 ```
 
 #### Test assertions
+
 - [ ] `string` → `{ "type": "string" }` (spec 003 §2.1)
 - [ ] `number` → `{ "type": "number" }` (spec 003 §2.1)
 - [ ] `boolean` → `{ "type": "boolean" }` (spec 003 §2.1)
@@ -896,6 +946,7 @@ export class TypeMappingsForm {
 ### Fixture: alias-chain-3-level
 
 #### File: e2e/fixtures/tsdoc-class/alias-chain-3-level.ts
+
 ```typescript
 /** @multipleOf 1 */
 type Integer = number;
@@ -917,6 +968,7 @@ export class NetworkForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -941,6 +993,7 @@ export class NetworkForm {
 ```
 
 #### Test assertions (e2e/tests/alias-chain-3-level.test.ts)
+
 - [ ] 3-level chain: Integer → NonNegativeInteger → PortNumber propagates all constraints (spec 005 §3, PP3)
 - [ ] `@multipleOf 1` from `Integer` promotes to `"type": "integer"` throughout (spec 005 §2.2, 003 §2.1)
 - [ ] `multipleOf` keyword is suppressed when value is 1 (spec 003 §2.1, 005 §2.2)
@@ -972,6 +1025,7 @@ export class NetworkForm {
 ### Fixture: alias-chain-multipleOf-composition
 
 #### File: e2e/fixtures/tsdoc-class/alias-chain-multipleOf.ts
+
 ```typescript
 /** @multipleOf 1 */
 type Integer = number;
@@ -996,6 +1050,7 @@ export class PromotionForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1020,6 +1075,7 @@ export class PromotionForm {
 ```
 
 #### Test assertions
+
 - [ ] `discountPercent`: integer promotion from `@multipleOf 1` inherited via `Percent` → `Integer` (spec 005 §2.2)
 - [ ] `discountPercent`: field-level `@multipleOf 5` is emitted in addition to integer promotion (spec 006 §2.3 — `multipleOf: 1` from Integer and `multipleOf: 5` compose; every multiple of 5 is also a multiple of 1, so the effective constraint is `multipleOf: 5`)
 - [ ] `discountPercent`: inherits `@minimum 0 @maximum 100` from `Percent` (spec 005 §7.3)
@@ -1033,6 +1089,7 @@ export class PromotionForm {
 ### Fixture: path-target-expanded
 
 #### File: e2e/fixtures/tsdoc-class/path-target-expanded.ts
+
 ```typescript
 interface Dimensions {
   width: number;
@@ -1091,6 +1148,7 @@ export class PathTargetExpandedForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1205,6 +1263,7 @@ export class PathTargetExpandedForm {
 ```
 
 #### Test assertions
+
 - [ ] Multiple path targets on same field (`size` has constraints on `:width`, `:height`, `:unit`) (spec 002 §4.4)
 - [ ] Multiple constraint types on same subfield (`:width` has both `@minimum` and `@maximum`) (spec 002 §4.4, C1)
 - [ ] Mixed constraint types across subfields: numeric on `:value`, string on `:currency` (spec 002 §4.3, S4)
@@ -1222,13 +1281,14 @@ export class PathTargetExpandedForm {
 ### Fixture: enum-display-names
 
 #### File: e2e/fixtures/tsdoc-class/enum-display-names.ts
+
 ```typescript
 /**
  * @displayName :draft Draft Invoice
  * @displayName :sent Sent to Customer
  * @displayName :paid Paid in Full
  */
-type InvoiceStatus = 'draft' | 'sent' | 'paid';
+type InvoiceStatus = "draft" | "sent" | "paid";
 
 export class InvoiceForm {
   /**
@@ -1244,14 +1304,15 @@ export class InvoiceForm {
    * @displayName :high High Priority
    * @displayName :critical Critical - Immediate Action
    */
-  priority!: 'low' | 'medium' | 'high' | 'critical';
+  priority!: "low" | "medium" | "high" | "critical";
 
   /** No per-member display names */
-  simpleEnum!: 'a' | 'b' | 'c';
+  simpleEnum!: "a" | "b" | "c";
 }
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1289,6 +1350,7 @@ export class InvoiceForm {
 ```
 
 #### Test assertions
+
 - [ ] Named type alias with `:member` display names → `$defs` entry with `oneOf`/`const`/`title` (spec 003 §2.3, 003 §5.2)
 - [ ] `status` references `InvoiceStatus` via `$ref` (spec 003 §5.1, PP7)
 - [ ] `status` has `"title"` and `"default"` as sibling keywords to `$ref` (spec 003 §7 — 2020-12 allows siblings)
@@ -1310,6 +1372,7 @@ Both surfaces must produce identical JSON Schema. The chain-dsl fixture already 
 **Existing chain DSL fixture:** `e2e/fixtures/chain-dsl/contact-form.ts` (already covered)
 
 #### File: e2e/fixtures/tsdoc-class/parity-contact-form.ts
+
 ```typescript
 export class ParityContactForm {
   /** @displayName First Name */
@@ -1322,7 +1385,7 @@ export class ParityContactForm {
   email?: string;
 
   /** @displayName Preferred Contact Method */
-  contactMethod!: 'email' | 'phone' | 'mail';
+  contactMethod!: "email" | "phone" | "mail";
 
   /** @displayName Phone Number */
   phoneNumber?: string;
@@ -1336,6 +1399,7 @@ export class ParityContactForm {
 ```
 
 #### Test assertions (e2e/tests/parity-contact-form.test.ts)
+
 - [ ] TSDoc-generated JSON Schema matches chain-DSL-generated JSON Schema (spec PP5, A3)
 - [ ] Both have identical `properties` keys and types
 - [ ] Both have identical `required` arrays
@@ -1349,6 +1413,7 @@ export class ParityContactForm {
 ### Fixture: parity-constrained-fields
 
 #### File: e2e/fixtures/chain-dsl/parity-constrained-fields.ts
+
 ```typescript
 import { formspec, field } from "@formspec/dsl";
 
@@ -1360,13 +1425,13 @@ export const ParityConstrainedForm = formspec(
     required: true,
     minLength: 5,
     maxLength: 100,
-    pattern: "^[^@]+@[^@]+$"
+    pattern: "^[^@]+@[^@]+$",
   }),
   field.array("tags", field.text("tag"), {
     label: "Tags",
     required: true,
     minItems: 1,
-    maxItems: 10
+    maxItems: 10,
   }),
   field.text("legacyField", { label: "Legacy", deprecated: true })
 );
@@ -1375,6 +1440,7 @@ export const ParityConstrainedForm = formspec(
 **Counterpart TSDoc fixture:** `e2e/fixtures/tsdoc-class/constrained-form.ts` (already exists)
 
 #### Test assertions
+
 - [ ] Chain DSL output matches the TSDoc counterpart structurally using hand-authored normative expectations (spec PP5, A3)
 - [ ] Both surfaces produce identical constraint keywords (spec A1)
 
@@ -1528,6 +1594,7 @@ These fixtures verify that the build pipeline produces errors (non-zero exit cod
 ### Fixture: error-contradicting-constraints
 
 #### File: e2e/fixtures/tsdoc-class/error-contradicting-constraints.ts
+
 ```typescript
 export class ContradictingForm {
   /** @minimum 10 @maximum 5 */
@@ -1536,6 +1603,7 @@ export class ContradictingForm {
 ```
 
 #### Test assertions (e2e/tests/error-contradicting-constraints.test.ts)
+
 - [ ] CLI exits with non-zero exit code OR produces a diagnostic (spec S2, 002 §6 `CONSTRAINT_CONTRADICTION`)
 - [ ] Diagnostic references both `@minimum 10` and `@maximum 5` (spec D2)
 - [ ] Diagnostic message is actionable (spec D4)
@@ -1545,6 +1613,7 @@ export class ContradictingForm {
 ### Fixture: error-type-mismatch
 
 #### File: e2e/fixtures/tsdoc-class/error-type-mismatch.ts
+
 ```typescript
 export class TypeMismatchForm {
   /** @minimum 0 */
@@ -1559,6 +1628,7 @@ export class TypeMismatchForm {
 ```
 
 #### Test assertions (e2e/tests/error-type-mismatch.test.ts)
+
 - [ ] `@minimum` on string field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
 - [ ] `@minLength` on number field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
 - [ ] `@minItems` on non-array field produces diagnostic `TYPE_MISMATCH` (spec S4, 002 §6)
@@ -1568,6 +1638,7 @@ export class TypeMismatchForm {
 ### Fixture: error-invalid-path-target
 
 #### File: e2e/fixtures/tsdoc-class/error-invalid-path-target.ts
+
 ```typescript
 interface SimpleObj {
   name: string;
@@ -1584,6 +1655,7 @@ export class InvalidPathTargetForm {
 ```
 
 #### Test assertions (e2e/tests/error-invalid-path-target.test.ts)
+
 - [ ] Path target `:nonexistent` on unknown subfield → diagnostic `UNKNOWN_PATH_TARGET` (spec 002 §6)
 - [ ] `@minimum` on string subfield `:name` → diagnostic `TYPE_MISMATCH` (spec S4 — type checked against subfield)
 
@@ -1592,6 +1664,7 @@ export class InvalidPathTargetForm {
 ### Fixture: error-broadening-constraint
 
 #### File: e2e/fixtures/tsdoc-class/error-broadening-constraint.ts
+
 ```typescript
 /** @minimum 0 */
 type NonNegative = number;
@@ -1603,6 +1676,7 @@ export class BroadeningForm {
 ```
 
 #### Test assertions (e2e/tests/error-broadening-constraint.test.ts)
+
 - [ ] `@minimum -10` on `NonNegative` (which has `@minimum 0`) → error diagnostic (spec S1, 005 §3.4)
 - [ ] Diagnostic is `CONSTRAINT_BROADENING` type (spec 005 §3.4)
 
@@ -1615,6 +1689,7 @@ export class BroadeningForm {
 ### Fixture: const-constraints
 
 #### File: e2e/fixtures/tsdoc-class/const-constraints.ts
+
 ```typescript
 interface MonetaryAmount {
   value: number;
@@ -1634,6 +1709,7 @@ export class ConstForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1657,6 +1733,7 @@ export class ConstForm {
 ```
 
 #### Test assertions
+
 - [ ] `@const "USD"` → `"const": "USD"` (spec 002 §2.1, 003 §2.8)
 - [ ] `@const 42` → `"const": 42` (spec 002 §3.2)
 - [ ] `@const true` → `"const": true` (spec 002 §3.2)
@@ -1668,6 +1745,7 @@ export class ConstForm {
 ### Fixture: parity-usd-cents (from spec 006 §2.2, §3.2)
 
 #### File: e2e/fixtures/tsdoc-class/parity-usd-cents.ts
+
 ```typescript
 /** @multipleOf 1 @maximum 99999999999999 */
 type Integer = number;
@@ -1700,9 +1778,7 @@ export class LineItem {
       "title": "Unit Price"
     },
     "quantity": {
-      "allOf": [
-        { "$ref": "#/$defs/USDCents" }
-      ],
+      "allOf": [{ "$ref": "#/$defs/USDCents" }],
       "minimum": 1,
       "maximum": 9999,
       "title": "Quantity"
@@ -1715,16 +1791,14 @@ export class LineItem {
       "maximum": 99999999999999
     },
     "USDCents": {
-      "allOf": [
-        { "$ref": "#/$defs/Integer" },
-        { "minimum": 0 }
-      ]
+      "allOf": [{ "$ref": "#/$defs/Integer" }, { "minimum": 0 }]
     }
   }
 }
 ```
 
 #### Test assertions
+
 - [ ] `unitPrice`: inherits `@minimum 0` from USDCents, `@maximum 99999999999999` and `@multipleOf 1` from Integer (spec 005 §7.3, 006 §2.2)
 - [ ] `quantity`: field-level `@minimum 1` narrows USDCents' `@minimum 0` (spec S1, 005 §7.1)
 - [ ] `quantity`: field-level `@maximum 9999` narrows Integer's `@maximum 99999999999999` (spec S1, 005 §7.1)
@@ -1736,6 +1810,7 @@ export class LineItem {
 ### Fixture: parity-plan-status (from spec 006 §2.4, §3.3)
 
 #### File: e2e/fixtures/tsdoc-class/parity-plan-status.ts
+
 ```typescript
 /**
  * @displayName Plan Status
@@ -1743,7 +1818,7 @@ export class LineItem {
  * @displayName :paused Paused
  * @displayName :cancelled Cancelled
  */
-type PlanStatus = 'active' | 'paused' | 'cancelled';
+type PlanStatus = "active" | "paused" | "cancelled";
 
 export class Subscription {
   /** @defaultValue "active" */
@@ -1752,6 +1827,7 @@ export class Subscription {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1777,6 +1853,7 @@ export class Subscription {
 ```
 
 #### Test assertions
+
 - [ ] Named type `PlanStatus` appears in `$defs` with `oneOf` (spec 003 §5.2, 003 §2.3)
 - [ ] Per-member display names → `const`/`title` per member (spec 003 §2.3)
 - [ ] Type-level `@displayName Plan Status` → `$defs.PlanStatus.title` (spec 003 §2.8)
@@ -1788,6 +1865,7 @@ export class Subscription {
 ### Fixture: parity-address (from spec 006 §2.5)
 
 #### File: e2e/fixtures/tsdoc-class/parity-address.ts
+
 ```typescript
 interface Address {
   /**
@@ -1822,6 +1900,7 @@ export class CustomerForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1870,6 +1949,7 @@ export class CustomerForm {
 ```
 
 #### Test assertions
+
 - [ ] `Address` appears once in `$defs`, referenced twice via `$ref` (spec PP7, 003 §5.1)
 - [ ] `billing` is required, `shipping` is not (spec S8)
 - [ ] Constraints on `Address` fields are in the `$defs` entry, not at the use site (spec 003 §5.3)
@@ -1884,6 +1964,7 @@ export class CustomerForm {
 ### Fixture: exclusive-bound-edge-cases
 
 #### File: e2e/fixtures/tsdoc-class/exclusive-bound-edge-cases.ts
+
 ```typescript
 export class ExclusiveBoundsForm {
   /** @exclusiveMinimum 0 @exclusiveMaximum 1 */
@@ -1901,6 +1982,7 @@ export class ExclusiveBoundsForm {
 ```
 
 #### Expected JSON Schema
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1931,6 +2013,7 @@ export class ExclusiveBoundsForm {
 ```
 
 #### Test assertions
+
 - [ ] Both exclusive bounds on same field (spec 003 §2.6)
 - [ ] Negative float exclusive minimum (spec 002 §3.2)
 - [ ] Mixed exclusive min + inclusive max (spec 003 §2.6)
@@ -1941,49 +2024,54 @@ export class ExclusiveBoundsForm {
 
 ## Known Bugs Summary
 
-| Bug | Fixture | Spec Reference | Description |
-|-----|---------|----------------|-------------|
-| BUG-1 | nullable-types | 003 §2.3 | `T \| null` emits `anyOf` instead of `oneOf` |
-| BUG-2 | product-form | 003 §2.5 | `Record<string, T>` emits `$ref` to empty Record def instead of `additionalProperties: <T>` |
-| BUG-3 | inherited-constraints, alias-chain-3-level | 003 §5.2, 005 §3.3 | Named type aliases are inlined instead of using `$defs` + `$ref` |
-| BUG-4 | (not yet tested) | 003 §2.3 | `:member` display names on type aliases may not produce `$defs` entry with `oneOf` |
+| Bug   | Fixture                                    | Spec Reference     | Description                                                                                 |
+| ----- | ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------- |
+| BUG-1 | nullable-types                             | 003 §2.3           | `T \| null` emits `anyOf` instead of `oneOf`                                                |
+| BUG-2 | product-form                               | 003 §2.5           | `Record<string, T>` emits `$ref` to empty Record def instead of `additionalProperties: <T>` |
+| BUG-3 | inherited-constraints, alias-chain-3-level | 003 §5.2, 005 §3.3 | Named type aliases are inlined instead of using `$defs` + `$ref`                            |
+| BUG-4 | (not yet tested)                           | 003 §2.3           | `:member` display names on type aliases may not produce `$defs` entry with `oneOf`          |
 
 ---
 
 ## Ambiguous Areas Summary
 
-| Area | Fixture | Question | Recommendation |
-|------|---------|----------|----------------|
-| AMB-1 | annotations-display-name | Class-level `@displayName` → root `title`? | Yes, per 003 §9 full example |
-| AMB-2 | annotations-metadata | `@deprecated` message in JSON Schema? | Emit standard `"deprecated": true` plus `x-<vendor>-deprecation-description` when message text exists |
-| AMB-3 | enum-display-names | `@defaultValue draft` vs `@defaultValue "draft"`? | Both produce string "draft" per 002 §3.2 fallback |
-| AMB-4 | parity-contact-form | Conditional behavior parity? | Rewrite the TSDoc surface toward the chain DSL fixture first; until then, treat this as blocked on surface alignment rather than unconditional parity |
-| AMB-5 | alias-chain-3-level | Inline vs `$defs` for type aliases? | Spec says `$defs` (PP7); current impl inlines |
+| Area  | Fixture                  | Question                                          | Recommendation                                                                                                                                        |
+| ----- | ------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AMB-1 | annotations-display-name | Class-level `@displayName` → root `title`?        | Yes, per 003 §9 full example                                                                                                                          |
+| AMB-2 | annotations-metadata     | `@deprecated` message in JSON Schema?             | Emit standard `"deprecated": true` plus `x-<vendor>-deprecation-description` when message text exists                                                 |
+| AMB-3 | enum-display-names       | `@defaultValue draft` vs `@defaultValue "draft"`? | Both produce string "draft" per 002 §3.2 fallback                                                                                                     |
+| AMB-4 | parity-contact-form      | Conditional behavior parity?                      | Rewrite the TSDoc surface toward the chain DSL fixture first; until then, treat this as blocked on surface alignment rather than unconditional parity |
+| AMB-5 | alias-chain-3-level      | Inline vs `$defs` for type aliases?               | Spec says `$defs` (PP7); current impl inlines                                                                                                         |
 
 ---
 
 ## Test Infrastructure Notes
 
 All TSDoc fixtures use the pattern:
+
 1. Run CLI: `formspec generate <fixture> <className> -o <tempDir>`
 2. Parse output schema JSON
 3. Assert structure against hand-authored expectations
 
 All chain DSL fixtures use the pattern:
+
 1. Import `buildFormSchemas` from `@formspec/build`
 2. Call with the DSL form definition
 3. Assert structure against hand-authored expectations
 
 Parity tests should:
+
 1. Generate from both surfaces
 2. Assert `jsonSchema` output is `toEqual` between them (spec PP5, A3)
 
 Mixed-authoring composition tests should:
+
 1. Generate the composed form from the static type-derived model plus ChainDSL overlays
 2. Assert the resulting JSON Schema and UI Schema are correct for the composed form
 3. Assert against hand-authored normative expectations derived from the spec
 
 User-authored confidence tests should be split by concern:
+
 1. Data-model conformance tests validate example payloads against generated JSON Schema
 2. Dynamic-option tests exercise resolver behavior and verify returned options match the field's stored type
 3. Dynamic-schema tests exercise resolver logic that turns source data into JSON Schema and JSON Forms UI schema

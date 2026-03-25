@@ -70,7 +70,7 @@ The `:path` grammar is not specific to `@minimum` — it works across any tag wh
  * @displayName :sync Synchronous
  * @displayName :async Asynchronous
  */
-mode: 'sync' | 'async';
+mode: "sync" | "async";
 ```
 
 A new capability (like path targeting) should unlock expressiveness across many existing tags, not require inventing new ones.
