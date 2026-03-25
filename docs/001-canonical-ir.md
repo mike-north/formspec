@@ -65,8 +65,8 @@ Primitives map directly to JSON Schema primitive types.
 
 ```typescript
 interface PrimitiveTypeNode {
-  readonly kind: 'primitive';
-  readonly primitiveKind: 'string' | 'number' | 'integer' | 'bigint' | 'boolean' | 'null';
+  readonly kind: "primitive";
+  readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 ```
 
@@ -89,7 +89,7 @@ interface EnumMember {
 }
 
 interface EnumTypeNode {
-  readonly kind: 'enum';
+  readonly kind: "enum";
   readonly members: readonly EnumMember[];
 }
 ```
@@ -100,7 +100,7 @@ interface EnumTypeNode {
 
 ```typescript
 interface ArrayTypeNode {
-  readonly kind: 'array';
+  readonly kind: "array";
   readonly items: TypeNode;
 }
 ```
@@ -111,7 +111,7 @@ Array-level constraints (`minItems`, `maxItems`) attach to the `FieldNode` that 
 
 ```typescript
 interface ObjectTypeNode {
-  readonly kind: 'object';
+  readonly kind: "object";
   /**
    * Named properties of this object. Order is preserved from the source
    * declaration (for deterministic D3 output).
@@ -168,7 +168,7 @@ Union types that are not all-string-literal or all-number-literal enums (those a
 
 ```typescript
 interface UnionTypeNode {
-  readonly kind: 'union';
+  readonly kind: "union";
   readonly members: readonly TypeNode[];
 }
 ```
@@ -181,7 +181,7 @@ Named types that appear as references in the source are preserved as references 
 
 ```typescript
 interface ReferenceTypeNode {
-  readonly kind: 'reference';
+  readonly kind: "reference";
   /**
    * The fully-qualified name of the referenced type.
    * For TypeScript interfaces/type aliases: `"<module>#<TypeName>"`.
@@ -206,8 +206,8 @@ Dynamic types are reserved for fields whose schema is discovered at runtime.
 
 ```typescript
 interface DynamicTypeNode {
-  readonly kind: 'dynamic';
-  readonly dynamicKind: 'schema';
+  readonly kind: "dynamic";
+  readonly dynamicKind: "schema";
   /**
    * Key identifying the runtime schema provider.
    */
@@ -223,7 +223,7 @@ Custom types registered by extensions (E1, E5) that do not map to any built-in k
 
 ```typescript
 interface CustomTypeNode {
-  readonly kind: 'custom';
+  readonly kind: "custom";
   /**
    * The extension-qualified type identifier.
    * Format: `"<vendor-prefix>/<extension-name>/<type-name>"`
@@ -270,13 +270,13 @@ Apply to `number`, `integer`, and `bigint` fields. `minimum` and `maximum` are i
 
 ```typescript
 interface NumericConstraintNode {
-  readonly kind: 'constraint';
+  readonly kind: "constraint";
   readonly constraintKind:
-    | 'minimum'
-    | 'maximum'
-    | 'exclusiveMinimum'
-    | 'exclusiveMaximum'
-    | 'multipleOf';
+    | "minimum"
+    | "maximum"
+    | "exclusiveMinimum"
+    | "exclusiveMaximum"
+    | "multipleOf";
   readonly value: number | string;
   readonly provenance: Provenance;
 }
@@ -292,8 +292,8 @@ Apply to `string` fields and `array` fields. `minLength`/`maxLength` apply to st
 
 ```typescript
 interface LengthConstraintNode {
-  readonly kind: 'constraint';
-  readonly constraintKind: 'minLength' | 'maxLength' | 'minItems' | 'maxItems';
+  readonly kind: "constraint";
+  readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
   readonly value: number;
   readonly provenance: Provenance;
 }
@@ -307,8 +307,8 @@ Apply to `string` fields only. Multiple `pattern` constraints on the same field 
 
 ```typescript
 interface PatternConstraintNode {
-  readonly kind: 'constraint';
-  readonly constraintKind: 'pattern';
+  readonly kind: "constraint";
+  readonly constraintKind: "pattern";
   /** ECMA-262 regular expression, without delimiters. */
   readonly pattern: string;
   readonly provenance: Provenance;
@@ -323,8 +323,8 @@ These are split from `LengthConstraintNode` above only if array cardinality need
 
 ```typescript
 interface ArrayCardinalityConstraintNode {
-  readonly kind: 'constraint';
-  readonly constraintKind: 'uniqueItems';
+  readonly kind: "constraint";
+  readonly constraintKind: "uniqueItems";
   readonly value: true;
   readonly provenance: Provenance;
 }
@@ -336,8 +336,8 @@ Allow restricting a field typed as a broader enum to a subset of its members at 
 
 ```typescript
 interface EnumMemberConstraintNode {
-  readonly kind: 'constraint';
-  readonly constraintKind: 'allowedMembers';
+  readonly kind: "constraint";
+  readonly constraintKind: "allowedMembers";
   readonly members: readonly (string | number)[];
   readonly provenance: Provenance;
 }
@@ -349,8 +349,8 @@ Extensions register custom constraints that carry an opaque payload. The `compos
 
 ```typescript
 interface CustomConstraintNode {
-  readonly kind: 'constraint';
-  readonly constraintKind: 'custom';
+  readonly kind: "constraint";
+  readonly constraintKind: "custom";
   /**
    * Extension-qualified constraint identifier.
    * Format: `"<vendor-prefix>/<extension-name>/<constraint-name>"`
@@ -369,7 +369,7 @@ interface CustomConstraintNode {
    * "override" — the most-specific instance wins (closest to point of use).
    *   Suitable for constraints that produce a single value (like a format hint).
    */
-  readonly compositionRule: 'intersect' | 'override';
+  readonly compositionRule: "intersect" | "override";
   readonly provenance: Provenance;
 }
 ```
@@ -417,29 +417,29 @@ type AnnotationNode =
 
 ```typescript
 interface DisplayNameAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'displayName';
+  readonly kind: "annotation";
+  readonly annotationKind: "displayName";
   readonly value: string;
   readonly provenance: Provenance;
 }
 
 interface DescriptionAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'description';
+  readonly kind: "annotation";
+  readonly annotationKind: "description";
   readonly value: string;
   readonly provenance: Provenance;
 }
 
 interface PlaceholderAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'placeholder';
+  readonly kind: "annotation";
+  readonly annotationKind: "placeholder";
   readonly value: string;
   readonly provenance: Provenance;
 }
 
 interface DefaultValueAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'defaultValue';
+  readonly kind: "annotation";
+  readonly annotationKind: "defaultValue";
   /**
    * The default value. Must be JSON-serializable and compatible with
    * the field's type. Type compatibility is verified during the Validate
@@ -450,8 +450,8 @@ interface DefaultValueAnnotationNode {
 }
 
 interface DeprecatedAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'deprecated';
+  readonly kind: "annotation";
+  readonly annotationKind: "deprecated";
   /** Optional deprecation message, sourced from `@deprecated <message>`. */
   readonly message?: string;
   readonly provenance: Provenance;
@@ -462,8 +462,8 @@ interface DeprecatedAnnotationNode {
  * This does not affect schema validation (B5).
  */
 interface FormatHintAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'formatHint';
+  readonly kind: "annotation";
+  readonly annotationKind: "formatHint";
   /**
    * Renderer-specific format identifier.
    * Examples: "textarea", "radio", "date", "color".
@@ -479,8 +479,8 @@ interface FormatHintAnnotationNode {
 
 ```typescript
 interface CustomAnnotationNode {
-  readonly kind: 'annotation';
-  readonly annotationKind: 'custom';
+  readonly kind: "annotation";
+  readonly annotationKind: "custom";
   /**
    * Extension-qualified annotation identifier.
    * Format: `"<vendor-prefix>/<extension-name>/<annotation-name>"`
@@ -518,7 +518,7 @@ interface Provenance {
    * Used to display meaningful diagnostic context and for surface-specific
    * filtering (e.g., "this error came from a TSDoc tag on line 42").
    */
-  readonly surface: 'tsdoc' | 'chain-dsl' | 'extension' | 'inferred';
+  readonly surface: "tsdoc" | "chain-dsl" | "extension" | "inferred";
   /**
    * Absolute path to the source file.
    */
@@ -556,7 +556,7 @@ When the contradiction detection algorithm (section 8) detects a contradiction b
 interface ContradictionDiagnostic {
   readonly code: string; // e.g., "CONTRADICTION" (prefixed per PP10)
   readonly message: string; // Human-readable, actionable (D4)
-  readonly severity: 'error'; // Contradictions are always errors (S2)
+  readonly severity: "error"; // Contradictions are always errors (S2)
   readonly primaryLocation: Provenance; // The constraint causing the contradiction
   readonly relatedLocations: readonly Provenance[]; // Prior constraints it conflicts with
 }
@@ -628,7 +628,7 @@ The same colon-based grammar applies to annotations. The per-member `@displayNam
  * @displayName :draft Draft
  * @displayName :paid Paid in Full
  */
-status: 'draft' | 'paid';
+status: "draft" | "paid";
 ```
 
 Here, `:draft` is syntactic sugar for targeting the `draft` member of the union. In the IR, the resolved member-level display-name metadata is stored on the individual `EnumMember` records within the `EnumTypeNode`, not as annotations on the parent field. The canonicalization phase (A5) resolves the member-target syntax into the correct IR placement.
@@ -754,11 +754,11 @@ Before contradiction checking, the Validate phase checks that each constraint is
 
 ```typescript
 type DiagnosticCode =
-  | 'CONTRADICTION'
-  | 'TYPE_MISMATCH' // Constraint applied to wrong type
-  | 'UNKNOWN_PATH_TARGET' // Path target does not exist in type
-  | 'INVALID_PATH_TARGET' // Path target type does not accept this constraint
-  | 'MISSING_REQUIRED' // Field that appears in a condition does not exist
+  | "CONTRADICTION"
+  | "TYPE_MISMATCH" // Constraint applied to wrong type
+  | "UNKNOWN_PATH_TARGET" // Path target does not exist in type
+  | "INVALID_PATH_TARGET" // Path target type does not accept this constraint
+  | "MISSING_REQUIRED" // Field that appears in a condition does not exist
   | string; // Extension-defined codes
 ```
 
@@ -873,13 +873,13 @@ interface CustomConstraintRegistration {
   /**
    * Composition rule declaration (E2 — must be explicit).
    */
-  readonly compositionRule: 'intersect' | 'override';
+  readonly compositionRule: "intersect" | "override";
 
   /**
    * Set of type kinds this constraint may be applied to.
    * Passing `null` means "any type" (rare — use only if truly type-agnostic).
    */
-  readonly applicableTypes: readonly TypeNode['kind'][] | null;
+  readonly applicableTypes: readonly TypeNode["kind"][] | null;
 
   /**
    * Generates the JSON Schema contribution for this constraint.
@@ -896,7 +896,7 @@ Per E3, all custom vocabulary keywords use a configurable vendor prefix. The pre
 
 ```yaml
 vendor:
-  prefix: 'x-stripe' # defaults to "x-formspec"
+  prefix: "x-stripe" # defaults to "x-formspec"
 ```
 
 The extension registration system substitutes the configured prefix at emit time. Extensions never hard-code their keyword prefix — they register keyword names without the prefix, and the generation context provides the effective prefix:
@@ -926,7 +926,7 @@ A `FieldNode` represents a single form field after canonicalization — its type
 
 ```typescript
 interface FieldNode {
-  readonly kind: 'field';
+  readonly kind: "field";
   /** The field's key in the data schema. */
   readonly name: string;
   /** The resolved type of this field. */
@@ -959,7 +959,7 @@ Layout nodes capture UI structure without affecting the data schema (C2). They a
 type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 
 interface GroupLayoutNode {
-  readonly kind: 'group';
+  readonly kind: "group";
   readonly label: string;
   /** Elements contained in this group — may be fields or nested groups. */
   readonly elements: readonly FormIRElement[];
@@ -967,7 +967,7 @@ interface GroupLayoutNode {
 }
 
 interface ConditionalLayoutNode {
-  readonly kind: 'conditional';
+  readonly kind: "conditional";
   /**
    * The field whose value triggers visibility.
    * Must reference a field that exists at the same scope level.
@@ -1012,7 +1012,7 @@ interface TypeDefinition {
  * Serializable to JSON (A2). No live compiler objects.
  */
 interface FormIR {
-  readonly kind: 'form-ir';
+  readonly kind: "form-ir";
   /**
    * Schema version for the IR format itself. Allows tooling to detect
    * incompatible IR versions when IR artifacts are persisted.
@@ -1046,7 +1046,7 @@ Implementation-bridge and migration guidance has been moved out of this normativ
 
 ## Appendix: Open Decisions Summary
 
-| ID   | Section | Decision |
-| ---- | ------- | -------- |
+| ID  | Section | Decision |
+| --- | ------- | -------- |
 
 Open decisions are resolved before implementation begins on affected sections. Resolution is recorded by amending this document.

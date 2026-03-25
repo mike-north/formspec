@@ -2,10 +2,20 @@
  * Tests for the constraint-type-mismatch rule.
  *
  * Ensures JSDoc constraints are only applied to fields with compatible
- * TypeScript types (e.g., @Minimum only on number fields).
+ * TypeScript types (e.g., @minimum only on number fields).
  *
+ * Coverage:
+ * - Every constraint × every compatible type (positive)
+ * - Every constraint × every incompatible type (negative)
+ * - Malformed/ignored tag syntax (bare tags, non-numeric, bad path-targets)
+ * - PascalCase tag equivalence (@Minimum identical to @minimum)
+ * - Path-targeted constraints (@minimum :prop value) skipped entirely
+ *
+ * @see docs/002-tsdoc-grammar.md §2.1 (constraint tag type applicability)
+ * @see docs/003-json-schema-vocabulary.md §2.6-§2.7 (constraint → keyword mapping)
  * @see https://json-schema.org/understanding-json-schema/reference/numeric#range
  * @see https://json-schema.org/understanding-json-schema/reference/string#length
+ * @see https://json-schema.org/understanding-json-schema/reference/array#length
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
@@ -29,7 +39,10 @@ const ruleTester = new RuleTester({
 
 ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
   valid: [
-    // @Minimum on number field — valid
+    // -------------------------------------------------------------------------
+    // @minimum on number fields
+    // -------------------------------------------------------------------------
+    // PascalCase
     {
       code: `
         class Form {
@@ -38,61 +51,16 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // @Maximum on number field — valid
+    // camelCase — identical to PascalCase
     {
       code: `
         class Form {
-          /** @Maximum 100 */
-          score!: number;
+          /** @minimum 0 */
+          count!: number;
         }
       `,
     },
-    // @ExclusiveMinimum on number field — valid
-    {
-      code: `
-        class Form {
-          /** @ExclusiveMinimum 0 */
-          value!: number;
-        }
-      `,
-    },
-    // @ExclusiveMaximum on number field — valid
-    {
-      code: `
-        class Form {
-          /** @ExclusiveMaximum 100 */
-          value!: number;
-        }
-      `,
-    },
-    // @MinLength on string field — valid
-    {
-      code: `
-        class Form {
-          /** @MinLength 1 */
-          name!: string;
-        }
-      `,
-    },
-    // @MaxLength on string field — valid
-    {
-      code: `
-        class Form {
-          /** @MaxLength 255 */
-          name!: string;
-        }
-      `,
-    },
-    // @Pattern on string field — valid
-    {
-      code: `
-        class Form {
-          /** @Pattern ^[a-z]+$ */
-          slug!: string;
-        }
-      `,
-    },
-    // @Minimum on optional number field — valid (string | undefined strips to number)
+    // optional field — undefined stripped before type check
     {
       code: `
         class Form {
@@ -101,25 +69,55 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // No constraints at all — valid
+    // negative and float edge values
     {
       code: `
         class Form {
-          name!: string;
-          count!: number;
+          /** @Minimum -999.5 */
+          temperature!: number;
         }
       `,
     },
-    // Multiple numeric constraints on number field — all valid
+
+    // -------------------------------------------------------------------------
+    // @maximum on number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
-          /** @Minimum 0 @Maximum 100 */
+          /** @Maximum 100 */
           score!: number;
         }
       `,
     },
-    // @multipleOf on number field — valid
+
+    // -------------------------------------------------------------------------
+    // @exclusiveMinimum on number fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 0 */
+          value!: number;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @exclusiveMaximum on number fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMaximum 100 */
+          value!: number;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @multipleOf on number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -128,7 +126,78 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // @minItems on array field — valid
+
+    // -------------------------------------------------------------------------
+    // Multiple numeric constraints on the same number field
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @Minimum 0 @Maximum 100 */
+          score!: number;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @minLength on string fields
+    // -------------------------------------------------------------------------
+    // PascalCase
+    {
+      code: `
+        class Form {
+          /** @MinLength 1 */
+          name!: string;
+        }
+      `,
+    },
+    // camelCase — identical to PascalCase
+    {
+      code: `
+        class Form {
+          /** @minLength 1 */
+          name!: string;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @maxLength on string fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @MaxLength 255 */
+          name!: string;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @pattern on string fields
+    // -------------------------------------------------------------------------
+    // PascalCase
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[a-z]+$ */
+          slug!: string;
+        }
+      `,
+    },
+    // camelCase — identical to PascalCase
+    {
+      code: `
+        class Form {
+          /** @pattern ^[a-z]+$ */
+          slug!: string;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // @minItems on array fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -137,7 +206,10 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // @maxItems on array field — valid
+
+    // -------------------------------------------------------------------------
+    // @maxItems on array fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -146,7 +218,85 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // Path-targeted constraints should be skipped — @minimum targets a sub-property, not the field itself
+
+    // -------------------------------------------------------------------------
+    // No constraints at all — no errors
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          name!: string;
+          count!: number;
+          tags!: string[];
+          active!: boolean;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // Malformed / unrecognized tag syntax — all silently ignored
+    // -------------------------------------------------------------------------
+
+    // bare @minimum with no value — not matched by regex, ignored
+    {
+      code: `
+        class Form {
+          /** @minimum */
+          name!: string;
+        }
+      `,
+    },
+    // @minimum with non-numeric value — NaN, dropped from results
+    {
+      code: `
+        class Form {
+          /** @minimum abc */
+          name!: string;
+        }
+      `,
+    },
+    // @minimum with invalid number format (1.2.3 is NaN) — dropped
+    {
+      code: `
+        class Form {
+          /** @minimum 1.2.3 */
+          name!: string;
+        }
+      `,
+    },
+    // bare @pattern with no value — empty string filtered out, ignored
+    {
+      code: `
+        class Form {
+          /** @pattern */
+          count!: number;
+        }
+      `,
+    },
+    // unrecognized tag — not in EXPECTED_TYPES, skipped
+    {
+      code: `
+        class Form {
+          /** @unknownTag value */
+          count!: number;
+        }
+      `,
+    },
+    // @displayName with no value — not a type-check constraint, ignored
+    {
+      code: `
+        class Form {
+          /** @displayName */
+          name!: string;
+        }
+      `,
+    },
+
+    // -------------------------------------------------------------------------
+    // Path-targeted constraints — skipped entirely regardless of field type
+    // -------------------------------------------------------------------------
+
+    // @minimum :value targets sub-property on object field
     {
       code: `
         class Form {
@@ -155,7 +305,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
-    // Path-targeted @pattern should be skipped
+    // @pattern :code targets sub-property on object field
     {
       code: `
         class Form {
@@ -164,9 +314,40 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
+    // @minimum :value on non-object field — path-targeted, still skipped
+    {
+      code: `
+        class Form {
+          /** @minimum :value 0 */
+          name!: string;
+        }
+      `,
+    },
+    // @minimum : (colon, no identifier) — regex does not match :\s as :\w+,
+    // so the whole tag falls through without a numeric match
+    {
+      code: `
+        class Form {
+          /** @minimum : */
+          count!: number;
+        }
+      `,
+    },
+    // @minimum :value (no trailing numeric) — path-target lookahead fires but
+    // the value group captures nothing parseable as a number, dropped
+    {
+      code: `
+        class Form {
+          /** @minimum :value */
+          count!: number;
+        }
+      `,
+    },
   ],
   invalid: [
-    // @Minimum on string field
+    // -------------------------------------------------------------------------
+    // @minimum on non-number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -176,7 +357,28 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @Maximum on string field
+    {
+      code: `
+        class Form {
+          /** @Minimum 0 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @Minimum 0 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @maximum on non-number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -186,7 +388,28 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @ExclusiveMinimum on string field
+    {
+      code: `
+        class Form {
+          /** @Maximum 1 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @Maximum 10 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @exclusiveMinimum on non-number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -196,7 +419,37 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @ExclusiveMaximum on boolean field
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 0 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 0 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @exclusiveMaximum on non-number fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMaximum 100 */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
     {
       code: `
         class Form {
@@ -206,57 +459,19 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @MinLength on number field
     {
       code: `
         class Form {
-          /** @MinLength 1 */
-          count!: number;
+          /** @ExclusiveMaximum 10 */
+          tags!: string[];
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @MaxLength on number field
-    {
-      code: `
-        class Form {
-          /** @MaxLength 100 */
-          score!: number;
-        }
-      `,
-      errors: [{ messageId: "stringOnNonString" }],
-    },
-    // @Pattern on number field
-    {
-      code: `
-        class Form {
-          /** @Pattern ^[0-9]+$ */
-          count!: number;
-        }
-      `,
-      errors: [{ messageId: "stringOnNonString" }],
-    },
-    // @MinLength on boolean field
-    {
-      code: `
-        class Form {
-          /** @MinLength 5 */
-          active!: boolean;
-        }
-      `,
-      errors: [{ messageId: "stringOnNonString" }],
-    },
-    // Multiple wrong constraints produce multiple errors
-    {
-      code: `
-        class Form {
-          /** @Minimum 0 @Maximum 100 */
-          label!: string;
-        }
-      `,
-      errors: [{ messageId: "numericOnNonNumber" }, { messageId: "numericOnNonNumber" }],
-    },
-    // @multipleOf on string field
+
+    // -------------------------------------------------------------------------
+    // @multipleOf on non-number fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -266,7 +481,121 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "numericOnNonNumber" }],
     },
-    // @minItems on string field
+    {
+      code: `
+        class Form {
+          /** @multipleOf 1 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @multipleOf 2 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @minLength on non-string fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @MinLength 1 */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @MinLength 5 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @MinLength 1 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @maxLength on non-string fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @MaxLength 100 */
+          score!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @MaxLength 10 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @MaxLength 10 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @pattern on non-string fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[0-9]+$ */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @Pattern true|false */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @Pattern ^[a-z]+$ */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "stringOnNonString" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @minItems on non-array fields
+    // -------------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -276,7 +605,37 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
       `,
       errors: [{ messageId: "arrayOnNonArray" }],
     },
-    // @maxItems on number field
+    {
+      code: `
+        class Form {
+          /** @minItems 1 */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @minItems 1 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // @maxItems on non-array fields
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @maxItems 10 */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
+    },
     {
       code: `
         class Form {
@@ -285,6 +644,28 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
       errors: [{ messageId: "arrayOnNonArray" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @maxItems 10 */
+          active!: boolean;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // Multiple wrong-type constraints produce multiple errors
+    // -------------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @Minimum 0 @Maximum 100 */
+          label!: string;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }, { messageId: "numericOnNonNumber" }],
     },
   ],
 });

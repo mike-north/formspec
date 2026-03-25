@@ -1,6 +1,16 @@
 /**
  * Tests for consistent-constraints rule.
  *
+ * Coverage:
+ * - Every valid constraint pair (min < max, equal for inclusive, etc.)
+ * - Every invalid constraint pair (min > max, exclusive bounds equal, etc.)
+ * - Conflicting same-side bounds (@minimum + @exclusiveMinimum, etc.)
+ * - Mixed exclusive/inclusive impossible ranges
+ * - Path-targeted constraints skipped entirely
+ * - Edge values (negative, float, zero)
+ *
+ * @see docs/002-tsdoc-grammar.md §2.1 (constraint contradiction detection)
+ * @see docs/005-numeric-types.md §7.2 (numeric bound consistency)
  * @see https://json-schema.org/understanding-json-schema/reference/numeric#range
  */
 
@@ -115,6 +125,33 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
+    // Float bounds
+    {
+      code: `
+        class Form {
+          /** @Minimum 0.5 @Maximum 0.9 */
+          ratio!: number;
+        }
+      `,
+    },
+    // @Minimum(50) with @ExclusiveMaximum(51) — exclusiveMax strictly greater than min
+    {
+      code: `
+        class Form {
+          /** @Minimum 50 @ExclusiveMaximum 51 */
+          value!: number;
+        }
+      `,
+    },
+    // @ExclusiveMinimum(49) with @Maximum(50) — max strictly greater than exclusiveMin
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 49 @Maximum 50 */
+          value!: number;
+        }
+      `,
+    },
     // No constraints at all
     {
       code: `
@@ -141,11 +178,29 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-    // Path-targeted constraints should be skipped
+    // Path-targeted contradicting bounds — skipped, no minimumGreaterThanMaximum error
     {
       code: `
         class Form {
           /** @minimum :value 100 @maximum :value 50 */
+          amount!: { value: number };
+        }
+      `,
+    },
+    // Path-targeted equal exclusive bounds — skipped, no exclusiveMinGreaterOrEqualMax error
+    {
+      code: `
+        class Form {
+          /** @exclusiveMinimum :value 50 @exclusiveMaximum :value 50 */
+          amount!: { value: number };
+        }
+      `,
+    },
+    // Path-targeted conflicting bound types — skipped, no conflictingMinimumBounds error
+    {
+      code: `
+        class Form {
+          /** @minimum :value 0 @exclusiveMinimum :value 0 */
           amount!: { value: number };
         }
       `,
@@ -202,7 +257,7 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "minLengthGreaterThanMaxLength" }],
     },
-    // Conflicting minimum bounds: @Minimum + @ExclusiveMinimum
+    // Conflicting minimum bounds: @Minimum + @ExclusiveMinimum — same values
     {
       code: `
         class Form {
@@ -212,11 +267,31 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "conflictingMinimumBounds" }],
     },
-    // Conflicting maximum bounds: @Maximum + @ExclusiveMaximum
+    // Conflicting minimum bounds: @Minimum + @ExclusiveMinimum — different values
+    {
+      code: `
+        class Form {
+          /** @Minimum 10 @ExclusiveMinimum 5 */
+          value!: number;
+        }
+      `,
+      errors: [{ messageId: "conflictingMinimumBounds" }],
+    },
+    // Conflicting maximum bounds: @Maximum + @ExclusiveMaximum — same values
     {
       code: `
         class Form {
           /** @Maximum 100 @ExclusiveMaximum 100 */
+          value!: number;
+        }
+      `,
+      errors: [{ messageId: "conflictingMaximumBounds" }],
+    },
+    // Conflicting maximum bounds: @Maximum + @ExclusiveMaximum — different values
+    {
+      code: `
+        class Form {
+          /** @Maximum 90 @ExclusiveMaximum 100 */
           value!: number;
         }
       `,

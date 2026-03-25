@@ -144,7 +144,7 @@ interface Promotion {
  * @displayName :cancelled Cancelled
  * @defaultValue active
  */
-type PlanStatus = 'active' | 'paused' | 'cancelled';
+type PlanStatus = "active" | "paused" | "cancelled";
 
 interface Subscription {
   status: PlanStatus;
@@ -287,7 +287,7 @@ interface LineItem {
 **Chain DSL surface (`usd-cents/chain-dsl.ts`):**
 
 ```typescript
-import { field, formspec } from '@formspec/dsl';
+import { field, formspec } from "@formspec/dsl";
 
 // The chain DSL expresses constraint inheritance through type references.
 // The DSL consumer names the type and the build pipeline resolves it to
@@ -296,10 +296,10 @@ import { field, formspec } from '@formspec/dsl';
 // the "Integer" $defs entry resolves to JSON Schema type "integer".
 
 const lineItemForm = formspec(
-  field.number('unitPrice', { displayName: 'Unit Price', type: 'USDCents' }),
-  field.number('quantity', {
-    displayName: 'Quantity',
-    type: 'USDCents',
+  field.number("unitPrice", { displayName: "Unit Price", type: "USDCents" }),
+  field.number("quantity", {
+    displayName: "Quantity",
+    type: "USDCents",
     minimum: 1,
     maximum: 9999,
   })
@@ -321,7 +321,7 @@ export { lineItemForm };
  * @displayName :paused Paused
  * @displayName :cancelled Cancelled
  */
-type PlanStatus = 'active' | 'paused' | 'cancelled';
+type PlanStatus = "active" | "paused" | "cancelled";
 
 interface Subscription {
   /** @defaultValue active */
@@ -332,16 +332,16 @@ interface Subscription {
 **Chain DSL surface (`plan-status/chain-dsl.ts`):**
 
 ```typescript
-import { field, formspec } from '@formspec/dsl';
+import { field, formspec } from "@formspec/dsl";
 
 const subscriptionForm = formspec(
-  field.enum('status', ['active', 'paused', 'cancelled'] as const, {
-    displayName: 'Plan Status',
-    defaultValue: 'active',
+  field.enum("status", ["active", "paused", "cancelled"] as const, {
+    displayName: "Plan Status",
+    defaultValue: "active",
     memberDisplayNames: {
-      active: 'Active',
-      paused: 'Paused',
-      cancelled: 'Cancelled',
+      active: "Active",
+      paused: "Paused",
+      cancelled: "Cancelled",
     },
   })
 );
@@ -356,19 +356,19 @@ export { subscriptionForm };
 **Chain DSL surface (`monetary-amount/chain-dsl.ts`):**
 
 ```typescript
-import { field, formspec } from '@formspec/dsl';
+import { field, formspec } from "@formspec/dsl";
 
 const invoiceForm = formspec(
-  field.object('total', {
-    displayName: 'Total Amount',
-    type: 'MonetaryAmount',
+  field.object("total", {
+    displayName: "Total Amount",
+    type: "MonetaryAmount",
     subfieldConstraints: {
       value: { minimum: 0.01, maximum: 9999999.99, multipleOf: 0.01 },
-      currency: { pattern: '^[A-Z]{3}$' },
+      currency: { pattern: "^[A-Z]{3}$" },
     },
   }),
-  field.object('discount', {
-    type: 'MonetaryAmount',
+  field.object("discount", {
+    type: "MonetaryAmount",
     optional: true,
     subfieldConstraints: {
       value: { minimum: 0 },
@@ -385,26 +385,26 @@ Each parity test follows the same structure:
 
 ```typescript
 // monetary-amount.test.ts
-import { describe, it, expect } from 'vitest';
-import { extractFormIR } from '@formspec/build/internals';
-import { canonicalizeDSL } from '@formspec/build/internals';
-import { compareIR } from '../helpers/ir-comparison';
-import { invoiceForm } from './fixtures/monetary-amount/chain-dsl';
-import { expectedIR } from './fixtures/monetary-amount/expected-ir';
+import { describe, it, expect } from "vitest";
+import { extractFormIR } from "@formspec/build/internals";
+import { canonicalizeDSL } from "@formspec/build/internals";
+import { compareIR } from "../helpers/ir-comparison";
+import { invoiceForm } from "./fixtures/monetary-amount/chain-dsl";
+import { expectedIR } from "./fixtures/monetary-amount/expected-ir";
 
-describe('parity: MonetaryAmount', () => {
-  it('TSDoc surface produces expected IR', async () => {
-    const ir = await extractFormIR('./fixtures/monetary-amount/tsdoc.ts');
+describe("parity: MonetaryAmount", () => {
+  it("TSDoc surface produces expected IR", async () => {
+    const ir = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
     expect(compareIR(ir, expectedIR)).toEqual({ equivalent: true, differences: [] });
   });
 
-  it('Chain DSL surface produces expected IR', () => {
+  it("Chain DSL surface produces expected IR", () => {
     const ir = canonicalizeDSL(invoiceForm);
     expect(compareIR(ir, expectedIR)).toEqual({ equivalent: true, differences: [] });
   });
 
-  it('Both surfaces produce identical IR', async () => {
-    const tsdocIR = await extractFormIR('./fixtures/monetary-amount/tsdoc.ts');
+  it("Both surfaces produce identical IR", async () => {
+    const tsdocIR = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
     const chainIR = canonicalizeDSL(invoiceForm);
     expect(compareIR(tsdocIR, chainIR)).toEqual({ equivalent: true, differences: [] });
   });
@@ -529,20 +529,17 @@ Testing A3 requires:
 
 ```typescript
 // monetary-amount.test.ts (continued)
-import fs from 'node:fs';
-import path from 'node:path';
-import { generateJsonSchema } from '@formspec/build';
+import fs from "node:fs";
+import path from "node:path";
+import { generateJsonSchema } from "@formspec/build";
 
 const expectedSchema = JSON.parse(
-  fs.readFileSync(
-    path.join(__dirname, 'fixtures/monetary-amount/expected-schema.json'),
-    'utf-8'
-  )
+  fs.readFileSync(path.join(__dirname, "fixtures/monetary-amount/expected-schema.json"), "utf-8")
 );
 
-describe('A3 parity: MonetaryAmount', () => {
-  it('both surfaces produce identical JSON Schema', async () => {
-    const tsdocIR = await extractFormIR('./fixtures/monetary-amount/tsdoc.ts');
+describe("A3 parity: MonetaryAmount", () => {
+  it("both surfaces produce identical JSON Schema", async () => {
+    const tsdocIR = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
     const chainIR = canonicalizeDSL(invoiceForm);
 
     const tsdocSchema = generateJsonSchema(tsdocIR);
@@ -555,7 +552,7 @@ describe('A3 parity: MonetaryAmount', () => {
     expect(tsdocSchema).toEqual(expectedSchema);
   });
 
-  it('generator is pure: same IR produces same output on repeated calls', () => {
+  it("generator is pure: same IR produces same output on repeated calls", () => {
     const ir = canonicalizeDSL(invoiceForm);
 
     const output1 = generateJsonSchema(ir);
@@ -580,7 +577,7 @@ The generator must produce deterministic output (D3). This means:
 JSON Schema output tests use `toEqual` (deep structural equality), which for plain objects in JavaScript treats key order as insignificant. This is correct for semantic equivalence. However, the generator's determinism test additionally checks that serialized output (via `JSON.stringify`) is identical between runs:
 
 ```typescript
-it('serialized output is deterministic across runs', () => {
+it("serialized output is deterministic across runs", () => {
   const ir1 = canonicalizeDSL(invoiceForm);
   const ir2 = canonicalizeDSL(invoiceForm);
 
@@ -612,21 +609,21 @@ Extension types (`Decimal`, `DateOnly`) are included in the parity test suite as
 **Chain DSL surface (`decimal/chain-dsl.ts`):**
 
 ```typescript
-import { field, formspec } from '@formspec/dsl';
+import { field, formspec } from "@formspec/dsl";
 
 const pricingRuleForm = formspec(
-  field.custom('baseRate', {
-    typeName: 'PositiveDecimal8',
-    displayName: 'Base Rate',
-    minimum: '0.01',
-    maximum: '999999.99',
+  field.custom("baseRate", {
+    typeName: "PositiveDecimal8",
+    displayName: "Base Rate",
+    minimum: "0.01",
+    maximum: "999999.99",
   }),
-  field.custom('overrideRate', {
-    typeName: 'PositiveDecimal8',
+  field.custom("overrideRate", {
+    typeName: "PositiveDecimal8",
     optional: true,
-    displayName: 'Override Rate',
-    minimum: '0',
-    maximum: '999999.99',
+    displayName: "Override Rate",
+    minimum: "0",
+    maximum: "999999.99",
     maxSigFig: 4,
   })
 );
@@ -658,7 +655,7 @@ Both the TSDoc extractor and the chain DSL canonicalizer must produce equivalent
 **TSDoc surface (`date-only/tsdoc.ts`):**
 
 ```typescript
-import type { DateOnly } from '@myorg/formspec-date-only';
+import type { DateOnly } from "@myorg/formspec-date-only";
 
 interface AuditPeriod {
   /**
@@ -685,25 +682,25 @@ interface AuditPeriod {
 **Chain DSL surface (`date-only/chain-dsl.ts`):**
 
 ```typescript
-import { field, formspec } from '@formspec/dsl';
+import { field, formspec } from "@formspec/dsl";
 
 const auditPeriodForm = formspec(
-  field.custom('startDate', {
-    typeName: 'DateOnly',
-    displayName: 'Period Start',
-    after: '2000-01-01',
+  field.custom("startDate", {
+    typeName: "DateOnly",
+    displayName: "Period Start",
+    after: "2000-01-01",
   }),
-  field.custom('endDate', {
-    typeName: 'DateOnly',
-    displayName: 'Period End',
-    after: '2000-01-01',
-    before: '2099-12-31',
+  field.custom("endDate", {
+    typeName: "DateOnly",
+    displayName: "Period End",
+    after: "2000-01-01",
+    before: "2099-12-31",
   }),
-  field.custom('reviewedOn', {
-    typeName: 'DateOnly',
+  field.custom("reviewedOn", {
+    typeName: "DateOnly",
     optional: true,
-    displayName: 'Reviewed On',
-    after: '2000-01-01',
+    displayName: "Reviewed On",
+    after: "2000-01-01",
   })
 );
 
@@ -750,16 +747,16 @@ Two diagnostic sets are equivalent when:
 ```typescript
 // packages/build/src/__tests__/parity/diagnostics.test.ts
 
-import { describe, it, expect } from 'vitest';
-import { extractWithDiagnostics } from '@formspec/build/internals';
-import { canonicalizeWithDiagnostics } from '@formspec/build/internals';
-import { compareDiagnostics } from '../helpers/diagnostic-comparison';
+import { describe, it, expect } from "vitest";
+import { extractWithDiagnostics } from "@formspec/build/internals";
+import { canonicalizeWithDiagnostics } from "@formspec/build/internals";
+import { compareDiagnostics } from "../helpers/diagnostic-comparison";
 
-describe('diagnostic parity: constraint broadening', () => {
-  it('inverted numeric bounds', async () => {
+describe("diagnostic parity: constraint broadening", () => {
+  it("inverted numeric bounds", async () => {
     // TSDoc: @minimum 10 @maximum 5 on the same number field
     const tsdocDiagnostics = await extractWithDiagnostics(
-      './fixtures/diagnostics/inverted-bounds-tsdoc.ts'
+      "./fixtures/diagnostics/inverted-bounds-tsdoc.ts"
     );
 
     // Chain DSL: field.number("x", { minimum: 10, maximum: 5 })
@@ -771,11 +768,11 @@ describe('diagnostic parity: constraint broadening', () => {
     });
   });
 
-  it('@maxSigFig broadening through alias chain (Decimal extension)', async () => {
+  it("@maxSigFig broadening through alias chain (Decimal extension)", async () => {
     // Both surfaces should produce CONSTRAINT_BROADENING with
     // severity: "error" and reference both constraint locations
     const tsdocDiagnostics = await extractWithDiagnostics(
-      './fixtures/diagnostics/decimal-maxsigfig-broadening-tsdoc.ts'
+      "./fixtures/diagnostics/decimal-maxsigfig-broadening-tsdoc.ts"
     );
     const chainDiagnostics = canonicalizeWithDiagnostics(decimalBroadeningDSLForm);
 
@@ -787,8 +784,8 @@ describe('diagnostic parity: constraint broadening', () => {
     // Also verify the diagnostic code and severity directly
     expect(tsdocDiagnostics).toHaveLength(1);
     expect(tsdocDiagnostics[0]).toMatchObject({
-      code: 'CONSTRAINT_BROADENING',
-      severity: 'error',
+      code: "CONSTRAINT_BROADENING",
+      severity: "error",
     });
   });
 });
@@ -931,6 +928,6 @@ The `expected-ir.ts` and `expected-schema.json` files are the specification. Cha
 | #    | Section  | Question                                                                                                                                           | Status                                                                                                                                                                                                                                                                                                                                                   |
 | ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OD-1 | §3.2     | How does the chain DSL express type alias constraint inheritance — by name reference resolved at build time, or by explicit constraint repetition? | By name reference — `type: "USDCents"` loads the alias chain from the project's type registry                                                                                                                                                                                                                                                            |
-| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                 | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                          |
+| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                         |
 | OD-3 | §6, §8.2 | Should extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests?                                            | **DECIDED:** In `packages/test-fixtures/` as a private, unpublished workspace package. This allows the fixture extensions to have their own `package.json`, `tsconfig.json`, and build step, while remaining clearly separated from distributable code. Tests in `packages/build/src/__tests__/` reference the fixture package via workspace dependency. |
 | OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                                                       | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                                                                                                                                        |

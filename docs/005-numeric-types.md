@@ -8,15 +8,15 @@ This document specifies how FormSpec handles built-in numeric types (`number`, `
 
 ### Principles Satisfied
 
-| Section                               | Principles              |
-| ------------------------------------- | ----------------------- |
-| Built-in numeric types                | PP2, PP3, S4, S7, B3    |
-| Integer semantics and derivation      | PP3, S1, S2, S4, C1     |
-| Extension numeric types               | E1, E2, E3, E4, E5, PP3 |
-| Type alias chains                     | PP3, S1, C1             |
-| Extension case study: DateOnly        | E1, E5, S5              |
-| Extension case study: MonetaryAmount  | S5, PP3, C1, B4         |
-| Constraint composition                | S1, S2, C1              |
+| Section                              | Principles              |
+| ------------------------------------ | ----------------------- |
+| Built-in numeric types               | PP2, PP3, S4, S7, B3    |
+| Integer semantics and derivation     | PP3, S1, S2, S4, C1     |
+| Extension numeric types              | E1, E2, E3, E4, E5, PP3 |
+| Type alias chains                    | PP3, S1, C1             |
+| Extension case study: DateOnly       | E1, E5, S5              |
+| Extension case study: MonetaryAmount | S5, PP3, C1, B4         |
+| Constraint composition               | S1, S2, C1              |
 
 ### Scope and Relationship to Other Documents
 
@@ -284,7 +284,7 @@ interface CustomTypeConfig<T extends string> {
   /** Base JSON Schema emitted for bare fields of this type (no constraints). */
   jsonSchemaBase: Record<string, unknown>;
   /** IR node emitted for fields of this type. */
-  irNode: { kind: 'custom'; typeId: string; payload: Record<string, unknown> };
+  irNode: { kind: "custom"; typeId: string; payload: Record<string, unknown> };
 }
 
 declare function defineCustomType<T extends string>(
@@ -296,27 +296,25 @@ declare function defineCustomType<T extends string>(
 interface ConstraintTagConfig {
   tag: `@${string}`;
   /** "set-influencing" narrows the valid value set; "annotation" is metadata-only. */
-  kind: 'set-influencing' | 'annotation';
+  kind: "set-influencing" | "annotation";
   /** How multiple occurrences compose. "intersection" = tightest wins (C1). */
-  composition: 'intersection' | 'override';
+  composition: "intersection" | "override";
   /** Returns an error descriptor if `proposed` broadens `inherited`, else null. */
   contradictionCheck: (
     inherited: unknown,
     proposed: unknown
-  ) => { kind: 'error'; message: string } | null;
+  ) => { kind: "error"; message: string } | null;
   applicableTypes: string[];
   valueParser: (raw: string) => unknown;
   irNode: (value: unknown) => {
-    kind: 'constraint';
-    constraintKind: 'custom';
+    kind: "constraint";
+    constraintKind: "custom";
     extensionId: string;
     value: unknown;
   };
 }
 
-declare function defineConstraintTag(
-  config: ConstraintTagConfig
-): ConstraintTagRegistration;
+declare function defineConstraintTag(config: ConstraintTagConfig): ConstraintTagRegistration;
 
 // --- Broadening an existing built-in constraint tag ---
 
@@ -337,9 +335,9 @@ interface VocabularyKeywordConfig {
   /** The logical keyword name (vendor prefix is injected at registration time). */
   logicalName: string;
   /** "validation" affects whether a value is accepted; "annotation" is metadata only. */
-  kind: 'validation' | 'annotation';
+  kind: "validation" | "annotation";
   /** The JSON Schema type of the keyword's schema value. */
-  schemaType: 'integer' | 'number' | 'string' | 'boolean' | 'array' | 'object';
+  schemaType: "integer" | "number" | "string" | "boolean" | "array" | "object";
   /** The IR constraint extensionId that triggers emission of this keyword. */
   emitFrom: string;
 }
@@ -366,21 +364,21 @@ export type Decimal = string & { readonly [_decimal]: true };
 
 // Extension registration (see E5 — extensions are npm packages with
 // the "formspec-extension" keyword in their package.json)
-import { defineExtension, defineCustomType } from '@formspec/core';
+import { defineExtension, defineCustomType } from "@formspec/core";
 
 export default defineExtension({
-  name: 'decimal',
+  name: "decimal",
   types: [
     defineCustomType({
-      typeName: 'Decimal',
+      typeName: "Decimal",
       // The module path where the TypeScript type is declared.
       // The analyzer uses this to recognize `Decimal` fields in user code.
-      typeModule: '@myorg/formspec-decimal',
+      typeModule: "@myorg/formspec-decimal",
       // How to emit this type in JSON Schema.
       // For string-backed decimal, the JSON Schema type is "string".
-      jsonSchemaBase: { type: 'string' },
+      jsonSchemaBase: { type: "string" },
       // The IR node to use for this type.
-      irNode: { kind: 'custom', typeId: 'x-myorg/decimal/Decimal', payload: {} },
+      irNode: { kind: "custom", typeId: "x-myorg/decimal/Decimal", payload: {} },
     }),
   ],
 });
@@ -393,37 +391,37 @@ After registration, the analyzer recognizes fields typed as `Decimal` and includ
 The extension declares that `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, and `@multipleOf` are valid on `Decimal` fields. The extension provides a parser for decimal-literal tag values (since the built-in parser works with `number` precision; decimals may exceed this):
 
 ```typescript
-import { defineExtension, broadenConstraintTag } from '@formspec/core';
+import { defineExtension, broadenConstraintTag } from "@formspec/core";
 
 export default defineExtension({
-  name: 'decimal',
+  name: "decimal",
   // ...
   constraintTagBroadening: [
     broadenConstraintTag({
-      tag: '@minimum',
-      additionalTypes: ['Decimal'],
+      tag: "@minimum",
+      additionalTypes: ["Decimal"],
       // The extension provides its own value parser for decimal literals.
       // The built-in parser would use Number() and lose precision.
       valueParser: parseDecimalLiteral,
     }),
     broadenConstraintTag({
-      tag: '@maximum',
-      additionalTypes: ['Decimal'],
+      tag: "@maximum",
+      additionalTypes: ["Decimal"],
       valueParser: parseDecimalLiteral,
     }),
     broadenConstraintTag({
-      tag: '@exclusiveMinimum',
-      additionalTypes: ['Decimal'],
+      tag: "@exclusiveMinimum",
+      additionalTypes: ["Decimal"],
       valueParser: parseDecimalLiteral,
     }),
     broadenConstraintTag({
-      tag: '@exclusiveMaximum',
-      additionalTypes: ['Decimal'],
+      tag: "@exclusiveMaximum",
+      additionalTypes: ["Decimal"],
       valueParser: parseDecimalLiteral,
     }),
     broadenConstraintTag({
-      tag: '@multipleOf',
-      additionalTypes: ['Decimal'],
+      tag: "@multipleOf",
+      additionalTypes: ["Decimal"],
       valueParser: parseDecimalLiteral,
     }),
   ],
@@ -437,36 +435,36 @@ After this registration, applying `@minimum 0.01` to a `Decimal` field is valid,
 The consumer introduces `@maxSigFig` — a new constraint tag that limits the number of significant figures a decimal value may carry:
 
 ```typescript
-import { defineExtension, defineConstraintTag } from '@formspec/core';
+import { defineExtension, defineConstraintTag } from "@formspec/core";
 
 export default defineExtension({
-  name: 'decimal',
+  name: "decimal",
   // ...
   constraintTags: [
     defineConstraintTag({
-      tag: '@maxSigFig',
+      tag: "@maxSigFig",
       // Set-influencing: narrows the valid value set (C1)
-      kind: 'set-influencing',
+      kind: "set-influencing",
       // Composition rule: intersection — lower maxSigFig wins (S1, C1)
-      composition: 'intersection',
+      composition: "intersection",
       // Contradiction check: if inherited maxSigFig < proposed maxSigFig, error (S2)
       contradictionCheck: (inherited, proposed) =>
         proposed > inherited
           ? {
-              kind: 'error',
+              kind: "error",
               message: `@maxSigFig ${proposed} is broader than inherited @maxSigFig ${inherited}`,
             }
           : null,
-      applicableTypes: ['Decimal'],
+      applicableTypes: ["Decimal"],
       valueParser: (raw) => {
         const n = parseInt(raw, 10);
-        if (isNaN(n) || n <= 0) throw new Error('@maxSigFig requires a positive integer');
+        if (isNaN(n) || n <= 0) throw new Error("@maxSigFig requires a positive integer");
         return n;
       },
       irNode: (value) => ({
-        kind: 'constraint',
-        constraintKind: 'custom',
-        extensionId: 'x-myorg/decimal/maxSigFig',
+        kind: "constraint",
+        constraintKind: "custom",
+        extensionId: "x-myorg/decimal/maxSigFig",
         value,
       }),
     }),
@@ -489,15 +487,15 @@ Rule code is only needed when an extension wants authoring-time checks that go b
 
 ```typescript
 // In the extension's ESLint plugin
-import { createConstraintTagRule } from '@formspec/eslint-plugin/base';
+import { createConstraintTagRule } from "@formspec/eslint-plugin/base";
 
 // Optional: only needed for richer, domain-specific authoring checks
 // beyond what defineConstraintTag already declares.
 export const decimalWarningRule = createConstraintTagRule({
-  tag: '@maxSigFig',
+  tag: "@maxSigFig",
   customValidate: ({ value }) => {
     if (value > 18) {
-      return 'Values above 18 significant figures may be impractical for this renderer.';
+      return "Values above 18 significant figures may be impractical for this renderer.";
     }
     return null;
   },
@@ -511,22 +509,22 @@ The `createConstraintTagRule` factory handles the boilerplate for these optional
 The extension registers a custom JSON Schema keyword for `@maxSigFig`. The generator emits it when the constraint is present:
 
 ```typescript
-import { defineExtension, defineVocabularyKeyword } from '@formspec/core';
+import { defineExtension, defineVocabularyKeyword } from "@formspec/core";
 
 export default defineExtension({
-  name: 'decimal',
+  name: "decimal",
   // ...
   vocabularyKeywords: [
     defineVocabularyKeyword({
       // The keyword name uses the configured vendor prefix (E3).
       // At registration time the vendor prefix from .formspec.yml is
       // substituted; the extension sees the logical name.
-      logicalName: 'maxSigFig',
+      logicalName: "maxSigFig",
       // This keyword validates — it affects whether a value is accepted.
-      kind: 'validation',
-      schemaType: 'integer',
+      kind: "validation",
+      schemaType: "integer",
       // The IR constraint kind that triggers emission of this keyword.
-      emitFrom: 'x-myorg/decimal/maxSigFig',
+      emitFrom: "x-myorg/decimal/maxSigFig",
     }),
   ],
 });
@@ -556,7 +554,7 @@ interface DecimalKeywordDefinition {
 }
 
 export const maxSigFigKeyword: DecimalKeywordDefinition = {
-  keyword: 'x-myorg-maxSigFig',
+  keyword: "x-myorg-maxSigFig",
   validate: function validateMaxSigFig(schema: number, data: string): boolean {
     // Consumer provides their own precision library here.
     // FormSpec provides no opinion on how to count sig figs.
@@ -567,7 +565,7 @@ export const maxSigFigKeyword: DecimalKeywordDefinition = {
 };
 
 export const minimumDecimalKeyword: DecimalKeywordDefinition = {
-  keyword: 'x-myorg-minimum',
+  keyword: "x-myorg-minimum",
   validate: function validateDecimalMinimum(schema: string, data: string): boolean {
     return compareDecimal(data, schema) >= 0;
   },
@@ -619,7 +617,7 @@ The extension supports the B3 configurable-lossy-transformation requirement:
 # Consumer's .formspec.yml
 extensions:
   decimal:
-    precisionLoss: 'error' # default: fail on precision loss
+    precisionLoss: "error" # default: fail on precision loss
     # precisionLoss: "warn"   # allow with diagnostic
     # precisionLoss: "allow"  # allow silently (not recommended for financial use)
 ```
@@ -782,9 +780,9 @@ This composition is performed in the Validate phase of the pipeline (A5), after 
 
 ## Appendix: Open Decisions Summary
 
-| #    | Section | Question                                                                                                                                                             | Status                                                                                                    |
-| ---- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| OD-1 | §3.1    | Should type alias resolution be eager (at analysis time) or lazy (at generation time)?                                                                               | Eager — resolved at Canonicalize phase to enable Validate phase contradiction detection                   |
+| #    | Section | Question                                                                                                                                                             | Status                                                                                                                                                            |
+| ---- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OD-1 | §3.1    | Should type alias resolution be eager (at analysis time) or lazy (at generation time)?                                                                               | Eager — resolved at Canonicalize phase to enable Validate phase contradiction detection                                                                           |
 | OD-2 | §3.3    | Should the generator emit `{ "type": "integer" }` or `{ "type": "number", "multipleOf": 1 }` for aliases with `MultipleOfConstraint(1)`?                             | **DECIDED:** `{ "type": "integer" }`. Integer is a first-class FormSpec numeric kind; `number + @multipleOf 1` is a TSDoc authoring path that canonicalizes to it |
-| OD-3 | §4.3    | Should `broadenConstraintTag` be a compile-time registration or a runtime registration?                                                                              | Compile-time, via extension npm package loaded at build time (E5)                                         |
-| OD-4 | §6      | When a type alias inherits subfield constraints, should the generator always emit `allOf` + `$ref`, or inline when the alias adds only a single subfield constraint? | Always `allOf` + `$ref` for consistency and high-fidelity output (PP7)                                    |
+| OD-3 | §4.3    | Should `broadenConstraintTag` be a compile-time registration or a runtime registration?                                                                              | Compile-time, via extension npm package loaded at build time (E5)                                                                                                 |
+| OD-4 | §6      | When a type alias inherits subfield constraints, should the generator always emit `allOf` + `$ref`, or inline when the alias adds only a single subfield constraint? | Always `allOf` + `$ref` for consistency and high-fidelity output (PP7)                                                                                            |

@@ -136,6 +136,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Added user-authored confidence test tracks.
   - The matrix now distinguishes data-model conformance tests from dynamic-option tests and dynamic-schema resolver tests.
   - These are explicitly framed as user integration-confidence tests rather than parity tests.
+
 # 2026-03-25
 
 ## 001-canonical-ir
