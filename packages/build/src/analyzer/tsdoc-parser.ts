@@ -14,9 +14,9 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@displayName`, `@description`):
- *    These are parsed as structured custom block tags and mapped directly
- *    onto annotation IR nodes.
+ * 2. **Annotation tags** (`@displayName`, `@description`, `@placeholder`):
+ *    Canonical tags are emitted as annotation IR nodes and parsed
+ *    structurally via the TSDoc custom block-tag pipeline.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
@@ -110,7 +110,7 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
   }
 
   // Register annotation tags that participate in the canonical IR.
-  for (const tagName of ["displayName", "description"]) {
+  for (const tagName of ["displayName", "description", "placeholder"]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -154,8 +154,9 @@ export interface TSDocParseResult {
  * nodes.
  *
  * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
- * the structured TSDoc parser is used. Canonical annotation tags
- * (`@displayName`, `@description`) are also parsed structurally.
+ * the structured TSDoc parser is used. Canonical `@displayName`,
+ * `@description`, and `@placeholder` annotations are also parsed
+ * structurally.
  *
  * @param node - The TS AST node to inspect (PropertyDeclaration, PropertySignature, etc.)
  * @param file - Absolute source file path for provenance
@@ -166,8 +167,10 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
   const annotations: AnnotationNode[] = [];
   let displayName: string | undefined;
   let description: string | undefined;
+  let placeholder: string | undefined;
   let displayNameProvenance: Provenance | undefined;
   let descriptionProvenance: Provenance | undefined;
+  let placeholderProvenance: Provenance | undefined;
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
@@ -196,7 +199,11 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
-        if (tagName === "displayName" || tagName === "description") {
+        if (
+          tagName === "displayName" ||
+          tagName === "description" ||
+          tagName === "placeholder"
+        ) {
           const text = extractBlockText(block).trim();
           if (text === "") continue;
 
@@ -204,9 +211,12 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
           if (tagName === "displayName") {
             displayName = text;
             displayNameProvenance = provenance;
-          } else {
+          } else if (tagName === "description") {
             description = text;
             descriptionProvenance = provenance;
+          } else {
+            placeholder = text;
+            placeholderProvenance = provenance;
           }
           continue;
         }
@@ -249,6 +259,14 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       annotationKind: "description",
       value: description,
       provenance: descriptionProvenance,
+    });
+  }
+  if (placeholder !== undefined && placeholderProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "placeholder",
+      value: placeholder,
+      provenance: placeholderProvenance,
     });
   }
 

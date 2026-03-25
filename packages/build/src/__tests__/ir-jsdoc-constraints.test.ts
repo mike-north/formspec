@@ -378,6 +378,23 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("produces PlaceholderAnnotationNode for @placeholder", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @placeholder Enter your email address */
+        email: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "annotation",
+      annotationKind: "placeholder",
+      value: "Enter your email address",
+    });
+  });
+
   it("produces DeprecatedAnnotationNode for @deprecated", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {

@@ -40,6 +40,30 @@ function fieldToScope(fieldName: string): string {
 }
 
 /**
+ * Converts a property name into a human-friendly UI label.
+ *
+ * Examples:
+ * - `fullName` -> `Full Name`
+ * - `billing_address` -> `Billing Address`
+ * - `account-id` -> `Account Id`
+ */
+function inferLabelFromFieldName(fieldName: string): string {
+  const withSpaces = fieldName
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim();
+
+  if (withSpaces === "") {
+    return fieldName;
+  }
+
+  return withSpaces
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+/**
  * Creates a SHOW rule for a single conditional field/value pair.
  */
 function createShowRule(fieldName: string, value: unknown): Rule {
@@ -99,11 +123,16 @@ function combineRules(parentRule: Rule, childRule: Rule): Rule {
  */
 function fieldNodeToControl(field: FieldNode, parentRule?: Rule): ControlElement {
   const displayNameAnnotation = field.annotations.find((a) => a.annotationKind === "displayName");
+  const placeholderAnnotation = field.annotations.find((a) => a.annotationKind === "placeholder");
+  const label = displayNameAnnotation?.value ?? inferLabelFromFieldName(field.name);
 
   const control: ControlElement = {
     type: "Control",
     scope: fieldToScope(field.name),
-    ...(displayNameAnnotation !== undefined && { label: displayNameAnnotation.value }),
+    label,
+    ...(placeholderAnnotation !== undefined && {
+      options: { placeholder: placeholderAnnotation.value },
+    }),
     ...(parentRule !== undefined && { rule: parentRule }),
   };
 

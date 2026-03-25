@@ -118,6 +118,21 @@ function labelledFieldNode(name: string, label: string): FieldNode {
   };
 }
 
+/** Build a FieldNode with a placeholder annotation. */
+function placeholderFieldNode(name: string, placeholder: string): FieldNode {
+  return {
+    ...simpleFieldNode(name),
+    annotations: [
+      {
+        kind: "annotation",
+        annotationKind: "placeholder",
+        value: placeholder,
+        provenance: CHAIN_DSL_PROVENANCE,
+      },
+    ],
+  };
+}
+
 /** Build a GroupLayoutNode wrapping the given elements. */
 function groupNode(label: string, elements: FormIR["elements"]): GroupLayoutNode {
   return {
@@ -174,14 +189,15 @@ describe("generateUiSchemaFromIR", () => {
 
       const control = expectControl(result.elements, 0);
       expect(control.scope).toBe("#/properties/name");
+      expect(control.label).toBe("Name");
     });
 
-    it("should not include a label when no displayName annotation is present", () => {
+    it("should infer a label when no displayName annotation is present", () => {
       const ir = formIRFromElements([simpleFieldNode("email")]);
       const result = generateUiSchemaFromIR(ir);
 
       const control = expectControl(result.elements, 0);
-      expect(control.label).toBeUndefined();
+      expect(control.label).toBe("Email");
     });
 
     it("should not include a rule on an unconditional field", () => {
@@ -228,6 +244,14 @@ describe("generateUiSchemaFromIR", () => {
       expect(control.label).toBe("Full Name");
     });
 
+    it("should infer a label when displayName is absent", () => {
+      const ir = formIRFromElements([simpleFieldNode("emailAddress")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      const control = expectControl(result.elements, 0);
+      expect(control.label).toBe("Email Address");
+    });
+
     it("should use the first displayName annotation when multiple annotations are present", () => {
       const fieldNode: FieldNode = {
         ...simpleFieldNode("field"),
@@ -253,7 +277,7 @@ describe("generateUiSchemaFromIR", () => {
       expect(control.label).toBe("First Label");
     });
 
-    it("should not produce a label when only non-displayName annotations are present", () => {
+    it("should infer a label when only non-displayName annotations are present", () => {
       const fieldNode: FieldNode = {
         ...simpleFieldNode("field"),
         annotations: [
@@ -269,7 +293,15 @@ describe("generateUiSchemaFromIR", () => {
       const result = generateUiSchemaFromIR(ir);
 
       const control = expectControl(result.elements, 0);
-      expect(control.label).toBeUndefined();
+      expect(control.label).toBe("Field");
+    });
+
+    it("should map placeholder annotations to Control options", () => {
+      const ir = formIRFromElements([placeholderFieldNode("emailAddress", "name@example.com")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      const control = expectControl(result.elements, 0);
+      expect(control.options).toEqual({ placeholder: "name@example.com" });
     });
   });
 
