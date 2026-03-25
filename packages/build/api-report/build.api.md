@@ -243,7 +243,7 @@ export interface JsonSchema2020 {
     // (undocumented)
     [key: `x-${string}`]: unknown;
     // (undocumented)
-    additionalProperties?: boolean;
+    additionalProperties?: boolean | JsonSchema2020;
     // (undocumented)
     allOf?: readonly JsonSchema2020[];
     // (undocumented)

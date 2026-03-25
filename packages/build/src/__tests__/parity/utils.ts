@@ -86,6 +86,12 @@ export interface ProvenanceFreeObjectTypeNode {
   readonly additionalProperties: boolean;
 }
 
+/** Record type node — valueType is recursively provenance-free. */
+export interface ProvenanceFreeRecordTypeNode {
+  readonly kind: "record";
+  readonly valueType: ProvenanceFreeTypeNode;
+}
+
 /** Union type node — members are recursively provenance-free. */
 export interface ProvenanceFreeUnionTypeNode {
   readonly kind: "union";
@@ -111,6 +117,7 @@ export type ProvenanceFreeTypeNode =
   | ProvenanceFreeEnumTypeNode
   | ProvenanceFreeArrayTypeNode
   | ProvenanceFreeObjectTypeNode
+  | ProvenanceFreeRecordTypeNode
   | ProvenanceFreeUnionTypeNode
   | ProvenanceFreeReferenceTypeNode
   | ProvenanceFreeDynamicTypeNode
@@ -282,6 +289,8 @@ function stripProvenanceFromTypeNode(type: TypeNode): ProvenanceFreeTypeNode {
       return { kind: "array", items: stripProvenanceFromTypeNode(type.items) };
     case "object":
       return stripProvenanceFromObjectType(type);
+    case "record":
+      return { kind: "record", valueType: stripProvenanceFromTypeNode(type.valueType) };
     case "union":
       return {
         kind: "union",

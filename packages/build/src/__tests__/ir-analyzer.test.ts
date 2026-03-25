@@ -512,3 +512,38 @@ describe("canonicalizeTSDoc", () => {
     expect(Object.keys(formIR.typeRegistry).length).toBeGreaterThan(0);
   });
 });
+
+// =============================================================================
+// RECORD TYPE DETECTION — BUG-3 regression
+// =============================================================================
+
+describe("analyzeClassToIR — Record<string, T> type detection", () => {
+  const edgeCasesPath = path.join(fixturesDir, "edge-cases.ts");
+
+  it("emits RecordTypeNode (kind: record) for Record<string, string>", () => {
+    // Regression for BUG-3: Record<string, string> was incorrectly being
+    // lifted to $defs as a named type with additionalProperties: false.
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "ObjectEdgeCases");
+    if (!classDecl) throw new Error("ObjectEdgeCases class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+    const field = analysis.fields.find((f) => f.name === "stringRecord");
+    if (!field) throw new Error("stringRecord field not found");
+
+    expect(field.type.kind).toBe("record");
+    if (field.type.kind === "record") {
+      expect(field.type.valueType).toEqual({ kind: "primitive", primitiveKind: "string" });
+    }
+  });
+
+  it("does NOT register Record as a named type in the typeRegistry", () => {
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "ObjectEdgeCases");
+    if (!classDecl) throw new Error("ObjectEdgeCases class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+
+    expect(Object.keys(analysis.typeRegistry)).not.toContain("Record");
+  });
+});

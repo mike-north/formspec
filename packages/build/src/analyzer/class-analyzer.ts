@@ -14,6 +14,7 @@ import type {
   AnnotationNode,
   Provenance,
   ObjectProperty,
+  RecordTypeNode,
   TypeDefinition,
   JsonValue,
 } from "@formspec/core";
@@ -481,6 +482,32 @@ function resolveArrayType(
   return { kind: "array", items };
 }
 
+/**
+ * Returns a `RecordTypeNode` if `type` is a pure dictionary type (string index
+ * signature with no named properties), or `null` otherwise.
+ *
+ * This handles both `Record<string, T>` (a mapped/aliased type) and inline
+ * `{ [k: string]: T }` index signature types per spec 003 §2.5.
+ */
+function tryResolveRecordType(
+  type: ts.ObjectType,
+  checker: ts.TypeChecker,
+  file: string,
+  typeRegistry: Record<string, TypeDefinition>,
+  visiting: Set<ts.Type>
+): RecordTypeNode | null {
+  // Only types with no named properties qualify as pure dictionaries.
+  if (type.getProperties().length > 0) {
+    return null;
+  }
+  const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
+  if (!indexInfo) {
+    return null;
+  }
+  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+  return { kind: "record", valueType };
+}
+
 function resolveObjectType(
   type: ts.ObjectType,
   checker: ts.TypeChecker,
@@ -488,6 +515,13 @@ function resolveObjectType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>
 ): TypeNode {
+  // Detect pure dictionary types (Record<string, T> or { [k: string]: T })
+  // before any named-type registration to prevent lifting them to $defs.
+  const recordNode = tryResolveRecordType(type, checker, file, typeRegistry, visiting);
+  if (recordNode) {
+    return recordNode;
+  }
+
   // Circular reference guard
   if (visiting.has(type)) {
     return { kind: "object", properties: [], additionalProperties: false };
