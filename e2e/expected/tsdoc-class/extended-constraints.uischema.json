@@ -1,0 +1,17 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/score"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/quarterSteps"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/notes"
+    }
+  ]
+}

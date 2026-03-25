@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "roundedScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1000,
+      "multipleOf": 5
+    },
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 50,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+    },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "maxItems": 5
+    }
+  },
+  "required": ["roundedScore", "username", "choices"]
+}

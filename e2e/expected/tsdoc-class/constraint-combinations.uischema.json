@@ -1,0 +1,17 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/roundedScore"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/username"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/choices"
+    }
+  ]
+}
