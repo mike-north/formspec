@@ -180,8 +180,8 @@ export interface FormSpecField {
   pattern?: string;
   options?: (string | { id: string; label: string })[];
   order?: number;
-  showWhen?: object;
-  hideWhen?: object;
+  showWhen?: { field: string; value: unknown };
+  hideWhen?: { field: string; value: unknown };
   group?: string;
   fields?: FormSpecField[]; // Nested fields for object types
 }
@@ -478,12 +478,12 @@ function convertObjectType(
     // Build the full schema (may recurse)
     const schema = buildObjectSchema(type, checker, defsRegistry);
 
-    // Register and unmark
-    defsRegistry.set(typeName, schema);
+    // Register (with deduplication) and unmark
+    const finalName = defsRegistry.registerAndGetName(typeName, schema);
     defsRegistry.unmarkProcessing(typeName);
 
     return {
-      jsonSchema: { $ref: `#/$defs/${typeName}` },
+      jsonSchema: { $ref: `#/$defs/${finalName}` },
       formSpecFieldType: "object",
     };
   }
@@ -647,7 +647,10 @@ function applyDecoratorToField(
 
     case "ShowWhen":
       if (typeof args[0] === "object" && args[0] !== null) {
-        field.showWhen = args[0] as object;
+        const sw = args[0] as { field?: unknown; value?: unknown };
+        if (typeof sw.field === "string") {
+          field.showWhen = { field: sw.field, value: sw.value };
+        }
       }
       break;
 

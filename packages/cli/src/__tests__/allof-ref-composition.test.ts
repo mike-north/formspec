@@ -23,25 +23,27 @@ function getSchemaFromSource(source: string): ReturnType<typeof generateClassSch
   const filePath = path.join(tmpDir, "test.ts");
   fs.writeFileSync(filePath, source);
 
-  const program = ts.createProgram([filePath], {
-    target: ts.ScriptTarget.ES2020,
-    module: ts.ModuleKind.ES2020,
-    strict: true,
-  });
-  const checker = program.getTypeChecker();
-  const sourceFile = program.getSourceFile(filePath);
-  if (!sourceFile) throw new Error("Source file not found");
+  try {
+    const program = ts.createProgram([filePath], {
+      target: ts.ScriptTarget.ES2020,
+      module: ts.ModuleKind.ES2020,
+      strict: true,
+    });
+    const checker = program.getTypeChecker();
+    const sourceFile = program.getSourceFile(filePath);
+    if (!sourceFile) throw new Error("Source file not found");
 
-  let classDecl: ts.ClassDeclaration | undefined;
-  ts.forEachChild(sourceFile, (node) => {
-    if (ts.isClassDeclaration(node)) classDecl = node;
-  });
-  if (!classDecl) throw new Error("No class found");
+    let classDecl: ts.ClassDeclaration | undefined;
+    ts.forEachChild(sourceFile, (node) => {
+      if (ts.isClassDeclaration(node)) classDecl = node;
+    });
+    if (!classDecl) throw new Error("No class found");
 
-  const analysis = analyzeClass(classDecl, checker);
-  const result = generateClassSchemas(analysis, checker);
-  fs.rmSync(tmpDir, { recursive: true });
-  return result;
+    const analysis = analyzeClass(classDecl, checker);
+    return generateClassSchemas(analysis, checker);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true });
+  }
 }
 
 // ============================================================================

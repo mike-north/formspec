@@ -459,14 +459,18 @@ function resolveConditionValueTypes(
   analysis: ClassAnalysis,
   _checker: ts.TypeChecker
 ): void {
-  if (field.showWhen !== undefined && typeof field.showWhen === "object") {
-    const sw = field.showWhen as { field: string; value: unknown };
-    const targetType = resolveFieldType(sw.field, analysis);
-    sw.value = parseConditionValue(String(sw.value), targetType);
+  if (field.showWhen !== undefined) {
+    const targetType = resolveFieldType(field.showWhen.field, analysis);
+    field.showWhen = {
+      field: field.showWhen.field,
+      value: parseConditionValue(String(field.showWhen.value), targetType),
+    };
   }
-  if (field.hideWhen !== undefined && typeof field.hideWhen === "object") {
-    const hw = field.hideWhen as { field: string; value: unknown };
-    const targetType = resolveFieldType(hw.field, analysis);
-    hw.value = parseConditionValue(String(hw.value), targetType);
+  if (field.hideWhen !== undefined) {
+    const targetType = resolveFieldType(field.hideWhen.field, analysis);
+    field.hideWhen = {
+      field: field.hideWhen.field,
+      value: parseConditionValue(String(field.hideWhen.value), targetType),
+    };
   }
 }
