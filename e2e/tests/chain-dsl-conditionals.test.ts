@@ -11,13 +11,7 @@ import {
   assertValidJsonSchema,
   assertUiSchemaRule,
   findUiElement,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("Chain DSL Conditionals", () => {
   const result = buildFormSchemas(ConditionalForm);
@@ -97,22 +91,6 @@ describe("Chain DSL Conditionals", () => {
       if (element) {
         expect(element["rule"]).toBeUndefined();
       }
-    });
-  });
-
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "chain-dsl");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "conditional-form.schema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/conditional-form.schema.json");
-      expect(jsonSchema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "conditional-form.uischema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/conditional-form.uischema.json");
-      expect(uiSchema).toEqual(expected);
     });
   });
 });

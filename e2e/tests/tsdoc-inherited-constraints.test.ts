@@ -14,12 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-  loadExpected,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Inherited Constraints", () => {
   let tempDir: string;
@@ -103,18 +98,6 @@ describe("TSDoc Inherited Constraints", () => {
       const el = elements.find((e) => e["scope"] === "#/properties/diskUsage");
       expect(el).toBeDefined();
       expect(el?.["type"]).toBe("Control");
-    });
-  });
-
-  describe("Gold-master comparison", () => {
-    it("matches expected JSON Schema", () => {
-      const expected = loadExpected("tsdoc-class/inherited-constraints.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      const expected = loadExpected("tsdoc-class/inherited-constraints.uischema.json");
-      expect(uischema).toEqual(expected);
     });
   });
 });

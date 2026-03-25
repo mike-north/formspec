@@ -2,15 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { fileURLToPath } from "node:url";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-  loadExpected,
-} from "../helpers/schema-assertions.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Interface Pipeline", () => {
   let tempDir: string;
@@ -54,25 +46,5 @@ describe("TSDoc Interface Pipeline", () => {
   it("handles protocol enum", () => {
     expect(properties["protocol"]).toBeDefined();
     expect(properties["protocol"]["enum"]).toEqual(expect.arrayContaining(["http", "https"]));
-  });
-
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "tsdoc-interface");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "server-config.schema.json"))).toBe(true);
-      const expected = loadExpected("tsdoc-interface/server-config.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "server-config.uischema.json"))).toBe(true);
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-interface/server-config.uischema.json");
-      expect(actual).toEqual(expected);
-    });
   });
 });

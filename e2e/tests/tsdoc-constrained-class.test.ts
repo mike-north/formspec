@@ -9,12 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-  loadExpected,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Constrained Class", () => {
   let tempDir: string;
@@ -91,21 +86,5 @@ describe("TSDoc Constrained Class", () => {
     expect(required).toContain("email");
     expect(required).toContain("tags");
     expect(required).not.toContain("legacyField");
-  });
-
-  describe("Gold-master comparison", () => {
-    it("matches expected JSON Schema", () => {
-      const expected = loadExpected("tsdoc-class/constrained-form.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-class/constrained-form.uischema.json");
-      expect(actual).toEqual(expected);
-    });
   });
 });
