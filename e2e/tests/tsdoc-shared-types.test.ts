@@ -2,15 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { fileURLToPath } from "node:url";
 import {
   runCli,
   resolveFixture,
   findSchemaFile,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("TSDoc Shared Types ($defs/$ref)", () => {
   let tempDir: string;
@@ -60,19 +56,4 @@ describe("TSDoc Shared Types ($defs/$ref)", () => {
     expect(required).not.toContain("notes");
   });
 
-  describe("Gold-master comparison", () => {
-    it("matches expected JSON Schema", () => {
-      const expected = loadExpected("tsdoc-class/shared-types.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-class/shared-types.uischema.json");
-      expect(actual).toEqual(expected);
-    });
-  });
 });

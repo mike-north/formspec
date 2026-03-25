@@ -7,12 +7,6 @@ import { expect } from "vitest";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const E2E_ROOT = path.resolve(__dirname, "..");
 
-export function loadExpected(relativePath: string): unknown {
-  const fullPath = path.join(E2E_ROOT, "expected", relativePath);
-  const content = fs.readFileSync(fullPath, "utf-8");
-  return JSON.parse(content) as unknown;
-}
-
 /**
  * Assert that a schema is a valid FormSpec-generated JSON Schema object.
  * Currently validates 2020-12 structure.

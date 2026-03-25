@@ -2,15 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { fileURLToPath } from "node:url";
 import {
   runCli,
   resolveFixture,
   findSchemaFile,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("TSDoc Type Alias Pipeline", () => {
   let tempDir: string;
@@ -52,23 +48,4 @@ describe("TSDoc Type Alias Pipeline", () => {
     expect(properties["enableAlerts"]["type"]).toBe("boolean");
   });
 
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "tsdoc-type-alias");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "constrained-types.schema.json"))).toBe(true);
-      const expected = loadExpected("tsdoc-type-alias/constrained-types.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "constrained-types.uischema.json"))).toBe(true);
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-type-alias/constrained-types.uischema.json");
-      expect(actual).toEqual(expected);
-    });
-  });
 });

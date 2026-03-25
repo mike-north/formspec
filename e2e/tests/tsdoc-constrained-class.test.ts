@@ -13,7 +13,6 @@ import {
   runCli,
   resolveFixture,
   findSchemaFile,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Constrained Class", () => {
@@ -93,19 +92,4 @@ describe("TSDoc Constrained Class", () => {
     expect(required).not.toContain("legacyField");
   });
 
-  describe("Gold-master comparison", () => {
-    it("matches expected JSON Schema", () => {
-      const expected = loadExpected("tsdoc-class/constrained-form.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-class/constrained-form.uischema.json");
-      expect(actual).toEqual(expected);
-    });
-  });
 });

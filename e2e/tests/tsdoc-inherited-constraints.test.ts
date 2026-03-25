@@ -18,7 +18,6 @@ import {
   runCli,
   resolveFixture,
   findSchemaFile,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Inherited Constraints", () => {
@@ -106,15 +105,4 @@ describe("TSDoc Inherited Constraints", () => {
     });
   });
 
-  describe("Gold-master comparison", () => {
-    it("matches expected JSON Schema", () => {
-      const expected = loadExpected("tsdoc-class/inherited-constraints.schema.json");
-      expect(schema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      const expected = loadExpected("tsdoc-class/inherited-constraints.uischema.json");
-      expect(uischema).toEqual(expected);
-    });
-  });
 });

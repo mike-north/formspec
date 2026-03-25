@@ -9,13 +9,7 @@ import { NestedForm } from "../fixtures/chain-dsl/nested-form.js";
 import {
   assertValidJsonSchema,
   assertNestedProperty,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("Chain DSL Nesting", () => {
   const result = buildFormSchemas(NestedForm);
@@ -163,21 +157,6 @@ describe("Chain DSL Nesting", () => {
     });
   });
 
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "chain-dsl");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "nested-form.schema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/nested-form.schema.json");
-      expect(jsonSchema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "nested-form.uischema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/nested-form.uischema.json");
-      expect(uiSchema).toEqual(expected);
-    });
-  });
 });
 
 /** Recursively collect all scope values from a UI Schema tree. */

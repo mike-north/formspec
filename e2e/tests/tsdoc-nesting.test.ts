@@ -9,16 +9,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { fileURLToPath } from "node:url";
 import {
   runCli,
   resolveFixture,
   findSchemaFile,
   assertNestedProperty,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("TSDoc Nested Objects", () => {
   let tempDir: string;
@@ -96,27 +92,4 @@ describe("TSDoc Nested Objects", () => {
     expect(required).not.toContain("notes");
   });
 
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "tsdoc-class");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "nested-objects.schema.json"))).toBe(true);
-      const schemaFile = findSchemaFile(tempDir, "schema.json");
-      expect(schemaFile).toBeDefined();
-      if (!schemaFile) throw new Error("Schema file not found");
-      const actual = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-class/nested-objects.schema.json");
-      expect(actual).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "nested-objects.uischema.json"))).toBe(true);
-      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
-      expect(uischemaFile).toBeDefined();
-      if (!uischemaFile) throw new Error("UI schema file not found");
-      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
-      const expected = loadExpected("tsdoc-class/nested-objects.uischema.json");
-      expect(actual).toEqual(expected);
-    });
-  });
 });

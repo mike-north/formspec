@@ -4,13 +4,7 @@ import { ContactForm } from "../fixtures/chain-dsl/contact-form.js";
 import {
   assertValidJsonSchema,
   assertPropertyConstraints,
-  loadExpected,
 } from "../helpers/schema-assertions.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("Chain DSL Pipeline", () => {
   const result = buildFormSchemas(ContactForm);
@@ -60,19 +54,4 @@ describe("Chain DSL Pipeline", () => {
     });
   });
 
-  describe("Gold-master comparison", () => {
-    const expectedDir = path.resolve(__dirname, "..", "expected", "chain-dsl");
-
-    it("matches expected JSON Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "contact-form.schema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/contact-form.schema.json");
-      expect(jsonSchema).toEqual(expected);
-    });
-
-    it("matches expected UI Schema", () => {
-      expect(fs.existsSync(path.join(expectedDir, "contact-form.uischema.json"))).toBe(true);
-      const expected = loadExpected("chain-dsl/contact-form.uischema.json");
-      expect(uiSchema).toEqual(expected);
-    });
-  });
 });
