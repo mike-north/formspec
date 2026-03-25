@@ -40,23 +40,23 @@ describe("getCompletionItems", () => {
     }
   });
 
-  it("includes @Minimum completion", () => {
+  it("includes @minimum completion", () => {
     const items = getCompletionItems();
-    const minimum = items.find((item) => item.label === "@Minimum");
+    const minimum = items.find((item) => item.label === "@minimum");
     expect(minimum).toBeDefined();
     expect(minimum?.kind).toBe(CompletionItemKind.Keyword);
-    expect(minimum?.detail).toContain("Minimum");
+    expect(minimum?.detail).toContain("minimum");
   });
 
-  it("includes @Pattern completion", () => {
+  it("includes @pattern completion", () => {
     const items = getCompletionItems();
-    const pattern = items.find((item) => item.label === "@Pattern");
+    const pattern = items.find((item) => item.label === "@pattern");
     expect(pattern).toBeDefined();
   });
 
-  it("includes @EnumOptions completion", () => {
+  it("includes @enumOptions completion", () => {
     const items = getCompletionItems();
-    const enumOptions = items.find((item) => item.label === "@EnumOptions");
+    const enumOptions = items.find((item) => item.label === "@enumOptions");
     expect(enumOptions).toBeDefined();
   });
 });

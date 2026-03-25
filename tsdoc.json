@@ -2,54 +2,72 @@
   "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
   "tagDefinitions": [
     {
-      "tagName": "@Minimum",
+      "tagName": "@minimum",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@Maximum",
+      "tagName": "@maximum",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@ExclusiveMinimum",
+      "tagName": "@exclusiveMinimum",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@ExclusiveMaximum",
+      "tagName": "@exclusiveMaximum",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@MinLength",
+      "tagName": "@multipleOf",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@MaxLength",
+      "tagName": "@minLength",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@Pattern",
+      "tagName": "@maxLength",
       "syntaxKind": "block",
       "allowMultiple": true
     },
     {
-      "tagName": "@EnumOptions",
+      "tagName": "@minItems",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@maxItems",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@pattern",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@enumOptions",
       "syntaxKind": "block",
       "allowMultiple": true
     }
   ],
   "supportForTags": {
-    "@Minimum": true,
-    "@Maximum": true,
-    "@ExclusiveMinimum": true,
-    "@ExclusiveMaximum": true,
-    "@MinLength": true,
-    "@MaxLength": true,
-    "@Pattern": true,
-    "@EnumOptions": true
+    "@minimum": true,
+    "@maximum": true,
+    "@exclusiveMinimum": true,
+    "@exclusiveMaximum": true,
+    "@multipleOf": true,
+    "@minLength": true,
+    "@maxLength": true,
+    "@minItems": true,
+    "@maxItems": true,
+    "@pattern": true,
+    "@enumOptions": true
   }
 }

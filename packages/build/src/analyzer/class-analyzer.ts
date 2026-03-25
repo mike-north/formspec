@@ -645,16 +645,35 @@ function buildFieldNodeInfoMap(
 // TYPE ALIAS CONSTRAINT PROPAGATION
 // =============================================================================
 
+/** Maximum depth for transitive type alias constraint propagation. */
+const MAX_ALIAS_CHAIN_DEPTH = 8;
+
 /**
  * Given a type node referencing a type alias, extracts IR ConstraintNodes
  * from the alias declaration's JSDoc tags.
+ *
+ * Follows alias chains transitively: if `type Percentage = Integer` and
+ * `type Integer = number`, constraints from both `Percentage` and `Integer`
+ * are collected. Constraints from closer aliases appear first in the result
+ * (higher precedence). Recursion is capped at {@link MAX_ALIAS_CHAIN_DEPTH}
+ * levels; exceeding the limit throws to surface pathological alias chains.
  */
 function extractTypeAliasConstraintNodes(
   typeNode: ts.TypeNode,
   checker: ts.TypeChecker,
-  file: string
+  file: string,
+  depth = 0
 ): ConstraintNode[] {
   if (!ts.isTypeReferenceNode(typeNode)) return [];
+
+  if (depth >= MAX_ALIAS_CHAIN_DEPTH) {
+    const aliasName = typeNode.typeName.getText();
+    throw new Error(
+      `Type alias chain exceeds maximum depth of ${String(MAX_ALIAS_CHAIN_DEPTH)} ` +
+        `at alias "${aliasName}" in ${file}. ` +
+        `Simplify the alias chain or check for circular references.`
+    );
+  }
 
   const symbol = checker.getSymbolAtLocation(typeNode.typeName);
   if (!symbol?.declarations) return [];
@@ -665,7 +684,14 @@ function extractTypeAliasConstraintNodes(
   // Don't extract from object type aliases
   if (ts.isTypeLiteralNode(aliasDecl.type)) return [];
 
-  return extractJSDocConstraintNodes(aliasDecl, file);
+  const constraints = extractJSDocConstraintNodes(aliasDecl, file);
+
+  // Transitively follow alias chains (e.g., Percentage → Integer → number)
+  // Constraints from parent aliases are appended after the immediate alias's
+  // constraints, giving the immediate alias higher precedence.
+  constraints.push(...extractTypeAliasConstraintNodes(aliasDecl.type, checker, file, depth + 1));
+
+  return constraints;
 }
 
 // =============================================================================

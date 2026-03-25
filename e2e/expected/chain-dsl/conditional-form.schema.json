@@ -3,11 +3,7 @@
   "type": "object",
   "properties": {
     "paymentMethod": {
-      "enum": [
-        "card",
-        "bank_transfer",
-        "crypto"
-      ],
+      "enum": ["card", "bank_transfer", "crypto"],
       "title": "Payment Method"
     },
     "cardNumber": {
@@ -31,9 +27,5 @@
       "title": "Save for later"
     }
   },
-  "required": [
-    "paymentMethod",
-    "cardNumber",
-    "accountNumber"
-  ]
+  "required": ["paymentMethod", "cardNumber", "accountNumber"]
 }

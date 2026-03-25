@@ -39,17 +39,17 @@ This package provides language server features for FormSpec's JSDoc constraint t
 
 - **Completion** — Autocomplete for constraint tag names inside JSDoc comments
 - **Hover** — Documentation on hover for constraint tags
-- **Go to Definition** — Navigate to constraint definitions *(placeholder — not yet implemented)*
+- **Go to Definition** — Navigate to constraint definitions _(placeholder — not yet implemented)_
 
 ## API Reference
 
 ### Functions
 
-| Function | Description |
-| --- | --- |
-| `createServer()` | Create a full LSP server connection |
-| `getCompletionItems()` | Get completion items for constraint tags |
-| `getDefinition()` | Get definition location for a constraint tag |
+| Function                  | Description                                     |
+| ------------------------- | ----------------------------------------------- |
+| `createServer()`          | Create a full LSP server connection             |
+| `getCompletionItems()`    | Get completion items for constraint tags        |
+| `getDefinition()`         | Get definition location for a constraint tag    |
 | `getHoverForTag(tagName)` | Get hover information for a constraint tag name |
 
 ### `createServer()`

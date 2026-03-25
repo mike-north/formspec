@@ -55,14 +55,17 @@ export interface BooleanField<N extends string> {
 
 // @public
 export const BUILTIN_CONSTRAINT_DEFINITIONS: {
-    readonly Minimum: "number";
-    readonly Maximum: "number";
-    readonly ExclusiveMinimum: "number";
-    readonly ExclusiveMaximum: "number";
-    readonly MinLength: "number";
-    readonly MaxLength: "number";
-    readonly Pattern: "string";
-    readonly EnumOptions: "json";
+    readonly minimum: "number";
+    readonly maximum: "number";
+    readonly exclusiveMinimum: "number";
+    readonly exclusiveMaximum: "number";
+    readonly multipleOf: "number";
+    readonly minLength: "number";
+    readonly maxLength: "number";
+    readonly minItems: "number";
+    readonly maxItems: "number";
+    readonly pattern: "string";
+    readonly enumOptions: "json";
 };
 
 // @public
@@ -412,6 +415,9 @@ export function isArrayField(element: FormElement): element is ArrayField<string
 export function isBooleanField(element: FormElement): element is BooleanField<string>;
 
 // @public
+export function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName;
+
+// @public
 export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
 
 // @public
@@ -459,6 +465,9 @@ export interface LengthConstraintNode {
     // (undocumented)
     readonly value: number;
 }
+
+// @public
+export function normalizeConstraintTagName(tagName: string): string;
 
 // @public
 export interface NumberField<N extends string> {

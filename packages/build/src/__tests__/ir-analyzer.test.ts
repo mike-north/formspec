@@ -322,7 +322,7 @@ describe("analyzeInterfaceToIR", () => {
 
     const nameField = findField(analysis.fields, "name");
     const minLength = findConstraint(nameField.constraints, "minLength");
-    expect(minLength.provenance.tagName).toBe("@MinLength");
+    expect(minLength.provenance.tagName).toBe("@minLength");
     expect(minLength.provenance.file).toBe(interfaceFixturePath);
     expect(minLength.provenance.line).toBeGreaterThan(0);
   });

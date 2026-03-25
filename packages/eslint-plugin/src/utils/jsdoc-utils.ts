@@ -4,11 +4,11 @@
 
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core";
+import { BUILTIN_CONSTRAINT_DEFINITIONS, normalizeConstraintTagName } from "@formspec/core";
 
 /** A constraint extracted from a JSDoc comment tag. */
 export interface JSDocConstraint {
-  /** The constraint name (e.g., "Minimum", "Maximum") */
+  /** The constraint name (e.g., "minimum", "maximum") */
   name: string;
   /** The parsed value */
   value: number | string;
@@ -20,17 +20,22 @@ const NUMERIC_TAG_NAMES = Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS).filter(
   (k) =>
     BUILTIN_CONSTRAINT_DEFINITIONS[k as keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS] === "number"
 );
-const NUMERIC_TAGS_PATTERN = NUMERIC_TAG_NAMES.join("|");
 
-// Numeric tags: value stops at the next `@` tag, `*/`, or end-of-line
+// Build alternation that matches both PascalCase (@Minimum) and camelCase (@minimum)
+// by including the uppercased-first-letter variant for each camelCase tag name.
+const NUMERIC_TAGS_PATTERN = NUMERIC_TAG_NAMES.map(
+  (name) => `${name}|${name.charAt(0).toUpperCase()}${name.slice(1)}`
+).join("|");
+
+// Numeric tags: value stops at the next `@` tag, `*/`, or end-of-line.
 const NUMERIC_TAG_REGEX = new RegExp(
   `@(${NUMERIC_TAGS_PATTERN})\\s+(.+?)(?=\\s*@|\\s*\\*\\/|\\s*$)`,
   "gm"
 );
 
 // Pattern tag: value captures everything until `*/` or end-of-line,
-// because regex patterns can contain `@` (e.g., email validation)
-const PATTERN_TAG_REGEX = /@Pattern\s+(.+?)(?=\s*\*\/|\s*$)/gm;
+// because regex patterns can contain `@` (e.g., email validation).
+const PATTERN_TAG_REGEX = /@[Pp]attern\s+(.+?)(?=\s*\*\/|\s*$)/gm;
 
 /**
  * Extracts constraint tags from JSDoc comments preceding a node.
@@ -71,9 +76,11 @@ export function getJSDocConstraints(
     NUMERIC_TAG_REGEX.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = NUMERIC_TAG_REGEX.exec(comment.value)) !== null) {
-      const name = match[1];
+      const rawName = match[1];
       const rawValue = match[2];
-      if (!name || !rawValue) continue;
+      if (!rawName || !rawValue) continue;
+      // Normalize PascalCase → camelCase canonical form
+      const name = normalizeConstraintTagName(rawName);
 
       const cleanedValue = rawValue.replace(/^\s*\*\s*/gm, "").trim();
       const parsed = Number(cleanedValue);
@@ -89,7 +96,7 @@ export function getJSDocConstraints(
 
       const cleanedValue = rawValue.replace(/^\s*\*\s*/gm, "").trim();
       if (cleanedValue === "") continue;
-      results.push({ name: "Pattern", value: cleanedValue, comment });
+      results.push({ name: "pattern", value: cleanedValue, comment });
     }
   }
 

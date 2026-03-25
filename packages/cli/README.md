@@ -64,13 +64,13 @@ formspec generate <file> [className] [options]
 
 **Options:**
 
-| Option | Description | Default |
-| --- | --- | --- |
-| `-o, --output <dir>` | Output directory | `./generated` |
-| `-c, --compiled <path>` | Path to compiled JS file | auto-detected |
-| `--emit-ir` | Emit Canonical IR as JSON alongside generated schemas | |
-| `--validate-only` | Validate input without writing files | |
-| `-h, --help` | Show help message | |
+| Option                  | Description                                           | Default       |
+| ----------------------- | ----------------------------------------------------- | ------------- |
+| `-o, --output <dir>`    | Output directory                                      | `./generated` |
+| `-c, --compiled <path>` | Path to compiled JS file                              | auto-detected |
+| `--emit-ir`             | Emit Canonical IR as JSON alongside generated schemas |               |
+| `--validate-only`       | Validate input without writing files                  |               |
+| `-h, --help`            | Show help message                                     |               |
 
 **Examples:**
 
@@ -102,8 +102,8 @@ class UserRegistration {
 
   /**
    * @DisplayName Age
-   * @Minimum 18
-   * @Maximum 120
+   * @minimum 18
+   * @maximum 120
    */
   age?: number;
 
@@ -118,33 +118,36 @@ formspec generate ./src/user-registration.ts UserRegistration -o ./generated
 
 ### Supported Tags
 
-| Tag | Purpose | Example |
-| --- | --- | --- |
-| `@DisplayName` | Set field label | `/** @DisplayName Full Name */` |
-| `@Description` | Set field description | `/** @Description Your legal name */` |
-| `@Placeholder` | Set placeholder text | `/** @Placeholder Enter name... */` |
-| `@Minimum` | Set minimum value | `/** @Minimum 0 */` |
-| `@Maximum` | Set maximum value | `/** @Maximum 100 */` |
-| `@ExclusiveMinimum` | Set exclusive minimum | `/** @ExclusiveMinimum 0 */` |
-| `@ExclusiveMaximum` | Set exclusive maximum | `/** @ExclusiveMaximum 100 */` |
-| `@MinLength` | Set minimum string length | `/** @MinLength 1 */` |
-| `@MaxLength` | Set maximum string length | `/** @MaxLength 255 */` |
-| `@Pattern` | Set validation regex | `/** @Pattern ^[a-z]+$ */` |
-| `@EnumOptions` | Override enum display | `/** @EnumOptions [{"id":"us","label":"US"}] */` |
+| Tag                 | Purpose                   | Example                                          |
+| ------------------- | ------------------------- | ------------------------------------------------ |
+| `@DisplayName`      | Set field label           | `/** @DisplayName Full Name */`                  |
+| `@Description`      | Set field description     | `/** @Description Your legal name */`            |
+| `@Placeholder`      | Set placeholder text      | `/** @Placeholder Enter name... */`              |
+| `@minimum`          | Set minimum value         | `/** @minimum 0 */`                              |
+| `@maximum`          | Set maximum value         | `/** @maximum 100 */`                            |
+| `@exclusiveMinimum` | Set exclusive minimum     | `/** @exclusiveMinimum 0 */`                     |
+| `@exclusiveMaximum` | Set exclusive maximum     | `/** @exclusiveMaximum 100 */`                   |
+| `@multipleOf`       | Set numeric step          | `/** @multipleOf 0.01 */`                        |
+| `@minLength`        | Set minimum string length | `/** @minLength 1 */`                            |
+| `@maxLength`        | Set maximum string length | `/** @maxLength 255 */`                          |
+| `@minItems`         | Set minimum array length  | `/** @minItems 1 */`                             |
+| `@maxItems`         | Set maximum array length  | `/** @maxItems 10 */`                            |
+| `@pattern`          | Set validation regex      | `/** @pattern ^[a-z]+$ */`                       |
+| `@enumOptions`      | Override enum display     | `/** @enumOptions [{"id":"us","label":"US"}] */` |
 
 ### Type Inference
 
 The CLI automatically infers JSON Schema types from TypeScript:
 
-| TypeScript Type | JSON Schema | FormSpec Field |
-| --- | --- | --- |
-| `string` | `{ "type": "string" }` | text |
-| `number` | `{ "type": "number" }` | number |
-| `boolean` | `{ "type": "boolean" }` | boolean |
-| `"a" \| "b"` | `{ "enum": ["a", "b"] }` | enum |
-| `string[]` | `{ "type": "array", "items": {...} }` | array |
-| `{ a: string }` | `{ "type": "object", "properties": {...} }` | object |
-| `field?: T` | not in `required` array | optional |
+| TypeScript Type | JSON Schema                                 | FormSpec Field |
+| --------------- | ------------------------------------------- | -------------- |
+| `string`        | `{ "type": "string" }`                      | text           |
+| `number`        | `{ "type": "number" }`                      | number         |
+| `boolean`       | `{ "type": "boolean" }`                     | boolean        |
+| `"a" \| "b"`    | `{ "enum": ["a", "b"] }`                    | enum           |
+| `string[]`      | `{ "type": "array", "items": {...} }`       | array          |
+| `{ a: string }` | `{ "type": "object", "properties": {...} }` | object         |
+| `field?: T`     | not in `required` array                     | optional       |
 
 ## Chain DSL Support
 

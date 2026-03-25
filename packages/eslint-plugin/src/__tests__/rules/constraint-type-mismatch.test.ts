@@ -119,6 +119,33 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
+    // @multipleOf on number field — valid
+    {
+      code: `
+        class Form {
+          /** @multipleOf 0.01 */
+          price!: number;
+        }
+      `,
+    },
+    // @minItems on array field — valid
+    {
+      code: `
+        class Form {
+          /** @minItems 1 */
+          tags!: string[];
+        }
+      `,
+    },
+    // @maxItems on array field — valid
+    {
+      code: `
+        class Form {
+          /** @maxItems 10 */
+          items!: number[];
+        }
+      `,
+    },
   ],
   invalid: [
     // @Minimum on string field
@@ -210,6 +237,36 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
       errors: [{ messageId: "numericOnNonNumber" }, { messageId: "numericOnNonNumber" }],
+    },
+    // @multipleOf on string field
+    {
+      code: `
+        class Form {
+          /** @multipleOf 0.01 */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "numericOnNonNumber" }],
+    },
+    // @minItems on string field
+    {
+      code: `
+        class Form {
+          /** @minItems 1 */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
+    },
+    // @maxItems on number field
+    {
+      code: `
+        class Form {
+          /** @maxItems 10 */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "arrayOnNonArray" }],
     },
   ],
 });

@@ -4,12 +4,12 @@ interface MonetaryAmount {
 }
 
 export class Invoice {
-  /** @Minimum :value 0 @Maximum :value 9999999.99 */
+  /** @minimum :value 0 @maximum :value 9999999.99 */
   total!: MonetaryAmount;
 
-  /** @MinLength :currency 3 @MaxLength :currency 3 @Pattern :currency ^[A-Z]{3}$ */
+  /** @minLength :currency 3 @maxLength :currency 3 @pattern :currency ^[A-Z]{3}$ */
   discount!: MonetaryAmount;
 
-  /** @Minimum :value 0 */
+  /** @minimum :value 0 */
   lineItems!: MonetaryAmount[];
 }

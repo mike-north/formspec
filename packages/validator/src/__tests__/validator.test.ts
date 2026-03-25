@@ -238,7 +238,7 @@ describe("createFormSpecValidator", () => {
             age: { type: "number" },
           },
         },
-        { shortCircuit: false },
+        { shortCircuit: false }
       );
 
       const result = v.validate({});
@@ -321,7 +321,7 @@ describe("createFormSpecValidator", () => {
           definitions: { Str: { type: "string" } },
           $ref: "#/definitions/Str",
         },
-        { draft: "7" },
+        { draft: "7" }
       );
 
       expect(v.validate("hello").valid).toBe(true);

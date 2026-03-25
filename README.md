@@ -267,18 +267,18 @@ Added to dynamic enum fields with dependencies. Lists field names whose values a
 
 FormSpec is organized as a monorepo with the following packages:
 
-| Package | Description |
-| --- | --- |
-| `formspec` | Main package with all re-exports (recommended) |
-| `@formspec/core` | Core type definitions |
-| `@formspec/dsl` | DSL functions (`field`, `group`, `when`, `formspec`) |
-| `@formspec/build` | Schema generators |
-| `@formspec/runtime` | Resolver helpers |
-| `@formspec/constraints` | Constraint definitions and validators |
-| `@formspec/validator` | JSON Schema validation for secure runtimes |
-| `@formspec/eslint-plugin` | ESLint rules for FormSpec |
-| `@formspec/language-server` | Language server for editor integration |
-| `@formspec/playground` | Interactive browser editor (private) |
+| Package                     | Description                                          |
+| --------------------------- | ---------------------------------------------------- |
+| `formspec`                  | Main package with all re-exports (recommended)       |
+| `@formspec/core`            | Core type definitions                                |
+| `@formspec/dsl`             | DSL functions (`field`, `group`, `when`, `formspec`) |
+| `@formspec/build`           | Schema generators                                    |
+| `@formspec/runtime`         | Resolver helpers                                     |
+| `@formspec/constraints`     | Constraint definitions and validators                |
+| `@formspec/validator`       | JSON Schema validation for secure runtimes           |
+| `@formspec/eslint-plugin`   | ESLint rules for FormSpec                            |
+| `@formspec/language-server` | Language server for editor integration               |
+| `@formspec/playground`      | Interactive browser editor (private)                 |
 
 For most use cases, just import from `formspec`:
 

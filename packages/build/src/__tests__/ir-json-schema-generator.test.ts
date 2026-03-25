@@ -1385,7 +1385,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Minimum",
+                  tagName: "@minimum",
                 },
               },
             ]
@@ -1433,7 +1433,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Pattern",
+                  tagName: "@pattern",
                 },
               },
             ]
@@ -1474,7 +1474,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Minimum",
+                  tagName: "@minimum",
                 },
               },
               {
@@ -1486,7 +1486,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@MinItems",
+                  tagName: "@minItems",
                 },
               },
             ]
@@ -1542,7 +1542,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@MinLength",
+                  tagName: "@minLength",
                 },
               },
             ]
@@ -1567,26 +1567,21 @@ describe("generateJsonSchemaFromIR", () => {
         kind: "form-ir",
         irVersion: IR_VERSION,
         elements: [
-          makeField(
-            "count",
-            { kind: "primitive", primitiveKind: "number" },
-            true,
-            [
-              {
-                kind: "constraint",
-                constraintKind: "minimum",
-                value: 0,
-                path: { segments: ["value"] },
-                provenance: {
-                  surface: "tsdoc",
-                  file: "/test.ts",
-                  line: 1,
-                  column: 0,
-                  tagName: "@Minimum",
-                },
+          makeField("count", { kind: "primitive", primitiveKind: "number" }, true, [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: {
+                surface: "tsdoc",
+                file: "/test.ts",
+                line: 1,
+                column: 0,
+                tagName: "@minimum",
               },
-            ]
-          ),
+            },
+          ]),
         ],
         typeRegistry: {},
         provenance: PROVENANCE,
@@ -1619,7 +1614,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Minimum",
+                  tagName: "@minimum",
                 },
               },
               {
@@ -1632,7 +1627,7 @@ describe("generateJsonSchemaFromIR", () => {
                   file: "/test.ts",
                   line: 1,
                   column: 0,
-                  tagName: "@Maximum",
+                  tagName: "@maximum",
                 },
               },
             ],

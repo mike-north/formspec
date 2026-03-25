@@ -3,7 +3,7 @@
  *
  * Extracts constraints and annotation tags from JSDoc comments on
  * class/interface fields and returns canonical IR nodes directly:
- * - {@link ConstraintNode} for set-influencing tags (@Minimum, @Pattern, etc.)
+ * - {@link ConstraintNode} for set-influencing tags (@minimum, @pattern, etc.)
  * - {@link AnnotationNode} for value-influencing tags (@Field_displayName, etc.)
  *
  * The IR extraction path uses the official `@microsoft/tsdoc` parser for
@@ -12,12 +12,13 @@
  * `@Field_displayName`).
  *
  * Supported constraints correspond to keys in {@link BUILTIN_CONSTRAINT_DEFINITIONS}
- * from `@formspec/core` (e.g., `@Minimum`, `@Maximum`, `@Pattern`).
+ * from `@formspec/core` (e.g., `@minimum`, `@maximum`, `@pattern`).
  */
 
 import * as ts from "typescript";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
+  normalizeConstraintTagName,
   type BuiltinConstraintName,
   type ConstraintNode,
   type AnnotationNode,
@@ -170,7 +171,8 @@ export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
   const jsDocTags = ts.getJSDocTags(node);
 
   for (const tag of jsDocTags) {
-    const tagName = tag.tagName.text;
+    // Normalize to camelCase canonical form (e.g., "Minimum" → "minimum")
+    const tagName = normalizeConstraintTagName(tag.tagName.text);
 
     if (!(tagName in BUILTIN_CONSTRAINT_DEFINITIONS)) {
       continue;

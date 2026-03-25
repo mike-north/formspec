@@ -1015,7 +1015,9 @@ describe("validateIR", () => {
       const result = validateIR(ir);
 
       // Should NOT produce a "cannot be traversed" diagnostic
-      expect(result.diagnostics.filter((d) => d.message.includes("cannot be traversed"))).toHaveLength(0);
+      expect(
+        result.diagnostics.filter((d) => d.message.includes("cannot be traversed"))
+      ).toHaveLength(0);
     });
   });
 });

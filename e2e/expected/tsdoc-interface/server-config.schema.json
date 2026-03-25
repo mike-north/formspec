@@ -9,10 +9,7 @@
       "type": "number"
     },
     "protocol": {
-      "enum": [
-        "http",
-        "https"
-      ]
+      "enum": ["http", "https"]
     },
     "maxConnections": {
       "type": "number"
@@ -33,11 +30,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "host",
-        "port",
-        "name"
-      ],
+      "required": ["host", "port", "name"],
       "additionalProperties": false
     },
     "allowedOrigins": {
@@ -47,11 +40,5 @@
       }
     }
   },
-  "required": [
-    "hostname",
-    "port",
-    "protocol",
-    "enableLogging",
-    "database"
-  ]
+  "required": ["hostname", "port", "protocol", "enableLogging", "database"]
 }

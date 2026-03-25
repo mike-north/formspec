@@ -6,7 +6,11 @@
  * detection within JSDoc comment ranges will be added in a future phase.
  */
 
-import { BUILTIN_CONSTRAINT_DEFINITIONS, type BuiltinConstraintName } from "@formspec/core";
+import {
+  normalizeConstraintTagName,
+  isBuiltinConstraintName,
+  type BuiltinConstraintName,
+} from "@formspec/core";
 import type { Hover } from "vscode-languageserver/node.js";
 
 /**
@@ -16,8 +20,8 @@ import type { Hover } from "vscode-languageserver/node.js";
  * Values are Markdown strings suitable for LSP hover responses.
  */
 const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
-  Minimum: [
-    "**@Minimum** `<number>`",
+  minimum: [
+    "**@minimum** `<number>`",
     "",
     "Sets an inclusive lower bound on a numeric field.",
     "",
@@ -25,13 +29,13 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @Minimum 0 */",
+    "/** @minimum 0 */",
     "amount: number;",
     "```",
   ].join("\n"),
 
-  Maximum: [
-    "**@Maximum** `<number>`",
+  maximum: [
+    "**@maximum** `<number>`",
     "",
     "Sets an inclusive upper bound on a numeric field.",
     "",
@@ -39,13 +43,13 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @Maximum 100 */",
+    "/** @maximum 100 */",
     "percentage: number;",
     "```",
   ].join("\n"),
 
-  ExclusiveMinimum: [
-    "**@ExclusiveMinimum** `<number>`",
+  exclusiveMinimum: [
+    "**@exclusiveMinimum** `<number>`",
     "",
     "Sets an exclusive lower bound on a numeric field.",
     "",
@@ -53,13 +57,13 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @ExclusiveMinimum 0 */",
+    "/** @exclusiveMinimum 0 */",
     "positiveAmount: number;",
     "```",
   ].join("\n"),
 
-  ExclusiveMaximum: [
-    "**@ExclusiveMaximum** `<number>`",
+  exclusiveMaximum: [
+    "**@exclusiveMaximum** `<number>`",
     "",
     "Sets an exclusive upper bound on a numeric field.",
     "",
@@ -67,13 +71,27 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @ExclusiveMaximum 1 */",
+    "/** @exclusiveMaximum 1 */",
     "ratio: number;",
     "```",
   ].join("\n"),
 
-  MinLength: [
-    "**@MinLength** `<number>`",
+  multipleOf: [
+    "**@multipleOf** `<number>`",
+    "",
+    "Requires the numeric value to be a multiple of the given number.",
+    "",
+    "Maps to `multipleOf` in JSON Schema.",
+    "",
+    "**Example:**",
+    "```typescript",
+    "/** @multipleOf 0.01 */",
+    "price: number;",
+    "```",
+  ].join("\n"),
+
+  minLength: [
+    "**@minLength** `<number>`",
     "",
     "Sets a minimum character length on a string field.",
     "",
@@ -81,13 +99,13 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @MinLength 1 */",
+    "/** @minLength 1 */",
     "name: string;",
     "```",
   ].join("\n"),
 
-  MaxLength: [
-    "**@MaxLength** `<number>`",
+  maxLength: [
+    "**@maxLength** `<number>`",
     "",
     "Sets a maximum character length on a string field.",
     "",
@@ -95,13 +113,41 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @MaxLength 255 */",
+    "/** @maxLength 255 */",
     "description: string;",
     "```",
   ].join("\n"),
 
-  Pattern: [
-    "**@Pattern** `<regex>`",
+  minItems: [
+    "**@minItems** `<number>`",
+    "",
+    "Sets a minimum number of items in an array field.",
+    "",
+    "Maps to `minItems` in JSON Schema.",
+    "",
+    "**Example:**",
+    "```typescript",
+    "/** @minItems 1 */",
+    "tags: string[];",
+    "```",
+  ].join("\n"),
+
+  maxItems: [
+    "**@maxItems** `<number>`",
+    "",
+    "Sets a maximum number of items in an array field.",
+    "",
+    "Maps to `maxItems` in JSON Schema.",
+    "",
+    "**Example:**",
+    "```typescript",
+    "/** @maxItems 10 */",
+    "tags: string[];",
+    "```",
+  ].join("\n"),
+
+  pattern: [
+    "**@pattern** `<regex>`",
     "",
     "Sets a regular expression pattern that a string field must match.",
     "",
@@ -109,13 +155,13 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    "/** @Pattern ^[a-z0-9]+$ */",
+    "/** @pattern ^[a-z0-9]+$ */",
     "slug: string;",
     "```",
   ].join("\n"),
 
-  EnumOptions: [
-    "**@EnumOptions** `<json-array>`",
+  enumOptions: [
+    "**@enumOptions** `<json-array>`",
     "",
     "Specifies the allowed values for an enum field as an inline JSON array.",
     "",
@@ -123,36 +169,26 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "",
     "**Example:**",
     "```typescript",
-    '/** @EnumOptions ["draft","sent","archived"] */',
+    '/** @enumOptions ["draft","sent","archived"] */',
     "status: string;",
     "```",
   ].join("\n"),
 } satisfies Record<BuiltinConstraintName, string>;
 
 /**
- * Checks whether a given string is a recognized built-in constraint name.
- *
- * @param name - The name to check
- * @returns `true` if `name` is a `BuiltinConstraintName`
- */
-function isBuiltinConstraintName(name: string): name is BuiltinConstraintName {
-  return Object.prototype.hasOwnProperty.call(BUILTIN_CONSTRAINT_DEFINITIONS, name);
-}
-
-/**
  * Returns hover documentation for a FormSpec JSDoc tag name.
  *
- * The tag name lookup is case-sensitive and matches the canonical casing used
- * in `BUILTIN_CONSTRAINT_DEFINITIONS` (e.g., `"Minimum"`, `"Pattern"`).
+ * Accepts both camelCase (`"minimum"`) and PascalCase (`"Minimum"`) forms.
  * The `@` prefix is stripped before lookup if present.
  * Returns `null` when the tag is not a recognized FormSpec constraint tag.
  *
- * @param tagName - The tag name to look up (e.g., `"Minimum"`, `"@Pattern"`)
+ * @param tagName - The tag name to look up (e.g., `"minimum"`, `"@pattern"`)
  * @returns An LSP `Hover` response, or `null` if the tag is not recognized
  */
 export function getHoverForTag(tagName: string): Hover | null {
   // Strip leading `@` prefix if present
-  const name = tagName.startsWith("@") ? tagName.slice(1) : tagName;
+  const raw = tagName.startsWith("@") ? tagName.slice(1) : tagName;
+  const name = normalizeConstraintTagName(raw);
 
   if (!isBuiltinConstraintName(name)) {
     return null;

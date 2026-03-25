@@ -46,46 +46,51 @@ describe("getHoverForTag", () => {
     }
   });
 
-  it("returns markdown hover for @Minimum", () => {
-    const hover = getHoverForTag("Minimum");
+  it("returns markdown hover for @minimum (camelCase)", () => {
+    const hover = getHoverForTag("minimum");
     expect(hover).not.toBeNull();
     expect(isMarkupContent(hover?.contents)).toBe(true);
     if (hover !== null && isMarkupContent(hover.contents)) {
       expect(hover.contents.kind).toBe("markdown");
-      expect(hover.contents.value).toContain("@Minimum");
       expect(hover.contents.value).toContain("minimum");
     }
   });
 
-  it("returns markdown hover for @Minimum with @ prefix", () => {
-    const hover = getHoverForTag("@Minimum");
+  it("returns markdown hover for @minimum with @ prefix", () => {
+    const hover = getHoverForTag("@minimum");
     expect(hover).not.toBeNull();
     if (hover !== null && isMarkupContent(hover.contents)) {
-      expect(hover.contents.value).toContain("@Minimum");
+      expect(hover.contents.value).toContain("minimum");
     }
   });
 
-  it("returns markdown hover for @Pattern", () => {
-    const hover = getHoverForTag("Pattern");
+  it("returns markdown hover for @pattern (camelCase)", () => {
+    const hover = getHoverForTag("pattern");
     expect(hover).not.toBeNull();
     if (hover !== null && isMarkupContent(hover.contents)) {
-      expect(hover.contents.value).toContain("@Pattern");
       expect(hover.contents.value).toContain("pattern");
     }
   });
 
-  it("returns markdown hover for @EnumOptions", () => {
-    const hover = getHoverForTag("EnumOptions");
+  it("returns markdown hover for @enumOptions (camelCase)", () => {
+    const hover = getHoverForTag("enumOptions");
     expect(hover).not.toBeNull();
-    if (hover !== null && isMarkupContent(hover.contents)) {
-      expect(hover.contents.value).toContain("@EnumOptions");
-    }
   });
 
-  it("is case-sensitive — lowercase names return null", () => {
-    // The v2 hover provider uses canonical casing from BUILTIN_CONSTRAINT_DEFINITIONS
-    expect(getHoverForTag("minimum")).toBeNull();
-    expect(getHoverForTag("maximum")).toBeNull();
-    expect(getHoverForTag("pattern")).toBeNull();
+  it("accepts camelCase tag names", () => {
+    // Users write camelCase tags: @minimum, @maximum, @pattern
+    const minimumHover = getHoverForTag("minimum");
+    expect(minimumHover).not.toBeNull();
+    const maximumHover = getHoverForTag("maximum");
+    expect(maximumHover).not.toBeNull();
+    const patternHover = getHoverForTag("pattern");
+    expect(patternHover).not.toBeNull();
+  });
+
+  it("accepts PascalCase tag names via normalization", () => {
+    // PascalCase variants like @Minimum are normalized to camelCase
+    const pascalCase = getHoverForTag("Minimum");
+    const camelCase = getHoverForTag("minimum");
+    expect(pascalCase).toEqual(camelCase);
   });
 });

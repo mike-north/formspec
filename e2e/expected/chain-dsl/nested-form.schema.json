@@ -22,10 +22,7 @@
           "title": "ZIP"
         }
       },
-      "required": [
-        "street",
-        "city"
-      ],
+      "required": ["street", "city"],
       "additionalProperties": false,
       "title": "Billing Address"
     },
@@ -45,10 +42,7 @@
           "title": "ZIP"
         }
       },
-      "required": [
-        "street",
-        "city"
-      ],
+      "required": ["street", "city"],
       "additionalProperties": false,
       "title": "Shipping Address"
     },
@@ -73,9 +67,7 @@
             "title": "Price"
           }
         },
-        "required": [
-          "description"
-        ],
+        "required": ["description"],
         "additionalProperties": false
       },
       "minItems": 1,
@@ -83,9 +75,5 @@
       "title": "Line Items"
     }
   },
-  "required": [
-    "customerName",
-    "billingAddress",
-    "lineItems"
-  ]
+  "required": ["customerName", "billingAddress", "lineItems"]
 }

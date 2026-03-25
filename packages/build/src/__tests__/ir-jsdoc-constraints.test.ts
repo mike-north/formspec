@@ -254,7 +254,7 @@ describe("extractJSDocConstraintNodes", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("is case-sensitive: ignores lowercase @minimum", () => {
+  it("accepts lowercase (camelCase) constraint tags", () => {
     const prop = getPropertyFromSource(`
       class Foo {
         /** @minimum 5 */
@@ -263,7 +263,8 @@ describe("extractJSDocConstraintNodes", () => {
     `);
 
     const result = extractJSDocConstraintNodes(prop);
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ constraintKind: "minimum", value: 5 });
   });
 
   it("returns empty array for node with no JSDoc", () => {
@@ -287,7 +288,7 @@ describe("extractJSDocConstraintNodes", () => {
 
     const result = extractJSDocConstraintNodes(prop, "/test.ts");
     expect(result).toHaveLength(1);
-    expect(result[0]?.provenance.tagName).toBe("@Minimum");
+    expect(result[0]?.provenance.tagName).toBe("@minimum");
     expect(result[0]?.provenance.file).toBe("/test.ts");
     expect(result[0]?.provenance.surface).toBe("tsdoc");
     expect(result[0]?.provenance.line).toBeGreaterThan(0);
