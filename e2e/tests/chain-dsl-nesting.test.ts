@@ -9,8 +9,7 @@ import { NestedForm } from "../fixtures/chain-dsl/nested-form.js";
 import { assertValidJsonSchema, assertNestedProperty } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Nesting", () => {
-  const result = buildFormSchemas(NestedForm);
-  const { jsonSchema, uiSchema } = result;
+  const { jsonSchema, uiSchema } = buildFormSchemas(NestedForm);
   const schema = jsonSchema as Record<string, unknown>;
   const properties = schema["properties"] as Record<string, Record<string, unknown>>;
 

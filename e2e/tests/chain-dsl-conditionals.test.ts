@@ -14,8 +14,7 @@ import {
 } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Conditionals", () => {
-  const result = buildFormSchemas(ConditionalForm);
-  const { jsonSchema, uiSchema } = result;
+  const { jsonSchema, uiSchema } = buildFormSchemas(ConditionalForm);
   const schema = jsonSchema as Record<string, unknown>;
   const properties = schema["properties"] as Record<string, Record<string, unknown>>;
   const required = schema["required"] as string[];
