@@ -102,6 +102,18 @@ describe("Record<string, T> Type Mapping", () => {
     });
   });
 
+  describe("Spec-expected Record mapping (BUG-3)", () => {
+    it.skip("metadata should have additionalProperties: { type: 'string' } per spec 003 §2.5", () => {
+      // Record<string, string> should structurally expand to:
+      // { "type": "object", "additionalProperties": { "type": "string" } }
+      // NOT be lifted to $defs or have additionalProperties: false
+      expect(properties["metadata"]).toEqual({
+        type: "object",
+        additionalProperties: { type: "string" },
+      });
+    });
+  });
+
   describe("Gold-master comparison", () => {
     it("matches expected JSON Schema", () => {
       const expected = loadExpected("tsdoc-class/product-form.schema.json");
