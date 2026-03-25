@@ -1,5 +1,15 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.14
+
+### Patch Changes
+
+- [#83](https://github.com/mike-north/formspec/pull/83) [`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec) Thanks [@mike-north](https://github.com/mike-north)! - Fix ESLint JSDoc constraint regex: path-targeted constraint tags (e.g., `@minimum :value 0`) are now correctly parsed and no longer trigger false-positive rule violations
+
+- Updated dependencies [[`61c320c`](https://github.com/mike-north/formspec/commit/61c320c53471e8f7fecdbd240517943e068decec)]:
+  - @formspec/core@0.1.0-alpha.14
+  - @formspec/constraints@0.1.0-alpha.14
+
 ## 0.1.0-alpha.13
 
 ### Patch Changes
