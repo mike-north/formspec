@@ -2,11 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Class Pipeline", () => {
   let tempDir: string;
@@ -53,5 +49,4 @@ describe("TSDoc Class Pipeline", () => {
     expect(properties["currency"]).toBeDefined();
     expect(properties["currency"]["enum"]).toEqual(expect.arrayContaining(["usd", "eur", "gbp"]));
   });
-
 });

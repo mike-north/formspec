@@ -14,11 +14,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Inherited Constraints", () => {
   let tempDir: string;
@@ -104,5 +100,4 @@ describe("TSDoc Inherited Constraints", () => {
       expect(el?.["type"]).toBe("Control");
     });
   });
-
 });

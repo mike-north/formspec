@@ -2,11 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Shared Types ($defs/$ref)", () => {
   let tempDir: string;
@@ -55,5 +51,4 @@ describe("TSDoc Shared Types ($defs/$ref)", () => {
     expect(required).toContain("shippingAddress");
     expect(required).not.toContain("notes");
   });
-
 });

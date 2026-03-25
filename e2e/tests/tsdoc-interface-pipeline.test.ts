@@ -2,11 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Interface Pipeline", () => {
   let tempDir: string;
@@ -51,5 +47,4 @@ describe("TSDoc Interface Pipeline", () => {
     expect(properties["protocol"]).toBeDefined();
     expect(properties["protocol"]["enum"]).toEqual(expect.arrayContaining(["http", "https"]));
   });
-
 });

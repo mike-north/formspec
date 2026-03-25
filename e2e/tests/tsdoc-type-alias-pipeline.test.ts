@@ -2,11 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Type Alias Pipeline", () => {
   let tempDir: string;
@@ -47,5 +43,4 @@ describe("TSDoc Type Alias Pipeline", () => {
   it("boolean field has boolean type", () => {
     expect(properties["enableAlerts"]["type"]).toBe("boolean");
   });
-
 });

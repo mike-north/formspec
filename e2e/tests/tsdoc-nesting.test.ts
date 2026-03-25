@@ -91,5 +91,4 @@ describe("TSDoc Nested Objects", () => {
     expect(required).toContain("items");
     expect(required).not.toContain("notes");
   });
-
 });

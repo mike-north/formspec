@@ -6,10 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
 import { NestedForm } from "../fixtures/chain-dsl/nested-form.js";
-import {
-  assertValidJsonSchema,
-  assertNestedProperty,
-} from "../helpers/schema-assertions.js";
+import { assertValidJsonSchema, assertNestedProperty } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Nesting", () => {
   const result = buildFormSchemas(NestedForm);
@@ -156,7 +153,6 @@ describe("Chain DSL Nesting", () => {
       expect(addressControl["type"]).toBe("Control");
     });
   });
-
 });
 
 /** Recursively collect all scope values from a UI Schema tree. */

@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
 import { ContactForm } from "../fixtures/chain-dsl/contact-form.js";
-import {
-  assertValidJsonSchema,
-  assertPropertyConstraints,
-} from "../helpers/schema-assertions.js";
+import { assertValidJsonSchema, assertPropertyConstraints } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Pipeline", () => {
   const result = buildFormSchemas(ContactForm);
@@ -53,5 +50,4 @@ describe("Chain DSL Pipeline", () => {
       expect(elements.length).toBeGreaterThan(0);
     });
   });
-
 });

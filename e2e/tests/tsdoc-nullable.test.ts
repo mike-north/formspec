@@ -7,11 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import {
-  runCli,
-  resolveFixture,
-  findSchemaFile,
-} from "../helpers/schema-assertions.js";
+import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
 describe("TSDoc Nullable Types", () => {
   let tempDir: string;
@@ -78,5 +74,4 @@ describe("TSDoc Nullable Types", () => {
     expect(properties["tags"]["type"]).toBe("array");
     expect(properties["tags"]["items"]).toEqual({ type: "string" });
   });
-
 });

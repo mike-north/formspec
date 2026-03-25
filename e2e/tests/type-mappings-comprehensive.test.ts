@@ -59,29 +59,14 @@ describe("Type Mappings — comprehensive", () => {
     it.skip("BUG: nullableString: string | null → oneOf NOT anyOf", () => {
       // Spec 003 §2.3 explicitly states oneOf for nullable types.
       // Current implementation uses anyOf.
-      expect(properties["nullableString"]["oneOf"]).toEqual([
-        { type: "string" },
-        { type: "null" },
-      ]);
+      expect(properties["nullableString"]["oneOf"]).toEqual([{ type: "string" }, { type: "null" }]);
       expect(properties["nullableString"]["anyOf"]).toBeUndefined();
     });
 
-    it.skip("BUG: nullableNumber: number | null → oneOf NOT anyOf", () => {
-      expect(properties["nullableNumber"]["oneOf"]).toEqual([
-        { type: "number" },
-        { type: "null" },
-      ]);
+    // spec 003 §2.3: T | null → oneOf (fixed in PR #85)
+    it("nullableNumber: number | null → oneOf", () => {
+      expect(properties["nullableNumber"]["oneOf"]).toEqual([{ type: "number" }, { type: "null" }]);
       expect(properties["nullableNumber"]["anyOf"]).toBeUndefined();
-    });
-
-    // Document current (non-spec) behavior so tests don't silently fail
-    it("nullableString uses anyOf [current behavior, not spec-compliant]", () => {
-      // spec 003 §2.3: T | null → oneOf; current impl emits anyOf
-      const prop = properties["nullableString"];
-      const union = prop["anyOf"] as unknown[] | undefined;
-      expect(union).toBeDefined();
-      expect(union).toContainEqual({ type: "string" });
-      expect(union).toContainEqual({ type: "null" });
     });
   });
 
