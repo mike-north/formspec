@@ -287,6 +287,18 @@ async function main(): Promise<void> {
     let loadedFormSpecs = new Map<string, FormSpecSchemas>();
     let rawModuleFromLoad: Record<string, unknown> | undefined;
     let loadError: string | undefined;
+    let reportedRuntimeLoadFailure = false;
+    const warnRuntimeLoadFailureOnce = (): void => {
+      if (loadError === undefined || reportedRuntimeLoadFailure) {
+        return;
+      }
+
+      console.warn(
+        "⚠️  Runtime FormSpec loading failed; method schemas that reference FormSpec exports may fall back to static analysis."
+      );
+      console.warn(`   ${loadError}`);
+      reportedRuntimeLoadFailure = true;
+    };
     try {
       const { formSpecs, module } = await loadFormSpecs(compiledPath);
       loadedFormSpecs = formSpecs;
@@ -374,6 +386,7 @@ async function main(): Promise<void> {
           // Load specific FormSpecs if not already loaded
           const missing = Array.from(formSpecRefs).filter((name) => !loadedFormSpecs.has(name));
           if (missing.length > 0) {
+            warnRuntimeLoadFailureOnce();
             try {
               const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
               for (const [name, schemas] of namedFormSpecs) {

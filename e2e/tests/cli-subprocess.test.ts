@@ -226,6 +226,46 @@ export const BadImportForm = formspec(
       expect(output).not.toMatch(/\n\s*at\s+/);
     });
 
+    it("surfaces module load failures before falling back for FormSpec-backed method params", () => {
+      const { tsPath, jsPath } = writeTempFixture(
+        tempDir,
+        "method-params-load-failure",
+        `
+import type { InferFormSchema } from "@formspec/dsl";
+
+declare const ActivateParams: unknown;
+
+export class InstallmentPlan {
+  activate(params: InferFormSchema<typeof ActivateParams>): { success: boolean } {
+    return { success: Boolean(params) };
+  }
+}
+`,
+        `
+import "./missing-method-params-dependency.js";
+import { formspec, field } from "@formspec/dsl";
+
+export const ActivateParams = formspec(
+  field.number("amount", { label: "Amount (cents)", min: 100 })
+);
+`
+      );
+
+      if (!jsPath) throw new Error("Expected compiled method-params-load-failure fixture");
+      const outDir = path.join(tempDir, "method-params-load-failure");
+      const result = runCli(["generate", tsPath, "InstallmentPlan", "--compiled", jsPath, "-o", outDir]);
+      const output = result.stdout + result.stderr;
+      const runtimeLoadFailure = "Runtime FormSpec loading failed";
+      const staticFallback = 'FormSpec export "ActivateParams" not found, using static analysis';
+
+      expect(result.exitCode).toBe(0);
+      expect(output).toContain(runtimeLoadFailure);
+      expect(output).toContain("missing-method-params-dependency.js");
+      expect(output).toContain(staticFallback);
+      expect(output.indexOf(runtimeLoadFailure)).toBeLessThan(output.indexOf(staticFallback));
+      expect(output).not.toMatch(/\n\s*at\s+/);
+    });
+
     it.skip("BUG: circular references should fail clearly instead of silently degrading", () => {
       const fixturePath = resolveFixture("cli", "circular-node.ts");
       const result = runCli(["generate", fixturePath, "CircularNode", "-o", tempDir]);
