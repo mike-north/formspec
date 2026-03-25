@@ -1,0 +1,25 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/port"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/hostname"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/logLevel"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/timeoutMs"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/allowedOrigins"
+    }
+  ]
+}

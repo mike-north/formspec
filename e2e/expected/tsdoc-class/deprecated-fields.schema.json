@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "oldField": {
+      "type": "string",
+      "deprecated": true
+    },
+    "legacyName": {
+      "type": "string",
+      "deprecated": true
+    }
+  },
+  "required": ["name"]
+}
