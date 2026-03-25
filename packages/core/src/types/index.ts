@@ -53,6 +53,7 @@ export type {
   ArrayTypeNode,
   ObjectProperty,
   ObjectTypeNode,
+  RecordTypeNode,
   UnionTypeNode,
   ReferenceTypeNode,
   DynamicTypeNode,

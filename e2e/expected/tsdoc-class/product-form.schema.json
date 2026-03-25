@@ -24,15 +24,11 @@
       }
     },
     "metadata": {
-      "$ref": "#/$defs/Record"
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   },
-  "required": ["name", "price", "currency", "active"],
-  "$defs": {
-    "Record": {
-      "type": "object",
-      "properties": {},
-      "additionalProperties": false
-    }
-  }
+  "required": ["name", "price", "currency", "active"]
 }

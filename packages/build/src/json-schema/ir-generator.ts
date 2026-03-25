@@ -17,6 +17,7 @@ import type {
   EnumTypeNode,
   ArrayTypeNode,
   ObjectTypeNode,
+  RecordTypeNode,
   UnionTypeNode,
   ReferenceTypeNode,
   DynamicTypeNode,
@@ -44,7 +45,7 @@ export interface JsonSchema2020 {
   properties?: Record<string, JsonSchema2020>;
   required?: string[];
   items?: JsonSchema2020;
-  additionalProperties?: boolean;
+  additionalProperties?: boolean | JsonSchema2020;
   enum?: readonly (string | number)[];
   const?: string | number | boolean | null;
   allOf?: readonly JsonSchema2020[];
@@ -349,6 +350,9 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
     case "object":
       return generateObjectType(type, ctx);
 
+    case "record":
+      return generateRecordType(type, ctx);
+
     case "union":
       return generateUnionType(type, ctx);
 
@@ -446,6 +450,21 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
   }
 
   return schema;
+}
+
+/**
+ * Generates JSON Schema for a record (dictionary) type per spec 003 §2.5.
+ *
+ * `Record<string, T>` and `{ [k: string]: T }` both emit:
+ * `{ "type": "object", "additionalProperties": <T schema> }`
+ *
+ * No `properties` key is emitted — the record has no named properties.
+ */
+function generateRecordType(type: RecordTypeNode, ctx: GeneratorContext): JsonSchema2020 {
+  return {
+    type: "object",
+    additionalProperties: generateTypeNode(type.valueType, ctx),
+  };
 }
 
 /**

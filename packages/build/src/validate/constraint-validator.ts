@@ -288,6 +288,8 @@ function typeLabel(type: TypeNode): string {
       return "array";
     case "object":
       return "object";
+    case "record":
+      return "record";
     case "union":
       return "union";
     case "reference":

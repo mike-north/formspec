@@ -434,6 +434,78 @@ describe("generateJsonSchemaFromIR", () => {
   });
 
   // =============================================================================
+  // RECORD TYPES (§2.5) — BUG-3 regression
+  // =============================================================================
+
+  describe("record types (§2.5)", () => {
+    it("emits type:object with additionalProperties schema for Record<string, string>", () => {
+      // Regression: Record<string, string> was producing { $ref: '#/$defs/Record' }
+      // where $defs/Record had additionalProperties: false.  Per spec 003 §2.5, it
+      // must inline as { type: "object", additionalProperties: { type: "string" } }.
+      const ir = makeIR([
+        makeField("metadata", {
+          kind: "record",
+          valueType: { kind: "primitive", primitiveKind: "string" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["metadata"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["type"]).toBe("object");
+      expect(prop["additionalProperties"]).toEqual({ type: "string" });
+    });
+
+    it("emits correct additionalProperties schema for Record<string, number>", () => {
+      const ir = makeIR([
+        makeField("counts", {
+          kind: "record",
+          valueType: { kind: "primitive", primitiveKind: "number" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["counts"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["type"]).toBe("object");
+      expect(prop["additionalProperties"]).toEqual({ type: "number" });
+    });
+
+    it("does NOT emit a properties key on record types", () => {
+      const ir = makeIR([
+        makeField("tags", {
+          kind: "record",
+          valueType: { kind: "primitive", primitiveKind: "string" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["tags"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop).not.toHaveProperty("properties");
+    });
+
+    it("does NOT lift record types to $defs", () => {
+      // Regression: Record was being registered as a named type and lifted to $defs.
+      const ir = makeIR([
+        makeField("metadata", {
+          kind: "record",
+          valueType: { kind: "primitive", primitiveKind: "string" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema).not.toHaveProperty("$defs");
+    });
+  });
+
+  // =============================================================================
   // UNION TYPES (§2.3, §7.3, §7.4)
   // =============================================================================
 

@@ -78,6 +78,17 @@ export class ArrayEdgeCases {
 // ============================================================================
 
 /**
+ * Self-referential dictionary type — used to verify the circular-reference
+ * guard in `tryResolveRecordType`.  An index signature that references its
+ * own interface is the TS-valid equivalent of `Record<string, X>` where X
+ * is self-referential; without the guard, resolving the value type would
+ * recurse infinitely.
+ */
+export interface SelfRefRecord {
+  [key: string]: SelfRefRecord;
+}
+
+/**
  * Various object type patterns.
  */
 export class ObjectEdgeCases {
@@ -87,6 +98,9 @@ export class ObjectEdgeCases {
 
   // Record type
   stringRecord!: Record<string, string>;
+
+  // Self-referential Record — must not stack-overflow
+  selfRefRecord!: SelfRefRecord;
 
   // Deeply nested object
   deepNested!: {

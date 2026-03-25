@@ -578,6 +578,13 @@ export interface Provenance {
 }
 
 // @public
+export interface RecordTypeNode {
+    // (undocumented)
+    readonly kind: "record";
+    readonly valueType: TypeNode;
+}
+
+// @public
 export interface ReferenceTypeNode {
     // (undocumented)
     readonly kind: "reference";
@@ -616,7 +623,7 @@ export interface TypeDefinition {
 }
 
 // @public
-export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | ObjectTypeNode | UnionTypeNode | ReferenceTypeNode | DynamicTypeNode | CustomTypeNode;
+export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | ObjectTypeNode | RecordTypeNode | UnionTypeNode | ReferenceTypeNode | DynamicTypeNode | CustomTypeNode;
 
 // @public
 export interface UnionTypeNode {

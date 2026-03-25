@@ -91,6 +91,7 @@ export type TypeNode =
   | EnumTypeNode
   | ArrayTypeNode
   | ObjectTypeNode
+  | RecordTypeNode
   | UnionTypeNode
   | ReferenceTypeNode
   | DynamicTypeNode
@@ -157,6 +158,19 @@ export interface ObjectTypeNode {
    * Defaults to false — object types in FormSpec are closed.
    */
   readonly additionalProperties: boolean;
+}
+
+/**
+ * Record (dictionary) type — an object with a string index signature and no
+ * named properties. Corresponds to `Record<string, T>` or `{ [k: string]: T }`.
+ *
+ * Emitted as `{ "type": "object", "additionalProperties": <value schema> }` in
+ * JSON Schema per spec 003 §2.5.
+ */
+export interface RecordTypeNode {
+  readonly kind: "record";
+  /** The type of each value in the dictionary. */
+  readonly valueType: TypeNode;
 }
 
 /** Union type for non-enum unions. Nullable types are `T | null` using this. */
