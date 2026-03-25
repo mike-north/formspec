@@ -124,7 +124,7 @@ export function findSchemaFile(dir: string, suffix: string): string | undefined 
     if (entry.isDirectory()) {
       const found = findSchemaFile(fullPath, suffix);
       if (found) return found;
-    } else if (entry.name.endsWith(suffix)) {
+    } else if (entry.name === suffix) {
       return fullPath;
     }
   }
