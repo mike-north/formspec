@@ -3,7 +3,8 @@
   "elements": [
     {
       "type": "Control",
-      "scope": "#/properties/name"
+      "scope": "#/properties/name",
+      "label": "Full Name"
     },
     {
       "type": "Control",

@@ -226,9 +226,11 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
     }
   }
 
-  // ----- Phase 2: TS compiler JSDoc API for underscore-containing annotation tags -----
+  // ----- Phase 2: TS compiler JSDoc API for annotation tags -----
   // @Field_displayName and @Field_description contain underscores which
-  // are invalid in TSDoc tag names. We extract them via the TS compiler API.
+  // are invalid in TSDoc tag names. @displayName and @description are
+  // TSDoc-compliant camelCase alternatives. Both forms are accepted; the
+  // underscore form (@Field_displayName) takes precedence when both appear.
   let displayName: string | undefined;
   let description: string | undefined;
   let displayNameTag: ts.JSDocTag | undefined;
@@ -243,10 +245,16 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 
     const trimmed = commentText.trim();
 
-    if (tagName === "Field_displayName") {
+    if (
+      tagName === "Field_displayName" ||
+      (tagName === "displayName" && displayName === undefined)
+    ) {
       displayName = trimmed;
       displayNameTag = tag;
-    } else if (tagName === "Field_description") {
+    } else if (
+      tagName === "Field_description" ||
+      (tagName === "description" && description === undefined)
+    ) {
       description = trimmed;
       descriptionTag = tag;
     }

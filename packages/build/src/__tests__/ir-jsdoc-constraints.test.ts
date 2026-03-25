@@ -460,4 +460,76 @@ describe("extractJSDocAnnotationNodes", () => {
       value: "Class Field",
     });
   });
+
+  // @displayName and @description — camelCase alternatives without underscore prefix
+  it("produces DisplayNameAnnotationNode for @displayName (camelCase form)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @displayName Full Name */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop, "/test.ts");
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "annotation",
+      annotationKind: "displayName",
+      value: "Full Name",
+    });
+  });
+
+  it("produces DescriptionAnnotationNode for @description (camelCase form)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @description Help text for this field */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "annotation",
+      annotationKind: "description",
+      value: "Help text for this field",
+    });
+  });
+
+  it("@Field_displayName takes precedence over @displayName when both present", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @displayName First
+         * @Field_displayName Second
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    const displayNames = result.filter((a) => a.annotationKind === "displayName");
+    // Only one displayName annotation, and it comes from @Field_displayName
+    expect(displayNames).toHaveLength(1);
+    expect(displayNames[0]).toMatchObject({
+      annotationKind: "displayName",
+      value: "Second",
+    });
+  });
+
+  it("@displayName works on class properties", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @displayName My Label */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "displayName",
+      value: "My Label",
+    });
+  });
 });

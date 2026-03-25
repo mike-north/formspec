@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "title": "Full Name"
     },
     "age": {
       "type": "number",

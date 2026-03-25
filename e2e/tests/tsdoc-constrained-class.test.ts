@@ -45,9 +45,13 @@ describe("TSDoc Constrained Class", () => {
     expect(schema).toHaveProperty("properties");
   });
 
-  describe("name field — @displayName annotation (no constraint assertions)", () => {
+  describe("name field — @displayName annotation", () => {
     it("has string type", () => {
       expect(properties["name"]?.["type"]).toBe("string");
+    });
+
+    it("emits title from @displayName", () => {
+      expect(properties["name"]?.["title"]).toBe("Full Name");
     });
   });
 
