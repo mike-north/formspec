@@ -31,7 +31,7 @@ const NUMERIC_TAGS_PATTERN = NUMERIC_TAG_NAMES.map(
 // Skip path-targeted constraints (@minimum :value 0) — the leading
 // `:identifier` prefix indicates a sub-property target.
 const NUMERIC_TAG_REGEX = new RegExp(
-  `@(${NUMERIC_TAGS_PATTERN})\\s+(?!:[a-zA-Z])(.+?)(?=\\s*@|\\s*\\*\\/|\\s*$)`,
+  `@(${NUMERIC_TAGS_PATTERN})\\s+(?!:\\w+\\s)(.+?)(?=\\s*@|\\s*\\*\\/|\\s*$)`,
   "gm"
 );
 
@@ -39,7 +39,7 @@ const NUMERIC_TAG_REGEX = new RegExp(
 // because regex patterns can contain `@` (e.g., email validation).
 // Skip path-targeted constraints (@pattern :field value) — the leading
 // `:identifier` prefix indicates a sub-property target, not a regex pattern.
-const PATTERN_TAG_REGEX = /@[Pp]attern\s+(?!:[a-zA-Z])(.+?)(?=\s*\*\/|\s*$)/gm;
+const PATTERN_TAG_REGEX = /@[Pp]attern\s+(?!:\w+\s)(.+?)(?=\s*\*\/|\s*$)/gm;
 
 /**
  * Extracts constraint tags from JSDoc comments preceding a node.

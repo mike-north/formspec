@@ -146,6 +146,24 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         }
       `,
     },
+    // Path-targeted constraints should be skipped — @minimum targets a sub-property, not the field itself
+    {
+      code: `
+        class Form {
+          /** @minimum :value 0 */
+          amount!: { value: number; currency: string };
+        }
+      `,
+    },
+    // Path-targeted @pattern should be skipped
+    {
+      code: `
+        class Form {
+          /** @pattern :code ^[A-Z]{3}$ */
+          amount!: { value: number; code: string };
+        }
+      `,
+    },
   ],
   invalid: [
     // @Minimum on string field
