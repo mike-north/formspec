@@ -1,5 +1,23 @@
 # formspec
 
+## 0.1.0-alpha.13
+
+### Minor Changes
+
+- [#69](https://github.com/mike-north/formspec/pull/69) [`bc76a57`](https://github.com/mike-north/formspec/commit/bc76a57ffe1934c485aec0c9e1143cc5203c429c) Thanks [@mike-north](https://github.com/mike-north)! - Add type guards for FormElement subtypes and string/number field constraints
+  - Export 11 type guard functions (isTextField, isNumberField, etc.) from @formspec/core
+  - Add minLength, maxLength, pattern to TextField; multipleOf to NumberField; params to DynamicSchemaField
+  - Wire new constraints through chain DSL canonicalizer to FormIR
+  - Re-export type guards from formspec umbrella package
+
+### Patch Changes
+
+- Updated dependencies [[`bc76a57`](https://github.com/mike-north/formspec/commit/bc76a57ffe1934c485aec0c9e1143cc5203c429c)]:
+  - @formspec/core@0.1.0-alpha.13
+  - @formspec/build@0.1.0-alpha.13
+  - @formspec/dsl@0.1.0-alpha.13
+  - @formspec/runtime@0.1.0-alpha.13
+
 ## 0.1.0-alpha.12
 
 ### Minor Changes
