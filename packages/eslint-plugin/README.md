@@ -23,9 +23,7 @@ pnpm add -D @formspec/eslint-plugin
 ```javascript
 import formspec from "@formspec/eslint-plugin";
 
-export default [
-  ...formspec.configs.recommended,
-];
+export default [...formspec.configs.recommended];
 ```
 
 ### Manual Configuration
@@ -50,12 +48,12 @@ export default [
 
 ## Rules
 
-| Rule | Description | Recommended | Strict |
-| --- | --- | --- | --- |
-| [`constraint-type-mismatch`](#constraint-type-mismatch) | JSDoc constraint tags must match field type | error | error |
-| [`consistent-constraints`](#consistent-constraints) | Constraint ranges must be valid (min ≤ max) | error | error |
-| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml` | — | — |
-| [`constraints-allowed-layouts`](#constraints-allowed-layouts) | Layout elements validated against `.formspec.yml` | — | — |
+| Rule                                                                  | Description                                       | Recommended | Strict |
+| --------------------------------------------------------------------- | ------------------------------------------------- | ----------- | ------ |
+| [`constraint-type-mismatch`](#constraint-type-mismatch)               | JSDoc constraint tags must match field type       | error       | error  |
+| [`consistent-constraints`](#consistent-constraints)                   | Constraint ranges must be valid (min ≤ max)       | error       | error  |
+| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml`     | —           | —      |
+| [`constraints-allowed-layouts`](#constraints-allowed-layouts)         | Layout elements validated against `.formspec.yml` | —           | —      |
 
 ### constraint-type-mismatch
 

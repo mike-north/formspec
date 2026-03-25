@@ -1,9 +1,14 @@
 /**
  * Tests fields typed with constrained type aliases in TSDoc-annotated classes.
  *
- * The current V2 pipeline resolves aliases to their base types but does not
- * propagate TSDoc constraints from type alias declarations. Fields typed to
- * Percentage or Integer aliases receive only `type: "number"` in the output.
+ * Verifies that constraints declared on type aliases (e.g., `@minimum 0`
+ * on `Percentage`) propagate transitively to fields. The alias chain
+ * `Integer` → `Percentage` → field means fields typed as `Percentage`
+ * inherit constraints from both `Percentage` AND `Integer`.
+ *
+ * Special case: `@multipleOf 1` on a number type promotes it to
+ * `type: "integer"` in JSON Schema (the `multipleOf` keyword is suppressed
+ * because `integer` is a subtype of `number` that implies it).
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
@@ -48,19 +53,29 @@ describe("TSDoc Inherited Constraints", () => {
     }
   });
 
-  // V2: type alias TSDoc constraints and inheritance are not processed —
-  // fields typed to Percentage/Integer aliases all receive base type: number
-  describe("JSON Schema — constraint inheritance", () => {
-    it("cpuUsage field has type number (base type of Percentage alias)", () => {
-      expect(properties["cpuUsage"]?.["type"]).toBe("number");
+  describe("JSON Schema — transitive constraint inheritance", () => {
+    // Integer (@multipleOf 1) → Percentage (@minimum 0 @maximum 100) → fields
+    // multipleOf:1 on number promotes type to "integer" (keyword suppressed)
+
+    it("cpuUsage: field-level @minimum overrides alias, inherits Integer → integer type", () => {
+      // Integer's @multipleOf 1 propagates transitively → type promoted to "integer"
+      expect(properties["cpuUsage"]?.["type"]).toBe("integer");
+      // Field-level @minimum 10 overrides Percentage's @minimum 0
+      expect(properties["cpuUsage"]?.["minimum"]).toBe(10);
+      // Inherited from Percentage alias: @maximum 100
+      expect(properties["cpuUsage"]?.["maximum"]).toBe(100);
     });
 
-    it("memoryUsage field has type number (base type of Percentage alias)", () => {
-      expect(properties["memoryUsage"]?.["type"]).toBe("number");
+    it("memoryUsage: inherits full Percentage + Integer constraint chain", () => {
+      expect(properties["memoryUsage"]?.["type"]).toBe("integer");
+      expect(properties["memoryUsage"]?.["minimum"]).toBe(0);
+      expect(properties["memoryUsage"]?.["maximum"]).toBe(100);
     });
 
-    it("diskUsage field has type number (base type of Percentage alias)", () => {
-      expect(properties["diskUsage"]?.["type"]).toBe("number");
+    it("diskUsage (optional): same constraints as memoryUsage", () => {
+      expect(properties["diskUsage"]?.["type"]).toBe("integer");
+      expect(properties["diskUsage"]?.["minimum"]).toBe(0);
+      expect(properties["diskUsage"]?.["maximum"]).toBe(100);
     });
 
     it("required contains only the non-optional fields", () => {
@@ -71,8 +86,7 @@ describe("TSDoc Inherited Constraints", () => {
     });
   });
 
-  // V2: UI elements render as plain Controls without min/max attributes
-  describe("UI Schema — constraint inheritance", () => {
+  describe("UI Schema — controls", () => {
     it("cpuUsage UI element is a Control", () => {
       const el = elements.find((e) => e["scope"] === "#/properties/cpuUsage");
       expect(el).toBeDefined();

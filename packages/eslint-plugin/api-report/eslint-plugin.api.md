@@ -44,10 +44,10 @@ const plugin: {
         name: string;
     };
     rules: {
-        readonly "constraint-type-mismatch": TSESLint.RuleModule<"numericOnNonNumber" | "stringOnNonString", [], unknown, TSESLint.RuleListener> & {
+        readonly "constraint-type-mismatch": TSESLint.RuleModule<"numericOnNonNumber" | "stringOnNonString" | "arrayOnNonArray", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "consistent-constraints": TSESLint.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin", [], unknown, TSESLint.RuleListener> & {
+        readonly "consistent-constraints": TSESLint.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "minItemsGreaterThanMaxItems" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {

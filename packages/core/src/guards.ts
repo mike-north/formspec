@@ -42,14 +42,14 @@ export function isBooleanField(element: FormElement): element is BooleanField<st
 
 /** Narrows a FormElement to a static enum field. */
 export function isStaticEnumField(
-  element: FormElement,
+  element: FormElement
 ): element is StaticEnumField<string, readonly EnumOptionValue[]> {
   return element._type === "field" && element._field === "enum";
 }
 
 /** Narrows a FormElement to a dynamic enum field. */
 export function isDynamicEnumField(
-  element: FormElement,
+  element: FormElement
 ): element is DynamicEnumField<string, string> {
   return element._type === "field" && element._field === "dynamic_enum";
 }
@@ -61,14 +61,14 @@ export function isDynamicSchemaField(element: FormElement): element is DynamicSc
 
 /** Narrows a FormElement to an array field. */
 export function isArrayField(
-  element: FormElement,
+  element: FormElement
 ): element is ArrayField<string, readonly FormElement[]> {
   return element._type === "field" && element._field === "array";
 }
 
 /** Narrows a FormElement to an object field. */
 export function isObjectField(
-  element: FormElement,
+  element: FormElement
 ): element is ObjectField<string, readonly FormElement[]> {
   return element._type === "field" && element._field === "object";
 }
@@ -80,7 +80,7 @@ export function isGroup(element: FormElement): element is Group<readonly FormEle
 
 /** Narrows a FormElement to a conditional wrapper. */
 export function isConditional(
-  element: FormElement,
+  element: FormElement
 ): element is Conditional<string, unknown, readonly FormElement[]> {
   return element._type === "conditional";
 }

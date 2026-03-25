@@ -74,7 +74,7 @@ export interface CreateValidatorOptions {
  */
 export function createFormSpecValidator(
   schema: Record<string, unknown>,
-  options?: CreateValidatorOptions,
+  options?: CreateValidatorOptions
 ): Validator {
   const draft = options?.draft ?? "2020-12";
   const shortCircuit = options?.shortCircuit ?? true;

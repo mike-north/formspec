@@ -2,13 +2,14 @@
  * Rule: consistent-constraints
  *
  * Ensures JSDoc constraint pairs have valid ranges and don't conflict:
- * - @Minimum must be <= @Maximum
- * - @ExclusiveMinimum must be < @ExclusiveMaximum
- * - @MinLength must be <= @MaxLength
- * - @Minimum and @ExclusiveMinimum must not both be present
- * - @Maximum and @ExclusiveMaximum must not both be present
- * - @Maximum(n) where n < @Minimum(m) is invalid
- * - @ExclusiveMaximum(n) where n <= @Minimum(m) is invalid
+ * - @minimum must be <= @maximum
+ * - @exclusiveMinimum must be < @exclusiveMaximum
+ * - @minLength must be <= @maxLength
+ * - @minItems must be <= @maxItems
+ * - @minimum and @exclusiveMinimum must not both be present
+ * - @maximum and @exclusiveMaximum must not both be present
+ * - @maximum(n) where n < @minimum(m) is invalid
+ * - @exclusiveMaximum(n) where n <= @minimum(m) is invalid
  */
 
 import type { TSESTree } from "@typescript-eslint/utils";
@@ -23,6 +24,7 @@ type MessageIds =
   | "minimumGreaterThanMaximum"
   | "exclusiveMinGreaterOrEqualMax"
   | "minLengthGreaterThanMaxLength"
+  | "minItemsGreaterThanMaxItems"
   | "conflictingMinimumBounds"
   | "conflictingMaximumBounds"
   | "exclusiveMaxLessOrEqualMin"
@@ -47,19 +49,21 @@ export const consistentConstraints = createRule<[], MessageIds>({
     },
     messages: {
       minimumGreaterThanMaximum:
-        "@Minimum({{min}}) is greater than @Maximum({{max}}). Minimum must be less than or equal to Maximum.",
+        "@minimum({{min}}) is greater than @maximum({{max}}). minimum must be less than or equal to maximum.",
       exclusiveMinGreaterOrEqualMax:
-        "@ExclusiveMinimum({{min}}) must be less than @ExclusiveMaximum({{max}}).",
+        "@exclusiveMinimum({{min}}) must be less than @exclusiveMaximum({{max}}).",
       minLengthGreaterThanMaxLength:
-        "@MinLength({{min}}) is greater than @MaxLength({{max}}). MinLength must be less than or equal to MaxLength.",
+        "@minLength({{min}}) is greater than @maxLength({{max}}). minLength must be less than or equal to maxLength.",
+      minItemsGreaterThanMaxItems:
+        "@minItems({{min}}) is greater than @maxItems({{max}}). minItems must be less than or equal to maxItems.",
       conflictingMinimumBounds:
-        "Field has both @Minimum and @ExclusiveMinimum. Use only one lower bound constraint.",
+        "Field has both @minimum and @exclusiveMinimum. Use only one lower bound constraint.",
       conflictingMaximumBounds:
-        "Field has both @Maximum and @ExclusiveMaximum. Use only one upper bound constraint.",
+        "Field has both @maximum and @exclusiveMaximum. Use only one upper bound constraint.",
       exclusiveMaxLessOrEqualMin:
-        "@ExclusiveMaximum({{max}}) must be greater than @Minimum({{min}}).",
+        "@exclusiveMaximum({{max}}) must be greater than @minimum({{min}}).",
       maximumLessOrEqualExclusiveMin:
-        "@Maximum({{max}}) must be greater than @ExclusiveMinimum({{min}}).",
+        "@maximum({{max}}) must be greater than @exclusiveMinimum({{min}}).",
     },
     schema: [],
   },
@@ -98,9 +102,9 @@ export const consistentConstraints = createRule<[], MessageIds>({
           return { present: false, loc: null };
         }
 
-        // Check @Minimum/@Maximum range
-        const minimum = getConstraintValue("Minimum");
-        const maximum = getConstraintValue("Maximum");
+        // Check @minimum/@maximum range
+        const minimum = getConstraintValue("minimum");
+        const maximum = getConstraintValue("maximum");
 
         if (minimum && maximum && minimum.value > maximum.value) {
           context.report({
@@ -113,9 +117,9 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check @ExclusiveMinimum/@ExclusiveMaximum range
-        const exclusiveMin = getConstraintValue("ExclusiveMinimum");
-        const exclusiveMax = getConstraintValue("ExclusiveMaximum");
+        // Check @exclusiveMinimum/@exclusiveMaximum range
+        const exclusiveMin = getConstraintValue("exclusiveMinimum");
+        const exclusiveMax = getConstraintValue("exclusiveMaximum");
 
         if (exclusiveMin && exclusiveMax && exclusiveMin.value >= exclusiveMax.value) {
           context.report({
@@ -128,9 +132,9 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check @MinLength/@MaxLength range
-        const minLength = getConstraintValue("MinLength");
-        const maxLength = getConstraintValue("MaxLength");
+        // Check @minLength/@maxLength range
+        const minLength = getConstraintValue("minLength");
+        const maxLength = getConstraintValue("maxLength");
 
         if (minLength && maxLength && minLength.value > maxLength.value) {
           context.report({
@@ -143,9 +147,24 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check conflicting bound types: @Minimum + @ExclusiveMinimum
-        const hasMinimum = hasConstraint("Minimum");
-        const hasExclusiveMinimum = hasConstraint("ExclusiveMinimum");
+        // Check @minItems/@maxItems range
+        const minItems = getConstraintValue("minItems");
+        const maxItems = getConstraintValue("maxItems");
+
+        if (minItems && maxItems && minItems.value > maxItems.value) {
+          context.report({
+            loc: minItems.loc,
+            messageId: "minItemsGreaterThanMaxItems",
+            data: {
+              min: String(minItems.value),
+              max: String(maxItems.value),
+            },
+          });
+        }
+
+        // Check conflicting bound types: @minimum + @exclusiveMinimum
+        const hasMinimum = hasConstraint("minimum");
+        const hasExclusiveMinimum = hasConstraint("exclusiveMinimum");
 
         if (hasMinimum.present && hasExclusiveMinimum.present) {
           context.report({
@@ -154,9 +173,9 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check conflicting bound types: @Maximum + @ExclusiveMaximum
-        const hasMaximum = hasConstraint("Maximum");
-        const hasExclusiveMaximum = hasConstraint("ExclusiveMaximum");
+        // Check conflicting bound types: @maximum + @exclusiveMaximum
+        const hasMaximum = hasConstraint("maximum");
+        const hasExclusiveMaximum = hasConstraint("exclusiveMaximum");
 
         if (hasMaximum.present && hasExclusiveMaximum.present) {
           context.report({
@@ -165,7 +184,7 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check @ExclusiveMinimum(m) + @Maximum(n) where n <= m
+        // Check @exclusiveMinimum(m) + @maximum(n) where n <= m
         if (exclusiveMin && maximum && maximum.value <= exclusiveMin.value) {
           context.report({
             loc: maximum.loc,
@@ -177,7 +196,7 @@ export const consistentConstraints = createRule<[], MessageIds>({
           });
         }
 
-        // Check @ExclusiveMaximum(n) where n <= @Minimum(m)
+        // Check @exclusiveMaximum(n) where n <= @minimum(m)
         if (minimum && exclusiveMax && exclusiveMax.value <= minimum.value) {
           context.report({
             loc: exclusiveMax.loc,

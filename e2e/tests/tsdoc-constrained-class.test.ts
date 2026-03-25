@@ -1,5 +1,9 @@
 /**
  * Tests TSDoc comment tag extraction for constraint and annotation tags.
+ *
+ * Constraint tags use lowercase/camelCase names matching JSON Schema keywords:
+ * `@minimum`, `@maximum`, `@minLength`, `@maxLength`, `@pattern`,
+ * `@minItems`, `@maxItems`, `@deprecated`.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
@@ -41,28 +45,43 @@ describe("TSDoc Constrained Class", () => {
     expect(schema).toHaveProperty("properties");
   });
 
-  // V2: @displayName TSDoc tag is not currently mapped to title in schema output
-  it("@displayName tag: name field has string type", () => {
-    expect(properties["name"]?.["type"]).toBe("string");
+  describe("name field — @displayName annotation (no constraint assertions)", () => {
+    it("has string type", () => {
+      expect(properties["name"]?.["type"]).toBe("string");
+    });
   });
 
-  // V2: @minimum/@maximum TSDoc tags are not currently emitted to JSON Schema
-  it("@minimum/@maximum tag: age field has number type", () => {
-    expect(properties["age"]?.["type"]).toBe("number");
+  describe("age field — @minimum 0 @maximum 150", () => {
+    it("has number type with minimum and maximum constraints", () => {
+      expect(properties["age"]?.["type"]).toBe("number");
+      expect(properties["age"]?.["minimum"]).toBe(0);
+      expect(properties["age"]?.["maximum"]).toBe(150);
+    });
   });
 
-  // V2: @minLength/@maxLength/@pattern TSDoc tags are not currently emitted to JSON Schema
-  it("@minLength/@maxLength/@pattern tag: email field has string type", () => {
-    expect(properties["email"]?.["type"]).toBe("string");
+  describe("email field — @minLength 5 @maxLength 100 @pattern", () => {
+    it("has string type with length and pattern constraints", () => {
+      expect(properties["email"]?.["type"]).toBe("string");
+      expect(properties["email"]?.["minLength"]).toBe(5);
+      expect(properties["email"]?.["maxLength"]).toBe(100);
+      expect(properties["email"]?.["pattern"]).toBe("^[^@]+@[^@]+$");
+    });
   });
 
-  // V2: @minItems/@maxItems TSDoc tags are not currently emitted to JSON Schema
-  it("@minItems/@maxItems tag: tags field is an array type", () => {
-    expect(properties["tags"]?.["type"]).toBe("array");
+  describe("tags field — @minItems 1 @maxItems 10", () => {
+    it("has array type with item cardinality constraints", () => {
+      expect(properties["tags"]?.["type"]).toBe("array");
+      expect(properties["tags"]?.["items"]).toEqual({ type: "string" });
+      expect(properties["tags"]?.["minItems"]).toBe(1);
+      expect(properties["tags"]?.["maxItems"]).toBe(10);
+    });
   });
 
-  it("@deprecated on optional field", () => {
-    expect(properties["legacyField"]?.["deprecated"]).toBe(true);
+  describe("legacyField — @deprecated", () => {
+    it("has string type with deprecated flag", () => {
+      expect(properties["legacyField"]?.["type"]).toBe("string");
+      expect(properties["legacyField"]?.["deprecated"]).toBe(true);
+    });
   });
 
   it("required fields are correct", () => {

@@ -15,11 +15,7 @@
       "type": "string"
     }
   },
-  "required": [
-    "orderId",
-    "billingAddress",
-    "shippingAddress"
-  ],
+  "required": ["orderId", "billingAddress", "shippingAddress"],
   "$defs": {
     "Address": {
       "type": "object",
@@ -37,12 +33,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "street",
-        "city",
-        "zip",
-        "country"
-      ],
+      "required": ["street", "city", "zip", "country"],
       "additionalProperties": false
     }
   }

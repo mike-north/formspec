@@ -11,15 +11,15 @@ export interface SimpleConfig {
   /**
    * @Field_displayName Full Name
    * @Field_description The user's legal name
-   * @MinLength 1
-   * @MaxLength 200
+   * @minLength 1
+   * @maxLength 200
    */
   name: string;
 
-  /** @Field_displayName Age @Minimum 0 @Maximum 150 */
+  /** @Field_displayName Age @minimum 0 @maximum 150 */
   age: number;
 
-  /** @Field_displayName Email @Pattern ^[^@]+@[^@]+$ */
+  /** @Field_displayName Email @pattern ^[^@]+@[^@]+$ */
   email?: string;
 
   /** @Field_displayName Active */
@@ -29,13 +29,13 @@ export interface SimpleConfig {
 export interface WithEnumOptions {
   /**
    * @Field_displayName Status
-   * @EnumOptions ["draft","active","archived"]
+   * @enumOptions ["draft","active","archived"]
    */
   status: "draft" | "active" | "archived";
 
   /**
    * @Field_displayName Priority
-   * @EnumOptions [{"id":"low","label":"Low Priority"},{"id":"high","label":"High Priority"}]
+   * @enumOptions [{"id":"low","label":"Low Priority"},{"id":"high","label":"High Priority"}]
    */
   priority: "low" | "high";
 }
@@ -63,10 +63,10 @@ export interface DeprecatedFieldInterface {
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing type alias analysis
 export type SimpleTypeAlias = {
-  /** @Field_displayName Label @MinLength 1 */
+  /** @Field_displayName Label @minLength 1 */
   label: string;
 
-  /** @Field_displayName Count @Minimum 0 */
+  /** @Field_displayName Count @minimum 0 */
   count: number;
 
   /** @Field_displayName Description */
@@ -77,7 +77,7 @@ export type SimpleTypeAlias = {
 export type TypeAliasWithEnumOptions = {
   /**
    * @Field_displayName Color
-   * @EnumOptions ["red","green","blue"]
+   * @enumOptions ["red","green","blue"]
    */
   color: "red" | "green" | "blue";
 };
@@ -88,13 +88,13 @@ export type UnionAlias = "a" | "b" | "c";
 
 // --- Constrained primitive type aliases ---
 
-/** @Minimum 0 @Maximum 100 */
+/** @minimum 0 @maximum 100 */
 export type Percent = number;
 
-/** @MinLength 1 @MaxLength 255 @Pattern ^[^@]+@[^@]+$ */
+/** @minLength 1 @maxLength 255 @pattern ^[^@]+@[^@]+$ */
 export type Email = string;
 
-/** @Field_displayName Discount Rate @Field_description Percentage discount applied @Minimum 0 @Maximum 100 */
+/** @Field_displayName Discount Rate @Field_description Percentage discount applied @minimum 0 @maximum 100 */
 export type AnnotatedPercent = number;
 
 export interface ConfigWithAliasedTypes {
@@ -111,19 +111,19 @@ export interface ConfigWithAliasedTypes {
 // --- Nested types ---
 
 export interface Address {
-  /** @Field_displayName Street @MinLength 1 @MaxLength 200 */
+  /** @Field_displayName Street @minLength 1 @maxLength 200 */
   street: string;
-  /** @Field_displayName City @MinLength 1 */
+  /** @Field_displayName City @minLength 1 */
   city: string;
-  /** @Field_displayName Zip @Pattern ^[0-9]{5}$ */
+  /** @Field_displayName Zip @pattern ^[0-9]{5}$ */
   zip?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing type alias analysis
 export type ContactInfo = {
-  /** @Field_displayName Email @Pattern ^[^@]+@[^@]+$ */
+  /** @Field_displayName Email @pattern ^[^@]+@[^@]+$ */
   email: string;
-  /** @Field_displayName Phone @MaxLength 20 */
+  /** @Field_displayName Phone @maxLength 20 */
   phone?: string;
 };
 

@@ -29,10 +29,7 @@
       ]
     },
     "status": {
-      "enum": [
-        "active",
-        "inactive"
-      ]
+      "enum": ["active", "inactive"]
     },
     "tags": {
       "type": "array",
@@ -41,10 +38,5 @@
       }
     }
   },
-  "required": [
-    "name",
-    "nickname",
-    "score",
-    "status"
-  ]
+  "required": ["name", "nickname", "score", "status"]
 }

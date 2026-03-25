@@ -192,10 +192,10 @@ constraints:
 
 ### JSDoc Constraint Rules
 
-| Rule | Purpose |
-| --- | --- |
+| Rule                       | Purpose                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------- |
 | `constraint-type-mismatch` | `@Minimum`/`@Maximum` only on `number`; `@MinLength`/`@Pattern` only on `string` |
-| `consistent-constraints` | `@Minimum ≤ @Maximum`; no conflicting bounds |
+| `consistent-constraints`   | `@Minimum ≤ @Maximum`; no conflicting bounds                                     |
 
 ### Chain DSL Rules
 
@@ -212,20 +212,20 @@ constraints:
 | --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
 | `@formspec/build`           | Public API           | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
 | `@formspec/build/browser`   | Browser (playground) | Schema generators without Node.js fs/path                                         |
-| `@formspec/build/internals` | CLI (unstable)       | `createProgramContext`, `analyzeClass`, `generateClassSchemas` |
+| `@formspec/build/internals` | CLI (unstable)       | `createProgramContext`, `analyzeClass`, `generateClassSchemas`                    |
 
 ## Testing Strategy
 
 ### Test Layers
 
-| Layer                | Framework  | Location                                   | Purpose                                    |
-| -------------------- | ---------- | ------------------------------------------ | ------------------------------------------ |
-| **Unit**             | Vitest     | `src/__tests__/*.test.ts`                  | Individual functions in isolation          |
-| **Type**             | tsd        | `src/__tests__/*.test-d.ts`                | Type inference correctness                 |
-| **Integration**      | Vitest     | `src/__tests__/integration.test.ts`        | Full pipeline (DSL → schema)               |
-| **Fixture-based**    | Vitest     | `src/__tests__/fixtures/`                  | Real TypeScript files through the analyzer |
-| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`            | Valid/invalid code patterns per rule       |
-| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`          | Schema snapshot validation                 |
+| Layer                | Framework  | Location                            | Purpose                                    |
+| -------------------- | ---------- | ----------------------------------- | ------------------------------------------ |
+| **Unit**             | Vitest     | `src/__tests__/*.test.ts`           | Individual functions in isolation          |
+| **Type**             | tsd        | `src/__tests__/*.test-d.ts`         | Type inference correctness                 |
+| **Integration**      | Vitest     | `src/__tests__/integration.test.ts` | Full pipeline (DSL → schema)               |
+| **Fixture-based**    | Vitest     | `src/__tests__/fixtures/`           | Real TypeScript files through the analyzer |
+| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`     | Valid/invalid code patterns per rule       |
+| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`   | Schema snapshot validation                 |
 
 ### Test Infrastructure
 

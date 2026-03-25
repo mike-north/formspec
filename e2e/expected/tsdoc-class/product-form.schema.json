@@ -12,11 +12,7 @@
       "type": "number"
     },
     "currency": {
-      "enum": [
-        "usd",
-        "eur",
-        "gbp"
-      ]
+      "enum": ["usd", "eur", "gbp"]
     },
     "active": {
       "type": "boolean"
@@ -31,12 +27,7 @@
       "$ref": "#/$defs/Record"
     }
   },
-  "required": [
-    "name",
-    "price",
-    "currency",
-    "active"
-  ],
+  "required": ["name", "price", "currency", "active"],
   "$defs": {
     "Record": {
       "type": "object",

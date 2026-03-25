@@ -3,11 +3,7 @@
   "type": "object",
   "properties": {
     "simpleStatus": {
-      "enum": [
-        "draft",
-        "active",
-        "archived"
-      ],
+      "enum": ["draft", "active", "archived"],
       "title": "Status"
     },
     "labeledPriority": {
@@ -35,13 +31,9 @@
     "city": {
       "type": "string",
       "x-formspec-source": "cities",
-      "x-formspec-params": [
-        "country"
-      ],
+      "x-formspec-params": ["country"],
       "title": "City"
     }
   },
-  "required": [
-    "labeledPriority"
-  ]
+  "required": ["labeledPriority"]
 }

@@ -15,11 +15,7 @@
       "title": "Email"
     },
     "contactMethod": {
-      "enum": [
-        "email",
-        "phone",
-        "mail"
-      ],
+      "enum": ["email", "phone", "mail"],
       "title": "Preferred Contact Method"
     },
     "phoneNumber": {
@@ -37,9 +33,5 @@
       "title": "Subscribe to Newsletter"
     }
   },
-  "required": [
-    "firstName",
-    "lastName",
-    "contactMethod"
-  ]
+  "required": ["firstName", "lastName", "contactMethod"]
 }

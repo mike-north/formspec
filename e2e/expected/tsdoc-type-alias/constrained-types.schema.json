@@ -17,11 +17,7 @@
     "alertChannels": {
       "type": "array",
       "items": {
-        "enum": [
-          "email",
-          "slack",
-          "pagerduty"
-        ]
+        "enum": ["email", "slack", "pagerduty"]
       }
     },
     "retryPolicy": {
@@ -34,18 +30,9 @@
           "type": "number"
         }
       },
-      "required": [
-        "maxRetries",
-        "backoffMs"
-      ],
+      "required": ["maxRetries", "backoffMs"],
       "additionalProperties": false
     }
   },
-  "required": [
-    "cpuThreshold",
-    "memoryThreshold",
-    "adminEmail",
-    "enableAlerts",
-    "alertChannels"
-  ]
+  "required": ["cpuThreshold", "memoryThreshold", "adminEmail", "enableAlerts", "alertChannels"]
 }

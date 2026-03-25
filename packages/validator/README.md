@@ -37,10 +37,7 @@ This package is ESM-only and requires:
 import { createFormSpecValidator } from "@formspec/validator";
 import { buildFormSchemas, formspec, field } from "formspec";
 
-const form = formspec(
-  field.text("name", { required: true }),
-  field.number("age", { min: 0 })
-);
+const form = formspec(field.text("name", { required: true }), field.number("age", { min: 0 }));
 
 const { jsonSchema } = buildFormSchemas(form);
 
@@ -66,15 +63,15 @@ Standard JSON Schema validators like Ajv use `new Function()` internally, which 
 
 ### Functions
 
-| Function | Description |
-| --- | --- |
+| Function                                    | Description                                   |
+| ------------------------------------------- | --------------------------------------------- |
 | `createFormSpecValidator(schema, options?)` | Create a validator instance for a JSON Schema |
 
 ### Options
 
 ```typescript
 interface CreateValidatorOptions {
-  draft?: SchemaDraft;    // JSON Schema draft version (default: "2020-12")
+  draft?: SchemaDraft; // JSON Schema draft version (default: "2020-12")
   shortCircuit?: boolean; // Stop on first error (default: true)
 }
 ```
@@ -83,12 +80,12 @@ interface CreateValidatorOptions {
 
 This package re-exports key types from `@cfworker/json-schema`:
 
-| Export | Description |
-| --- | --- |
-| `Validator` | The validator class |
-| `ValidationResult` | Result of `validator.validate()` |
-| `OutputUnit` | Individual validation error detail |
-| `SchemaDraft` | Supported JSON Schema draft versions |
+| Export             | Description                          |
+| ------------------ | ------------------------------------ |
+| `Validator`        | The validator class                  |
+| `ValidationResult` | Result of `validator.validate()`     |
+| `OutputUnit`       | Individual validation error detail   |
+| `SchemaDraft`      | Supported JSON Schema draft versions |
 
 ## License
 

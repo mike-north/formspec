@@ -65,7 +65,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Minimum", args: [34] });
+    expect(result[0]).toMatchObject({ name: "minimum", args: [34] });
   });
 
   it("parses @Maximum with an integer value", () => {
@@ -78,7 +78,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Maximum", args: [100] });
+    expect(result[0]).toMatchObject({ name: "maximum", args: [100] });
   });
 
   it("parses @Pattern as a string value", () => {
@@ -91,7 +91,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Pattern", args: ["^[a-z]+$"] });
+    expect(result[0]).toMatchObject({ name: "pattern", args: ["^[a-z]+$"] });
   });
 
   it("handles negative numbers", () => {
@@ -104,7 +104,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Minimum", args: [-10] });
+    expect(result[0]).toMatchObject({ name: "minimum", args: [-10] });
   });
 
   it("handles decimal numbers", () => {
@@ -117,7 +117,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Maximum", args: [3.14] });
+    expect(result[0]).toMatchObject({ name: "maximum", args: [3.14] });
   });
 
   it("handles negative decimal numbers", () => {
@@ -130,7 +130,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Minimum", args: [-273.15] });
+    expect(result[0]).toMatchObject({ name: "minimum", args: [-273.15] });
   });
 
   it("ignores non-constraint tags like @deprecated and @param", () => {
@@ -179,11 +179,11 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ name: "Minimum", args: [0] });
-    expect(result[1]).toMatchObject({ name: "Maximum", args: [100] });
+    expect(result[0]).toMatchObject({ name: "minimum", args: [0] });
+    expect(result[1]).toMatchObject({ name: "maximum", args: [100] });
   });
 
-  it("is case-sensitive: ignores lowercase @minimum", () => {
+  it("accepts lowercase (camelCase) constraint tags", () => {
     const prop = getPropertyFromSource(`
       class Foo {
         /** @minimum 5 */
@@ -192,7 +192,8 @@ describe("extractJSDocConstraints", () => {
     `);
 
     const result = extractJSDocConstraints(prop);
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ name: "minimum", args: [5] });
   });
 
   it("parses all supported numeric tags", () => {
@@ -206,12 +207,12 @@ describe("extractJSDocConstraints", () => {
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(6);
     expect(result.map((d) => d.name)).toEqual([
-      "Minimum",
-      "Maximum",
-      "ExclusiveMinimum",
-      "ExclusiveMaximum",
-      "MinLength",
-      "MaxLength",
+      "minimum",
+      "maximum",
+      "exclusiveMinimum",
+      "exclusiveMaximum",
+      "minLength",
+      "maxLength",
     ]);
   });
 
@@ -250,7 +251,7 @@ describe("extractJSDocConstraints", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "Minimum", args: [0] });
+    expect(result[0]).toMatchObject({ name: "minimum", args: [0] });
   });
 });
 
@@ -269,7 +270,7 @@ describe("@EnumOptions JSON parsing", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "EnumOptions", args: [["a", "b", "c"]] });
+    expect(result[0]).toMatchObject({ name: "enumOptions", args: [["a", "b", "c"]] });
   });
 
   it("parses a valid JSON object array (labeled options)", () => {
@@ -283,7 +284,7 @@ describe("@EnumOptions JSON parsing", () => {
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      name: "EnumOptions",
+      name: "enumOptions",
       args: [
         [
           { id: "low", label: "Low" },
@@ -315,7 +316,7 @@ describe("@EnumOptions JSON parsing", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ name: "EnumOptions", args: [[]] });
+    expect(result[0]).toMatchObject({ name: "enumOptions", args: [[]] });
   });
 
   it("skips an empty JSON object", () => {
@@ -413,10 +414,10 @@ describe("@EnumOptions JSON parsing", () => {
 
     const result = extractJSDocConstraints(prop);
     expect(result).toHaveLength(2);
-    expect(result.find((d) => d.name === "EnumOptions")).toMatchObject({
+    expect(result.find((d) => d.name === "enumOptions")).toMatchObject({
       args: [["a", "b"]],
     });
-    expect(result.find((d) => d.name === "MinLength")).toMatchObject({
+    expect(result.find((d) => d.name === "minLength")).toMatchObject({
       args: [1],
     });
   });

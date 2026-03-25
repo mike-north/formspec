@@ -8,9 +8,11 @@
  * The parser recognises two categories of tags:
  *
  * 1. **Constraint tags** (all alphanumeric, TSDoc-compliant):
- *    `@Minimum`, `@Maximum`, `@ExclusiveMinimum`, `@ExclusiveMaximum`,
- *    `@MinLength`, `@MaxLength`, `@Pattern`, `@EnumOptions`
+ *    `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`,
+ *    `@multipleOf`, `@minLength`, `@maxLength`, `@minItems`, `@maxItems`,
+ *    `@pattern`, `@enumOptions`
  *    — Parsed via TSDocParser as custom block tags.
+ *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
  * 2. **Annotation tags** (`@Field_displayName`, `@Field_description`):
  *    These contain underscores which are not valid in TSDoc tag names.
@@ -41,7 +43,8 @@ import {
 } from "@microsoft/tsdoc";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
-  type BuiltinConstraintName,
+  normalizeConstraintTagName,
+  isBuiltinConstraintName,
   type ConstraintNode,
   type AnnotationNode,
   type Provenance,
@@ -56,20 +59,25 @@ import {
 
 /**
  * Constraint tag name → constraint kind mapping for numeric constraints.
+ * Keys are camelCase matching BUILTIN_CONSTRAINT_DEFINITIONS.
  */
 const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {
-  Minimum: "minimum",
-  Maximum: "maximum",
-  ExclusiveMinimum: "exclusiveMinimum",
-  ExclusiveMaximum: "exclusiveMaximum",
+  minimum: "minimum",
+  maximum: "maximum",
+  exclusiveMinimum: "exclusiveMinimum",
+  exclusiveMaximum: "exclusiveMaximum",
+  multipleOf: "multipleOf",
 };
 
 /**
  * Constraint tag name → constraint kind mapping for length constraints.
+ * Keys are camelCase matching BUILTIN_CONSTRAINT_DEFINITIONS.
  */
 const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind"]> = {
-  MinLength: "minLength",
-  MaxLength: "maxLength",
+  minLength: "minLength",
+  maxLength: "maxLength",
+  minItems: "minItems",
+  maxItems: "maxItems",
 };
 
 /**
@@ -77,17 +85,10 @@ const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind
  * and must be extracted via the TS compiler JSDoc API rather than the
  * TSDoc DocNode tree to avoid content mangling.
  *
- * - `@Pattern`: regex patterns commonly contain `@` (e.g. email validation)
- * - `@EnumOptions`: JSON arrays may contain object literals with `{}`
+ * - `@pattern`: regex patterns commonly contain `@` (e.g. email validation)
+ * - `@enumOptions`: JSON arrays may contain object literals with `{}`
  */
-const TAGS_REQUIRING_RAW_TEXT = new Set(["Pattern", "EnumOptions"]);
-
-/**
- * Type guard that checks whether a tag name is a known BuiltinConstraintName.
- */
-function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
-  return tagName in BUILTIN_CONSTRAINT_DEFINITIONS;
-}
+const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions"]);
 
 /**
  * Creates a TSDocConfiguration with FormSpec custom block tag definitions
@@ -141,7 +142,7 @@ export interface TSDocParseResult {
  * official TSDoc parser and returns canonical IR constraint and annotation
  * nodes.
  *
- * For constraint tags (`@Minimum`, `@Pattern`, `@EnumOptions`, etc.),
+ * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
  * the structured TSDoc parser is used. For annotation tags that contain
  * underscores (`@Field_displayName`, `@Field_description`), the TypeScript
  * compiler JSDoc API is used as a fallback.
@@ -180,7 +181,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       // Tags in TAGS_REQUIRING_RAW_TEXT are skipped here and handled via the
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
-        const tagName = block.blockTag.tagName.substring(1); // Remove leading @
+        const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
         if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
         const text = extractBlockText(block).trim();
@@ -205,12 +206,12 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
   }
 
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
-  // @Pattern and @EnumOptions content can contain `@` and `{}` characters
+  // @pattern and @enumOptions content can contain `@` and `{}` characters
   // which the TSDoc parser treats as structural markers. We extract these
   // via the TS compiler API which preserves content verbatim.
   const jsDocTagsAll = ts.getJSDocTags(node);
   for (const tag of jsDocTagsAll) {
-    const tagName = tag.tagName.text;
+    const tagName = normalizeConstraintTagName(tag.tagName.text);
     if (!TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
     const commentText = getTagCommentText(tag);
@@ -360,6 +361,8 @@ function extractPlainText(node: DocNode): string {
 /**
  * Parses a raw text value extracted from a TSDoc block tag into an IR
  * ConstraintNode based on the tag name and BUILTIN_CONSTRAINT_DEFINITIONS.
+ *
+ * @param tagName - camelCase-normalized constraint tag name (callers normalize before calling)
  */
 function parseConstraintValue(
   tagName: string,

@@ -27,18 +27,11 @@
               "type": "string"
             }
           },
-          "required": [
-            "street",
-            "city",
-            "country"
-          ],
+          "required": ["street", "city", "country"],
           "additionalProperties": false
         }
       },
-      "required": [
-        "name",
-        "email"
-      ],
+      "required": ["name", "email"],
       "additionalProperties": false
     },
     "items": {
@@ -53,10 +46,7 @@
             "type": "number"
           }
         },
-        "required": [
-          "productId",
-          "quantity"
-        ],
+        "required": ["productId", "quantity"],
         "additionalProperties": false
       }
     },
@@ -64,9 +54,5 @@
       "type": "string"
     }
   },
-  "required": [
-    "orderId",
-    "customer",
-    "items"
-  ]
+  "required": ["orderId", "customer", "items"]
 }

@@ -123,6 +123,24 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
+    // @minItems < @maxItems — valid
+    {
+      code: `
+        class Form {
+          /** @minItems 1 @maxItems 10 */
+          tags!: string[];
+        }
+      `,
+    },
+    // @minItems == @maxItems — valid (fixed-length array)
+    {
+      code: `
+        class Form {
+          /** @minItems 5 @maxItems 5 */
+          tags!: string[];
+        }
+      `,
+    },
   ],
   invalid: [
     // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
@@ -234,6 +252,16 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
       errors: [{ messageId: "maximumLessOrEqualExclusiveMin" }],
+    },
+    // @minItems > @maxItems — invalid
+    {
+      code: `
+        class Form {
+          /** @minItems 10 @maxItems 1 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "minItemsGreaterThanMaxItems" }],
     },
   ],
 });
