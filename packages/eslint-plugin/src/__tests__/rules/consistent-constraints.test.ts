@@ -25,6 +25,9 @@ const ruleTester = new RuleTester({
 
 ruleTester.run("consistent-constraints", consistentConstraints, {
   valid: [
+    // -----------------------------------------------------------------------
+    // @minimum / @maximum — inclusive numeric bounds
+    // -----------------------------------------------------------------------
     // @Minimum < @Maximum
     {
       code: `
@@ -40,24 +43,6 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         class Form {
           /** @Minimum 50 @Maximum 50 */
           value!: number;
-        }
-      `,
-    },
-    // @ExclusiveMinimum < @ExclusiveMaximum
-    {
-      code: `
-        class Form {
-          /** @ExclusiveMinimum 0 @ExclusiveMaximum 100 */
-          value!: number;
-        }
-      `,
-    },
-    // @MinLength < @MaxLength
-    {
-      code: `
-        class Form {
-          /** @MinLength 1 @MaxLength 100 */
-          name!: string;
         }
       `,
     },
@@ -79,7 +64,40 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-    // @Minimum with @ExclusiveMaximum where exclusive max > min
+    // Negative values: @Minimum(-100) < @Maximum(-50) is valid
+    {
+      code: `
+        class Form {
+          /** @Minimum -100 @Maximum -50 */
+          value!: number;
+        }
+      `,
+    },
+    // Float bounds
+    {
+      code: `
+        class Form {
+          /** @Minimum 0.5 @Maximum 0.9 */
+          ratio!: number;
+        }
+      `,
+    },
+    // -----------------------------------------------------------------------
+    // @exclusiveMinimum / @exclusiveMaximum — exclusive numeric bounds
+    // -----------------------------------------------------------------------
+    // @ExclusiveMinimum < @ExclusiveMaximum
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 0 @ExclusiveMaximum 100 */
+          value!: number;
+        }
+      `,
+    },
+    // -----------------------------------------------------------------------
+    // Mixed exclusive/inclusive bounds
+    // -----------------------------------------------------------------------
+    // @Minimum with @ExclusiveMaximum where exclusive max > min (valid)
     {
       code: `
         class Form {
@@ -97,6 +115,37 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
+    // @Minimum equals @ExclusiveMaximum – still invalid (exclusiveMax must be > min)
+    // so we test the valid side: ExclusiveMaximum strictly greater than Minimum
+    {
+      code: `
+        class Form {
+          /** @Minimum 50 @ExclusiveMaximum 51 */
+          value!: number;
+        }
+      `,
+    },
+    // @ExclusiveMinimum strictly less than @Maximum (valid)
+    {
+      code: `
+        class Form {
+          /** @ExclusiveMinimum 49 @Maximum 50 */
+          value!: number;
+        }
+      `,
+    },
+    // -----------------------------------------------------------------------
+    // @minLength / @maxLength
+    // -----------------------------------------------------------------------
+    // @MinLength < @MaxLength
+    {
+      code: `
+        class Form {
+          /** @MinLength 1 @MaxLength 100 */
+          name!: string;
+        }
+      `,
+    },
     // @MinLength == @MaxLength (valid: fixed-length string)
     {
       code: `
@@ -106,23 +155,9 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-    // Negative values: @Minimum(-100) < @Maximum(-50) is valid
-    {
-      code: `
-        class Form {
-          /** @Minimum -100 @Maximum -50 */
-          value!: number;
-        }
-      `,
-    },
-    // No constraints at all
-    {
-      code: `
-        class Form {
-          value!: number;
-        }
-      `,
-    },
+    // -----------------------------------------------------------------------
+    // @minItems / @maxItems
+    // -----------------------------------------------------------------------
     // @minItems < @maxItems — valid
     {
       code: `
@@ -141,7 +176,20 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-    // Path-targeted constraints should be skipped
+    // -----------------------------------------------------------------------
+    // No constraints at all
+    // -----------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          value!: number;
+        }
+      `,
+    },
+    // -----------------------------------------------------------------------
+    // Path-targeted constraints — skipped entirely
+    // -----------------------------------------------------------------------
+    // Path-targeted contradicting bounds — skipped, no error
     {
       code: `
         class Form {
@@ -150,18 +198,29 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-  ],
-  invalid: [
-    // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
+    // Path-targeted conflicting exclusive bounds — skipped
     {
       code: `
         class Form {
-          /** @Minimum -50 @Maximum -100 */
-          value!: number;
+          /** @exclusiveMinimum :value 50 @exclusiveMaximum :value 50 */
+          amount!: { value: number };
         }
       `,
-      errors: [{ messageId: "minimumGreaterThanMaximum" }],
     },
+    // Path-targeted conflicting bound types — skipped
+    {
+      code: `
+        class Form {
+          /** @minimum :value 0 @exclusiveMinimum :value 0 */
+          amount!: { value: number };
+        }
+      `,
+    },
+  ],
+  invalid: [
+    // -----------------------------------------------------------------------
+    // @minimum > @maximum
+    // -----------------------------------------------------------------------
     // @Minimum > @Maximum
     {
       code: `
@@ -172,7 +231,20 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "minimumGreaterThanMaximum" }],
     },
-    // @ExclusiveMinimum >= @ExclusiveMaximum (equal is invalid for exclusive bounds)
+    // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
+    {
+      code: `
+        class Form {
+          /** @Minimum -50 @Maximum -100 */
+          value!: number;
+        }
+      `,
+      errors: [{ messageId: "minimumGreaterThanMaximum" }],
+    },
+    // -----------------------------------------------------------------------
+    // @exclusiveMinimum >= @exclusiveMaximum
+    // -----------------------------------------------------------------------
+    // @ExclusiveMinimum == @ExclusiveMaximum (equal is invalid for exclusive bounds)
     {
       code: `
         class Form {
@@ -192,7 +264,9 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "exclusiveMinGreaterOrEqualMax" }],
     },
-    // @MinLength > @MaxLength
+    // -----------------------------------------------------------------------
+    // @minLength > @maxLength
+    // -----------------------------------------------------------------------
     {
       code: `
         class Form {
@@ -202,7 +276,22 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "minLengthGreaterThanMaxLength" }],
     },
-    // Conflicting minimum bounds: @Minimum + @ExclusiveMinimum
+    // -----------------------------------------------------------------------
+    // @minItems > @maxItems
+    // -----------------------------------------------------------------------
+    {
+      code: `
+        class Form {
+          /** @minItems 10 @maxItems 1 */
+          tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "minItemsGreaterThanMaxItems" }],
+    },
+    // -----------------------------------------------------------------------
+    // Conflicting bound types: both inclusive and exclusive on same side
+    // -----------------------------------------------------------------------
+    // @Minimum + @ExclusiveMinimum — conflicting lower bounds
     {
       code: `
         class Form {
@@ -212,7 +301,17 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "conflictingMinimumBounds" }],
     },
-    // Conflicting maximum bounds: @Maximum + @ExclusiveMaximum
+    // @Minimum + @ExclusiveMinimum with different values — still conflicting
+    {
+      code: `
+        class Form {
+          /** @Minimum 10 @ExclusiveMinimum 5 */
+          value!: number;
+        }
+      `,
+      errors: [{ messageId: "conflictingMinimumBounds" }],
+    },
+    // @Maximum + @ExclusiveMaximum — conflicting upper bounds
     {
       code: `
         class Form {
@@ -222,7 +321,20 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "conflictingMaximumBounds" }],
     },
-    // @ExclusiveMaximum(n) where n <= @Minimum(m)
+    // @Maximum + @ExclusiveMaximum with different values — still conflicting
+    {
+      code: `
+        class Form {
+          /** @Maximum 90 @ExclusiveMaximum 100 */
+          value!: number;
+        }
+      `,
+      errors: [{ messageId: "conflictingMaximumBounds" }],
+    },
+    // -----------------------------------------------------------------------
+    // Mixed exclusive/inclusive: impossible ranges
+    // -----------------------------------------------------------------------
+    // @exclusiveMaximum(n) <= @minimum(m): n == m is invalid
     {
       code: `
         class Form {
@@ -232,7 +344,7 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "exclusiveMaxLessOrEqualMin" }],
     },
-    // @ExclusiveMaximum(n) where n < @Minimum(m)
+    // @exclusiveMaximum(n) < @minimum(m)
     {
       code: `
         class Form {
@@ -242,7 +354,7 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "exclusiveMaxLessOrEqualMin" }],
     },
-    // @ExclusiveMinimum(m) + @Maximum(n) where n == m (invalid: no valid values)
+    // @maximum(n) <= @exclusiveMinimum(m): n == m is invalid (no valid values)
     {
       code: `
         class Form {
@@ -252,7 +364,7 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
       `,
       errors: [{ messageId: "maximumLessOrEqualExclusiveMin" }],
     },
-    // @ExclusiveMinimum(m) + @Maximum(n) where n < m (invalid)
+    // @maximum(n) < @exclusiveMinimum(m)
     {
       code: `
         class Form {
@@ -261,16 +373,6 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
       errors: [{ messageId: "maximumLessOrEqualExclusiveMin" }],
-    },
-    // @minItems > @maxItems — invalid
-    {
-      code: `
-        class Form {
-          /** @minItems 10 @maxItems 1 */
-          tags!: string[];
-        }
-      `,
-      errors: [{ messageId: "minItemsGreaterThanMaxItems" }],
     },
   ],
 });
