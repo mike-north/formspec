@@ -12,7 +12,8 @@
     "@formspec/constraints": "0.1.0-alpha.0",
     "@formspec/language-server": "0.1.0-alpha.0",
     "@formspec/playground": "0.1.0-alpha.0",
-    "@formspec/validator": "0.1.0-alpha.0"
+    "@formspec/validator": "0.1.0-alpha.0",
+    "@formspec/e2e": "0.0.0"
   },
   "changesets": [
     "add-constraints-package",
@@ -33,6 +34,7 @@
     "p4-enum-options-dx",
     "predicate-when-api",
     "tsup-dual-cjs-esm",
+    "type-guards-field-constraints",
     "v2-pipeline-rewrite",
     "zod-validated-ui-schema"
   ]
