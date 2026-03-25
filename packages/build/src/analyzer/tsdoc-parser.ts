@@ -422,7 +422,7 @@ function parseConstraintValue(
         if (typeof item === "string" || typeof item === "number") {
           members.push(item);
         } else if (typeof item === "object" && item !== null && "id" in item) {
-          const id = (item as Record<string, unknown>)["id"];
+          const id: unknown = item.id;
           if (typeof id === "string" || typeof id === "number") {
             members.push(id);
           }
