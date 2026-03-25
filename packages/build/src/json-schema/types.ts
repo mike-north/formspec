@@ -97,7 +97,7 @@ export interface JSONSchema7 {
   "x-formspec-schemaSource"?: string;
 }
 
-/** Extension properties for custom FormSpec decorators. */
+/** Extension properties for custom FormSpec constraint tags. */
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 /** JSON Schema with FormSpec extension properties for arbitrary x-formspec-* keys. */

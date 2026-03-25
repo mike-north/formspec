@@ -1,28 +1,28 @@
 export class ExampleAForm {
-  /** @Field_displayName Full Name
-   *  @Field_description Your legal name
+  /** @displayName Full Name
+   *  @description Your legal name
    *  @minLength 2
    *  @maxLength 100
    */
   name!: string;
 
-  /** @Field_displayName Age
+  /** @displayName Age
    *  @minimum 0
    *  @maximum 150
    */
   age!: number;
 
-  /** @Field_displayName Score
+  /** @displayName Score
    *  @exclusiveMinimum 0
    */
   score!: number;
 
-  /** @Field_displayName Email
+  /** @displayName Email
    *  @pattern ^[^@]+@[^@]+$
    */
   email?: string;
 
-  /** @Field_displayName Country
+  /** @displayName Country
    *  @enumOptions [{"id":"us","label":"United States"},{"id":"ca","label":"Canada"}]
    */
   country!: "us" | "ca";

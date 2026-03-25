@@ -1,7 +1,7 @@
 /**
  * TSDoc canonicalizer — assembles an {@link IRClassAnalysis} into a canonical
  * {@link FormIR}, applying layout metadata from `@Group` and `@ShowWhen`
- * decorators.
+ * TSDoc tags.
  *
  * The analysis functions in `class-analyzer.ts` produce `FieldNode[]`,
  * `fieldLayouts`, and `typeRegistry` directly. This canonicalizer uses
@@ -33,8 +33,8 @@ export interface TSDocSource {
  * `analyzeInterfaceToIR`, or `analyzeTypeAliasToIR`) into a canonical
  * {@link FormIR}.
  *
- * Fields with `@Group` decorators are grouped into `GroupLayoutNode` elements.
- * Fields with `@ShowWhen` decorators are wrapped in `ConditionalLayoutNode` elements.
+ * Fields with `@Group` TSDoc tags are grouped into `GroupLayoutNode` elements.
+ * Fields with `@ShowWhen` TSDoc tags are wrapped in `ConditionalLayoutNode` elements.
  * When both are present, the conditional wraps the field inside the group.
  *
  * @param analysis - IR analysis result (fields are already FieldNode[])

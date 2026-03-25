@@ -4,56 +4,19 @@
  * Extracts constraints and annotation tags from JSDoc comments on
  * class/interface fields and returns canonical IR nodes directly:
  * - {@link ConstraintNode} for set-influencing tags (@minimum, @pattern, etc.)
- * - {@link AnnotationNode} for value-influencing tags (@Field_displayName, etc.)
+ * - {@link AnnotationNode} for value-influencing tags (@displayName, @description, etc.)
  *
  * The IR extraction path uses the official `@microsoft/tsdoc` parser for
  * constraints (all TSDoc-compliant alphanumeric names) and the TypeScript
- * compiler JSDoc API for annotation tags (which contain underscores, e.g.
- * `@Field_displayName`).
+ * compiler JSDoc API for annotation tags (@displayName, @description).
  *
  * Supported constraints correspond to keys in {@link BUILTIN_CONSTRAINT_DEFINITIONS}
  * from `@formspec/core` (e.g., `@minimum`, `@maximum`, `@pattern`).
  */
 
 import * as ts from "typescript";
-import {
-  BUILTIN_CONSTRAINT_DEFINITIONS,
-  isBuiltinConstraintName,
-  normalizeConstraintTagName,
-  type ConstraintNode,
-  type AnnotationNode,
-  type JsonValue,
-} from "@formspec/core";
+import { type ConstraintNode, type AnnotationNode, type JsonValue } from "@formspec/core";
 import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
-import { tryParseJson } from "./json-utils.js";
-
-// =============================================================================
-// Legacy types — previously in decorator-extractor.ts, now owned here
-// =============================================================================
-
-/**
- * A constraint argument value.
- */
-export type ConstraintArg =
-  | string
-  | number
-  | boolean
-  | null
-  | ConstraintArg[]
-  | { [key: string]: ConstraintArg };
-
-/**
- * Extracted constraint information from a JSDoc tag.
- * @deprecated Use {@link ConstraintNode} from the IR path instead.
- */
-export interface ConstraintInfo {
-  /** Constraint name (e.g., "Minimum", "Pattern", "Field") */
-  name: string;
-  /** Constraint arguments as literal values */
-  args: ConstraintArg[];
-  /** Raw AST node (undefined for synthetic JSDoc constraint entries) */
-  node: ts.Decorator | undefined;
-}
 
 // =============================================================================
 // IR API — uses @microsoft/tsdoc for structured parsing
@@ -76,14 +39,8 @@ export function extractJSDocConstraintNodes(node: ts.Node, file = ""): Constrain
 }
 
 /**
- * Extracts `@Field_displayName`, `@Field_description`, and `@deprecated`
+ * Extracts `@displayName`, `@description`, and `@deprecated`
  * TSDoc tags from a node and returns canonical {@link AnnotationNode} objects.
- *
- * Uses a hybrid approach:
- * - `@deprecated` is extracted via the TSDoc parser (standard tag).
- * - `@Field_displayName` and `@Field_description` are extracted via the
- *   TypeScript compiler JSDoc API because they contain underscores which
- *   are invalid in TSDoc tag names.
  *
  * @param node - The AST node to inspect for annotation tags
  * @param file - Absolute path to the source file for provenance
@@ -151,136 +108,5 @@ export function extractDefaultValueAnnotation(
       line: line + 1,
       column: character,
     },
-  };
-}
-
-// =============================================================================
-// LEGACY API — backward compatibility for decorator-based pipeline
-// =============================================================================
-
-/**
- * Extracts JSDoc constraint tags and returns synthetic {@link ConstraintInfo}
- * objects for backward compatibility with the decorator-based pipeline.
- *
- * Uses the TypeScript compiler JSDoc API (not TSDoc parser) to maintain
- * identical behavior with the legacy pipeline.
- *
- * @deprecated Use {@link extractJSDocConstraintNodes} for IR output.
- */
-export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
-  const results: ConstraintInfo[] = [];
-  const jsDocTags = ts.getJSDocTags(node);
-
-  for (const tag of jsDocTags) {
-    // Normalize to camelCase canonical form (e.g., "Minimum" → "minimum")
-    const tagName = normalizeConstraintTagName(tag.tagName.text);
-
-    if (!isBuiltinConstraintName(tagName)) {
-      continue;
-    }
-
-    const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[tagName];
-
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined || commentText === "") {
-      continue;
-    }
-
-    const trimmed = commentText.trim();
-    if (trimmed === "") {
-      continue;
-    }
-
-    if (expectedType === "number") {
-      const value = Number(trimmed);
-      if (Number.isNaN(value)) {
-        continue;
-      }
-      results.push(createSyntheticDecorator(tagName, value));
-    } else if (expectedType === "json") {
-      const parsed = tryParseJson(trimmed);
-      if (!Array.isArray(parsed)) {
-        continue;
-      }
-      results.push(createSyntheticDecorator(tagName, parsed as ConstraintArg));
-    } else {
-      results.push(createSyntheticDecorator(tagName, trimmed));
-    }
-  }
-
-  return results;
-}
-
-/**
- * Extracts `@Field_displayName` and `@Field_description` TSDoc tags
- * and returns a synthetic `Field` {@link ConstraintInfo} for backward
- * compatibility with the decorator-based pipeline.
- *
- * @deprecated Use {@link extractJSDocAnnotationNodes} for IR output.
- */
-export function extractJSDocFieldMetadata(node: ts.Node): ConstraintInfo | null {
-  const jsDocTags = ts.getJSDocTags(node);
-
-  let displayName: string | undefined;
-  let description: string | undefined;
-
-  for (const tag of jsDocTags) {
-    const tagName = tag.tagName.text;
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined || commentText.trim() === "") {
-      continue;
-    }
-
-    const trimmed = commentText.trim();
-
-    if (tagName === "Field_displayName") {
-      displayName = trimmed;
-    } else if (tagName === "Field_description") {
-      description = trimmed;
-    }
-  }
-
-  if (displayName === undefined && description === undefined) {
-    return null;
-  }
-
-  const fieldOpts: Record<string, ConstraintArg> = {
-    ...(displayName !== undefined ? { displayName } : {}),
-    ...(description !== undefined ? { description } : {}),
-  };
-
-  return createSyntheticDecorator("Field", fieldOpts);
-}
-
-// =============================================================================
-// PRIVATE HELPERS
-// =============================================================================
-
-/**
- * Extracts the text content from a JSDoc tag's comment.
- *
- * The `tag.comment` property can be a plain string, an array of
- * `JSDocComment` nodes, or undefined. This helper normalises all
- * three cases to a single `string | undefined`.
- */
-function getTagCommentText(tag: ts.JSDocTag): string | undefined {
-  if (tag.comment === undefined) {
-    return undefined;
-  }
-  if (typeof tag.comment === "string") {
-    return tag.comment;
-  }
-  // NodeArray<JSDocComment> — concatenate text spans
-  return ts.getTextOfJSDocComment(tag.comment);
-}
-
-/**
- * Creates a synthetic {@link ConstraintInfo} for backward compatibility.
- */
-function createSyntheticDecorator(name: string, value: ConstraintArg): ConstraintInfo {
-  return {
-    name,
-    args: [value],
-    node: undefined,
   };
 }

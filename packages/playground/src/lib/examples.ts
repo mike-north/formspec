@@ -138,35 +138,35 @@ export default SurveyForm;`,
  * tags and produces JSON Schema validation rules.
  */
 class SupportTicketForm {
-  /** @Field_displayName Full Name
-   *  @Field_description Your legal name
+  /** @displayName Full Name
+   *  @description Your legal name
    *  @MaxLength 100
    */
   name!: string;
 
-  /** @Field_displayName Email Address
+  /** @displayName Email Address
    *  @Pattern ^[^@]+@[^@]+\\.[^@]+$
    */
   email!: string;
 
-  /** @Field_displayName Age
-   *  @Field_description Must be 18 or older
+  /** @displayName Age
+   *  @description Must be 18 or older
    *  @Minimum 18
    */
   age!: number;
 
-  /** @Field_displayName Priority
+  /** @displayName Priority
    *  @EnumOptions ["low","medium","high","critical"]
    */
   priority!: "low" | "medium" | "high" | "critical";
 
-  /** @Field_displayName Category
+  /** @displayName Category
    *  @EnumOptions ["billing","technical","general"]
    */
   category!: "billing" | "technical" | "general";
 
-  /** @Field_displayName Issue Description
-   *  @Field_description Describe your issue
+  /** @displayName Issue Description
+   *  @description Describe your issue
    *  @MaxLength 2000
    */
   description!: string;

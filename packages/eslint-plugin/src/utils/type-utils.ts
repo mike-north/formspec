@@ -162,7 +162,7 @@ function stripNullishFromUnion(type: ts.Type): ts.Type {
 /**
  * Determines the field type category from a TypeScript type.
  *
- * Categories help determine which decorators are valid for a field.
+ * Categories help determine which constraint tags are valid for a field.
  *
  * @param type - The TypeScript type to categorize
  * @param checker - The TypeScript type checker instance

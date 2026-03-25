@@ -14,10 +14,8 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@Field_displayName`, `@Field_description`):
- *    These contain underscores which are not valid in TSDoc tag names.
- *    They are extracted via the TypeScript compiler's `ts.getJSDocTags()`
- *    until a future migration to underscore-free tag names.
+ * 2. **Annotation tags** (`@displayName`, `@description`):
+ *    Extracted via the TypeScript compiler's `ts.getJSDocTags()` API.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
@@ -144,9 +142,8 @@ export interface TSDocParseResult {
  * nodes.
  *
  * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
- * the structured TSDoc parser is used. For annotation tags that contain
- * underscores (`@Field_displayName`, `@Field_description`), the TypeScript
- * compiler JSDoc API is used as a fallback.
+ * the structured TSDoc parser is used. For annotation tags (`@displayName`,
+ * `@description`), the TypeScript compiler JSDoc API is used.
  *
  * @param node - The TS AST node to inspect (PropertyDeclaration, PropertySignature, etc.)
  * @param file - Absolute source file path for provenance
@@ -226,9 +223,8 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
     }
   }
 
-  // ----- Phase 2: TS compiler JSDoc API for underscore-containing annotation tags -----
-  // @Field_displayName and @Field_description contain underscores which
-  // are invalid in TSDoc tag names. We extract them via the TS compiler API.
+  // ----- Phase 2: TS compiler JSDoc API for annotation tags -----
+  // @displayName and @description are extracted via the TS compiler API.
   let displayName: string | undefined;
   let description: string | undefined;
   let displayNameTag: ts.JSDocTag | undefined;
@@ -243,10 +239,10 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 
     const trimmed = commentText.trim();
 
-    if (tagName === "Field_displayName") {
+    if (tagName === "displayName") {
       displayName = trimmed;
       displayNameTag = tag;
-    } else if (tagName === "Field_description") {
+    } else if (tagName === "description") {
       description = trimmed;
       descriptionTag = tag;
     }
