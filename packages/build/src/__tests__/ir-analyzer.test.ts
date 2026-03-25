@@ -546,4 +546,24 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
 
     expect(Object.keys(analysis.typeRegistry)).not.toContain("Record");
   });
+
+  it("handles self-referential Record types without stack overflow", () => {
+    // Regression for the circular-reference bug in tryResolveRecordType:
+    // `type SelfRefRecord = Record<string, SelfRefRecord>` would recurse
+    // infinitely without the visiting-set guard inside tryResolveRecordType.
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "ObjectEdgeCases");
+    if (!classDecl) throw new Error("ObjectEdgeCases class not found");
+
+    // Must not throw / stack overflow
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+
+    const field = analysis.fields.find((f) => f.name === "selfRefRecord");
+    expect(field).toBeDefined();
+    // The type should be some valid IR node (record or object), never undefined
+    expect(field?.type).toBeDefined();
+    // Regardless of the exact shape, the kind must be a known TypeNode kind
+    const validKinds = ["record", "object", "primitive", "union", "array", "enum", "reference"];
+    expect(validKinds).toContain(field?.type.kind);
+  });
 });

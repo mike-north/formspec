@@ -504,8 +504,21 @@ function tryResolveRecordType(
   if (!indexInfo) {
     return null;
   }
-  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
-  return { kind: "record", valueType };
+
+  // Circular-reference guard: if we are already resolving this type (e.g.
+  // `type X = Record<string, X>`), return null so that `resolveObjectType`
+  // falls through to its own visiting-set guard and emits a safe empty object.
+  if (visiting.has(type)) {
+    return null;
+  }
+
+  visiting.add(type);
+  try {
+    const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+    return { kind: "record", valueType };
+  } finally {
+    visiting.delete(type);
+  }
 }
 
 function resolveObjectType(
