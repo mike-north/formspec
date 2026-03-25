@@ -52,6 +52,7 @@ import {
   type LengthConstraintNode,
   type PathTarget,
 } from "@formspec/core";
+import { tryParseJson } from "./json-utils.js";
 
 // =============================================================================
 // CONFIGURATION
@@ -412,32 +413,28 @@ function parseConstraintValue(
   }
 
   if (expectedType === "json") {
-    try {
-      const parsed: unknown = JSON.parse(effectiveText);
-      if (!Array.isArray(parsed)) {
-        return null;
-      }
-      const members: (string | number)[] = [];
-      for (const item of parsed as unknown[]) {
-        if (typeof item === "string" || typeof item === "number") {
-          members.push(item);
-        } else if (typeof item === "object" && item !== null && "id" in item) {
-          const id = (item as Record<string, unknown>)["id"];
-          if (typeof id === "string" || typeof id === "number") {
-            members.push(id);
-          }
-        }
-      }
-      return {
-        kind: "constraint",
-        constraintKind: "allowedMembers",
-        members,
-        ...(path && { path }),
-        provenance,
-      };
-    } catch {
+    const parsed = tryParseJson(effectiveText);
+    if (!Array.isArray(parsed)) {
       return null;
     }
+    const members: (string | number)[] = [];
+    for (const item of parsed) {
+      if (typeof item === "string" || typeof item === "number") {
+        members.push(item);
+      } else if (typeof item === "object" && item !== null && "id" in item) {
+        const id = (item as Record<string, unknown>)["id"];
+        if (typeof id === "string" || typeof id === "number") {
+          members.push(id);
+        }
+      }
+    }
+    return {
+      kind: "constraint",
+      constraintKind: "allowedMembers",
+      members,
+      ...(path && { path }),
+      provenance,
+    };
   }
 
   // expectedType === "string" — only remaining case after number and json
