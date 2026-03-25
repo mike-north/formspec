@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "title": "Full Name",
+      "description": "The user's legal name",
+      "deprecated": true
+    },
+    "age": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "minimum": 0,
+      "maximum": 150
+    },
+    "addresses": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/Address"
+          },
+          {
+            "properties": {
+              "street": {
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "preciseScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 100,
+      "multipleOf": 0.5
+    }
+  },
+  "required": ["name", "addresses", "preciseScore"],
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "zip": {
+          "type": "string",
+          "pattern": "^\\d{5}$"
+        }
+      },
+      "required": ["street", "city", "state", "zip"],
+      "additionalProperties": false
+    }
+  }
+}

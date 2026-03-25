@@ -1,0 +1,22 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/name",
+      "label": "Full Name"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/age"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/addresses"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/preciseScore"
+    }
+  ]
+}
