@@ -70,7 +70,7 @@
 
   **@formspec/build:**
   - New `generateSchemas()` unified entry point — auto-detects class, interface, or type alias
-  - Interface analysis: `@Field_displayName`, `@Field_description`, and constraint tags (`@Minimum`, `@Pattern`, etc.) extracted from TSDoc comments on interface properties
+  - Interface analysis: `@displayName`, `@description`, and constraint tags (`@Minimum`, `@Pattern`, etc.) extracted from TSDoc comments on interface properties
   - Type alias analysis: object type literal aliases analyzed the same as interfaces
   - Constrained primitive type aliases: `type Percent = number` with `@Minimum 0 @Maximum 100` propagates constraints to fields using that type
   - `@EnumOptions` TSDoc tag with inline JSON: `@EnumOptions ["a","b","c"]`

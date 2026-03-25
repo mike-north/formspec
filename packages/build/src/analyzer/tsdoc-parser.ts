@@ -15,7 +15,8 @@
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
  * 2. **Annotation tags** (`@displayName`, `@description`):
- *    Extracted via the TypeScript compiler's `ts.getJSDocTags()` API.
+ *    These are parsed as structured custom block tags and mapped directly
+ *    onto annotation IR nodes.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
@@ -108,6 +109,17 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
     );
   }
 
+  // Register annotation tags that participate in the canonical IR.
+  for (const tagName of ["displayName", "description"]) {
+    config.addTagDefinition(
+      new TSDocTagDefinition({
+        tagName: "@" + tagName,
+        syntaxKind: TSDocTagSyntaxKind.BlockTag,
+        allowMultiple: true,
+      })
+    );
+  }
+
   return config;
 }
 
@@ -132,7 +144,7 @@ function getParser(): TSDocParser {
 export interface TSDocParseResult {
   /** Constraint IR nodes extracted from custom block tags. */
   readonly constraints: readonly ConstraintNode[];
-  /** Annotation IR nodes extracted from modifier/block tags and TS JSDoc API. */
+  /** Annotation IR nodes extracted from canonical TSDoc block tags. */
   readonly annotations: readonly AnnotationNode[];
 }
 
@@ -142,8 +154,8 @@ export interface TSDocParseResult {
  * nodes.
  *
  * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
- * the structured TSDoc parser is used. For annotation tags (`@displayName`,
- * `@description`), the TypeScript compiler JSDoc API is used.
+ * the structured TSDoc parser is used. Canonical annotation tags
+ * (`@displayName`, `@description`) are also parsed structurally.
  *
  * @param node - The TS AST node to inspect (PropertyDeclaration, PropertySignature, etc.)
  * @param file - Absolute source file path for provenance
@@ -152,6 +164,10 @@ export interface TSDocParseResult {
 export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
+  let displayName: string | undefined;
+  let description: string | undefined;
+  let displayNameProvenance: Provenance | undefined;
+  let descriptionProvenance: Provenance | undefined;
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
@@ -180,6 +196,21 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
+        if (tagName === "displayName" || tagName === "description") {
+          const text = extractBlockText(block).trim();
+          if (text === "") continue;
+
+          const provenance = provenanceForComment(range, sourceFile, file, tagName);
+          if (tagName === "displayName") {
+            displayName = text;
+            displayNameProvenance = provenance;
+          } else {
+            description = text;
+            descriptionProvenance = provenance;
+          }
+          continue;
+        }
+
         if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
         const text = extractBlockText(block).trim();
@@ -203,6 +234,24 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
     }
   }
 
+  if (displayName !== undefined && displayNameProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "displayName",
+      value: displayName,
+      provenance: displayNameProvenance,
+    });
+  }
+
+  if (description !== undefined && descriptionProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "description",
+      value: description,
+      provenance: descriptionProvenance,
+    });
+  }
+
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
   // @pattern and @enumOptions content can contain `@` and `{}` characters
   // which the TSDoc parser treats as structural markers. We extract these
@@ -221,49 +270,6 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
     if (constraintNode) {
       constraints.push(constraintNode);
     }
-  }
-
-  // ----- Phase 2: TS compiler JSDoc API for annotation tags -----
-  // @displayName and @description are extracted via the TS compiler API.
-  let displayName: string | undefined;
-  let description: string | undefined;
-  let displayNameTag: ts.JSDocTag | undefined;
-  let descriptionTag: ts.JSDocTag | undefined;
-
-  for (const tag of jsDocTagsAll) {
-    const tagName = tag.tagName.text;
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined || commentText.trim() === "") {
-      continue;
-    }
-
-    const trimmed = commentText.trim();
-
-    if (tagName === "displayName") {
-      displayName = trimmed;
-      displayNameTag = tag;
-    } else if (tagName === "description") {
-      description = trimmed;
-      descriptionTag = tag;
-    }
-  }
-
-  if (displayName !== undefined && displayNameTag) {
-    annotations.push({
-      kind: "annotation",
-      annotationKind: "displayName",
-      value: displayName,
-      provenance: provenanceForJSDocTag(displayNameTag, file),
-    });
-  }
-
-  if (description !== undefined && descriptionTag) {
-    annotations.push({
-      kind: "annotation",
-      annotationKind: "description",
-      value: description,
-      provenance: provenanceForJSDocTag(descriptionTag, file),
-    });
   }
 
   return { constraints, annotations };
