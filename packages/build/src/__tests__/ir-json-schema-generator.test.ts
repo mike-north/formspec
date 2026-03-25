@@ -456,7 +456,7 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
-    it("emits anyOf for nullable type (T | null)", () => {
+    it("emits oneOf for nullable type (T | null) per spec 003 §2.3", () => {
       const ir = makeIR([
         makeField("optional", {
           kind: "union",
@@ -470,7 +470,26 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["optional"];
 
       expect(prop).toEqual({
-        anyOf: [{ type: "string" }, { type: "null" }],
+        oneOf: [{ type: "string" }, { type: "null" }],
+      });
+    });
+
+    it("emits anyOf for unions with more than two members including null", () => {
+      const ir = makeIR([
+        makeField("value", {
+          kind: "union",
+          members: [
+            { kind: "primitive", primitiveKind: "string" },
+            { kind: "primitive", primitiveKind: "number" },
+            { kind: "primitive", primitiveKind: "null" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["value"];
+
+      expect(prop).toEqual({
+        anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
       });
     });
 

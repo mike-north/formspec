@@ -6,7 +6,7 @@
       "type": "string"
     },
     "nickname": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "string"
         },
@@ -19,7 +19,7 @@
       "type": "number"
     },
     "score": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "number"
         },
