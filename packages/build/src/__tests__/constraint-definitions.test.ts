@@ -68,4 +68,18 @@ describe("isBuiltinConstraintName", () => {
   it("returns false for all-caps input", () => {
     expect(isBuiltinConstraintName("MINIMUM")).toBe(false);
   });
+
+  it("returns false for 'toString' (prototype property — regression: in operator bug)", () => {
+    // The `in` operator matches inherited properties via the prototype chain.
+    // Object.hasOwn() prevents these false positives.
+    expect(isBuiltinConstraintName("toString")).toBe(false);
+  });
+
+  it("returns false for 'constructor' (prototype property — regression: in operator bug)", () => {
+    expect(isBuiltinConstraintName("constructor")).toBe(false);
+  });
+
+  it("returns false for 'hasOwnProperty' (prototype property)", () => {
+    expect(isBuiltinConstraintName("hasOwnProperty")).toBe(false);
+  });
 });

@@ -31,11 +31,15 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS = {
 export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
 
 /**
- * Normalizes a constraint tag name to camelCase.
+ * Normalizes a constraint tag name from PascalCase to camelCase.
  *
- * Allows users to write either `@Minimum` or `@minimum` — both are
- * normalized to the camelCase canonical form `"minimum"` used as keys
- * in {@link BUILTIN_CONSTRAINT_DEFINITIONS}.
+ * Lowercases the first character so that e.g. `"Minimum"` becomes `"minimum"`.
+ * Callers must strip the `@` prefix before calling this function.
+ *
+ * @example
+ * normalizeConstraintTagName("Minimum")   // "minimum"
+ * normalizeConstraintTagName("MinLength") // "minLength"
+ * normalizeConstraintTagName("minimum")   // "minimum" (idempotent)
  */
 export function normalizeConstraintTagName(tagName: string): string {
   return tagName.charAt(0).toLowerCase() + tagName.slice(1);
@@ -44,9 +48,12 @@ export function normalizeConstraintTagName(tagName: string): string {
 /**
  * Type guard: checks whether a tag name is a known built-in constraint.
  *
+ * Uses `Object.hasOwn()` rather than `in` to prevent prototype-chain
+ * matches on names like `"toString"` or `"constructor"`.
+ *
  * Callers should normalize with {@link normalizeConstraintTagName} first
  * if the input may be PascalCase.
  */
 export function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
-  return tagName in BUILTIN_CONSTRAINT_DEFINITIONS;
+  return Object.hasOwn(BUILTIN_CONSTRAINT_DEFINITIONS, tagName);
 }

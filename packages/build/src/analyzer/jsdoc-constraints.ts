@@ -18,8 +18,8 @@
 import * as ts from "typescript";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
+  isBuiltinConstraintName,
   normalizeConstraintTagName,
-  type BuiltinConstraintName,
   type ConstraintNode,
   type AnnotationNode,
   type JsonValue,
@@ -174,12 +174,11 @@ export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
     // Normalize to camelCase canonical form (e.g., "Minimum" → "minimum")
     const tagName = normalizeConstraintTagName(tag.tagName.text);
 
-    if (!(tagName in BUILTIN_CONSTRAINT_DEFINITIONS)) {
+    if (!isBuiltinConstraintName(tagName)) {
       continue;
     }
 
-    const constraintName = tagName as BuiltinConstraintName;
-    const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[constraintName];
+    const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[tagName];
 
     const commentText = getTagCommentText(tag);
     if (commentText === undefined || commentText === "") {
@@ -196,19 +195,19 @@ export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
       if (Number.isNaN(value)) {
         continue;
       }
-      results.push(createSyntheticDecorator(constraintName, value));
+      results.push(createSyntheticDecorator(tagName, value));
     } else if (expectedType === "json") {
       try {
         const parsed: unknown = JSON.parse(trimmed);
         if (!Array.isArray(parsed)) {
           continue;
         }
-        results.push(createSyntheticDecorator(constraintName, parsed as ConstraintArg));
+        results.push(createSyntheticDecorator(tagName, parsed as ConstraintArg));
       } catch {
         continue;
       }
     } else {
-      results.push(createSyntheticDecorator(constraintName, trimmed));
+      results.push(createSyntheticDecorator(tagName, trimmed));
     }
   }
 
