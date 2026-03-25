@@ -164,7 +164,7 @@ OPTIONS:
 
 OUTPUT FILES:
   - Class outputs include schema.json and ui_schema.json
-  - Method parameter UI schemas are written as params.ui_schema.json
+  - When available, method parameter UI schemas are written as params.ui_schema.json
   - FormSpec export UI schemas are written as ui_schema.json
 
 EXAMPLES:

@@ -202,7 +202,7 @@ generated/
 │   ├── instance_methods/
 │   │   └── methodName/
 │   │       ├── params.schema.json
-│   │       ├── params.ui_schema.json
+│   │       ├── params.ui_schema.json (if FormSpec-based)
 │   │       └── return_type.schema.json
 │   └── static_methods/
 │       └── methodName/

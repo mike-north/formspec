@@ -243,7 +243,7 @@
   ├── instance_methods/
   │   └── methodName/
   │       ├── params.schema.json
-  │       ├── params.ui_schema.json
+  │       ├── params.ui_schema.json     # emitted when FormSpec-based params UI schema is available
   │       └── return_type.schema.json
   └── static_methods/
       └── ...
