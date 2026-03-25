@@ -474,6 +474,25 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
+    it("emits anyOf for unions with more than two members including null", () => {
+      const ir = makeIR([
+        makeField("value", {
+          kind: "union",
+          members: [
+            { kind: "primitive", primitiveKind: "string" },
+            { kind: "primitive", primitiveKind: "number" },
+            { kind: "primitive", primitiveKind: "null" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["value"];
+
+      expect(prop).toEqual({
+        anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
+      });
+    });
+
     it("emits type:boolean for boolean union shorthand", () => {
       const ir = makeIR([
         makeField("flag", {

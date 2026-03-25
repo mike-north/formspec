@@ -506,13 +506,18 @@ function isBooleanUnion(type: UnionTypeNode): boolean {
 }
 
 /**
- * Returns true if the union is a nullable union (`T | null` for any T).
+ * Returns true if the union is a nullable wrapper union (`T | null` for any T).
  *
- * A nullable union has exactly one member that is the `null` primitive type.
+ * A nullable union is a two-member union where exactly one member is the `null`
+ * primitive type and the other member is any non-null type.
  * Per spec 003 §2.3, nullable unions map to `oneOf` (not `anyOf`).
  */
 function isNullableUnion(type: UnionTypeNode): boolean {
-  return type.members.some((m) => m.kind === "primitive" && m.primitiveKind === "null");
+  if (type.members.length !== 2) return false;
+  const nullCount = type.members.filter(
+    (m) => m.kind === "primitive" && m.primitiveKind === "null"
+  ).length;
+  return nullCount === 1;
 }
 
 /**
