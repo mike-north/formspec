@@ -61,6 +61,19 @@ function extractStructural(
   return result;
 }
 
+/**
+ * Retrieves a property schema by name, failing the test if it is absent.
+ * Avoids non-null assertions while keeping test code concise.
+ */
+function getProp(
+  properties: Record<string, Record<string, unknown>>,
+  name: string
+): Record<string, unknown> {
+  const prop = properties[name];
+  if (!prop) throw new Error(`property "${name}" is missing from schema`);
+  return prop;
+}
+
 describe("TSDoc ↔ Chain DSL Parity", () => {
   let tempDir: string;
   let tsdocSchema: Record<string, unknown>;
@@ -110,7 +123,7 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
 
   describe("age field — number with minimum and maximum", () => {
     it("TSDoc: has number type with minimum 1 and maximum 100", () => {
-      expect(extractStructural(tsdocProperties["age"]!)).toEqual({
+      expect(extractStructural(getProp(tsdocProperties, "age"))).toEqual({
         type: "number",
         minimum: 1,
         maximum: 100,
@@ -118,7 +131,7 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
     });
 
     it("Chain DSL: has number type with minimum 1 and maximum 100", () => {
-      expect(extractStructural(dslProperties["age"]!)).toEqual({
+      expect(extractStructural(getProp(dslProperties, "age"))).toEqual({
         type: "number",
         minimum: 1,
         maximum: 100,
@@ -126,15 +139,15 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
     });
 
     it("structural output matches between surfaces", () => {
-      expect(extractStructural(tsdocProperties["age"]!)).toEqual(
-        extractStructural(dslProperties["age"]!)
+      expect(extractStructural(getProp(tsdocProperties, "age"))).toEqual(
+        extractStructural(getProp(dslProperties, "age"))
       );
     });
   });
 
   describe("name field — string with minLength and maxLength", () => {
     it("TSDoc: has string type with minLength 1 and maxLength 200", () => {
-      expect(extractStructural(tsdocProperties["name"]!)).toEqual({
+      expect(extractStructural(getProp(tsdocProperties, "name"))).toEqual({
         type: "string",
         minLength: 1,
         maxLength: 200,
@@ -142,7 +155,7 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
     });
 
     it("Chain DSL: has string type with minLength 1 and maxLength 200", () => {
-      expect(extractStructural(dslProperties["name"]!)).toEqual({
+      expect(extractStructural(getProp(dslProperties, "name"))).toEqual({
         type: "string",
         minLength: 1,
         maxLength: 200,
@@ -150,70 +163,70 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
     });
 
     it("structural output matches between surfaces", () => {
-      expect(extractStructural(tsdocProperties["name"]!)).toEqual(
-        extractStructural(dslProperties["name"]!)
+      expect(extractStructural(getProp(tsdocProperties, "name"))).toEqual(
+        extractStructural(getProp(dslProperties, "name"))
       );
     });
   });
 
   describe("email field — string with pattern constraint", () => {
     it("TSDoc: has string type with email pattern", () => {
-      expect(extractStructural(tsdocProperties["email"]!)).toEqual({
+      expect(extractStructural(getProp(tsdocProperties, "email"))).toEqual({
         type: "string",
         pattern: "^[^@]+@[^@]+$",
       });
     });
 
     it("Chain DSL: has string type with email pattern", () => {
-      expect(extractStructural(dslProperties["email"]!)).toEqual({
+      expect(extractStructural(getProp(dslProperties, "email"))).toEqual({
         type: "string",
         pattern: "^[^@]+@[^@]+$",
       });
     });
 
     it("structural output matches between surfaces", () => {
-      expect(extractStructural(tsdocProperties["email"]!)).toEqual(
-        extractStructural(dslProperties["email"]!)
+      expect(extractStructural(getProp(tsdocProperties, "email"))).toEqual(
+        extractStructural(getProp(dslProperties, "email"))
       );
     });
   });
 
   describe("country field — string literal union (enum)", () => {
     it("TSDoc: has enum with correct values", () => {
-      expect(extractStructural(tsdocProperties["country"]!)).toEqual({
+      expect(extractStructural(getProp(tsdocProperties, "country"))).toEqual({
         enum: ["us", "ca", "uk"],
       });
     });
 
     it("Chain DSL: has enum with correct values", () => {
-      expect(extractStructural(dslProperties["country"]!)).toEqual({
+      expect(extractStructural(getProp(dslProperties, "country"))).toEqual({
         enum: ["us", "ca", "uk"],
       });
     });
 
     it("structural output matches between surfaces", () => {
-      expect(extractStructural(tsdocProperties["country"]!)).toEqual(
-        extractStructural(dslProperties["country"]!)
+      expect(extractStructural(getProp(tsdocProperties, "country"))).toEqual(
+        extractStructural(getProp(dslProperties, "country"))
       );
     });
   });
 
   describe("bio field — optional string with no constraints", () => {
     it("TSDoc: has string type", () => {
-      expect(extractStructural(tsdocProperties["bio"]!)).toEqual({
+      expect(extractStructural(getProp(tsdocProperties, "bio"))).toEqual({
         type: "string",
       });
     });
 
     it("Chain DSL: has string type", () => {
-      expect(extractStructural(dslProperties["bio"]!)).toEqual({
+      expect(extractStructural(getProp(dslProperties, "bio"))).toEqual({
         type: "string",
       });
     });
 
     it("structural output matches between surfaces", () => {
-      expect(extractStructural(tsdocProperties["bio"]!)).toEqual(
-        extractStructural(dslProperties["bio"]!)
+      expect(extractStructural(getProp(tsdocProperties, "bio"))).toEqual(
+        extractStructural(getProp(dslProperties, "bio"))
       );
     });
   });
@@ -222,22 +235,39 @@ describe("TSDoc ↔ Chain DSL Parity", () => {
     it("all field structural outputs match between surfaces", () => {
       const fieldNames = ["age", "name", "email", "country", "bio"] as const;
       for (const fieldName of fieldNames) {
-        expect(extractStructural(tsdocProperties[fieldName]!)).toEqual(
-          extractStructural(dslProperties[fieldName]!)
+        expect(extractStructural(getProp(tsdocProperties, fieldName))).toEqual(
+          extractStructural(getProp(dslProperties, fieldName))
         );
       }
     });
   });
 
   describe("Gold-master comparison", () => {
+    /**
+     * Both surfaces use the same expected file because parity is the goal —
+     * both TSDoc class and chain DSL should produce structurally identical
+     * JSON Schema output. The file lives under tsdoc-class/ by convention
+     * since that surface drives the canonical shape.
+     */
     it("TSDoc surface matches expected JSON Schema", () => {
       const expected = loadExpected("tsdoc-class/parity-contact.schema.json");
       expect(tsdocSchema).toEqual(expected);
     });
 
     it("Chain DSL surface matches expected JSON Schema", () => {
+      // Intentionally the same gold-master as TSDoc: both surfaces must produce
+      // structurally identical output. See file-level JSDoc for rationale.
       const expected = loadExpected("tsdoc-class/parity-contact.schema.json");
       expect(dslSchema).toEqual(expected);
+    });
+
+    it("TSDoc surface matches expected UI Schema", () => {
+      const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
+      expect(uischemaFile).toBeDefined();
+      if (!uischemaFile) throw new Error("UI Schema file not found");
+      const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as unknown;
+      const expected = loadExpected("tsdoc-class/parity-contact.uischema.json");
+      expect(actual).toEqual(expected);
     });
   });
 });
