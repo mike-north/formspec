@@ -11,9 +11,10 @@
  * centrally tested.
  *
  * Note: when the input is the literal string `"null"`, the return value is
- * also `null` (valid JSON). Callers that need to distinguish parse failure
- * from a successfully-parsed `null` should use a stricter check (e.g.
- * `Array.isArray`), as both callers in this package already do.
+ * also `null` (valid JSON). This helper therefore cannot distinguish parse
+ * failure from a successfully-parsed JSON `null`. Callers that need to
+ * distinguish these cases should use a different API (for example, a wrapper
+ * that returns a discriminated result such as `{ ok: boolean, value?: unknown }`).
  *
  * @param text - Raw string to parse
  * @returns The parsed value, or `null` on parse failure
