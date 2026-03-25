@@ -25,6 +25,7 @@ import {
   type JsonValue,
 } from "@formspec/core";
 import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
+import { tryParseJson } from "./json-utils.js";
 
 // =============================================================================
 // Legacy types — previously in decorator-extractor.ts, now owned here
@@ -197,15 +198,11 @@ export function extractJSDocConstraints(node: ts.Node): ConstraintInfo[] {
       }
       results.push(createSyntheticDecorator(tagName, value));
     } else if (expectedType === "json") {
-      try {
-        const parsed: unknown = JSON.parse(trimmed);
-        if (!Array.isArray(parsed)) {
-          continue;
-        }
-        results.push(createSyntheticDecorator(tagName, parsed as ConstraintArg));
-      } catch {
+      const parsed = tryParseJson(trimmed);
+      if (!Array.isArray(parsed)) {
         continue;
       }
+      results.push(createSyntheticDecorator(tagName, parsed as ConstraintArg));
     } else {
       results.push(createSyntheticDecorator(tagName, trimmed));
     }
