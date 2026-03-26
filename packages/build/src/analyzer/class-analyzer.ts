@@ -645,7 +645,7 @@ function resolveObjectType(
 
   // Circular reference guard
   if (visiting.has(type)) {
-    return { kind: "object", properties: [], additionalProperties: true };
+    return { kind: "object", properties: [], additionalProperties: false };
   }
   visiting.add(type);
 
