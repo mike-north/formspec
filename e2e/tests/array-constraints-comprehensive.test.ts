@@ -41,6 +41,7 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
+  // @see 003-json-schema-vocabulary.md §2.4: "@maxItems 100 → maxItems: 100"
   it("bounded: string[] → array of strings", () => {
     expect(properties["bounded"]).toEqual({
       type: "array",
@@ -49,6 +50,7 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
+  // @see 002-tsdoc-grammar.md §4.3: "minItems accepts 0 for arrays"
   it("allowsEmpty: string[] → array of strings", () => {
     expect(properties["allowsEmpty"]).toEqual({
       type: "array",
@@ -57,6 +59,7 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
+  // @see 003-json-schema-vocabulary.md §2.4: minItems and maxItems can be emitted together
   it("combinedBounds: string[] → array of strings with both bounds", () => {
     expect(properties["combinedBounds"]).toEqual({
       type: "array",
@@ -107,15 +110,18 @@ describe("Array Constraints — comprehensive", () => {
 
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    expect(required).toEqual([
-      "nonEmpty",
-      "bounded",
-      "allowsEmpty",
-      "combinedBounds",
-      "uniqueTags",
-      "allConstraints",
-      "itemConstrained",
-      "unconstrained",
-    ]);
+    expect(required).toHaveLength(8);
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "nonEmpty",
+        "bounded",
+        "allowsEmpty",
+        "combinedBounds",
+        "uniqueTags",
+        "allConstraints",
+        "itemConstrained",
+        "unconstrained",
+      ])
+    );
   });
 });

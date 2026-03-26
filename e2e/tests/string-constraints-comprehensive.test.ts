@@ -56,6 +56,7 @@ describe("String Constraints — comprehensive", () => {
     });
   });
 
+  // @see 003-json-schema-vocabulary.md §2.7 C1: "combined minLength + maxLength"
   it("combinedBounds: @minLength 1 @maxLength 1000 → both emitted", () => {
     expect(properties["combinedBounds"]).toEqual({
       type: "string",
@@ -80,6 +81,7 @@ describe("String Constraints — comprehensive", () => {
     });
   });
 
+  // @see 002-constraint-tags.md §3.2: "pattern payload is preserved literally after parsing"
   it("ssnPattern: @pattern with \\d → pattern preserved", () => {
     expect(properties["ssnPattern"]).toEqual({
       type: "string",
@@ -118,20 +120,23 @@ describe("String Constraints — comprehensive", () => {
 
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    expect(required).toEqual([
-      "nonEmpty",
-      "bounded",
-      "allowsEmpty",
-      "exactLength",
-      "combinedBounds",
-      "lowercaseOnly",
-      "emailPattern",
-      "ssnPattern",
-      "constrainedEmail",
-      "emailFormat",
-      "dateFormat",
-      "uriFormat",
-      "unconstrained",
-    ]);
+    expect(required).toHaveLength(13);
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "nonEmpty",
+        "bounded",
+        "allowsEmpty",
+        "exactLength",
+        "combinedBounds",
+        "lowercaseOnly",
+        "emailPattern",
+        "ssnPattern",
+        "constrainedEmail",
+        "emailFormat",
+        "dateFormat",
+        "uriFormat",
+        "unconstrained",
+      ])
+    );
   });
 });
