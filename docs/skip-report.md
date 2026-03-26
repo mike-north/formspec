@@ -15,7 +15,7 @@ The following formerly skipped/non-normative areas are now implemented on `main`
 - supported diagnostics (`UNKNOWN_PATH_TARGET`, `CONSTRAINT_BROADENING`)
 - CLI compiled-fixture harness cleanup
 - mixed-authoring overlays
-- circular references
+- recursive circular-reference support via emitted `$defs` / `$ref`
 - cross-axis conditional flattening
 
 ## No Longer Present

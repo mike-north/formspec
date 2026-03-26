@@ -31,12 +31,12 @@
 - `#130` Diagnostics and CLI harness cleanup
 - `#102` Cross-axis conditional rule flattening
 - `#104` Mixed-authoring overlays
-- `#105` Circular references
+- `#105` Recursive circular-reference support
 
 ## Integration-Ready Surfaces
 
 - `buildMixedAuthoringSchemas(...)`
-- recursive named-type emission in canonical IR and JSON Schema
+- recursive named-type emission in canonical IR and JSON Schema via recursive `$defs` / `$ref`
 - flattened cross-axis JSON Forms rule generation
 - public extension/runtime generation surfaces landed in the readiness wave
 

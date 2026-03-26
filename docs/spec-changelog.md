@@ -137,6 +137,20 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - The matrix now distinguishes data-model conformance tests from dynamic-option tests and dynamic-schema resolver tests.
   - These are explicitly framed as user integration-confidence tests rather than parity tests.
 
+# 2026-03-26
+
+## 001-canonical-ir
+
+- Superseded the prior circular-reference decision from 2026-03-25.
+  - Circular references are now supported in the canonical IR and downstream JSON Schema emission.
+  - Recursive named types emit stable `$defs` / `$ref` structures instead of failing with a diagnostic.
+
+## 003-json-schema-vocabulary
+
+- Superseded the prior circular-reference note from 2026-03-25.
+  - Recursive named-type graphs are now supported through recursive `$defs` / `$ref` emission.
+  - Circular references are no longer treated as a diagnostic-only gap in the current product revision.
+
 # 2026-03-25
 
 ## 001-canonical-ir
