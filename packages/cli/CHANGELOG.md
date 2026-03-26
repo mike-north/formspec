@@ -1,5 +1,40 @@
 # @formspec/cli
 
+## 0.1.0-alpha.15
+
+### Minor Changes
+
+- [#122](https://github.com/mike-north/formspec/pull/122) [`568f7e5`](https://github.com/mike-north/formspec/commit/568f7e5db40d2606ecbf0e535212e0f0973c5036) Thanks [@mike-north](https://github.com/mike-north)! - Add semantic `CONSTRAINT_BROADENING` diagnostics when later built-in numeric or length bounds are less restrictive than earlier inherited bounds, and surface them through CLI validation output.
+
+- [#109](https://github.com/mike-north/formspec/pull/109) [`0526742`](https://github.com/mike-north/formspec/commit/0526742817ef372e968b582d579bc79fdf9f17aa) Thanks [@mike-north](https://github.com/mike-north)! - Remove legacy `@Field_displayName` and `@Field_description` support in favor of canonical `@displayName` and `@description` tags.
+
+  This is a breaking change for schemas that still use the legacy `@Field_displayName` and `@Field_description` tags.
+
+- [#124](https://github.com/mike-north/formspec/pull/124) [`3f864b8`](https://github.com/mike-north/formspec/commit/3f864b887f7ad3cfb765f04ceeb76d999a300055) Thanks [@mike-north](https://github.com/mike-north)! - Add `--dry-run` to `formspec generate` so callers can inspect planned output files, including `schema.json`, `ui_schema.json`, `params.ui_schema.json`, and optional `*.ir.json` files, without writing anything to disk.
+
+- [#116](https://github.com/mike-north/formspec/pull/116) [`3cf95b1`](https://github.com/mike-north/formspec/commit/3cf95b120cbf04a1f443f1b825682383f7da6d14) Thanks [@mike-north](https://github.com/mike-north)! - Preserve enum member display-name annotations in the static analysis pipeline so
+  schemas emit per-member `title` values via `oneOf` entries for
+  `@displayName :member Label` syntax.
+
+- [#117](https://github.com/mike-north/formspec/pull/117) [`6b0930e`](https://github.com/mike-north/formspec/commit/6b0930ee43131c10d48222ccdd687746a252b505) Thanks [@mike-north](https://github.com/mike-north)! - Align generated object and type-mapping schemas with the current spec. Ordinary
+  object schemas now omit `additionalProperties: false` by default, while
+  nullable unions, named type `$defs`/`$ref` usage, and unconstrained
+  `Record<string, T>` mappings are covered and preserved by normative end-to-end
+  tests.
+
+- [#112](https://github.com/mike-north/formspec/pull/112) [`5752b5c`](https://github.com/mike-north/formspec/commit/5752b5c3d77f0cd1a2183a0794ce5889702cb9f2) Thanks [@mike-north](https://github.com/mike-north)! - Switch constraint validation to semantic diagnostic codes such as `CONTRADICTING_CONSTRAINTS`, `TYPE_MISMATCH`, and `UNKNOWN_EXTENSION`.
+
+  The CLI now prints those codes with cwd-relative source locations so validation output is stable and reviewable in tests and downstream tooling.
+
+### Patch Changes
+
+- [#108](https://github.com/mike-north/formspec/pull/108) [`c0062bf`](https://github.com/mike-north/formspec/commit/c0062bff2ebfe480b3a0b03c95146e92af183483) Thanks [@mike-north](https://github.com/mike-north)! - Improve CLI subprocess behavior for syntax errors and compiled-module load failures.
+
+  The CLI now surfaces TypeScript syntax diagnostics directly instead of falling through to a misleading class lookup failure, and it preserves the actual compiled-module load error when chain DSL exports cannot be imported.
+
+- Updated dependencies [[`e72c621`](https://github.com/mike-north/formspec/commit/e72c621781af2f71e1b51b168f1f6c9dc7b40195), [`568f7e5`](https://github.com/mike-north/formspec/commit/568f7e5db40d2606ecbf0e535212e0f0973c5036), [`ac69f33`](https://github.com/mike-north/formspec/commit/ac69f3376f1d5b8193b79a20d023b13e5ca82a8c), [`0526742`](https://github.com/mike-north/formspec/commit/0526742817ef372e968b582d579bc79fdf9f17aa), [`3cf95b1`](https://github.com/mike-north/formspec/commit/3cf95b120cbf04a1f443f1b825682383f7da6d14), [`6b0930e`](https://github.com/mike-north/formspec/commit/6b0930ee43131c10d48222ccdd687746a252b505), [`5752b5c`](https://github.com/mike-north/formspec/commit/5752b5c3d77f0cd1a2183a0794ce5889702cb9f2)]:
+  - @formspec/build@0.1.0-alpha.15
+
 ## 0.1.0-alpha.14
 
 ### Patch Changes
