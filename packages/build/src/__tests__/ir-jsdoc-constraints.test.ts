@@ -16,6 +16,7 @@ import {
   extractJSDocAnnotationNodes,
 } from "../analyzer/jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "../analyzer/tsdoc-parser.js";
+import { createDateExtensionRegistry, DATE_TIME_TYPE_ID } from "./fixtures/example-date-extension.js";
 import {
   createNumericExtensionRegistry,
   BIGINT_TYPE_ID,
@@ -655,6 +656,38 @@ describe("extension-aware JSDoc constraint extraction", () => {
       constraintKind: "custom",
       constraintId: "x-formspec/example-numeric/MaxSigFig",
       payload: 8,
+    });
+  });
+
+  it("recognizes extension-defined date constraint tags and canonicalizes them", () => {
+    const registry = createDateExtensionRegistry();
+    const prop = getPropertyFromSource(`
+      class BookingWindow {
+        /** @after 2026-03-01T08:00:00.000-08:00 @before 2026-03-31T08:00:00.000-07:00 */
+        opensAt!: DateTime;
+      }
+      type DateTime = string;
+    `);
+
+    const result = extractJSDocConstraintNodes(prop, "/test.ts", {
+      extensionRegistry: registry,
+      fieldType: {
+        kind: "custom",
+        typeId: DATE_TIME_TYPE_ID,
+        payload: null,
+      },
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-date/After",
+      payload: "2026-03-01T16:00:00.000Z",
+    });
+    expect(result[1]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-date/Before",
+      payload: "2026-03-31T15:00:00.000Z",
     });
   });
 });

@@ -20,6 +20,7 @@ import { validateIR } from "../validate/index.js";
 import type { ValidationDiagnostic } from "../validate/index.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import { createDateExtensionRegistry, DATE_TIME_TYPE_ID } from "./fixtures/example-date-extension.js";
 import {
   createNumericExtensionRegistry,
   BIGINT_TYPE_ID,
@@ -51,6 +52,7 @@ const BOOL_TYPE: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "boolea
 
 const DECIMAL_TYPE = { kind: "custom", typeId: DECIMAL_TYPE_ID, payload: null } as const;
 const BIGINT_WIRE_TYPE = { kind: "custom", typeId: BIGINT_TYPE_ID, payload: null } as const;
+const DATE_TIME_TYPE = { kind: "custom", typeId: DATE_TIME_TYPE_ID, payload: null } as const;
 
 /** Simple array-of-strings type node. */
 const ARRAY_TYPE: ArrayTypeNode = {
@@ -1311,6 +1313,112 @@ describe("validateIR", () => {
             "10.0",
             2,
             "@minimum"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
+    });
+  });
+
+  describe("extension-defined date semantics", () => {
+    const registry = createDateExtensionRegistry();
+
+    function customDateConstraint(
+      constraintId: string,
+      payload: string,
+      line: number,
+      tagName: string
+    ): CustomConstraintNode {
+      return {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId,
+        payload,
+        compositionRule: "intersect",
+        provenance: prov(line, tagName),
+      };
+    }
+
+    it("accepts @after and @before on DateTime fields", () => {
+      const ir = makeIR([
+        makeField("opensAt", DATE_TIME_TYPE, [
+          customDateConstraint(
+            "x-formspec/example-date/After",
+            "2026-03-01T16:00:00.000Z",
+            1,
+            "@after"
+          ),
+          customDateConstraint(
+            "x-formspec/example-date/Before",
+            "2026-03-31T15:00:00.000Z",
+            2,
+            "@before"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("rejects @after on non-DateTime fields", () => {
+      const ir = makeIR([
+        makeField("name", STRING_TYPE, [
+          customDateConstraint(
+            "x-formspec/example-date/After",
+            "2026-03-01T16:00:00.000Z",
+            1,
+            "@after"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("detects contradictions when @after and @before meet at the same instant", () => {
+      const ir = makeIR([
+        makeField("opensAt", DATE_TIME_TYPE, [
+          customDateConstraint(
+            "x-formspec/example-date/After",
+            "2026-03-01T16:00:00.000Z",
+            1,
+            "@after"
+          ),
+          customDateConstraint(
+            "x-formspec/example-date/Before",
+            "2026-03-01T16:00:00.000Z",
+            2,
+            "@before"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
+    });
+
+    it("detects broadening for repeated @before constraints", () => {
+      const ir = makeIR([
+        makeField("opensAt", DATE_TIME_TYPE, [
+          customDateConstraint(
+            "x-formspec/example-date/Before",
+            "2026-03-31T15:00:00.000Z",
+            1,
+            "@before"
+          ),
+          customDateConstraint(
+            "x-formspec/example-date/Before",
+            "2026-04-01T15:00:00.000Z",
+            2,
+            "@before"
           ),
         ]),
       ]);

@@ -117,4 +117,24 @@ describe("getHoverForTag", () => {
       expect(hover.contents.value).toContain("@maxDecimalPlaces");
     }
   });
+
+  it("returns hover content for date extension tags when extensions are provided", () => {
+    const extension = defineExtension({
+      extensionId: "x-test/date",
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "after",
+          constraintName: "After",
+          parseValue: (raw) => raw.trim(),
+        }),
+      ],
+    });
+
+    const hover = getHoverForTag("@after", [extension]);
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("x-test/date");
+      expect(hover.contents.value).toContain("@after");
+    }
+  });
 });
