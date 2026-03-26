@@ -26,11 +26,15 @@ import { field as dslField, formspec as dslFormspec } from "@formspec/dsl";
 import { addressForm } from "./fixtures/address/chain-dsl.js";
 import { userRegistrationForm } from "./fixtures/user-registration/chain-dsl.js";
 import { productConfigForm } from "./fixtures/product-config/chain-dsl.js";
+import { planStatusForm } from "./fixtures/plan-status/chain-dsl.js";
+import { usdCentsForm } from "./fixtures/usd-cents/chain-dsl.js";
 
 // Fixtures — expected IRs
 import { expectedIR as addressExpected } from "./fixtures/address/expected-ir.js";
 import { expectedIR as userRegistrationExpected } from "./fixtures/user-registration/expected-ir.js";
 import { expectedIR as productConfigExpected } from "./fixtures/product-config/expected-ir.js";
+import { expectedIR as planStatusExpected } from "./fixtures/plan-status/expected-ir.js";
+import { expectedIR as usdCentsExpected } from "./fixtures/usd-cents/expected-ir.js";
 
 // Base directory for TSDoc fixture files
 const fixturesDir = nodePath.join(import.meta.dirname, "fixtures");
@@ -143,6 +147,68 @@ describe("product-config parity", () => {
 
     const fixturePath = nodePath.join(fixturesDir, "product-config", "tsdoc.ts");
     const tsdocIR = canonicalizeFixtureClass(fixturePath, "ProductConfigForm");
+
+    const differences = compareIR(chainIR, tsdocIR);
+    expect(differences).toEqual([]);
+  });
+});
+
+// =============================================================================
+// plan-status parity
+// =============================================================================
+
+describe("plan-status parity", () => {
+  it("chain DSL produces expected IR", () => {
+    const ir = canonicalizeChainDSL(planStatusForm);
+    const actual = stripProvenance(ir);
+
+    expect(actual).toEqual(planStatusExpected);
+  });
+
+  it("TSDoc produces expected IR", () => {
+    const fixturePath = nodePath.join(fixturesDir, "plan-status", "tsdoc.ts");
+    const ir = canonicalizeFixtureClass(fixturePath, "SubscriptionForm");
+    const actual = stripProvenance(ir);
+
+    expect(actual).toEqual(planStatusExpected);
+  });
+
+  it("both surfaces produce identical IR", () => {
+    const chainIR = canonicalizeChainDSL(planStatusForm);
+
+    const fixturePath = nodePath.join(fixturesDir, "plan-status", "tsdoc.ts");
+    const tsdocIR = canonicalizeFixtureClass(fixturePath, "SubscriptionForm");
+
+    const differences = compareIR(chainIR, tsdocIR);
+    expect(differences).toEqual([]);
+  });
+});
+
+// =============================================================================
+// usd-cents parity
+// =============================================================================
+
+describe("usd-cents parity", () => {
+  it("chain DSL produces expected IR", () => {
+    const ir = canonicalizeChainDSL(usdCentsForm);
+    const actual = stripProvenance(ir);
+
+    expect(actual).toEqual(usdCentsExpected);
+  });
+
+  it("TSDoc produces expected IR", () => {
+    const fixturePath = nodePath.join(fixturesDir, "usd-cents", "tsdoc.ts");
+    const ir = canonicalizeFixtureClass(fixturePath, "LineItemForm");
+    const actual = stripProvenance(ir);
+
+    expect(actual).toEqual(usdCentsExpected);
+  });
+
+  it("both surfaces produce identical IR", () => {
+    const chainIR = canonicalizeChainDSL(usdCentsForm);
+
+    const fixturePath = nodePath.join(fixturesDir, "usd-cents", "tsdoc.ts");
+    const tsdocIR = canonicalizeFixtureClass(fixturePath, "LineItemForm");
 
     const differences = compareIR(chainIR, tsdocIR);
     expect(differences).toEqual([]);
