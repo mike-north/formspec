@@ -424,8 +424,9 @@ function generateArrayType(type: ArrayTypeNode, ctx: GeneratorContext): JsonSche
 /**
  * Generates JSON Schema for an object type.
  *
- * `additionalProperties` is only emitted when the IR explicitly disallows extra
- * properties. The default per the JSON Schema vocabulary spec §2.5 is to omit it (allow policy).
+ * `additionalProperties` is emitted only when the IR explicitly closes the
+ * object. Ordinary static object types now canonicalize to
+ * `additionalProperties: true`, which omits the keyword per spec 003 §2.5.
  */
 function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   const properties: Record<string, JsonSchema2020> = {};
@@ -445,7 +446,6 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
   }
 
   if (!type.additionalProperties) {
-    // IR default is false (closed objects). Emit explicitly when disallowed.
     schema.additionalProperties = false;
   }
 

@@ -222,7 +222,6 @@ describe("generateJsonSchema - array fields", () => {
       type: "array",
       items: {
         type: "object",
-        additionalProperties: false,
         properties: {
           street: { type: "string" },
           city: { type: "string" },
@@ -250,7 +249,6 @@ describe("generateJsonSchema - array fields", () => {
       maxItems: 10,
       items: {
         type: "object",
-        additionalProperties: false,
         properties: {
           description: { type: "string" },
           quantity: { type: "number" },
@@ -270,7 +268,6 @@ describe("generateJsonSchema - object fields", () => {
 
     expect(schema.properties?.["address"]).toEqual({
       type: "object",
-      additionalProperties: false,
       properties: {
         street: { type: "string" },
         city: { type: "string" },
@@ -293,7 +290,6 @@ describe("generateJsonSchema - object fields", () => {
 
     expect(schema.properties?.["address"]).toMatchObject({
       type: "object",
-      additionalProperties: false,
       properties: {
         street: { type: "string" },
         city: { type: "string" },

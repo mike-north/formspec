@@ -382,7 +382,7 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["required"]).not.toContain("zip");
     });
 
-    it("emits additionalProperties:false when IR disallows it", () => {
+    it("emits additionalProperties:false when IR explicitly closes the object", () => {
       const ir = makeIR([
         makeField("obj", { kind: "object", properties: [], additionalProperties: false }),
       ]);
@@ -607,7 +607,7 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: false,
+              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -641,7 +641,7 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: false,
+              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -659,7 +659,6 @@ describe("generateJsonSchemaFromIR", () => {
           street: { type: "string" },
         },
         required: ["street"],
-        additionalProperties: false,
       });
     });
 
@@ -1194,7 +1193,7 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: false,
+              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -1358,7 +1357,7 @@ describe("generateJsonSchemaFromIR", () => {
         typeRegistry: {
           Address: {
             name: "Address",
-            type: { kind: "object", properties: addressProperties, additionalProperties: false },
+            type: { kind: "object", properties: addressProperties, additionalProperties: true },
             provenance: PROVENANCE,
           },
         },
@@ -1417,7 +1416,6 @@ describe("generateJsonSchemaFromIR", () => {
           },
         },
         required: ["street", "city", "country"],
-        additionalProperties: false,
       });
     });
   });
@@ -1450,7 +1448,7 @@ describe("generateJsonSchemaFromIR", () => {
               provenance: PROVENANCE,
             },
           ],
-          additionalProperties: false,
+          additionalProperties: true,
         } satisfies TypeNode,
         provenance: PROVENANCE,
       },
@@ -1510,7 +1508,7 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: false,
+              additionalProperties: true,
             },
             true,
             [
@@ -1619,7 +1617,7 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: false,
+              additionalProperties: true,
             },
             true,
             [

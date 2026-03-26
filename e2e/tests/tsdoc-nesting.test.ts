@@ -68,9 +68,9 @@ describe("TSDoc Nested Objects", () => {
     assertNestedProperty(schema, "customer.address.country", { type: "string" });
   });
 
-  // V2: nested object types always include additionalProperties: false
-  it("nested objects set additionalProperties: false", () => {
-    expect(properties["customer"]["additionalProperties"]).toBe(false);
+  // @see 003-json-schema-vocabulary.md §2.5: ordinary object schemas omit additionalProperties by default
+  it("nested objects omit additionalProperties by default", () => {
+    expect(properties["customer"]["additionalProperties"]).toBeUndefined();
   });
 
   // 003 §2.4: "T[] → { type: array, items: <T schema> }"

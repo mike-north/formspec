@@ -537,7 +537,7 @@ function resolveObjectType(
 
   // Circular reference guard
   if (visiting.has(type)) {
-    return { kind: "object", properties: [], additionalProperties: false };
+    return { kind: "object", properties: [], additionalProperties: true };
   }
   visiting.add(type);
 
@@ -579,7 +579,7 @@ function resolveObjectType(
   const objectNode: TypeNode = {
     kind: "object",
     properties,
-    additionalProperties: false,
+    additionalProperties: true,
   };
 
   // Register named types

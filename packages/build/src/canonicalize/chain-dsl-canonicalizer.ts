@@ -296,7 +296,7 @@ function canonicalizeArrayField(field: ArrayField<string, readonly FormElement[]
   const itemsType: ObjectTypeNode = {
     kind: "object",
     properties: itemProperties,
-    additionalProperties: false,
+    additionalProperties: true,
   };
   const type: ArrayTypeNode = { kind: "array", items: itemsType };
 
@@ -334,7 +334,7 @@ function canonicalizeObjectField(field: ObjectField<string, readonly FormElement
   const type: ObjectTypeNode = {
     kind: "object",
     properties,
-    additionalProperties: false,
+    additionalProperties: true,
   };
   return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
 }

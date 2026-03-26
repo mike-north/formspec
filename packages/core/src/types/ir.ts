@@ -155,7 +155,8 @@ export interface ObjectTypeNode {
   readonly properties: readonly ObjectProperty[];
   /**
    * Whether additional properties beyond those listed are permitted.
-   * Defaults to false — object types in FormSpec are closed.
+   * Ordinary static object types default to true under the current spec.
+   * Explicitly closed-object modes may still set this to false.
    */
   readonly additionalProperties: boolean;
 }

@@ -50,13 +50,13 @@ describe("Chain DSL Nesting", () => {
       expect(billing["required"]).not.toContain("zip");
     });
 
-    // V2: object fields created via field.objectWithConfig() always set additionalProperties: false
-    it("nested objects set additionalProperties: false", () => {
+    // @see 003-json-schema-vocabulary.md §2.5: ordinary object schemas omit additionalProperties by default
+    it("nested objects omit additionalProperties by default", () => {
       const billing = properties["billingAddress"];
-      expect(billing["additionalProperties"]).toBe(false);
+      expect(billing["additionalProperties"]).toBeUndefined();
 
       const shipping = properties["shippingAddress"];
-      expect(shipping["additionalProperties"]).toBe(false);
+      expect(shipping["additionalProperties"]).toBeUndefined();
     });
 
     // 003 §2.4: "T[] → { type: array, items: <T schema> }"
