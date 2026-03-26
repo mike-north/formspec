@@ -469,7 +469,129 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 9. Numeric constraints on non-number fields → TYPE_MISMATCH
+  // 9. Less restrictive follow-up constraints → CONSTRAINT_BROADENING
+  // ---------------------------------------------------------------------------
+
+  describe("constraint broadening", () => {
+    it("emits CONSTRAINT_BROADENING when a later minimum is less restrictive", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [minConstraint(10, 1), minConstraint(0, 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain('Field "quantity"');
+      expect(diag?.message).toContain("@minimum");
+      expect(diag?.primaryLocation).toEqual(prov(2, "minimum"));
+      expect(diag?.relatedLocations).toEqual([prov(1, "minimum")]);
+    });
+
+    it("does not emit when a later minimum narrows the earlier bound", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [minConstraint(10, 1), minConstraint(12, 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("emits CONSTRAINT_BROADENING when a later minimum broadens an earlier exclusiveMinimum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          exMinConstraint(10, 1),
+          minConstraint(10, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@minimum");
+      expect(diag?.message).toContain("@exclusiveMinimum");
+    });
+
+    it("does not emit when a later exclusiveMaximum narrows an earlier maximum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          maxConstraint(10, 1),
+          exMaxConstraint(10, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("emits CONSTRAINT_BROADENING when a later maximum broadens an earlier exclusiveMaximum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          exMaxConstraint(10, 1),
+          maxConstraint(10, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@maximum");
+      expect(diag?.message).toContain("@exclusiveMaximum");
+    });
+
+    it("emits CONSTRAINT_BROADENING when a later minLength is less restrictive", () => {
+      const ir = makeIR([
+        makeField("name", STRING_TYPE, [minLenConstraint(5, 1), minLenConstraint(3, 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@minLength");
+    });
+
+    it("includes the resolved path in broadening diagnostics for path-targeted constraints", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [
+          {
+            name: "currency",
+            type: STRING_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: prov(2),
+          },
+        ],
+        additionalProperties: false,
+      };
+      const ir = makeIR([
+        makeField("amount", objectType, [
+          {
+            ...minLenConstraint(5, 1),
+            path: { segments: ["currency"] },
+          },
+          {
+            ...minLenConstraint(3, 2),
+            path: { segments: ["currency"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
+      expect(result.diagnostics[0]?.message).toContain('Field "amount.currency"');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 10. Numeric constraints on non-number fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("numeric constraints on non-number fields", () => {
@@ -515,7 +637,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 10. String constraints on non-string fields → TYPE_MISMATCH
+  // 11. String constraints on non-string fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("string constraints on non-string fields", () => {
@@ -548,7 +670,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 11. Array constraints on non-array fields → TYPE_MISMATCH
+  // 12. Array constraints on non-array fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("array constraints on non-array fields", () => {
