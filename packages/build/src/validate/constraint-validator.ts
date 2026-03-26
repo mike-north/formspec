@@ -183,7 +183,10 @@ type OrderedBoundKind =
   | "maxLength"
   | "maxItems";
 
-type OrderedBoundConstraint = Extract<ConstraintNode, { readonly constraintKind: OrderedBoundKind }>;
+type OrderedBoundConstraint = Extract<
+  ConstraintNode,
+  { readonly constraintKind: OrderedBoundKind }
+>;
 
 type OrderedBoundFamily =
   | "numeric-lower"
@@ -193,7 +196,9 @@ type OrderedBoundFamily =
   | "maxLength"
   | "maxItems";
 
-function isOrderedBoundConstraint(constraint: ConstraintNode): constraint is OrderedBoundConstraint {
+function isOrderedBoundConstraint(
+  constraint: ConstraintNode
+): constraint is OrderedBoundConstraint {
   return (
     constraint.constraintKind === "minimum" ||
     constraint.constraintKind === "exclusiveMinimum" ||
@@ -262,16 +267,10 @@ function compareConstraintStrength(
     if (current.value !== previous.value) {
       return current.value > previous.value ? 1 : -1;
     }
-    if (
-      current.constraintKind === "exclusiveMinimum" &&
-      previous.constraintKind === "minimum"
-    ) {
+    if (current.constraintKind === "exclusiveMinimum" && previous.constraintKind === "minimum") {
       return 1;
     }
-    if (
-      current.constraintKind === "minimum" &&
-      previous.constraintKind === "exclusiveMinimum"
-    ) {
+    if (current.constraintKind === "minimum" && previous.constraintKind === "exclusiveMinimum") {
       return -1;
     }
     return 0;
@@ -288,16 +287,10 @@ function compareConstraintStrength(
     if (current.value !== previous.value) {
       return current.value < previous.value ? 1 : -1;
     }
-    if (
-      current.constraintKind === "exclusiveMaximum" &&
-      previous.constraintKind === "maximum"
-    ) {
+    if (current.constraintKind === "exclusiveMaximum" && previous.constraintKind === "maximum") {
       return 1;
     }
-    if (
-      current.constraintKind === "maximum" &&
-      previous.constraintKind === "exclusiveMaximum"
-    ) {
+    if (current.constraintKind === "maximum" && previous.constraintKind === "exclusiveMaximum") {
       return -1;
     }
     return 0;
@@ -614,7 +607,8 @@ function checkConstraintOnType(
   const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
   const isArray = effectiveType.kind === "array";
   const isEnum = effectiveType.kind === "enum";
-  const arrayItemType = effectiveType.kind === "array" ? dereferenceType(ctx, effectiveType.items) : undefined;
+  const arrayItemType =
+    effectiveType.kind === "array" ? dereferenceType(ctx, effectiveType.items) : undefined;
   const isStringArray =
     arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
 
@@ -688,7 +682,11 @@ function checkConstraintOnType(
 
       if (effectiveType.kind === "primitive") {
         const valueType =
-          constraint.value === null ? "null" : Array.isArray(constraint.value) ? "array" : typeof constraint.value;
+          constraint.value === null
+            ? "null"
+            : Array.isArray(constraint.value)
+              ? "array"
+              : typeof constraint.value;
         if (valueType !== effectiveType.primitiveKind) {
           addTypeMismatch(
             ctx,

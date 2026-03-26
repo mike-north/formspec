@@ -311,6 +311,10 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
 /**
  * Returns true if a constraint should be applied to the `items` schema of a
  * primitive `string[]` rather than the array itself.
+ *
+ * `@const` is intentionally excluded: arrays cannot carry primitive const
+ * constraints in FormSpec, so `@const` on `string[]` remains a validation
+ * error instead of targeting the item schema.
  */
 function isStringItemConstraint(constraint: ConstraintNode): boolean {
   switch (constraint.constraintKind) {

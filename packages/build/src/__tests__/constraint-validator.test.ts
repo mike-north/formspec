@@ -719,8 +719,37 @@ describe("validateIR", () => {
   });
 
   describe("const constraint validation", () => {
+    it("accepts a primitive const value on a matching primitive field", () => {
+      const ir = makeIR([makeField("currency", STRING_TYPE, [constConstraint("USD", 1)])]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
     it("emits TYPE_MISMATCH when a string field has a boolean const value", () => {
       const ir = makeIR([makeField("name", STRING_TYPE, [constConstraint(true, 1)])]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("emits TYPE_MISMATCH when an array field has a primitive const value", () => {
+      const ir = makeIR([makeField("tags", ARRAY_TYPE, [constConstraint("USD", 1)])]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("emits TYPE_MISMATCH when an object field has a primitive const value", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [],
+        additionalProperties: false,
+      };
+      const ir = makeIR([makeField("settings", objectType, [constConstraint("USD", 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);

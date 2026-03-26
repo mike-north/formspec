@@ -445,6 +445,10 @@ function parseConstraintValue(
           provenance,
         };
       } catch {
+        // Bare strings like `@const USD` are accepted as a shorthand for
+        // string-valued const constraints. Non-string malformed JSON still
+        // gets rejected later during IR validation if the field type is
+        // incompatible with this fallback string value.
         return {
           kind: "constraint",
           constraintKind: "const",

@@ -54,6 +54,6 @@ describe("Const Constraints", () => {
 
   it("all fields are required", () => {
     const required = schema["required"] as string[];
-    expect(required).toEqual(expect.arrayContaining(["currency", "statusCode", "enabled"]));
+    expect(required).toEqual(["currency", "statusCode", "enabled"]);
   });
 });

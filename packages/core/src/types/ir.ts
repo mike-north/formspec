@@ -406,7 +406,10 @@ export interface DeprecatedAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** UI rendering hint — does not affect schema validation. */
+/**
+ * UI rendering hint — does not affect schema validation.
+ * Unlike FormatAnnotationNode, this never emits a JSON Schema `format`.
+ */
 export interface FormatHintAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "formatHint";

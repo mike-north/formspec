@@ -451,11 +451,7 @@ describe("extractJSDocAnnotationNodes", () => {
       result.map((annotation) =>
         annotation.annotationKind === "displayName" ? annotation.value : undefined
       )
-    ).toEqual([
-      ":active Active Account",
-      ":suspended Suspended",
-      ":closed Permanently Closed",
-    ]);
+    ).toEqual([":active Active Account", ":suspended Suspended", ":closed Permanently Closed"]);
   });
 
   it("produces DeprecatedAnnotationNode for @deprecated", () => {
