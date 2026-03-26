@@ -10,7 +10,7 @@
  * 1. **Constraint tags** (all alphanumeric, TSDoc-compliant):
  *    `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`,
  *    `@multipleOf`, `@minLength`, `@maxLength`, `@minItems`, `@maxItems`,
- *    `@pattern`, `@enumOptions`
+ *    `@uniqueItems`, `@pattern`, `@enumOptions`, `@const`
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *

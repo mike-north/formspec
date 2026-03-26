@@ -13,6 +13,7 @@ import type {
   ArrayTypeNode,
   EnumTypeNode,
   ObjectTypeNode,
+  JsonValue,
 } from "@formspec/core";
 import { IR_VERSION, defineConstraint } from "@formspec/core";
 import { validateIR } from "../validate/index.js";
@@ -164,6 +165,16 @@ function uniqueItemsConstraint(line = 1): ArrayCardinalityConstraintNode {
     constraintKind: "uniqueItems",
     value: true,
     provenance: prov(line, "uniqueItems"),
+  };
+}
+
+/** Build a const constraint. */
+function constConstraint(value: JsonValue, line = 1): Extract<FieldNode["constraints"][number], { constraintKind: "const" }> {
+  return {
+    kind: "constraint",
+    constraintKind: "const",
+    value,
+    provenance: prov(line, "const"),
   };
 }
 
@@ -660,12 +671,12 @@ describe("validateIR", () => {
       expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH for pattern on an array field", () => {
+    it("allows pattern on a string[] field because it targets the item schema", () => {
       const ir = makeIR([makeField("tags", ARRAY_TYPE, [patternConstraint("^[a-z]+$", 1)])]);
       const result = validateIR(ir);
 
-      expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
     });
   });
 
@@ -704,6 +715,34 @@ describe("validateIR", () => {
     it("does not emit for uniqueItems on an array field", () => {
       const ir = makeIR([makeField("tags", ARRAY_TYPE, [uniqueItemsConstraint(1)])]);
       expect(validateIR(ir).valid).toBe(true);
+    });
+  });
+
+  describe("const constraint validation", () => {
+    it("emits TYPE_MISMATCH when a string field has a boolean const value", () => {
+      const ir = makeIR([makeField("name", STRING_TYPE, [constConstraint(true, 1)])]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("emits TYPE_MISMATCH when an enum field const is not a member", () => {
+      const ir = makeIR([makeField("status", enumType(["active", "inactive"]), [constConstraint("pending", 1)])]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("emits CONTRADICTING_CONSTRAINTS for conflicting const values", () => {
+      const ir = makeIR([
+        makeField("currency", STRING_TYPE, [constConstraint("USD", 1), constConstraint("EUR", 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
   });
 

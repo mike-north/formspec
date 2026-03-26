@@ -21,6 +21,7 @@ import type {
   EnumMemberConstraintNode,
   Provenance,
   ObjectProperty,
+  JsonValue,
 } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
@@ -157,6 +158,19 @@ function findAllowedMembers(
   return constraints.filter(
     (c): c is EnumMemberConstraintNode => c.constraintKind === "allowedMembers"
   );
+}
+
+function findConstConstraints(
+  constraints: readonly ConstraintNode[]
+): readonly Extract<ConstraintNode, { readonly constraintKind: "const" }>[] {
+  return constraints.filter(
+    (c): c is Extract<ConstraintNode, { readonly constraintKind: "const" }> =>
+      c.constraintKind === "const"
+  );
+}
+
+function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 type OrderedBoundKind =
@@ -470,6 +484,33 @@ function checkAllowedMembersContradiction(
   }
 }
 
+function checkConstContradictions(
+  ctx: ValidationContext,
+  fieldName: string,
+  constraints: readonly ConstraintNode[]
+): void {
+  const constConstraints = findConstConstraints(constraints);
+  if (constConstraints.length < 2) return;
+
+  const first = constConstraints[0];
+  if (first === undefined) return;
+
+  for (let i = 1; i < constConstraints.length; i++) {
+    const current = constConstraints[i];
+    if (current === undefined) continue;
+    if (jsonValueEquals(first.value, current.value)) {
+      continue;
+    }
+
+    addContradiction(
+      ctx,
+      `Field "${fieldName}": conflicting @const constraints require both ${JSON.stringify(first.value)} and ${JSON.stringify(current.value)}`,
+      first.provenance,
+      current.provenance
+    );
+  }
+}
+
 // =============================================================================
 // TYPE APPLICABILITY CHECKS
 // =============================================================================
@@ -573,6 +614,10 @@ function checkConstraintOnType(
   const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
   const isArray = effectiveType.kind === "array";
   const isEnum = effectiveType.kind === "enum";
+  const isStringArray =
+    effectiveType.kind === "array" &&
+    dereferenceType(ctx, effectiveType.items).kind === "primitive" &&
+    dereferenceType(ctx, effectiveType.items).primitiveKind === "string";
 
   const label = typeLabel(effectiveType);
 
@@ -596,10 +641,10 @@ function checkConstraintOnType(
     case "minLength":
     case "maxLength":
     case "pattern": {
-      if (!isString) {
+      if (!isString && !isStringArray) {
         addTypeMismatch(
           ctx,
-          `Field "${fieldName}": constraint "${ck}" is only valid on string fields, but field type is "${label}"`,
+          `Field "${fieldName}": constraint "${ck}" is only valid on string fields or string array items, but field type is "${label}"`,
           constraint.provenance
         );
       }
@@ -637,6 +682,29 @@ function checkConstraintOnType(
         addTypeMismatch(
           ctx,
           `Field "${fieldName}": constraint "const" is only valid on primitive or enum fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+        break;
+      }
+
+      if (effectiveType.kind === "primitive") {
+        const valueType =
+          constraint.value === null ? "null" : Array.isArray(constraint.value) ? "array" : typeof constraint.value;
+        if (valueType !== effectiveType.primitiveKind) {
+          addTypeMismatch(
+            ctx,
+            `Field "${fieldName}": @const value type "${valueType}" is incompatible with field type "${effectiveType.primitiveKind}"`,
+            constraint.provenance
+          );
+        }
+        break;
+      }
+
+      const memberValues = effectiveType.members.map((member) => member.value);
+      if (!memberValues.some((member) => jsonValueEquals(member, constraint.value))) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": @const value ${JSON.stringify(constraint.value)} is not one of the enum members`,
           constraint.provenance
         );
       }
@@ -777,6 +845,7 @@ function validateConstraints(
   checkNumericContradictions(ctx, name, constraints);
   checkLengthContradictions(ctx, name, constraints);
   checkAllowedMembersContradiction(ctx, name, constraints);
+  checkConstContradictions(ctx, name, constraints);
   checkConstraintBroadening(ctx, name, constraints);
   checkTypeApplicability(ctx, name, type, constraints);
 }
