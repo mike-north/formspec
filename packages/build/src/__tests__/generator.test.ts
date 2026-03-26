@@ -330,6 +330,36 @@ describe("generateUiSchema - nested conditionals", () => {
       properties: { paymentMethod: { const: "bank" } },
     });
   });
+
+  it("should flatten cross-axis conditional rules into a single allOf list", () => {
+    const form = formspec(
+      field.enum("country", ["US", "CA"] as const),
+      field.enum("paymentMethod", ["card", "bank"] as const),
+      field.enum("accountType", ["checking", "savings"] as const),
+      when(
+        is("country", "US"),
+        when(
+          is("paymentMethod", "bank"),
+          when(is("accountType", "checking"), field.text("routingNumber", { label: "Routing Number" }))
+        )
+      )
+    );
+
+    const uiSchema = generateUiSchema(form);
+
+    const routingControl = uiSchema.elements.find(
+      (el) => el.type === "Control" && "scope" in el && el.scope === "#/properties/routingNumber"
+    );
+
+    expect(routingControl).toBeDefined();
+    expect(routingControl?.rule?.effect).toBe("SHOW");
+    expect(routingControl?.rule?.condition.scope).toBe("#");
+    expect(routingControl?.rule?.condition.schema.allOf).toEqual([
+      { properties: { country: { const: "US" } } },
+      { properties: { paymentMethod: { const: "bank" } } },
+      { properties: { accountType: { const: "checking" } } },
+    ]);
+  });
 });
 
 describe("buildFormSchemas", () => {

@@ -7,7 +7,14 @@
  */
 
 import type { FormIR, FormIRElement, FieldNode, GroupLayoutNode } from "@formspec/core";
-import type { UISchema, UISchemaElement, ControlElement, GroupLayout, Rule } from "./types.js";
+import type {
+  UISchema,
+  UISchemaElement,
+  ControlElement,
+  GroupLayout,
+  Rule,
+  RuleConditionSchema,
+} from "./types.js";
 import { uiSchema as uiSchemaValidator } from "./schema.js";
 import { z } from "zod";
 
@@ -56,30 +63,38 @@ function createShowRule(fieldName: string, value: unknown): Rule {
  * Combines two SHOW rules into a single rule using an allOf condition.
  *
  * When elements are nested inside multiple conditionals, all parent conditions
- * must be met for the element to be visible. This function merges the two
- * conditions into a single rule using allOf so that JSON Forms evaluates
- * both predicates simultaneously.
+ * must be met for the element to be visible. This function flattens both
+ * conditions into a single rule using a top-level allOf so JSON Forms evaluates
+ * every predicate simultaneously without nesting rule fragments.
  */
-function combineRules(parentRule: Rule, childRule: Rule): Rule {
-  const parentCondition = parentRule.condition;
-  const childCondition = childRule.condition;
+function flattenConditionSchema(scope: string, schema: RuleConditionSchema): RuleConditionSchema[] {
+  if (schema.allOf === undefined) {
+    if (scope === "#") {
+      return [schema];
+    }
 
+    const fieldName = scope.replace("#/properties/", "");
+    return [
+      {
+        properties: {
+          [fieldName]: schema,
+        },
+      },
+    ];
+  }
+
+  return schema.allOf.flatMap((member) => flattenConditionSchema(scope, member));
+}
+
+function combineRules(parentRule: Rule, childRule: Rule): Rule {
   return {
     effect: "SHOW",
     condition: {
       scope: "#",
       schema: {
         allOf: [
-          {
-            properties: {
-              [parentCondition.scope.replace("#/properties/", "")]: parentCondition.schema,
-            },
-          },
-          {
-            properties: {
-              [childCondition.scope.replace("#/properties/", "")]: childCondition.schema,
-            },
-          },
+          ...flattenConditionSchema(parentRule.condition.scope, parentRule.condition.schema),
+          ...flattenConditionSchema(childRule.condition.scope, childRule.condition.schema),
         ],
       },
     },
