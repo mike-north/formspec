@@ -52,15 +52,16 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("fixtures/tsdoc-class/error-type-mismatch.ts:7:");
   });
 
-  it.skip("BUG(#92): invalid path targets should produce UNKNOWN_PATH_TARGET with the unresolved segment", () => {
+  it("reports semantic invalid path-target diagnostics with the unresolved segment", () => {
     const fixturePath = resolveFixture("tsdoc-class", "error-invalid-path-target.ts");
     const result = runCli(["generate", fixturePath, "InvalidPathTargetForm", "--validate-only"]);
     const output = result.stdout + result.stderr;
 
     expect(result.exitCode).toBe(1);
     expect(output).toContain("[ERROR] UNKNOWN_PATH_TARGET");
-    expect(output).toContain('Field "address"');
+    expect(output).toContain('Field "address.zip"');
     expect(output).toContain("zip");
+    expect(output).toContain("fixtures/tsdoc-class/error-invalid-path-target.ts:7:");
   });
 
   it("reports semantic broadening diagnostics for less restrictive follow-up constraints", () => {

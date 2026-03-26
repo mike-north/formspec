@@ -25,13 +25,12 @@ import type { ValidationResult } from "@formspec/build/internals";
 import type { FormIR } from "@formspec/core";
 import { IR_VERSION } from "@formspec/core";
 import { loadFormSpecs } from "../runtime/formspec-loader.js";
+import { ensureCompiledFixture } from "./compiled-fixture.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
-const compiledPath = path.join(fixturesDir, "sample-forms.js");
 const testOutputDir = path.join(__dirname, "__test_output_ir__");
-
-const hasCompiledFixture = fs.existsSync(compiledPath);
+let compiledPath: string;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -154,8 +153,9 @@ describe("--validate-only: class path", () => {
 // --emit-ir / --validate-only: chain DSL path
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!hasCompiledFixture)("--emit-ir / --validate-only: chain DSL path", () => {
+describe("--emit-ir / --validate-only: chain DSL path", () => {
   beforeAll(() => {
+    compiledPath = ensureCompiledFixture(sampleFormsPath);
     if (fs.existsSync(testOutputDir)) {
       fs.rmSync(testOutputDir, { recursive: true });
     }

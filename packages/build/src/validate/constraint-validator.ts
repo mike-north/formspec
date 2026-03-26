@@ -115,6 +115,16 @@ function addUnknownExtension(ctx: ValidationContext, message: string, primary: P
   });
 }
 
+function addUnknownPathTarget(ctx: ValidationContext, message: string, primary: Provenance): void {
+  ctx.diagnostics.push({
+    code: "UNKNOWN_PATH_TARGET",
+    message,
+    severity: "error",
+    primaryLocation: primary,
+    relatedLocations: [],
+  });
+}
+
 function addConstraintBroadening(
   ctx: ValidationContext,
   message: string,
@@ -655,9 +665,9 @@ function checkTypeApplicability(
       const targetFieldName = formatPathTargetFieldName(fieldName, constraint.path.segments);
 
       if (resolution.kind === "missing-property") {
-        addTypeMismatch(
+        addUnknownPathTarget(
           ctx,
-          `Field "${fieldName}": path-targeted constraint "${constraint.constraintKind}" references unknown path segment "${resolution.segment}"`,
+          `Field "${targetFieldName}": path-targeted constraint "${constraint.constraintKind}" references unknown path segment "${resolution.segment}"`,
           constraint.provenance
         );
         continue;

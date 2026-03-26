@@ -16,14 +16,12 @@ import {
 import type { LoadedFormSpecSchemas } from "@formspec/build/internals";
 import { loadFormSpecs, isFormSpec } from "../runtime/formspec-loader.js";
 import { writeClassSchemas, writeFormSpecSchemas } from "../output/writer.js";
+import { ensureCompiledFixture } from "./compiled-fixture.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
-const compiledPath = path.join(fixturesDir, "sample-forms.js");
 const testOutputDir = path.join(__dirname, "__test_output__");
-
-// Check if compiled fixture exists (may need to be built)
-const hasCompiledFixture = fs.existsSync(compiledPath);
+let compiledPath: string;
 
 /**
  * Converts FormSpecSchemas from loader to LoadedFormSpecSchemas for build API.
@@ -123,7 +121,11 @@ describe("isFormSpec", () => {
   });
 });
 
-describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
+describe("runtime loading", () => {
+  beforeAll(() => {
+    compiledPath = ensureCompiledFixture(sampleFormsPath);
+  });
+
   it("loads FormSpec exports from compiled module", async () => {
     const { formSpecs, module } = await loadFormSpecs(compiledPath);
 
@@ -167,8 +169,9 @@ describe.skipIf(!hasCompiledFixture)("runtime loading", () => {
   });
 });
 
-describe.skipIf(!hasCompiledFixture)("output writer", () => {
+describe("output writer", () => {
   beforeAll(() => {
+    compiledPath = ensureCompiledFixture(sampleFormsPath);
     // Clean up test output directory
     if (fs.existsSync(testOutputDir)) {
       fs.rmSync(testOutputDir, { recursive: true });
