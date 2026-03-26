@@ -28,7 +28,9 @@ describe("Type Mappings — comprehensive", () => {
 
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
-    defs = (schema["$defs"] as Record<string, Record<string, unknown>> | undefined) ?? {};
+
+    expect(schema).toHaveProperty("$defs");
+    defs = schema["$defs"] as Record<string, Record<string, unknown>>;
   });
 
   afterAll(() => {
@@ -57,6 +59,10 @@ describe("Type Mappings — comprehensive", () => {
     expect(properties["optionalNumber"]).toEqual({ type: "number" });
 
     const required = schema["required"] as string[];
+    expect(required).toContain("stringField");
+    expect(required).toContain("numberField");
+    expect(required).toContain("booleanField");
+    expect(required).toContain("namedType");
     expect(required).not.toContain("optionalString");
     expect(required).not.toContain("optionalNumber");
   });
