@@ -1,11 +1,14 @@
 import { afterAll, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 const packageDir = path.resolve(__dirname, "..", "..");
 const cliPath = path.join(packageDir, "dist", "index.js");
-const tempRoot = path.join(__dirname, "__dry_run_tmp__");
+const tempRoot = path.join(os.tmpdir(), "formspec-cli-dry-run-test");
+const dslModuleUrl = pathToFileURL(path.resolve(packageDir, "..", "dsl", "dist", "index.js")).href;
 
 function createTempDir(prefix: string): string {
   fs.mkdirSync(tempRoot, { recursive: true });
@@ -20,7 +23,7 @@ function runCli(args: string[]): { output: string; status: number } {
     encoding: "utf-8",
   });
 
-  const output = `${result.stdout}${result.stderr}`;
+  const output = `${result.stdout}\n${result.stderr}`;
   return {
     output,
     status: result.status ?? 1,
@@ -58,13 +61,9 @@ function createClassOnlyFixture(baseDir: string): { tsPath: string } {
   const tsPath = path.join(baseDir, "class-only.ts");
   fs.writeFileSync(
     tsPath,
-    [
-      "export class CustomerProfile {",
-      "  email!: string;",
-      "  active!: boolean;",
-      "}",
-      "",
-    ].join("\n")
+    ["export class CustomerProfile {", "  email!: string;", "  active!: boolean;", "}", ""].join(
+      "\n"
+    )
   );
 
   return { tsPath };
@@ -97,7 +96,7 @@ function createRuntimeFixture(baseDir: string): { tsPath: string } {
   fs.writeFileSync(
     jsPath,
     [
-      'import { formspec, field } from "@formspec/dsl";',
+      `import { formspec, field } from ${JSON.stringify(dslModuleUrl)};`,
       "",
       "export const ActivateParams = formspec(",
       '  field.number("amount", { label: "Amount", required: true })',
@@ -107,6 +106,22 @@ function createRuntimeFixture(baseDir: string): { tsPath: string } {
       "  activate(params) {",
       "    return { success: params.amount > 0 };",
       "  }",
+      "}",
+      "",
+    ].join("\n")
+  );
+
+  return { tsPath };
+}
+
+function createInvalidConstraintFixture(baseDir: string): { tsPath: string } {
+  const tsPath = path.join(baseDir, "invalid-constraint.ts");
+  fs.writeFileSync(
+    tsPath,
+    [
+      "export class InvalidConstraintExample {",
+      "  /** @minimum 10 @maximum 5 */",
+      "  quantity!: number;",
       "}",
       "",
     ].join("\n")
@@ -142,7 +157,9 @@ describe("--dry-run subprocess", () => {
     expect(result.output).toContain(
       path.join(outDir, "BillingPlan", "instance_methods", "activate", "return_type.schema.json")
     );
-    expect(result.output).toContain(path.join(outDir, "formspecs", "ActivateParams", "schema.json"));
+    expect(result.output).toContain(
+      path.join(outDir, "formspecs", "ActivateParams", "schema.json")
+    );
     expect(result.output).toContain(
       path.join(outDir, "formspecs", "ActivateParams", "ui_schema.json")
     );
@@ -182,11 +199,40 @@ describe("--dry-run subprocess", () => {
     const result = runCli(["generate", tsPath, "--dry-run", "-o", outDir]);
 
     expect(result.status).toBe(0);
-    expect(result.output).toContain(path.join(outDir, "formspecs", "ActivateParams", "schema.json"));
+    expect(result.output).toContain(
+      path.join(outDir, "formspecs", "ActivateParams", "schema.json")
+    );
     expect(result.output).toContain(
       path.join(outDir, "formspecs", "ActivateParams", "ui_schema.json")
     );
     expect(result.output).not.toContain(path.join(outDir, "BillingPlan", "schema.json"));
+    expect(fs.existsSync(outDir)).toBe(false);
+  });
+
+  it("uses the default generated output directory when -o is omitted", () => {
+    const fixtureDir = createTempDir("default-outdir-");
+    const { tsPath } = createClassOnlyFixture(fixtureDir);
+    const defaultOutDir = path.join("generated", "CustomerProfile");
+
+    const result = runCli(["generate", tsPath, "CustomerProfile", "--dry-run"]);
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain(path.join(defaultOutDir, "schema.json"));
+    expect(result.output).toContain(path.join(defaultOutDir, "ui_schema.json"));
+    expect(fs.existsSync(path.join(packageDir, "generated"))).toBe(false);
+  });
+
+  it("reports class-only dry runs without validate-only or emit-ir", () => {
+    const fixtureDir = createTempDir("class-only-dry-run-");
+    const { tsPath } = createClassOnlyFixture(fixtureDir);
+    const outDir = path.join(fixtureDir, "generated");
+
+    const result = runCli(["generate", tsPath, "CustomerProfile", "--dry-run", "-o", outDir]);
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain(path.join(outDir, "CustomerProfile", "schema.json"));
+    expect(result.output).toContain(path.join(outDir, "CustomerProfile", "ui_schema.json"));
+    expect(result.output).toContain("Dry run complete: no files written.");
     expect(fs.existsSync(outDir)).toBe(false);
   });
 
@@ -208,6 +254,27 @@ describe("--dry-run subprocess", () => {
     expect(result.status).toBe(0);
     expect(result.output).toContain("Dry run: no files would be written.");
     expect(result.output).toContain("Validation passed: no constraint violations.");
+    expect(fs.existsSync(outDir)).toBe(false);
+  });
+
+  it("preserves failing validation behavior during validate-only dry runs", () => {
+    const fixtureDir = createTempDir("validate-only-invalid-");
+    const { tsPath } = createInvalidConstraintFixture(fixtureDir);
+    const outDir = path.join(fixtureDir, "generated");
+
+    const result = runCli([
+      "generate",
+      tsPath,
+      "InvalidConstraintExample",
+      "--validate-only",
+      "--dry-run",
+      "-o",
+      outDir,
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("CONTRADICTING_CONSTRAINTS");
+    expect(result.output).toContain("Validation failed: constraint violations found.");
     expect(fs.existsSync(outDir)).toBe(false);
   });
 });

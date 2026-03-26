@@ -223,7 +223,11 @@ function toLoadedSchemas(
  * The CLI uses this to surface parse failures as a readable user error
  * instead of continuing into class lookup and reporting "class not found".
  */
-function assertNoSyntacticErrors(program: ts.Program, sourceFile: ts.SourceFile, filePath: string): void {
+function assertNoSyntacticErrors(
+  program: ts.Program,
+  sourceFile: ts.SourceFile,
+  filePath: string
+): void {
   const diagnostics = program.getSyntacticDiagnostics(sourceFile);
   if (diagnostics.length === 0) return;
 
@@ -452,6 +456,9 @@ async function main(): Promise<void> {
           }
         }
 
+        // Dry run still performs full schema generation so it can validate that
+        // generation succeeds and compute the exact file layout that a real run
+        // would produce.
         // Generate class schemas
         const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
 
@@ -565,12 +572,10 @@ async function main(): Promise<void> {
       } else {
         console.log("Validation passed: no constraint violations.");
       }
-      if (options.dryRun) {
-        console.log("Dry run complete: no files written.");
-      }
-    } else if (options.dryRun) {
+    }
+    if (options.dryRun) {
       console.log("Dry run complete: no files written.");
-    } else {
+    } else if (!options.validateOnly) {
       console.log("Done!");
     }
   } catch (error) {

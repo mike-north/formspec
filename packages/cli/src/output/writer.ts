@@ -47,7 +47,7 @@ export interface FormSpecWriteResult {
 /**
  * Computes the file layout for a class without writing anything.
  */
-export function planClassSchemaFiles(
+function planClassSchemaFiles(
   className: string,
   instanceMethods: readonly MethodSchemas[],
   staticMethods: readonly MethodSchemas[],
@@ -139,10 +139,7 @@ export function writeClassSchemas(
   return { dir: classDir, files };
 }
 
-function planMethodSchemaFiles(
-  methods: readonly MethodSchemas[],
-  parentDir: string
-): string[] {
+function planMethodSchemaFiles(methods: readonly MethodSchemas[], parentDir: string): string[] {
   return methods.flatMap((method) => {
     const methodDir = path.join(parentDir, method.name);
     const files: string[] = [];
@@ -212,7 +209,7 @@ function writeMethodSchemas(method: MethodSchemas, parentDir: string, indent: nu
  * @returns Write result with paths
  */
 export function writeFormSpecSchemas(
-  formSpecs: Map<string, FormSpecSchemas>,
+  formSpecs: ReadonlyMap<string, FormSpecSchemas>,
   options: WriteOptions
 ): FormSpecWriteResult {
   const { outDir, indent = 2 } = options;
@@ -246,7 +243,7 @@ export function writeFormSpecSchemas(
 /**
  * Computes the file layout for standalone FormSpec exports without writing anything.
  */
-export function planFormSpecSchemaFiles(
+function planFormSpecSchemaFiles(
   formSpecs: ReadonlyMap<string, FormSpecSchemas>,
   options: WriteOptions
 ): FormSpecWriteResult {
@@ -262,6 +259,8 @@ export function planFormSpecSchemaFiles(
 
   return { dir: formspecsDir, files };
 }
+
+export { planClassSchemaFiles, planFormSpecSchemaFiles };
 
 /**
  * Ensures a directory exists, creating it if necessary.
