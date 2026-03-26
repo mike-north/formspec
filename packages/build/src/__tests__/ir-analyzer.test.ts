@@ -565,5 +565,8 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
     // Regardless of the exact shape, the kind must be a known TypeNode kind
     const validKinds = ["record", "object", "primitive", "union", "array", "enum", "reference"];
     expect(validKinds).toContain(field?.type.kind);
+    if (field?.type.kind === "object") {
+      expect(field.type.additionalProperties).toBe(false);
+    }
   });
 });

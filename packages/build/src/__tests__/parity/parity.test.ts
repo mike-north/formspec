@@ -26,11 +26,15 @@ import { field as dslField, formspec as dslFormspec } from "@formspec/dsl";
 import { addressForm } from "./fixtures/address/chain-dsl.js";
 import { userRegistrationForm } from "./fixtures/user-registration/chain-dsl.js";
 import { productConfigForm } from "./fixtures/product-config/chain-dsl.js";
+import { planStatusForm } from "./fixtures/plan-status/chain-dsl.js";
+import { usdCentsForm } from "./fixtures/usd-cents/chain-dsl.js";
 
 // Fixtures — expected IRs
 import { expectedIR as addressExpected } from "./fixtures/address/expected-ir.js";
 import { expectedIR as userRegistrationExpected } from "./fixtures/user-registration/expected-ir.js";
 import { expectedIR as productConfigExpected } from "./fixtures/product-config/expected-ir.js";
+import { expectedIR as planStatusExpected } from "./fixtures/plan-status/expected-ir.js";
+import { expectedIR as usdCentsExpected } from "./fixtures/usd-cents/expected-ir.js";
 
 // Base directory for TSDoc fixture files
 const fixturesDir = nodePath.join(import.meta.dirname, "fixtures");
@@ -56,98 +60,73 @@ function canonicalizeFixtureClass(fixtureFile: string, className: string) {
   return canonicalizeTSDoc(analysis, { file: fixtureFile });
 }
 
-// =============================================================================
-// address parity
-// =============================================================================
+interface ParityFixture {
+  readonly name: string;
+  readonly chainForm: Parameters<typeof canonicalizeChainDSL>[0];
+  readonly expectedIR: ReturnType<typeof stripProvenance>;
+  readonly className: string;
+}
 
-describe("address parity", () => {
-  it("chain DSL produces expected IR", () => {
-    const ir = canonicalizeChainDSL(addressForm);
-    const actual = stripProvenance(ir);
+const parityFixtures: readonly ParityFixture[] = [
+  {
+    name: "address",
+    chainForm: addressForm,
+    expectedIR: addressExpected,
+    className: "AddressForm",
+  },
+  {
+    name: "user-registration",
+    chainForm: userRegistrationForm,
+    expectedIR: userRegistrationExpected,
+    className: "UserRegistrationForm",
+  },
+  {
+    name: "product-config",
+    chainForm: productConfigForm,
+    expectedIR: productConfigExpected,
+    className: "ProductConfigForm",
+  },
+  {
+    name: "plan-status",
+    chainForm: planStatusForm,
+    expectedIR: planStatusExpected,
+    className: "SubscriptionForm",
+  },
+  {
+    name: "usd-cents",
+    chainForm: usdCentsForm,
+    expectedIR: usdCentsExpected,
+    className: "LineItemForm",
+  },
+] as const;
 
-    expect(actual).toEqual(addressExpected);
+for (const fixture of parityFixtures) {
+  describe(`${fixture.name} parity`, () => {
+    it("chain DSL produces expected IR", () => {
+      const ir = canonicalizeChainDSL(fixture.chainForm);
+      const actual = stripProvenance(ir);
+
+      expect(actual).toEqual(fixture.expectedIR);
+    });
+
+    it("TSDoc produces expected IR", () => {
+      const fixturePath = nodePath.join(fixturesDir, fixture.name, "tsdoc.ts");
+      const ir = canonicalizeFixtureClass(fixturePath, fixture.className);
+      const actual = stripProvenance(ir);
+
+      expect(actual).toEqual(fixture.expectedIR);
+    });
+
+    it("both surfaces produce identical IR", () => {
+      const chainIR = canonicalizeChainDSL(fixture.chainForm);
+      const fixturePath = nodePath.join(fixturesDir, fixture.name, "tsdoc.ts");
+      const tsdocIR = canonicalizeFixtureClass(fixturePath, fixture.className);
+
+      const differences = compareIR(chainIR, tsdocIR);
+      expect(differences).toEqual([]);
+    });
   });
-
-  it("TSDoc produces expected IR", () => {
-    const fixturePath = nodePath.join(fixturesDir, "address", "tsdoc.ts");
-    const ir = canonicalizeFixtureClass(fixturePath, "AddressForm");
-    const actual = stripProvenance(ir);
-
-    expect(actual).toEqual(addressExpected);
-  });
-
-  it("both surfaces produce identical IR", () => {
-    const chainIR = canonicalizeChainDSL(addressForm);
-
-    const fixturePath = nodePath.join(fixturesDir, "address", "tsdoc.ts");
-    const tsdocIR = canonicalizeFixtureClass(fixturePath, "AddressForm");
-
-    const differences = compareIR(chainIR, tsdocIR);
-    expect(differences).toEqual([]);
-  });
-});
-
-// =============================================================================
-// user-registration parity
-// =============================================================================
-
-describe("user-registration parity", () => {
-  it("chain DSL produces expected IR", () => {
-    const ir = canonicalizeChainDSL(userRegistrationForm);
-    const actual = stripProvenance(ir);
-
-    expect(actual).toEqual(userRegistrationExpected);
-  });
-
-  it("TSDoc produces expected IR", () => {
-    const fixturePath = nodePath.join(fixturesDir, "user-registration", "tsdoc.ts");
-    const ir = canonicalizeFixtureClass(fixturePath, "UserRegistrationForm");
-    const actual = stripProvenance(ir);
-
-    expect(actual).toEqual(userRegistrationExpected);
-  });
-
-  it("both surfaces produce identical IR", () => {
-    const chainIR = canonicalizeChainDSL(userRegistrationForm);
-
-    const fixturePath = nodePath.join(fixturesDir, "user-registration", "tsdoc.ts");
-    const tsdocIR = canonicalizeFixtureClass(fixturePath, "UserRegistrationForm");
-
-    const differences = compareIR(chainIR, tsdocIR);
-    expect(differences).toEqual([]);
-  });
-});
-
-// =============================================================================
-// product-config parity
-// =============================================================================
-
-describe("product-config parity", () => {
-  it("chain DSL produces expected IR", () => {
-    const ir = canonicalizeChainDSL(productConfigForm);
-    const actual = stripProvenance(ir);
-
-    expect(actual).toEqual(productConfigExpected);
-  });
-
-  it("TSDoc produces expected IR", () => {
-    const fixturePath = nodePath.join(fixturesDir, "product-config", "tsdoc.ts");
-    const ir = canonicalizeFixtureClass(fixturePath, "ProductConfigForm");
-    const actual = stripProvenance(ir);
-
-    expect(actual).toEqual(productConfigExpected);
-  });
-
-  it("both surfaces produce identical IR", () => {
-    const chainIR = canonicalizeChainDSL(productConfigForm);
-
-    const fixturePath = nodePath.join(fixturesDir, "product-config", "tsdoc.ts");
-    const tsdocIR = canonicalizeFixtureClass(fixturePath, "ProductConfigForm");
-
-    const differences = compareIR(chainIR, tsdocIR);
-    expect(differences).toEqual([]);
-  });
-});
+}
 
 // =============================================================================
 // compareIR utility tests
