@@ -469,7 +469,36 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 9. Numeric constraints on non-number fields → TYPE_MISMATCH
+  // 9. Less restrictive follow-up constraints → CONSTRAINT_BROADENING
+  // ---------------------------------------------------------------------------
+
+  describe("constraint broadening", () => {
+    it("emits CONSTRAINT_BROADENING when a later minimum is less restrictive", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [minConstraint(10, 1), minConstraint(0, 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain('Field "quantity"');
+      expect(diag?.message).toContain("@minimum");
+      expect(diag?.primaryLocation).toEqual(prov(2, "minimum"));
+      expect(diag?.relatedLocations).toEqual([prov(1, "minimum")]);
+    });
+
+    it("does not emit when a later minimum narrows the earlier bound", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [minConstraint(10, 1), minConstraint(12, 2)]),
+      ]);
+
+      expect(validateIR(ir).valid).toBe(true);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 10. Numeric constraints on non-number fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("numeric constraints on non-number fields", () => {
@@ -515,7 +544,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 10. String constraints on non-string fields → TYPE_MISMATCH
+  // 11. String constraints on non-string fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("string constraints on non-string fields", () => {
@@ -548,7 +577,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 11. Array constraints on non-array fields → TYPE_MISMATCH
+  // 12. Array constraints on non-array fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------
 
   describe("array constraints on non-array fields", () => {

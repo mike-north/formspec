@@ -115,6 +115,21 @@ function addUnknownExtension(ctx: ValidationContext, message: string, primary: P
   });
 }
 
+function addConstraintBroadening(
+  ctx: ValidationContext,
+  message: string,
+  primary: Provenance,
+  related: Provenance
+): void {
+  ctx.diagnostics.push({
+    code: "CONSTRAINT_BROADENING",
+    message,
+    severity: "error",
+    primaryLocation: primary,
+    relatedLocations: [related],
+  });
+}
+
 // =============================================================================
 // CONSTRAINT NARROWING HELPERS
 // =============================================================================
@@ -142,6 +157,93 @@ function findAllowedMembers(
   return constraints.filter(
     (c): c is EnumMemberConstraintNode => c.constraintKind === "allowedMembers"
   );
+}
+
+type OrderedBoundKind =
+  | "minimum"
+  | "exclusiveMinimum"
+  | "minLength"
+  | "minItems"
+  | "maximum"
+  | "exclusiveMaximum"
+  | "maxLength"
+  | "maxItems";
+
+type OrderedBoundConstraint = Extract<ConstraintNode, { readonly constraintKind: OrderedBoundKind }>;
+
+function isOrderedBoundConstraint(constraint: ConstraintNode): constraint is OrderedBoundConstraint {
+  return (
+    constraint.constraintKind === "minimum" ||
+    constraint.constraintKind === "exclusiveMinimum" ||
+    constraint.constraintKind === "minLength" ||
+    constraint.constraintKind === "minItems" ||
+    constraint.constraintKind === "maximum" ||
+    constraint.constraintKind === "exclusiveMaximum" ||
+    constraint.constraintKind === "maxLength" ||
+    constraint.constraintKind === "maxItems"
+  );
+}
+
+function pathKey(constraint: ConstraintNode): string {
+  return constraint.path?.segments.join(".") ?? "";
+}
+
+function isLowerBoundKind(kind: OrderedBoundKind): boolean {
+  return (
+    kind === "minimum" ||
+    kind === "exclusiveMinimum" ||
+    kind === "minLength" ||
+    kind === "minItems"
+  );
+}
+
+function describeConstraintTag(constraint: OrderedBoundConstraint): string {
+  return `@${constraint.constraintKind}`;
+}
+
+function checkConstraintBroadening(
+  ctx: ValidationContext,
+  fieldName: string,
+  constraints: readonly ConstraintNode[]
+): void {
+  const strongestByKey = new Map<string, OrderedBoundConstraint>();
+
+  for (const constraint of constraints) {
+    if (!isOrderedBoundConstraint(constraint)) {
+      continue;
+    }
+
+    const key = `${constraint.constraintKind}:${pathKey(constraint)}`;
+    const previous = strongestByKey.get(key);
+    if (previous === undefined) {
+      strongestByKey.set(key, constraint);
+      continue;
+    }
+
+    const broadens = isLowerBoundKind(constraint.constraintKind)
+      ? constraint.value < previous.value
+      : constraint.value > previous.value;
+
+    if (broadens) {
+      addConstraintBroadening(
+        ctx,
+        `Field "${fieldName}": ${describeConstraintTag(constraint)} (${String(constraint.value)}) is broader than earlier ${describeConstraintTag(previous)} (${String(previous.value)}). Constraints can only narrow.`,
+        constraint.provenance,
+        previous.provenance
+      );
+      continue;
+    }
+
+    const previousIsStronger = isLowerBoundKind(constraint.constraintKind)
+      ? previous.value >= constraint.value
+      : previous.value <= constraint.value;
+
+    if (previousIsStronger) {
+      continue;
+    }
+
+    strongestByKey.set(key, constraint);
+  }
 }
 
 // =============================================================================
@@ -555,6 +657,7 @@ function validateConstraints(
   checkNumericContradictions(ctx, name, constraints);
   checkLengthContradictions(ctx, name, constraints);
   checkAllowedMembersContradiction(ctx, name, constraints);
+  checkConstraintBroadening(ctx, name, constraints);
   checkTypeApplicability(ctx, name, type, constraints);
 }
 

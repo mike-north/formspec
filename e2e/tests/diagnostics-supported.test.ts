@@ -63,7 +63,7 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("zip");
   });
 
-  it.skip("BUG(#92): field-level broadening should produce CONSTRAINT_BROADENING", () => {
+  it("reports semantic broadening diagnostics for less restrictive follow-up constraints", () => {
     const fixturePath = resolveFixture("tsdoc-class", "error-broadening-constraint.ts");
     const result = runCli(["generate", fixturePath, "BroadeningConstraintForm", "--validate-only"]);
     const output = result.stdout + result.stderr;
@@ -72,5 +72,9 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("[ERROR] CONSTRAINT_BROADENING");
     expect(output).toContain('Field "quantity"');
     expect(output).toContain("@minimum");
+    expect(output).toContain("fixtures/tsdoc-class/error-broadening-constraint.ts:7:");
+    expect(output).toContain(
+      "related: fixtures/tsdoc-class/error-broadening-constraint.ts:1:"
+    );
   });
 });
