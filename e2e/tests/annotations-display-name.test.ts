@@ -77,10 +77,10 @@ describe("Annotation: @displayName", () => {
   });
 
   // @see 003-json-schema-vocabulary.md §2.3: "no per-member metadata → flat enum"
-  it("language without :member display names → flat enum (no title without @displayName support)", () => {
+  it("language without :member display names → flat enum", () => {
     const language = properties["language"];
     // No per-member display names → flat enum array
-    expect(language["enum"]).toEqual(expect.arrayContaining(["en", "fr", "de"]));
+    expect(language["enum"]).toEqual(["en", "fr", "de"]);
     // Must NOT use oneOf when flat enum suffices
     expect(language["oneOf"]).toBeUndefined();
   });

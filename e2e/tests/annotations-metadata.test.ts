@@ -65,6 +65,17 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
       expect(options).toBeDefined();
       expect(options?.["placeholder"]).toBe("Enter your email address");
     });
+
+    it.skip("BUG: quantity @placeholder appears in UI Schema options.placeholder", () => {
+      if (!uischema) throw new Error("UI schema not loaded");
+      const elements = uischema["elements"] as Record<string, unknown>[];
+      const quantityControl = elements.find((el) => el["scope"] === "#/properties/quantity");
+      expect(quantityControl).toBeDefined();
+      if (!quantityControl) return;
+      const options = quantityControl["options"] as Record<string, unknown> | undefined;
+      expect(options).toBeDefined();
+      expect(options?.["placeholder"]).toBe("0");
+    });
   });
 
   describe("@deprecated — JSON Schema deprecated: true", () => {
@@ -77,6 +88,12 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
     it("oldField: @deprecated with message emits deprecated: true", () => {
       // The message text "Use newField instead" is IR-only — not a JSON Schema keyword
       expect(properties["oldField"]["deprecated"]).toBe(true);
+    });
+
+    it.skip("BUG: oldField deprecation message is preserved in the JSON Schema extension keyword", () => {
+      expect(properties["oldField"]["x-formspec-deprecation-description"]).toBe(
+        "Use newField instead"
+      );
     });
   });
 
