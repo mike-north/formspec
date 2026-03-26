@@ -10,6 +10,7 @@ import * as ts from "typescript";
 import type {
   FieldNode,
   TypeNode,
+  EnumTypeNode,
   ConstraintNode,
   AnnotationNode,
   Provenance,
@@ -227,7 +228,7 @@ function analyzeFieldToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  const type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
+  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
@@ -241,7 +242,7 @@ function analyzeFieldToIR(
   constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations
-  const annotations: AnnotationNode[] = [];
+  let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
   annotations.push(...extractJSDocAnnotationNodes(prop, file));
@@ -251,6 +252,8 @@ function analyzeFieldToIR(
   if (defaultAnnotation) {
     annotations.push(defaultAnnotation);
   }
+
+  ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
 
   return {
     kind: "field",
@@ -283,7 +286,7 @@ function analyzeInterfacePropertyToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  const type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
+  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
@@ -297,10 +300,12 @@ function analyzeInterfacePropertyToIR(
   constraints.push(...extractJSDocConstraintNodes(prop, file));
 
   // Collect annotations
-  const annotations: AnnotationNode[] = [];
+  let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
   annotations.push(...extractJSDocAnnotationNodes(prop, file));
+
+  ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
 
   return {
     kind: "field",
@@ -311,6 +316,97 @@ function analyzeInterfacePropertyToIR(
     annotations,
     provenance,
   };
+}
+
+/**
+ * Rewrites enum-member display-name annotations into EnumMember.displayName
+ * values and strips those annotations from the field-level annotation list.
+ *
+ * The TSDoc surface uses `@displayName :value Label` for enum member labels.
+ * Plain `@displayName Label` annotations remain as field-level titles.
+ */
+function applyEnumMemberDisplayNames(
+  type: TypeNode,
+  annotations: readonly AnnotationNode[]
+): { type: TypeNode; annotations: AnnotationNode[] } {
+  const consumed = new Set<AnnotationNode>();
+  const nextType = rewriteEnumDisplayNames(type, annotations, consumed);
+
+  if (consumed.size === 0) {
+    return { type, annotations: [...annotations] };
+  }
+
+  return {
+    type: nextType,
+    annotations: annotations.filter((annotation) => !consumed.has(annotation)),
+  };
+}
+
+function rewriteEnumDisplayNames(
+  type: TypeNode,
+  annotations: readonly AnnotationNode[],
+  consumed: Set<AnnotationNode>
+): TypeNode {
+  switch (type.kind) {
+    case "enum":
+      return applyEnumMemberDisplayNamesToEnum(type, annotations, consumed);
+
+    case "union": {
+      return {
+        ...type,
+        members: type.members.map((member) =>
+          rewriteEnumDisplayNames(member, annotations, consumed)
+        ),
+      };
+    }
+
+    default:
+      return type;
+  }
+}
+
+function applyEnumMemberDisplayNamesToEnum(
+  type: EnumTypeNode,
+  annotations: readonly AnnotationNode[],
+  consumed: Set<AnnotationNode>
+): EnumTypeNode {
+  const displayNames = new Map<string, string>();
+
+  for (const annotation of annotations) {
+    if (annotation.annotationKind !== "displayName") continue;
+
+    const parsed = parseEnumMemberDisplayName(annotation.value);
+    if (!parsed) continue;
+
+    const member = type.members.find((m) => String(m.value) === parsed.value);
+    if (!member) continue;
+
+    displayNames.set(String(member.value), parsed.label);
+    consumed.add(annotation);
+  }
+
+  if (displayNames.size === 0) {
+    return type;
+  }
+
+  return {
+    ...type,
+    members: type.members.map((member) => {
+      const displayName = displayNames.get(String(member.value));
+      return displayName !== undefined ? { ...member, displayName } : member;
+    }),
+  };
+}
+
+function parseEnumMemberDisplayName(value: string): { value: string; label: string } | null {
+  const trimmed = value.trim();
+  const match = /^:([^\s]+)\s+([\s\S]+)$/.exec(trimmed);
+  if (!match?.[1] || !match[2]) return null;
+
+  const label = match[2].trim();
+  if (label === "") return null;
+
+  return { value: match[1], label };
 }
 
 // =============================================================================

@@ -164,10 +164,6 @@ export interface TSDocParseResult {
 export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
-  let displayName: string | undefined;
-  let description: string | undefined;
-  let displayNameProvenance: Provenance | undefined;
-  let descriptionProvenance: Provenance | undefined;
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
@@ -202,11 +198,19 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 
           const provenance = provenanceForComment(range, sourceFile, file, tagName);
           if (tagName === "displayName") {
-            displayName = text;
-            displayNameProvenance = provenance;
+            annotations.push({
+              kind: "annotation",
+              annotationKind: "displayName",
+              value: text,
+              provenance,
+            });
           } else {
-            description = text;
-            descriptionProvenance = provenance;
+            annotations.push({
+              kind: "annotation",
+              annotationKind: "description",
+              value: text,
+              provenance,
+            });
           }
           continue;
         }
@@ -232,24 +236,6 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
         });
       }
     }
-  }
-
-  if (displayName !== undefined && displayNameProvenance !== undefined) {
-    annotations.push({
-      kind: "annotation",
-      annotationKind: "displayName",
-      value: displayName,
-      provenance: displayNameProvenance,
-    });
-  }
-
-  if (description !== undefined && descriptionProvenance !== undefined) {
-    annotations.push({
-      kind: "annotation",
-      annotationKind: "description",
-      value: description,
-      provenance: descriptionProvenance,
-    });
   }
 
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----

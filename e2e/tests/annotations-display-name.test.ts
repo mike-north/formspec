@@ -60,9 +60,8 @@ describe("Annotation: @displayName", () => {
   });
 
   // @see 003-json-schema-vocabulary.md §2.3: "per-member display names (:member) → oneOf with const/title"
-  it.skip("BUG: status with :member display names → oneOf with const/title entries", () => {
+  it("status with :member display names → oneOf with const/title entries", () => {
     // @see 003-json-schema-vocabulary.md §2.3: ":member syntax on display names → oneOf[{const, title}]"
-    // Current implementation does not support :member display name syntax for enum members.
     const status = properties["status"];
     expect(status["oneOf"]).toEqual([
       { const: "active", title: "Active Account" },
