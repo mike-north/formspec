@@ -34,20 +34,20 @@ describe("Annotation: @displayName", () => {
   });
 
   // @see 003-json-schema-vocabulary.md §2.8: "class-level @displayName → root schema title"
-  it.skip("BUG: class-level @displayName produces root title", () => {
+  it("class-level @displayName produces root title", () => {
     // Spec 003 §9 full example shows "title": "Invoice Form" at root from class @displayName.
     // Current implementation does not emit root title.
     expect(schema["title"]).toBe("User Profile Form");
   });
 
   // @see 002-constraint-tags.md §3.2: "@displayName → title on the property schema"
-  it.skip("BUG: field @displayName emits title on property schema (fullName)", () => {
+  it("field @displayName emits title on property schema (fullName)", () => {
     // @see 002-constraint-tags.md §3.2: "@displayName maps to JSON Schema title"
     // Current implementation does not emit title from @displayName on properties.
     expect(properties["fullName"]["title"]).toBe("Full Legal Name");
   });
 
-  it.skip("BUG: field @displayName emits title on property schema (email)", () => {
+  it("field @displayName emits title on property schema (email)", () => {
     // @see 002-constraint-tags.md §3.2: "@displayName maps to JSON Schema title"
     expect(properties["email"]["title"]).toBe("Email Address");
   });
@@ -84,7 +84,7 @@ describe("Annotation: @displayName", () => {
     expect(language["oneOf"]).toBeUndefined();
   });
 
-  it.skip("BUG: language with field-level @displayName → title on property schema", () => {
+  it("language with field-level @displayName → title on property schema", () => {
     // @see 002-constraint-tags.md §3.2: "@displayName maps to JSON Schema title"
     // Current implementation does not emit title from @displayName.
     expect(properties["language"]["title"]).toBe("Preferred Language");

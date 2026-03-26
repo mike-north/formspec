@@ -389,6 +389,7 @@ export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional
 
 // @public
 export interface FormIR {
+    readonly annotations?: readonly AnnotationNode[];
     readonly elements: readonly FormIRElement[];
     readonly irVersion: string;
     // (undocumented)
@@ -645,6 +646,7 @@ export interface TextField<N extends string> {
 
 // @public
 export interface TypeDefinition {
+    readonly annotations?: readonly AnnotationNode[];
     readonly name: string;
     readonly provenance: Provenance;
     readonly type: TypeNode;

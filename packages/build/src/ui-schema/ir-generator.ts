@@ -99,11 +99,15 @@ function combineRules(parentRule: Rule, childRule: Rule): Rule {
  */
 function fieldNodeToControl(field: FieldNode, parentRule?: Rule): ControlElement {
   const displayNameAnnotation = field.annotations.find((a) => a.annotationKind === "displayName");
+  const placeholderAnnotation = field.annotations.find((a) => a.annotationKind === "placeholder");
 
   const control: ControlElement = {
     type: "Control",
     scope: fieldToScope(field.name),
     ...(displayNameAnnotation !== undefined && { label: displayNameAnnotation.value }),
+    ...(placeholderAnnotation !== undefined && {
+      options: { placeholder: placeholderAnnotation.value },
+    }),
     ...(parentRule !== undefined && { rule: parentRule }),
   };
 

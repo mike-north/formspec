@@ -183,6 +183,9 @@ export function generateJsonSchemaFromIR(
   // by a TSDoc canonicalizer pass).
   for (const [name, typeDef] of Object.entries(ir.typeRegistry)) {
     ctx.defs[name] = generateTypeNode(typeDef.type, ctx);
+    if (typeDef.annotations && typeDef.annotations.length > 0) {
+      applyAnnotations(ctx.defs[name], typeDef.annotations);
+    }
   }
 
   const properties: Record<string, JsonSchema2020> = {};
@@ -199,6 +202,10 @@ export function generateJsonSchemaFromIR(
     properties,
     ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
   };
+
+  if (ir.annotations && ir.annotations.length > 0) {
+    applyAnnotations(result, ir.annotations);
+  }
 
   if (Object.keys(ctx.defs).length > 0) {
     result.$defs = ctx.defs;
@@ -797,6 +804,9 @@ function applyAnnotations(
 
       case "deprecated":
         schema.deprecated = true;
+        if (annotation.message !== undefined && annotation.message !== "") {
+          schema["x-formspec-deprecation-description"] = annotation.message;
+        }
         break;
 
       case "placeholder":

@@ -34,7 +34,7 @@ describe("Annotation: @description / @remarks", () => {
   });
 
   // @see 002-constraint-tags.md §3.2: "class-level @description → root schema description"
-  it.skip("BUG: class-level @description produces root schema description", () => {
+  it("class-level @description produces root schema description", () => {
     // Spec 002 §3.2 maps @description to JSON Schema description.
     // Current implementation may not emit class-level description.
     expect(schema["description"]).toBe(
@@ -43,7 +43,7 @@ describe("Annotation: @description / @remarks", () => {
   });
 
   // @see 002-constraint-tags.md §3.2: "@description → property description"
-  it.skip("BUG: name: @description maps to property description", () => {
+  it("name: @description maps to property description", () => {
     // @see 002-constraint-tags.md §3.2: "@description tag maps to JSON Schema description keyword"
     // Current implementation does not emit description from @description on properties.
     expect(properties["name"]["description"]).toBe(
@@ -52,7 +52,7 @@ describe("Annotation: @description / @remarks", () => {
   });
 
   // @see 002-constraint-tags.md §2.3: "@remarks fallback — treated as @description when no @description present"
-  it.skip("BUG: comments: @remarks maps to description when no @description", () => {
+  it("comments: @remarks maps to description when no @description", () => {
     // Spec 002 §2.3: @remarks is used as a fallback for @description.
     // Current implementation may not emit description from @remarks.
     expect(properties["comments"]["description"]).toBe(
@@ -61,7 +61,7 @@ describe("Annotation: @description / @remarks", () => {
   });
 
   // @see 002-constraint-tags.md §2.3 C1: "@description wins when both @description and @remarks present"
-  it.skip("BUG: subject: @description wins over @remarks", () => {
+  it("subject: @description wins over @remarks", () => {
     // Spec 002 §2.3 C1: explicit @description overrides @remarks.
     // Current implementation may not support this.
     expect(properties["subject"]["description"]).toBe("Explicit description wins.");

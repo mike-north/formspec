@@ -14,7 +14,7 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@displayName`, `@description`, `@format`):
+ * 2. **Annotation tags** (`@displayName`, `@description`, `@format`, `@placeholder`):
  *    These are parsed as structured custom block tags and mapped directly
  *    onto annotation IR nodes.
  *
@@ -88,8 +88,9 @@ const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind
  *
  * - `@pattern`: regex patterns commonly contain `@` (e.g. email validation)
  * - `@enumOptions`: JSON arrays may contain object literals with `{}`
+ * - `@defaultValue`: JSON defaults may contain objects, arrays, or quoted strings
  */
-const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions"]);
+const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defaultValue"]);
 
 /**
  * Creates a TSDocConfiguration with FormSpec custom block tag definitions
@@ -111,7 +112,7 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
   }
 
   // Register annotation tags that participate in the canonical IR.
-  for (const tagName of ["displayName", "description", "format"]) {
+  for (const tagName of ["displayName", "description", "format", "placeholder"]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -150,6 +151,18 @@ export interface TSDocParseResult {
 }
 
 /**
+ * Display-name metadata extracted from a node's JSDoc tags.
+ *
+ * The root display name is returned separately from member-target labels so
+ * callers can apply the former to the enclosing type/form and the latter to
+ * enum members.
+ */
+export interface DisplayNameMetadata {
+  readonly displayName?: string;
+  readonly memberDisplayNames: ReadonlyMap<string, string>;
+}
+
+/**
  * Parses the JSDoc comment attached to a TypeScript AST node using the
  * official TSDoc parser and returns canonical IR constraint and annotation
  * nodes.
@@ -165,6 +178,12 @@ export interface TSDocParseResult {
 export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
+  let displayName: string | undefined;
+  let description: string | undefined;
+  let placeholder: string | undefined;
+  let displayNameProvenance: Provenance | undefined;
+  let descriptionProvenance: Provenance | undefined;
+  let placeholderProvenance: Provenance | undefined;
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
@@ -193,18 +212,21 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
-        if (tagName === "displayName" || tagName === "description" || tagName === "format") {
+        if (
+          tagName === "displayName" ||
+          tagName === "description" ||
+          tagName === "format" ||
+          tagName === "placeholder"
+        ) {
           const text = extractBlockText(block).trim();
           if (text === "") continue;
 
           const provenance = provenanceForComment(range, sourceFile, file, tagName);
           if (tagName === "displayName") {
-            annotations.push({
-              kind: "annotation",
-              annotationKind: "displayName",
-              value: text,
-              provenance,
-            });
+            if (!isMemberTargetDisplayName(text) && displayName === undefined) {
+              displayName = text;
+              displayNameProvenance = provenance;
+            }
           } else if (tagName === "format") {
             annotations.push({
               kind: "annotation",
@@ -213,12 +235,13 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
               provenance,
             });
           } else {
-            annotations.push({
-              kind: "annotation",
-              annotationKind: "description",
-              value: text,
-              provenance,
-            });
+            if (tagName === "description" && description === undefined) {
+              description = text;
+              descriptionProvenance = provenance;
+            } else if (placeholder === undefined) {
+              placeholder = text;
+              placeholderProvenance = provenance;
+            }
           }
           continue;
         }
@@ -240,17 +263,54 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 
       // Extract @deprecated from the standard deprecated block
       if (docComment.deprecatedBlock !== undefined) {
+        const message = extractBlockText(docComment.deprecatedBlock).trim();
         annotations.push({
           kind: "annotation",
           annotationKind: "deprecated",
+          ...(message !== "" && { message }),
           provenance: provenanceForComment(range, sourceFile, file, "deprecated"),
         });
+      }
+
+      if (description === undefined && docComment.remarksBlock !== undefined) {
+        const remarks = extractBlockText(docComment.remarksBlock).trim();
+        if (remarks !== "") {
+          description = remarks;
+          descriptionProvenance = provenanceForComment(range, sourceFile, file, "remarks");
+        }
       }
     }
   }
 
+  if (displayName !== undefined && displayNameProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "displayName",
+      value: displayName,
+      provenance: displayNameProvenance,
+    });
+  }
+
+  if (description !== undefined && descriptionProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "description",
+      value: description,
+      provenance: descriptionProvenance,
+    });
+  }
+
+  if (placeholder !== undefined && placeholderProvenance !== undefined) {
+    annotations.push({
+      kind: "annotation",
+      annotationKind: "placeholder",
+      value: placeholder,
+      provenance: placeholderProvenance,
+    });
+  }
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
-  // @pattern and @enumOptions content can contain `@` and `{}` characters
+  // @pattern, @enumOptions, and @defaultValue content can contain `@`, `{}`,
+  // or quoted JSON payloads that are awkward to preserve via the TSDoc tree.
   // which the TSDoc parser treats as structural markers. We extract these
   // via the TS compiler API which preserves content verbatim.
   const jsDocTagsAll = ts.getJSDocTags(node);
@@ -263,6 +323,12 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
 
     const text = commentText.trim();
     const provenance = provenanceForJSDocTag(tag, file);
+    if (tagName === "defaultValue") {
+      const defaultValueNode = parseDefaultValueValue(text, provenance);
+      annotations.push(defaultValueNode);
+      continue;
+    }
+
     const constraintNode = parseConstraintValue(tagName, text, provenance);
     if (constraintNode) {
       constraints.push(constraintNode);
@@ -299,6 +365,41 @@ export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
   }
 
   return false;
+}
+
+/**
+ * Extracts root and member-target display-name metadata from a node's JSDoc tags.
+ *
+ * Member-target display-name tags use the syntax `@displayName :member Label`.
+ * The first non-target `@displayName` is returned as the root display name.
+ */
+export function extractDisplayNameMetadata(node: ts.Node): DisplayNameMetadata {
+  let displayName: string | undefined;
+  const memberDisplayNames = new Map<string, string>();
+
+  for (const tag of ts.getJSDocTags(node)) {
+    const tagName = normalizeConstraintTagName(tag.tagName.text);
+    if (tagName !== "displayName") continue;
+
+    const commentText = getTagCommentText(tag);
+    if (commentText === undefined) continue;
+
+    const text = commentText.trim();
+    if (text === "") continue;
+
+    const memberTarget = parseMemberTargetDisplayName(text);
+    if (memberTarget) {
+      memberDisplayNames.set(memberTarget.target, memberTarget.label);
+      continue;
+    }
+
+    displayName ??= text;
+  }
+
+  return {
+    ...(displayName !== undefined && { displayName }),
+    memberDisplayNames,
+  };
 }
 
 // =============================================================================
@@ -491,6 +592,44 @@ function parseConstraintValue(
     ...(path && { path }),
     provenance,
   };
+}
+
+/**
+ * Parses a raw `@defaultValue` tag payload into a JSON value annotation.
+ */
+function parseDefaultValueValue(text: string, provenance: Provenance): AnnotationNode {
+  const trimmed = text.trim();
+  let value: JsonValue;
+
+  if (trimmed === "null") {
+    value = null;
+  } else if (trimmed === "true") {
+    value = true;
+  } else if (trimmed === "false") {
+    value = false;
+  } else {
+    const parsed = tryParseJson(trimmed);
+    value = parsed !== null ? (parsed as JsonValue) : trimmed;
+  }
+
+  return {
+    kind: "annotation",
+    annotationKind: "defaultValue",
+    value,
+    provenance,
+  };
+}
+
+function isMemberTargetDisplayName(text: string): boolean {
+  return parseMemberTargetDisplayName(text) !== null;
+}
+
+function parseMemberTargetDisplayName(
+  text: string
+): { readonly target: string; readonly label: string } | null {
+  const match = /^:([^\s]+)\s+([\s\S]+)$/.exec(text);
+  if (!match?.[1] || !match[2]) return null;
+  return { target: match[1], label: match[2].trim() };
 }
 
 // =============================================================================

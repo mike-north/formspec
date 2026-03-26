@@ -11,6 +11,7 @@ import type {
   FieldNode,
   TypeNode,
   EnumTypeNode,
+  EnumMember,
   ConstraintNode,
   AnnotationNode,
   Provenance,
@@ -24,6 +25,7 @@ import {
   extractJSDocAnnotationNodes,
   extractDefaultValueAnnotation,
 } from "./jsdoc-constraints.js";
+import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
 
 // =============================================================================
 // TYPE GUARDS
@@ -76,6 +78,8 @@ export interface IRClassAnalysis {
   readonly fieldLayouts: readonly FieldLayoutMetadata[];
   /** Named type definitions referenced by fields */
   readonly typeRegistry: Record<string, TypeDefinition>;
+  /** Root-level metadata for the analyzed declaration. */
+  readonly annotations?: readonly AnnotationNode[];
   /** Instance methods (retained for downstream method-schema generation) */
   readonly instanceMethods: readonly MethodInfo[];
   /** Static methods */
@@ -105,6 +109,7 @@ export function analyzeClassToIR(
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
+  const annotations = extractJSDocAnnotationNodes(classDecl, file);
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
   const staticMethods: MethodInfo[] = [];
@@ -129,7 +134,15 @@ export function analyzeClassToIR(
     }
   }
 
-  return { name, fields, fieldLayouts, typeRegistry, instanceMethods, staticMethods };
+  return {
+    name,
+    fields,
+    fieldLayouts,
+    typeRegistry,
+    ...(annotations.length > 0 && { annotations }),
+    instanceMethods,
+    staticMethods,
+  };
 }
 
 /**
@@ -143,6 +156,7 @@ export function analyzeInterfaceToIR(
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
+  const annotations = extractJSDocAnnotationNodes(interfaceDecl, file);
   const visiting = new Set<ts.Type>();
 
   for (const member of interfaceDecl.members) {
@@ -155,7 +169,15 @@ export function analyzeInterfaceToIR(
   }
 
   const fieldLayouts: FieldLayoutMetadata[] = fields.map(() => ({}));
-  return { name, fields, fieldLayouts, typeRegistry, instanceMethods: [], staticMethods: [] };
+  return {
+    name,
+    fields,
+    fieldLayouts,
+    typeRegistry,
+    ...(annotations.length > 0 && { annotations }),
+    instanceMethods: [],
+    staticMethods: [],
+  };
 }
 
 /**
@@ -180,6 +202,7 @@ export function analyzeTypeAliasToIR(
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
+  const annotations = extractJSDocAnnotationNodes(typeAlias, file);
   const visiting = new Set<ts.Type>();
 
   for (const member of typeAlias.type.members) {
@@ -198,6 +221,7 @@ export function analyzeTypeAliasToIR(
       fields,
       fieldLayouts: fields.map(() => ({})),
       typeRegistry,
+      ...(annotations.length > 0 && { annotations }),
       instanceMethods: [],
       staticMethods: [],
     },
@@ -228,7 +252,7 @@ function analyzeFieldToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
+  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting, prop);
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
@@ -249,7 +273,7 @@ function analyzeFieldToIR(
 
   // Default value annotation
   const defaultAnnotation = extractDefaultValueAnnotation(prop.initializer, file);
-  if (defaultAnnotation) {
+  if (defaultAnnotation && !annotations.some((a) => a.annotationKind === "defaultValue")) {
     annotations.push(defaultAnnotation);
   }
 
@@ -286,7 +310,7 @@ function analyzeInterfacePropertyToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting);
+  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting, prop);
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
@@ -433,7 +457,8 @@ export function resolveTypeNode(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  sourceNode?: ts.Node
 ): TypeNode {
   // --- Primitives ---
   if (type.flags & ts.TypeFlags.String) {
@@ -471,7 +496,7 @@ export function resolveTypeNode(
 
   // --- Union types ---
   if (type.isUnion()) {
-    return resolveUnionType(type, checker, file, typeRegistry, visiting);
+    return resolveUnionType(type, checker, file, typeRegistry, visiting, sourceNode);
   }
 
   // --- Array types ---
@@ -493,84 +518,117 @@ function resolveUnionType(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  sourceNode?: ts.Node
 ): TypeNode {
-  const allTypes = type.types;
+  const typeName = getNamedTypeName(type);
+  const namedDecl = getNamedTypeDeclaration(type);
 
+  if (typeName && typeName in typeRegistry) {
+    return { kind: "reference", name: typeName, typeArguments: [] };
+  }
+
+  const allTypes = type.types;
   const nonNullTypes = allTypes.filter(
     (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
   );
   const hasNull = allTypes.some((t) => t.flags & ts.TypeFlags.Null);
+  const memberDisplayNames = new Map<string, string>();
+  if (namedDecl) {
+    for (const [value, label] of extractDisplayNameMetadata(namedDecl).memberDisplayNames) {
+      memberDisplayNames.set(value, label);
+    }
+  }
+  if (sourceNode) {
+    for (const [value, label] of extractDisplayNameMetadata(sourceNode).memberDisplayNames) {
+      memberDisplayNames.set(value, label);
+    }
+  }
 
-  // Boolean union: true | false → boolean primitive
+  const registerNamed = (result: TypeNode): TypeNode => {
+    if (!typeName) {
+      return result;
+    }
+    const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
+    typeRegistry[typeName] = {
+      name: typeName,
+      type: result,
+      ...(annotations !== undefined && annotations.length > 0 && { annotations }),
+      provenance: provenanceForDeclaration(namedDecl ?? sourceNode, file),
+    };
+    return { kind: "reference", name: typeName, typeArguments: [] };
+  };
+
+  const applyMemberLabels = (members: readonly (string | number)[]): EnumMember[] =>
+    members.map((value) => {
+      const displayName = memberDisplayNames.get(String(value));
+      return displayName !== undefined ? { value, displayName } : { value };
+    });
+
   const isBooleanUnion =
     nonNullTypes.length === 2 && nonNullTypes.every((t) => t.flags & ts.TypeFlags.BooleanLiteral);
 
   if (isBooleanUnion) {
     const boolNode: TypeNode = { kind: "primitive", primitiveKind: "boolean" };
-    if (hasNull) {
-      return {
-        kind: "union",
-        members: [boolNode, { kind: "primitive", primitiveKind: "null" }],
-      };
-    }
-    return boolNode;
+    const result: TypeNode = hasNull
+      ? {
+          kind: "union",
+          members: [boolNode, { kind: "primitive", primitiveKind: "null" }],
+        }
+      : boolNode;
+    return registerNamed(result);
   }
 
-  // All string literals → EnumTypeNode
   const allStringLiterals = nonNullTypes.every((t) => t.isStringLiteral());
   if (allStringLiterals && nonNullTypes.length > 0) {
     const stringTypes = nonNullTypes.filter((t): t is ts.StringLiteralType => t.isStringLiteral());
     const enumNode: TypeNode = {
       kind: "enum",
-      members: stringTypes.map((t) => ({ value: t.value })),
+      members: applyMemberLabels(stringTypes.map((t) => t.value)),
     };
-    if (hasNull) {
-      return {
-        kind: "union",
-        members: [enumNode, { kind: "primitive", primitiveKind: "null" }],
-      };
-    }
-    return enumNode;
+    const result: TypeNode = hasNull
+      ? {
+          kind: "union",
+          members: [enumNode, { kind: "primitive", primitiveKind: "null" }],
+        }
+      : enumNode;
+    return registerNamed(result);
   }
 
-  // All number literals → EnumTypeNode
   const allNumberLiterals = nonNullTypes.every((t) => t.isNumberLiteral());
   if (allNumberLiterals && nonNullTypes.length > 0) {
     const numberTypes = nonNullTypes.filter((t): t is ts.NumberLiteralType => t.isNumberLiteral());
     const enumNode: TypeNode = {
       kind: "enum",
-      members: numberTypes.map((t) => ({ value: t.value })),
+      members: applyMemberLabels(numberTypes.map((t) => t.value)),
     };
-    if (hasNull) {
-      return {
-        kind: "union",
-        members: [enumNode, { kind: "primitive", primitiveKind: "null" }],
-      };
-    }
-    return enumNode;
+    const result: TypeNode = hasNull
+      ? {
+          kind: "union",
+          members: [enumNode, { kind: "primitive", primitiveKind: "null" }],
+        }
+      : enumNode;
+    return registerNamed(result);
   }
 
-  // Nullable wrapper: T | null with single non-null type
   if (nonNullTypes.length === 1 && nonNullTypes[0]) {
-    const inner = resolveTypeNode(nonNullTypes[0], checker, file, typeRegistry, visiting);
-    if (hasNull) {
-      return {
-        kind: "union",
-        members: [inner, { kind: "primitive", primitiveKind: "null" }],
-      };
-    }
-    return inner;
+    const inner = resolveTypeNode(nonNullTypes[0], checker, file, typeRegistry, visiting, sourceNode);
+    const result: TypeNode = hasNull
+      ? {
+          kind: "union",
+          members: [inner, { kind: "primitive", primitiveKind: "null" }],
+        }
+      : inner;
+    return registerNamed(result);
   }
 
-  // General union
   const members = nonNullTypes.map((t) =>
-    resolveTypeNode(t, checker, file, typeRegistry, visiting)
+    resolveTypeNode(t, checker, file, typeRegistry, visiting, sourceNode)
   );
   if (hasNull) {
     members.push({ kind: "primitive", primitiveKind: "null" });
   }
-  return { kind: "union", members };
+  return registerNamed({ kind: "union", members });
 }
 
 function resolveArrayType(
@@ -622,7 +680,7 @@ function tryResolveRecordType(
 
   visiting.add(type);
   try {
-    const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
     return { kind: "record", valueType };
   } finally {
     visiting.delete(type);
@@ -653,6 +711,7 @@ function resolveObjectType(
 
   // Check if this is a named type already in the registry
   const typeName = getNamedTypeName(type);
+  const namedDecl = getNamedTypeDeclaration(type);
   if (typeName && typeName in typeRegistry) {
     visiting.delete(type);
     return { kind: "reference", name: typeName, typeArguments: [] };
@@ -669,7 +728,7 @@ function resolveObjectType(
 
     const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
     const optional = !!(prop.flags & ts.SymbolFlags.Optional);
-    const propTypeNode = resolveTypeNode(propType, checker, file, typeRegistry, visiting);
+    const propTypeNode = resolveTypeNode(propType, checker, file, typeRegistry, visiting, declaration);
 
     // Get constraints and annotations from the declaration if available
     const fieldNodeInfo = fieldInfoMap?.get(prop.name);
@@ -694,10 +753,12 @@ function resolveObjectType(
 
   // Register named types
   if (typeName) {
+    const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
     typeRegistry[typeName] = {
       name: typeName,
       type: objectNode,
-      provenance: provenanceForFile(file),
+      ...(annotations !== undefined && annotations.length > 0 && { annotations }),
+      provenance: provenanceForDeclaration(namedDecl, file),
     };
     return { kind: "reference", name: typeName, typeArguments: [] };
   }
@@ -870,15 +931,22 @@ function provenanceForFile(file: string): Provenance {
   return { surface: "tsdoc", file, line: 0, column: 0 };
 }
 
+function provenanceForDeclaration(node: ts.Node | undefined, file: string): Provenance {
+  if (!node) {
+    return provenanceForFile(file);
+  }
+  return provenanceForNode(node, file);
+}
+
 // =============================================================================
 // NAMED TYPE HELPERS
 // =============================================================================
 
 /**
- * Extracts a stable type name from a ts.ObjectType when it originates from
+ * Extracts a stable type name from a ts.Type when it originates from
  * a named declaration (class, interface, or type alias).
  */
-function getNamedTypeName(type: ts.ObjectType): string | null {
+function getNamedTypeName(type: ts.Type): string | null {
   const symbol = type.getSymbol();
   if (symbol?.declarations) {
     const decl = symbol.declarations[0];
@@ -902,6 +970,31 @@ function getNamedTypeName(type: ts.ObjectType): string | null {
   }
 
   return null;
+}
+
+/**
+ * Returns the declaration that defines a named type, if available.
+ */
+function getNamedTypeDeclaration(type: ts.Type): ts.Declaration | undefined {
+  const symbol = type.getSymbol();
+  if (symbol?.declarations) {
+    const decl = symbol.declarations[0];
+    if (
+      decl &&
+      (ts.isClassDeclaration(decl) ||
+        ts.isInterfaceDeclaration(decl) ||
+        ts.isTypeAliasDeclaration(decl))
+    ) {
+      return decl;
+    }
+  }
+
+  const aliasSymbol = type.aliasSymbol;
+  if (aliasSymbol?.declarations) {
+    return aliasSymbol.declarations.find(ts.isTypeAliasDeclaration);
+  }
+
+  return undefined;
 }
 
 // =============================================================================

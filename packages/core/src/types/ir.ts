@@ -498,6 +498,8 @@ export interface TypeDefinition {
   readonly name: string;
   /** The resolved type node. */
   readonly type: TypeNode;
+  /** Root-level value metadata for a named type definition. */
+  readonly annotations?: readonly AnnotationNode[];
   /** Where this type was declared. */
   readonly provenance: Provenance;
 }
@@ -528,6 +530,8 @@ export interface FormIR {
    * Keys are fully-qualified type names matching `ReferenceTypeNode.name`.
    */
   readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
+  /** Root-level metadata for the form itself. */
+  readonly annotations?: readonly AnnotationNode[];
   /** Provenance of the form definition itself. */
   readonly provenance: Provenance;
 }
