@@ -90,7 +90,14 @@ export class SecondaryReport {
     it("does not write schema files", () => {
       const fixturePath = resolveFixture("cli", "simple-order.ts");
       const outDir = path.join(tempDir, "validate-only");
-      const result = runCli(["generate", fixturePath, "SimpleOrder", "--validate-only", "-o", outDir]);
+      const result = runCli([
+        "generate",
+        fixturePath,
+        "SimpleOrder",
+        "--validate-only",
+        "-o",
+        outDir,
+      ]);
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Validation passed");
@@ -253,7 +260,15 @@ export const ActivateParams = formspec(
 
       if (!jsPath) throw new Error("Expected compiled method-params-load-failure fixture");
       const outDir = path.join(tempDir, "method-params-load-failure");
-      const result = runCli(["generate", tsPath, "InstallmentPlan", "--compiled", jsPath, "-o", outDir]);
+      const result = runCli([
+        "generate",
+        tsPath,
+        "InstallmentPlan",
+        "--compiled",
+        jsPath,
+        "-o",
+        outDir,
+      ]);
       const output = result.stdout + result.stderr;
       const runtimeLoadFailure = "Runtime FormSpec loading failed";
       const staticFallback = 'FormSpec export "ActivateParams" not found, using static analysis';

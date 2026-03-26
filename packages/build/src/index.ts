@@ -24,10 +24,7 @@
  */
 
 import type { FormElement, FormSpec } from "@formspec/core";
-import {
-  generateJsonSchema,
-  type GenerateJsonSchemaOptions,
-} from "./json-schema/generator.js";
+import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
 import {
   type GenerateJsonSchemaFromIROptions,

@@ -598,7 +598,7 @@ function parseConstraintValue(
  * Parses a raw `@defaultValue` tag payload into a JSON value annotation.
  */
 function parseDefaultValueValue(text: string, provenance: Provenance): AnnotationNode {
-  const trimmed = text;
+  const trimmed = text.trim();
   let value: JsonValue;
 
   if (trimmed === "null") {

@@ -169,7 +169,10 @@ function uniqueItemsConstraint(line = 1): ArrayCardinalityConstraintNode {
 }
 
 /** Build a const constraint. */
-function constConstraint(value: JsonValue, line = 1): Extract<FieldNode["constraints"][number], { constraintKind: "const" }> {
+function constConstraint(
+  value: JsonValue,
+  line = 1
+): Extract<FieldNode["constraints"][number], { constraintKind: "const" }> {
   return {
     kind: "constraint",
     constraintKind: "const",
@@ -511,10 +514,7 @@ describe("validateIR", () => {
 
     it("emits CONSTRAINT_BROADENING when a later minimum broadens an earlier exclusiveMinimum at the same value", () => {
       const ir = makeIR([
-        makeField("quantity", NUMBER_TYPE, [
-          exMinConstraint(10, 1),
-          minConstraint(10, 2),
-        ]),
+        makeField("quantity", NUMBER_TYPE, [exMinConstraint(10, 1), minConstraint(10, 2)]),
       ]);
       const result = validateIR(ir);
 
@@ -527,10 +527,7 @@ describe("validateIR", () => {
 
     it("does not emit when a later exclusiveMaximum narrows an earlier maximum at the same value", () => {
       const ir = makeIR([
-        makeField("quantity", NUMBER_TYPE, [
-          maxConstraint(10, 1),
-          exMaxConstraint(10, 2),
-        ]),
+        makeField("quantity", NUMBER_TYPE, [maxConstraint(10, 1), exMaxConstraint(10, 2)]),
       ]);
       const result = validateIR(ir);
 
@@ -540,10 +537,7 @@ describe("validateIR", () => {
 
     it("emits CONSTRAINT_BROADENING when a later maximum broadens an earlier exclusiveMaximum at the same value", () => {
       const ir = makeIR([
-        makeField("quantity", NUMBER_TYPE, [
-          exMaxConstraint(10, 1),
-          maxConstraint(10, 2),
-        ]),
+        makeField("quantity", NUMBER_TYPE, [exMaxConstraint(10, 1), maxConstraint(10, 2)]),
       ]);
       const result = validateIR(ir);
 
@@ -757,7 +751,9 @@ describe("validateIR", () => {
     });
 
     it("emits TYPE_MISMATCH when an enum field const is not a member", () => {
-      const ir = makeIR([makeField("status", enumType(["active", "inactive"]), [constConstraint("pending", 1)])]);
+      const ir = makeIR([
+        makeField("status", enumType(["active", "inactive"]), [constConstraint("pending", 1)]),
+      ]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
@@ -776,7 +772,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 12. Multiple patterns → NO contradiction (undecidable)
+  // 13. Multiple patterns → NO contradiction (undecidable)
   // ---------------------------------------------------------------------------
 
   describe("multiple pattern constraints", () => {
@@ -796,7 +792,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 13. Valid constraints → no diagnostics
+  // 14. Valid constraints → no diagnostics
   // ---------------------------------------------------------------------------
 
   describe("valid constraint combinations", () => {
@@ -836,7 +832,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 14. Nested object field constraint issues are detected
+  // 15. Nested object field constraint issues are detected
   // ---------------------------------------------------------------------------
 
   describe("nested object field constraint detection", () => {
@@ -892,7 +888,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 15. Diagnostic has correct provenance for both sides of contradiction
+  // 16. Diagnostic has correct provenance for both sides of contradiction
   // ---------------------------------------------------------------------------
 
   describe("diagnostic provenance", () => {
@@ -942,7 +938,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 16. Semantic diagnostic codes
+  // 17. Semantic diagnostic codes
   // ---------------------------------------------------------------------------
 
   describe("semantic diagnostic codes", () => {
@@ -966,7 +962,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 17. Group and conditional layouts are walked
+  // 18. Group and conditional layouts are walked
   // ---------------------------------------------------------------------------
 
   describe("group and conditional layouts are walked", () => {
@@ -1019,7 +1015,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 18. valid property semantics
+  // 19. valid property semantics
   // ---------------------------------------------------------------------------
 
   describe("valid property", () => {
@@ -1060,7 +1056,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 19. DEC-006: Unknown extension warning
+  // 20. DEC-006: Unknown extension warning
   // ---------------------------------------------------------------------------
 
   describe("DEC-006: unknown extension constraint", () => {
@@ -1224,7 +1220,7 @@ describe("validateIR", () => {
       expect(result.diagnostics).toHaveLength(1);
       expect(result.diagnostics[0]?.code).toBe("UNKNOWN_PATH_TARGET");
       expect(result.diagnostics[0]?.message).toContain('Field "amount.value"');
-      expect(result.diagnostics[0]?.message).toContain("references unknown path segment \"value\"");
+      expect(result.diagnostics[0]?.message).toContain('references unknown path segment "value"');
     });
 
     it("emits TYPE_MISMATCH when a path target traverses into a primitive array item", () => {

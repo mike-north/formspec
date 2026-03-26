@@ -666,7 +666,9 @@ describe("generateJsonSchemaFromIR", () => {
       const ir: FormIR = {
         kind: "form-ir",
         irVersion: IR_VERSION,
-        elements: [makeField("node", { kind: "reference", name: "CircularNode", typeArguments: [] })],
+        elements: [
+          makeField("node", { kind: "reference", name: "CircularNode", typeArguments: [] }),
+        ],
         typeRegistry: {
           CircularNode: {
             name: "CircularNode",

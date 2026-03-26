@@ -7,10 +7,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
 import { EnumVariantsForm } from "../fixtures/chain-dsl/enum-variants.js";
-import {
-  assertValidJsonSchema,
-  assertPropertyConstraints,
-} from "../helpers/schema-assertions.js";
+import { assertValidJsonSchema, assertPropertyConstraints } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Enums", () => {
   const { jsonSchema } = buildFormSchemas(EnumVariantsForm);

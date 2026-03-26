@@ -705,7 +705,9 @@ function typeNodeContainsReference(type: TypeNode, targetName: string): boolean 
     case "union":
       return type.members.some((member) => typeNodeContainsReference(member, targetName));
     case "object":
-      return type.properties.some((property) => typeNodeContainsReference(property.type, targetName));
+      return type.properties.some((property) =>
+        typeNodeContainsReference(property.type, targetName)
+      );
     case "primitive":
     case "enum":
     case "dynamic":
