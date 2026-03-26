@@ -171,7 +171,13 @@ type OrderedBoundKind =
 
 type OrderedBoundConstraint = Extract<ConstraintNode, { readonly constraintKind: OrderedBoundKind }>;
 
-type OrderedBoundFamily = "numeric-lower" | "numeric-upper" | "length-lower" | "length-upper";
+type OrderedBoundFamily =
+  | "numeric-lower"
+  | "numeric-upper"
+  | "minLength"
+  | "minItems"
+  | "maxLength"
+  | "maxItems";
 
 function isOrderedBoundConstraint(constraint: ConstraintNode): constraint is OrderedBoundConstraint {
   return (
@@ -199,11 +205,13 @@ function orderedBoundFamily(kind: OrderedBoundKind): OrderedBoundFamily {
     case "exclusiveMaximum":
       return "numeric-upper";
     case "minLength":
+      return "minLength";
     case "minItems":
-      return "length-lower";
+      return "minItems";
     case "maxLength":
+      return "maxLength";
     case "maxItems":
-      return "length-upper";
+      return "maxItems";
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;
@@ -217,15 +225,6 @@ function isNumericLowerKind(kind: OrderedBoundKind): kind is "minimum" | "exclus
 
 function isNumericUpperKind(kind: OrderedBoundKind): kind is "maximum" | "exclusiveMaximum" {
   return kind === "maximum" || kind === "exclusiveMaximum";
-}
-
-function isLowerBoundKind(kind: OrderedBoundKind): boolean {
-  return (
-    kind === "minimum" ||
-    kind === "exclusiveMinimum" ||
-    kind === "minLength" ||
-    kind === "minItems"
-  );
 }
 
 function describeConstraintTag(constraint: OrderedBoundConstraint): string {
@@ -290,17 +289,24 @@ function compareConstraintStrength(
     return 0;
   }
 
-  if (isLowerBoundKind(current.constraintKind)) {
-    if (current.value === previous.value) {
-      return 0;
+  switch (family) {
+    case "minLength":
+    case "minItems":
+      if (current.value === previous.value) {
+        return 0;
+      }
+      return current.value > previous.value ? 1 : -1;
+    case "maxLength":
+    case "maxItems":
+      if (current.value === previous.value) {
+        return 0;
+      }
+      return current.value < previous.value ? 1 : -1;
+    default: {
+      const _exhaustive: never = family;
+      return _exhaustive;
     }
-    return current.value > previous.value ? 1 : -1;
   }
-
-  if (current.value === previous.value) {
-    return 0;
-  }
-  return current.value < previous.value ? 1 : -1;
 }
 
 function checkConstraintBroadening(
@@ -324,9 +330,13 @@ function checkConstraintBroadening(
 
     const strength = compareConstraintStrength(constraint, previous);
     if (strength < 0) {
+      const displayFieldName = formatPathTargetFieldName(
+        fieldName,
+        constraint.path?.segments ?? []
+      );
       addConstraintBroadening(
         ctx,
-        `Field "${fieldName}": ${describeConstraintTag(constraint)} (${String(constraint.value)}) is broader than earlier ${describeConstraintTag(previous)} (${String(previous.value)}). Constraints can only narrow.`,
+        `Field "${displayFieldName}": ${describeConstraintTag(constraint)} (${String(constraint.value)}) is broader than earlier ${describeConstraintTag(previous)} (${String(previous.value)}). Constraints can only narrow.`,
         constraint.provenance,
         previous.provenance
       );

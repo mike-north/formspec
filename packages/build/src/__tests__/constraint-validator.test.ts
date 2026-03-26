@@ -492,8 +492,10 @@ describe("validateIR", () => {
       const ir = makeIR([
         makeField("quantity", NUMBER_TYPE, [minConstraint(10, 1), minConstraint(12, 2)]),
       ]);
+      const result = validateIR(ir);
 
-      expect(validateIR(ir).valid).toBe(true);
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
     });
 
     it("emits CONSTRAINT_BROADENING when a later minimum broadens an earlier exclusiveMinimum at the same value", () => {
@@ -519,8 +521,72 @@ describe("validateIR", () => {
           exMaxConstraint(10, 2),
         ]),
       ]);
+      const result = validateIR(ir);
 
-      expect(validateIR(ir).valid).toBe(true);
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("emits CONSTRAINT_BROADENING when a later maximum broadens an earlier exclusiveMaximum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          exMaxConstraint(10, 1),
+          maxConstraint(10, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@maximum");
+      expect(diag?.message).toContain("@exclusiveMaximum");
+    });
+
+    it("emits CONSTRAINT_BROADENING when a later minLength is less restrictive", () => {
+      const ir = makeIR([
+        makeField("name", STRING_TYPE, [minLenConstraint(5, 1), minLenConstraint(3, 2)]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@minLength");
+    });
+
+    it("includes the resolved path in broadening diagnostics for path-targeted constraints", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [
+          {
+            name: "currency",
+            type: STRING_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: prov(2),
+          },
+        ],
+        additionalProperties: false,
+      };
+      const ir = makeIR([
+        makeField("amount", objectType, [
+          {
+            ...minLenConstraint(5, 1),
+            path: { segments: ["currency"] },
+          },
+          {
+            ...minLenConstraint(3, 2),
+            path: { segments: ["currency"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
+      expect(result.diagnostics[0]?.message).toContain('Field "amount.currency"');
     });
   });
 
