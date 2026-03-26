@@ -44,6 +44,55 @@ export interface FormSpecWriteResult {
   files: string[];
 }
 
+interface ClassSchemaFilePaths {
+  classDir: string;
+  schemaPath: string;
+  uiSchemaPath: string;
+}
+
+interface MethodSchemaFilePaths {
+  methodDir: string;
+  paramsSchemaPath?: string;
+  paramsUiSchemaPath?: string;
+  returnTypePath: string;
+}
+
+interface FormSpecSchemaFilePaths {
+  exportDir: string;
+  schemaPath: string;
+  uiSchemaPath: string;
+}
+
+function getClassSchemaFilePaths(className: string, outDir: string): ClassSchemaFilePaths {
+  const classDir = path.join(outDir, className);
+  return {
+    classDir,
+    schemaPath: path.join(classDir, "schema.json"),
+    uiSchemaPath: path.join(classDir, "ui_schema.json"),
+  };
+}
+
+function getMethodSchemaFilePaths(method: MethodSchemas, parentDir: string): MethodSchemaFilePaths {
+  const methodDir = path.join(parentDir, method.name);
+  return {
+    methodDir,
+    paramsSchemaPath: method.params ? path.join(methodDir, "params.schema.json") : undefined,
+    paramsUiSchemaPath: method.params?.uiSchema
+      ? path.join(methodDir, "params.ui_schema.json")
+      : undefined,
+    returnTypePath: path.join(methodDir, "return_type.schema.json"),
+  };
+}
+
+function getFormSpecSchemaFilePaths(name: string, outDir: string): FormSpecSchemaFilePaths {
+  const exportDir = path.join(path.join(outDir, "formspecs"), name);
+  return {
+    exportDir,
+    schemaPath: path.join(exportDir, "schema.json"),
+    uiSchemaPath: path.join(exportDir, "ui_schema.json"),
+  };
+}
+
 /**
  * Computes the file layout for a class without writing anything.
  */
@@ -54,15 +103,15 @@ function planClassSchemaFiles(
   options: WriteOptions
 ): ClassWriteResult {
   const { outDir } = options;
-  const classDir = path.join(outDir, className);
+  const classPaths = getClassSchemaFilePaths(className, outDir);
   const files = [
-    path.join(classDir, "schema.json"),
-    path.join(classDir, "ui_schema.json"),
-    ...planMethodSchemaFiles(instanceMethods, path.join(classDir, "instance_methods")),
-    ...planMethodSchemaFiles(staticMethods, path.join(classDir, "static_methods")),
+    classPaths.schemaPath,
+    classPaths.uiSchemaPath,
+    ...planMethodSchemaFiles(instanceMethods, path.join(classPaths.classDir, "instance_methods")),
+    ...planMethodSchemaFiles(staticMethods, path.join(classPaths.classDir, "static_methods")),
   ];
 
-  return { dir: classDir, files };
+  return { dir: classPaths.classDir, files };
 }
 
 /**
@@ -98,25 +147,23 @@ export function writeClassSchemas(
   options: WriteOptions
 ): ClassWriteResult {
   const { outDir, indent = 2 } = options;
-  const classDir = path.join(outDir, className);
+  const classPaths = getClassSchemaFilePaths(className, outDir);
   const files: string[] = [];
 
   // Ensure class directory exists
-  ensureDir(classDir);
+  ensureDir(classPaths.classDir);
 
   // Write class schema
-  const schemaPath = path.join(classDir, "schema.json");
-  writeJson(schemaPath, classSchemas.jsonSchema, indent);
-  files.push(schemaPath);
+  writeJson(classPaths.schemaPath, classSchemas.jsonSchema, indent);
+  files.push(classPaths.schemaPath);
 
   // Write class UI Schema
-  const uiSchemaPath = path.join(classDir, "ui_schema.json");
-  writeJson(uiSchemaPath, classSchemas.uiSchema, indent);
-  files.push(uiSchemaPath);
+  writeJson(classPaths.uiSchemaPath, classSchemas.uiSchema, indent);
+  files.push(classPaths.uiSchemaPath);
 
   // Write instance methods
   if (instanceMethods.length > 0) {
-    const instanceDir = path.join(classDir, "instance_methods");
+    const instanceDir = path.join(classPaths.classDir, "instance_methods");
     ensureDir(instanceDir);
 
     for (const method of instanceMethods) {
@@ -127,7 +174,7 @@ export function writeClassSchemas(
 
   // Write static methods
   if (staticMethods.length > 0) {
-    const staticDir = path.join(classDir, "static_methods");
+    const staticDir = path.join(classPaths.classDir, "static_methods");
     ensureDir(staticDir);
 
     for (const method of staticMethods) {
@@ -136,23 +183,23 @@ export function writeClassSchemas(
     }
   }
 
-  return { dir: classDir, files };
+  return { dir: classPaths.classDir, files };
 }
 
 function planMethodSchemaFiles(methods: readonly MethodSchemas[], parentDir: string): string[] {
   return methods.flatMap((method) => {
-    const methodDir = path.join(parentDir, method.name);
+    const methodPaths = getMethodSchemaFilePaths(method, parentDir);
     const files: string[] = [];
 
-    if (method.params) {
-      files.push(path.join(methodDir, "params.schema.json"));
-
-      if (method.params.uiSchema) {
-        files.push(path.join(methodDir, "params.ui_schema.json"));
-      }
+    if (methodPaths.paramsSchemaPath) {
+      files.push(methodPaths.paramsSchemaPath);
     }
 
-    files.push(path.join(methodDir, "return_type.schema.json"));
+    if (methodPaths.paramsUiSchemaPath) {
+      files.push(methodPaths.paramsUiSchemaPath);
+    }
+
+    files.push(methodPaths.returnTypePath);
 
     return files;
   });
@@ -167,28 +214,25 @@ function planMethodSchemaFiles(methods: readonly MethodSchemas[], parentDir: str
  * @returns Array of written file paths
  */
 function writeMethodSchemas(method: MethodSchemas, parentDir: string, indent: number): string[] {
-  const methodDir = path.join(parentDir, method.name);
-  ensureDir(methodDir);
+  const methodPaths = getMethodSchemaFilePaths(method, parentDir);
+  ensureDir(methodPaths.methodDir);
   const files: string[] = [];
 
   // Write params schema
-  if (method.params) {
-    const paramsSchemaPath = path.join(methodDir, "params.schema.json");
-    writeJson(paramsSchemaPath, method.params.jsonSchema, indent);
-    files.push(paramsSchemaPath);
+  if (method.params && methodPaths.paramsSchemaPath) {
+    writeJson(methodPaths.paramsSchemaPath, method.params.jsonSchema, indent);
+    files.push(methodPaths.paramsSchemaPath);
 
     // Write params UI Schema if available (from FormSpec)
-    if (method.params.uiSchema) {
-      const paramsUiSchemaPath = path.join(methodDir, "params.ui_schema.json");
-      writeJson(paramsUiSchemaPath, method.params.uiSchema, indent);
-      files.push(paramsUiSchemaPath);
+    if (method.params.uiSchema && methodPaths.paramsUiSchemaPath) {
+      writeJson(methodPaths.paramsUiSchemaPath, method.params.uiSchema, indent);
+      files.push(methodPaths.paramsUiSchemaPath);
     }
   }
 
   // Write return type schema
-  const returnPath = path.join(methodDir, "return_type.schema.json");
-  writeJson(returnPath, method.returnType, indent);
-  files.push(returnPath);
+  writeJson(methodPaths.returnTypePath, method.returnType, indent);
+  files.push(methodPaths.returnTypePath);
 
   return files;
 }
@@ -223,18 +267,16 @@ export function writeFormSpecSchemas(
   ensureDir(formspecsDir);
 
   for (const [name, schemas] of formSpecs) {
-    const exportDir = path.join(formspecsDir, name);
-    ensureDir(exportDir);
+    const formSpecPaths = getFormSpecSchemaFilePaths(name, outDir);
+    ensureDir(formSpecPaths.exportDir);
 
     // Write JSON Schema
-    const schemaPath = path.join(exportDir, "schema.json");
-    writeJson(schemaPath, schemas.jsonSchema, indent);
-    files.push(schemaPath);
+    writeJson(formSpecPaths.schemaPath, schemas.jsonSchema, indent);
+    files.push(formSpecPaths.schemaPath);
 
     // Write UI Schema
-    const uiSchemaPath = path.join(exportDir, "ui_schema.json");
-    writeJson(uiSchemaPath, schemas.uiSchema, indent);
-    files.push(uiSchemaPath);
+    writeJson(formSpecPaths.uiSchemaPath, schemas.uiSchema, indent);
+    files.push(formSpecPaths.uiSchemaPath);
   }
 
   return { dir: formspecsDir, files };
@@ -252,9 +294,9 @@ function planFormSpecSchemaFiles(
   const files: string[] = [];
 
   for (const name of formSpecs.keys()) {
-    const exportDir = path.join(formspecsDir, name);
-    files.push(path.join(exportDir, "schema.json"));
-    files.push(path.join(exportDir, "ui_schema.json"));
+    const formSpecPaths = getFormSpecSchemaFilePaths(name, outDir);
+    files.push(formSpecPaths.schemaPath);
+    files.push(formSpecPaths.uiSchemaPath);
   }
 
   return { dir: formspecsDir, files };
