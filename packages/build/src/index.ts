@@ -77,6 +77,10 @@ export type {
   GenerateFromClassResult,
   GenerateSchemasOptions,
 } from "./generators/class-schema.js";
+export type {
+  BuildMixedAuthoringSchemasOptions,
+  MixedAuthoringSchemas,
+} from "./generators/mixed-authoring.js";
 
 // =============================================================================
 // Zod Validation Schemas
@@ -118,6 +122,7 @@ export { generateUiSchema } from "./ui-schema/generator.js";
 // =============================================================================
 
 export { generateSchemasFromClass, generateSchemas } from "./generators/class-schema.js";
+export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
 
 // generateSchemas is the recommended entry point — it auto-detects class/interface/type alias.
 // generateSchemasFromClass is retained for backwards compatibility.

@@ -769,6 +769,24 @@ describe("validateIR", () => {
       expect(result.valid).toBe(false);
       expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
+
+    it("does not emit CONTRADICTING_CONSTRAINTS for object const values that only differ by key order", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [],
+        additionalProperties: false,
+      };
+      const ir = makeIR([
+        makeField("settings", objectType, [
+          constConstraint({ alpha: 1, beta: 2 }, 1),
+          constConstraint({ beta: 2, alpha: 1 }, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(byCode(result.diagnostics, "CONTRADICTING_CONSTRAINTS")).toHaveLength(0);
+      expect(byCode(result.diagnostics, "TYPE_MISMATCH")).toHaveLength(2);
+    });
   });
 
   // ---------------------------------------------------------------------------

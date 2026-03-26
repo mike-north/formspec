@@ -21,6 +21,16 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
 // @public
+export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
+
+// @public
+export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
+    readonly filePath: string;
+    readonly overlays: FormSpec<readonly FormElement[]>;
+    readonly typeName: string;
+}
+
+// @public
 export interface BuildResult {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
@@ -498,6 +508,12 @@ export const labelElementSchema: z.ZodObject<{
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
+
+// @public
+export interface MixedAuthoringSchemas {
+    readonly jsonSchema: JsonSchema2020;
+    readonly uiSchema: UISchema;
+}
 
 // @public
 export type Rule = z.infer<typeof ruleSchema>;
