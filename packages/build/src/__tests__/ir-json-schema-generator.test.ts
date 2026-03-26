@@ -475,7 +475,7 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["additionalProperties"]).toEqual({ type: "number" });
     });
 
-    it("keeps named non-recursive record aliases inline instead of lifting them to $defs", () => {
+    it("keeps inline record fields out of $defs", () => {
       const ir = makeIR([
         makeField("labels", {
           kind: "record",
