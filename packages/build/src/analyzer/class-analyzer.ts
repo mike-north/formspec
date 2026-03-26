@@ -694,6 +694,30 @@ function tryResolveRecordType(
   return { kind: "record", valueType };
 }
 
+function typeNodeContainsReference(type: TypeNode, targetName: string): boolean {
+  switch (type.kind) {
+    case "reference":
+      return type.name === targetName;
+    case "array":
+      return typeNodeContainsReference(type.items, targetName);
+    case "record":
+      return typeNodeContainsReference(type.valueType, targetName);
+    case "union":
+      return type.members.some((member) => typeNodeContainsReference(member, targetName));
+    case "object":
+      return type.properties.some((property) => typeNodeContainsReference(property.type, targetName));
+    case "primitive":
+    case "enum":
+    case "dynamic":
+    case "custom":
+      return false;
+    default: {
+      const _exhaustive: never = type;
+      return _exhaustive;
+    }
+  }
+}
+
 function resolveObjectType(
   type: ts.ObjectType,
   checker: ts.TypeChecker,
@@ -707,6 +731,12 @@ function resolveObjectType(
   const shouldRegisterNamedType =
     namedTypeName !== undefined &&
     !(namedTypeName === "Record" && namedDecl?.getSourceFile().fileName !== file);
+  const clearNamedTypeRegistration = (): void => {
+    if (namedTypeName === undefined || !shouldRegisterNamedType) {
+      return;
+    }
+    Reflect.deleteProperty(typeRegistry, namedTypeName);
+  };
 
   if (visiting.has(type)) {
     // Recursive object expansion is deferred through the named-type registry.
@@ -748,6 +778,11 @@ function resolveObjectType(
   if (recordNode) {
     visiting.delete(type);
     if (namedTypeName !== undefined && shouldRegisterNamedType) {
+      const isRecursiveRecord = typeNodeContainsReference(recordNode.valueType, namedTypeName);
+      if (!isRecursiveRecord) {
+        clearNamedTypeRegistration();
+        return recordNode;
+      }
       const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
       typeRegistry[namedTypeName] = {
         name: namedTypeName,

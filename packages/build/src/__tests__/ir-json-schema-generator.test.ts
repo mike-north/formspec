@@ -475,6 +475,24 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["additionalProperties"]).toEqual({ type: "number" });
     });
 
+    it("keeps named non-recursive record aliases inline instead of lifting them to $defs", () => {
+      const ir = makeIR([
+        makeField("labels", {
+          kind: "record",
+          valueType: { kind: "primitive", primitiveKind: "string" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["labels"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["type"]).toBe("object");
+      expect(prop["additionalProperties"]).toEqual({ type: "string" });
+      expect(schema).not.toHaveProperty("$defs");
+    });
+
     it("does NOT emit a properties key on record types", () => {
       const ir = makeIR([
         makeField("tags", {

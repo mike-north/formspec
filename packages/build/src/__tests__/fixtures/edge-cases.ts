@@ -88,6 +88,11 @@ export interface SelfRefRecord {
   [key: string]: SelfRefRecord;
 }
 
+// eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style -- this fixture intentionally uses an index signature to exercise analyzer behavior
+export interface StringMap {
+  [key: string]: string;
+}
+
 /**
  * Various object type patterns.
  */
@@ -106,6 +111,9 @@ export class ObjectEdgeCases {
 
   // Record type
   stringRecord!: Record<string, string>;
+
+  // Named non-recursive record type
+  namedStringMap!: StringMap;
 
   // Self-referential Record — must not stack-overflow
   selfRefRecord!: SelfRefRecord;
