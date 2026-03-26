@@ -1,10 +1,10 @@
-export class ConstForm {
+export class ConstConstraintsForm {
   /** @const "USD" */
   currency!: string;
 
-  /** @const 42 */
-  magicNumber!: number;
+  /** @const 200 */
+  statusCode!: number;
 
   /** @const true */
-  alwaysTrue!: boolean;
+  enabled!: boolean;
 }

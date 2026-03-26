@@ -69,7 +69,7 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
-  it.skip("BUG: uniqueTags: string[] → array of strings with uniqueItems", () => {
+  it("uniqueTags: string[] → array of strings with uniqueItems", () => {
     expect(properties["uniqueTags"]).toEqual({
       type: "array",
       items: { type: "string" },
@@ -77,7 +77,7 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
-  it.skip("BUG: allConstraints: string[] → array of strings with minItems, maxItems, and uniqueItems", () => {
+  it("allConstraints: string[] → array of strings with minItems, maxItems, and uniqueItems", () => {
     expect(properties["allConstraints"]).toEqual({
       type: "array",
       items: { type: "string" },
@@ -95,8 +95,7 @@ describe("Array Constraints — comprehensive", () => {
   });
 
   // @see 002-constraint-tags.md §4.3: "string constraint on string[] → applied to items schema, not array"
-  it.skip("BUG: itemConstrained: @maxLength 50 on string[] → applies to items, not array", () => {
-    // @see 002-constraint-tags.md §4.3: "item-level string constraint on primitive array → items.maxLength"
+  it("itemConstrained: @maxLength 50 on string[] → applies to items, not array", () => {
     const itemConstrained = properties["itemConstrained"];
     expect(itemConstrained["type"]).toBe("array");
     // maxLength must NOT be on the array itself

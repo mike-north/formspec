@@ -5,7 +5,7 @@
 ```ts
 
 // @public
-export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
+export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
 // @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
@@ -65,6 +65,8 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS: {
     readonly minItems: "number";
     readonly maxItems: "number";
     readonly pattern: "string";
+    readonly uniqueItems: "boolean";
+    readonly const: "json";
     readonly enumOptions: "json";
 };
 
@@ -91,7 +93,21 @@ export interface ConditionalLayoutNode {
 }
 
 // @public
-export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | CustomConstraintNode;
+export interface ConstConstraintNode {
+    // (undocumented)
+    readonly constraintKind: "const";
+    // (undocumented)
+    readonly kind: "constraint";
+    // (undocumented)
+    readonly path?: PathTarget;
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: JsonValue;
+}
+
+// @public
+export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
 
 // @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
@@ -343,6 +359,18 @@ export interface FieldState<T> {
     readonly touched: boolean;
     readonly validity: Validity;
     readonly value: T;
+}
+
+// @public
+export interface FormatAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "format";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: string;
 }
 
 // @public

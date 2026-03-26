@@ -627,6 +627,21 @@ function checkConstraintOnType(
       }
       break;
     }
+    case "const": {
+      const isPrimitiveConstType =
+        (effectiveType.kind === "primitive" &&
+          ["string", "number", "boolean", "null"].includes(effectiveType.primitiveKind)) ||
+        effectiveType.kind === "enum";
+
+      if (!isPrimitiveConstType) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": constraint "const" is only valid on primitive or enum fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+      }
+      break;
+    }
     case "custom": {
       checkCustomConstraint(ctx, fieldName, effectiveType, constraint);
       break;

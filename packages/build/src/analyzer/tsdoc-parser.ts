@@ -14,7 +14,7 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@displayName`, `@description`):
+ * 2. **Annotation tags** (`@displayName`, `@description`, `@format`):
  *    These are parsed as structured custom block tags and mapped directly
  *    onto annotation IR nodes.
  *
@@ -50,6 +50,7 @@ import {
   type NumericConstraintNode,
   type LengthConstraintNode,
   type PathTarget,
+  type JsonValue,
 } from "@formspec/core";
 import { tryParseJson } from "./json-utils.js";
 
@@ -110,7 +111,7 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
   }
 
   // Register annotation tags that participate in the canonical IR.
-  for (const tagName of ["displayName", "description"]) {
+  for (const tagName of ["displayName", "description", "format"]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -192,7 +193,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
-        if (tagName === "displayName" || tagName === "description") {
+        if (tagName === "displayName" || tagName === "description" || tagName === "format") {
           const text = extractBlockText(block).trim();
           if (text === "") continue;
 
@@ -201,6 +202,13 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
             annotations.push({
               kind: "annotation",
               annotationKind: "displayName",
+              value: text,
+              provenance,
+            });
+          } else if (tagName === "format") {
+            annotations.push({
+              kind: "annotation",
+              annotationKind: "format",
               value: text,
               provenance,
             });
@@ -218,7 +226,10 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
         if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
         const text = extractBlockText(block).trim();
-        if (text === "") continue;
+        const expectedType = isBuiltinConstraintName(tagName)
+          ? BUILTIN_CONSTRAINT_DEFINITIONS[tagName]
+          : undefined;
+        if (text === "" && expectedType !== "boolean") continue;
 
         const provenance = provenanceForComment(range, sourceFile, file, tagName);
         const constraintNode = parseConstraintValue(tagName, text, provenance);
@@ -400,7 +411,46 @@ function parseConstraintValue(
     return null;
   }
 
+  if (expectedType === "boolean") {
+    const trimmed = effectiveText.trim();
+    if (trimmed !== "" && trimmed !== "true") {
+      return null;
+    }
+
+    return {
+      kind: "constraint",
+      constraintKind: "uniqueItems",
+      value: true,
+      ...(path && { path }),
+      provenance,
+    };
+  }
+
   if (expectedType === "json") {
+    if (tagName === "const") {
+      const text = effectiveText.trim();
+      if (text === "") return null;
+
+      try {
+        const parsed = JSON.parse(text) as JsonValue;
+        return {
+          kind: "constraint",
+          constraintKind: "const",
+          value: parsed,
+          ...(path && { path }),
+          provenance,
+        };
+      } catch {
+        return {
+          kind: "constraint",
+          constraintKind: "const",
+          value: text,
+          ...(path && { path }),
+          provenance,
+        };
+      }
+    }
+
     const parsed = tryParseJson(effectiveText);
     if (!Array.isArray(parsed)) {
       return null;

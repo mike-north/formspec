@@ -24,6 +24,8 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS = {
   minItems: "number",
   maxItems: "number",
   pattern: "string",
+  uniqueItems: "boolean",
+  const: "json",
   enumOptions: "json",
 } as const;
 

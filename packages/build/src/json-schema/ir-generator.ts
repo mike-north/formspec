@@ -25,6 +25,7 @@ import type {
   ConstraintNode,
   AnnotationNode,
   ObjectProperty,
+  JsonValue,
 } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
@@ -48,7 +49,7 @@ export interface JsonSchema2020 {
   items?: JsonSchema2020;
   additionalProperties?: boolean | JsonSchema2020;
   enum?: readonly (string | number)[];
-  const?: string | number | boolean | null;
+  const?: JsonValue;
   allOf?: readonly JsonSchema2020[];
   oneOf?: readonly JsonSchema2020[];
   anyOf?: readonly JsonSchema2020[];
@@ -64,6 +65,7 @@ export interface JsonSchema2020 {
   maxItems?: number;
   pattern?: string;
   uniqueItems?: boolean;
+  format?: string;
   // Annotations
   title?: string;
   description?: string;
@@ -257,13 +259,18 @@ function collectFields(
  */
 function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchema2020 {
   const schema = generateTypeNode(field.type, ctx);
+  const itemStringSchema =
+    schema.type === "array" && schema.items?.type === "string" ? schema.items : undefined;
 
   // Partition constraints into direct (no path) and path-targeted.
   const directConstraints: ConstraintNode[] = [];
+  const itemConstraints: ConstraintNode[] = [];
   const pathConstraints: ConstraintNode[] = [];
   for (const c of field.constraints) {
     if (c.path) {
       pathConstraints.push(c);
+    } else if (itemStringSchema !== undefined && isStringItemConstraint(c)) {
+      itemConstraints.push(c);
     } else {
       directConstraints.push(c);
     }
@@ -273,8 +280,25 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   // it promotes the type to "integer" and removes the multipleOf keyword.
   applyConstraints(schema, directConstraints, ctx);
 
+  if (itemStringSchema !== undefined) {
+    applyConstraints(itemStringSchema, itemConstraints);
+  }
+
   // Apply annotations (title, description, default, deprecated, etc.).
-  applyAnnotations(schema, field.annotations, ctx);
+  const rootAnnotations: AnnotationNode[] = [];
+  const itemAnnotations: AnnotationNode[] = [];
+  for (const annotation of field.annotations) {
+    if (itemStringSchema !== undefined && annotation.annotationKind === "format") {
+      itemAnnotations.push(annotation);
+    } else {
+      rootAnnotations.push(annotation);
+    }
+  }
+
+  applyAnnotations(schema, rootAnnotations, ctx);
+  if (itemStringSchema !== undefined) {
+    applyAnnotations(itemStringSchema, itemAnnotations, ctx);
+  }
 
   // If no path-targeted constraints, return as-is.
   if (pathConstraints.length === 0) {
@@ -282,6 +306,21 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   }
 
   return applyPathTargetedConstraints(schema, pathConstraints, ctx);
+}
+
+/**
+ * Returns true if a constraint should be applied to the `items` schema of a
+ * primitive `string[]` rather than the array itself.
+ */
+function isStringItemConstraint(constraint: ConstraintNode): boolean {
+  switch (constraint.constraintKind) {
+    case "minLength":
+    case "maxLength":
+    case "pattern":
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**
@@ -691,6 +730,10 @@ function applyConstraints(
         schema.uniqueItems = constraint.value;
         break;
 
+      case "const":
+        schema.const = constraint.value;
+        break;
+
       case "allowedMembers":
         // EnumMemberConstraintNode — not yet emitted to JSON Schema (Phase 6 validation).
         break;
@@ -720,6 +763,7 @@ function applyConstraints(
  * - `description`   → `description`
  * - `defaultValue`  → `default`
  * - `deprecated`    → `deprecated: true` (2020-12 standard annotation)
+ * - `format`        → `format`
  *
  * UI-only annotations (`placeholder`, `formatHint`) are silently ignored here —
  * they belong in the UI Schema, not the data schema.
@@ -741,6 +785,10 @@ function applyAnnotations(
 
       case "defaultValue":
         schema.default = annotation.value;
+        break;
+
+      case "format":
+        schema.format = annotation.value;
         break;
 
       case "deprecated":
