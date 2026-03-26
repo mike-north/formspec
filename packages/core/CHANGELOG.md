@@ -1,5 +1,13 @@
 # @formspec/core
 
+## 0.1.0-alpha.16
+
+### Minor Changes
+
+- [#128](https://github.com/mike-north/formspec/pull/128) [`d7f10fe`](https://github.com/mike-north/formspec/commit/d7f10fe7d3d855a99423baec3996bebd47f80190) Thanks [@mike-north](https://github.com/mike-north)! - Expose class/type-level annotation metadata through generated JSON Schema and UI Schema output, including root titles/descriptions, placeholder UI hints, deprecated messages, and default values.
+
+- [#129](https://github.com/mike-north/formspec/pull/129) [`889470b`](https://github.com/mike-north/formspec/commit/889470b4b3ab9d4bf9ed72169e083a2887256f57) Thanks [@mike-north](https://github.com/mike-north)! - Emit `@const`, `@format`, and `@uniqueItems` from TSDoc into generated JSON Schema, including primitive-array item constraints and the expanded IR node types they require.
+
 ## 0.1.0-alpha.14
 
 ### Patch Changes

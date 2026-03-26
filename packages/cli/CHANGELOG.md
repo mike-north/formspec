@@ -1,5 +1,27 @@
 # @formspec/cli
 
+## 0.1.0-alpha.16
+
+### Minor Changes
+
+- [#128](https://github.com/mike-north/formspec/pull/128) [`d7f10fe`](https://github.com/mike-north/formspec/commit/d7f10fe7d3d855a99423baec3996bebd47f80190) Thanks [@mike-north](https://github.com/mike-north)! - Expose class/type-level annotation metadata through generated JSON Schema and UI Schema output, including root titles/descriptions, placeholder UI hints, deprecated messages, and default values.
+
+- [#132](https://github.com/mike-north/formspec/pull/132) [`111c021`](https://github.com/mike-north/formspec/commit/111c021c13a4468a57d0c2291ff3aa77133117a0) Thanks [@mike-north](https://github.com/mike-north)! - Support recursive named types in canonical IR generation and JSON Schema
+  emission, including circular class/interface references and recursive
+  `$defs`/`$ref` output.
+
+  This also fixes a regression where named non-recursive record aliases could be
+  lifted into `$defs` instead of staying inline as record schemas.
+
+- [#130](https://github.com/mike-north/formspec/pull/130) [`6276145`](https://github.com/mike-north/formspec/commit/6276145056bf1510b9ea785a22e1503ec2a658f7) Thanks [@mike-north](https://github.com/mike-north)! - Emit semantic `UNKNOWN_PATH_TARGET` diagnostics when path-targeted constraints
+  reference missing nested properties, and remove CLI test harness skips by
+  compiling runtime fixtures on demand during tests.
+
+### Patch Changes
+
+- Updated dependencies [[`d7f10fe`](https://github.com/mike-north/formspec/commit/d7f10fe7d3d855a99423baec3996bebd47f80190), [`2acf352`](https://github.com/mike-north/formspec/commit/2acf3529a93ad70801073503c13e505ccef8a23b), [`889470b`](https://github.com/mike-north/formspec/commit/889470b4b3ab9d4bf9ed72169e083a2887256f57), [`271071e`](https://github.com/mike-north/formspec/commit/271071ed46833db97a81407557ad5c52e697b8b0), [`111c021`](https://github.com/mike-north/formspec/commit/111c021c13a4468a57d0c2291ff3aa77133117a0), [`6276145`](https://github.com/mike-north/formspec/commit/6276145056bf1510b9ea785a22e1503ec2a658f7)]:
+  - @formspec/build@0.1.0-alpha.16
+
 ## 0.1.0-alpha.15
 
 ### Minor Changes
