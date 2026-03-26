@@ -6,7 +6,7 @@ Generated from `origin/main` at commit `d7f10fe`.
 
 Only one skipped test remains in code:
 
-- [e2e/tests/cli-subprocess.test.ts](/Users/mnorth/Development/formspec/.worktrees/skip-burndown-main/e2e/tests/cli-subprocess.test.ts)
+- `e2e/tests/cli-subprocess.test.ts`
   - `BUG: circular references should fail clearly instead of silently degrading`
   - Classification: deferred feature
   - Tracking issue: `#105`
