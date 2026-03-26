@@ -1,4 +1,5 @@
 ---
+"@formspec/core": minor
 "@formspec/build": minor
 "@formspec/cli": minor
 ---
