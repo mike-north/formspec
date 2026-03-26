@@ -53,7 +53,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
     });
 
     // @see 002-constraint-tags.md §2.2: "@placeholder appears in UI Schema options.placeholder"
-    it.skip("BUG: email @placeholder appears in UI Schema options.placeholder", () => {
+    it("email @placeholder appears in UI Schema options.placeholder", () => {
       // Spec 002 §2.2: @placeholder → UI Schema Control options.placeholder.
       // Expected: { type: "Control", scope: "#/properties/email", options: { placeholder: "Enter your email address" } }
       if (!uischema) throw new Error("UI schema not loaded");
@@ -66,7 +66,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
       expect(options?.["placeholder"]).toBe("Enter your email address");
     });
 
-    it.skip("BUG: quantity @placeholder appears in UI Schema options.placeholder", () => {
+    it("quantity @placeholder appears in UI Schema options.placeholder", () => {
       if (!uischema) throw new Error("UI schema not loaded");
       const elements = uischema["elements"] as Record<string, unknown>[];
       const quantityControl = elements.find((el) => el["scope"] === "#/properties/quantity");
@@ -90,7 +90,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
       expect(properties["oldField"]["deprecated"]).toBe(true);
     });
 
-    it.skip("BUG: oldField deprecation message is preserved in the JSON Schema extension keyword", () => {
+    it("oldField deprecation message is preserved in the JSON Schema extension keyword", () => {
       expect(properties["oldField"]["x-formspec-deprecation-description"]).toBe(
         "Use newField instead"
       );
@@ -100,22 +100,22 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
   describe("@defaultValue — JSON Schema default keyword", () => {
     // @see 002-constraint-tags.md §3.2: "@defaultValue → default keyword with parsed value"
 
-    it.skip('BUG: status @defaultValue "pending" → default: "pending"', () => {
+    it('status @defaultValue "pending" → default: "pending"', () => {
       // @see 002-constraint-tags.md §3.2: string default value
       expect(properties["status"]["default"]).toBe("pending");
     });
 
-    it.skip("BUG: count @defaultValue 0 → default: 0", () => {
+    it("count @defaultValue 0 → default: 0", () => {
       // @see 002-constraint-tags.md §3.2: numeric default value
       expect(properties["count"]["default"]).toBe(0);
     });
 
-    it.skip("BUG: enabled @defaultValue false → default: false", () => {
+    it("enabled @defaultValue false → default: false", () => {
       // @see 002-constraint-tags.md §3.2: boolean default value
       expect(properties["enabled"]["default"]).toBe(false);
     });
 
-    it.skip("BUG: nickname @defaultValue null → default: null", () => {
+    it("nickname @defaultValue null → default: null", () => {
       // @see 002-constraint-tags.md §3.2: null default value
       expect(properties["nickname"]["default"]).toBeNull();
     });

@@ -15,6 +15,7 @@ import {
   extractJSDocConstraintNodes,
   extractJSDocAnnotationNodes,
 } from "../analyzer/jsdoc-constraints.js";
+import { extractDisplayNameMetadata } from "../analyzer/tsdoc-parser.js";
 
 /**
  * Helper: creates an in-memory TypeScript source file and returns the
@@ -428,7 +429,7 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
-  it("preserves multiple displayName tags for enum member labels", () => {
+  it("parses multiple displayName tags for enum member labels via display-name metadata", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
         /**
@@ -440,18 +441,13 @@ describe("extractJSDocAnnotationNodes", () => {
       }
     `);
 
-    const result = extractJSDocAnnotationNodes(prop);
-    expect(result).toHaveLength(3);
-    expect(result.map((annotation) => annotation.annotationKind)).toEqual([
-      "displayName",
-      "displayName",
-      "displayName",
+    const result = extractDisplayNameMetadata(prop);
+    expect(result.displayName).toBeUndefined();
+    expect([...result.memberDisplayNames.entries()]).toEqual([
+      ["active", "Active Account"],
+      ["suspended", "Suspended"],
+      ["closed", "Permanently Closed"],
     ]);
-    expect(
-      result.map((annotation) =>
-        annotation.annotationKind === "displayName" ? annotation.value : undefined
-      )
-    ).toEqual([":active Active Account", ":suspended Suspended", ":closed Permanently Closed"]);
   });
 
   it("produces DeprecatedAnnotationNode for @deprecated", () => {

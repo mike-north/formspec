@@ -38,12 +38,12 @@ describe("Parity: plan status annotations", () => {
     expect(required).toContain("status");
   });
 
-  it.skip("BUG: PlanStatus type-level @displayName emits a root title in $defs", () => {
+  it("PlanStatus type-level @displayName emits a root title in $defs", () => {
     const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
     expect(defs?.["PlanStatus"]?.["title"]).toBe("Plan Status");
   });
 
-  it.skip("BUG: PlanStatus member labels emit oneOf with const/title entries", () => {
+  it("PlanStatus member labels emit oneOf with const/title entries", () => {
     const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
     expect(defs?.["PlanStatus"]?.["oneOf"]).toEqual([
         { const: "active", title: "Active" },
@@ -52,7 +52,7 @@ describe("Parity: plan status annotations", () => {
       ]);
   });
 
-  it.skip("BUG: status @defaultValue emits default: \"active\"", () => {
+  it("status @defaultValue emits default: \"active\"", () => {
     const status = properties["status"];
     expect(status).toBeDefined();
     if (!status) return;

@@ -58,6 +58,8 @@ export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSourc
     irVersion: IR_VERSION,
     elements,
     typeRegistry: analysis.typeRegistry,
+    ...(analysis.annotations !== undefined &&
+      analysis.annotations.length > 0 && { annotations: analysis.annotations }),
     provenance,
   };
 }

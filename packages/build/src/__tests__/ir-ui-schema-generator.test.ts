@@ -271,6 +271,25 @@ describe("generateUiSchemaFromIR", () => {
       const control = expectControl(result.elements, 0);
       expect(control.label).toBeUndefined();
     });
+
+    it("should map placeholder annotations to options.placeholder", () => {
+      const fieldNode: FieldNode = {
+        ...simpleFieldNode("email"),
+        annotations: [
+          {
+            kind: "annotation",
+            annotationKind: "placeholder",
+            value: "Enter your email",
+            provenance: CHAIN_DSL_PROVENANCE,
+          },
+        ],
+      };
+      const ir = formIRFromElements([fieldNode]);
+      const result = generateUiSchemaFromIR(ir);
+
+      const control = expectControl(result.elements, 0);
+      expect(control.options).toEqual({ placeholder: "Enter your email" });
+    });
   });
 
   // ---------------------------------------------------------------------------
