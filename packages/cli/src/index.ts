@@ -247,7 +247,6 @@ function writeIrFile(ir: FormIR, name: string, outDir: string): void {
   console.log(`✓ Wrote IR: ${filePath}`);
 }
 
-<<<<<<< HEAD
 function planIrFile(name: string, outDir: string): string {
   return path.join(outDir, `${name}.ir.json`);
 }
