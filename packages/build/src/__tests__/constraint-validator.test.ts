@@ -973,6 +973,62 @@ describe("validateIR", () => {
       expect(result.diagnostics[0]?.message).toContain("cannot be traversed");
     });
 
+    it("emits TYPE_MISMATCH when a path target resolves to an incompatible nested type", () => {
+      const objectType: ObjectTypeNode = {
+        kind: "object",
+        properties: [
+          {
+            name: "currency",
+            type: STRING_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: prov(2),
+          },
+        ],
+        additionalProperties: false,
+      };
+      const ir = makeIR([
+        makeField("amount", objectType, [
+          {
+            ...minConstraint(0),
+            path: { segments: ["currency"] },
+          },
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+      expect(result.diagnostics[0]?.message).toContain('Field "amount.currency"');
+      expect(result.diagnostics[0]?.message).toContain("only valid on number fields");
+    });
+
+    it("emits TYPE_MISMATCH when a path target traverses into a primitive array item", () => {
+      const ir = makeIR([
+        makeField(
+          "lineItems",
+          {
+            kind: "array",
+            items: STRING_TYPE,
+          },
+          [
+            {
+              ...minConstraint(0),
+              path: { segments: ["value"] },
+            },
+          ]
+        ),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+      expect(result.diagnostics[0]?.message).toContain("cannot be traversed");
+    });
+
     it("emits TYPE_MISMATCH for path-targeted constraint on enum field", () => {
       const ir = makeIR([
         makeField("status", enumType(["active", "inactive"]), [

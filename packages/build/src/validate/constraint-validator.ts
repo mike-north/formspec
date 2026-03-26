@@ -73,6 +73,7 @@ export interface ValidateIROptions {
 interface ValidationContext {
   readonly diagnostics: ValidationDiagnostic[];
   readonly extensionRegistry: ExtensionRegistry | undefined;
+  readonly typeRegistry: FormIR["typeRegistry"];
 }
 
 // =============================================================================
@@ -294,101 +295,173 @@ function typeLabel(type: TypeNode): string {
   }
 }
 
+type PathTargetResolution =
+  | { readonly kind: "resolved"; readonly type: TypeNode }
+  | { readonly kind: "missing-property" }
+  | { readonly kind: "unresolvable"; readonly type: TypeNode };
+
+function dereferenceType(ctx: ValidationContext, type: TypeNode): TypeNode {
+  let current = type;
+  const seen = new Set<string>();
+
+  while (current.kind === "reference") {
+    if (seen.has(current.name)) {
+      return current;
+    }
+    seen.add(current.name);
+
+    const definition = ctx.typeRegistry[current.name];
+    if (definition === undefined) {
+      return current;
+    }
+
+    current = definition.type;
+  }
+
+  return current;
+}
+
+function resolvePathTargetType(
+  ctx: ValidationContext,
+  type: TypeNode,
+  segments: readonly string[]
+): PathTargetResolution {
+  const effectiveType = dereferenceType(ctx, type);
+
+  if (segments.length === 0) {
+    return { kind: "resolved", type: effectiveType };
+  }
+
+  if (effectiveType.kind === "array") {
+    return resolvePathTargetType(ctx, effectiveType.items, segments);
+  }
+
+  if (effectiveType.kind === "object") {
+    const [segment, ...rest] = segments;
+    const property = effectiveType.properties.find((prop) => prop.name === segment);
+    if (property === undefined) {
+      return { kind: "missing-property" };
+    }
+    return resolvePathTargetType(ctx, property.type, rest);
+  }
+
+  return { kind: "unresolvable", type: effectiveType };
+}
+
+function formatPathTargetFieldName(fieldName: string, path: readonly string[]): string {
+  return path.length === 0 ? fieldName : `${fieldName}.${path.join(".")}`;
+}
+
+function checkConstraintOnType(
+  ctx: ValidationContext,
+  fieldName: string,
+  type: TypeNode,
+  constraint: ConstraintNode
+): void {
+  const effectiveType = dereferenceType(ctx, type);
+  const isNumber = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "number";
+  const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
+  const isArray = effectiveType.kind === "array";
+  const isEnum = effectiveType.kind === "enum";
+
+  const label = typeLabel(effectiveType);
+
+  const ck = constraint.constraintKind;
+
+  switch (ck) {
+    case "minimum":
+    case "maximum":
+    case "exclusiveMinimum":
+    case "exclusiveMaximum":
+    case "multipleOf": {
+      if (!isNumber) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": constraint "${ck}" is only valid on number fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+      }
+      break;
+    }
+    case "minLength":
+    case "maxLength":
+    case "pattern": {
+      if (!isString) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": constraint "${ck}" is only valid on string fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+      }
+      break;
+    }
+    case "minItems":
+    case "maxItems":
+    case "uniqueItems": {
+      if (!isArray) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": constraint "${ck}" is only valid on array fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+      }
+      break;
+    }
+    case "allowedMembers": {
+      if (!isEnum) {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": constraint "allowedMembers" is only valid on enum fields, but field type is "${label}"`,
+          constraint.provenance
+        );
+      }
+      break;
+    }
+    case "custom": {
+      checkCustomConstraint(ctx, fieldName, effectiveType, constraint);
+      break;
+    }
+    default: {
+      const _exhaustive: never = constraint;
+      throw new Error(
+        `Unhandled constraint kind: ${(_exhaustive as ConstraintNode).constraintKind}`
+      );
+    }
+  }
+}
+
 function checkTypeApplicability(
   ctx: ValidationContext,
   fieldName: string,
   type: TypeNode,
   constraints: readonly ConstraintNode[]
 ): void {
-  const isNumber = type.kind === "primitive" && type.primitiveKind === "number";
-  const isString = type.kind === "primitive" && type.primitiveKind === "string";
-  const isArray = type.kind === "array";
-  const isEnum = type.kind === "enum";
-
-  const label = typeLabel(type);
-
   for (const constraint of constraints) {
     // Path-targeted constraints (e.g., `@Minimum :value 0`) target a sub-field,
-    // not the field itself. Skip type-applicability checks for these — the
-    // constraint applies to the resolved sub-field type, not the declared field type.
+    // not the field itself. Resolve the target path and validate against the
+    // resolved target type.
     if (constraint.path) {
-      // Path-targeted constraints are only meaningful on traversable types
-      // (objects, arrays, references). All other kinds (primitives, enums,
-      // unions, dynamic, custom) cannot be traversed.
-      const isTraversable =
-        type.kind === "object" || type.kind === "array" || type.kind === "reference";
-      if (!isTraversable) {
+      const resolution = resolvePathTargetType(ctx, type, constraint.path.segments);
+      const targetFieldName = formatPathTargetFieldName(fieldName, constraint.path.segments);
+
+      if (resolution.kind === "missing-property") {
+        continue;
+      }
+
+      if (resolution.kind === "unresolvable") {
         addTypeMismatch(
           ctx,
-          `Field "${fieldName}": path-targeted constraint "${constraint.constraintKind}" is invalid because type "${label}" cannot be traversed`,
+          `Field "${targetFieldName}": path-targeted constraint "${constraint.constraintKind}" is invalid because type "${typeLabel(resolution.type)}" cannot be traversed`,
           constraint.provenance
         );
+        continue;
       }
+
+      checkConstraintOnType(ctx, targetFieldName, resolution.type, constraint);
       continue;
     }
 
-    const ck = constraint.constraintKind;
-
-    switch (ck) {
-      case "minimum":
-      case "maximum":
-      case "exclusiveMinimum":
-      case "exclusiveMaximum":
-      case "multipleOf": {
-        if (!isNumber) {
-          addTypeMismatch(
-            ctx,
-            `Field "${fieldName}": constraint "${ck}" is only valid on number fields, but field type is "${label}"`,
-            constraint.provenance
-          );
-        }
-        break;
-      }
-      case "minLength":
-      case "maxLength":
-      case "pattern": {
-        if (!isString) {
-          addTypeMismatch(
-            ctx,
-            `Field "${fieldName}": constraint "${ck}" is only valid on string fields, but field type is "${label}"`,
-            constraint.provenance
-          );
-        }
-        break;
-      }
-      case "minItems":
-      case "maxItems":
-      case "uniqueItems": {
-        if (!isArray) {
-          addTypeMismatch(
-            ctx,
-            `Field "${fieldName}": constraint "${ck}" is only valid on array fields, but field type is "${label}"`,
-            constraint.provenance
-          );
-        }
-        break;
-      }
-      case "allowedMembers": {
-        if (!isEnum) {
-          addTypeMismatch(
-            ctx,
-            `Field "${fieldName}": constraint "allowedMembers" is only valid on enum fields, but field type is "${label}"`,
-            constraint.provenance
-          );
-        }
-        break;
-      }
-      case "custom": {
-        checkCustomConstraint(ctx, fieldName, type, constraint);
-        break;
-      }
-      default: {
-        const _exhaustive: never = constraint;
-        throw new Error(
-          `Unhandled constraint kind: ${(_exhaustive as ConstraintNode).constraintKind}`
-        );
-      }
-    }
+    checkConstraintOnType(ctx, fieldName, type, constraint);
   }
 }
 
@@ -524,6 +597,7 @@ export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationR
   const ctx: ValidationContext = {
     diagnostics: [],
     extensionRegistry: options?.extensionRegistry,
+    typeRegistry: ir.typeRegistry,
   };
 
   for (const element of ir.elements) {

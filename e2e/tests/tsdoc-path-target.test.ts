@@ -104,4 +104,32 @@ describe("TSDoc Path-Target Constraints", () => {
     expect(required).toContain("discount");
     expect(required).toContain("lineItems");
   });
+
+  describe("invalid path-target diagnostics", () => {
+    it("fails validation when the resolved target type is incompatible", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-path-target-invalid-"));
+      try {
+        const fixturePath = resolveFixture("tsdoc-class", "path-target-invalid-constraints.ts");
+        const result = runCli([
+          "generate",
+          fixturePath,
+          "BrokenInvoice",
+          "--validate-only",
+          "-o",
+          tempDir,
+        ]);
+
+        expect(result.exitCode).not.toBe(0);
+        const output = `${result.stdout}${result.stderr}`;
+        expect(output).toContain('Field "total.currency"');
+        expect(output).toContain(
+          'constraint "minimum" is only valid on number fields, but field type is "string"'
+        );
+      } finally {
+        if (fs.existsSync(tempDir)) {
+          fs.rmSync(tempDir, { recursive: true });
+        }
+      }
+    });
+  });
 });
