@@ -2,7 +2,8 @@
  * @see 003-json-schema-vocabulary.md §2.1: primitive TypeScript types map to JSON Schema primitives
  * @see 003-json-schema-vocabulary.md §2.3: `T | null` emits `oneOf`
  * @see 003-json-schema-vocabulary.md §2.4: arrays emit `type: "array"` with `items`
- * @see 003-json-schema-vocabulary.md §2.5: named object types use `$defs`/`$ref`; unconstrained records use `additionalProperties`
+ * @see 003-json-schema-vocabulary.md §2.5: ordinary objects omit `additionalProperties`; unconstrained records use `additionalProperties`
+ * @see 003-json-schema-vocabulary.md §5.1: named object types use `$defs`/`$ref`
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
@@ -62,9 +63,17 @@ describe("Type Mappings — comprehensive", () => {
     expect(required).toContain("stringField");
     expect(required).toContain("numberField");
     expect(required).toContain("booleanField");
+    expect(required).toContain("nullableString");
+    expect(required).toContain("nullableNumber");
+    expect(required).toContain("stringLiteralUnion");
+    expect(required).toContain("numberArray");
+    expect(required).toContain("stringArray");
+    expect(required).toContain("inlineObject");
     expect(required).toContain("namedType");
+    expect(required).toContain("recordType");
     expect(required).not.toContain("optionalString");
     expect(required).not.toContain("optionalNumber");
+    expect(required).not.toContain("namedTypeOptional");
   });
 
   it("maps literal unions and arrays to enum and items schemas", () => {
