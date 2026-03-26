@@ -56,7 +56,7 @@ export const expectedIR: ProvenanceFreeFormIR = {
             annotations: [],
           },
         ],
-        additionalProperties: false,
+        additionalProperties: true,
       },
       required: true,
       constraints: [],

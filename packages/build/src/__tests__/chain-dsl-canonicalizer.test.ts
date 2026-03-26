@@ -440,14 +440,14 @@ describe("canonicalizeChainDSL", () => {
       expect(f.constraints).toHaveLength(0);
     });
 
-    it("sets additionalProperties to false on items object", () => {
+    it("uses open-object defaults on items object", () => {
       const form = formspec(field.array("items", field.text("name")));
       const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       const type = f.type as ArrayTypeNode;
       const items = type.items as ObjectTypeNode;
-      expect(items.additionalProperties).toBe(false);
+      expect(items.additionalProperties).toBe(true);
     });
 
     it("item properties have correct optional flag based on required", () => {
@@ -480,7 +480,7 @@ describe("canonicalizeChainDSL", () => {
 
       const type = f.type as ObjectTypeNode;
       expect(type.kind).toBe("object");
-      expect(type.additionalProperties).toBe(false);
+      expect(type.additionalProperties).toBe(true);
       expect(type.properties).toHaveLength(2);
       expect(type.properties[0]).toMatchObject({ name: "street" });
       expect(type.properties[1]).toMatchObject({ name: "city" });
