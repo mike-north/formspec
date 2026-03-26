@@ -645,6 +645,8 @@ function resolveObjectType(
 
   // Circular reference guard
   if (visiting.has(type)) {
+    // Recursive object expansion is deferred for now. Emit a closed empty object
+    // sentinel so the analyzer stays finite without claiming arbitrary keys.
     return { kind: "object", properties: [], additionalProperties: false };
   }
   visiting.add(type);

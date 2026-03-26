@@ -13,6 +13,8 @@ export const expectedIR: ProvenanceFreeFormIR = {
       name: "unitPrice",
       type: { kind: "primitive", primitiveKind: "number" },
       required: true,
+      // Constraint order is source-order significant in the current IR:
+      // lower bounds are preserved before later narrowing tags like @multipleOf.
       constraints: [
         {
           kind: "constraint",
@@ -32,6 +34,8 @@ export const expectedIR: ProvenanceFreeFormIR = {
       name: "quantity",
       type: { kind: "primitive", primitiveKind: "number" },
       required: true,
+      // Keep the same source-order expectation here to guard parity across both
+      // authoring surfaces rather than sorting constraints in test utilities.
       constraints: [
         {
           kind: "constraint",
