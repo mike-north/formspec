@@ -31,9 +31,8 @@ import type { ExtensionRegistry } from "../extensions/index.js";
 /**
  * A structured diagnostic produced by constraint validation.
  *
- * The `code` follows the format: `{VENDOR}-{CATEGORY}-{NNN}`.
- * - VENDOR defaults to "FORMSPEC" (configurable via `vendorPrefix`).
- * - Categories: CONTRADICTION, TYPE_MISMATCH, UNKNOWN_EXTENSION
+ * The `code` is a stable, machine-readable semantic identifier.
+ * Examples: `CONTRADICTING_CONSTRAINTS`, `TYPE_MISMATCH`, `UNKNOWN_EXTENSION`.
  */
 export interface ValidationDiagnostic {
   readonly code: string;
@@ -54,10 +53,7 @@ export interface ValidationResult {
 
 /** Options for constraint validation. */
 export interface ValidateIROptions {
-  /**
-   * Vendor prefix used when constructing diagnostic codes.
-   * @defaultValue "FORMSPEC"
-   */
+  /** @deprecated Ignored. Diagnostic codes are semantic identifiers only. */
   readonly vendorPrefix?: string;
   /**
    * Extension registry for resolving custom constraint type applicability.
@@ -76,19 +72,12 @@ export interface ValidateIROptions {
 /** Mutable accumulator threaded through the validation walk. */
 interface ValidationContext {
   readonly diagnostics: ValidationDiagnostic[];
-  readonly vendorPrefix: string;
   readonly extensionRegistry: ExtensionRegistry | undefined;
 }
 
 // =============================================================================
 // DIAGNOSTIC FACTORIES
 // =============================================================================
-
-type DiagnosticCategory = "CONTRADICTION" | "TYPE_MISMATCH" | "UNKNOWN_EXTENSION";
-
-function makeCode(ctx: ValidationContext, category: DiagnosticCategory, number: number): string {
-  return `${ctx.vendorPrefix}-${category}-${String(number).padStart(3, "0")}`;
-}
 
 function addContradiction(
   ctx: ValidationContext,
@@ -97,7 +86,7 @@ function addContradiction(
   related: Provenance
 ): void {
   ctx.diagnostics.push({
-    code: makeCode(ctx, "CONTRADICTION", 1),
+    code: "CONTRADICTING_CONSTRAINTS",
     message,
     severity: "error",
     primaryLocation: primary,
@@ -107,7 +96,7 @@ function addContradiction(
 
 function addTypeMismatch(ctx: ValidationContext, message: string, primary: Provenance): void {
   ctx.diagnostics.push({
-    code: makeCode(ctx, "TYPE_MISMATCH", 1),
+    code: "TYPE_MISMATCH",
     message,
     severity: "error",
     primaryLocation: primary,
@@ -117,7 +106,7 @@ function addTypeMismatch(ctx: ValidationContext, message: string, primary: Prove
 
 function addUnknownExtension(ctx: ValidationContext, message: string, primary: Provenance): void {
   ctx.diagnostics.push({
-    code: makeCode(ctx, "UNKNOWN_EXTENSION", 1),
+    code: "UNKNOWN_EXTENSION",
     message,
     severity: "warning",
     primaryLocation: primary,
@@ -534,7 +523,6 @@ function validateElement(ctx: ValidationContext, element: FormIRElement): void {
 export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationResult {
   const ctx: ValidationContext = {
     diagnostics: [],
-    vendorPrefix: options?.vendorPrefix ?? "FORMSPEC",
     extensionRegistry: options?.extensionRegistry,
   };
 

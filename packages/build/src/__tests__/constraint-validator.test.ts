@@ -207,12 +207,12 @@ function makeIR(fields: readonly FieldNode[]): FormIR {
   };
 }
 
-/** Extract diagnostics matching a code prefix (e.g. "FORMSPEC-CONTRADICTION"). */
+/** Extract diagnostics matching an exact semantic code. */
 function byCode(
   diagnostics: readonly ValidationDiagnostic[],
-  prefix: string
+  code: string
 ): readonly ValidationDiagnostic[] {
-  return diagnostics.filter((d) => d.code.startsWith(prefix));
+  return diagnostics.filter((d) => d.code === code);
 }
 
 // =============================================================================
@@ -255,7 +255,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("minimum > maximum", () => {
-    it("emits CONTRADICTION-001 when minimum > maximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when minimum > maximum", () => {
       const ir = makeIR([
         makeField("count", NUMBER_TYPE, [minConstraint(10, 1), maxConstraint(5, 2)]),
       ]);
@@ -264,7 +264,7 @@ describe("validateIR", () => {
       expect(result.valid).toBe(false);
       expect(result.diagnostics).toHaveLength(1);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("minimum");
       expect(diag?.message).toContain("maximum");
       expect(diag?.message).toContain("count");
@@ -286,7 +286,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("exclusiveMinimum >= maximum", () => {
-    it("emits CONTRADICTION-001 when exclusiveMinimum === maximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when exclusiveMinimum === maximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [exMinConstraint(5, 1), maxConstraint(5, 2)]),
       ]);
@@ -294,11 +294,11 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("exclusiveMinimum");
     });
 
-    it("emits CONTRADICTION-001 when exclusiveMinimum > maximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when exclusiveMinimum > maximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [exMinConstraint(10, 1), maxConstraint(5, 2)]),
       ]);
@@ -320,7 +320,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("minimum >= exclusiveMaximum", () => {
-    it("emits CONTRADICTION-001 when minimum === exclusiveMaximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when minimum === exclusiveMaximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [minConstraint(5, 1), exMaxConstraint(5, 2)]),
       ]);
@@ -328,11 +328,11 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("exclusiveMaximum");
     });
 
-    it("emits CONTRADICTION-001 when minimum > exclusiveMaximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when minimum > exclusiveMaximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [minConstraint(10, 1), exMaxConstraint(5, 2)]),
       ]);
@@ -352,7 +352,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("exclusiveMinimum >= exclusiveMaximum", () => {
-    it("emits CONTRADICTION-001 when exclusiveMinimum === exclusiveMaximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when exclusiveMinimum === exclusiveMaximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [exMinConstraint(5, 1), exMaxConstraint(5, 2)]),
       ]);
@@ -360,10 +360,10 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
 
-    it("emits CONTRADICTION-001 when exclusiveMinimum > exclusiveMaximum", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when exclusiveMinimum > exclusiveMaximum", () => {
       const ir = makeIR([
         makeField("val", NUMBER_TYPE, [exMinConstraint(6, 1), exMaxConstraint(5, 2)]),
       ]);
@@ -383,7 +383,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("minLength > maxLength", () => {
-    it("emits CONTRADICTION-001 when minLength > maxLength", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when minLength > maxLength", () => {
       const ir = makeIR([
         makeField("code", STRING_TYPE, [minLenConstraint(10, 1), maxLenConstraint(5, 2)]),
       ]);
@@ -391,7 +391,7 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("minLength");
       expect(diag?.message).toContain("maxLength");
     });
@@ -409,7 +409,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("minItems > maxItems", () => {
-    it("emits CONTRADICTION-001 when minItems > maxItems", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when minItems > maxItems", () => {
       const ir = makeIR([
         makeField("tags", ARRAY_TYPE, [minItemsConstraint(5, 1), maxItemsConstraint(2, 2)]),
       ]);
@@ -417,7 +417,7 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("minItems");
       expect(diag?.message).toContain("maxItems");
     });
@@ -435,7 +435,7 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("allowedMembers empty intersection", () => {
-    it("emits CONTRADICTION-001 when two allowedMembers sets are disjoint", () => {
+    it("emits CONTRADICTING_CONSTRAINTS when two allowedMembers sets are disjoint", () => {
       const ir = makeIR([
         makeField("status", enumType(["a", "b", "c"]), [
           allowedMembersConstraint(["a", "b"], 1),
@@ -446,7 +446,7 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       expect(diag?.message).toContain("allowedMembers");
     });
 
@@ -473,35 +473,35 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("numeric constraints on non-number fields", () => {
-    it("emits TYPE_MISMATCH-001 for minimum on a string field", () => {
+    it("emits TYPE_MISMATCH for minimum on a string field", () => {
       const ir = makeIR([makeField("name", STRING_TYPE, [minConstraint(5, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(diag?.code).toBe("TYPE_MISMATCH");
       expect(diag?.message).toContain("minimum");
       expect(diag?.message).toContain("number");
       expect(diag?.message).toContain("string");
     });
 
-    it("emits TYPE_MISMATCH-001 for maximum on a string field", () => {
+    it("emits TYPE_MISMATCH for maximum on a string field", () => {
       const ir = makeIR([makeField("name", STRING_TYPE, [maxConstraint(10, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH-001 for exclusiveMinimum on a boolean field", () => {
+    it("emits TYPE_MISMATCH for exclusiveMinimum on a boolean field", () => {
       const ir = makeIR([makeField("flag", BOOL_TYPE, [exMinConstraint(0, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH-001 for multipleOf on a string field", () => {
+    it("emits TYPE_MISMATCH for multipleOf on a string field", () => {
       const multipleOf: NumericConstraintNode = {
         kind: "constraint",
         constraintKind: "multipleOf",
@@ -510,7 +510,7 @@ describe("validateIR", () => {
       };
       const ir = makeIR([makeField("name", STRING_TYPE, [multipleOf])]);
       expect(validateIR(ir).valid).toBe(false);
-      expect(validateIR(ir).diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(validateIR(ir).diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
   });
 
@@ -519,31 +519,31 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("string constraints on non-string fields", () => {
-    it("emits TYPE_MISMATCH-001 for minLength on a number field", () => {
+    it("emits TYPE_MISMATCH for minLength on a number field", () => {
       const ir = makeIR([makeField("age", NUMBER_TYPE, [minLenConstraint(1, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(diag?.code).toBe("TYPE_MISMATCH");
       expect(diag?.message).toContain("minLength");
       expect(diag?.message).toContain("string");
     });
 
-    it("emits TYPE_MISMATCH-001 for maxLength on a boolean field", () => {
+    it("emits TYPE_MISMATCH for maxLength on a boolean field", () => {
       const ir = makeIR([makeField("flag", BOOL_TYPE, [maxLenConstraint(5, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH-001 for pattern on an array field", () => {
+    it("emits TYPE_MISMATCH for pattern on an array field", () => {
       const ir = makeIR([makeField("tags", ARRAY_TYPE, [patternConstraint("^[a-z]+$", 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
   });
 
@@ -552,31 +552,31 @@ describe("validateIR", () => {
   // ---------------------------------------------------------------------------
 
   describe("array constraints on non-array fields", () => {
-    it("emits TYPE_MISMATCH-001 for minItems on a string field", () => {
+    it("emits TYPE_MISMATCH for minItems on a string field", () => {
       const ir = makeIR([makeField("name", STRING_TYPE, [minItemsConstraint(1, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(diag?.code).toBe("TYPE_MISMATCH");
       expect(diag?.message).toContain("minItems");
       expect(diag?.message).toContain("array");
     });
 
-    it("emits TYPE_MISMATCH-001 for maxItems on a number field", () => {
+    it("emits TYPE_MISMATCH for maxItems on a number field", () => {
       const ir = makeIR([makeField("count", NUMBER_TYPE, [maxItemsConstraint(5, 1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH-001 for uniqueItems on a string field", () => {
+    it("emits TYPE_MISMATCH for uniqueItems on a string field", () => {
       const ir = makeIR([makeField("name", STRING_TYPE, [uniqueItemsConstraint(1)])]);
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
     it("does not emit for uniqueItems on an array field", () => {
@@ -600,7 +600,7 @@ describe("validateIR", () => {
       const result = validateIR(ir);
 
       // Type-check passes (both patterns are on a string field), no contradiction
-      const contradictions = byCode(result.diagnostics, "FORMSPEC-CONTRADICTION");
+      const contradictions = byCode(result.diagnostics, "CONTRADICTING_CONSTRAINTS");
       expect(contradictions).toHaveLength(0);
     });
   });
@@ -671,7 +671,7 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
       // Qualified name should appear in the message
       expect(diag?.message).toContain("details.score");
     });
@@ -696,7 +696,7 @@ describe("validateIR", () => {
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
       expect(result.diagnostics[0]?.message).toContain("address.label");
     });
   });
@@ -752,26 +752,26 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 16. Custom vendor prefix
+  // 16. Semantic diagnostic codes
   // ---------------------------------------------------------------------------
 
-  describe("custom vendor prefix", () => {
-    it("uses the provided vendorPrefix in diagnostic codes", () => {
-      const ir = makeIR([
-        makeField("count", NUMBER_TYPE, [minConstraint(10, 1), maxConstraint(5, 2)]),
-      ]);
-      const result = validateIR(ir, { vendorPrefix: "ACME" });
-
-      expect(result.diagnostics[0]?.code).toBe("ACME-CONTRADICTION-001");
-    });
-
-    it("uses FORMSPEC as the default prefix when none is provided", () => {
+  describe("semantic diagnostic codes", () => {
+    it("uses semantic codes for contradictions", () => {
       const ir = makeIR([
         makeField("count", NUMBER_TYPE, [minConstraint(10, 1), maxConstraint(5, 2)]),
       ]);
       const result = validateIR(ir);
 
-      expect(result.diagnostics[0]?.code).toMatch(/^FORMSPEC-/);
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
+    });
+
+    it("ignores vendorPrefix and keeps semantic codes stable", () => {
+      const ir = makeIR([
+        makeField("count", NUMBER_TYPE, [minConstraint(10, 1), maxConstraint(5, 2)]),
+      ]);
+      const result = validateIR(ir, { vendorPrefix: "ACME" });
+
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
   });
 
@@ -800,7 +800,7 @@ describe("validateIR", () => {
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
 
     it("detects contradictions inside a conditional layout node", () => {
@@ -824,7 +824,7 @@ describe("validateIR", () => {
       const result = validateIR(ir);
 
       expect(result.valid).toBe(false);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-CONTRADICTION-001");
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
   });
 
@@ -905,7 +905,7 @@ describe("validateIR", () => {
       expect(result.valid).toBe(true); // warning, not error
       expect(result.diagnostics).toHaveLength(1);
       const diag = result.diagnostics[0];
-      expect(diag?.code).toBe("FORMSPEC-UNKNOWN_EXTENSION-001");
+      expect(diag?.code).toBe("UNKNOWN_EXTENSION");
       expect(diag?.severity).toBe("warning");
       expect(diag?.message).toContain("x-stripe/monetary/unknown-thing");
     });
@@ -938,7 +938,7 @@ describe("validateIR", () => {
       ]);
       const result = validateIR(ir, { vendorPrefix: "MYCO", extensionRegistry: registry });
 
-      expect(result.diagnostics[0]?.code).toBe("MYCO-UNKNOWN_EXTENSION-001");
+      expect(result.diagnostics[0]?.code).toBe("UNKNOWN_EXTENSION");
     });
 
     it("emits warning for each unknown custom constraint on different fields", () => {
@@ -969,7 +969,7 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
       expect(result.diagnostics[0]?.message).toContain("cannot be traversed");
     });
 
