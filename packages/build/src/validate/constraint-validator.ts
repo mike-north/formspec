@@ -614,10 +614,9 @@ function checkConstraintOnType(
   const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
   const isArray = effectiveType.kind === "array";
   const isEnum = effectiveType.kind === "enum";
+  const arrayItemType = effectiveType.kind === "array" ? dereferenceType(ctx, effectiveType.items) : undefined;
   const isStringArray =
-    effectiveType.kind === "array" &&
-    dereferenceType(ctx, effectiveType.items).kind === "primitive" &&
-    dereferenceType(ctx, effectiveType.items).primitiveKind === "string";
+    arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
 
   const label = typeLabel(effectiveType);
 

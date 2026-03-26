@@ -417,22 +417,26 @@ function parseConstraintValue(
       return null;
     }
 
-    return {
-      kind: "constraint",
-      constraintKind: "uniqueItems",
-      value: true,
-      ...(path && { path }),
-      provenance,
-    };
+    if (tagName === "uniqueItems") {
+      return {
+        kind: "constraint",
+        constraintKind: "uniqueItems",
+        value: true,
+        ...(path && { path }),
+        provenance,
+      };
+    }
+
+    return null;
   }
 
   if (expectedType === "json") {
     if (tagName === "const") {
-      const text = effectiveText.trim();
-      if (text === "") return null;
+      const trimmedText = effectiveText.trim();
+      if (trimmedText === "") return null;
 
       try {
-        const parsed = JSON.parse(text) as JsonValue;
+        const parsed = JSON.parse(trimmedText) as JsonValue;
         return {
           kind: "constraint",
           constraintKind: "const",
@@ -444,7 +448,7 @@ function parseConstraintValue(
         return {
           kind: "constraint",
           constraintKind: "const",
-          value: text,
+          value: trimmedText,
           ...(path && { path }),
           provenance,
         };
