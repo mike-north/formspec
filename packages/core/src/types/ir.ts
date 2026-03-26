@@ -239,6 +239,7 @@ export type ConstraintNode =
   | PatternConstraintNode
   | ArrayCardinalityConstraintNode
   | EnumMemberConstraintNode
+  | ConstConstraintNode
   | CustomConstraintNode;
 
 /**
@@ -318,6 +319,15 @@ export interface EnumMemberConstraintNode {
   readonly provenance: Provenance;
 }
 
+/** Literal-value equality constraint. */
+export interface ConstConstraintNode {
+  readonly kind: "constraint";
+  readonly constraintKind: "const";
+  readonly value: JsonValue;
+  readonly path?: PathTarget;
+  readonly provenance: Provenance;
+}
+
 /** Extension-registered custom constraint. */
 export interface CustomConstraintNode {
   readonly kind: "constraint";
@@ -344,6 +354,7 @@ export interface CustomConstraintNode {
 export type AnnotationNode =
   | DisplayNameAnnotationNode
   | DescriptionAnnotationNode
+  | FormatAnnotationNode
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
   | DeprecatedAnnotationNode
@@ -360,6 +371,14 @@ export interface DisplayNameAnnotationNode {
 export interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
+  readonly value: string;
+  readonly provenance: Provenance;
+}
+
+/** Schema format annotation (e.g. email/date/uri). */
+export interface FormatAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "format";
   readonly value: string;
   readonly provenance: Provenance;
 }
@@ -387,7 +406,10 @@ export interface DeprecatedAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** UI rendering hint — does not affect schema validation. */
+/**
+ * UI rendering hint — does not affect schema validation.
+ * Unlike FormatAnnotationNode, this never emits a JSON Schema `format`.
+ */
 export interface FormatHintAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "formatHint";

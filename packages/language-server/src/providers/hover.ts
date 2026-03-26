@@ -146,6 +146,20 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "```",
   ].join("\n"),
 
+  uniqueItems: [
+    "**@uniqueItems**",
+    "",
+    "Requires all items in an array field to be distinct.",
+    "",
+    "Maps to `uniqueItems` in JSON Schema.",
+    "",
+    "**Example:**",
+    "```typescript",
+    "/** @uniqueItems */",
+    "tags: string[];",
+    "```",
+  ].join("\n"),
+
   pattern: [
     "**@pattern** `<regex>`",
     "",
@@ -171,6 +185,20 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
     "```typescript",
     '/** @enumOptions ["draft","sent","archived"] */',
     "status: string;",
+    "```",
+  ].join("\n"),
+
+  const: [
+    "**@const** `<json-literal>`",
+    "",
+    "Requires the field value to equal a single constant JSON value.",
+    "",
+    "Maps to `const` in JSON Schema.",
+    "",
+    "**Example:**",
+    "```typescript",
+    '/** @const "USD" */',
+    "currency: string;",
     "```",
   ].join("\n"),
 } satisfies Record<BuiltinConstraintName, string>;

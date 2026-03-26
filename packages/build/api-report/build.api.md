@@ -11,6 +11,7 @@ import type { ExtensionDefinition } from '@formspec/core';
 import type { FormElement } from '@formspec/core';
 import type { FormIR } from '@formspec/core';
 import type { FormSpec } from '@formspec/core';
+import type { JsonValue } from '@formspec/core';
 import { z } from 'zod';
 
 // @public
@@ -280,7 +281,7 @@ export interface JsonSchema2020 {
     // (undocumented)
     anyOf?: readonly JsonSchema2020[];
     // (undocumented)
-    const?: string | number | boolean | null;
+    const?: JsonValue;
     // (undocumented)
     default?: unknown;
     // (undocumented)
@@ -293,6 +294,8 @@ export interface JsonSchema2020 {
     exclusiveMaximum?: number;
     // (undocumented)
     exclusiveMinimum?: number;
+    // (undocumented)
+    format?: string;
     // (undocumented)
     items?: JsonSchema2020;
     // (undocumented)

@@ -30,10 +30,12 @@ import type {
   PatternConstraintNode,
   ArrayCardinalityConstraintNode,
   EnumMemberConstraintNode,
+  ConstConstraintNode,
   CustomConstraintNode,
   AnnotationNode,
   DisplayNameAnnotationNode,
   DescriptionAnnotationNode,
+  FormatAnnotationNode,
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
   DeprecatedAnnotationNode,
@@ -310,6 +312,14 @@ const allowedMembersConstraint: EnumMemberConstraintNode = {
 };
 expectAssignable<ConstraintNode>(allowedMembersConstraint);
 
+const constConstraint: ConstConstraintNode = {
+  kind: "constraint",
+  constraintKind: "const",
+  value: "USD",
+  provenance: provNode,
+};
+expectAssignable<ConstraintNode>(constConstraint);
+
 // Mixed string/number members
 const mixedMembersConstraint: EnumMemberConstraintNode = {
   kind: "constraint",
@@ -371,6 +381,14 @@ const descriptionAnnotation: DescriptionAnnotationNode = {
   provenance: provNode,
 };
 expectAssignable<AnnotationNode>(descriptionAnnotation);
+
+const formatAnnotation: FormatAnnotationNode = {
+  kind: "annotation",
+  annotationKind: "format",
+  value: "email",
+  provenance: provNode,
+};
+expectAssignable<AnnotationNode>(formatAnnotation);
 
 const placeholderAnnotation: PlaceholderAnnotationNode = {
   kind: "annotation",
@@ -683,6 +701,9 @@ if (annotationVar.annotationKind === "displayName") {
 }
 if (annotationVar.annotationKind === "description") {
   expectType<DescriptionAnnotationNode>(annotationVar);
+}
+if (annotationVar.annotationKind === "format") {
+  expectType<FormatAnnotationNode>(annotationVar);
 }
 if (annotationVar.annotationKind === "placeholder") {
   expectType<PlaceholderAnnotationNode>(annotationVar);

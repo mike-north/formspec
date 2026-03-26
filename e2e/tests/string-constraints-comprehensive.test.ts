@@ -100,16 +100,15 @@ describe("String Constraints — comprehensive", () => {
   });
 
   // @see 003-json-schema-vocabulary.md §2.7: "@format → format keyword"
-  it.skip("BUG: emailFormat: @format email → format: email", () => {
-    // @see 003-json-schema-vocabulary.md §2.7: "@format annotation maps to JSON Schema format"
+  it("emailFormat: @format email → format: email", () => {
     expect(properties["emailFormat"]["format"]).toBe("email");
   });
 
-  it.skip("BUG: dateFormat: @format date → format: date", () => {
+  it("dateFormat: @format date → format: date", () => {
     expect(properties["dateFormat"]["format"]).toBe("date");
   });
 
-  it.skip("BUG: uriFormat: @format uri → format: uri", () => {
+  it("uriFormat: @format uri → format: uri", () => {
     expect(properties["uriFormat"]["format"]).toBe("uri");
   });
 

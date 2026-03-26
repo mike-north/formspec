@@ -31,10 +31,12 @@ import type {
   PatternConstraintNode,
   ArrayCardinalityConstraintNode,
   EnumMemberConstraintNode,
+  ConstConstraintNode,
   CustomConstraintNode,
   AnnotationNode,
   DisplayNameAnnotationNode,
   DescriptionAnnotationNode,
+  FormatAnnotationNode,
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
   DeprecatedAnnotationNode,
@@ -133,6 +135,7 @@ export type ProvenanceFreeArrayCardinalityConstraintNode = Omit<
   "provenance"
 >;
 export type ProvenanceFreeEnumMemberConstraintNode = Omit<EnumMemberConstraintNode, "provenance">;
+export type ProvenanceFreeConstConstraintNode = Omit<ConstConstraintNode, "provenance">;
 export type ProvenanceFreeCustomConstraintNode = Omit<CustomConstraintNode, "provenance">;
 
 export type ProvenanceFreeConstraintNode =
@@ -141,12 +144,14 @@ export type ProvenanceFreeConstraintNode =
   | ProvenanceFreePatternConstraintNode
   | ProvenanceFreeArrayCardinalityConstraintNode
   | ProvenanceFreeEnumMemberConstraintNode
+  | ProvenanceFreeConstConstraintNode
   | ProvenanceFreeCustomConstraintNode;
 
 // Annotation nodes all carry `provenance` — strip it from each variant.
 
 export type ProvenanceFreeDisplayNameAnnotationNode = Omit<DisplayNameAnnotationNode, "provenance">;
 export type ProvenanceFreeDescriptionAnnotationNode = Omit<DescriptionAnnotationNode, "provenance">;
+export type ProvenanceFreeFormatAnnotationNode = Omit<FormatAnnotationNode, "provenance">;
 export type ProvenanceFreePlaceholderAnnotationNode = Omit<PlaceholderAnnotationNode, "provenance">;
 export type ProvenanceFreeDefaultValueAnnotationNode = Omit<
   DefaultValueAnnotationNode,
@@ -159,6 +164,7 @@ export type ProvenanceFreeCustomAnnotationNode = Omit<CustomAnnotationNode, "pro
 export type ProvenanceFreeAnnotationNode =
   | ProvenanceFreeDisplayNameAnnotationNode
   | ProvenanceFreeDescriptionAnnotationNode
+  | ProvenanceFreeFormatAnnotationNode
   | ProvenanceFreePlaceholderAnnotationNode
   | ProvenanceFreeDefaultValueAnnotationNode
   | ProvenanceFreeDeprecatedAnnotationNode
@@ -353,6 +359,10 @@ function stripProvenanceFromConstraint(constraint: ConstraintNode): ProvenanceFr
       const { provenance: _p, ...rest } = constraint;
       return rest;
     }
+    case "const": {
+      const { provenance: _p, ...rest } = constraint;
+      return rest;
+    }
     case "allowedMembers": {
       const { provenance: _p, ...rest } = constraint;
       return rest;
@@ -368,6 +378,7 @@ function stripProvenanceFromAnnotation(annotation: AnnotationNode): ProvenanceFr
   switch (annotation.annotationKind) {
     case "displayName":
     case "description":
+    case "format":
     case "placeholder":
     case "defaultValue":
     case "deprecated":

@@ -218,6 +218,56 @@ describe("extractJSDocConstraintNodes", () => {
     });
   });
 
+  it("produces ArrayCardinalityConstraintNode for @uniqueItems", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @uniqueItems */
+        x!: string[];
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "uniqueItems",
+      value: true,
+    });
+  });
+
+  it("produces ConstConstraintNode for @const", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @const "USD" */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "const",
+      value: "USD",
+    });
+  });
+
+  it("produces FormatAnnotationNode for @format", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @format email */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "format",
+      value: "email",
+    });
+  });
+
   it("ignores non-constraint tags", () => {
     const prop = getPropertyFromSource(`
       class Foo {
@@ -401,11 +451,7 @@ describe("extractJSDocAnnotationNodes", () => {
       result.map((annotation) =>
         annotation.annotationKind === "displayName" ? annotation.value : undefined
       )
-    ).toEqual([
-      ":active Active Account",
-      ":suspended Suspended",
-      ":closed Permanently Closed",
-    ]);
+    ).toEqual([":active Active Account", ":suspended Suspended", ":closed Permanently Closed"]);
   });
 
   it("produces DeprecatedAnnotationNode for @deprecated", () => {
