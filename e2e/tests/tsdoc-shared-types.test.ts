@@ -51,4 +51,24 @@ describe("TSDoc Shared Types ($defs/$ref)", () => {
     expect(required).toContain("shippingAddress");
     expect(required).not.toContain("notes");
   });
+
+  it("omits additionalProperties for the shared Address object by default", () => {
+    const defs = schema["$defs"] as Record<string, Record<string, unknown>>;
+    expect(defs["Address"]["additionalProperties"]).toBeUndefined();
+  });
+
+  it("emits UI controls for the referenced fields", () => {
+    const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
+    expect(uischemaFile).toBeDefined();
+    if (!uischemaFile) throw new Error("UI Schema file not found");
+
+    const actual = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as Record<string, unknown>;
+    const elements = actual["elements"] as Record<string, unknown>[];
+    const scopes = elements.map((element) => element["scope"]);
+
+    expect(scopes).toContain("#/properties/orderId");
+    expect(scopes).toContain("#/properties/billingAddress");
+    expect(scopes).toContain("#/properties/shippingAddress");
+    expect(scopes).toContain("#/properties/notes");
+  });
 });

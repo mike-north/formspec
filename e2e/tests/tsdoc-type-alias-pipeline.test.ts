@@ -43,4 +43,21 @@ describe("TSDoc Type Alias Pipeline", () => {
   it("boolean field has boolean type", () => {
     expect(properties["enableAlerts"]["type"]).toBe("boolean");
   });
+
+  it("renders UI controls for each top-level field", () => {
+    const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
+    expect(uischemaFile).toBeDefined();
+    if (!uischemaFile) throw new Error("UI Schema file not found");
+
+    const uischema = JSON.parse(fs.readFileSync(uischemaFile, "utf-8")) as Record<string, unknown>;
+    const elements = uischema["elements"] as Record<string, unknown>[];
+    const scopes = new Set(elements.map((element) => element["scope"]));
+
+    expect(scopes).toContain("#/properties/cpuThreshold");
+    expect(scopes).toContain("#/properties/memoryThreshold");
+    expect(scopes).toContain("#/properties/adminEmail");
+    expect(scopes).toContain("#/properties/enableAlerts");
+    expect(scopes).toContain("#/properties/alertChannels");
+    expect(scopes).toContain("#/properties/retryPolicy");
+  });
 });
