@@ -297,7 +297,7 @@ function typeLabel(type: TypeNode): string {
 
 type PathTargetResolution =
   | { readonly kind: "resolved"; readonly type: TypeNode }
-  | { readonly kind: "missing-property" }
+  | { readonly kind: "missing-property"; readonly segment: string }
   | { readonly kind: "unresolvable"; readonly type: TypeNode };
 
 function dereferenceType(ctx: ValidationContext, type: TypeNode): TypeNode {
@@ -338,9 +338,12 @@ function resolvePathTargetType(
 
   if (effectiveType.kind === "object") {
     const [segment, ...rest] = segments;
+    if (segment === undefined) {
+      return { kind: "resolved", type: effectiveType };
+    }
     const property = effectiveType.properties.find((prop) => prop.name === segment);
     if (property === undefined) {
-      return { kind: "missing-property" };
+      return { kind: "missing-property", segment };
     }
     return resolvePathTargetType(ctx, property.type, rest);
   }
@@ -445,6 +448,11 @@ function checkTypeApplicability(
       const targetFieldName = formatPathTargetFieldName(fieldName, constraint.path.segments);
 
       if (resolution.kind === "missing-property") {
+        addTypeMismatch(
+          ctx,
+          `Field "${fieldName}": path-targeted constraint "${constraint.constraintKind}" references unknown path segment "${resolution.segment}"`,
+          constraint.provenance
+        );
         continue;
       }
 
