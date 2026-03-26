@@ -45,6 +45,9 @@ formspec generate ./src/forms.ts UserForm --emit-ir -o ./generated
 
 # Validate without writing files
 formspec generate ./src/forms.ts UserForm --validate-only
+
+# Preview output paths without writing files
+formspec generate ./src/forms.ts UserForm --dry-run -o ./generated
 ```
 
 ## Commands
@@ -70,6 +73,7 @@ formspec generate <file> [className] [options]
 | `-c, --compiled <path>` | Path to compiled JS file                              | auto-detected |
 | `--emit-ir`             | Emit Canonical IR as JSON alongside generated schemas |               |
 | `--validate-only`       | Validate input without writing files                  |               |
+| `--dry-run`             | Show planned output paths without writing files       |               |
 | `-h, --help`            | Show help message                                     |               |
 
 **Examples:**
@@ -86,6 +90,9 @@ formspec generate ./src/forms.ts UserForm --emit-ir
 
 # Validate only (no file output)
 formspec generate ./src/forms.ts UserForm --validate-only
+
+# Preview class and FormSpec output paths without writing files
+formspec generate ./src/forms.ts UserForm --dry-run -o ./generated
 ```
 
 ## JSDoc Constraint Tags

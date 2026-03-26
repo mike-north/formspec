@@ -36,7 +36,12 @@ import {
   isFormSpec,
   type FormSpecSchemas,
 } from "./runtime/formspec-loader.js";
-import { writeClassSchemas, writeFormSpecSchemas } from "./output/writer.js";
+import {
+  planClassSchemaFiles,
+  planFormSpecSchemaFiles,
+  writeClassSchemas,
+  writeFormSpecSchemas,
+} from "./output/writer.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as ts from "typescript";
@@ -54,6 +59,8 @@ interface CliOptions {
   emitIr: boolean;
   /** Run constraint validation only; do not write schema files. */
   validateOnly: boolean;
+  /** Show planned outputs without writing any files. */
+  dryRun: boolean;
 }
 
 /**
@@ -86,6 +93,7 @@ function parseArgs(args: string[]): CliOptions {
   let compiledPath: string | undefined;
   let emitIr = false;
   let validateOnly = false;
+  let dryRun = false;
 
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i];
@@ -101,6 +109,8 @@ function parseArgs(args: string[]): CliOptions {
       emitIr = true;
     } else if (arg === "--validate-only") {
       validateOnly = true;
+    } else if (arg === "--dry-run") {
+      dryRun = true;
     } else if (arg.startsWith("-")) {
       console.error(`Unknown option: ${arg}`);
       process.exit(1);
@@ -125,6 +135,7 @@ function parseArgs(args: string[]): CliOptions {
     compiledPath,
     emitIr,
     validateOnly,
+    dryRun,
   };
 }
 
@@ -161,6 +172,7 @@ OPTIONS:
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
   --emit-ir             Emit FormIR JSON alongside generated schemas
   --validate-only       Validate constraints only; do not write schema files
+  --dry-run             Show planned outputs without writing any files
   -h, --help            Show this help message
 
 OUTPUT FILES:
@@ -211,7 +223,11 @@ function toLoadedSchemas(
  * The CLI uses this to surface parse failures as a readable user error
  * instead of continuing into class lookup and reporting "class not found".
  */
-function assertNoSyntacticErrors(program: ts.Program, sourceFile: ts.SourceFile, filePath: string): void {
+function assertNoSyntacticErrors(
+  program: ts.Program,
+  sourceFile: ts.SourceFile,
+  filePath: string
+): void {
   const diagnostics = program.getSyntacticDiagnostics(sourceFile);
   if (diagnostics.length === 0) return;
 
@@ -233,6 +249,10 @@ function writeIrFile(ir: FormIR, name: string, outDir: string): void {
   const filePath = path.join(outDir, `${name}.ir.json`);
   fs.writeFileSync(filePath, JSON.stringify(ir, null, 2) + "\n");
   console.log(`✓ Wrote IR: ${filePath}`);
+}
+
+function planIrFile(name: string, outDir: string): string {
+  return path.join(outDir, `${name}.ir.json`);
 }
 
 function formatDiagnosticLocation(file: string, line: number, column: number): string {
@@ -276,6 +296,18 @@ function printValidationResult(result: ValidationResult, label: string): boolean
   return diagnostics.some((d) => d.severity === "error");
 }
 
+function printPlannedFiles(files: readonly string[]): void {
+  if (files.length === 0) {
+    console.log("Dry run: no files would be written.");
+    return;
+  }
+
+  console.log(`Dry run: would write ${String(files.length)} file(s):`);
+  for (const filePath of files) {
+    console.log(`  - ${filePath}`);
+  }
+}
+
 /**
  * Main CLI entry point.
  */
@@ -288,6 +320,9 @@ async function main(): Promise<void> {
     console.log(`Class: ${options.className}`);
   }
   console.log(`Output: ${options.outDir}`);
+  if (options.dryRun) {
+    console.log("Mode: dry run (no files will be written)");
+  }
   console.log();
 
   try {
@@ -361,6 +396,7 @@ async function main(): Promise<void> {
 
     // Track whether any validation found errors (for --validate-only exit code)
     let hasValidationErrors = false;
+    const plannedFiles: string[] = [];
 
     if (options.className) {
       const classDecl = findClassByName(ctx.sourceFile, options.className);
@@ -389,7 +425,11 @@ async function main(): Promise<void> {
         if (hadErrors) hasValidationErrors = true;
 
         if (options.emitIr) {
-          writeIrFile(ir, analysis.name, options.outDir);
+          if (options.dryRun) {
+            plannedFiles.push(planIrFile(analysis.name, options.outDir));
+          } else {
+            writeIrFile(ir, analysis.name, options.outDir);
+          }
         }
       }
 
@@ -416,6 +456,9 @@ async function main(): Promise<void> {
           }
         }
 
+        // Dry run still performs full schema generation so it can validate that
+        // generation succeeds and compute the exact file layout that a real run
+        // would produce.
         // Generate class schemas
         const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
 
@@ -428,16 +471,28 @@ async function main(): Promise<void> {
           generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
         );
 
-        // Write class output
-        const classResult = writeClassSchemas(
-          analysis.name,
-          classSchemas,
-          instanceMethodSchemas,
-          staticMethodSchemas,
-          { outDir: options.outDir }
-        );
+        if (options.dryRun) {
+          const classResult = planClassSchemaFiles(
+            analysis.name,
+            instanceMethodSchemas,
+            staticMethodSchemas,
+            { outDir: options.outDir }
+          );
+          plannedFiles.push(...classResult.files);
+          console.log(
+            `✓ Planned ${String(classResult.files.length)} class file(s) in ${classResult.dir}`
+          );
+        } else {
+          const classResult = writeClassSchemas(
+            analysis.name,
+            classSchemas,
+            instanceMethodSchemas,
+            staticMethodSchemas,
+            { outDir: options.outDir }
+          );
 
-        console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
+          console.log(`✓ Wrote ${String(classResult.files.length)} file(s) to ${classResult.dir}`);
+        }
       }
     }
 
@@ -461,7 +516,11 @@ async function main(): Promise<void> {
               if (hadErrors) hasValidationErrors = true;
 
               if (options.emitIr) {
-                writeIrFile(chainIr, name, options.outDir);
+                if (options.dryRun) {
+                  plannedFiles.push(planIrFile(name, options.outDir));
+                } else {
+                  writeIrFile(chainIr, name, options.outDir);
+                }
               }
             } catch (error) {
               console.warn(
@@ -474,19 +533,37 @@ async function main(): Promise<void> {
       }
 
       if (!options.validateOnly) {
-        const formSpecResult = writeFormSpecSchemas(loadedFormSpecs, {
-          outDir: options.outDir,
-        });
+        if (options.dryRun) {
+          const formSpecResult = planFormSpecSchemaFiles(loadedFormSpecs, {
+            outDir: options.outDir,
+          });
+          plannedFiles.push(...formSpecResult.files);
 
-        if (formSpecResult.files.length > 0) {
-          console.log(
-            `✓ Wrote ${String(formSpecResult.files.length)} FormSpec file(s) to ${formSpecResult.dir}`
-          );
+          if (formSpecResult.files.length > 0) {
+            console.log(
+              `✓ Planned ${String(formSpecResult.files.length)} FormSpec file(s) in ${formSpecResult.dir}`
+            );
+          }
+        } else {
+          const formSpecResult = writeFormSpecSchemas(loadedFormSpecs, {
+            outDir: options.outDir,
+          });
+
+          if (formSpecResult.files.length > 0) {
+            console.log(
+              `✓ Wrote ${String(formSpecResult.files.length)} FormSpec file(s) to ${formSpecResult.dir}`
+            );
+          }
         }
       }
     }
 
     console.log();
+
+    if (options.dryRun) {
+      printPlannedFiles(plannedFiles);
+      console.log();
+    }
 
     if (options.validateOnly) {
       if (hasValidationErrors) {
@@ -495,7 +572,10 @@ async function main(): Promise<void> {
       } else {
         console.log("Validation passed: no constraint violations.");
       }
-    } else {
+    }
+    if (options.dryRun) {
+      console.log("Dry run complete: no files written.");
+    } else if (!options.validateOnly) {
       console.log("Done!");
     }
   } catch (error) {
