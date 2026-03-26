@@ -60,12 +60,12 @@ function canonicalizeFixtureClass(fixtureFile: string, className: string) {
   return canonicalizeTSDoc(analysis, { file: fixtureFile });
 }
 
-type ParityFixture = {
+interface ParityFixture {
   readonly name: string;
   readonly chainForm: Parameters<typeof canonicalizeChainDSL>[0];
   readonly expectedIR: ReturnType<typeof stripProvenance>;
   readonly className: string;
-};
+}
 
 const parityFixtures: readonly ParityFixture[] = [
   {
