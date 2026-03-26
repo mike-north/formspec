@@ -51,6 +51,7 @@ describe("TSDoc Shared Types ($defs/$ref)", () => {
     expect(required).toContain("shippingAddress");
     expect(required).not.toContain("notes");
   });
+
   it("omits additionalProperties for the shared Address object by default", () => {
     const defs = schema["$defs"] as Record<string, Record<string, unknown>>;
     expect(defs["Address"]["additionalProperties"]).toBeUndefined();

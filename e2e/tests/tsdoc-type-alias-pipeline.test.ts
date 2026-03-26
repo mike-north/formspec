@@ -43,6 +43,7 @@ describe("TSDoc Type Alias Pipeline", () => {
   it("boolean field has boolean type", () => {
     expect(properties["enableAlerts"]["type"]).toBe("boolean");
   });
+
   it("renders UI controls for each top-level field", () => {
     const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
     expect(uischemaFile).toBeDefined();
