@@ -281,7 +281,7 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   applyConstraints(schema, directConstraints, ctx);
 
   if (itemStringSchema !== undefined) {
-    applyConstraints(itemStringSchema, itemConstraints);
+    applyConstraints(itemStringSchema, itemConstraints, ctx);
   }
 
   // Apply annotations (title, description, default, deprecated, etc.).
