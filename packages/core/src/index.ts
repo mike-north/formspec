@@ -107,6 +107,9 @@ export type {
   ExtensionDefinition,
   CustomTypeRegistration,
   CustomConstraintRegistration,
+  ConstraintTagRegistration,
+  BuiltinConstraintBroadeningRegistration,
+  ConstraintSemanticRole,
   CustomAnnotationRegistration,
   VocabularyKeywordRegistration,
 } from "./extensions/index.js";
@@ -115,6 +118,7 @@ export {
   defineExtension,
   defineCustomType,
   defineConstraint,
+  defineConstraintTag,
   defineAnnotation,
 } from "./extensions/index.js";
 

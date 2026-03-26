@@ -4,6 +4,8 @@
 
 ```ts
 
+import type { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
+import type { ConstraintTagRegistration } from '@formspec/core';
 import type { CustomAnnotationRegistration } from '@formspec/core';
 import type { CustomConstraintRegistration } from '@formspec/core';
 import type { CustomTypeRegistration } from '@formspec/core';
@@ -186,15 +188,27 @@ export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 export interface ExtensionRegistry {
     readonly extensions: readonly ExtensionDefinition[];
     findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
+    findBuiltinConstraintBroadening(typeId: string, tagName: string): {
+        readonly extensionId: string;
+        readonly registration: BuiltinConstraintBroadeningRegistration;
+    } | undefined;
     findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
+    findConstraintTag(tagName: string): {
+        readonly extensionId: string;
+        readonly registration: ConstraintTagRegistration;
+    } | undefined;
     findType(typeId: string): CustomTypeRegistration | undefined;
+    findTypeByName(typeName: string): {
+        readonly extensionId: string;
+        readonly registration: CustomTypeRegistration;
+    } | undefined;
 }
 
 // @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions {
+export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
     className: string;
     filePath: string;
 }
@@ -227,7 +241,7 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions {
+export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
     filePath: string;
     typeName: string;
 }

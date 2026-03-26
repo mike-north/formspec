@@ -10,6 +10,7 @@ import {
   normalizeConstraintTagName,
   isBuiltinConstraintName,
   type BuiltinConstraintName,
+  type ExtensionDefinition,
 } from "@formspec/core";
 import type { Hover } from "vscode-languageserver/node.js";
 
@@ -213,13 +214,40 @@ const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
  * @param tagName - The tag name to look up (e.g., `"minimum"`, `"@pattern"`)
  * @returns An LSP `Hover` response, or `null` if the tag is not recognized
  */
-export function getHoverForTag(tagName: string): Hover | null {
+export function getHoverForTag(
+  tagName: string,
+  extensions?: readonly ExtensionDefinition[]
+): Hover | null {
   // Strip leading `@` prefix if present
   const raw = tagName.startsWith("@") ? tagName.slice(1) : tagName;
   const name = normalizeConstraintTagName(raw);
 
   if (!isBuiltinConstraintName(name)) {
-    return null;
+    const registration = extensions
+      ?.flatMap((extension) =>
+        (extension.constraintTags ?? []).map((tag) => ({
+          extensionId: extension.extensionId,
+          tag,
+        }))
+      )
+      .find(({ tag }) => tag.tagName === name);
+
+    if (registration === undefined) {
+      return null;
+    }
+
+    return {
+      contents: {
+        kind: "markdown",
+        value: [
+          `**@${registration.tag.tagName}** \`<value>\``,
+          "",
+          `Extension-defined constraint tag from \`${registration.extensionId}\`.`,
+          "",
+          "Validated through the registered FormSpec extension surface.",
+        ].join("\n"),
+      },
+    };
   }
 
   return {

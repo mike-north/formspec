@@ -855,9 +855,12 @@ function applyCustomConstraint(
     );
   }
 
-  // Trust boundary: extension hooks are expected to return valid JSON Schema
-  // keywords, typically vendor-prefixed extension annotations.
-  Object.assign(schema, registration.toJsonSchema(constraint.payload, ctx.vendorPrefix));
+  assignVendorPrefixedExtensionKeywords(
+    schema,
+    registration.toJsonSchema(constraint.payload, ctx.vendorPrefix),
+    ctx.vendorPrefix,
+    `custom constraint "${constraint.constraintId}"`
+  );
 }
 
 function applyCustomAnnotation(
@@ -876,7 +879,26 @@ function applyCustomAnnotation(
     return;
   }
 
-  // Trust boundary: extension hooks are expected to return valid JSON Schema
-  // keywords, typically vendor-prefixed extension annotations.
-  Object.assign(schema, registration.toJsonSchema(annotation.value, ctx.vendorPrefix));
+  assignVendorPrefixedExtensionKeywords(
+    schema,
+    registration.toJsonSchema(annotation.value, ctx.vendorPrefix),
+    ctx.vendorPrefix,
+    `custom annotation "${annotation.annotationId}"`
+  );
+}
+
+function assignVendorPrefixedExtensionKeywords(
+  schema: JsonSchema2020,
+  extensionSchema: Record<string, unknown>,
+  vendorPrefix: string,
+  source: string
+): void {
+  for (const [key, value] of Object.entries(extensionSchema)) {
+    if (!key.startsWith(`${vendorPrefix}-`)) {
+      throw new Error(
+        `Cannot apply ${source}: extension hooks may only emit "${vendorPrefix}-*" JSON Schema keywords`
+      );
+    }
+    schema[key as `x-${string}`] = value;
+  }
 }

@@ -15,7 +15,11 @@
 
 import * as ts from "typescript";
 import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core";
-import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
+import {
+  parseTSDocTags,
+  hasDeprecatedTagTSDoc,
+  type ParseTSDocOptions,
+} from "./tsdoc-parser.js";
 
 // =============================================================================
 // IR API — uses @microsoft/tsdoc for structured parsing
@@ -32,8 +36,12 @@ import { parseTSDocTags, hasDeprecatedTagTSDoc } from "./tsdoc-parser.js";
  * @param file - Absolute path to the source file for provenance
  * @returns Canonical constraint nodes for each valid constraint tag
  */
-export function extractJSDocConstraintNodes(node: ts.Node, file = ""): ConstraintNode[] {
-  const result = parseTSDocTags(node, file);
+export function extractJSDocConstraintNodes(
+  node: ts.Node,
+  file = "",
+  options?: ParseTSDocOptions
+): ConstraintNode[] {
+  const result = parseTSDocTags(node, file, options);
   return [...result.constraints];
 }
 
@@ -45,8 +53,12 @@ export function extractJSDocConstraintNodes(node: ts.Node, file = ""): Constrain
  * @param file - Absolute path to the source file for provenance
  * @returns Canonical annotation nodes
  */
-export function extractJSDocAnnotationNodes(node: ts.Node, file = ""): AnnotationNode[] {
-  const result = parseTSDocTags(node, file);
+export function extractJSDocAnnotationNodes(
+  node: ts.Node,
+  file = "",
+  options?: ParseTSDocOptions
+): AnnotationNode[] {
+  const result = parseTSDocTags(node, file, options);
   return [...result.annotations];
 }
 

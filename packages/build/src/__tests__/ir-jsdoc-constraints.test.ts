@@ -16,6 +16,11 @@ import {
   extractJSDocAnnotationNodes,
 } from "../analyzer/jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "../analyzer/tsdoc-parser.js";
+import {
+  createNumericExtensionRegistry,
+  BIGINT_TYPE_ID,
+  DECIMAL_TYPE_ID,
+} from "./fixtures/example-numeric-extension.js";
 
 /**
  * Helper: creates an in-memory TypeScript source file and returns the
@@ -250,6 +255,40 @@ describe("extractJSDocConstraintNodes", () => {
       kind: "constraint",
       constraintKind: "const",
       value: "USD",
+    });
+  });
+
+  it("preserves falsy JSON values for @const", () => {
+    const zeroProp = getPropertyFromSource(`
+      class Foo {
+        /** @const 0 */
+        x!: number;
+      }
+    `);
+    const falseProp = getPropertyFromSource(`
+      class Foo {
+        /** @const false */
+        x!: boolean;
+      }
+    `);
+    const nullProp = getPropertyFromSource(`
+      class Foo {
+        /** @const null */
+        x!: string | null;
+      }
+    `);
+
+    expect(extractJSDocConstraintNodes(zeroProp)[0]).toMatchObject({
+      constraintKind: "const",
+      value: 0,
+    });
+    expect(extractJSDocConstraintNodes(falseProp)[0]).toMatchObject({
+      constraintKind: "const",
+      value: false,
+    });
+    expect(extractJSDocConstraintNodes(nullProp)[0]).toMatchObject({
+      constraintKind: "const",
+      value: null,
     });
   });
 
@@ -530,6 +569,92 @@ describe("extractJSDocAnnotationNodes", () => {
     expect(result[0]).toMatchObject({
       annotationKind: "displayName",
       value: "Class Field",
+    });
+  });
+});
+
+describe("extension-aware JSDoc constraint extraction", () => {
+  const registry = createNumericExtensionRegistry();
+
+  it("recognizes extension-defined constraint tags when a registry is provided", () => {
+    const prop = getPropertyFromSource(`
+      class Quote {
+        /** @maxSigFig 5 @maxDecimalPlaces 2 */
+        amount!: number;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop, "/test.ts", {
+      extensionRegistry: registry,
+      fieldType: { kind: "primitive", primitiveKind: "number" },
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-numeric/MaxSigFig",
+      payload: 5,
+    });
+    expect(result[1]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-numeric/MaxDecimalPlaces",
+      payload: 2,
+    });
+  });
+
+  it("broadens built-in numeric tags onto Decimal through the extension registry", () => {
+    const prop = getPropertyFromSource(`
+      class Quote {
+        /** @minimum 10 @exclusiveMaximum 99.95 */
+        amount!: Decimal;
+      }
+      type Decimal = string;
+    `);
+
+    const result = extractJSDocConstraintNodes(prop, "/test.ts", {
+      extensionRegistry: registry,
+      fieldType: {
+        kind: "custom",
+        typeId: DECIMAL_TYPE_ID,
+        payload: null,
+      },
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-numeric/DecimalMinimum",
+      payload: "10.0",
+    });
+    expect(result[1]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-numeric/DecimalExclusiveMaximum",
+      payload: "99.95",
+    });
+  });
+
+  it("allows @maxSigFig on bigint-backed custom numeric types", () => {
+    const prop = getPropertyFromSource(`
+      class Quote {
+        /** @maxSigFig 8 */
+        count!: bigint;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop, "/test.ts", {
+      extensionRegistry: registry,
+      fieldType: {
+        kind: "custom",
+        typeId: BIGINT_TYPE_ID,
+        payload: null,
+      },
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      constraintKind: "custom",
+      constraintId: "x-formspec/example-numeric/MaxSigFig",
+      payload: 8,
     });
   });
 });

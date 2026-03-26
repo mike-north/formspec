@@ -26,6 +26,7 @@ import {
   extractDefaultValueAnnotation,
 } from "./jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
+import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
 // TYPE GUARDS
@@ -62,6 +63,20 @@ const RESOLVING_TYPE_PLACEHOLDER: TypeNode = {
   properties: [],
   additionalProperties: true,
 };
+
+function makeParseOptions(
+  extensionRegistry: ExtensionRegistry | undefined,
+  fieldType?: TypeNode
+): import("./tsdoc-parser.js").ParseTSDocOptions | undefined {
+  if (extensionRegistry === undefined && fieldType === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(extensionRegistry !== undefined && { extensionRegistry }),
+    ...(fieldType !== undefined && { fieldType }),
+  };
+}
 
 // =============================================================================
 // IR OUTPUT TYPES
@@ -115,20 +130,32 @@ export type AnalyzeTypeAliasToIRResult =
 export function analyzeClassToIR(
   classDecl: ts.ClassDeclaration,
   checker: ts.TypeChecker,
-  file = ""
+  file = "",
+  extensionRegistry?: ExtensionRegistry
 ): IRClassAnalysis {
   const name = classDecl.name?.text ?? "AnonymousClass";
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(classDecl, file);
+  const annotations = extractJSDocAnnotationNodes(
+    classDecl,
+    file,
+    makeParseOptions(extensionRegistry)
+  );
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
   const staticMethods: MethodInfo[] = [];
 
   for (const member of classDecl.members) {
     if (ts.isPropertyDeclaration(member)) {
-      const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
+      const fieldNode = analyzeFieldToIR(
+        member,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      );
       if (fieldNode) {
         fields.push(fieldNode);
         fieldLayouts.push({});
@@ -163,17 +190,29 @@ export function analyzeClassToIR(
 export function analyzeInterfaceToIR(
   interfaceDecl: ts.InterfaceDeclaration,
   checker: ts.TypeChecker,
-  file = ""
+  file = "",
+  extensionRegistry?: ExtensionRegistry
 ): IRClassAnalysis {
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(interfaceDecl, file);
+  const annotations = extractJSDocAnnotationNodes(
+    interfaceDecl,
+    file,
+    makeParseOptions(extensionRegistry)
+  );
   const visiting = new Set<ts.Type>();
 
   for (const member of interfaceDecl.members) {
     if (ts.isPropertySignature(member)) {
-      const fieldNode = analyzeInterfacePropertyToIR(member, checker, file, typeRegistry, visiting);
+      const fieldNode = analyzeInterfacePropertyToIR(
+        member,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      );
       if (fieldNode) {
         fields.push(fieldNode);
       }
@@ -198,7 +237,8 @@ export function analyzeInterfaceToIR(
 export function analyzeTypeAliasToIR(
   typeAlias: ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
-  file = ""
+  file = "",
+  extensionRegistry?: ExtensionRegistry
 ): AnalyzeTypeAliasToIRResult {
   if (!ts.isTypeLiteralNode(typeAlias.type)) {
     const sourceFile = typeAlias.getSourceFile();
@@ -214,12 +254,23 @@ export function analyzeTypeAliasToIR(
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(typeAlias, file);
+  const annotations = extractJSDocAnnotationNodes(
+    typeAlias,
+    file,
+    makeParseOptions(extensionRegistry)
+  );
   const visiting = new Set<ts.Type>();
 
   for (const member of typeAlias.type.members) {
     if (ts.isPropertySignature(member)) {
-      const fieldNode = analyzeInterfacePropertyToIR(member, checker, file, typeRegistry, visiting);
+      const fieldNode = analyzeInterfacePropertyToIR(
+        member,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      );
       if (fieldNode) {
         fields.push(fieldNode);
       }
@@ -252,7 +303,8 @@ function analyzeFieldToIR(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
     return null;
@@ -264,24 +316,36 @@ function analyzeFieldToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting, prop);
+  let type = resolveTypeNode(
+    tsType,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    prop,
+    extensionRegistry
+  );
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
 
   // Inherit constraints from type alias declarations (lower precedence)
   if (prop.type) {
-    constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
+    constraints.push(
+      ...extractTypeAliasConstraintNodes(prop.type, checker, file, extensionRegistry)
+    );
   }
 
   // Extract JSDoc constraints
-  constraints.push(...extractJSDocConstraintNodes(prop, file));
+  constraints.push(...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type)));
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
-  annotations.push(...extractJSDocAnnotationNodes(prop, file));
+  annotations.push(
+    ...extractJSDocAnnotationNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  );
 
   // Default value annotation
   const defaultAnnotation = extractDefaultValueAnnotation(prop.initializer, file);
@@ -310,7 +374,8 @@ function analyzeInterfacePropertyToIR(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
     return null;
@@ -322,24 +387,36 @@ function analyzeInterfacePropertyToIR(
   const provenance = provenanceForNode(prop, file);
 
   // Resolve ts.Type → TypeNode
-  let type = resolveTypeNode(tsType, checker, file, typeRegistry, visiting, prop);
+  let type = resolveTypeNode(
+    tsType,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    prop,
+    extensionRegistry
+  );
 
   // Collect constraints
   const constraints: ConstraintNode[] = [];
 
   // Inherit constraints from type alias declarations
   if (prop.type) {
-    constraints.push(...extractTypeAliasConstraintNodes(prop.type, checker, file));
+    constraints.push(
+      ...extractTypeAliasConstraintNodes(prop.type, checker, file, extensionRegistry)
+    );
   }
 
   // JSDoc constraints
-  constraints.push(...extractJSDocConstraintNodes(prop, file));
+  constraints.push(...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type)));
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
-  annotations.push(...extractJSDocAnnotationNodes(prop, file));
+  annotations.push(
+    ...extractJSDocAnnotationNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  );
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
 
@@ -457,6 +534,96 @@ function parseEnumMemberDisplayName(value: string): { value: string; label: stri
   return { value: match[1], label };
 }
 
+function resolveRegisteredCustomType(
+  sourceNode: ts.Node | undefined,
+  extensionRegistry: ExtensionRegistry | undefined,
+  checker: ts.TypeChecker
+): TypeNode | null {
+  if (sourceNode === undefined || extensionRegistry === undefined) {
+    return null;
+  }
+
+  const typeNode = extractTypeNodeFromSource(sourceNode);
+  if (typeNode === undefined) {
+    return null;
+  }
+
+  return resolveRegisteredCustomTypeFromTypeNode(typeNode, extensionRegistry, checker);
+}
+
+function resolveRegisteredCustomTypeFromTypeNode(
+  typeNode: ts.TypeNode,
+  extensionRegistry: ExtensionRegistry,
+  checker: ts.TypeChecker
+): TypeNode | null {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return resolveRegisteredCustomTypeFromTypeNode(typeNode.type, extensionRegistry, checker);
+  }
+
+  const typeName = getTypeNodeRegistrationName(typeNode);
+  if (typeName === null) {
+    return null;
+  }
+
+  const registration = extensionRegistry.findTypeByName(typeName);
+  if (registration !== undefined) {
+    return {
+      kind: "custom",
+      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+      payload: null,
+    };
+  }
+
+  if (ts.isTypeReferenceNode(typeNode) && ts.isIdentifier(typeNode.typeName)) {
+    const aliasDecl = checker
+      .getSymbolAtLocation(typeNode.typeName)
+      ?.declarations?.find(ts.isTypeAliasDeclaration);
+    if (aliasDecl !== undefined) {
+      return resolveRegisteredCustomTypeFromTypeNode(aliasDecl.type, extensionRegistry, checker);
+    }
+  }
+
+  return null;
+}
+
+function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined {
+  if (
+    ts.isPropertyDeclaration(sourceNode) ||
+    ts.isPropertySignature(sourceNode) ||
+    ts.isParameter(sourceNode) ||
+    ts.isTypeAliasDeclaration(sourceNode)
+  ) {
+    return sourceNode.type;
+  }
+
+  if (ts.isTypeNode(sourceNode)) {
+    return sourceNode;
+  }
+
+  return undefined;
+}
+
+function getTypeNodeRegistrationName(typeNode: ts.TypeNode): string | null {
+  if (ts.isTypeReferenceNode(typeNode)) {
+    return ts.isIdentifier(typeNode.typeName) ? typeNode.typeName.text : typeNode.typeName.right.text;
+  }
+
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return getTypeNodeRegistrationName(typeNode.type);
+  }
+
+  if (
+    typeNode.kind === ts.SyntaxKind.BigIntKeyword ||
+    typeNode.kind === ts.SyntaxKind.StringKeyword ||
+    typeNode.kind === ts.SyntaxKind.NumberKeyword ||
+    typeNode.kind === ts.SyntaxKind.BooleanKeyword
+  ) {
+    return typeNode.getText();
+  }
+
+  return null;
+}
+
 // =============================================================================
 // TYPE RESOLUTION — ts.Type → TypeNode
 // =============================================================================
@@ -470,8 +637,14 @@ export function resolveTypeNode(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  sourceNode?: ts.Node
+  sourceNode?: ts.Node,
+  extensionRegistry?: ExtensionRegistry
 ): TypeNode {
+  const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
+  if (customType) {
+    return customType;
+  }
+
   // --- Primitives ---
   if (type.flags & ts.TypeFlags.String) {
     return { kind: "primitive", primitiveKind: "string" };
@@ -508,17 +681,33 @@ export function resolveTypeNode(
 
   // --- Union types ---
   if (type.isUnion()) {
-    return resolveUnionType(type, checker, file, typeRegistry, visiting, sourceNode);
+    return resolveUnionType(
+      type,
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      sourceNode,
+      extensionRegistry
+    );
   }
 
   // --- Array types ---
   if (checker.isArrayType(type)) {
-    return resolveArrayType(type, checker, file, typeRegistry, visiting);
+    return resolveArrayType(
+      type,
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      sourceNode,
+      extensionRegistry
+    );
   }
 
   // --- Object types ---
   if (isObjectType(type)) {
-    return resolveObjectType(type, checker, file, typeRegistry, visiting);
+    return resolveObjectType(type, checker, file, typeRegistry, visiting, extensionRegistry);
   }
 
   // --- Fallback: treat unknown/any/void as string ---
@@ -531,7 +720,8 @@ function resolveUnionType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  sourceNode?: ts.Node
+  sourceNode?: ts.Node,
+  extensionRegistry?: ExtensionRegistry
 ): TypeNode {
   const typeName = getNamedTypeName(type);
   const namedDecl = getNamedTypeDeclaration(type);
@@ -541,9 +731,18 @@ function resolveUnionType(
   }
 
   const allTypes = type.types;
-  const nonNullTypes = allTypes.filter(
-    (t) => !(t.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
+  const unionMemberTypeNodes = extractUnionMemberTypeNodes(sourceNode, checker);
+  const nonNullSourceNodes = unionMemberTypeNodes.filter(
+    (memberTypeNode) => !isNullishTypeNode(resolveAliasedTypeNode(memberTypeNode, checker))
   );
+  const nonNullTypes = allTypes.filter(
+    (memberType) => !(memberType.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
+  );
+  const nonNullMembers = nonNullTypes.map((memberType, index) => ({
+    memberType,
+    sourceNode:
+      nonNullSourceNodes.length === nonNullTypes.length ? nonNullSourceNodes[index] : undefined,
+  }));
   const hasNull = allTypes.some((t) => t.flags & ts.TypeFlags.Null);
   const memberDisplayNames = new Map<string, string>();
   if (namedDecl) {
@@ -561,7 +760,9 @@ function resolveUnionType(
     if (!typeName) {
       return result;
     }
-    const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
+    const annotations = namedDecl
+      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+      : undefined;
     typeRegistry[typeName] = {
       name: typeName,
       type: result,
@@ -623,14 +824,15 @@ function resolveUnionType(
     return registerNamed(result);
   }
 
-  if (nonNullTypes.length === 1 && nonNullTypes[0]) {
+  if (nonNullMembers.length === 1 && nonNullMembers[0]) {
     const inner = resolveTypeNode(
-      nonNullTypes[0],
+      nonNullMembers[0].memberType,
       checker,
       file,
       typeRegistry,
       visiting,
-      sourceNode
+      nonNullMembers[0].sourceNode ?? sourceNode,
+      extensionRegistry
     );
     const result: TypeNode = hasNull
       ? {
@@ -641,8 +843,16 @@ function resolveUnionType(
     return registerNamed(result);
   }
 
-  const members = nonNullTypes.map((t) =>
-    resolveTypeNode(t, checker, file, typeRegistry, visiting, sourceNode)
+  const members = nonNullMembers.map(({ memberType, sourceNode: memberSourceNode }) =>
+    resolveTypeNode(
+      memberType,
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      memberSourceNode ?? sourceNode,
+      extensionRegistry
+    )
   );
   if (hasNull) {
     members.push({ kind: "primitive", primitiveKind: "null" });
@@ -655,13 +865,24 @@ function resolveArrayType(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  sourceNode?: ts.Node,
+  extensionRegistry?: ExtensionRegistry
 ): TypeNode {
   const typeArgs = isTypeReference(type) ? type.typeArguments : undefined;
   const elementType = typeArgs?.[0];
+  const elementSourceNode = extractArrayElementTypeNode(sourceNode, checker);
 
   const items = elementType
-    ? resolveTypeNode(elementType, checker, file, typeRegistry, visiting)
+    ? resolveTypeNode(
+        elementType,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        elementSourceNode,
+        extensionRegistry
+      )
     : ({ kind: "primitive", primitiveKind: "string" } satisfies TypeNode);
 
   return { kind: "array", items };
@@ -679,7 +900,8 @@ function tryResolveRecordType(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): RecordTypeNode | null {
   // Only types with no named properties qualify as pure dictionaries.
   if (type.getProperties().length > 0) {
@@ -690,7 +912,15 @@ function tryResolveRecordType(
     return null;
   }
 
-  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+  const valueType = resolveTypeNode(
+    indexInfo.type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    undefined,
+    extensionRegistry
+  );
   return { kind: "record", valueType };
 }
 
@@ -725,7 +955,8 @@ function resolveObjectType(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): TypeNode {
   const typeName = getNamedTypeName(type);
   const namedTypeName = typeName ?? undefined;
@@ -776,7 +1007,14 @@ function resolveObjectType(
   // Detect pure dictionary types (Record<string, T> or { [k: string]: T })
   // after the recursion guard/placeholder setup so recursive records can point
   // back at the named type instead of collapsing to an empty object.
-  const recordNode = tryResolveRecordType(type, checker, file, typeRegistry, visiting);
+  const recordNode = tryResolveRecordType(
+    type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    extensionRegistry
+  );
   if (recordNode) {
     visiting.delete(type);
     if (namedTypeName !== undefined && shouldRegisterNamedType) {
@@ -785,7 +1023,9 @@ function resolveObjectType(
         clearNamedTypeRegistration();
         return recordNode;
       }
-      const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
+      const annotations = namedDecl
+        ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+        : undefined;
       typeRegistry[namedTypeName] = {
         name: namedTypeName,
         type: recordNode,
@@ -800,7 +1040,14 @@ function resolveObjectType(
   const properties: ObjectProperty[] = [];
 
   // Get FieldInfo-level analysis from named type declarations for constraint propagation
-  const fieldInfoMap = getNamedTypeFieldNodeInfoMap(type, checker, file, typeRegistry, visiting);
+  const fieldInfoMap = getNamedTypeFieldNodeInfoMap(
+    type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    extensionRegistry
+  );
 
   for (const prop of type.getProperties()) {
     const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
@@ -814,7 +1061,8 @@ function resolveObjectType(
       file,
       typeRegistry,
       visiting,
-      declaration
+      declaration,
+      extensionRegistry
     );
 
     // Get constraints and annotations from the declaration if available
@@ -840,7 +1088,9 @@ function resolveObjectType(
 
   // Register named types
   if (namedTypeName !== undefined && shouldRegisterNamedType) {
-    const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
+    const annotations = namedDecl
+      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+      : undefined;
     typeRegistry[namedTypeName] = {
       name: namedTypeName,
       type: objectNode,
@@ -872,7 +1122,8 @@ function getNamedTypeFieldNodeInfoMap(
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> | null {
   const symbols = [type.getSymbol(), type.aliasSymbol].filter(
     (s): s is ts.Symbol => s?.declarations != null && s.declarations.length > 0
@@ -888,7 +1139,14 @@ function getNamedTypeFieldNodeInfoMap(
       const map = new Map<string, FieldNodeInfo>();
       for (const member of classDecl.members) {
         if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
-          const fieldNode = analyzeFieldToIR(member, checker, file, typeRegistry, visiting);
+          const fieldNode = analyzeFieldToIR(
+            member,
+            checker,
+            file,
+            typeRegistry,
+            visiting,
+            extensionRegistry
+          );
           if (fieldNode) {
             map.set(fieldNode.name, {
               constraints: [...fieldNode.constraints],
@@ -904,7 +1162,14 @@ function getNamedTypeFieldNodeInfoMap(
     // Try interface declaration
     const interfaceDecl = declarations.find(ts.isInterfaceDeclaration);
     if (interfaceDecl) {
-      return buildFieldNodeInfoMap(interfaceDecl.members, checker, file, typeRegistry, visiting);
+      return buildFieldNodeInfoMap(
+        interfaceDecl.members,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      );
     }
 
     // Try type alias with type literal body
@@ -915,7 +1180,8 @@ function getNamedTypeFieldNodeInfoMap(
         checker,
         file,
         typeRegistry,
-        visiting
+        visiting,
+        extensionRegistry
       );
     }
   }
@@ -923,17 +1189,95 @@ function getNamedTypeFieldNodeInfoMap(
   return null;
 }
 
+function extractArrayElementTypeNode(
+  sourceNode: ts.Node | undefined,
+  checker: ts.TypeChecker
+): ts.TypeNode | undefined {
+  const typeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+  if (typeNode === undefined) {
+    return undefined;
+  }
+  const resolvedTypeNode = resolveAliasedTypeNode(typeNode, checker);
+  if (ts.isArrayTypeNode(resolvedTypeNode)) {
+    return resolvedTypeNode.elementType;
+  }
+  if (
+    ts.isTypeReferenceNode(resolvedTypeNode) &&
+    ts.isIdentifier(resolvedTypeNode.typeName) &&
+    resolvedTypeNode.typeName.text === "Array" &&
+    resolvedTypeNode.typeArguments?.[0]
+  ) {
+    return resolvedTypeNode.typeArguments[0];
+  }
+  return undefined;
+}
+
+function extractUnionMemberTypeNodes(
+  sourceNode: ts.Node | undefined,
+  checker: ts.TypeChecker
+): readonly ts.TypeNode[] {
+  const typeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+  if (!typeNode) {
+    return [];
+  }
+  const resolvedTypeNode = resolveAliasedTypeNode(typeNode, checker);
+  return ts.isUnionTypeNode(resolvedTypeNode) ? [...resolvedTypeNode.types] : [];
+}
+
+function resolveAliasedTypeNode(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker,
+  visited: Set<ts.TypeAliasDeclaration> = new Set<ts.TypeAliasDeclaration>()
+): ts.TypeNode {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return resolveAliasedTypeNode(typeNode.type, checker, visited);
+  }
+
+  if (!ts.isTypeReferenceNode(typeNode) || !ts.isIdentifier(typeNode.typeName)) {
+    return typeNode;
+  }
+
+  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
+  const aliasDecl = symbol?.declarations?.find(ts.isTypeAliasDeclaration);
+  if (aliasDecl === undefined || visited.has(aliasDecl)) {
+    return typeNode;
+  }
+
+  visited.add(aliasDecl);
+  return resolveAliasedTypeNode(aliasDecl.type, checker, visited);
+}
+
+function isNullishTypeNode(typeNode: ts.TypeNode): boolean {
+  if (typeNode.kind === ts.SyntaxKind.NullKeyword || typeNode.kind === ts.SyntaxKind.UndefinedKeyword) {
+    return true;
+  }
+
+  return (
+    ts.isLiteralTypeNode(typeNode) &&
+    (typeNode.literal.kind === ts.SyntaxKind.NullKeyword ||
+      typeNode.literal.kind === ts.SyntaxKind.UndefinedKeyword)
+  );
+}
+
 function buildFieldNodeInfoMap(
   members: ts.NodeArray<ts.TypeElement>,
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
-  visiting: Set<ts.Type>
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> {
   const map = new Map<string, FieldNodeInfo>();
   for (const member of members) {
     if (ts.isPropertySignature(member)) {
-      const fieldNode = analyzeInterfacePropertyToIR(member, checker, file, typeRegistry, visiting);
+      const fieldNode = analyzeInterfacePropertyToIR(
+        member,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      );
       if (fieldNode) {
         map.set(fieldNode.name, {
           constraints: [...fieldNode.constraints],
@@ -967,6 +1311,7 @@ function extractTypeAliasConstraintNodes(
   typeNode: ts.TypeNode,
   checker: ts.TypeChecker,
   file: string,
+  extensionRegistry?: ExtensionRegistry,
   depth = 0
 ): ConstraintNode[] {
   if (!ts.isTypeReferenceNode(typeNode)) return [];
@@ -989,12 +1334,33 @@ function extractTypeAliasConstraintNodes(
   // Don't extract from object type aliases
   if (ts.isTypeLiteralNode(aliasDecl.type)) return [];
 
-  const constraints = extractJSDocConstraintNodes(aliasDecl, file);
+  const aliasFieldType = resolveTypeNode(
+    checker.getTypeAtLocation(aliasDecl.type),
+    checker,
+    file,
+    {},
+    new Set<ts.Type>(),
+    aliasDecl.type,
+    extensionRegistry
+  );
+  const constraints = extractJSDocConstraintNodes(
+    aliasDecl,
+    file,
+    makeParseOptions(extensionRegistry, aliasFieldType)
+  );
 
   // Transitively follow alias chains (e.g., Percentage → Integer → number)
   // Constraints from parent aliases are appended after the immediate alias's
   // constraints, giving the immediate alias higher precedence.
-  constraints.push(...extractTypeAliasConstraintNodes(aliasDecl.type, checker, file, depth + 1));
+  constraints.push(
+    ...extractTypeAliasConstraintNodes(
+      aliasDecl.type,
+      checker,
+      file,
+      extensionRegistry,
+      depth + 1
+    )
+  );
 
   return constraints;
 }

@@ -55,3 +55,7 @@ export const constrainedShippingAddressOverlays = formspec(
 export const requiredShippingAddressOverlays = formspec(
   field.text("postalCode", { required: true })
 );
+
+export const requiredCountryShippingAddressOverlays = formspec(
+  field.text("country", { required: true })
+);

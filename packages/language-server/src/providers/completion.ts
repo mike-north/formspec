@@ -7,7 +7,11 @@
  * filtering will be added in a future phase.
  */
 
-import { BUILTIN_CONSTRAINT_DEFINITIONS, type BuiltinConstraintName } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  type BuiltinConstraintName,
+  type ExtensionDefinition,
+} from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
 /**
@@ -43,10 +47,23 @@ const CONSTRAINT_DETAIL: Record<BuiltinConstraintName, string> = {
  *
  * @returns An array of LSP completion items for FormSpec constraint tags
  */
-export function getCompletionItems(): CompletionItem[] {
-  return (Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS) as BuiltinConstraintName[]).map((name) => ({
-    label: `@${name}`,
-    kind: CompletionItemKind.Keyword,
-    detail: CONSTRAINT_DETAIL[name],
-  }));
+export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[] {
+  const builtins = (Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS) as BuiltinConstraintName[]).map(
+    (name) => ({
+      label: `@${name}`,
+      kind: CompletionItemKind.Keyword,
+      detail: CONSTRAINT_DETAIL[name],
+    })
+  );
+
+  const customItems =
+    extensions?.flatMap((extension) =>
+      (extension.constraintTags ?? []).map((tag) => ({
+        label: `@${tag.tagName}`,
+        kind: CompletionItemKind.Keyword,
+        detail: `Extension constraint tag from ${extension.extensionId}`,
+      }))
+    ) ?? [];
+
+  return [...builtins, ...customItems];
 }

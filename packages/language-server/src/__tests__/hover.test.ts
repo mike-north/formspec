@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  defineConstraintTag,
+  defineExtension,
+} from "@formspec/core";
 import type { MarkupContent } from "vscode-languageserver/node.js";
 import { getHoverForTag } from "../providers/hover.js";
 
@@ -92,5 +96,25 @@ describe("getHoverForTag", () => {
     const pascalCase = getHoverForTag("Minimum");
     const camelCase = getHoverForTag("minimum");
     expect(pascalCase).toEqual(camelCase);
+  });
+
+  it("returns hover content for extension-defined tags when extensions are provided", () => {
+    const extension = defineExtension({
+      extensionId: "x-test/numeric",
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "maxDecimalPlaces",
+          constraintName: "MaxDecimalPlaces",
+          parseValue: (raw) => Number(raw.trim()),
+        }),
+      ],
+    });
+
+    const hover = getHoverForTag("@maxDecimalPlaces", [extension]);
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("x-test/numeric");
+      expect(hover.contents.value).toContain("@maxDecimalPlaces");
+    }
   });
 });
