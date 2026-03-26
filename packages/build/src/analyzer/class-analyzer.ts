@@ -329,6 +329,15 @@ function applyEnumMemberDisplayNames(
   type: TypeNode,
   annotations: readonly AnnotationNode[]
 ): { type: TypeNode; annotations: AnnotationNode[] } {
+  if (
+    !annotations.some(
+      (annotation) =>
+        annotation.annotationKind === "displayName" && annotation.value.trim().startsWith(":")
+    )
+  ) {
+    return { type, annotations: [...annotations] };
+  }
+
   const consumed = new Set<AnnotationNode>();
   const nextType = rewriteEnumDisplayNames(type, annotations, consumed);
 
@@ -378,11 +387,14 @@ function applyEnumMemberDisplayNamesToEnum(
     const parsed = parseEnumMemberDisplayName(annotation.value);
     if (!parsed) continue;
 
+    // Once parsed as a member-target display name, never let it fall back to a
+    // field-level title, even if the target value does not exist.
+    consumed.add(annotation);
+
     const member = type.members.find((m) => String(m.value) === parsed.value);
     if (!member) continue;
 
     displayNames.set(String(member.value), parsed.label);
-    consumed.add(annotation);
   }
 
   if (displayNames.size === 0) {
