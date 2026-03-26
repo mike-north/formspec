@@ -25,6 +25,7 @@ import type {
   AnnotationNode,
   ObjectProperty,
 } from "@formspec/core";
+import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
 // OUTPUT TYPE
@@ -85,10 +86,33 @@ export interface JsonSchema2020 {
 interface GeneratorContext {
   /** Named type schemas collected during traversal, keyed by reference name. */
   readonly defs: Record<string, JsonSchema2020>;
+  /** Optional extension registry for resolving custom IR nodes. */
+  readonly extensionRegistry?: ExtensionRegistry;
+  /** Vendor prefix passed through to extension toJsonSchema handlers. */
+  readonly vendorPrefix: string;
 }
 
-function makeContext(): GeneratorContext {
-  return { defs: {} };
+/**
+ * Options for generating JSON Schema from a canonical FormIR.
+ */
+export interface GenerateJsonSchemaFromIROptions {
+  /** Registry used to resolve custom types, constraints, and annotations. */
+  readonly extensionRegistry?: ExtensionRegistry;
+  /**
+   * Vendor prefix passed to extension `toJsonSchema` hooks.
+   * @defaultValue "x-formspec"
+   */
+  readonly vendorPrefix?: string;
+}
+
+function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
+  return {
+    defs: {},
+    ...(options?.extensionRegistry !== undefined
+      ? { extensionRegistry: options.extensionRegistry }
+      : {}),
+    vendorPrefix: options?.vendorPrefix ?? "x-formspec",
+  };
 }
 
 // =============================================================================
@@ -131,8 +155,11 @@ function makeContext(): GeneratorContext {
  * @param ir - The canonical FormIR produced by a canonicalizer
  * @returns A plain JSON-serializable JSON Schema 2020-12 object
  */
-export function generateJsonSchemaFromIR(ir: FormIR): JsonSchema2020 {
-  const ctx = makeContext();
+export function generateJsonSchemaFromIR(
+  ir: FormIR,
+  options?: GenerateJsonSchemaFromIROptions
+): JsonSchema2020 {
+  const ctx = makeContext(options);
 
   // Seed $defs from the type registry so referenced types are available even if
   // the field tree traversal never visits them (e.g., unreferenced types added
@@ -229,17 +256,17 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
 
   // Apply direct constraints. multipleOf:1 on a number type is a special case:
   // it promotes the type to "integer" and removes the multipleOf keyword.
-  applyConstraints(schema, directConstraints);
+  applyConstraints(schema, directConstraints, ctx);
 
   // Apply annotations (title, description, default, deprecated, etc.).
-  applyAnnotations(schema, field.annotations);
+  applyAnnotations(schema, field.annotations, ctx);
 
   // If no path-targeted constraints, return as-is.
   if (pathConstraints.length === 0) {
     return schema;
   }
 
-  return applyPathTargetedConstraints(schema, pathConstraints);
+  return applyPathTargetedConstraints(schema, pathConstraints, ctx);
 }
 
 /**
@@ -251,11 +278,12 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
  */
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
-  pathConstraints: readonly ConstraintNode[]
+  pathConstraints: readonly ConstraintNode[],
+  ctx: GeneratorContext
 ): JsonSchema2020 {
   // Array transparency: path-targeted constraints target the item type.
   if (schema.type === "array" && schema.items) {
-    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints);
+    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints, ctx);
     return schema;
   }
 
@@ -274,7 +302,7 @@ function applyPathTargetedConstraints(
   const propertyOverrides: Record<string, JsonSchema2020> = {};
   for (const [target, constraints] of byTarget) {
     const subSchema: JsonSchema2020 = {};
-    applyConstraints(subSchema, constraints);
+    applyConstraints(subSchema, constraints, ctx);
     propertyOverrides[target] = subSchema;
   }
 
@@ -359,7 +387,7 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
       return generateDynamicType(type);
 
     case "custom":
-      return generateCustomType(type);
+      return generateCustomType(type, ctx);
 
     default: {
       // TypeScript exhaustiveness guard.
@@ -454,8 +482,8 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
  */
 function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): JsonSchema2020 {
   const schema = generateTypeNode(prop.type, ctx);
-  applyConstraints(schema, prop.constraints);
-  applyAnnotations(schema, prop.annotations);
+  applyConstraints(schema, prop.constraints, ctx);
+  applyAnnotations(schema, prop.annotations, ctx);
   return schema;
 }
 
@@ -533,14 +561,6 @@ function generateDynamicType(type: DynamicTypeNode): JsonSchema2020 {
   };
 }
 
-/**
- * CustomTypeNode is a placeholder for Phase 8 extensions.
- * Emits a minimal passthrough object type until the extension API is implemented.
- */
-function generateCustomType(_type: CustomTypeNode): JsonSchema2020 {
-  return { type: "object" };
-}
-
 // =============================================================================
 // CONSTRAINT APPLICATION
 // =============================================================================
@@ -556,7 +576,11 @@ function generateCustomType(_type: CustomTypeNode): JsonSchema2020 {
  *
  * Path-targeted constraints are handled separately by `applyPathTargetedConstraints`.
  */
-function applyConstraints(schema: JsonSchema2020, constraints: readonly ConstraintNode[]): void {
+function applyConstraints(
+  schema: JsonSchema2020,
+  constraints: readonly ConstraintNode[],
+  ctx: GeneratorContext
+): void {
   for (const constraint of constraints) {
     switch (constraint.constraintKind) {
       case "minimum":
@@ -615,7 +639,7 @@ function applyConstraints(schema: JsonSchema2020, constraints: readonly Constrai
         break;
 
       case "custom":
-        // CustomConstraintNode — handled by Phase 8 extensions.
+        applyCustomConstraint(schema, constraint, ctx);
         break;
 
       default: {
@@ -643,7 +667,11 @@ function applyConstraints(schema: JsonSchema2020, constraints: readonly Constrai
  * UI-only annotations (`placeholder`, `formatHint`) are silently ignored here —
  * they belong in the UI Schema, not the data schema.
  */
-function applyAnnotations(schema: JsonSchema2020, annotations: readonly AnnotationNode[]): void {
+function applyAnnotations(
+  schema: JsonSchema2020,
+  annotations: readonly AnnotationNode[],
+  ctx: GeneratorContext
+): void {
   for (const annotation of annotations) {
     switch (annotation.annotationKind) {
       case "displayName":
@@ -671,7 +699,7 @@ function applyAnnotations(schema: JsonSchema2020, annotations: readonly Annotati
         break;
 
       case "custom":
-        // CustomAnnotationNode — handled by Phase 8 extensions.
+        applyCustomAnnotation(schema, annotation, ctx);
         break;
 
       default: {
@@ -681,4 +709,49 @@ function applyAnnotations(schema: JsonSchema2020, annotations: readonly Annotati
       }
     }
   }
+}
+
+function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSchema2020 {
+  const registration = ctx.extensionRegistry?.findType(type.typeId);
+  if (registration === undefined) {
+    throw new Error(
+      `Cannot generate JSON Schema for custom type "${type.typeId}" without a matching extension registration`
+    );
+  }
+
+  return registration.toJsonSchema(type.payload, ctx.vendorPrefix) as JsonSchema2020;
+}
+
+function applyCustomConstraint(
+  schema: JsonSchema2020,
+  constraint: Extract<ConstraintNode, { constraintKind: "custom" }>,
+  ctx: GeneratorContext
+): void {
+  const registration = ctx.extensionRegistry?.findConstraint(constraint.constraintId);
+  if (registration === undefined) {
+    throw new Error(
+      `Cannot generate JSON Schema for custom constraint "${constraint.constraintId}" without a matching extension registration`
+    );
+  }
+
+  Object.assign(schema, registration.toJsonSchema(constraint.payload, ctx.vendorPrefix));
+}
+
+function applyCustomAnnotation(
+  schema: JsonSchema2020,
+  annotation: Extract<AnnotationNode, { annotationKind: "custom" }>,
+  ctx: GeneratorContext
+): void {
+  const registration = ctx.extensionRegistry?.findAnnotation(annotation.annotationId);
+  if (registration === undefined) {
+    throw new Error(
+      `Cannot generate JSON Schema for custom annotation "${annotation.annotationId}" without a matching extension registration`
+    );
+  }
+
+  if (registration.toJsonSchema === undefined) {
+    return;
+  }
+
+  Object.assign(schema, registration.toJsonSchema(annotation.value, ctx.vendorPrefix));
 }

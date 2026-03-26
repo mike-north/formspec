@@ -6,7 +6,18 @@
 
 import type { FormElement, FormSpec } from "@formspec/core";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
-import { generateJsonSchemaFromIR, type JsonSchema2020 } from "./ir-generator.js";
+import {
+  generateJsonSchemaFromIR,
+  type GenerateJsonSchemaFromIROptions,
+  type JsonSchema2020,
+} from "./ir-generator.js";
+
+/**
+ * Options for generating JSON Schema from a Chain DSL form.
+ *
+ * These options are forwarded to the IR-based JSON Schema generator.
+ */
+export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
 /**
  * Generates a JSON Schema 2020-12 from a FormSpec.
@@ -37,8 +48,9 @@ import { generateJsonSchemaFromIR, type JsonSchema2020 } from "./ir-generator.js
  * @returns A JSON Schema 2020-12 object
  */
 export function generateJsonSchema<E extends readonly FormElement[]>(
-  form: FormSpec<E>
+  form: FormSpec<E>,
+  options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
   const ir = canonicalizeChainDSL(form);
-  return generateJsonSchemaFromIR(ir);
+  return generateJsonSchemaFromIR(ir, options);
 }
