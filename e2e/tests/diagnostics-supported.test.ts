@@ -52,7 +52,7 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("fixtures/tsdoc-class/error-type-mismatch.ts:7:");
   });
 
-  it.skip("BUG: invalid path targets should produce UNKNOWN_PATH_TARGET with the unresolved segment", () => {
+  it.skip("BUG(#92): invalid path targets should produce UNKNOWN_PATH_TARGET with the unresolved segment", () => {
     const fixturePath = resolveFixture("tsdoc-class", "error-invalid-path-target.ts");
     const result = runCli(["generate", fixturePath, "InvalidPathTargetForm", "--validate-only"]);
     const output = result.stdout + result.stderr;
@@ -63,7 +63,7 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("zip");
   });
 
-  it.skip("BUG: field-level broadening should produce CONSTRAINT_BROADENING", () => {
+  it.skip("BUG(#92): field-level broadening should produce CONSTRAINT_BROADENING", () => {
     const fixturePath = resolveFixture("tsdoc-class", "error-broadening-constraint.ts");
     const result = runCli(["generate", fixturePath, "BroadeningConstraintForm", "--validate-only"]);
     const output = result.stdout + result.stderr;
