@@ -51,6 +51,18 @@ function isTypeReference(type: ts.Type): type is ts.TypeReference {
   );
 }
 
+/**
+ * Placeholder used while a named object type is still being expanded.
+ *
+ * The object identity matters: final empty-object schemas are distinct
+ * instances, so we can tell an in-progress registry entry from a real one.
+ */
+const RESOLVING_TYPE_PLACEHOLDER: TypeNode = {
+  kind: "object",
+  properties: [],
+  additionalProperties: true,
+};
+
 // =============================================================================
 // IR OUTPUT TYPES
 // =============================================================================
@@ -678,20 +690,8 @@ function tryResolveRecordType(
     return null;
   }
 
-  // Circular-reference guard: if we are already resolving this type (e.g.
-  // `type X = Record<string, X>`), return null so that `resolveObjectType`
-  // falls through to its own visiting-set guard and emits a safe empty object.
-  if (visiting.has(type)) {
-    return null;
-  }
-
-  visiting.add(type);
-  try {
-    const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
-    return { kind: "record", valueType };
-  } finally {
-    visiting.delete(type);
-  }
+  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+  return { kind: "record", valueType };
 }
 
 function resolveObjectType(
@@ -701,27 +701,63 @@ function resolveObjectType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>
 ): TypeNode {
-  // Detect pure dictionary types (Record<string, T> or { [k: string]: T })
-  // before any named-type registration to prevent lifting them to $defs.
-  const recordNode = tryResolveRecordType(type, checker, file, typeRegistry, visiting);
-  if (recordNode) {
-    return recordNode;
-  }
+  const typeName = getNamedTypeName(type);
+  const namedTypeName = typeName ?? undefined;
+  const namedDecl = getNamedTypeDeclaration(type);
+  const shouldRegisterNamedType =
+    namedTypeName !== undefined &&
+    !(namedTypeName === "Record" && namedDecl?.getSourceFile().fileName !== file);
 
-  // Circular reference guard
   if (visiting.has(type)) {
-    // Recursive object expansion is deferred for now. Emit a closed empty object
-    // sentinel so the analyzer stays finite without claiming arbitrary keys.
+    // Recursive object expansion is deferred through the named-type registry.
+    // Anonymous cycles still collapse to a closed empty object sentinel.
+    if (namedTypeName !== undefined && shouldRegisterNamedType) {
+      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+    }
     return { kind: "object", properties: [], additionalProperties: false };
   }
+
+  // Seed the registry with a placeholder before traversing children so any
+  // recursive property reference can resolve to a stable `$ref`.
+  if (namedTypeName !== undefined && shouldRegisterNamedType && !typeRegistry[namedTypeName]) {
+    typeRegistry[namedTypeName] = {
+      name: namedTypeName,
+      type: RESOLVING_TYPE_PLACEHOLDER,
+      provenance: provenanceForDeclaration(namedDecl, file),
+    };
+  }
+
   visiting.add(type);
 
-  // Check if this is a named type already in the registry
-  const typeName = getNamedTypeName(type);
-  const namedDecl = getNamedTypeDeclaration(type);
-  if (typeName && typeName in typeRegistry) {
+  // Detect previously resolved named types before walking the object body.
+  if (
+    namedTypeName !== undefined &&
+    shouldRegisterNamedType &&
+    typeRegistry[namedTypeName]?.type !== undefined
+  ) {
+    if (typeRegistry[namedTypeName].type !== RESOLVING_TYPE_PLACEHOLDER) {
+      visiting.delete(type);
+      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+    }
+  }
+
+  // Detect pure dictionary types (Record<string, T> or { [k: string]: T })
+  // after the recursion guard/placeholder setup so recursive records can point
+  // back at the named type instead of collapsing to an empty object.
+  const recordNode = tryResolveRecordType(type, checker, file, typeRegistry, visiting);
+  if (recordNode) {
     visiting.delete(type);
-    return { kind: "reference", name: typeName, typeArguments: [] };
+    if (namedTypeName !== undefined && shouldRegisterNamedType) {
+      const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
+      typeRegistry[namedTypeName] = {
+        name: namedTypeName,
+        type: recordNode,
+        ...(annotations !== undefined && annotations.length > 0 && { annotations }),
+        provenance: provenanceForDeclaration(namedDecl, file),
+      };
+      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+    }
+    return recordNode;
   }
 
   const properties: ObjectProperty[] = [];
@@ -766,15 +802,15 @@ function resolveObjectType(
   };
 
   // Register named types
-  if (typeName) {
+  if (namedTypeName !== undefined && shouldRegisterNamedType) {
     const annotations = namedDecl ? extractJSDocAnnotationNodes(namedDecl, file) : undefined;
-    typeRegistry[typeName] = {
-      name: typeName,
+    typeRegistry[namedTypeName] = {
+      name: namedTypeName,
       type: objectNode,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
       provenance: provenanceForDeclaration(namedDecl, file),
     };
-    return { kind: "reference", name: typeName, typeArguments: [] };
+    return { kind: "reference", name: namedTypeName, typeArguments: [] };
   }
 
   return objectNode;

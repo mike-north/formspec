@@ -104,7 +104,7 @@ export const field = {
    * Mixing strings and objects will throw a runtime error.
    *
    * @param name - The field name (used as the schema key)
-   * @param options - Array of allowed string values or {id, label} objects
+   * @param options - Array of allowed string values or objects with `id` and `label` properties
    * @param config - Optional configuration for label, etc.
    * @returns A StaticEnumField descriptor
    * @throws Error if options array contains mixed types (strings and objects)

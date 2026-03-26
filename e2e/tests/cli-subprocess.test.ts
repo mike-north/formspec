@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runCli, resolveFixture } from "../helpers/schema-assertions.js";
+import { findSchemaFile, runCli, resolveFixture } from "../helpers/schema-assertions.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -266,14 +266,28 @@ export const ActivateParams = formspec(
       expect(output).not.toMatch(/\n\s*at\s+/);
     });
 
-    it.skip("BUG: circular references should fail clearly instead of silently degrading", () => {
+    it("generates recursive schemas for circular references", () => {
       const fixturePath = resolveFixture("cli", "circular-node.ts");
-      const result = runCli(["generate", fixturePath, "CircularNode", "-o", tempDir]);
+      const outDir = path.join(tempDir, "circular-node");
+      const result = runCli(["generate", fixturePath, "CircularNode", "-o", outDir]);
       const output = result.stdout + result.stderr;
+      const schemaFile = findSchemaFile(outDir, "schema.json");
 
-      expect(result.exitCode).not.toBe(0);
-      expect(output).toContain("circular");
+      expect(result.exitCode).toBe(0);
       expect(output).not.toMatch(/\n\s*at\s+/);
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
+
+      const schema = readJson(schemaFile) as {
+        type?: string;
+        properties?: Record<string, { $ref?: string; type?: string }>;
+        $defs?: Record<string, { properties?: Record<string, { $ref?: string }> }>;
+      };
+      expect(schema.type).toBe("object");
+      expect(schema.properties?.next).toEqual({ $ref: "#/$defs/CircularNode" });
+      expect(schema.$defs?.CircularNode?.properties?.next).toEqual({
+        $ref: "#/$defs/CircularNode",
+      });
     });
   });
 });

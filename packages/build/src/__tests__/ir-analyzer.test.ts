@@ -569,4 +569,33 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
       expect(field.type.additionalProperties).toBe(false);
     }
   });
+
+  it("resolves recursive class properties as named references", () => {
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "CircularNode");
+    if (!classDecl) throw new Error("CircularNode class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+
+    expect(Object.keys(analysis.typeRegistry)).toContain("CircularNode");
+
+    const nextField = findField(analysis.fields, "next");
+    expect(nextField.type).toEqual({
+      kind: "reference",
+      name: "CircularNode",
+      typeArguments: [],
+    });
+
+    const namedType = analysis.typeRegistry["CircularNode"];
+    if (!namedType) throw new Error("CircularNode type registry entry not found");
+    expect(namedType.type.kind).toBe("object");
+    if (namedType.type.kind === "object") {
+      const recursiveProp = namedType.type.properties.find((prop) => prop.name === "next");
+      expect(recursiveProp?.type).toEqual({
+        kind: "reference",
+        name: "CircularNode",
+        typeArguments: [],
+      });
+    }
+  });
 });

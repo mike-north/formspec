@@ -621,6 +621,59 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({ $ref: "#/$defs/Address" });
     });
 
+    it("emits recursive $defs entries for self-referential named types", () => {
+      const circularNodeType = {
+        kind: "object" as const,
+        properties: [
+          {
+            name: "id",
+            type: { kind: "primitive" as const, primitiveKind: "string" as const },
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+          {
+            name: "next",
+            type: { kind: "reference" as const, name: "CircularNode", typeArguments: [] as const },
+            optional: true,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+        additionalProperties: true,
+      };
+
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [makeField("node", { kind: "reference", name: "CircularNode", typeArguments: [] })],
+        typeRegistry: {
+          CircularNode: {
+            name: "CircularNode",
+            type: circularNodeType,
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const defs = schema.$defs as Record<string, unknown>;
+      const circularDef = defs["CircularNode"] as Record<string, unknown>;
+      const properties = circularDef["properties"] as Record<string, Record<string, unknown>>;
+
+      expect(circularDef).toMatchObject({
+        type: "object",
+        required: ["id"],
+      });
+      expect(properties["next"]).toEqual({ $ref: "#/$defs/CircularNode" });
+      expect((schema.properties as Record<string, unknown>)["node"]).toEqual({
+        $ref: "#/$defs/CircularNode",
+      });
+    });
+
     it("emits $defs for named types in typeRegistry", () => {
       const ir: FormIR = {
         kind: "form-ir",

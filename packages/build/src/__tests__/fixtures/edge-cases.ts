@@ -91,6 +91,14 @@ export interface SelfRefRecord {
 /**
  * Various object type patterns.
  */
+export class CircularNode {
+  id!: string;
+  next?: CircularNode;
+}
+
+/**
+ * Various object type patterns.
+ */
 export class ObjectEdgeCases {
   // Empty object - Allow this as a test case for empty object type handling
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
