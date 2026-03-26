@@ -52,8 +52,8 @@ interface ClassSchemaFilePaths {
 
 interface MethodSchemaFilePaths {
   methodDir: string;
-  paramsSchemaPath?: string;
-  paramsUiSchemaPath?: string;
+  paramsSchemaPath: string | undefined;
+  paramsUiSchemaPath: string | undefined;
   returnTypePath: string;
 }
 
