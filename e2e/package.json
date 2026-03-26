@@ -1,6 +1,6 @@
 {
   "name": "@formspec/e2e",
-  "version": "0.1.0-alpha.16",
+  "version": "0.1.0-alpha.17",
   "private": true,
   "description": "End-to-end tests for FormSpec",
   "type": "module",

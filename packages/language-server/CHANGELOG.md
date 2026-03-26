@@ -1,5 +1,18 @@
 # @formspec/language-server
 
+## 0.1.0-alpha.17
+
+### Minor Changes
+
+- [#136](https://github.com/mike-north/formspec/pull/136) [`dbc6c21`](https://github.com/mike-north/formspec/commit/dbc6c219be95d9481afa9936eb3b81c7f446fb65) Thanks [@mike-north](https://github.com/mike-north)! - Add extension-defined TSDoc constraint tags and built-in constraint broadening for custom types through the public FormSpec extension surface.
+
+  This also fixes the extension integration path so class and interface schema generation can resolve registered custom source types, parse extension tags alongside built-in tags in the same TSDoc block, validate extension-defined narrowing and contradiction semantics, and emit stable JSON Schema plus JSON Forms output without adding Decimal-specific branches to FormSpec internals.
+
+### Patch Changes
+
+- Updated dependencies [[`dbc6c21`](https://github.com/mike-north/formspec/commit/dbc6c219be95d9481afa9936eb3b81c7f446fb65)]:
+  - @formspec/core@0.1.0-alpha.17
+
 ## 0.1.0-alpha.16
 
 ### Patch Changes
