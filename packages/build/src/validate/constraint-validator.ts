@@ -339,7 +339,7 @@ function resolvePathTargetType(
   if (effectiveType.kind === "object") {
     const [segment, ...rest] = segments;
     if (segment === undefined) {
-      return { kind: "resolved", type: effectiveType };
+      throw new Error("Invariant violation: object path traversal requires a segment");
     }
     const property = effectiveType.properties.find((prop) => prop.name === segment);
     if (property === undefined) {
