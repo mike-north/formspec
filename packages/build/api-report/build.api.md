@@ -4,7 +4,6 @@
 
 ```ts
 
-import type { AnyField } from '@formspec/core';
 import type { CustomAnnotationRegistration } from '@formspec/core';
 import type { CustomConstraintRegistration } from '@formspec/core';
 import type { CustomTypeRegistration } from '@formspec/core';
@@ -27,7 +26,7 @@ export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOp
 // @public
 export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
     readonly filePath: string;
-    readonly overlays: FormSpec<readonly AnyField[]>;
+    readonly overlays: FormSpec<readonly FormElement[]>;
     readonly typeName: string;
 }
 

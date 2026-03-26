@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { buildMixedAuthoringSchemas } from "../index.js";
 import {
+  constrainedShippingAddressOverlays,
   duplicateShippingAddressOverlays,
   incompatibleShippingAddressOverlays,
   nestedShippingAddressOverlays,
+  requiredShippingAddressOverlays,
   shippingAddressOverlays,
   unknownShippingAddressOverlays,
 } from "./fixtures/mixed-authoring-shipping-address.js";
@@ -94,5 +96,25 @@ describe("buildMixedAuthoringSchemas", () => {
         overlays: shippingAddressOverlays,
       })
     ).toThrow(/not found as a class, interface, or type alias/);
+  });
+
+  it("rejects overlay-defined constraints so static constraints stay authoritative", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "ShippingAddressModel",
+        overlays: constrainedShippingAddressOverlays,
+      })
+    ).toThrow(/cannot define constraints/);
+  });
+
+  it("rejects overlay-defined requiredness so the static model remains authoritative", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "ShippingAddressModel",
+        overlays: requiredShippingAddressOverlays,
+      })
+    ).toThrow(/cannot change requiredness/);
   });
 });

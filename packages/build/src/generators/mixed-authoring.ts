@@ -9,8 +9,8 @@
 
 import type {
   AnnotationNode,
-  AnyField,
   FieldNode,
+  FormElement,
   FormIRElement,
   FormSpec,
   TypeNode,
@@ -61,8 +61,8 @@ export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFro
   readonly filePath: string;
   /** Name of the class, interface, or type alias to analyze. */
   readonly typeName: string;
-  /** ChainDSL field overlays to apply to the static model. */
-  readonly overlays: FormSpec<readonly AnyField[]>;
+  /** ChainDSL overlays to apply to the static model. Groups and conditionals are flattened by field name. */
+  readonly overlays: FormSpec<readonly FormElement[]>;
 }
 
 /**
@@ -118,7 +118,7 @@ function analyzeNamedType(filePath: string, typeName: string): IRClassAnalysis {
 
 function composeAnalysisWithOverlays(
   analysis: IRClassAnalysis,
-  overlays: FormSpec<readonly AnyField[]>
+  overlays: FormSpec<readonly FormElement[]>
 ): IRClassAnalysis {
   const overlayIR = canonicalizeChainDSL(overlays);
   const overlayFields = collectOverlayFields(overlayIR.elements);
@@ -190,11 +190,26 @@ function mergeFieldOverlay(
   overlayField: FieldNode,
   typeRegistry: IRClassAnalysis["typeRegistry"]
 ): FieldNode {
+  assertSupportedOverlayField(baseField, overlayField);
   return {
     ...baseField,
     type: mergeFieldType(baseField, overlayField, typeRegistry),
     annotations: mergeAnnotations(baseField.annotations, overlayField.annotations),
   };
+}
+
+function assertSupportedOverlayField(baseField: FieldNode, overlayField: FieldNode): void {
+  if (overlayField.constraints.length > 0) {
+    throw new Error(
+      `Mixed-authoring overlay for "${baseField.name}" cannot define constraints; keep constraints on the static model`
+    );
+  }
+
+  if (overlayField.required) {
+    throw new Error(
+      `Mixed-authoring overlay for "${baseField.name}" cannot change requiredness; keep requiredness on the static model`
+    );
+  }
 }
 
 function mergeFieldType(

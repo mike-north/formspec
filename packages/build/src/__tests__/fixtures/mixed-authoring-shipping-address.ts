@@ -47,3 +47,11 @@ export const duplicateShippingAddressOverlays = formspec(
 );
 
 export const unknownShippingAddressOverlays = formspec(field.dynamicEnum("region", "regions"));
+
+export const constrainedShippingAddressOverlays = formspec(
+  field.text("city", { minLength: 2 })
+);
+
+export const requiredShippingAddressOverlays = formspec(
+  field.text("postalCode", { required: true })
+);
