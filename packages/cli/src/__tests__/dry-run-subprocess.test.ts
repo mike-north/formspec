@@ -13,6 +13,8 @@ function createTempDir(prefix: string): string {
 }
 
 function runCli(args: string[]): { output: string; status: number } {
+  ensureCliBuilt();
+
   const result = spawnSync("node", [cliPath, ...args], {
     cwd: packageDir,
     encoding: "utf-8",
@@ -23,6 +25,33 @@ function runCli(args: string[]): { output: string; status: number } {
     output,
     status: result.status ?? 1,
   };
+}
+
+function ensureCliBuilt(): void {
+  if (fs.existsSync(cliPath)) {
+    return;
+  }
+
+  // This subprocess suite only needs the runnable CLI entrypoint.
+  // Avoid `pnpm run build` here because the package build also runs
+  // declaration generation and API Extractor, which pull in broader
+  // workspace prerequisites unrelated to this runtime smoke test.
+  const buildResult = spawnSync("pnpm", ["exec", "tsup"], {
+    cwd: packageDir,
+    encoding: "utf-8",
+  });
+
+  if (buildResult.status !== 0 || !fs.existsSync(cliPath)) {
+    throw new Error(
+      [
+        "Failed to build CLI test artifact at dist/index.js.",
+        buildResult.stdout,
+        buildResult.stderr,
+      ]
+        .filter((part) => part.length > 0)
+        .join("\n")
+    );
+  }
 }
 
 function createClassOnlyFixture(baseDir: string): { tsPath: string } {

@@ -23,7 +23,6 @@
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
     "clean": "rm -rf dist temp",
-    "pretest": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api-extractor": "api-extractor run",
