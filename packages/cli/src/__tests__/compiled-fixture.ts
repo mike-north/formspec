@@ -31,6 +31,9 @@ export function ensureCompiledFixture(tsPath: string): string {
     fileName: tsPath,
   }).outputText;
 
+  // Current runtime fixtures only import `@formspec/dsl`. If future fixtures
+  // import other workspace packages, this rewrite will need to expand beyond
+  // the single DSL module mapping.
   const rewritten = transpiled.replaceAll(
     /from\s+["']@formspec\/dsl["']/g,
     `from ${JSON.stringify(dslModuleUrl)}`
