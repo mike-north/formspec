@@ -15,6 +15,7 @@ import {
 interface NullableSchema {
   readonly oneOf?: readonly unknown[];
   readonly ["x-formspec-max-decimal-places"]?: unknown;
+  readonly ["x-formspec-decimal-minimum"]?: unknown;
 }
 
 function writeTempSource(source: string): string {
@@ -71,6 +72,9 @@ describe("numeric extension integration", () => {
         /** @maxDecimalPlaces 2 */
         nullableAmount: Money | null;
 
+        /** @minimum 1.50 */
+        nullableMinimumAmount: Money | null;
+
         /** @maxDecimalPlaces 4 */
         amounts: MoneyList;
 
@@ -122,6 +126,20 @@ describe("numeric extension integration", () => {
       ])
     );
 
+    const nullableMinimumAmountSchema = jsonSchema.properties?.["nullableMinimumAmount"] as
+      | NullableSchema
+      | undefined;
+    expect(nullableMinimumAmountSchema?.["x-formspec-decimal-minimum"]).toBe("1.50");
+    expect(nullableMinimumAmountSchema?.oneOf).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "string",
+          "x-formspec-decimal": true,
+        }),
+        expect.objectContaining({ type: "null" }),
+      ])
+    );
+
     expect(jsonSchema.properties?.["amounts"]).toEqual({
       type: "array",
       "x-formspec-max-decimal-places": 4,
@@ -149,6 +167,7 @@ describe("numeric extension integration", () => {
       elements: [
         { type: "Control", scope: "#/properties/amount", label: "Invoice Amount" },
         { type: "Control", scope: "#/properties/nullableAmount" },
+        { type: "Control", scope: "#/properties/nullableMinimumAmount" },
         { type: "Control", scope: "#/properties/amounts" },
         { type: "Control", scope: "#/properties/net" },
         { type: "Control", scope: "#/properties/count" },

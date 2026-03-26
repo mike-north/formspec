@@ -425,12 +425,14 @@ interface CustomSemanticEntry {
 
 function compareCustomConstraintStrength(current: CustomSemanticEntry, previous: CustomSemanticEntry): number {
   const order = current.comparePayloads(current.constraint.payload, previous.constraint.payload);
+  const equalPayloadTiebreaker =
+    order === 0 ? compareSemanticInclusivity(current.role.inclusive, previous.role.inclusive) : order;
 
   switch (current.role.bound) {
     case "lower":
-      return order;
+      return equalPayloadTiebreaker;
     case "upper":
-      return order === 0 ? 0 : -order;
+      return equalPayloadTiebreaker === 0 ? 0 : -equalPayloadTiebreaker;
     case "exact":
       return order === 0 ? 0 : Number.NaN;
     default: {
@@ -438,6 +440,13 @@ function compareCustomConstraintStrength(current: CustomSemanticEntry, previous:
       return _exhaustive;
     }
   }
+}
+
+function compareSemanticInclusivity(currentInclusive: boolean, previousInclusive: boolean): number {
+  if (currentInclusive === previousInclusive) {
+    return 0;
+  }
+  return currentInclusive ? -1 : 1;
 }
 
 function customConstraintsContradict(

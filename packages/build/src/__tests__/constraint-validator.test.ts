@@ -1296,6 +1296,29 @@ describe("validateIR", () => {
       expect(result.valid).toBe(false);
       expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     });
+
+    it("treats inclusive bounds at the same Decimal payload as broader than exclusive bounds", () => {
+      const ir = makeIR([
+        makeField("amount", DECIMAL_TYPE, [
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalExclusiveMinimum",
+            "10.0",
+            1,
+            "@exclusiveMinimum"
+          ),
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalMinimum",
+            "10.0",
+            2,
+            "@minimum"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
+    });
   });
 
   describe("path-targeted constraints on non-traversable types", () => {

@@ -379,26 +379,6 @@ export function parseTSDocTags(
     }
   }
 
-  for (const tag of jsDocTagsAll) {
-    const tagName = normalizeConstraintTagName(tag.tagName.text);
-    if (
-      isBuiltinConstraintName(tagName) ||
-      TAGS_REQUIRING_RAW_TEXT.has(tagName) ||
-      options?.extensionRegistry?.findConstraintTag(tagName) !== undefined
-    ) {
-      continue;
-    }
-
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined || commentText.trim() === "") continue;
-
-    const provenance = provenanceForJSDocTag(tag, file);
-    const constraintNode = parseConstraintValue(tagName, commentText.trim(), provenance, options);
-    if (constraintNode) {
-      constraints.push(constraintNode);
-    }
-  }
-
   return { constraints, annotations };
 }
 
@@ -690,12 +670,16 @@ function parseExtensionConstraintValue(
     );
   }
 
-  const fieldType = options?.fieldType;
-  if (fieldType?.kind !== "custom" || !isBuiltinConstraintName(tagName)) {
+  if (!isBuiltinConstraintName(tagName)) {
     return null;
   }
 
-  const broadened = registry.findBuiltinConstraintBroadening(fieldType.typeId, tagName);
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  if (broadenedTypeId === undefined) {
+    return null;
+  }
+
+  const broadened = registry.findBuiltinConstraintBroadening(broadenedTypeId, tagName);
   if (broadened === undefined) {
     return null;
   }
@@ -708,6 +692,31 @@ function parseExtensionConstraintValue(
     path,
     registry
   );
+}
+
+function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+  if (fieldType?.kind === "custom") {
+    return fieldType.typeId;
+  }
+
+  if (fieldType?.kind !== "union") {
+    return undefined;
+  }
+
+  const customMembers = fieldType.members.filter(
+    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
+  );
+  if (customMembers.length !== 1) {
+    return undefined;
+  }
+
+  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
+  const allOtherMembersAreNull = nonCustomMembers.every(
+    (member) => member.kind === "primitive" && member.primitiveKind === "null"
+  );
+
+  const customMember = customMembers[0];
+  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
 }
 
 function makeCustomConstraintNode(
