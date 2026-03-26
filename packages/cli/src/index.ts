@@ -237,7 +237,7 @@ function writeIrFile(ir: FormIR, name: string, outDir: string): void {
 
 function formatDiagnosticLocation(file: string, line: number, column: number): string {
   if (file.length === 0) {
-    return `<unknown>:${String(line)}:${String(column + 1)}`;
+    return "<unknown>";
   }
 
   return `${path.relative(process.cwd(), file)}:${String(line)}:${String(column + 1)}`;
