@@ -22,3 +22,21 @@ export const shippingAddressOverlays = formspec(
     params: ["country"],
   })
 );
+
+export class NumericShippingAddressModel {
+  cityCode!: number;
+}
+
+export const incompatibleShippingAddressOverlays = formspec(
+  field.dynamicEnum("cityCode", "cities")
+);
+
+export class NestedShippingAddressModel {
+  address!: {
+    city: string;
+  };
+}
+
+export const nestedShippingAddressOverlays = formspec(
+  field.object("address", field.dynamicEnum("city", "cities"))
+);

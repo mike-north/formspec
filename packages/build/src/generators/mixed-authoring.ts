@@ -132,7 +132,7 @@ function composeAnalysisWithOverlays(
       continue;
     }
 
-    mergedFields.push(mergeFieldOverlay(baseField, overlayField));
+    mergedFields.push(mergeFieldOverlay(baseField, overlayField, analysis.typeRegistry));
     overlayByName.delete(baseField.name);
   }
 
@@ -173,20 +173,122 @@ function collectOverlayFields(elements: readonly FormIRElement[]): FieldNode[] {
   return fields;
 }
 
-function mergeFieldOverlay(baseField: FieldNode, overlayField: FieldNode): FieldNode {
+function mergeFieldOverlay(
+  baseField: FieldNode,
+  overlayField: FieldNode,
+  typeRegistry: IRClassAnalysis["typeRegistry"]
+): FieldNode {
   return {
     ...baseField,
-    type: mergeFieldType(baseField.type, overlayField.type),
+    type: mergeFieldType(baseField, overlayField, typeRegistry),
     annotations: mergeAnnotations(baseField.annotations, overlayField.annotations),
   };
 }
 
-function mergeFieldType(baseType: TypeNode, overlayType: TypeNode): TypeNode {
+function mergeFieldType(
+  baseField: FieldNode,
+  overlayField: FieldNode,
+  typeRegistry: IRClassAnalysis["typeRegistry"]
+): TypeNode {
+  const { type: baseType } = baseField;
+  const { type: overlayType } = overlayField;
+
+  if (overlayType.kind === "object" || overlayType.kind === "array") {
+    throw new Error(
+      `Mixed-authoring overlays do not support nested object or array overlays for "${baseField.name}"`
+    );
+  }
+
   if (overlayType.kind === "dynamic") {
+    if (!isCompatibleDynamicOverlay(baseField, overlayField, typeRegistry)) {
+      throw new Error(
+        `Mixed-authoring overlay for "${baseField.name}" is incompatible with the static field type`
+      );
+    }
     return overlayType;
   }
 
+  if (!isSameStaticTypeShape(baseType, overlayType)) {
+    throw new Error(
+      `Mixed-authoring overlay for "${baseField.name}" must preserve the static field type`
+    );
+  }
+
   return baseType;
+}
+
+function isCompatibleDynamicOverlay(
+  baseField: FieldNode,
+  overlayField: FieldNode,
+  typeRegistry: IRClassAnalysis["typeRegistry"]
+): boolean {
+  const overlayType = overlayField.type;
+  if (overlayType.kind !== "dynamic") {
+    return false;
+  }
+
+  const resolvedBaseType = resolveReferenceType(baseField.type, typeRegistry);
+  if (resolvedBaseType === null) {
+    return false;
+  }
+
+  if (overlayType.dynamicKind === "enum") {
+    return resolvedBaseType.kind === "primitive"
+      ? resolvedBaseType.primitiveKind === "string"
+      : resolvedBaseType.kind === "enum";
+  }
+
+  return resolvedBaseType.kind === "object" || resolvedBaseType.kind === "record";
+}
+
+function resolveReferenceType(
+  type: TypeNode,
+  typeRegistry: IRClassAnalysis["typeRegistry"]
+): TypeNode | null {
+  if (type.kind !== "reference") {
+    return type;
+  }
+
+  const definition = typeRegistry[type.name];
+  if (definition === undefined) {
+    return null;
+  }
+
+  return resolveReferenceType(definition.type, typeRegistry);
+}
+
+function isSameStaticTypeShape(baseType: TypeNode, overlayType: TypeNode): boolean {
+  if (baseType.kind !== overlayType.kind) {
+    return false;
+  }
+
+  switch (baseType.kind) {
+    case "primitive":
+      return overlayType.kind === "primitive" && baseType.primitiveKind === overlayType.primitiveKind;
+    case "enum":
+      return overlayType.kind === "enum";
+    case "dynamic":
+      return (
+        overlayType.kind === "dynamic" &&
+        baseType.dynamicKind === overlayType.dynamicKind &&
+        baseType.sourceKey === overlayType.sourceKey
+      );
+    case "record":
+      return overlayType.kind === "record";
+    case "reference":
+      return overlayType.kind === "reference" && baseType.name === overlayType.name;
+    case "union":
+      return overlayType.kind === "union";
+    case "custom":
+      return overlayType.kind === "custom" && baseType.typeId === overlayType.typeId;
+    case "object":
+    case "array":
+      return true;
+    default: {
+      const _exhaustive: never = baseType;
+      return _exhaustive;
+    }
+  }
 }
 
 function mergeAnnotations(

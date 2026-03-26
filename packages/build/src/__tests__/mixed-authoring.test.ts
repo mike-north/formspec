@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { buildMixedAuthoringSchemas } from "../index.js";
-import { shippingAddressOverlays } from "./fixtures/mixed-authoring-shipping-address.js";
+import {
+  incompatibleShippingAddressOverlays,
+  nestedShippingAddressOverlays,
+  shippingAddressOverlays,
+} from "./fixtures/mixed-authoring-shipping-address.js";
 
 const fixturesDir = path.join(import.meta.dirname, "fixtures");
 const shippingAddressFixture = path.join(fixturesDir, "mixed-authoring-shipping-address.ts");
@@ -38,5 +42,25 @@ describe("buildMixedAuthoringSchemas", () => {
         { type: "Control", scope: "#/properties/postalCode", label: "Postal Code" },
       ],
     });
+  });
+
+  it("rejects overlays whose dynamic type conflicts with the static field type", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "NumericShippingAddressModel",
+        overlays: incompatibleShippingAddressOverlays,
+      })
+    ).toThrow(/incompatible with the static field type/);
+  });
+
+  it("rejects nested object overlays until mixed-authoring supports them explicitly", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "NestedShippingAddressModel",
+        overlays: nestedShippingAddressOverlays,
+      })
+    ).toThrow(/do not support nested object or array overlays/);
   });
 });
