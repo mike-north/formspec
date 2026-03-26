@@ -1127,7 +1127,7 @@ describe("validateIR", () => {
       expect(result.diagnostics[0]?.message).toContain("only valid on number fields");
     });
 
-    it("emits TYPE_MISMATCH when a path target references an unknown nested property", () => {
+    it("emits UNKNOWN_PATH_TARGET when a path target references an unknown nested property", () => {
       const objectType: ObjectTypeNode = {
         kind: "object",
         properties: [
@@ -1154,8 +1154,8 @@ describe("validateIR", () => {
 
       expect(result.valid).toBe(false);
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
-      expect(result.diagnostics[0]?.message).toContain('Field "amount"');
+      expect(result.diagnostics[0]?.code).toBe("UNKNOWN_PATH_TARGET");
+      expect(result.diagnostics[0]?.message).toContain('Field "amount.value"');
       expect(result.diagnostics[0]?.message).toContain("references unknown path segment \"value\"");
     });
 
