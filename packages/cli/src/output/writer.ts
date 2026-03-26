@@ -145,15 +145,17 @@ function planMethodSchemaFiles(
 ): string[] {
   return methods.flatMap((method) => {
     const methodDir = path.join(parentDir, method.name);
-    const files = [path.join(methodDir, "return_type.schema.json")];
+    const files: string[] = [];
 
     if (method.params) {
-      files.unshift(path.join(methodDir, "params.schema.json"));
+      files.push(path.join(methodDir, "params.schema.json"));
 
       if (method.params.uiSchema) {
         files.push(path.join(methodDir, "params.ui_schema.json"));
       }
     }
+
+    files.push(path.join(methodDir, "return_type.schema.json"));
 
     return files;
   });
