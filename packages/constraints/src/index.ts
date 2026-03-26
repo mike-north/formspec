@@ -1,5 +1,5 @@
 /**
- * @formspec/constraints
+ * \@formspec/constraints
  *
  * Constraint validation for FormSpec - restrict features based on target
  * environment capabilities.

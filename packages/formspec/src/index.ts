@@ -150,6 +150,7 @@ export {
   generateJsonSchema,
   generateUiSchema,
   buildFormSchemas,
+  buildMixedAuthoringSchemas,
   writeSchemas,
 } from "@formspec/build";
 
@@ -168,6 +169,8 @@ export type {
   RuleEffect,
   SchemaBasedCondition,
   BuildResult,
+  BuildMixedAuthoringSchemasOptions,
+  MixedAuthoringSchemas,
   WriteSchemasOptions,
   WriteSchemasResult,
 } from "@formspec/build";

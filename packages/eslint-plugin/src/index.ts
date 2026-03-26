@@ -1,5 +1,5 @@
 /**
- * @formspec/eslint-plugin
+ * \@formspec/eslint-plugin
  *
  * ESLint plugin for FormSpec constraint validation.
  *

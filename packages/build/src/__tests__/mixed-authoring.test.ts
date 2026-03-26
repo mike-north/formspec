@@ -1,0 +1,42 @@
+import { describe, it, expect } from "vitest";
+import * as path from "node:path";
+import { buildMixedAuthoringSchemas } from "../index.js";
+import { shippingAddressOverlays } from "./fixtures/mixed-authoring-shipping-address.js";
+
+const fixturesDir = path.join(import.meta.dirname, "fixtures");
+const shippingAddressFixture = path.join(fixturesDir, "mixed-authoring-shipping-address.ts");
+
+describe("buildMixedAuthoringSchemas", () => {
+  it("composes a TSDoc-derived model with ChainDSL field overlays", () => {
+    const result = buildMixedAuthoringSchemas({
+      filePath: shippingAddressFixture,
+      typeName: "ShippingAddressModel",
+      overlays: shippingAddressOverlays,
+    });
+
+    expect(result.jsonSchema).toEqual({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      properties: {
+        country: { type: "string", title: "Country" },
+        city: {
+          type: "string",
+          title: "City",
+          "x-formspec-source": "cities",
+          "x-formspec-params": ["country"],
+        },
+        postalCode: { type: "string", title: "Postal Code" },
+      },
+      required: ["country", "city"],
+    });
+
+    expect(result.uiSchema).toEqual({
+      type: "VerticalLayout",
+      elements: [
+        { type: "Control", scope: "#/properties/country", label: "Country" },
+        { type: "Control", scope: "#/properties/city", label: "City" },
+        { type: "Control", scope: "#/properties/postalCode", label: "Postal Code" },
+      ],
+    });
+  });
+});

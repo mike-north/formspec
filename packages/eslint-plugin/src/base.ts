@@ -1,5 +1,5 @@
 /**
- * @formspec/eslint-plugin/base
+ * \@formspec/eslint-plugin/base
  *
  * Rule infrastructure for extension authors who want to create their own
  * FormSpec-aware ESLint rules or custom constraint tag validators.

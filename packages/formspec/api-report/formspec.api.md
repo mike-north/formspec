@@ -8,6 +8,8 @@ import { AnyField } from '@formspec/core';
 import { ArrayField } from '@formspec/core';
 import { BooleanField } from '@formspec/core';
 import { buildFormSchemas } from '@formspec/build';
+import { buildMixedAuthoringSchemas } from '@formspec/build';
+import { BuildMixedAuthoringSchemasOptions } from '@formspec/build';
 import { BuildResult } from '@formspec/build';
 import { BuildSchema } from '@formspec/dsl';
 import { Conditional } from '@formspec/core';
@@ -58,6 +60,7 @@ import { JsonSchema2020 } from '@formspec/build';
 import { JSONSchema7 } from '@formspec/build';
 import { JSONSchemaType } from '@formspec/build';
 import { logValidationIssues } from '@formspec/dsl';
+import { MixedAuthoringSchemas } from '@formspec/build';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
 import { Predicate } from '@formspec/core';
@@ -90,6 +93,10 @@ export { ArrayField }
 export { BooleanField }
 
 export { buildFormSchemas }
+
+export { buildMixedAuthoringSchemas }
+
+export { BuildMixedAuthoringSchemasOptions }
 
 export { BuildResult }
 
@@ -190,6 +197,8 @@ export { JSONSchema7 }
 export { JSONSchemaType }
 
 export { logValidationIssues }
+
+export { MixedAuthoringSchemas }
 
 export { NumberField }
 

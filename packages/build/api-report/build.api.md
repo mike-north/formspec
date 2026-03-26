@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { AnyField } from '@formspec/core';
 import type { CustomAnnotationRegistration } from '@formspec/core';
 import type { CustomConstraintRegistration } from '@formspec/core';
 import type { CustomTypeRegistration } from '@formspec/core';
@@ -19,6 +20,16 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+
+// @public
+export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
+
+// @public
+export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
+    readonly filePath: string;
+    readonly overlays: FormSpec<readonly AnyField[]>;
+    readonly typeName: string;
+}
 
 // @public
 export interface BuildResult {
@@ -498,6 +509,12 @@ export const labelElementSchema: z.ZodObject<{
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
+
+// @public
+export interface MixedAuthoringSchemas {
+    readonly jsonSchema: JsonSchema2020;
+    readonly uiSchema: UISchema;
+}
 
 // @public
 export type Rule = z.infer<typeof ruleSchema>;
