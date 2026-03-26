@@ -211,6 +211,14 @@ function orderedBoundFamily(kind: OrderedBoundKind): OrderedBoundFamily {
   }
 }
 
+function isNumericLowerKind(kind: OrderedBoundKind): kind is "minimum" | "exclusiveMinimum" {
+  return kind === "minimum" || kind === "exclusiveMinimum";
+}
+
+function isNumericUpperKind(kind: OrderedBoundKind): kind is "maximum" | "exclusiveMaximum" {
+  return kind === "maximum" || kind === "exclusiveMaximum";
+}
+
 function isLowerBoundKind(kind: OrderedBoundKind): boolean {
   return (
     kind === "minimum" ||
@@ -231,6 +239,13 @@ function compareConstraintStrength(
   const family = orderedBoundFamily(current.constraintKind);
 
   if (family === "numeric-lower") {
+    if (
+      !isNumericLowerKind(current.constraintKind) ||
+      !isNumericLowerKind(previous.constraintKind)
+    ) {
+      throw new Error("numeric-lower family received non-numeric lower-bound constraint");
+    }
+
     if (current.value !== previous.value) {
       return current.value > previous.value ? 1 : -1;
     }
@@ -250,6 +265,13 @@ function compareConstraintStrength(
   }
 
   if (family === "numeric-upper") {
+    if (
+      !isNumericUpperKind(current.constraintKind) ||
+      !isNumericUpperKind(previous.constraintKind)
+    ) {
+      throw new Error("numeric-upper family received non-numeric upper-bound constraint");
+    }
+
     if (current.value !== previous.value) {
       return current.value < previous.value ? 1 : -1;
     }
