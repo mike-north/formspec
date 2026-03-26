@@ -4,12 +4,20 @@
 
 ```ts
 
+import type { CustomAnnotationRegistration } from '@formspec/core';
+import type { CustomConstraintRegistration } from '@formspec/core';
+import type { CustomTypeRegistration } from '@formspec/core';
+import type { ExtensionDefinition } from '@formspec/core';
 import type { FormElement } from '@formspec/core';
+import type { FormIR } from '@formspec/core';
 import type { FormSpec } from '@formspec/core';
 import { z } from 'zod';
 
 // @public
-export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>): BuildResult;
+export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
+
+// @public
+export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
 // @public
 export interface BuildResult {
@@ -158,7 +166,18 @@ export const controlSchema: z.ZodObject<{
 }, z.ZodTypeAny, "passthrough">>;
 
 // @public
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
+
+// @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+// @public
+export interface ExtensionRegistry {
+    readonly extensions: readonly ExtensionDefinition[];
+    findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
+    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
+    findType(typeId: string): CustomTypeRegistration | undefined;
+}
 
 // @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
@@ -176,7 +195,19 @@ export interface GenerateFromClassResult {
 }
 
 // @public
-export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>): JsonSchema2020;
+export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
+
+// @public
+export function generateJsonSchemaFromIR(ir: FormIR, options?: GenerateJsonSchemaFromIROptions): JsonSchema2020;
+
+// @public
+export interface GenerateJsonSchemaFromIROptions {
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
+}
+
+// @public
+export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
 // @public
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
@@ -599,7 +630,7 @@ export const verticalLayoutSchema: z.ZodType<VerticalLayout>;
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
 
 // @public
-export interface WriteSchemasOptions {
+export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
     readonly indent?: number;
     readonly name?: string;
     readonly outDir: string;
