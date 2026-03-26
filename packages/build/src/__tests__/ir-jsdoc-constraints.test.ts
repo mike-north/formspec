@@ -378,6 +378,36 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("preserves multiple displayName tags for enum member labels", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @displayName :active Active Account
+         * @displayName :suspended Suspended
+         * @displayName :closed Permanently Closed
+         */
+        status: "active" | "suspended" | "closed";
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(3);
+    expect(result.map((annotation) => annotation.annotationKind)).toEqual([
+      "displayName",
+      "displayName",
+      "displayName",
+    ]);
+    expect(
+      result.map((annotation) =>
+        annotation.annotationKind === "displayName" ? annotation.value : undefined
+      )
+    ).toEqual([
+      ":active Active Account",
+      ":suspended Suspended",
+      ":closed Permanently Closed",
+    ]);
+  });
+
   it("produces DeprecatedAnnotationNode for @deprecated", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
