@@ -311,7 +311,7 @@ describe("MetricsForm (inherited constraints) roundtrip", () => {
 });
 
 // ---------------------------------------------------------------------------
-// OrderWithNesting — nested objects with additionalProperties: false
+// OrderWithNesting — nested objects follow spec-default open object semantics
 // ---------------------------------------------------------------------------
 
 describe("OrderWithNesting roundtrip", () => {
@@ -374,13 +374,13 @@ describe("OrderWithNesting roundtrip", () => {
     expect(result.valid).toBe(false);
   });
 
-  it("rejects extra properties on nested customer object (additionalProperties: false)", () => {
+  it("accepts extra properties on nested customer object by default", () => {
     const v = createFormSpecValidator(schema);
     const result = v.validate({
       ...validData,
       customer: { ...validData.customer, unknownField: "surprise" },
     });
-    expect(result.valid).toBe(false);
+    expect(result.valid).toBe(true);
   });
 
   it("rejects nested address missing required street", () => {
