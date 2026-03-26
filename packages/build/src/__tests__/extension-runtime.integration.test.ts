@@ -3,6 +3,7 @@ import {
   buildFormSchemas,
   createExtensionRegistry,
   generateJsonSchemaFromIR,
+  writeSchemas,
   type GenerateJsonSchemaFromIROptions,
 } from "../index.js";
 import {
@@ -20,6 +21,9 @@ import {
   type Provenance,
 } from "@formspec/core";
 import { field, formspec } from "@formspec/dsl";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 const PROVENANCE: Provenance = {
   surface: "extension",
@@ -71,7 +75,7 @@ const moneyType = defineCustomType({
 const currencyConstraint = defineConstraint({
   constraintName: "Currency",
   compositionRule: "override",
-  applicableTypes: ["custom"],
+  applicableTypes: ["primitive", "custom"],
   toJsonSchema: (payload, vendorPrefix) => ({
     [`${vendorPrefix}-currency`]: payload,
   }),
@@ -186,6 +190,49 @@ describe("extension runtime integration", () => {
     );
   });
 
+  it("fails loudly when a custom constraint is generated without a matching extension registration", () => {
+    expect(() =>
+      generateJsonSchemaFromIR(
+        makeIR([makeField("currencyCode", STRING_TYPE, [currencyConstraintNode("USD")])])
+      )
+    ).toThrow(
+      'Cannot generate JSON Schema for custom constraint "x-stripe/money/Currency" without a matching extension registration'
+    );
+  });
+
+  it("fails loudly when a custom annotation is generated without a matching extension registration", () => {
+    expect(() =>
+      generateJsonSchemaFromIR(
+        makeIR([makeField("currencyCode", STRING_TYPE, [], [displayCurrencyAnnotationNode("USD")])])
+      )
+    ).toThrow(
+      'Cannot generate JSON Schema for custom annotation "x-stripe/money/DisplayCurrency" without a matching extension registration'
+    );
+  });
+
+  it('defaults extension keyword prefixes to "x-formspec"', () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+    const schema = generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]), {
+      extensionRegistry: registry,
+    });
+
+    expect(schema.properties?.["amount"]).toEqual({
+      type: "string",
+      "x-formspec-money-scale": 2,
+    });
+  });
+
+  it('rejects vendor prefixes that do not start with "x-"', () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+
+    expect(() =>
+      generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]), {
+        extensionRegistry: registry,
+        vendorPrefix: "stripe",
+      })
+    ).toThrow('Invalid vendorPrefix "stripe". Extension JSON Schema keywords must start with "x-".');
+  });
+
   it("keeps buildFormSchemas usable for ordinary forms when extension options are present", () => {
     const registry = createExtensionRegistry([moneyExtension]);
     const options: GenerateJsonSchemaFromIROptions = {
@@ -201,7 +248,7 @@ describe("extension runtime integration", () => {
       title: "Name",
     });
     expect(jsonSchema.required).toEqual(["name"]);
-    expect(uiSchema.elements[0]).toMatchObject({
+    expect(uiSchema.elements[0]).toEqual({
       type: "Control",
       scope: "#/properties/name",
       label: "Name",
@@ -232,5 +279,29 @@ describe("extension runtime integration", () => {
       type: "string",
       "x-stripe-currency": "USD",
     });
+  });
+
+  it("passes extension options through writeSchemas", () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-build-ext-"));
+
+    try {
+      const { jsonSchemaPath, uiSchemaPath } = writeSchemas(
+        formspec(field.text("name", { label: "Name", required: true })),
+        {
+          outDir,
+          name: "customer",
+          extensionRegistry: registry,
+          vendorPrefix: "x-stripe",
+        }
+      );
+
+      expect(path.basename(jsonSchemaPath)).toBe("customer-schema.json");
+      expect(path.basename(uiSchemaPath)).toBe("customer-uischema.json");
+      expect(fs.existsSync(jsonSchemaPath)).toBe(true);
+      expect(fs.existsSync(uiSchemaPath)).toBe(true);
+    } finally {
+      fs.rmSync(outDir, { recursive: true, force: true });
+    }
   });
 });

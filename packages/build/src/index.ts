@@ -109,6 +109,10 @@ export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js
 // =============================================================================
 
 export { generateJsonSchema } from "./json-schema/generator.js";
+/**
+ * Advanced API — consumers are responsible for supplying canonical FormIR.
+ * Most callers should prefer `generateJsonSchema()` or `buildFormSchemas()`.
+ */
 export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
 
@@ -133,6 +137,9 @@ export interface BuildResult {
 
 /**
  * Options for building schemas from a FormSpec.
+ *
+ * Currently identical to `GenerateJsonSchemaOptions`. Defined separately so the
+ * Chain DSL surface can grow independently in the future if needed.
  */
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
@@ -176,17 +183,13 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
 /**
  * Options for writing schemas to disk.
  */
-export interface WriteSchemasOptions {
+export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
   /** Output directory for the schema files */
   readonly outDir: string;
   /** Base name for the output files (without extension). Defaults to "schema" */
   readonly name?: string;
   /** Number of spaces for JSON indentation. Defaults to 2 */
   readonly indent?: number;
-  /** Extension registry used during JSON Schema generation. */
-  readonly extensionRegistry?: GenerateJsonSchemaFromIROptions["extensionRegistry"];
-  /** Vendor prefix passed through to extension `toJsonSchema` hooks. */
-  readonly vendorPrefix?: GenerateJsonSchemaFromIROptions["vendorPrefix"];
 }
 
 /**
@@ -235,10 +238,13 @@ export function writeSchemas<E extends readonly FormElement[]>(
   const { outDir, name = "schema", indent = 2, extensionRegistry, vendorPrefix } = options;
 
   // Build schemas
-  const buildOptions: BuildFormSchemasOptions = {
-    ...(extensionRegistry !== undefined ? { extensionRegistry } : {}),
-    ...(vendorPrefix !== undefined ? { vendorPrefix } : {}),
-  };
+  const buildOptions =
+    extensionRegistry === undefined && vendorPrefix === undefined
+      ? undefined
+      : {
+          extensionRegistry,
+          vendorPrefix,
+        };
 
   const { jsonSchema, uiSchema } = buildFormSchemas(form, buildOptions);
 

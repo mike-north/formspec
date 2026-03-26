@@ -87,7 +87,7 @@ interface GeneratorContext {
   /** Named type schemas collected during traversal, keyed by reference name. */
   readonly defs: Record<string, JsonSchema2020>;
   /** Optional extension registry for resolving custom IR nodes. */
-  readonly extensionRegistry?: ExtensionRegistry;
+  readonly extensionRegistry: ExtensionRegistry | undefined;
   /** Vendor prefix passed through to extension toJsonSchema handlers. */
   readonly vendorPrefix: string;
 }
@@ -96,22 +96,32 @@ interface GeneratorContext {
  * Options for generating JSON Schema from a canonical FormIR.
  */
 export interface GenerateJsonSchemaFromIROptions {
-  /** Registry used to resolve custom types, constraints, and annotations. */
-  readonly extensionRegistry?: ExtensionRegistry;
+  /**
+   * Registry used to resolve custom types, constraints, and annotations.
+   *
+   * JSON Schema generation throws when custom IR nodes are present without a
+   * matching registration in this registry.
+   */
+  readonly extensionRegistry?: ExtensionRegistry | undefined;
   /**
    * Vendor prefix passed to extension `toJsonSchema` hooks.
    * @defaultValue "x-formspec"
    */
-  readonly vendorPrefix?: string;
+  readonly vendorPrefix?: string | undefined;
 }
 
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
+  const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
+  if (!vendorPrefix.startsWith("x-")) {
+    throw new Error(
+      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
+    );
+  }
+
   return {
     defs: {},
-    ...(options?.extensionRegistry !== undefined
-      ? { extensionRegistry: options.extensionRegistry }
-      : {}),
-    vendorPrefix: options?.vendorPrefix ?? "x-formspec",
+    extensionRegistry: options?.extensionRegistry,
+    vendorPrefix,
   };
 }
 
@@ -151,6 +161,10 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
  * //   required: ["name"]
  * // }
  * ```
+ *
+ * Advanced API — most consumers should use `generateJsonSchema()` or
+ * `buildFormSchemas()`, which canonicalize form definitions automatically.
+ * Callers of this function are responsible for providing pre-canonicalized IR.
  *
  * @param ir - The canonical FormIR produced by a canonicalizer
  * @returns A plain JSON-serializable JSON Schema 2020-12 object
@@ -719,6 +733,8 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
     );
   }
 
+  // Trust boundary: extensions are responsible for returning valid JSON Schema.
+  // Core only depends on Record<string, unknown> here, so we cast at the edge.
   return registration.toJsonSchema(type.payload, ctx.vendorPrefix) as JsonSchema2020;
 }
 
@@ -734,6 +750,8 @@ function applyCustomConstraint(
     );
   }
 
+  // Trust boundary: extension hooks are expected to return valid JSON Schema
+  // keywords, typically vendor-prefixed extension annotations.
   Object.assign(schema, registration.toJsonSchema(constraint.payload, ctx.vendorPrefix));
 }
 
@@ -753,5 +771,7 @@ function applyCustomAnnotation(
     return;
   }
 
+  // Trust boundary: extension hooks are expected to return valid JSON Schema
+  // keywords, typically vendor-prefixed extension annotations.
   Object.assign(schema, registration.toJsonSchema(annotation.value, ctx.vendorPrefix));
 }

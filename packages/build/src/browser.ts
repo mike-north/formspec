@@ -107,7 +107,12 @@ export interface BuildResult {
   readonly uiSchema: UISchema;
 }
 
-/** Options for building schemas from a FormSpec in browser-safe code. */
+/**
+ * Options for building schemas from a FormSpec in browser-safe code.
+ *
+ * Currently identical to `GenerateJsonSchemaOptions`. Defined separately so the
+ * browser-safe surface can grow independently in the future if needed.
+ */
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
 /**

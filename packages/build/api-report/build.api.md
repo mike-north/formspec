@@ -202,8 +202,8 @@ export function generateJsonSchemaFromIR(ir: FormIR, options?: GenerateJsonSchem
 
 // @public
 export interface GenerateJsonSchemaFromIROptions {
-    readonly extensionRegistry?: ExtensionRegistry;
-    readonly vendorPrefix?: string;
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -630,12 +630,10 @@ export const verticalLayoutSchema: z.ZodType<VerticalLayout>;
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
 
 // @public
-export interface WriteSchemasOptions {
-    readonly extensionRegistry?: GenerateJsonSchemaFromIROptions["extensionRegistry"];
+export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
     readonly indent?: number;
     readonly name?: string;
     readonly outDir: string;
-    readonly vendorPrefix?: GenerateJsonSchemaFromIROptions["vendorPrefix"];
 }
 
 // @public
