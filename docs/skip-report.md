@@ -1,15 +1,10 @@
 # Skip Report
 
-Generated from `origin/main` at commit `d7f10fe`.
+Generated from `origin/main` at commit `271071e`.
 
-## Remaining Skips
+## Result
 
-Only one skipped test remains in code:
-
-- `e2e/tests/cli-subprocess.test.ts`
-  - `BUG: circular references should fail clearly instead of silently degrading`
-  - Classification: deferred feature
-  - Tracking issue: `#105`
+The active test tree contains no remaining skips or `BUG:` markers.
 
 ## Completed Burn-Down
 
@@ -19,6 +14,9 @@ The following formerly skipped/non-normative areas are now implemented on `main`
 - literal and array constraint emission (`@const`, `@format`, `@uniqueItems`, item-level string constraints)
 - supported diagnostics (`UNKNOWN_PATH_TARGET`, `CONSTRAINT_BROADENING`)
 - CLI compiled-fixture harness cleanup
+- mixed-authoring overlays
+- circular references
+- cross-axis conditional flattening
 
 ## No Longer Present
 
@@ -27,5 +25,6 @@ The codebase no longer contains:
 - `loadExpected(...)`
 - `e2e/expected/`
 - gold-master expected JSON infrastructure
+- active skipped tests or anonymous `BUG:` placeholders
 
 Historical documentation may still mention snapshots or gold-master terminology while describing rejected strategies or past decisions, but production tests no longer depend on them.

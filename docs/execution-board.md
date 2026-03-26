@@ -2,12 +2,19 @@
 
 ## Current State
 
-- Non-deferred skip burn-down is complete on `main`.
-- The only remaining skipped test is tied to deferred feature issue `#105` (circular references).
-- The next deferred-feature implementation order is:
-  1. `#104` mixed-authoring overlays
-  2. `#105` circular references
-  3. `#102` cross-axis conditional rules
+- Post-merge stabilization is complete on `main`.
+- The full workspace acceptance suite passes on a fresh `main` worktree:
+  - `pnpm run build`
+  - `pnpm run test`
+  - `pnpm run lint`
+  - `pnpm run typecheck`
+  - `pnpm run api-extractor`
+- The skip inventory is empty:
+  - no `it.skip(...)`
+  - no `describe.skip(...)`
+  - no `test.skip(...)`
+  - no `skipIf(...)`
+  - no `BUG:` markers in active test code
 
 ## Recently Completed
 
@@ -22,12 +29,22 @@
 - `#128` Annotation and metadata emission fixes
 - `#129` Constraint and literal emission fixes
 - `#130` Diagnostics and CLI harness cleanup
+- `#102` Cross-axis conditional rule flattening
+- `#104` Mixed-authoring overlays
+- `#105` Circular references
 
-## Remaining Deferred Feature Work
+## Integration-Ready Surfaces
 
-- `#104` Support mixed-authoring forms with ChainDSL overlays on TSDoc data models
-- `#105` Support circular references in canonical IR and JSON Schema emission
-- `#102` Support cross-axis conditional rules beyond JSON Forms single-rule limitation
+- `buildMixedAuthoringSchemas(...)`
+- recursive named-type emission in canonical IR and JSON Schema
+- flattened cross-axis JSON Forms rule generation
+- public extension/runtime generation surfaces landed in the readiness wave
+
+## Next Focus
+
+- start real downstream integration against `main`
+- treat integration bugs as the next highest-priority work
+- avoid speculative surface expansion until integration exposes a concrete gap
 
 ## Notes
 
