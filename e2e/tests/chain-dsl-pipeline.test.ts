@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
 import { ContactForm } from "../fixtures/chain-dsl/contact-form.js";
-import {
-  assertValidJsonSchema,
-  assertPropertyConstraints,
-} from "../helpers/schema-assertions.js";
+import { assertValidJsonSchema, assertPropertyConstraints } from "../helpers/schema-assertions.js";
 
 describe("Chain DSL Pipeline", () => {
   const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
@@ -36,7 +33,9 @@ describe("Chain DSL Pipeline", () => {
     });
 
     it("has all expected properties", () => {
-      const props = Object.keys((schema["properties"] as Record<string, unknown> | undefined) ?? {});
+      const props = Object.keys(
+        (schema["properties"] as Record<string, unknown> | undefined) ?? {}
+      );
       expect(props).toContain("firstName");
       expect(props).toContain("lastName");
       expect(props).toContain("email");

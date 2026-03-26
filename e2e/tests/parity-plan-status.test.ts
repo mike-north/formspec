@@ -46,13 +46,13 @@ describe("Parity: plan status annotations", () => {
   it("PlanStatus member labels emit oneOf with const/title entries", () => {
     const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
     expect(defs?.["PlanStatus"]?.["oneOf"]).toEqual([
-        { const: "active", title: "Active" },
-        { const: "paused", title: "Paused" },
-        { const: "cancelled", title: "Cancelled" },
-      ]);
+      { const: "active", title: "Active" },
+      { const: "paused", title: "Paused" },
+      { const: "cancelled", title: "Cancelled" },
+    ]);
   });
 
-  it("status @defaultValue emits default: \"active\"", () => {
+  it('status @defaultValue emits default: "active"', () => {
     const status = properties["status"];
     expect(status).toBeDefined();
     if (!status) return;

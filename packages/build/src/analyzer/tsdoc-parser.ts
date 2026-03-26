@@ -238,7 +238,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
             if (tagName === "description" && description === undefined) {
               description = text;
               descriptionProvenance = provenance;
-            } else if (placeholder === undefined) {
+            } else if (tagName === "placeholder" && placeholder === undefined) {
               placeholder = text;
               placeholderProvenance = provenance;
             }
@@ -598,7 +598,7 @@ function parseConstraintValue(
  * Parses a raw `@defaultValue` tag payload into a JSON value annotation.
  */
 function parseDefaultValueValue(text: string, provenance: Provenance): AnnotationNode {
-  const trimmed = text;
+  const trimmed = text.trim();
   let value: JsonValue;
 
   if (trimmed === "null") {

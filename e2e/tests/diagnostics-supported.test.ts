@@ -23,12 +23,8 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("maxLength");
     expect(output).toContain("fixtures/tsdoc-class/error-contradicting-constraints.ts:2:");
     expect(output).toContain("fixtures/tsdoc-class/error-contradicting-constraints.ts:8:");
-    expect(output).toContain(
-      "related: fixtures/tsdoc-class/error-contradicting-constraints.ts:2:"
-    );
-    expect(output).toContain(
-      "related: fixtures/tsdoc-class/error-contradicting-constraints.ts:8:"
-    );
+    expect(output).toContain("related: fixtures/tsdoc-class/error-contradicting-constraints.ts:2:");
+    expect(output).toContain("related: fixtures/tsdoc-class/error-contradicting-constraints.ts:8:");
   });
 
   it("reports semantic type-mismatch diagnostics with field names, constraint names, and locations", () => {
@@ -74,8 +70,6 @@ describe("Supported diagnostics", () => {
     expect(output).toContain('Field "quantity"');
     expect(output).toContain("@minimum");
     expect(output).toContain("fixtures/tsdoc-class/error-broadening-constraint.ts:7:");
-    expect(output).toContain(
-      "related: fixtures/tsdoc-class/error-broadening-constraint.ts:1:"
-    );
+    expect(output).toContain("related: fixtures/tsdoc-class/error-broadening-constraint.ts:1:");
   });
 });

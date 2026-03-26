@@ -167,9 +167,7 @@ describe("extension runtime integration", () => {
   it("ignores custom annotations that do not define a JSON Schema representation", () => {
     const registry = createExtensionRegistry([moneyExtension]);
     const schema = generateJsonSchemaFromIR(
-      makeIR([
-        makeField("amount", moneyTypeNode(2), [], [uiOnlyAnnotationNode("money-input")]),
-      ]),
+      makeIR([makeField("amount", moneyTypeNode(2), [], [uiOnlyAnnotationNode("money-input")])]),
       {
         extensionRegistry: registry,
         vendorPrefix: "x-stripe",
@@ -183,9 +181,7 @@ describe("extension runtime integration", () => {
   });
 
   it("fails loudly when a custom type is generated without a matching extension registration", () => {
-    expect(() =>
-      generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]))
-    ).toThrow(
+    expect(() => generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]))).toThrow(
       'Cannot generate JSON Schema for custom type "x-stripe/money/Money" without a matching extension registration'
     );
   });
@@ -230,7 +226,9 @@ describe("extension runtime integration", () => {
         extensionRegistry: registry,
         vendorPrefix: "stripe",
       })
-    ).toThrow('Invalid vendorPrefix "stripe". Extension JSON Schema keywords must start with "x-".');
+    ).toThrow(
+      'Invalid vendorPrefix "stripe". Extension JSON Schema keywords must start with "x-".'
+    );
   });
 
   it("keeps buildFormSchemas usable for ordinary forms when extension options are present", () => {
