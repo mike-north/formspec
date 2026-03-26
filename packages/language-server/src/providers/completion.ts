@@ -7,6 +7,10 @@
  * filtering will be added in a future phase.
  */
 
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  type BuiltinConstraintName,
+} from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
 /**
@@ -15,7 +19,7 @@ import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.j
  * Keys match the camelCase constraint names (matching keys in `BUILTIN_CONSTRAINT_DEFINITIONS`).
  * Values are shown as the detail string in completion items.
  */
-const CONSTRAINT_DETAIL: Record<string, string> = {
+const CONSTRAINT_DETAIL: Record<BuiltinConstraintName, string> = {
   minimum: "Minimum numeric value (inclusive). Example: `@minimum 0`",
   maximum: "Maximum numeric value (inclusive). Example: `@maximum 100`",
   exclusiveMinimum: "Minimum numeric value (exclusive). Example: `@exclusiveMinimum 0`",
@@ -25,8 +29,10 @@ const CONSTRAINT_DETAIL: Record<string, string> = {
   maxLength: "Maximum string length. Example: `@maxLength 255`",
   minItems: "Minimum number of array items. Example: `@minItems 1`",
   maxItems: "Maximum number of array items. Example: `@maxItems 10`",
+  uniqueItems: "Require all array items to be distinct. Example: `@uniqueItems`",
   pattern: "Regular expression pattern for string validation. Example: `@pattern ^[a-z]+$`",
   enumOptions: 'Inline JSON array of allowed enum values. Example: `@enumOptions ["a","b","c"]`',
+  const: 'Require a constant JSON value. Example: `@const "USD"`',
 };
 
 /**
@@ -41,9 +47,9 @@ const CONSTRAINT_DETAIL: Record<string, string> = {
  * @returns An array of LSP completion items for FormSpec constraint tags
  */
 export function getCompletionItems(): CompletionItem[] {
-  return Object.entries(CONSTRAINT_DETAIL).map(([name, detail]) => ({
+  return (Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS) as BuiltinConstraintName[]).map((name) => ({
     label: `@${name}`,
     kind: CompletionItemKind.Keyword,
-    detail,
+    detail: CONSTRAINT_DETAIL[name],
   }));
 }
