@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import * as path from "node:path";
 import { buildMixedAuthoringSchemas } from "../index.js";
 import {
+  duplicateShippingAddressOverlays,
   incompatibleShippingAddressOverlays,
   nestedShippingAddressOverlays,
   shippingAddressOverlays,
+  unknownShippingAddressOverlays,
 } from "./fixtures/mixed-authoring-shipping-address.js";
 
 const fixturesDir = path.join(import.meta.dirname, "fixtures");
@@ -62,5 +64,35 @@ describe("buildMixedAuthoringSchemas", () => {
         overlays: nestedShippingAddressOverlays,
       })
     ).toThrow(/do not support nested object or array overlays/);
+  });
+
+  it("rejects overlays that reference fields missing from the static model", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "ShippingAddressModel",
+        overlays: unknownShippingAddressOverlays,
+      })
+    ).toThrow(/not present in the static model/);
+  });
+
+  it("rejects duplicate overlay field definitions", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "ShippingAddressModel",
+        overlays: duplicateShippingAddressOverlays,
+      })
+    ).toThrow(/define "city" more than once/);
+  });
+
+  it("fails loudly when the target type does not exist", () => {
+    expect(() =>
+      buildMixedAuthoringSchemas({
+        filePath: shippingAddressFixture,
+        typeName: "MissingShippingAddressModel",
+        overlays: shippingAddressOverlays,
+      })
+    ).toThrow(/not found as a class, interface, or type alias/);
   });
 });

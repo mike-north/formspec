@@ -15,12 +15,24 @@ import type {
   FormSpec,
   TypeNode,
 } from "@formspec/core";
-import type { GenerateJsonSchemaFromIROptions, JsonSchema2020 } from "../json-schema/ir-generator.js";
+import type {
+  GenerateJsonSchemaFromIROptions,
+  JsonSchema2020,
+} from "../json-schema/ir-generator.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import type { UISchema } from "../ui-schema/types.js";
-import { canonicalizeChainDSL, canonicalizeTSDoc, type TSDocSource } from "../canonicalize/index.js";
-import { createProgramContext, findClassByName, findInterfaceByName, findTypeAliasByName } from "../analyzer/program.js";
+import {
+  canonicalizeChainDSL,
+  canonicalizeTSDoc,
+  type TSDocSource,
+} from "../canonicalize/index.js";
+import {
+  createProgramContext,
+  findClassByName,
+  findInterfaceByName,
+  findTypeAliasByName,
+} from "../analyzer/program.js";
 import {
   analyzeClassToIR,
   analyzeInterfaceToIR,
@@ -243,10 +255,15 @@ function isCompatibleDynamicOverlay(
 
 function resolveReferenceType(
   type: TypeNode,
-  typeRegistry: IRClassAnalysis["typeRegistry"]
+  typeRegistry: IRClassAnalysis["typeRegistry"],
+  seen = new Set<string>()
 ): TypeNode | null {
   if (type.kind !== "reference") {
     return type;
+  }
+
+  if (seen.has(type.name)) {
+    return null;
   }
 
   const definition = typeRegistry[type.name];
@@ -254,7 +271,8 @@ function resolveReferenceType(
     return null;
   }
 
-  return resolveReferenceType(definition.type, typeRegistry);
+  seen.add(type.name);
+  return resolveReferenceType(definition.type, typeRegistry, seen);
 }
 
 function isSameStaticTypeShape(baseType: TypeNode, overlayType: TypeNode): boolean {
@@ -264,7 +282,9 @@ function isSameStaticTypeShape(baseType: TypeNode, overlayType: TypeNode): boole
 
   switch (baseType.kind) {
     case "primitive":
-      return overlayType.kind === "primitive" && baseType.primitiveKind === overlayType.primitiveKind;
+      return (
+        overlayType.kind === "primitive" && baseType.primitiveKind === overlayType.primitiveKind
+      );
     case "enum":
       return overlayType.kind === "enum";
     case "dynamic":
@@ -283,6 +303,9 @@ function isSameStaticTypeShape(baseType: TypeNode, overlayType: TypeNode): boole
       return overlayType.kind === "custom" && baseType.typeId === overlayType.typeId;
     case "object":
     case "array":
+      // Mixed authoring keeps the static type verbatim for structured fields.
+      // We only need shape equality for scalar-like overlays that could replace
+      // the static field type if we returned the overlay type by mistake.
       return true;
     default: {
       const _exhaustive: never = baseType;
@@ -296,7 +319,9 @@ function mergeAnnotations(
   overlayAnnotations: readonly AnnotationNode[]
 ): AnnotationNode[] {
   const baseKeys = new Set(baseAnnotations.map(annotationKey));
-  const overlayOnly = overlayAnnotations.filter((annotation) => !baseKeys.has(annotationKey(annotation)));
+  const overlayOnly = overlayAnnotations.filter(
+    (annotation) => !baseKeys.has(annotationKey(annotation))
+  );
   return [...overlayOnly, ...baseAnnotations];
 }
 

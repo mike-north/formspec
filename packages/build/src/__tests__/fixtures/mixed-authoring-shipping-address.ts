@@ -40,3 +40,10 @@ export class NestedShippingAddressModel {
 export const nestedShippingAddressOverlays = formspec(
   field.object("address", field.dynamicEnum("city", "cities"))
 );
+
+export const duplicateShippingAddressOverlays = formspec(
+  field.dynamicEnum("city", "cities"),
+  field.dynamicEnum("city", "backup-cities")
+);
+
+export const unknownShippingAddressOverlays = formspec(field.dynamicEnum("region", "regions"));

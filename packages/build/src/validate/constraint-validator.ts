@@ -180,7 +180,45 @@ function findConstConstraints(
 }
 
 function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  if (left === right) {
+    return true;
+  }
+
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((item, index) => jsonValueEquals(item, right[index] as JsonValue));
+  }
+
+  if (isJsonObject(left) || isJsonObject(right)) {
+    if (!isJsonObject(left) || !isJsonObject(right)) {
+      return false;
+    }
+
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    if (leftKeys.length !== rightKeys.length) {
+      return false;
+    }
+
+    return leftKeys.every((key, index) => {
+      const rightKey = rightKeys[index];
+      if (rightKey !== key) {
+        return false;
+      }
+      const leftValue = left[key];
+      const rightValue = right[rightKey];
+      return leftValue !== undefined && rightValue !== undefined && jsonValueEquals(leftValue, rightValue);
+    });
+  }
+
+  return false;
+}
+
+function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 type OrderedBoundKind =
