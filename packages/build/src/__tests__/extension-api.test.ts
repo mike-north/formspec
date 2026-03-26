@@ -405,7 +405,7 @@ describe("Extension API", () => {
 
       expect(result.valid).toBe(false);
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-TYPE_MISMATCH-001");
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
       expect(result.diagnostics[0]?.message).toContain("ArrayOnly");
       expect(result.diagnostics[0]?.message).toContain("string");
     });
@@ -453,7 +453,7 @@ describe("Extension API", () => {
 
       expect(result.valid).toBe(true); // warning, not error
       expect(result.diagnostics).toHaveLength(1);
-      expect(result.diagnostics[0]?.code).toBe("FORMSPEC-UNKNOWN_EXTENSION-001");
+      expect(result.diagnostics[0]?.code).toBe("UNKNOWN_EXTENSION");
       expect(result.diagnostics[0]?.severity).toBe("warning");
     });
 

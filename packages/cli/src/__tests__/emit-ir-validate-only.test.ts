@@ -266,7 +266,7 @@ describe("validateIR: constraint violations", () => {
     expect(result.valid).toBe(false);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]?.severity).toBe("error");
-    expect(result.diagnostics[0]?.code).toMatch(/CONTRADICTION/);
+    expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
     expect(result.diagnostics[0]?.message).toContain("minimum");
     expect(result.diagnostics[0]?.message).toContain("maximum");
   });
@@ -303,7 +303,7 @@ describe("validateIR: constraint violations", () => {
     expect(result.valid).toBe(false);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]?.severity).toBe("error");
-    expect(result.diagnostics[0]?.code).toMatch(/TYPE_MISMATCH/);
+    expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
   });
 
   it("returns valid=true for an empty IR with no elements", () => {

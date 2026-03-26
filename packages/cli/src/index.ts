@@ -235,6 +235,14 @@ function writeIrFile(ir: FormIR, name: string, outDir: string): void {
   console.log(`✓ Wrote IR: ${filePath}`);
 }
 
+function formatDiagnosticLocation(file: string, line: number, column: number): string {
+  if (file.length === 0) {
+    return `${String(line)}:${String(column + 1)}`;
+  }
+
+  return `${path.relative(process.cwd(), file)}:${String(line)}:${String(column + 1)}`;
+}
+
 /**
  * Prints validation results and returns true if any error-severity diagnostics
  * were found (which should cause the CLI to exit non-zero).
@@ -253,7 +261,17 @@ function printValidationResult(result: ValidationResult, label: string): boolean
   console.warn(`⚠️  ${label}: ${String(diagnostics.length)} diagnostic(s)`);
   for (const diag of diagnostics) {
     const severity = diag.severity === "error" ? "ERROR" : "WARN";
-    console.warn(`  [${severity}] ${diag.message}`);
+    const location = formatDiagnosticLocation(
+      diag.primaryLocation.file,
+      diag.primaryLocation.line,
+      diag.primaryLocation.column
+    );
+    console.warn(`  [${severity}] ${diag.code} ${location} ${diag.message}`);
+    for (const related of diag.relatedLocations) {
+      console.warn(
+        `    related: ${formatDiagnosticLocation(related.file, related.line, related.column)}`
+      );
+    }
   }
   return diagnostics.some((d) => d.severity === "error");
 }
