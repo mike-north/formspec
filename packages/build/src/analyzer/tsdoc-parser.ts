@@ -308,11 +308,11 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       provenance: placeholderProvenance,
     });
   }
+
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
   // @pattern, @enumOptions, and @defaultValue content can contain `@`, `{}`,
-  // or quoted JSON payloads that are awkward to preserve via the TSDoc tree.
-  // which the TSDoc parser treats as structural markers. We extract these
-  // via the TS compiler API which preserves content verbatim.
+  // or quoted JSON payloads that the TSDoc parser treats as structural markers.
+  // We extract these via the TS compiler API which preserves content verbatim.
   const jsDocTagsAll = ts.getJSDocTags(node);
   for (const tag of jsDocTagsAll) {
     const tagName = normalizeConstraintTagName(tag.tagName.text);
@@ -598,7 +598,7 @@ function parseConstraintValue(
  * Parses a raw `@defaultValue` tag payload into a JSON value annotation.
  */
 function parseDefaultValueValue(text: string, provenance: Provenance): AnnotationNode {
-  const trimmed = text.trim();
+  const trimmed = text;
   let value: JsonValue;
 
   if (trimmed === "null") {

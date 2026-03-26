@@ -53,7 +53,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
     });
 
     // @see 002-constraint-tags.md §2.2: "@placeholder appears in UI Schema options.placeholder"
-      it("email @placeholder appears in UI Schema options.placeholder", () => {
+    it("email @placeholder appears in UI Schema options.placeholder", () => {
       // Spec 002 §2.2: @placeholder → UI Schema Control options.placeholder.
       // Expected: { type: "Control", scope: "#/properties/email", options: { placeholder: "Enter your email address" } }
       if (!uischema) throw new Error("UI schema not loaded");
@@ -66,7 +66,7 @@ describe("Annotation: @placeholder / @deprecated / @defaultValue", () => {
       expect(options?.["placeholder"]).toBe("Enter your email address");
     });
 
-      it("quantity @placeholder appears in UI Schema options.placeholder", () => {
+    it("quantity @placeholder appears in UI Schema options.placeholder", () => {
       if (!uischema) throw new Error("UI schema not loaded");
       const elements = uischema["elements"] as Record<string, unknown>[];
       const quantityControl = elements.find((el) => el["scope"] === "#/properties/quantity");

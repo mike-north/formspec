@@ -612,7 +612,14 @@ function resolveUnionType(
   }
 
   if (nonNullTypes.length === 1 && nonNullTypes[0]) {
-    const inner = resolveTypeNode(nonNullTypes[0], checker, file, typeRegistry, visiting, sourceNode);
+    const inner = resolveTypeNode(
+      nonNullTypes[0],
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      sourceNode
+    );
     const result: TypeNode = hasNull
       ? {
           kind: "union",
@@ -680,7 +687,7 @@ function tryResolveRecordType(
 
   visiting.add(type);
   try {
-  const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
+    const valueType = resolveTypeNode(indexInfo.type, checker, file, typeRegistry, visiting);
     return { kind: "record", valueType };
   } finally {
     visiting.delete(type);
@@ -728,7 +735,14 @@ function resolveObjectType(
 
     const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
     const optional = !!(prop.flags & ts.SymbolFlags.Optional);
-    const propTypeNode = resolveTypeNode(propType, checker, file, typeRegistry, visiting, declaration);
+    const propTypeNode = resolveTypeNode(
+      propType,
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      declaration
+    );
 
     // Get constraints and annotations from the declaration if available
     const fieldNodeInfo = fieldInfoMap?.get(prop.name);
