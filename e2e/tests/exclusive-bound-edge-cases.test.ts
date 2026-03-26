@@ -34,21 +34,26 @@ describe("Exclusive Bound Edge Cases", () => {
   });
 
   it("emits the expected schema for all exclusive-bound permutations", () => {
+    // @see 003-json-schema-vocabulary.md §2.6: root object schemas remain type: object
     expect(schema["type"]).toBe("object");
+    // @see 003-json-schema-vocabulary.md §2.6: exclusiveMinimum/exclusiveMaximum emit as numeric keywords
     expect(properties["probability"]).toEqual({
       type: "number",
       exclusiveMinimum: 0,
       exclusiveMaximum: 1,
     });
+    // @see 003-json-schema-vocabulary.md §2.6: a lone exclusiveMinimum is preserved
     expect(properties["temperature"]).toEqual({
       type: "number",
       exclusiveMinimum: -273.15,
     });
+    // @see 003-json-schema-vocabulary.md §2.6: exclusive lower bound can be combined with inclusive maximum
     expect(properties["mixedLower"]).toEqual({
       type: "number",
       exclusiveMinimum: 0,
       maximum: 100,
     });
+    // @see 003-json-schema-vocabulary.md §2.6: inclusive minimum can be combined with exclusive upper bound
     expect(properties["mixedUpper"]).toEqual({
       type: "number",
       minimum: 0,
@@ -57,11 +62,10 @@ describe("Exclusive Bound Edge Cases", () => {
   });
 
   it("marks every field required", () => {
-    expect(schema["required"]).toEqual([
-      "probability",
-      "temperature",
-      "mixedLower",
-      "mixedUpper",
-    ]);
+    const required = schema["required"] as string[];
+    expect(required).toHaveLength(4);
+    expect(required).toEqual(
+      expect.arrayContaining(["probability", "temperature", "mixedLower", "mixedUpper"])
+    );
   });
 });
