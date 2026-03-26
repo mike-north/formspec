@@ -1,5 +1,5 @@
 /**
- * @formspec/language-server
+ * \@formspec/language-server
  *
  * Language server for FormSpec — provides completions, hover documentation,
  * and go-to-definition for FormSpec JSDoc constraint tags (`@Minimum`,

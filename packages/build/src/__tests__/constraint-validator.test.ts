@@ -772,7 +772,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 12. Multiple patterns → NO contradiction (undecidable)
+  // 13. Multiple patterns → NO contradiction (undecidable)
   // ---------------------------------------------------------------------------
 
   describe("multiple pattern constraints", () => {
@@ -792,7 +792,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 13. Valid constraints → no diagnostics
+  // 14. Valid constraints → no diagnostics
   // ---------------------------------------------------------------------------
 
   describe("valid constraint combinations", () => {
@@ -832,7 +832,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 14. Nested object field constraint issues are detected
+  // 15. Nested object field constraint issues are detected
   // ---------------------------------------------------------------------------
 
   describe("nested object field constraint detection", () => {
@@ -888,7 +888,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 15. Diagnostic has correct provenance for both sides of contradiction
+  // 16. Diagnostic has correct provenance for both sides of contradiction
   // ---------------------------------------------------------------------------
 
   describe("diagnostic provenance", () => {
@@ -938,7 +938,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 16. Semantic diagnostic codes
+  // 17. Semantic diagnostic codes
   // ---------------------------------------------------------------------------
 
   describe("semantic diagnostic codes", () => {
@@ -962,7 +962,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 17. Group and conditional layouts are walked
+  // 18. Group and conditional layouts are walked
   // ---------------------------------------------------------------------------
 
   describe("group and conditional layouts are walked", () => {
@@ -1015,7 +1015,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 18. valid property semantics
+  // 19. valid property semantics
   // ---------------------------------------------------------------------------
 
   describe("valid property", () => {
@@ -1056,7 +1056,7 @@ describe("validateIR", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 19. DEC-006: Unknown extension warning
+  // 20. DEC-006: Unknown extension warning
   // ---------------------------------------------------------------------------
 
   describe("DEC-006: unknown extension constraint", () => {

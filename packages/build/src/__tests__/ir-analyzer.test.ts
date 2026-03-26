@@ -547,6 +547,22 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
     expect(Object.keys(analysis.typeRegistry)).not.toContain("Record");
   });
 
+  it("keeps named non-recursive record aliases inline as RecordTypeNode", () => {
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "ObjectEdgeCases");
+    if (!classDecl) throw new Error("ObjectEdgeCases class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+    const field = analysis.fields.find((f) => f.name === "namedStringMap");
+    if (!field) throw new Error("namedStringMap field not found");
+
+    expect(field.type.kind).toBe("record");
+    if (field.type.kind === "record") {
+      expect(field.type.valueType).toEqual({ kind: "primitive", primitiveKind: "string" });
+    }
+    expect(analysis.typeRegistry).not.toHaveProperty("StringMap");
+  });
+
   it("handles self-referential Record types without stack overflow", () => {
     // Regression for the circular-reference bug in tryResolveRecordType:
     // `type SelfRefRecord = Record<string, SelfRefRecord>` would recurse
@@ -567,6 +583,35 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
     expect(validKinds).toContain(field?.type.kind);
     if (field?.type.kind === "object") {
       expect(field.type.additionalProperties).toBe(false);
+    }
+  });
+
+  it("resolves recursive class properties as named references", () => {
+    const ctx = createProgramContext(edgeCasesPath);
+    const classDecl = findClassByName(ctx.sourceFile, "CircularNode");
+    if (!classDecl) throw new Error("CircularNode class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, edgeCasesPath);
+
+    expect(Object.keys(analysis.typeRegistry)).toContain("CircularNode");
+
+    const nextField = findField(analysis.fields, "next");
+    expect(nextField.type).toEqual({
+      kind: "reference",
+      name: "CircularNode",
+      typeArguments: [],
+    });
+
+    const namedType = analysis.typeRegistry["CircularNode"];
+    if (!namedType) throw new Error("CircularNode type registry entry not found");
+    expect(namedType.type.kind).toBe("object");
+    if (namedType.type.kind === "object") {
+      const recursiveProp = namedType.type.properties.find((prop) => prop.name === "next");
+      expect(recursiveProp?.type).toEqual({
+        kind: "reference",
+        name: "CircularNode",
+        typeArguments: [],
+      });
     }
   });
 });
