@@ -17,14 +17,9 @@
  */
 
 import type { FormElement, FormSpec } from "@formspec/core";
-import {
-  generateJsonSchema,
-  type GenerateJsonSchemaOptions,
-} from "./json-schema/generator.js";
+import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
-import {
-  type JsonSchema2020,
-} from "./json-schema/ir-generator.js";
+import { type JsonSchema2020 } from "./json-schema/ir-generator.js";
 import type { UISchema } from "./ui-schema/types.js";
 
 // Re-export types

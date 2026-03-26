@@ -340,7 +340,10 @@ describe("generateUiSchema - nested conditionals", () => {
         is("country", "US"),
         when(
           is("paymentMethod", "bank"),
-          when(is("accountType", "checking"), field.text("routingNumber", { label: "Routing Number" }))
+          when(
+            is("accountType", "checking"),
+            field.text("routingNumber", { label: "Routing Number" })
+          )
         )
       )
     );
