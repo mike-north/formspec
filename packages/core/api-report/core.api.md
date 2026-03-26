@@ -71,6 +71,13 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS: {
 };
 
 // @public
+export interface BuiltinConstraintBroadeningRegistration {
+    readonly constraintName: string;
+    readonly parseValue: (raw: string) => JsonValue;
+    readonly tagName: BuiltinConstraintName;
+}
+
+// @public
 export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
 
 // @public
@@ -108,6 +115,21 @@ export interface ConstConstraintNode {
 
 // @public
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
+
+// @public
+export interface ConstraintSemanticRole {
+    readonly bound: "lower" | "upper" | "exact";
+    readonly family: string;
+    readonly inclusive: boolean;
+}
+
+// @public
+export interface ConstraintTagRegistration {
+    readonly constraintName: string;
+    readonly isApplicableToType?: (type: TypeNode) => boolean;
+    readonly parseValue: (raw: string) => JsonValue;
+    readonly tagName: string;
+}
 
 // @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
@@ -149,8 +171,11 @@ export interface CustomConstraintNode {
 // @public
 export interface CustomConstraintRegistration {
     readonly applicableTypes: readonly TypeNode["kind"][] | null;
+    readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
     readonly compositionRule: "intersect" | "override";
     readonly constraintName: string;
+    readonly isApplicableToType?: (type: TypeNode) => boolean;
+    readonly semanticRole?: ConstraintSemanticRole;
     readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
 }
 
@@ -164,7 +189,9 @@ export interface CustomTypeNode {
 
 // @public
 export interface CustomTypeRegistration {
+    readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
     readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly tsTypeNames?: readonly string[];
     readonly typeName: string;
 }
 
@@ -200,6 +227,9 @@ export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnot
 
 // @public
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
+
+// @public
+export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
 
 // @public
 export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
@@ -324,6 +354,7 @@ export interface EqualsPredicate<K extends string, V> {
 export interface ExtensionDefinition {
     readonly annotations?: readonly CustomAnnotationRegistration[];
     readonly constraints?: readonly CustomConstraintRegistration[];
+    readonly constraintTags?: readonly ConstraintTagRegistration[];
     readonly extensionId: string;
     readonly types?: readonly CustomTypeRegistration[];
     readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];

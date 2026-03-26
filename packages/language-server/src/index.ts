@@ -24,6 +24,7 @@
  */
 
 export { createServer } from "./server.js";
+export type { CreateServerOptions } from "./server.js";
 export { getCompletionItems } from "./providers/completion.js";
 export { getHoverForTag } from "./providers/hover.js";
 export { getDefinition } from "./providers/definition.js";

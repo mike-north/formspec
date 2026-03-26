@@ -16,9 +16,15 @@ import {
   type Connection,
   type InitializeResult,
 } from "vscode-languageserver/node.js";
+import type { ExtensionDefinition } from "@formspec/core";
 import { getCompletionItems } from "./providers/completion.js";
 import { getHoverForTag } from "./providers/hover.js";
 import { getDefinition } from "./providers/definition.js";
+
+export interface CreateServerOptions {
+  /** Optional extension definitions whose custom tags should be surfaced by tooling. */
+  readonly extensions?: readonly ExtensionDefinition[];
+}
 
 /**
  * Creates and configures the FormSpec language server connection.
@@ -28,7 +34,7 @@ import { getDefinition } from "./providers/definition.js";
  *
  * @returns The configured LSP connection (not yet listening)
  */
-export function createServer(): Connection {
+export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
 
   connection.onInitialize((): InitializeResult => {
@@ -53,7 +59,7 @@ export function createServer(): Connection {
     // Return all FormSpec constraint tag completions.
     // Future phases will add context-aware filtering based on field type and
     // cursor position within JSDoc comment ranges.
-    return getCompletionItems();
+    return getCompletionItems(options.extensions);
   });
 
   connection.onHover((_params) => {
@@ -64,7 +70,7 @@ export function createServer(): Connection {
     //
     // For now we return null to signal no hover is available until the
     // token extraction is implemented.
-    return getHoverForTag("");
+    return getHoverForTag("", options.extensions);
   });
 
   connection.onDefinition((_params) => {

@@ -15,11 +15,16 @@ import type {
   ObjectTypeNode,
   JsonValue,
 } from "@formspec/core";
-import { IR_VERSION, defineConstraint } from "@formspec/core";
+import { IR_VERSION, defineConstraint, defineConstraintTag, defineExtension } from "@formspec/core";
 import { validateIR } from "../validate/index.js";
 import type { ValidationDiagnostic } from "../validate/index.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import {
+  createNumericExtensionRegistry,
+  BIGINT_TYPE_ID,
+  DECIMAL_TYPE_ID,
+} from "./fixtures/example-numeric-extension.js";
 
 // =============================================================================
 // HELPERS
@@ -43,6 +48,9 @@ const STRING_TYPE: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "stri
 
 /** Primitive boolean type node. */
 const BOOL_TYPE: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "boolean" };
+
+const DECIMAL_TYPE = { kind: "custom", typeId: DECIMAL_TYPE_ID, payload: null } as const;
+const BIGINT_WIRE_TYPE = { kind: "custom", typeId: BIGINT_TYPE_ID, payload: null } as const;
 
 /** Simple array-of-strings type node. */
 const ARRAY_TYPE: ArrayTypeNode = {
@@ -1156,6 +1164,160 @@ describe("validateIR", () => {
       expect(result.valid).toBe(true);
       expect(result.diagnostics).toHaveLength(2);
       expect(result.diagnostics.every((d) => d.severity === "warning")).toBe(true);
+    });
+  });
+
+  describe("extension-defined numeric precision semantics", () => {
+    const registry = createNumericExtensionRegistry();
+
+    function customPrecisionConstraint(
+      constraintId: string,
+      payload: JsonValue,
+      line: number,
+      tagName: string
+    ): CustomConstraintNode {
+      return {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId,
+        payload,
+        compositionRule: "intersect",
+        provenance: prov(line, tagName),
+      };
+    }
+
+    it("accepts @maxSigFig on Decimal, bigint, and number", () => {
+      const ir = makeIR([
+        makeField("amount", DECIMAL_TYPE, [
+          customPrecisionConstraint("x-formspec/example-numeric/MaxSigFig", 5, 1, "@maxSigFig"),
+        ]),
+        makeField("count", BIGINT_WIRE_TYPE, [
+          customPrecisionConstraint("x-formspec/example-numeric/MaxSigFig", 8, 2, "@maxSigFig"),
+        ]),
+        makeField("ratio", NUMBER_TYPE, [
+          customPrecisionConstraint("x-formspec/example-numeric/MaxSigFig", 6, 3, "@maxSigFig"),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("rejects @maxDecimalPlaces on bigint-backed values", () => {
+      const ir = makeIR([
+        makeField("count", BIGINT_WIRE_TYPE, [
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/MaxDecimalPlaces",
+            2,
+            1,
+            "@maxDecimalPlaces"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("honors tag-level applicability checks when the constraint registration is broader", () => {
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/numeric",
+          constraints: [
+            defineConstraint({
+              constraintName: "TagRestrictedConstraint",
+              compositionRule: "intersect",
+              applicableTypes: ["primitive"],
+              toJsonSchema: () => ({}),
+            }),
+          ],
+          constraintTags: [
+            defineConstraintTag({
+              tagName: "tagRestricted",
+              constraintName: "TagRestrictedConstraint",
+              parseValue: (raw) => Number(raw.trim()),
+              isApplicableToType: (type) =>
+                type.kind === "primitive" && type.primitiveKind === "number",
+            }),
+          ],
+        }),
+      ]);
+
+      const ir = makeIR([
+        makeField("name", STRING_TYPE, [
+          customPrecisionConstraint(
+            "x-test/numeric/TagRestrictedConstraint",
+            2,
+            1,
+            "@tagRestricted"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
+
+    it("detects broadening for repeated @maxSigFig constraints", () => {
+      const ir = makeIR([
+        makeField("amount", DECIMAL_TYPE, [
+          customPrecisionConstraint("x-formspec/example-numeric/MaxSigFig", 4, 1, "@maxSigFig"),
+          customPrecisionConstraint("x-formspec/example-numeric/MaxSigFig", 8, 2, "@maxSigFig"),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
+    });
+
+    it("detects contradictions between broadened Decimal lower and upper bounds", () => {
+      const ir = makeIR([
+        makeField("amount", DECIMAL_TYPE, [
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalMinimum",
+            "10.0",
+            1,
+            "@minimum"
+          ),
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalExclusiveMaximum",
+            "10.0",
+            2,
+            "@exclusiveMaximum"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONTRADICTING_CONSTRAINTS");
+    });
+
+    it("treats inclusive bounds at the same Decimal payload as broader than exclusive bounds", () => {
+      const ir = makeIR([
+        makeField("amount", DECIMAL_TYPE, [
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalExclusiveMinimum",
+            "10.0",
+            1,
+            "@exclusiveMinimum"
+          ),
+          customPrecisionConstraint(
+            "x-formspec/example-numeric/DecimalMinimum",
+            "10.0",
+            2,
+            "@minimum"
+          ),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: registry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics[0]?.code).toBe("CONSTRAINT_BROADENING");
     });
   });
 

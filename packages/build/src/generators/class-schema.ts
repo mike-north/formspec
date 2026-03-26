@@ -20,7 +20,11 @@ import {
   type IRClassAnalysis,
 } from "../analyzer/class-analyzer.js";
 import { canonicalizeTSDoc, type TSDocSource } from "../canonicalize/index.js";
-import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
+import {
+  generateJsonSchemaFromIR,
+  type GenerateJsonSchemaFromIROptions,
+  type JsonSchema2020,
+} from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 
 /**
@@ -45,11 +49,12 @@ export interface ClassSchemas {
  */
 export function generateClassSchemas(
   analysis: IRClassAnalysis,
-  source?: TSDocSource
+  source?: TSDocSource,
+  options?: GenerateJsonSchemaFromIROptions
 ): ClassSchemas {
   const ir = canonicalizeTSDoc(analysis, source);
   return {
-    jsonSchema: generateJsonSchemaFromIR(ir),
+    jsonSchema: generateJsonSchemaFromIR(ir, options),
     uiSchema: generateUiSchemaFromIR(ir),
   };
 }
@@ -57,7 +62,7 @@ export function generateClassSchemas(
 /**
  * Options for generating schemas from a decorated class.
  */
-export interface GenerateFromClassOptions {
+export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Class name to analyze */
@@ -103,14 +108,26 @@ export function generateSchemasFromClass(
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
   }
 
-  const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
-  return generateClassSchemas(analysis, { file: options.filePath });
+  const analysis = analyzeClassToIR(
+    classDecl,
+    ctx.checker,
+    options.filePath,
+    options.extensionRegistry
+  );
+  return generateClassSchemas(
+    analysis,
+    { file: options.filePath },
+    {
+      extensionRegistry: options.extensionRegistry,
+      vendorPrefix: options.vendorPrefix,
+    }
+  );
 }
 
 /**
  * Options for generating schemas from a named type (class, interface, or type alias).
  */
-export interface GenerateSchemasOptions {
+export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Name of the exported class, interface, or type alias to analyze */
@@ -143,23 +160,38 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
   // Try class first
   const classDecl = findClassByName(ctx.sourceFile, options.typeName);
   if (classDecl) {
-    const analysis = analyzeClassToIR(classDecl, ctx.checker, options.filePath);
-    return generateClassSchemas(analysis, source);
+    const analysis = analyzeClassToIR(
+      classDecl,
+      ctx.checker,
+      options.filePath,
+      options.extensionRegistry
+    );
+    return generateClassSchemas(analysis, source, options);
   }
 
   // Try interface
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, options.typeName);
   if (interfaceDecl) {
-    const analysis = analyzeInterfaceToIR(interfaceDecl, ctx.checker, options.filePath);
-    return generateClassSchemas(analysis, source);
+    const analysis = analyzeInterfaceToIR(
+      interfaceDecl,
+      ctx.checker,
+      options.filePath,
+      options.extensionRegistry
+    );
+    return generateClassSchemas(analysis, source, options);
   }
 
   // Try type alias
   const typeAlias = findTypeAliasByName(ctx.sourceFile, options.typeName);
   if (typeAlias) {
-    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, options.filePath);
+    const result = analyzeTypeAliasToIR(
+      typeAlias,
+      ctx.checker,
+      options.filePath,
+      options.extensionRegistry
+    );
     if (result.ok) {
-      return generateClassSchemas(result.analysis, source);
+      return generateClassSchemas(result.analysis, source, options);
     }
     throw new Error(result.error);
   }

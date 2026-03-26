@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { defineExtension, defineCustomType, defineConstraint, IR_VERSION } from "@formspec/core";
+import {
+  defineExtension,
+  defineCustomType,
+  defineConstraint,
+  defineConstraintTag,
+  IR_VERSION,
+} from "@formspec/core";
 import type {
   ExtensionDefinition,
   CustomTypeRegistration,
@@ -12,6 +18,7 @@ import type {
   PrimitiveTypeNode,
 } from "@formspec/core";
 import { createExtensionRegistry } from "../extensions/index.js";
+import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { validateIR } from "../validate/index.js";
 
 // =============================================================================
@@ -118,6 +125,28 @@ const monetaryExtension: ExtensionDefinition = defineExtension({
   ],
 });
 
+const precisionTag = defineConstraintTag({
+  tagName: "maxSigFig",
+  constraintName: "Precision",
+  parseValue: (raw) => Number(raw.trim()),
+});
+
+const broadenedDecimalType = defineCustomType({
+  typeName: "MoneyDecimal",
+  tsTypeNames: ["MoneyDecimal", "bigint"],
+  builtinConstraintBroadenings: [
+    {
+      tagName: "minimum",
+      constraintName: "Currency",
+      parseValue: (raw) => raw.trim(),
+    },
+  ],
+  toJsonSchema: (_payload, vendorPrefix) => ({
+    type: "string",
+    [`${vendorPrefix}-money-decimal`]: true,
+  }),
+});
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -171,6 +200,12 @@ describe("Extension API", () => {
       expect(result).toEqual({
         "x-test-currency": "USD",
       });
+    });
+  });
+
+  describe("defineConstraintTag", () => {
+    it("returns the same registration object", () => {
+      expect(defineConstraintTag(precisionTag)).toBe(precisionTag);
     });
   });
 
@@ -233,16 +268,46 @@ describe("Extension API", () => {
       );
     });
 
-    it("allows the same name across different extensions", () => {
+    it("allows the same type name across different extensions when TS source names do not collide", () => {
       const ext1 = defineExtension({
         extensionId: "x-acme/one",
-        types: [decimalType],
+        types: [defineCustomType({ ...decimalType, tsTypeNames: ["AcmeDecimalOne"] })],
       });
       const ext2 = defineExtension({
         extensionId: "x-acme/two",
-        types: [decimalType],
+        types: [defineCustomType({ ...decimalType, tsTypeNames: ["AcmeDecimalTwo"] })],
       });
       expect(() => createExtensionRegistry([ext1, ext2])).not.toThrow();
+    });
+
+    it("indexes extension-defined constraint tags and built-in broadenings", () => {
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-acme/numeric",
+          types: [broadenedDecimalType],
+          constraints: [currencyConstraint, numericOnlyConstraint],
+          constraintTags: [precisionTag],
+        }),
+      ]);
+
+      expect(registry.findTypeByName("MoneyDecimal")).toEqual({
+        extensionId: "x-acme/numeric",
+        registration: broadenedDecimalType,
+      });
+      expect(registry.findTypeByName("bigint")).toEqual({
+        extensionId: "x-acme/numeric",
+        registration: broadenedDecimalType,
+      });
+      expect(registry.findConstraintTag("maxSigFig")).toEqual({
+        extensionId: "x-acme/numeric",
+        registration: precisionTag,
+      });
+      expect(
+        registry.findBuiltinConstraintBroadening("x-acme/numeric/MoneyDecimal", "minimum")
+      ).toEqual({
+        extensionId: "x-acme/numeric",
+        registration: broadenedDecimalType.builtinConstraintBroadenings?.[0],
+      });
     });
   });
 
@@ -331,6 +396,41 @@ describe("Extension API", () => {
 
       // Verify the registry returns the same registration
       expect(constraintReg).toBe(currencyConstraint);
+    });
+
+    it("rejects non-vendor-prefixed JSON Schema keys from extension constraint hooks", () => {
+      const unsafeConstraint = defineConstraint({
+        constraintName: "UnsafeConstraint",
+        compositionRule: "intersect",
+        applicableTypes: ["primitive"],
+        toJsonSchema: () => ({
+          type: "number",
+        }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/unsafe",
+          constraints: [unsafeConstraint],
+        }),
+      ]);
+
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/unsafe/UnsafeConstraint",
+        payload: null,
+        compositionRule: "intersect",
+        provenance: prov(1, "UnsafeConstraint"),
+      };
+
+      const ir = makeIR([makeField("amount", NUMBER_TYPE, [customCon])]);
+
+      expect(() =>
+        generateJsonSchemaFromIR(ir, {
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        })
+      ).toThrow(/may only emit "x-test-\*" JSON Schema keywords/);
     });
   });
 

@@ -78,7 +78,7 @@ export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions
 ): MixedAuthoringSchemas {
   const { filePath, typeName, overlays, ...schemaOptions } = options;
-  const analysis = analyzeNamedType(filePath, typeName);
+  const analysis = analyzeNamedType(filePath, typeName, schemaOptions.extensionRegistry);
   const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays);
   const ir = canonicalizeTSDoc(composedAnalysis, { file: filePath });
 
@@ -88,23 +88,27 @@ export function buildMixedAuthoringSchemas(
   };
 }
 
-function analyzeNamedType(filePath: string, typeName: string): IRClassAnalysis {
+function analyzeNamedType(
+  filePath: string,
+  typeName: string,
+  extensionRegistry?: GenerateJsonSchemaFromIROptions["extensionRegistry"]
+): IRClassAnalysis {
   const ctx = createProgramContext(filePath);
   const source: TSDocSource = { file: filePath };
 
   const classDecl = findClassByName(ctx.sourceFile, typeName);
   if (classDecl !== null) {
-    return analyzeClassToIR(classDecl, ctx.checker, source.file);
+    return analyzeClassToIR(classDecl, ctx.checker, source.file, extensionRegistry);
   }
 
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
   if (interfaceDecl !== null) {
-    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, source.file);
+    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, source.file, extensionRegistry);
   }
 
   const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
   if (typeAlias !== null) {
-    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, source.file);
+    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, source.file, extensionRegistry);
     if (result.ok) {
       return result.analysis;
     }
@@ -205,7 +209,7 @@ function assertSupportedOverlayField(baseField: FieldNode, overlayField: FieldNo
     );
   }
 
-  if (overlayField.required) {
+  if (overlayField.required && !baseField.required) {
     throw new Error(
       `Mixed-authoring overlay for "${baseField.name}" cannot change requiredness; keep requiredness on the static model`
     );
@@ -337,7 +341,7 @@ function mergeAnnotations(
   const overlayOnly = overlayAnnotations.filter(
     (annotation) => !baseKeys.has(annotationKey(annotation))
   );
-  return [...overlayOnly, ...baseAnnotations];
+  return [...baseAnnotations, ...overlayOnly];
 }
 
 function annotationKey(annotation: AnnotationNode): string {

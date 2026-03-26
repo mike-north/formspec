@@ -51,7 +51,9 @@ import {
   type LengthConstraintNode,
   type PathTarget,
   type JsonValue,
+  type TypeNode,
 } from "@formspec/core";
+import type { ExtensionRegistry } from "../extensions/index.js";
 import { tryParseJson } from "./json-utils.js";
 
 // =============================================================================
@@ -96,7 +98,7 @@ const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defaultValue
  * Creates a TSDocConfiguration with FormSpec custom block tag definitions
  * registered for all constraint tags.
  */
-function createFormSpecTSDocConfig(): TSDocConfiguration {
+function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): TSDocConfiguration {
   const config = new TSDocConfiguration();
 
   // Register each constraint tag as a custom block tag (allowMultiple so
@@ -122,6 +124,16 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
     );
   }
 
+  for (const tagName of extensionTagNames) {
+    config.addTagDefinition(
+      new TSDocTagDefinition({
+        tagName: "@" + tagName,
+        syntaxKind: TSDocTagSyntaxKind.BlockTag,
+        allowMultiple: true,
+      })
+    );
+  }
+
   return config;
 }
 
@@ -129,11 +141,23 @@ function createFormSpecTSDocConfig(): TSDocConfiguration {
  * Shared parser instance — thread-safe because TSDocParser is stateless;
  * all parse state lives in the returned ParserContext.
  */
-let sharedParser: TSDocParser | undefined;
+const parserCache = new Map<string, TSDocParser>();
 
-function getParser(): TSDocParser {
-  sharedParser ??= new TSDocParser(createFormSpecTSDocConfig());
-  return sharedParser;
+function getParser(options?: ParseTSDocOptions): TSDocParser {
+  const extensionTagNames = [
+    ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
+      (extension.constraintTags ?? []).map((tag) => tag.tagName)
+    ) ?? []),
+  ].sort();
+  const cacheKey = extensionTagNames.join("|");
+  const existing = parserCache.get(cacheKey);
+  if (existing) {
+    return existing;
+  }
+
+  const parser = new TSDocParser(createFormSpecTSDocConfig(extensionTagNames));
+  parserCache.set(cacheKey, parser);
+  return parser;
 }
 
 // =============================================================================
@@ -148,6 +172,22 @@ export interface TSDocParseResult {
   readonly constraints: readonly ConstraintNode[];
   /** Annotation IR nodes extracted from canonical TSDoc block tags. */
   readonly annotations: readonly AnnotationNode[];
+}
+
+/**
+ * Optional extension-aware parsing inputs for TSDoc extraction.
+ */
+export interface ParseTSDocOptions {
+  /**
+   * Extension registry used to resolve custom tags and custom-type-specific
+   * broadening of built-in constraint tags.
+   */
+  readonly extensionRegistry?: ExtensionRegistry;
+  /**
+   * Effective field/type node for the declaration being parsed. Required when
+   * built-in tags may broaden onto a custom type.
+   */
+  readonly fieldType?: TypeNode;
 }
 
 /**
@@ -175,7 +215,11 @@ export interface DisplayNameMetadata {
  * @param file - Absolute source file path for provenance
  * @returns Parsed constraint and annotation nodes
  */
-export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
+export function parseTSDocTags(
+  node: ts.Node,
+  file = "",
+  options?: ParseTSDocOptions
+): TSDocParseResult {
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
   let displayName: string | undefined;
@@ -201,7 +245,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
         continue;
       }
 
-      const parser = getParser();
+      const parser = getParser(options);
       const parserContext = parser.parseRange(
         TextRange.fromStringRange(sourceText, range.pos, range.end)
       );
@@ -255,7 +299,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
         if (text === "" && expectedType !== "boolean") continue;
 
         const provenance = provenanceForComment(range, sourceFile, file, tagName);
-        const constraintNode = parseConstraintValue(tagName, text, provenance);
+        const constraintNode = parseConstraintValue(tagName, text, provenance, options);
         if (constraintNode) {
           constraints.push(constraintNode);
         }
@@ -329,7 +373,7 @@ export function parseTSDocTags(node: ts.Node, file = ""): TSDocParseResult {
       continue;
     }
 
-    const constraintNode = parseConstraintValue(tagName, text, provenance);
+    const constraintNode = parseConstraintValue(tagName, text, provenance, options);
     if (constraintNode) {
       constraints.push(constraintNode);
     }
@@ -468,8 +512,14 @@ function extractPlainText(node: DocNode): string {
 function parseConstraintValue(
   tagName: string,
   text: string,
-  provenance: Provenance
+  provenance: Provenance,
+  options?: ParseTSDocOptions
 ): ConstraintNode | null {
+  const customConstraint = parseExtensionConstraintValue(tagName, text, provenance, options);
+  if (customConstraint) {
+    return customConstraint;
+  }
+
   if (!isBuiltinConstraintName(tagName)) {
     return null;
   }
@@ -589,6 +639,108 @@ function parseConstraintValue(
     kind: "constraint",
     constraintKind: "pattern",
     pattern: effectiveText,
+    ...(path && { path }),
+    provenance,
+  };
+}
+
+function parseExtensionConstraintValue(
+  tagName: string,
+  text: string,
+  provenance: Provenance,
+  options?: ParseTSDocOptions
+): ConstraintNode | null {
+  const pathResult = extractPathTarget(text);
+  const effectiveText = pathResult ? pathResult.remainingText : text;
+  const path = pathResult?.path;
+  const registry = options?.extensionRegistry;
+  if (registry === undefined) {
+    return null;
+  }
+
+  const directTag = registry.findConstraintTag(tagName);
+  if (directTag !== undefined) {
+    return makeCustomConstraintNode(
+      directTag.extensionId,
+      directTag.registration.constraintName,
+      directTag.registration.parseValue(effectiveText),
+      provenance,
+      path,
+      registry
+    );
+  }
+
+  if (!isBuiltinConstraintName(tagName)) {
+    return null;
+  }
+
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  if (broadenedTypeId === undefined) {
+    return null;
+  }
+
+  const broadened = registry.findBuiltinConstraintBroadening(broadenedTypeId, tagName);
+  if (broadened === undefined) {
+    return null;
+  }
+
+  return makeCustomConstraintNode(
+    broadened.extensionId,
+    broadened.registration.constraintName,
+    broadened.registration.parseValue(effectiveText),
+    provenance,
+    path,
+    registry
+  );
+}
+
+function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+  if (fieldType?.kind === "custom") {
+    return fieldType.typeId;
+  }
+
+  if (fieldType?.kind !== "union") {
+    return undefined;
+  }
+
+  const customMembers = fieldType.members.filter(
+    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
+  );
+  if (customMembers.length !== 1) {
+    return undefined;
+  }
+
+  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
+  const allOtherMembersAreNull = nonCustomMembers.every(
+    (member) => member.kind === "primitive" && member.primitiveKind === "null"
+  );
+
+  const customMember = customMembers[0];
+  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
+}
+
+function makeCustomConstraintNode(
+  extensionId: string,
+  constraintName: string,
+  payload: JsonValue,
+  provenance: Provenance,
+  path: PathTarget | undefined,
+  registry: ExtensionRegistry
+): ConstraintNode {
+  const constraintId = `${extensionId}/${constraintName}`;
+  const registration = registry.findConstraint(constraintId);
+  if (registration === undefined) {
+    throw new Error(
+      `Custom TSDoc tag resolved to unregistered constraint "${constraintId}". Register the constraint before using its tag.`
+    );
+  }
+
+  return {
+    kind: "constraint",
+    constraintKind: "custom",
+    constraintId,
+    payload,
+    compositionRule: registration.compositionRule,
     ...(path && { path }),
     provenance,
   };

@@ -23,6 +23,7 @@ import type {
   ObjectProperty,
   JsonValue,
 } from "@formspec/core";
+import { normalizeConstraintTagName } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
@@ -139,6 +140,14 @@ function addConstraintBroadening(
     primaryLocation: primary,
     relatedLocations: [related],
   });
+}
+
+function getExtensionIdFromConstraintId(constraintId: string): string | null {
+  const separator = constraintId.lastIndexOf("/");
+  if (separator <= 0) {
+    return null;
+  }
+  return constraintId.slice(0, separator);
 }
 
 // =============================================================================
@@ -403,6 +412,150 @@ function checkConstraintBroadening(
     }
 
     strongestByKey.set(key, constraint);
+  }
+}
+
+interface CustomSemanticEntry {
+  readonly constraint: Extract<ConstraintNode, { readonly constraintKind: "custom" }>;
+  readonly comparePayloads: NonNullable<
+    NonNullable<ReturnType<ExtensionRegistry["findConstraint"]>>["comparePayloads"]
+  >;
+  readonly role: NonNullable<NonNullable<ReturnType<ExtensionRegistry["findConstraint"]>>["semanticRole"]>;
+}
+
+function compareCustomConstraintStrength(current: CustomSemanticEntry, previous: CustomSemanticEntry): number {
+  const order = current.comparePayloads(current.constraint.payload, previous.constraint.payload);
+  const equalPayloadTiebreaker =
+    order === 0 ? compareSemanticInclusivity(current.role.inclusive, previous.role.inclusive) : order;
+
+  switch (current.role.bound) {
+    case "lower":
+      return equalPayloadTiebreaker;
+    case "upper":
+      return equalPayloadTiebreaker === 0 ? 0 : -equalPayloadTiebreaker;
+    case "exact":
+      return order === 0 ? 0 : Number.NaN;
+    default: {
+      const _exhaustive: never = current.role.bound;
+      return _exhaustive;
+    }
+  }
+}
+
+function compareSemanticInclusivity(currentInclusive: boolean, previousInclusive: boolean): number {
+  if (currentInclusive === previousInclusive) {
+    return 0;
+  }
+  return currentInclusive ? -1 : 1;
+}
+
+function customConstraintsContradict(
+  lower: CustomSemanticEntry,
+  upper: CustomSemanticEntry
+): boolean {
+  const order = lower.comparePayloads(lower.constraint.payload, upper.constraint.payload);
+  if (order > 0) {
+    return true;
+  }
+  if (order < 0) {
+    return false;
+  }
+  return !lower.role.inclusive || !upper.role.inclusive;
+}
+
+function describeCustomConstraintTag(
+  constraint: Extract<ConstraintNode, { readonly constraintKind: "custom" }>
+): string {
+  return constraint.provenance.tagName ?? constraint.constraintId;
+}
+
+function checkCustomConstraintSemantics(
+  ctx: ValidationContext,
+  fieldName: string,
+  constraints: readonly ConstraintNode[]
+): void {
+  if (ctx.extensionRegistry === undefined) {
+    return;
+  }
+
+  const strongestByKey = new Map<string, CustomSemanticEntry>();
+  const lowerByFamily = new Map<string, CustomSemanticEntry>();
+  const upperByFamily = new Map<string, CustomSemanticEntry>();
+
+  for (const constraint of constraints) {
+    if (constraint.constraintKind !== "custom") {
+      continue;
+    }
+
+    const registration = ctx.extensionRegistry.findConstraint(constraint.constraintId);
+    if (
+      registration?.comparePayloads === undefined ||
+      registration.semanticRole === undefined
+    ) {
+      continue;
+    }
+
+    const entry: CustomSemanticEntry = {
+      constraint,
+      comparePayloads: registration.comparePayloads,
+      role: registration.semanticRole,
+    };
+    const familyKey = `${registration.semanticRole.family}:${pathKey(constraint)}`;
+    const boundKey = `${familyKey}:${registration.semanticRole.bound}`;
+    const previous = strongestByKey.get(boundKey);
+
+    if (previous !== undefined) {
+      const strength = compareCustomConstraintStrength(entry, previous);
+      if (Number.isNaN(strength)) {
+        addContradiction(
+          ctx,
+          `Field "${formatPathTargetFieldName(fieldName, constraint.path?.segments ?? [])}": ${describeCustomConstraintTag(constraint)} conflicts with ${describeCustomConstraintTag(previous.constraint)}`,
+          constraint.provenance,
+          previous.constraint.provenance
+        );
+        continue;
+      }
+
+      if (strength < 0) {
+        addConstraintBroadening(
+          ctx,
+          `Field "${formatPathTargetFieldName(fieldName, constraint.path?.segments ?? [])}": ${describeCustomConstraintTag(constraint)} is broader than earlier ${describeCustomConstraintTag(previous.constraint)}. Constraints can only narrow.`,
+          constraint.provenance,
+          previous.constraint.provenance
+        );
+        continue;
+      }
+
+      if (strength > 0) {
+        strongestByKey.set(boundKey, entry);
+      }
+    } else {
+      strongestByKey.set(boundKey, entry);
+    }
+
+    if (registration.semanticRole.bound === "lower") {
+      lowerByFamily.set(familyKey, strongestByKey.get(boundKey) ?? entry);
+    } else if (registration.semanticRole.bound === "upper") {
+      upperByFamily.set(familyKey, strongestByKey.get(boundKey) ?? entry);
+    }
+  }
+
+  for (const [familyKey, lower] of lowerByFamily) {
+    const upper = upperByFamily.get(familyKey);
+    if (upper === undefined) {
+      continue;
+    }
+
+    if (!customConstraintsContradict(lower, upper)) {
+      continue;
+    }
+
+    addContradiction(
+      ctx,
+      `Field "${formatPathTargetFieldName(fieldName, lower.constraint.path?.segments ?? [])}": ${describeCustomConstraintTag(lower.constraint)} contradicts ${describeCustomConstraintTag(upper.constraint)}`,
+      lower.constraint.provenance,
+      upper.constraint.provenance
+    );
   }
 }
 
@@ -838,10 +991,45 @@ function checkCustomConstraint(
     return;
   }
 
-  // If applicableTypes is null, the constraint applies to any type
-  if (registration.applicableTypes === null) return;
+  const normalizedTagName =
+    constraint.provenance.tagName === undefined
+      ? undefined
+      : normalizeConstraintTagName(constraint.provenance.tagName.replace(/^@/, ""));
+  if (normalizedTagName !== undefined) {
+    const tagRegistration = ctx.extensionRegistry.findConstraintTag(normalizedTagName);
+    const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
+    if (
+      extensionId !== null &&
+      tagRegistration?.extensionId === extensionId &&
+      tagRegistration.registration.constraintName === registration.constraintName &&
+      tagRegistration.registration.isApplicableToType?.(type) === false
+    ) {
+      addTypeMismatch(
+        ctx,
+        `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
+        constraint.provenance
+      );
+      return;
+    }
+  }
 
-  if (!registration.applicableTypes.includes(type.kind)) {
+  // If applicableTypes is null, the constraint applies to any type unless a
+  // narrower extension predicate rejects the specific resolved type node.
+  if (registration.applicableTypes === null) {
+    if (registration.isApplicableToType?.(type) === false) {
+      addTypeMismatch(
+        ctx,
+        `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
+        constraint.provenance
+      );
+    }
+    return;
+  }
+
+  if (
+    !registration.applicableTypes.includes(type.kind) ||
+    registration.isApplicableToType?.(type) === false
+  ) {
     addTypeMismatch(
       ctx,
       `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
@@ -892,6 +1080,7 @@ function validateConstraints(
   checkAllowedMembersContradiction(ctx, name, constraints);
   checkConstContradictions(ctx, name, constraints);
   checkConstraintBroadening(ctx, name, constraints);
+  checkCustomConstraintSemantics(ctx, name, constraints);
   checkTypeApplicability(ctx, name, type, constraints);
 }
 

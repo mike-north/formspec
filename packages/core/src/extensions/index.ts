@@ -9,6 +9,7 @@
  * @packageDocumentation
  */
 
+import type { BuiltinConstraintName } from "../types/constraint-definitions.js";
 import type { JsonValue, TypeNode } from "../types/ir.js";
 
 // =============================================================================
@@ -25,6 +26,11 @@ export interface CustomTypeRegistration {
   /** The type name, unique within the extension. */
   readonly typeName: string;
   /**
+   * Optional TypeScript surface names that should resolve to this custom type
+   * during TSDoc/class analysis. Defaults to `typeName` when omitted.
+   */
+  readonly tsTypeNames?: readonly string[];
+  /**
    * Converts the custom type's payload into a JSON Schema fragment.
    *
    * @param payload - The opaque JSON payload from the {@link CustomTypeNode}.
@@ -32,6 +38,11 @@ export interface CustomTypeRegistration {
    * @returns A JSON Schema fragment representing this type.
    */
   readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+  /**
+   * Optional broadening of built-in constraint tags so they can apply to this
+   * custom type without modifying the core built-in constraint tables.
+   */
+  readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
 }
 
 /**
@@ -53,6 +64,22 @@ export interface CustomConstraintRegistration {
    * Used by the validator to emit TYPE_MISMATCH diagnostics.
    */
   readonly applicableTypes: readonly TypeNode["kind"][] | null;
+  /**
+   * Optional precise type predicate used when kind-level applicability is too
+   * broad (for example, constraints that apply to integer-like primitives but
+   * not strings).
+   */
+  readonly isApplicableToType?: (type: TypeNode) => boolean;
+  /**
+   * Optional comparator for payloads belonging to the same custom constraint.
+   * Return values follow the `Array.prototype.sort()` contract.
+   */
+  readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
+  /**
+   * Optional semantic family metadata for generic contradiction/broadening
+   * handling across ordered constraints.
+   */
+  readonly semanticRole?: ConstraintSemanticRole;
   /**
    * Converts the custom constraint's payload into JSON Schema keywords.
    *
@@ -89,6 +116,53 @@ export interface VocabularyKeywordRegistration {
   readonly schema: JsonValue;
 }
 
+/**
+ * Declarative authoring-side registration for a custom TSDoc constraint tag.
+ */
+export interface ConstraintTagRegistration {
+  /** Tag name without the `@` prefix, e.g. `"maxSigFig"`. */
+  readonly tagName: string;
+  /** The custom constraint that this tag should produce. */
+  readonly constraintName: string;
+  /** Parser from raw TSDoc text to JSON-serializable payload. */
+  readonly parseValue: (raw: string) => JsonValue;
+  /**
+   * Optional precise applicability predicate for the field type being parsed.
+   * When omitted, the target custom constraint registration controls type
+   * applicability during validation.
+   */
+  readonly isApplicableToType?: (type: TypeNode) => boolean;
+}
+
+/**
+ * Registration for mapping a built-in TSDoc tag onto a custom constraint when
+ * it is used on a particular custom type.
+ */
+export interface BuiltinConstraintBroadeningRegistration {
+  /** The built-in tag being broadened, without the `@` prefix. */
+  readonly tagName: BuiltinConstraintName;
+  /** The custom constraint to emit for this built-in tag. */
+  readonly constraintName: string;
+  /** Parser from raw TSDoc text to extension payload. */
+  readonly parseValue: (raw: string) => JsonValue;
+}
+
+/**
+ * Semantic metadata for ordered custom constraints that should participate in
+ * the generic contradiction/broadening logic.
+ */
+export interface ConstraintSemanticRole {
+  /**
+   * Logical family identifier shared by related constraints, for example
+   * `"decimal-bound"` or `"date-bound"`.
+   */
+  readonly family: string;
+  /** Whether this constraint acts as a lower or upper bound. */
+  readonly bound: "lower" | "upper" | "exact";
+  /** Whether equality is allowed when comparing against the bound. */
+  readonly inclusive: boolean;
+}
+
 // =============================================================================
 // EXTENSION DEFINITION
 // =============================================================================
@@ -120,6 +194,8 @@ export interface ExtensionDefinition {
   readonly types?: readonly CustomTypeRegistration[];
   /** Custom constraint registrations provided by this extension. */
   readonly constraints?: readonly CustomConstraintRegistration[];
+  /** Authoring-side TSDoc tag registrations provided by this extension. */
+  readonly constraintTags?: readonly ConstraintTagRegistration[];
   /** Custom annotation registrations provided by this extension. */
   readonly annotations?: readonly CustomAnnotationRegistration[];
   /** Vocabulary keyword registrations provided by this extension. */
@@ -160,6 +236,16 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
  * @returns The same registration, validated at the type level.
  */
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration {
+  return reg;
+}
+
+/**
+ * Defines a custom TSDoc constraint tag registration.
+ *
+ * @param reg - The custom tag registration.
+ * @returns The same registration, validated at the type level.
+ */
+export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration {
   return reg;
 }
 

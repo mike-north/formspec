@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core";
+import { BUILTIN_CONSTRAINT_DEFINITIONS, defineConstraintTag, defineExtension } from "@formspec/core";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems } from "../providers/completion.js";
 
@@ -58,5 +58,23 @@ describe("getCompletionItems", () => {
     const items = getCompletionItems();
     const enumOptions = items.find((item) => item.label === "@enumOptions");
     expect(enumOptions).toBeDefined();
+  });
+
+  it("includes extension-defined tags when extensions are provided", () => {
+    const extension = defineExtension({
+      extensionId: "x-test/numeric",
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "maxSigFig",
+          constraintName: "MaxSigFig",
+          parseValue: (raw) => Number(raw.trim()),
+        }),
+      ],
+    });
+
+    const items = getCompletionItems([extension]);
+    expect(items.find((item) => item.label === "@maxSigFig")).toMatchObject({
+      kind: CompletionItemKind.Keyword,
+    });
   });
 });
