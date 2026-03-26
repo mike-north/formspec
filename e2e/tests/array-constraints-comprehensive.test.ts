@@ -33,48 +33,65 @@ describe("Array Constraints — comprehensive", () => {
   });
 
   // @see 003-json-schema-vocabulary.md §2.4: "T[] → { type: array, items: <T schema> }"
-  it("all array fields have type: array with items schema", () => {
-    for (const field of ["nonEmpty", "bounded", "allowsEmpty", "combinedBounds", "uniqueTags"]) {
-      expect(properties[field]["type"]).toBe("array");
-      expect(properties[field]["items"]).toEqual({ type: "string" });
-    }
-    expect(properties["unconstrained"]["type"]).toBe("array");
-    expect(properties["unconstrained"]["items"]).toEqual({ type: "number" });
-  });
-
-  // @see 003-json-schema-vocabulary.md §2.4: "@minItems 1 → minItems: 1"
-  it("nonEmpty: @minItems 1 → minItems: 1", () => {
-    expect(properties["nonEmpty"]["minItems"]).toBe(1);
-    expect(properties["nonEmpty"]["maxItems"]).toBeUndefined();
+  it("nonEmpty: string[] → array of strings", () => {
+    expect(properties["nonEmpty"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      minItems: 1,
+    });
   });
 
   // @see 003-json-schema-vocabulary.md §2.4: "@maxItems 100 → maxItems: 100"
-  it("bounded: @maxItems 100 → maxItems: 100", () => {
-    expect(properties["bounded"]["maxItems"]).toBe(100);
-    expect(properties["bounded"]["minItems"]).toBeUndefined();
+  it("bounded: string[] → array of strings", () => {
+    expect(properties["bounded"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      maxItems: 100,
+    });
   });
 
-  // @see 002-constraint-tags.md §3.2: "minItems: 0 is valid"
-  it("allowsEmpty: @minItems 0 → minItems: 0 (valid)", () => {
-    expect(properties["allowsEmpty"]["minItems"]).toBe(0);
+  // @see 002-tsdoc-grammar.md §4.3: "minItems accepts 0 for arrays"
+  it("allowsEmpty: string[] → array of strings", () => {
+    expect(properties["allowsEmpty"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      minItems: 0,
+    });
   });
 
-  it("combinedBounds: @minItems 1 @maxItems 10 → both emitted", () => {
-    expect(properties["combinedBounds"]["minItems"]).toBe(1);
-    expect(properties["combinedBounds"]["maxItems"]).toBe(10);
+  // @see 003-json-schema-vocabulary.md §2.4: minItems and maxItems can be emitted together
+  it("combinedBounds: string[] → array of strings with both bounds", () => {
+    expect(properties["combinedBounds"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      minItems: 1,
+      maxItems: 10,
+    });
   });
 
-  // @see 003-json-schema-vocabulary.md §2.4: "@uniqueItems → uniqueItems: true"
-  it.skip("BUG: uniqueTags: @uniqueItems → uniqueItems: true", () => {
-    // @see 003-json-schema-vocabulary.md §2.4: "@uniqueItems (bare) → uniqueItems: true"
-    expect(properties["uniqueTags"]["uniqueItems"]).toBe(true);
+  it.skip("BUG: uniqueTags: string[] → array of strings with uniqueItems", () => {
+    expect(properties["uniqueTags"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      uniqueItems: true,
+    });
   });
 
-  // @see 003-json-schema-vocabulary.md §2.4: "all three array constraints combined"
-  it.skip("BUG: allConstraints: minItems + maxItems + uniqueItems combined", () => {
-    expect(properties["allConstraints"]["minItems"]).toBe(1);
-    expect(properties["allConstraints"]["maxItems"]).toBe(5);
-    expect(properties["allConstraints"]["uniqueItems"]).toBe(true);
+  it.skip("BUG: allConstraints: string[] → array of strings with minItems, maxItems, and uniqueItems", () => {
+    expect(properties["allConstraints"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      minItems: 1,
+      maxItems: 5,
+      uniqueItems: true,
+    });
+  });
+
+  it("unconstrained: number[] → array of numbers", () => {
+    expect(properties["unconstrained"]).toEqual({
+      type: "array",
+      items: { type: "number" },
+    });
   });
 
   // @see 002-constraint-tags.md §4.3: "string constraint on string[] → applied to items schema, not array"
@@ -91,28 +108,20 @@ describe("Array Constraints — comprehensive", () => {
     expect(items["type"]).toBe("string");
   });
 
-  // @see 003-json-schema-vocabulary.md §2.4: "unconstrained array: items only"
-  it("unconstrained: no constraint keywords on array itself", () => {
-    const unconstrained = properties["unconstrained"];
-    expect(unconstrained["type"]).toBe("array");
-    expect(unconstrained["minItems"]).toBeUndefined();
-    expect(unconstrained["maxItems"]).toBeUndefined();
-    expect(unconstrained["uniqueItems"]).toBeUndefined();
-  });
-
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    for (const field of [
-      "nonEmpty",
-      "bounded",
-      "allowsEmpty",
-      "combinedBounds",
-      "uniqueTags",
-      "allConstraints",
-      "itemConstrained",
-      "unconstrained",
-    ]) {
-      expect(required, `expected "${field}" in required`).toContain(field);
-    }
+    expect(required).toHaveLength(8);
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "nonEmpty",
+        "bounded",
+        "allowsEmpty",
+        "combinedBounds",
+        "uniqueTags",
+        "allConstraints",
+        "itemConstrained",
+        "unconstrained",
+      ])
+    );
   });
 });

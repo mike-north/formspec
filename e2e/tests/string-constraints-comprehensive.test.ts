@@ -34,59 +34,69 @@ describe("String Constraints — comprehensive", () => {
 
   // @see 003-json-schema-vocabulary.md §2.7: "@minLength 1 → minLength: 1"
   it("nonEmpty: @minLength 1 → minLength: 1", () => {
-    expect(properties["nonEmpty"]["type"]).toBe("string");
-    expect(properties["nonEmpty"]["minLength"]).toBe(1);
-    expect(properties["nonEmpty"]["maxLength"]).toBeUndefined();
+    expect(properties["nonEmpty"]).toEqual({ type: "string", minLength: 1 });
   });
 
   // @see 003-json-schema-vocabulary.md §2.7: "@maxLength 255 → maxLength: 255"
   it("bounded: @maxLength 255 → maxLength: 255", () => {
-    expect(properties["bounded"]["type"]).toBe("string");
-    expect(properties["bounded"]["maxLength"]).toBe(255);
-    expect(properties["bounded"]["minLength"]).toBeUndefined();
+    expect(properties["bounded"]).toEqual({ type: "string", maxLength: 255 });
   });
 
   // @see 002-constraint-tags.md §3.2: "minLength: 0 is valid (non-negative integer constraint)"
   it("allowsEmpty: @minLength 0 → minLength: 0 (valid)", () => {
-    expect(properties["allowsEmpty"]["type"]).toBe("string");
-    expect(properties["allowsEmpty"]["minLength"]).toBe(0);
+    expect(properties["allowsEmpty"]).toEqual({ type: "string", minLength: 0 });
   });
 
   // @see 003-json-schema-vocabulary.md §2.7: "minLength == maxLength is valid"
   it("exactLength: @minLength 2 @maxLength 2 → exact length constraint", () => {
-    expect(properties["exactLength"]["minLength"]).toBe(2);
-    expect(properties["exactLength"]["maxLength"]).toBe(2);
+    expect(properties["exactLength"]).toEqual({
+      type: "string",
+      minLength: 2,
+      maxLength: 2,
+    });
   });
 
+  // @see 003-json-schema-vocabulary.md §2.7 C1: "combined minLength + maxLength"
   it("combinedBounds: @minLength 1 @maxLength 1000 → both emitted", () => {
-    expect(properties["combinedBounds"]["minLength"]).toBe(1);
-    expect(properties["combinedBounds"]["maxLength"]).toBe(1000);
+    expect(properties["combinedBounds"]).toEqual({
+      type: "string",
+      minLength: 1,
+      maxLength: 1000,
+    });
   });
 
   // @see 003-json-schema-vocabulary.md §2.7: "@pattern → pattern keyword"
   it("lowercaseOnly: @pattern ^[a-z]+$ → pattern emitted", () => {
-    expect(properties["lowercaseOnly"]["type"]).toBe("string");
-    expect(properties["lowercaseOnly"]["pattern"]).toBe("^[a-z]+$");
+    expect(properties["lowercaseOnly"]).toEqual({
+      type: "string",
+      pattern: "^[a-z]+$",
+    });
   });
 
   // @see 002-constraint-tags.md §3.2: "pattern with escaped chars preserved"
   it("emailPattern: @pattern with dots → pattern with escaped chars", () => {
-    expect(properties["emailPattern"]["type"]).toBe("string");
-    // The pattern contains dot-escaping
-    expect(typeof properties["emailPattern"]["pattern"]).toBe("string");
-    expect(properties["emailPattern"]["pattern"]).toContain("@");
+    expect(properties["emailPattern"]).toEqual({
+      type: "string",
+      pattern: "^[^@]+@[^@]+\\.[^@]+$",
+    });
   });
 
+  // @see 002-constraint-tags.md §3.2: "pattern payload is preserved literally after parsing"
   it("ssnPattern: @pattern with \\d → pattern preserved", () => {
-    expect(properties["ssnPattern"]["type"]).toBe("string");
-    expect(typeof properties["ssnPattern"]["pattern"]).toBe("string");
+    expect(properties["ssnPattern"]).toEqual({
+      type: "string",
+      pattern: "^\\d{3}-\\d{2}-\\d{4}$",
+    });
   });
 
   // @see 003-json-schema-vocabulary.md §2.7 C1: "combined minLength + maxLength + pattern"
   it("constrainedEmail: all three string constraints combined", () => {
-    expect(properties["constrainedEmail"]["minLength"]).toBe(5);
-    expect(properties["constrainedEmail"]["maxLength"]).toBe(100);
-    expect(properties["constrainedEmail"]["pattern"]).toBe("^[^@]+@[^@]+$");
+    expect(properties["constrainedEmail"]).toEqual({
+      type: "string",
+      minLength: 5,
+      maxLength: 100,
+      pattern: "^[^@]+@[^@]+$",
+    });
   });
 
   // @see 003-json-schema-vocabulary.md §2.7: "@format → format keyword"
@@ -105,28 +115,28 @@ describe("String Constraints — comprehensive", () => {
 
   // @see 003-json-schema-vocabulary.md §2.1: "unconstrained string → type: string only"
   it("unconstrained: no constraints → only type: string", () => {
-    expect(properties["unconstrained"]["type"]).toBe("string");
-    expect(properties["unconstrained"]["minLength"]).toBeUndefined();
-    expect(properties["unconstrained"]["maxLength"]).toBeUndefined();
-    expect(properties["unconstrained"]["pattern"]).toBeUndefined();
-    expect(properties["unconstrained"]["format"]).toBeUndefined();
+    expect(properties["unconstrained"]).toEqual({ type: "string" });
   });
 
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    for (const field of [
-      "nonEmpty",
-      "bounded",
-      "allowsEmpty",
-      "exactLength",
-      "combinedBounds",
-      "lowercaseOnly",
-      "emailPattern",
-      "ssnPattern",
-      "constrainedEmail",
-      "unconstrained",
-    ]) {
-      expect(required, `expected "${field}" in required`).toContain(field);
-    }
+    expect(required).toHaveLength(13);
+    expect(required).toEqual(
+      expect.arrayContaining([
+        "nonEmpty",
+        "bounded",
+        "allowsEmpty",
+        "exactLength",
+        "combinedBounds",
+        "lowercaseOnly",
+        "emailPattern",
+        "ssnPattern",
+        "constrainedEmail",
+        "emailFormat",
+        "dateFormat",
+        "uriFormat",
+        "unconstrained",
+      ])
+    );
   });
 });
