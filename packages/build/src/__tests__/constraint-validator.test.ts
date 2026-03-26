@@ -495,6 +495,33 @@ describe("validateIR", () => {
 
       expect(validateIR(ir).valid).toBe(true);
     });
+
+    it("emits CONSTRAINT_BROADENING when a later minimum broadens an earlier exclusiveMinimum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          exMinConstraint(10, 1),
+          minConstraint(10, 2),
+        ]),
+      ]);
+      const result = validateIR(ir);
+
+      expect(result.valid).toBe(false);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONSTRAINT_BROADENING");
+      expect(diag?.message).toContain("@minimum");
+      expect(diag?.message).toContain("@exclusiveMinimum");
+    });
+
+    it("does not emit when a later exclusiveMaximum narrows an earlier maximum at the same value", () => {
+      const ir = makeIR([
+        makeField("quantity", NUMBER_TYPE, [
+          maxConstraint(10, 1),
+          exMaxConstraint(10, 2),
+        ]),
+      ]);
+
+      expect(validateIR(ir).valid).toBe(true);
+    });
   });
 
   // ---------------------------------------------------------------------------

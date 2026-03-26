@@ -171,6 +171,8 @@ type OrderedBoundKind =
 
 type OrderedBoundConstraint = Extract<ConstraintNode, { readonly constraintKind: OrderedBoundKind }>;
 
+type OrderedBoundFamily = "numeric-lower" | "numeric-upper" | "length-lower" | "length-upper";
+
 function isOrderedBoundConstraint(constraint: ConstraintNode): constraint is OrderedBoundConstraint {
   return (
     constraint.constraintKind === "minimum" ||
@@ -188,6 +190,27 @@ function pathKey(constraint: ConstraintNode): string {
   return constraint.path?.segments.join(".") ?? "";
 }
 
+function orderedBoundFamily(kind: OrderedBoundKind): OrderedBoundFamily {
+  switch (kind) {
+    case "minimum":
+    case "exclusiveMinimum":
+      return "numeric-lower";
+    case "maximum":
+    case "exclusiveMaximum":
+      return "numeric-upper";
+    case "minLength":
+    case "minItems":
+      return "length-lower";
+    case "maxLength":
+    case "maxItems":
+      return "length-upper";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
 function isLowerBoundKind(kind: OrderedBoundKind): boolean {
   return (
     kind === "minimum" ||
@@ -199,6 +222,63 @@ function isLowerBoundKind(kind: OrderedBoundKind): boolean {
 
 function describeConstraintTag(constraint: OrderedBoundConstraint): string {
   return `@${constraint.constraintKind}`;
+}
+
+function compareConstraintStrength(
+  current: OrderedBoundConstraint,
+  previous: OrderedBoundConstraint
+): number {
+  const family = orderedBoundFamily(current.constraintKind);
+
+  if (family === "numeric-lower") {
+    if (current.value !== previous.value) {
+      return current.value > previous.value ? 1 : -1;
+    }
+    if (
+      current.constraintKind === "exclusiveMinimum" &&
+      previous.constraintKind === "minimum"
+    ) {
+      return 1;
+    }
+    if (
+      current.constraintKind === "minimum" &&
+      previous.constraintKind === "exclusiveMinimum"
+    ) {
+      return -1;
+    }
+    return 0;
+  }
+
+  if (family === "numeric-upper") {
+    if (current.value !== previous.value) {
+      return current.value < previous.value ? 1 : -1;
+    }
+    if (
+      current.constraintKind === "exclusiveMaximum" &&
+      previous.constraintKind === "maximum"
+    ) {
+      return 1;
+    }
+    if (
+      current.constraintKind === "maximum" &&
+      previous.constraintKind === "exclusiveMaximum"
+    ) {
+      return -1;
+    }
+    return 0;
+  }
+
+  if (isLowerBoundKind(current.constraintKind)) {
+    if (current.value === previous.value) {
+      return 0;
+    }
+    return current.value > previous.value ? 1 : -1;
+  }
+
+  if (current.value === previous.value) {
+    return 0;
+  }
+  return current.value < previous.value ? 1 : -1;
 }
 
 function checkConstraintBroadening(
@@ -213,18 +293,15 @@ function checkConstraintBroadening(
       continue;
     }
 
-    const key = `${constraint.constraintKind}:${pathKey(constraint)}`;
+    const key = `${orderedBoundFamily(constraint.constraintKind)}:${pathKey(constraint)}`;
     const previous = strongestByKey.get(key);
     if (previous === undefined) {
       strongestByKey.set(key, constraint);
       continue;
     }
 
-    const broadens = isLowerBoundKind(constraint.constraintKind)
-      ? constraint.value < previous.value
-      : constraint.value > previous.value;
-
-    if (broadens) {
+    const strength = compareConstraintStrength(constraint, previous);
+    if (strength < 0) {
       addConstraintBroadening(
         ctx,
         `Field "${fieldName}": ${describeConstraintTag(constraint)} (${String(constraint.value)}) is broader than earlier ${describeConstraintTag(previous)} (${String(previous.value)}). Constraints can only narrow.`,
@@ -234,11 +311,7 @@ function checkConstraintBroadening(
       continue;
     }
 
-    const previousIsStronger = isLowerBoundKind(constraint.constraintKind)
-      ? previous.value >= constraint.value
-      : previous.value <= constraint.value;
-
-    if (previousIsStronger) {
+    if (strength <= 0) {
       continue;
     }
 
