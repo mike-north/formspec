@@ -235,6 +235,12 @@ export interface GenerateJsonSchemaFromIROptions {
 export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
 // @public
+export interface GenerateJsonSchemaFromIROptions {
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
+}
+
+// @public
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
 
 // @public
