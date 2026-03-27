@@ -72,6 +72,8 @@ export default [
       "**/coverage/**",
       "scratch/**",
       ".worktrees/**",
+      // CI scripts are plain JS, not part of the TypeScript project.
+      ".github/**",
       // Examples have their own eslint.config.js with formspec plugin rules.
       // They are linted separately via `pnpm -r run lint`.
       "examples/**",
