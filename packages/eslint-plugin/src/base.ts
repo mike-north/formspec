@@ -39,6 +39,7 @@ export {
   getPropertyType,
   isStringType,
   isNumberType,
+  isBigIntType,
   isBooleanType,
   isArrayType,
 } from "./utils/type-utils.js";

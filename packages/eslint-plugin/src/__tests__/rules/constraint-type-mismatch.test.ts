@@ -19,7 +19,7 @@
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import { constraintTypeMismatch } from "../../rules/constraint-type-mismatch.js";
+import { tagTypeCheck } from "../../rules/type-compatibility/tag-type-check.js";
 import * as vitest from "vitest";
 
 RuleTester.afterAll = vitest.afterAll;
@@ -37,7 +37,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
+ruleTester.run("tag-type-check", tagTypeCheck, {
   valid: [
     // -------------------------------------------------------------------------
     // @minimum on number fields
@@ -75,6 +75,14 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
         class Form {
           /** @Minimum -999.5 */
           temperature!: number;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @Minimum 0 */
+          count!: bigint;
         }
       `,
     },
@@ -355,7 +363,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -364,7 +372,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -373,7 +381,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -386,7 +394,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -395,7 +403,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -404,7 +412,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -417,7 +425,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -426,7 +434,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -435,7 +443,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -448,7 +456,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -457,7 +465,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -466,7 +474,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -479,7 +487,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -488,7 +496,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -497,7 +505,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -510,7 +518,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           count!: number;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -519,7 +527,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -528,7 +536,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -541,7 +549,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           score!: number;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -550,7 +558,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -559,7 +567,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -572,7 +580,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           count!: number;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -581,7 +589,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -590,7 +598,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           tags!: string[];
         }
       `,
-      errors: [{ messageId: "stringOnNonString" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -603,7 +611,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -612,7 +620,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           count!: number;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -621,7 +629,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -634,7 +642,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           name!: string;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -643,7 +651,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           count!: number;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
     {
       code: `
@@ -652,7 +660,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           active!: boolean;
         }
       `,
-      errors: [{ messageId: "arrayOnNonArray" }],
+      errors: [{ messageId: "typeMismatch" }],
     },
 
     // -------------------------------------------------------------------------
@@ -665,7 +673,7 @@ ruleTester.run("constraint-type-mismatch", constraintTypeMismatch, {
           label!: string;
         }
       `,
-      errors: [{ messageId: "numericOnNonNumber" }, { messageId: "numericOnNonNumber" }],
+      errors: [{ messageId: "typeMismatch" }, { messageId: "typeMismatch" }],
     },
   ],
 });

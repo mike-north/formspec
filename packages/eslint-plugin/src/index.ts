@@ -10,8 +10,24 @@
  */
 
 import type { TSESLint } from "@typescript-eslint/utils";
-import { constraintTypeMismatch } from "./rules/constraint-type-mismatch.js";
-import { consistentConstraints } from "./rules/consistent-constraints.js";
+import {
+  noUnknownTags,
+  requireTagArguments,
+  noDisabledTags,
+  validNumericValue,
+  validIntegerValue,
+  validRegexPattern,
+  validJsonValue,
+  tagTypeCheck,
+  validPathTarget,
+  validMemberTarget,
+  noUnsupportedTargeting,
+  noMemberTargetOnObject,
+  noContradictions,
+  noDuplicateTags,
+  noDescriptionConflict,
+  noContradictoryRules,
+} from "./rules/index.js";
 
 // Constraint rules for Chain DSL
 import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js";
@@ -20,9 +36,23 @@ import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js"
  * All rules provided by this plugin.
  */
 const rules = {
-  // JSDoc constraint rules
-  "constraint-type-mismatch": constraintTypeMismatch,
-  "consistent-constraints": consistentConstraints,
+  // Spec built-in rules
+  "tag-recognition/no-unknown-tags": noUnknownTags,
+  "tag-recognition/require-tag-arguments": requireTagArguments,
+  "tag-recognition/no-disabled-tags": noDisabledTags,
+  "value-parsing/valid-numeric-value": validNumericValue,
+  "value-parsing/valid-integer-value": validIntegerValue,
+  "value-parsing/valid-regex-pattern": validRegexPattern,
+  "value-parsing/valid-json-value": validJsonValue,
+  "type-compatibility/tag-type-check": tagTypeCheck,
+  "target-resolution/valid-path-target": validPathTarget,
+  "target-resolution/valid-member-target": validMemberTarget,
+  "target-resolution/no-unsupported-targeting": noUnsupportedTargeting,
+  "target-resolution/no-member-target-on-object": noMemberTargetOnObject,
+  "constraint-validation/no-contradictions": noContradictions,
+  "constraint-validation/no-duplicate-tags": noDuplicateTags,
+  "constraint-validation/no-description-conflict": noDescriptionConflict,
+  "constraint-validation/no-contradictory-rules": noContradictoryRules,
 
   // Constraint rules for Chain DSL
   "constraints-allowed-field-types": allowedFieldTypes,
@@ -57,8 +87,22 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       },
     },
     rules: {
-      "@formspec/constraint-type-mismatch": "error",
-      "@formspec/consistent-constraints": "error",
+      "@formspec/tag-recognition/no-unknown-tags": "warn",
+      "@formspec/tag-recognition/require-tag-arguments": "error",
+      "@formspec/tag-recognition/no-disabled-tags": "warn",
+      "@formspec/value-parsing/valid-numeric-value": "error",
+      "@formspec/value-parsing/valid-integer-value": "error",
+      "@formspec/value-parsing/valid-regex-pattern": "error",
+      "@formspec/value-parsing/valid-json-value": "error",
+      "@formspec/type-compatibility/tag-type-check": "error",
+      "@formspec/target-resolution/valid-path-target": "error",
+      "@formspec/target-resolution/valid-member-target": "error",
+      "@formspec/target-resolution/no-unsupported-targeting": "error",
+      "@formspec/target-resolution/no-member-target-on-object": "error",
+      "@formspec/constraint-validation/no-contradictions": "error",
+      "@formspec/constraint-validation/no-duplicate-tags": "warn",
+      "@formspec/constraint-validation/no-description-conflict": "warn",
+      "@formspec/constraint-validation/no-contradictory-rules": "error",
     },
   },
 ];
@@ -75,8 +119,22 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       },
     },
     rules: {
-      "@formspec/constraint-type-mismatch": "error",
-      "@formspec/consistent-constraints": "error",
+      "@formspec/tag-recognition/no-unknown-tags": "error",
+      "@formspec/tag-recognition/require-tag-arguments": "error",
+      "@formspec/tag-recognition/no-disabled-tags": "error",
+      "@formspec/value-parsing/valid-numeric-value": "error",
+      "@formspec/value-parsing/valid-integer-value": "error",
+      "@formspec/value-parsing/valid-regex-pattern": "error",
+      "@formspec/value-parsing/valid-json-value": "error",
+      "@formspec/type-compatibility/tag-type-check": "error",
+      "@formspec/target-resolution/valid-path-target": "error",
+      "@formspec/target-resolution/valid-member-target": "error",
+      "@formspec/target-resolution/no-unsupported-targeting": "error",
+      "@formspec/target-resolution/no-member-target-on-object": "error",
+      "@formspec/constraint-validation/no-contradictions": "error",
+      "@formspec/constraint-validation/no-duplicate-tags": "error",
+      "@formspec/constraint-validation/no-description-conflict": "error",
+      "@formspec/constraint-validation/no-contradictory-rules": "error",
     },
   },
 ];
@@ -97,9 +155,22 @@ export default plugin;
 
 // Named exports for individual rules
 export {
-  // JSDoc constraint rules
-  constraintTypeMismatch,
-  consistentConstraints,
+  noUnknownTags,
+  requireTagArguments,
+  noDisabledTags,
+  validNumericValue,
+  validIntegerValue,
+  validRegexPattern,
+  validJsonValue,
+  tagTypeCheck,
+  validPathTarget,
+  validMemberTarget,
+  noUnsupportedTargeting,
+  noMemberTargetOnObject,
+  noContradictions,
+  noDuplicateTags,
+  noDescriptionConflict,
+  noContradictoryRules,
   // Constraint rules for Chain DSL
   allowedFieldTypes,
   allowedLayouts,
