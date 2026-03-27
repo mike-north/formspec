@@ -5,6 +5,9 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
+permissions:
+  pull-requests: write
+
 jobs:
   check-changesets:
     runs-on: ubuntu-latest
