@@ -12,6 +12,7 @@ import type ts from "typescript";
 export type FieldTypeCategory =
   | "string"
   | "number"
+  | "bigint"
   | "boolean"
   | "array"
   | "object"
@@ -69,6 +70,25 @@ export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for union of number literals
   if (type.isUnion()) {
     return type.types.every((t) => isNumberType(t, checker));
+  }
+
+  return false;
+}
+
+/**
+ * Checks if a TypeScript type is a bigint type.
+ */
+export function isBigIntType(type: ts.Type): boolean {
+  if (type.flags & 64 /* ts.TypeFlags.BigInt */) {
+    return true;
+  }
+
+  if (type.flags & 2048 /* ts.TypeFlags.BigIntLiteral */) {
+    return true;
+  }
+
+  if (type.isUnion()) {
+    return type.types.every((t) => isBigIntType(t));
   }
 
   return false;
@@ -174,6 +194,7 @@ export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): Fi
 
   if (isStringType(stripped, checker)) return "string";
   if (isNumberType(stripped, checker)) return "number";
+  if (isBigIntType(stripped)) return "bigint";
   if (isBooleanType(stripped, checker)) return "boolean";
   if (isArrayType(stripped, checker)) return "array";
 
@@ -194,7 +215,7 @@ export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): Fi
  * Gets the TypeScript type of a class property.
  */
 export function getPropertyType(
-  node: TSESTree.PropertyDefinition,
+  node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature,
   services: ParserServicesWithTypeInformation
 ): ts.Type | null {
   try {

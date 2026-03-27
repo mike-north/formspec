@@ -15,7 +15,7 @@
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import { consistentConstraints } from "../../rules/consistent-constraints.js";
+import { noContradictions } from "../../rules/constraint-validation/no-contradictions.js";
 import * as vitest from "vitest";
 
 RuleTester.afterAll = vitest.afterAll;
@@ -33,7 +33,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run("consistent-constraints", consistentConstraints, {
+ruleTester.run("no-contradictions", noContradictions, {
   valid: [
     // @Minimum < @Maximum
     {
@@ -178,33 +178,6 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
     },
-    // Path-targeted contradicting bounds — skipped, no minimumGreaterThanMaximum error
-    {
-      code: `
-        class Form {
-          /** @minimum :value 100 @maximum :value 50 */
-          amount!: { value: number };
-        }
-      `,
-    },
-    // Path-targeted equal exclusive bounds — skipped, no exclusiveMinGreaterOrEqualMax error
-    {
-      code: `
-        class Form {
-          /** @exclusiveMinimum :value 50 @exclusiveMaximum :value 50 */
-          amount!: { value: number };
-        }
-      `,
-    },
-    // Path-targeted conflicting bound types — skipped, no conflictingMinimumBounds error
-    {
-      code: `
-        class Form {
-          /** @minimum :value 0 @exclusiveMinimum :value 0 */
-          amount!: { value: number };
-        }
-      `,
-    },
   ],
   invalid: [
     // Negative values: @Minimum(-50) > @Maximum(-100) is invalid
@@ -346,6 +319,33 @@ ruleTester.run("consistent-constraints", consistentConstraints, {
         }
       `,
       errors: [{ messageId: "minItemsGreaterThanMaxItems" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @minimum :value 100 @maximum :value 50 */
+          amount!: { value: number };
+        }
+      `,
+      errors: [{ messageId: "minimumGreaterThanMaximum" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @exclusiveMinimum :value 50 @exclusiveMaximum :value 50 */
+          amount!: { value: number };
+        }
+      `,
+      errors: [{ messageId: "exclusiveMinGreaterOrEqualMax" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @minimum :value 0 @exclusiveMinimum :value 0 */
+          amount!: { value: number };
+        }
+      `,
+      errors: [{ messageId: "conflictingMinimumBounds" }],
     },
   ],
 });

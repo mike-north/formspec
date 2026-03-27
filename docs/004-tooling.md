@@ -253,7 +253,7 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 | `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`     | error            |
 | `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                | warn             |
 | `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT` | info             |
-| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULES`          | error            |
+| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULE_EFFECTS`   | error            |
 
 ### 3.4 Rule Configuration Interface
 
