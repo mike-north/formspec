@@ -271,26 +271,34 @@ export function parseTSDocTags(
           if (text === "") continue;
 
           const provenance = provenanceForComment(range, sourceFile, file, tagName);
-            if (tagName === "displayName") {
+          switch (tagName) {
+            case "displayName":
               if (!isMemberTargetDisplayName(text) && displayName === undefined) {
                 displayName = text;
                 displayNameProvenance = provenance;
               }
-            } else if (tagName === "format") {
-            annotations.push({
-              kind: "annotation",
-              annotationKind: "format",
-              value: text,
-              provenance,
+              break;
+
+            case "format":
+              annotations.push({
+                kind: "annotation",
+                annotationKind: "format",
+                value: text,
+                provenance,
               });
-            } else {
-              if (tagName === "description") {
-                description = text;
-                descriptionProvenance = provenance;
-              } else if (tagName === "placeholder" && placeholder === undefined) {
+              break;
+
+            case "description":
+              description = text;
+              descriptionProvenance = provenance;
+              break;
+
+            case "placeholder":
+              if (placeholder === undefined) {
                 placeholder = text;
                 placeholderProvenance = provenance;
-            }
+              }
+              break;
           }
           continue;
         }

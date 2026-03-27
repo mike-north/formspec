@@ -8,8 +8,8 @@
  * - Validate Chain DSL usage against project constraints
  * - Ensure forms comply with target environment capabilities
  */
-
 import type { TSESLint } from "@typescript-eslint/utils";
+import packageJson from "../package.json" with { type: "json" };
 import {
   noUnknownTags,
   requireTagArguments,
@@ -64,7 +64,7 @@ export const rules = {
  */
 export const meta = {
   name: "@formspec/eslint-plugin",
-  version: "0.1.0-alpha.18",
+  version: packageJson.version,
 };
 
 /**
