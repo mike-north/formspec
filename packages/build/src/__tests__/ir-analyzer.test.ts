@@ -132,11 +132,11 @@ describe("analyzeClassToIR", () => {
 
     const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
 
-    expect(findAnnotation(analysis.rootAnnotations, "displayName")).toMatchObject({
+    expect(findAnnotation(analysis.annotations ?? [], "displayName")).toMatchObject({
       annotationKind: "displayName",
       value: "Vehicle Registration",
     });
-    expect(findAnnotation(analysis.rootAnnotations, "description")).toMatchObject({
+    expect(findAnnotation(analysis.annotations ?? [], "description")).toMatchObject({
       annotationKind: "description",
       value: "Collect vehicle details for fleet management",
     });

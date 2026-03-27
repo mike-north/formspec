@@ -226,6 +226,14 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
     },
+    {
+      code: `
+        class Form {
+          /** @uniqueItems */
+          tags!: string[];
+        }
+      `,
+    },
 
     // -------------------------------------------------------------------------
     // No constraints at all — no errors
@@ -410,6 +418,15 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @Maximum 10 */
           tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "typeMismatch" }],
+    },
+    {
+      code: `
+        class Form {
+          /** @uniqueItems */
+          name!: string;
         }
       `,
       errors: [{ messageId: "typeMismatch" }],

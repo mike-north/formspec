@@ -66,7 +66,6 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS: {
     readonly maxItems: "number";
     readonly uniqueItems: "boolean";
     readonly pattern: "string";
-    readonly uniqueItems: "boolean";
     readonly const: "json";
     readonly enumOptions: "json";
 };
@@ -128,13 +127,6 @@ export interface ConstraintSemanticRole {
 export interface ConstraintTagRegistration {
     readonly constraintName: string;
     readonly isApplicableToType?: (type: TypeNode) => boolean;
-    readonly parseValue: (raw: string) => JsonValue;
-    readonly tagName: string;
-}
-
-// @public
-export interface ConstraintTagRegistration {
-    readonly constraintName: string;
     readonly parseValue: (raw: string) => JsonValue;
     readonly tagName: string;
 }

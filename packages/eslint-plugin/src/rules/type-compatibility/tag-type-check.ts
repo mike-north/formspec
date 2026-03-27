@@ -57,7 +57,9 @@ export const tagTypeCheck = createRule<[], MessageIds>({
         const expectedTypes = EXPECTED_TYPES[tag.normalizedName];
         if (!expectedTypes) continue;
         const metadata = getTagMetadata(tag.rawName);
-        if (tag.valueText === "") continue;
+        const supportsValueLessCheck =
+          metadata?.valueKind === "boolean" || metadata?.requiresArgument === false;
+        if (tag.valueText === "" && !supportsValueLessCheck) continue;
         if (metadata?.valueKind === "number" && !Number.isFinite(Number(tag.valueText))) continue;
         if (
           metadata?.valueKind === "integer" &&

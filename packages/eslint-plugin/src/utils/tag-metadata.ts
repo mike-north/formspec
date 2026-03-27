@@ -159,7 +159,7 @@ const BUILTIN_METADATA = Object.fromEntries(
     {
       canonicalName: name,
       valueKind: getBuiltinValueKind(name),
-      requiresArgument: true,
+      requiresArgument: getBuiltinValueKind(name) !== "boolean",
       supportedTargets: ["none", "path"] as const,
       allowDuplicates: false,
       category: "constraint" as const,
@@ -203,4 +203,3 @@ export function getTagMetadata(rawName: string): FormSpecTagMetadata | null {
   const normalized = normalizeFormSpecTagName(rawName);
   return FORM_SPEC_TAGS.get(normalized) ?? null;
 }
-
