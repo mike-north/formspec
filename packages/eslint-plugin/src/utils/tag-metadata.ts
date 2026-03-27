@@ -76,6 +76,12 @@ const EXTRA_TAGS = {
     allowDuplicates: false,
     category: "annotation" as const,
   },
+  const: {
+    requiresArgument: true,
+    supportedTargets: ["none", "path"] as const,
+    allowDuplicates: false,
+    category: "constraint" as const,
+  },
   apiName: {
     requiresArgument: true,
     supportedTargets: ["none", "member"] as const,

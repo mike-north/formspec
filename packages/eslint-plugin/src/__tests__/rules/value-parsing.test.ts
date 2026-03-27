@@ -55,6 +55,10 @@ ruleTester.run("valid-regex-pattern", validRegexPattern, {
       code: String.raw`class Form { /** @pattern [a-z */ name!: string; }`,
       errors: [{ messageId: "invalidRegexPattern" }],
     },
+    {
+      code: String.raw`class Form { /** @pattern ^[^@]+@example\.org)$ */ email!: string; }`,
+      errors: [{ messageId: "invalidRegexPattern" }],
+    },
   ],
 });
 

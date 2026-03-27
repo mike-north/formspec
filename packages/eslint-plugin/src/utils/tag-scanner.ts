@@ -38,13 +38,15 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
 
   for (const line of lines) {
     const cleaned = line.replace(/^\s*\*\s?/, "");
-    const tagStartRegex = /@([A-Za-z][A-Za-z0-9]*)/g;
+    const tagStartRegex = /(^|\s)@([A-Za-z][A-Za-z0-9]*)/g;
     const starts: { rawName: string; start: number; end: number }[] = [];
     let startMatch: RegExpExecArray | null;
     while ((startMatch = tagStartRegex.exec(cleaned)) !== null) {
-      const rawName = startMatch[1];
+      const rawName = startMatch[2];
       if (!rawName) continue;
-      starts.push({ rawName, start: startMatch.index, end: startMatch.index + startMatch[0].length });
+      const prefixLength = (startMatch[1] ?? "").length;
+      const start = startMatch.index + prefixLength;
+      starts.push({ rawName, start, end: start + rawName.length + 1 });
     }
 
     for (let index = 0; index < starts.length; index += 1) {

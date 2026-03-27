@@ -12,11 +12,11 @@ export const validIntegerValue = createRule<[], "invalidIntegerValue">({
   meta: {
     type: "problem",
     docs: {
-      description: "Validates non-negative integer-valued FormSpec tags",
+      description: "Validates integer-valued FormSpec tags",
     },
     schema: [],
     messages: {
-      invalidIntegerValue: 'Tag "@{{tag}}" requires a non-negative integer value.',
+      invalidIntegerValue: 'Tag "@{{tag}}" requires an integer value.',
     },
   },
   defaultOptions: [],

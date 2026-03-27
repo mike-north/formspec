@@ -45,6 +45,22 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
         }
       `,
     },
+    {
+      code: `
+        class Form {
+          /** @const "draft" */
+          status!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @description Legal name @minimum 1 */
+          name!: string;
+        }
+      `,
+    },
   ],
   invalid: [
     {
