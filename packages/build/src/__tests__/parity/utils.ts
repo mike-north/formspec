@@ -482,7 +482,7 @@ function normalizePrimitiveAliasField(
   }
 
   const primitiveDef = primitiveDefs.get(field.type.name);
-  if (!primitiveDef || primitiveDef.type.kind !== "primitive") {
+  if (primitiveDef?.type.kind !== "primitive") {
     return field;
   }
 

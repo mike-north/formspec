@@ -844,7 +844,7 @@ function resolveAliasedPrimitiveTarget(
   extensionRegistry?: ExtensionRegistry
 ): TypeNode {
   const nestedAliasDecl = type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration);
-  if (nestedAliasDecl && nestedAliasDecl.type !== undefined) {
+  if (nestedAliasDecl !== undefined) {
     return resolveAliasedPrimitiveTarget(
       checker.getTypeFromTypeNode(nestedAliasDecl.type),
       checker,
