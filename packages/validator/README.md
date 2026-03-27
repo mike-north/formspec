@@ -1,91 +1,42 @@
 # @formspec/validator
 
-JSON Schema validation for FormSpec, powered by [@cfworker/json-schema](https://github.com/nicolo-ribaudo/cfworker-json-schema). Designed for secure runtime environments that prohibit `new Function()` and `eval()`.
+Runtime JSON Schema validation for FormSpec, backed by `@cfworker/json-schema`.
 
-## Installation
+This package is intended for environments where code-generating validators are a bad fit, including workers and CSP-restricted runtimes.
+
+## Install
 
 ```bash
-npm install @formspec/validator
-# or
 pnpm add @formspec/validator
 ```
 
-## Requirements
+## Usage
 
-This package is ESM-only and requires:
-
-```json
-// package.json
-{
-  "type": "module"
-}
-```
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
-  }
-}
-```
-
-## Quick Start
-
-```typescript
+```ts
 import { createFormSpecValidator } from "@formspec/validator";
-import { buildFormSchemas, formspec, field } from "formspec";
 
-const form = formspec(field.text("name", { required: true }), field.number("age", { min: 0 }));
+const validator = createFormSpecValidator({
+  type: "object",
+  required: ["name"],
+  properties: {
+    name: { type: "string" },
+    country: { type: "string", "x-formspec-source": "countries" },
+  },
+});
 
-const { jsonSchema } = buildFormSchemas(form);
-
-// Create a validator that ignores x-formspec-* extension keywords
-const validator = createFormSpecValidator(jsonSchema);
-
-const result = validator.validate({ name: "Alice", age: 30 });
-console.log(result.valid); // true
+const result = validator.validate({ name: "Alice", country: "us" });
+void result;
 ```
 
-## Why This Package?
+Unknown `x-formspec-*` keywords are ignored by the underlying validator, so generated schemas work without extra vocabulary registration.
 
-Standard JSON Schema validators like Ajv use `new Function()` internally, which is blocked in:
+## Main Exports
 
-- Cloudflare Workers
-- Deno Deploy
-- Browser extensions (CSP restrictions)
-- Any environment with strict Content Security Policy
-
-`@formspec/validator` wraps `@cfworker/json-schema`, which implements JSON Schema validation without code generation. It also pre-configures the validator to silently ignore `x-formspec-*` vendor extension keywords that FormSpec adds to generated schemas.
-
-## API Reference
-
-### Functions
-
-| Function                                    | Description                                   |
-| ------------------------------------------- | --------------------------------------------- |
-| `createFormSpecValidator(schema, options?)` | Create a validator instance for a JSON Schema |
-
-### Options
-
-```typescript
-interface CreateValidatorOptions {
-  draft?: SchemaDraft; // JSON Schema draft version (default: "2020-12")
-  shortCircuit?: boolean; // Stop on first error (default: true)
-}
-```
-
-### Re-exports
-
-This package re-exports key types from `@cfworker/json-schema`:
-
-| Export             | Description                          |
-| ------------------ | ------------------------------------ |
-| `Validator`        | The validator class                  |
-| `ValidationResult` | Result of `validator.validate()`     |
-| `OutputUnit`       | Individual validation error detail   |
-| `SchemaDraft`      | Supported JSON Schema draft versions |
+- `createFormSpecValidator(schema, options?)`
+- `Validator`
+- `ValidationResult`
+- `OutputUnit`
+- `SchemaDraft`
 
 ## License
 

@@ -23,7 +23,9 @@
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
+    "check:eslint-docs": "eslint-doc-generator --check --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
     "clean": "rm -rf dist temp",
+    "fix:eslint-docs": "eslint-doc-generator --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api-extractor": "api-extractor run",
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@typescript-eslint/rule-tester": "^8.0.0",
+    "eslint-doc-generator": "^3.3.2",
     "vitest": "^3.0.0"
   },
   "publishConfig": {

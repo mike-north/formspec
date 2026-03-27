@@ -1,514 +1,130 @@
 # FormSpec
 
-Type-safe form specifications that compile to JSON Schema and JSON Forms UI Schema.
+Type-safe form definitions that compile to JSON Schema 2020-12 and JSON Forms UI Schema.
 
-## Overview
+## What It Covers
 
-FormSpec is a TypeScript library that lets you define forms using a declarative DSL, then compile them to standard JSON Schema and JSON Forms UI Schema. The key benefits are:
+FormSpec supports two authoring styles:
 
-- **Type Safety**: Full TypeScript inference from form definition to schema type
-- **Single Source of Truth**: One form definition generates both data schema and UI layout
-- **Conditional Logic**: Built-in support for showing/hiding fields based on other field values
-- **Dynamic Data**: Support for dynamic enums (fetched at runtime) and dynamic schemas
-- **Nested Structures**: Full support for objects, arrays, and deeply nested compositions
+- Chain DSL for programmatic form definitions
+- Static analysis of TypeScript classes, interfaces, and type aliases annotated with TSDoc tags
 
-## Installation
+Both paths compile into the same canonical IR before JSON Schema and UI Schema generation.
+
+## Install
 
 ```bash
-npm install formspec
-# or
 pnpm add formspec
-# or
-yarn add formspec
 ```
+
+Use the umbrella package when you want the common runtime-facing APIs in one import. Tooling packages such as the CLI, ESLint plugin, and language server are published separately.
 
 ## Quick Start
 
-```typescript
-import { formspec, field, group, when, is, buildFormSchemas } from "formspec";
+### Chain DSL
+
+```ts
+import { buildFormSchemas, field, formspec, group, is, when } from "formspec";
 import type { InferFormSchema } from "formspec";
 
-// Define your form
 const ContactForm = formspec(
   group(
-    "Personal Info",
-    field.text("name", { label: "Full Name", required: true }),
+    "Contact",
+    field.text("name", { label: "Name", required: true }),
     field.text("email", { label: "Email", required: true })
   ),
-  group(
-    "Preferences",
-    field.enum("contactMethod", ["email", "phone", "mail"], {
-      label: "Preferred Contact Method",
-    }),
-    when(is("contactMethod", "phone"), field.text("phoneNumber", { label: "Phone Number" }))
-  )
+  field.enum("preferredChannel", ["email", "phone"] as const, {
+    label: "Preferred Channel",
+    required: true,
+  }),
+  when(is("preferredChannel", "phone"), field.text("phoneNumber", { label: "Phone Number" }))
 );
 
-// Infer the TypeScript type
-type ContactSchema = InferFormSchema<typeof ContactForm>;
-// { name: string; email: string; contactMethod: "email" | "phone" | "mail"; phoneNumber: string }
+type ContactData = InferFormSchema<typeof ContactForm>;
 
-// Generate JSON Schema and UI Schema
 const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
 ```
 
-## Field Types
+### Runtime Resolvers
 
-### Basic Fields
+```ts
+import { defineResolvers, field, formspec } from "formspec";
 
-```typescript
-// Text input
-field.text("name", { label: "Name", placeholder: "Enter name", required: true });
+const Form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
-// Number input
-field.number("age", { label: "Age", min: 0, max: 150 });
-
-// Boolean checkbox
-field.boolean("subscribe", { label: "Subscribe to newsletter" });
-
-// Static enum (dropdown/radio)
-field.enum("status", ["draft", "published", "archived"], { label: "Status" });
-```
-
-### Dynamic Fields
-
-```typescript
-// Dynamic enum - options fetched at runtime
-// Second argument is the resolver identifier (maps to a resolver defined with defineResolvers)
-field.dynamicEnum("country", "fetch_countries", { label: "Country" });
-
-// Dynamic enum with dependencies
-field.dynamicEnum("city", "fetch_cities", {
-  label: "City",
-  params: ["country"], // city options depend on selected country
-});
-```
-
-### Complex Fields
-
-```typescript
-// Object field - nested properties under a single key
-field.object(
-  "address",
-  field.text("street", { label: "Street" }),
-  field.text("city", { label: "City" }),
-  field.text("zip", { label: "ZIP Code" })
-);
-
-// Array field - repeating items
-field.array(
-  "contacts",
-  field.text("name", { label: "Contact Name" }),
-  field.text("email", { label: "Email" })
-);
-
-// Array with constraints
-field.arrayWithConfig(
-  "lineItems",
-  { label: "Line Items", minItems: 1, maxItems: 20 },
-  field.text("description"),
-  field.number("quantity", { min: 1 }),
-  field.number("price", { min: 0 })
-);
-```
-
-## Structure Elements
-
-### Groups
-
-Groups provide visual organization without affecting the schema structure:
-
-```typescript
-const form = formspec(
-  group("Customer Information", field.text("name"), field.text("email")),
-  group("Order Details", field.number("quantity"), field.number("total"))
-);
-```
-
-### Conditionals
-
-Show/hide fields based on other field values:
-
-```typescript
-const form = formspec(
-  field.enum("paymentMethod", ["card", "bank", "crypto"]),
-
-  when(
-    is("paymentMethod", "card"),
-    field.text("cardNumber", { label: "Card Number" }),
-    field.text("cvv", { label: "CVV" })
-  ),
-
-  when(
-    is("paymentMethod", "bank"),
-    field.text("accountNumber", { label: "Account Number" }),
-    field.text("routingNumber", { label: "Routing Number" })
-  )
-);
-```
-
-Conditionals can be nested for complex logic:
-
-```typescript
-when(
-  is("country", "US"),
-  field.text("ssn", { label: "SSN" }),
-  when(is("paymentMethod", "bank"), field.text("routingNumber", { label: "Routing Number" }))
-);
-```
-
-## Dynamic Data with Resolvers
-
-Define resolvers for dynamic enum fields:
-
-```typescript
-import { defineResolvers } from "formspec";
-
-const resolvers = defineResolvers(ContactForm, {
-  fetch_countries: async () => ({
+const resolvers = defineResolvers(Form, {
+  countries: async () => ({
     options: [
       { value: "us", label: "United States" },
       { value: "ca", label: "Canada" },
-      { value: "gb", label: "United Kingdom" },
     ],
     validity: "valid",
   }),
-
-  fetch_cities: async (params) => {
-    const country = params.country;
-    const cities = await fetchCitiesForCountry(country);
-    return {
-      options: cities.map((c) => ({ value: c.id, label: c.name })),
-      validity: "valid",
-    };
-  },
 });
 ```
 
-## Type Inference
+### Static Type Analysis
 
-FormSpec provides full type inference:
+Static schema generation lives in `@formspec/build` and `@formspec/cli`.
 
-```typescript
-import type { InferSchema, InferFormSchema } from "formspec";
+```ts
+import { generateSchemas } from "@formspec/build";
 
-const form = formspec(
-  field.text("name"),
-  field.number("age"),
-  field.enum("role", ["admin", "user"]),
-  field.object("address", field.text("city"), field.text("country")),
-  field.array("tags", field.text("tag"))
-);
-
-// Infer from elements
-type Schema = InferSchema<typeof form.elements>;
-
-// Or infer from entire form
-type Schema2 = InferFormSchema<typeof form>;
-
-// Both produce:
-// {
-//   name: string;
-//   age: number;
-//   role: "admin" | "user";
-//   address: { city: string; country: string };
-//   tags: { tag: string }[];
-// }
-```
-
-## Using the DSL
-
-FormSpec uses a builder-based DSL for defining forms:
-
-```typescript
-import { formspec, field, group, buildFormSchemas } from "formspec";
-
-const form = formspec(
-  field.text("name", { label: "Full Name" }),
-  field.enum("country", ["us", "ca"], { label: "Country" })
-);
-
-// Works at build-time
-const { jsonSchema, uiSchema } = buildFormSchemas(form);
-
-// Also works at runtime - no codegen needed
-```
-
-The DSL works directly at both build-time and runtime without any code generation step. It provides full TypeScript type inference and supports dynamic data through resolvers.
-
-## JSON Schema Extensions
-
-FormSpec adds custom extensions to JSON Schema for dynamic fields. These use the `x-formspec-` prefix following JSON Schema extension conventions.
-
-### `x-formspec-source`
-
-Added to dynamic enum fields. Indicates the data source key for fetching options at runtime.
-
-```json
-{
-  "type": "string",
-  "x-formspec-source": "fetch_countries"
-}
-```
-
-### `x-formspec-params`
-
-Added to dynamic enum fields with dependencies. Lists field names whose values are needed to fetch options.
-
-```json
-{
-  "type": "string",
-  "x-formspec-source": "fetch_cities",
-  "x-formspec-params": ["country", "state"]
-}
-```
-
-## Package Structure
-
-FormSpec is organized as a monorepo with the following packages:
-
-| Package                     | Description                                          |
-| --------------------------- | ---------------------------------------------------- |
-| `formspec`                  | Main package with all re-exports (recommended)       |
-| `@formspec/core`            | Core type definitions                                |
-| `@formspec/dsl`             | DSL functions (`field`, `group`, `when`, `formspec`) |
-| `@formspec/build`           | Schema generators                                    |
-| `@formspec/runtime`         | Resolver helpers                                     |
-| `@formspec/constraints`     | Constraint definitions and validators                |
-| `@formspec/validator`       | JSON Schema validation for secure runtimes           |
-| `@formspec/eslint-plugin`   | ESLint rules for FormSpec                            |
-| `@formspec/language-server` | Language server for editor integration               |
-| `@formspec/playground`      | Interactive browser editor (private)                 |
-
-For most use cases, just import from `formspec`:
-
-```typescript
-import { formspec, field, group, when, is, buildFormSchemas, defineResolvers } from "formspec";
-```
-
-## API Reference
-
-### DSL Functions
-
-- `formspec(...elements)` - Create a form specification
-- `field.text(name, config?)` - Text input field
-- `field.number(name, config?)` - Number input field
-- `field.boolean(name, config?)` - Boolean checkbox field
-- `field.enum(name, options, config?)` - Static enum field
-- `field.dynamicEnum(name, source, config?)` - Dynamic enum field (source is the resolver identifier)
-- `field.array(name, ...items)` - Array field
-- `field.arrayWithConfig(name, config, ...items)` - Array field with constraints
-- `field.object(name, ...properties)` - Object field
-- `field.objectWithConfig(name, config, ...properties)` - Object field with config
-- `group(label, ...elements)` - Visual grouping
-- `is(fieldName, value)` - Create an equality predicate
-- `when(predicate, ...elements)` - Conditional visibility based on predicate
-
-### Build Functions
-
-- `buildFormSchemas(form)` - Generate both JSON Schema and UI Schema
-- `generateJsonSchema(form)` - Generate only JSON Schema
-- `generateUiSchema(form)` - Generate only UI Schema
-- `writeSchemas(form, options)` - Build and write schemas to disk
-
-### Runtime Functions
-
-- `defineResolvers(form, resolvers)` - Define resolvers for dynamic fields
-
-### Validation Functions
-
-- `formspecWithValidation(options, ...elements)` - Create form with validation
-- `validateForm(elements)` - Validate form elements and return issues
-
-```typescript
-import { formspecWithValidation, validateForm } from "formspec";
-
-// Validate during creation (logs to console)
-const form = formspecWithValidation(
-  { validate: true, name: "MyForm" },
-  field.text("name"),
-  when(is("status", "draft"), field.text("notes")) // Error: "status" doesn't exist
-);
-
-// Or validate separately
-const result = validateForm(form.elements);
-if (!result.valid) {
-  console.log(result.issues); // Array of { severity, message, path }
-}
-```
-
-### Type Utilities
-
-- `InferSchema<Elements>` - Infer schema type from form elements
-- `InferFormSchema<Form>` - Infer schema type from FormSpec
-- `InferFieldValue<Field>` - Infer value type from a single field
-
-## Constraints
-
-FormSpec supports constraining which DSL features are allowed in your project. This is useful for enforcing consistency, restricting to renderer-supported features, or keeping forms simple.
-
-### Configuration
-
-Create a `.formspec.yml` file in your project root:
-
-```yaml
-constraints:
-  fieldTypes:
-    text: off # Allow (default)
-    dynamicSchema: error # Disallow
-    array: warn # Allow with warning
-
-  layout:
-    conditionals: off # Allow when() conditionals
-    maxNestingDepth: 2 # Max nesting depth for objects/arrays
-
-  fieldOptions:
-    placeholder: off # Allow placeholder option
-    minItems: warn # Warn on array length constraints
-```
-
-### Severity Levels
-
-| Severity  | Behavior                     |
-| --------- | ---------------------------- |
-| `"off"`   | Feature is allowed (default) |
-| `"warn"`  | Emit warning but allow       |
-| `"error"` | Disallow - fail validation   |
-
-### Available Constraints
-
-**Field Types** (`fieldTypes`): `text`, `number`, `boolean`, `staticEnum`, `dynamicEnum`, `dynamicSchema`, `array`, `object`
-
-**Layout** (`layout`): `group`, `conditionals`, `maxNestingDepth`
-
-**Field Options** (`fieldOptions`): `label`, `placeholder`, `required`, `minValue`, `maxValue`, `minItems`, `maxItems`
-
-### ESLint Integration
-
-Use `@formspec/eslint-plugin` to catch constraint violations during development:
-
-```javascript
-// eslint.config.js
-import formspec from "@formspec/eslint-plugin";
-
-export default [
-  {
-    plugins: { formspec },
-    rules: {
-      "formspec/constraints-allowed-field-types": "error",
-      "formspec/constraints-allowed-layouts": "error",
-    },
-  },
-];
-```
-
-See [@formspec/constraints](./packages/constraints/README.md) for full documentation.
-
-## Build Integration
-
-FormSpec can generate JSON Schema and UI Schema artifacts as part of your build process.
-
-### Using writeSchemas()
-
-The simplest approach is using the `writeSchemas()` helper:
-
-```typescript
-// scripts/generate-schemas.ts
-import { formspec, field, group, writeSchemas } from "formspec";
-
-const ProductForm = formspec(
-  group(
-    "Product",
-    field.text("name", { required: true }),
-    field.enum("status", ["draft", "active", "archived"]),
-    field.number("price", { min: 0 })
-  )
-);
-
-// Write schemas to ./generated/product-schema.json and ./generated/product-uischema.json
-writeSchemas(ProductForm, {
-  outDir: "./generated",
-  name: "product",
+const { jsonSchema, uiSchema } = generateSchemas({
+  filePath: "./src/forms.ts",
+  typeName: "UserRegistration",
 });
 ```
 
-### Adding to package.json
+```ts
+export interface UserRegistration {
+  /** @displayName Full Name @minLength 1 */
+  name: string;
 
-Add a script to generate schemas during build:
+  /** @format email */
+  email: string;
 
-```json
-{
-  "scripts": {
-    "generate:schemas": "npx tsx scripts/generate-schemas.ts",
-    "build": "npm run generate:schemas && your-build-command"
-  }
+  /** @minimum 18 @maximum 120 */
+  age?: number;
 }
 ```
 
-### Multiple Forms
+## Generated Schema Extensions
 
-For multiple forms, create a generation script:
+Generated schemas may include vendor keywords such as:
 
-```typescript
-// scripts/generate-schemas.ts
-import { writeSchemas } from "formspec";
-import { ProductForm } from "../src/forms/product.js";
-import { CustomerForm } from "../src/forms/customer.js";
-import { OrderForm } from "../src/forms/order.js";
+- `x-formspec-source`
+- `x-formspec-params`
+- `x-formspec-deprecation-description`
 
-const forms = [
-  { form: ProductForm, name: "product" },
-  { form: CustomerForm, name: "customer" },
-  { form: OrderForm, name: "order" },
-];
+The default vendor prefix is `x-formspec`. `@formspec/build` also supports custom vendor prefixes for extension-generated JSON Schema keywords.
 
-for (const { form, name } of forms) {
-  const { jsonSchemaPath, uiSchemaPath } = writeSchemas(form, {
-    outDir: "./generated",
-    name,
-  });
-  console.log(`Generated: ${jsonSchemaPath}, ${uiSchemaPath}`);
-}
-```
+## Package Guide
 
-### Using the CLI
+| Package | Purpose |
+| --- | --- |
+| `formspec` | Umbrella package re-exporting the common `core`, `dsl`, `build`, and `runtime` APIs |
+| `@formspec/core` | Shared types, IR nodes, and extension registration APIs |
+| `@formspec/dsl` | Chain DSL authoring surface |
+| `@formspec/build` | JSON Schema / UI Schema generation and static TypeScript analysis |
+| `@formspec/runtime` | Resolver helpers for dynamic data |
+| `@formspec/constraints` | `.formspec.yml` configuration and DSL capability validation |
+| `@formspec/validator` | Runtime JSON Schema validation for secure environments |
+| `@formspec/eslint-plugin` | ESLint rules for FormSpec tags and DSL usage |
+| `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags |
+| `@formspec/cli` | Build-time CLI for schema and IR generation |
+| `@formspec/playground` | Private monorepo playground app |
 
-For quick generation without writing a script, use the CLI:
+## Monorepo Development
 
 ```bash
-# Install the CLI
-npm install -D @formspec/cli
-
-# Generate schemas from all FormSpec exports in a file (requires compiled JS)
-tsc && npx formspec generate src/forms/product.ts -o ./schemas
+pnpm install
+pnpm run build
+pnpm run test
+pnpm run lint
 ```
 
-The CLI detects all named `FormSpec` exports from the compiled module:
-
-```typescript
-// src/forms/product.ts
-import { formspec, field } from "formspec";
-
-export const ProductForm = formspec(
-  field.text("name", { required: true }),
-  field.enum("status", ["draft", "active"])
-);
-```
-
-### Programmatic Control
-
-For more control, use `buildFormSchemas()` directly:
-
-```typescript
-import { buildFormSchemas } from "formspec";
-import * as fs from "node:fs";
-
-const { jsonSchema, uiSchema } = buildFormSchemas(ProductForm);
-
-// Custom file naming or additional processing
-fs.writeFileSync("schemas/product.schema.json", JSON.stringify(jsonSchema, null, 2));
-fs.writeFileSync("schemas/product.ui.json", JSON.stringify(uiSchema, null, 2));
-```
+The root build runs packages in dependency order. `@formspec/build` must be built before its tests.
 
 ## License
 

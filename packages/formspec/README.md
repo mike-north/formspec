@@ -1,160 +1,91 @@
 # formspec
 
-Type-safe form specifications that compile to JSON Schema and JSON Forms UI Schema.
+Umbrella package for the common FormSpec authoring and runtime APIs.
 
-## Installation
+It re-exports the most commonly used pieces from:
+
+- `@formspec/core`
+- `@formspec/dsl`
+- `@formspec/build`
+- `@formspec/runtime`
+
+It does not include the CLI, ESLint plugin, language server, or playground app.
+
+## Install
 
 ```bash
-npm install formspec
-# or
 pnpm add formspec
-```
-
-## Requirements
-
-This package is ESM-only and requires:
-
-```json
-// package.json
-{
-  "type": "module"
-}
-```
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
-  }
-}
 ```
 
 ## Quick Start
 
-```typescript
-import { formspec, field, group, when, is, buildFormSchemas, type InferFormSchema } from "formspec";
+```ts
+import {
+  buildFormSchemas,
+  defineResolvers,
+  field,
+  formspec,
+  group,
+  is,
+  type InferFormSchema,
+  when,
+} from "formspec";
 
-// Define a form
-const ContactForm = formspec(
-  field.text("name", { label: "Name", required: true }),
-  field.text("email", { label: "Email", required: true }),
-  field.enum("subject", ["General", "Support", "Sales"], { label: "Subject" }),
-  field.text("message", { label: "Message", required: true }),
-  field.boolean("subscribe", { label: "Subscribe to newsletter" })
+const OrderForm = formspec(
+  group(
+    "Order",
+    field.text("customerName", { required: true }),
+    field.enum("status", ["draft", "submitted"] as const, { required: true })
+  ),
+  when(is("status", "submitted"), field.text("submittedBy"))
 );
 
-// Infer TypeScript type from the form
-type ContactData = InferFormSchema<typeof ContactForm>;
-// { name: string; email: string; subject: "General" | "Support" | "Sales" | undefined; ... }
+type OrderData = InferFormSchema<typeof OrderForm>;
 
-// Generate JSON Schema and UI Schema
-const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
+const { jsonSchema, uiSchema } = buildFormSchemas(OrderForm);
+
+const resolvers = defineResolvers(OrderForm, {});
+void jsonSchema;
+void uiSchema;
+void resolvers;
 ```
 
-## Features
+## What You Get
 
-### Field Types
+### DSL
 
-```typescript
-field.text("name", { label: "Name", required: true });
-field.number("age", { label: "Age", min: 0, max: 120 });
-field.boolean("active", { label: "Active" });
-field.enum("status", ["draft", "published"], { label: "Status" });
-field.dynamicEnum("country", "fetch_countries", { label: "Country" });
-field.array("tags", field.text("tag"));
-field.object("address", field.text("street"), field.text("city"));
-```
+- `formspec`
+- `field`
+- `group`
+- `when`
+- `is`
+- `formspecWithValidation`
+- `validateForm`
 
-### Grouping
+### Build
 
-```typescript
-const Form = formspec(
-  group("Personal Info", field.text("firstName"), field.text("lastName")),
-  group("Contact", field.text("email"), field.text("phone"))
-);
-```
+- `buildFormSchemas`
+- `generateJsonSchema`
+- `generateUiSchema`
+- `writeSchemas`
+- `buildMixedAuthoringSchemas`
 
-### Conditional Fields
+### Runtime
 
-```typescript
-const Form = formspec(
-  field.enum("type", ["personal", "business"]),
-  when(
-    is("type", "business"),
-    field.text("companyName", { label: "Company Name" }),
-    field.text("taxId", { label: "Tax ID" })
-  )
-);
-```
+- `defineResolvers`
 
-### Type Inference
+### Types
 
-```typescript
-// Infer the form data type
-type FormData = InferFormSchema<typeof MyForm>;
+- `InferSchema`
+- `InferFormSchema`
+- core field, layout, and state types
 
-// Use with form libraries
-const handleSubmit = (data: FormData) => {
-  // data is fully typed
-};
-```
+## When To Use Individual Packages
 
-### Dynamic Enums with Resolvers
-
-```typescript
-import { defineResolvers } from "formspec";
-
-const Form = formspec(field.dynamicEnum("country", "fetch_countries", { label: "Country" }));
-
-const resolvers = defineResolvers(Form, {
-  fetch_countries: async () => ({
-    options: [
-      { value: "us", label: "United States" },
-      { value: "ca", label: "Canada" },
-    ],
-    validity: "valid",
-  }),
-});
-```
-
-### Write Schemas to Disk
-
-```typescript
-import { writeSchemas } from "formspec";
-
-writeSchemas(ContactForm, {
-  outDir: "./generated",
-  name: "contact-form",
-});
-// Creates: ./generated/contact-form-schema.json
-//          ./generated/contact-form-uischema.json
-```
-
-## Package Structure
-
-This umbrella package re-exports from several focused packages:
-
-| Package             | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `@formspec/core`    | Core type definitions                                      |
-| `@formspec/dsl`     | DSL functions (`formspec`, `field`, `group`, `when`, `is`) |
-| `@formspec/build`   | Schema generators (`buildFormSchemas`, `writeSchemas`)     |
-| `@formspec/runtime` | Runtime helpers (`defineResolvers`)                        |
-
-You can import from the umbrella package for convenience, or from individual packages for smaller bundle sizes.
-
-## Related Packages
-
-| Package                     | Description                                |
-| --------------------------- | ------------------------------------------ |
-| `@formspec/constraints`     | Constraint definitions and validators      |
-| `@formspec/validator`       | JSON Schema validation for secure runtimes |
-| `@formspec/eslint-plugin`   | ESLint rules for FormSpec                  |
-| `@formspec/language-server` | Language server for editor integration     |
-| `@formspec/cli`             | CLI tool for build-time schema generation  |
-| `@formspec/playground`      | Interactive browser editor (private)       |
+- Use `@formspec/build` directly for `generateSchemas()` and static TypeScript analysis.
+- Use `@formspec/eslint-plugin` for lint rules.
+- Use `@formspec/cli` for build-time artifact generation from files.
+- Use `@formspec/validator` for runtime JSON Schema validation.
 
 ## License
 

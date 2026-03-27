@@ -1,173 +1,119 @@
 # @formspec/build
 
-Build tools to compile FormSpec forms into JSON Schema and JSON Forms UI Schema.
+Build-time schema generation for FormSpec.
 
-## Installation
+This package covers:
+
+- Chain DSL to JSON Schema / UI Schema compilation
+- Static analysis of TypeScript classes, interfaces, and type aliases with TSDoc tags
+- Canonical IR generation and validation
+- Extension-aware schema generation with custom vendor keywords
+
+## Install
 
 ```bash
-npm install @formspec/build
-# or
 pnpm add @formspec/build
 ```
 
-> **Note:** Most users should install the `formspec` umbrella package instead, which re-exports everything from this package.
+Most app code can use `formspec`, but use `@formspec/build` directly when you need static analysis or lower-level generation APIs.
 
-## Requirements
+## Public Entry Points
 
-This package is ESM-only and requires:
+| Entry point | Purpose |
+| --- | --- |
+| `@formspec/build` | Public build APIs |
+| `@formspec/build/browser` | Browser-safe schema generation surface |
+| `@formspec/build/internals` | Unstable internal APIs used by the CLI |
 
-```json
-// package.json
-{
-  "type": "module"
-}
-```
+## Chain DSL Generation
 
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
-  }
-}
-```
-
-## Usage
-
-### Generate Schemas in Memory
-
-```typescript
+```ts
 import { buildFormSchemas } from "@formspec/build";
-import { formspec, field, group } from "@formspec/dsl";
+import { field, formspec } from "@formspec/dsl";
 
-const ContactForm = formspec(
-  field.text("name", { label: "Name", required: true }),
-  field.text("email", { label: "Email", required: true }),
-  field.enum("subject", ["General", "Support", "Sales"])
+const form = formspec(
+  field.text("name", { required: true }),
+  field.enum("status", ["draft", "published"] as const)
 );
 
-const { jsonSchema, uiSchema } = buildFormSchemas(ContactForm);
-
-// Use with JSON Forms renderer
-// <JsonForms schema={jsonSchema} uischema={uiSchema} data={formData} />
+const { jsonSchema, uiSchema } = buildFormSchemas(form);
 ```
 
-### Write Schemas to Disk
+## Static Analysis
 
-```typescript
-import { writeSchemas } from "@formspec/build";
+`generateSchemas()` is the main entry point for TSDoc-backed generation.
 
-const result = writeSchemas(ContactForm, {
-  outDir: "./generated",
-  name: "contact-form",
-  indent: 2,
+```ts
+import { generateSchemas } from "@formspec/build";
+
+const { jsonSchema, uiSchema } = generateSchemas({
+  filePath: "./src/forms.ts",
+  typeName: "ProductConfig",
 });
-
-console.log(`JSON Schema: ${result.jsonSchemaPath}`);
-console.log(`UI Schema: ${result.uiSchemaPath}`);
-// JSON Schema: ./generated/contact-form-schema.json
-// UI Schema: ./generated/contact-form-uischema.json
 ```
 
-### Use Individual Generators
+`generateSchemasFromClass()` remains available when the input is definitely a class declaration.
 
-```typescript
-import { generateJsonSchema, generateUiSchema } from "@formspec/build";
-
-const jsonSchema = generateJsonSchema(ContactForm);
-const uiSchema = generateUiSchema(ContactForm);
-```
-
-### Canonical IR Pipeline
-
-The build pipeline now flows through a Canonical Intermediate Representation (IR). When you call `buildFormSchemas()`, the form definition is first converted to IR, then the IR is compiled to JSON Schema and UI Schema:
-
-```
-FormSpec definition → Canonical IR → JSON Schema + UI Schema
-```
-
-This enables consistent processing regardless of whether forms are defined via the Chain DSL or analyzed from TypeScript source files.
-
-### Generate from TypeScript Classes
-
-Generate schemas from TypeScript class definitions using static analysis of JSDoc constraint tags:
-
-```typescript
+```ts
 import { generateSchemasFromClass } from "@formspec/build";
 
-const { jsonSchema, uiSchema } = generateSchemasFromClass({
+const result = generateSchemasFromClass({
   filePath: "./src/forms.ts",
-  className: "UserForm",
+  className: "ProductConfig",
 });
 ```
 
-The analyzer extracts type information and JSDoc constraint tags (e.g., `/** @Minimum 0 @Maximum 100 */`) from class properties to generate schemas.
+### Supported TSDoc Examples
 
-### Entry Points
+```ts
+export interface ProductConfig {
+  /** @displayName Product Name @minLength 1 */
+  name: string;
 
-| Entry Point                 | Audience             | Description                                                                       |
-| --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
-| `@formspec/build`           | Public API           | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
-| `@formspec/build/browser`   | Browser (playground) | Schema generators without Node.js `fs`/`path` — safe for bundlers                 |
-| `@formspec/build/internals` | CLI (unstable)       | Internal APIs: `createProgramContext`, `analyzeClass`, `generateClassSchemas`     |
+  /** @format email */
+  supportEmail?: string;
 
-## Generated Output
+  /** @placeholder Search products */
+  query?: string;
 
-### JSON Schema (2020-12)
+  /** @minimum 0 @maximum 9999.99 */
+  price: number;
 
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string", "title": "Name" },
-    "email": { "type": "string", "title": "Email" },
-    "subject": {
-      "type": "string",
-      "enum": ["General", "Support", "Sales"]
-    }
-  },
-  "required": ["name", "email"]
+  /** @uniqueItems */
+  tags: string[];
 }
 ```
 
-### JSON Forms UI Schema
+## Extension-Aware Generation
 
-```json
-{
-  "type": "VerticalLayout",
-  "elements": [
-    { "type": "Control", "scope": "#/properties/name", "label": "Name" },
-    { "type": "Control", "scope": "#/properties/email", "label": "Email" },
-    { "type": "Control", "scope": "#/properties/subject" }
-  ]
-}
+Both chain and static generation APIs accept `extensionRegistry` and `vendorPrefix` where relevant.
+
+```ts
+import { createExtensionRegistry, generateSchemas } from "@formspec/build";
+
+const registry = createExtensionRegistry([myExtension]);
+
+const result = generateSchemas({
+  filePath: "./src/forms.ts",
+  typeName: "Invoice",
+  extensionRegistry: registry,
+  vendorPrefix: "x-acme",
+});
 ```
 
-## API Reference
+Generation validates canonical IR before emitting schemas. Invalid inputs now fail generation with structured diagnostic codes surfaced in the thrown error.
 
-### Functions
+## Main Exports
 
-| Function                            | Description                                                  |
-| ----------------------------------- | ------------------------------------------------------------ |
-| `buildFormSchemas(form)`            | Generate both JSON Schema and UI Schema                      |
-| `generateJsonSchema(form)`          | Generate only JSON Schema                                    |
-| `generateUiSchema(form)`            | Generate only UI Schema                                      |
-| `writeSchemas(form, options)`       | Build and write schemas to disk                              |
-| `generateSchemasFromClass(options)` | Generate schemas from a TypeScript class via static analysis |
-| `generateSchemas(options)`          | Generate schemas from a TypeScript type via static analysis  |
-
-### Types
-
-| Type                       | Description                            |
-| -------------------------- | -------------------------------------- |
-| `BuildResult`              | Return type of `buildFormSchemas`      |
-| `WriteSchemasOptions`      | Options for `writeSchemas`             |
-| `WriteSchemasResult`       | Return type of `writeSchemas`          |
-| `JsonSchema2020`           | JSON Schema 2020-12 type               |
-| `GenerateFromClassOptions` | Options for `generateSchemasFromClass` |
-| `UISchema`                 | JSON Forms UI Schema type              |
+- `buildFormSchemas(form, options?)`
+- `generateJsonSchema(form, options?)`
+- `generateUiSchema(form)`
+- `writeSchemas(form, options)`
+- `generateSchemas(options)`
+- `generateSchemasFromClass(options)`
+- `generateJsonSchemaFromIR(ir, options?)`
+- `buildMixedAuthoringSchemas(options)`
+- `createExtensionRegistry(extensions)`
 
 ## License
 
