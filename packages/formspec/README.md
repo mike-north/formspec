@@ -45,9 +45,6 @@ type OrderData = InferFormSchema<typeof OrderForm>;
 const { jsonSchema, uiSchema } = buildFormSchemas(OrderForm);
 
 const resolvers = defineResolvers(OrderForm, {});
-void jsonSchema;
-void uiSchema;
-void resolvers;
 ```
 
 ## What You Get

@@ -30,7 +30,7 @@
 ### NOT yet covered (this matrix adds these)
 
 - `@displayName` (all variants: bare, `:singular`/`:plural`, `:member`, absence/inference)
-- `@description` / `@remarks` fallback
+- `@description` / `@remarks` / summary-text description precedence
 - `@placeholder`
 - `@deprecated` with message text
 - `@defaultValue` (all types)
@@ -165,6 +165,11 @@ export class FeedbackForm {
    */
   subject!: string;
 
+  /**
+   * Free text summary becomes the description when no explicit tags are present.
+   */
+  details!: string;
+
   rating!: number;
 }
 ```
@@ -189,11 +194,15 @@ export class FeedbackForm {
       "type": "string",
       "description": "Explicit description wins."
     },
+    "details": {
+      "type": "string",
+      "description": "Free text summary becomes the description when no explicit tags are present."
+    },
     "rating": {
       "type": "number"
     }
   },
-  "required": ["name", "comments", "subject", "rating"]
+  "required": ["name", "comments", "subject", "details", "rating"]
 }
 ```
 
@@ -203,6 +212,7 @@ export class FeedbackForm {
 - [ ] `name` has `"description"` from field-level `@description` (spec 002 §3.2)
 - [ ] `comments` has `"description"` derived from `@remarks` fallback (spec 002 §2.3 — `@remarks` treated as `@description` when no explicit `@description`)
 - [ ] `subject` has `"description"` from `@description`, NOT from `@remarks` (spec 002 §2.3 — `@description` wins per C1 override)
+- [ ] `details` has `"description"` derived from free-text summary when neither `@description` nor `@remarks` is present (spec 002 §2.3 precedence chain)
 - [ ] `rating` has NO `description` — absence (spec 002 §2.2)
 
 ---

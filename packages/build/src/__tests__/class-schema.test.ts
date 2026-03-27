@@ -85,6 +85,26 @@ describe("generateSchemas", () => {
     });
   });
 
+  it("applies description precedence as @description > @remarks > summary text", () => {
+    const result = generateSchemas({
+      filePath: classSchemaRegressionsPath,
+      typeName: "DescriptionPrecedenceForm",
+    });
+
+    expect(result.jsonSchema.description).toBe(
+      "Summary text becomes the root schema description when no explicit tag is present."
+    );
+    expect(result.jsonSchema.properties?.["explicit"]).toMatchObject({
+      description: "Explicit description wins.",
+    });
+    expect(result.jsonSchema.properties?.["remarks"]).toMatchObject({
+      description: "Remarks become description when no explicit description is present.",
+    });
+    expect(result.jsonSchema.properties?.["summary"]).toMatchObject({
+      description: "Summary text becomes the description when there are no explicit tags.",
+    });
+  });
+
   it("throws with CONTRADICTING_CONSTRAINTS for contradictory constraints", () => {
     expect(getGenerationFailureMessage("PriceRange")).toContain("CONTRADICTING_CONSTRAINTS");
   });
