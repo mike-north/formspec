@@ -122,16 +122,28 @@ for (const file of changedFiles) {
     continue;
   }
 
-  // Check for source changes in packages/*
-  // Matches: packages/<dir>/src/** or packages/<dir>/package.json
-  const pkgSrcMatch = /^packages\/([^/]+)\/src\//.exec(file);
-  const pkgJsonMatch = /^packages\/([^/]+)\/package\.json$/.exec(file);
+  // Treat (almost) anything under packages/<dir>/** as a source change, with a small
+  // explicit denylist for docs-only files that should not require a changeset.
+  const pkgMatch = /^packages\/([^/]+)\/(.+)$/.exec(file);
+  if (pkgMatch) {
+    const dirMatch = pkgMatch[1];
+    const pkgRelativePath = pkgMatch[2];
+    const lower = pkgRelativePath.toLowerCase();
 
-  const dirMatch = pkgSrcMatch?.[1] ?? pkgJsonMatch?.[1];
-  if (dirMatch) {
-    sourceChangedDirs.add(dirMatch);
+    // Denylist: documentation-only files that should not require a changeset.
+    const isDocLike =
+      lower === "readme.md" ||
+      lower === "readme" ||
+      lower === "changelog.md" ||
+      lower === "changelog" ||
+      lower.startsWith("docs/") ||
+      lower.startsWith("documentation/");
+
+    if (!isDocLike) {
+      sourceChangedDirs.add(dirMatch);
+    }
   }
-  // Everything else is ignored (root config, .github/, docs, lockfiles, e2e/, examples/)
+  // Everything else is ignored (root config, .github/, lockfiles, e2e/, examples/)
 }
 
 // Resolve directory names to package names
@@ -143,6 +155,14 @@ for (const dir of sourceChangedDirs) {
   if (typeof name === "string" && name) {
     dirToName.set(dir, name);
   }
+}
+
+const unresolvedDirs = [...sourceChangedDirs].filter((dir) => !dirToName.has(dir));
+if (unresolvedDirs.length > 0) {
+  console.error(
+    `[check-changesets] Fatal: could not resolve package name for: ${unresolvedDirs.join(", ")}`
+  );
+  process.exit(1);
 }
 
 /** @type {Set<string>} Set of directly-changed package names */
@@ -186,12 +206,13 @@ for (const dir of packageDirs) {
   const name = pkgJson["name"];
   if (typeof name !== "string" || !name) continue;
 
-  // Collect all declared dependencies (any type) for later graph construction.
-  // We defer filtering to internal-only deps until we know the full package set.
+  // Collect declared runtime-relevant dependencies for later graph construction.
+  // We intentionally exclude devDependencies so that test-only links between
+  // workspace packages do not force downstream changesets.
   const allDeclaredDeps = [
     ...Object.keys(/** @type {Record<string, string>} */ (pkgJson["dependencies"] ?? {})),
-    ...Object.keys(/** @type {Record<string, string>} */ (pkgJson["devDependencies"] ?? {})),
     ...Object.keys(/** @type {Record<string, string>} */ (pkgJson["peerDependencies"] ?? {})),
+    ...Object.keys(/** @type {Record<string, string>} */ (pkgJson["optionalDependencies"] ?? {})),
   ];
 
   allPackages.set(name, {
@@ -201,9 +222,9 @@ for (const dir of packageDirs) {
   });
 }
 
-// Also include e2e and examples packages if they exist, but they won't be
-// in `packages/` so they'll be discovered only when classified from changed files.
-// The private check below handles excluding them anyway.
+// Note: Only packages under `packages/` are discovered here. Any e2e or
+// examples projects that exist are not included in this metadata and are
+// therefore outside the scope of this script's package classification.
 
 /** Set of all known internal package names (for filtering dep keys) */
 const allPackageNames = new Set(allPackages.keys());
