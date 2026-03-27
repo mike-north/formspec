@@ -34,6 +34,7 @@
     "dx-improvements",
     "enum-object-options",
     "eslint-plugin-initial",
+    "eslint-plugin-tag-parsing-fixes",
     "fix-eslint-path-target-regex",
     "fix-lint-errors",
     "fix-path-target-diagnostics",

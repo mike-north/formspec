@@ -1,5 +1,11 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.18
+
+### Patch Changes
+
+- [#151](https://github.com/mike-north/formspec/pull/151) [`96bd65a`](https://github.com/mike-north/formspec/commit/96bd65a154838597e07d7aabf02619803eac155e) Thanks [@mike-north](https://github.com/mike-north)! - Fix ESLint FormSpec tag parsing so `@pattern` values containing inline `@...` text are handled correctly, and allow `:singular` / `:plural` display-name targets without false-positive member-target errors.
+
 ## 0.1.0-alpha.17
 
 ### Patch Changes
