@@ -1,5 +1,16 @@
 # @formspec/core
 
+## 0.1.0-alpha.19
+
+### Patch Changes
+
+- [#155](https://github.com/mike-north/formspec/pull/155) [`1df7e34`](https://github.com/mike-north/formspec/commit/1df7e343b4fc17746c9a624ac5339db0071bc187) Thanks [@mike-north](https://github.com/mike-north)! - Release the unpublished follow-up fixes from the spec-parity work.
+  - `@formspec/build`: restore generation-time IR validation, respect vendor-prefixed deprecation metadata, keep custom constraint validation working for nullable and array-backed extension types, and align description extraction with the documented `@description` > `@remarks` > summary-text precedence.
+  - `@formspec/cli`: pick up the updated build pipeline behavior through the published CLI entrypoint.
+  - `@formspec/core`: include the extension and constraint-definition fixes required by the updated build pipeline.
+  - `@formspec/eslint-plugin`: fix boolean tag handling so `@uniqueItems` does not require an argument and still participates in type checking, expose plugin metadata consistently for ESLint/doc tooling, and keep generated rule docs in sync with the supported public exports.
+  - `formspec`: pick up the updated build and ESLint-plugin behavior through the umbrella package surface.
+
 ## 0.1.0-alpha.17
 
 ### Minor Changes
