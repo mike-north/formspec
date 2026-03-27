@@ -47,7 +47,10 @@ ruleTester.run("valid-regex-pattern", validRegexPattern, {
   valid: [
     { code: String.raw`class Form { /** @pattern ^[a-z]+$ */ name!: string; }` },
     {
-      code: String.raw`class Form { /** @pattern ^[^@]+@example\.org$ */ email!: string; }`,
+      code: String.raw`class Form { /** @pattern ^[^@]+@example\\.org$ */ email!: string; }`,
+    },
+    {
+      code: String.raw`class Form { /** @pattern ^\\S+ @example.org$ */ email!: string; }`,
     },
   ],
   invalid: [
@@ -56,7 +59,7 @@ ruleTester.run("valid-regex-pattern", validRegexPattern, {
       errors: [{ messageId: "invalidRegexPattern" }],
     },
     {
-      code: String.raw`class Form { /** @pattern ^[^@]+@example\.org)$ */ email!: string; }`,
+      code: String.raw`class Form { /** @pattern ^[^@]+@example\\.org)$ */ email!: string; }`,
       errors: [{ messageId: "invalidRegexPattern" }],
     },
   ],

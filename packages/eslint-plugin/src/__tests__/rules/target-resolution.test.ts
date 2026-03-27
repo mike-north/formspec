@@ -95,6 +95,17 @@ ruleTester.run("no-unsupported-targeting", noUnsupportedTargeting, {
         }
       `,
     },
+    {
+      code: `
+        interface Form {
+          /**
+           * @displayName :singular Line item
+           * @displayName :plural Line items
+           */
+          items: string[];
+        }
+      `,
+    },
   ],
   invalid: [
     {
@@ -116,6 +127,17 @@ ruleTester.run("no-member-target-on-object", noMemberTargetOnObject, {
         interface Form {
           /** @displayName :draft Draft status */
           status: "draft" | "published";
+        }
+      `,
+    },
+    {
+      code: `
+        interface Form {
+          /**
+           * @displayName :singular Line item
+           * @displayName :plural Line items
+           */
+          items: string[];
         }
       `,
     },

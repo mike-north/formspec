@@ -38,7 +38,7 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
 
   for (const line of lines) {
     const cleaned = line.replace(/^\s*\*\s?/, "");
-    const tagStartRegex = /(^|\s)@([A-Za-z][A-Za-z0-9]*)/g;
+    const tagStartRegex = /(^|\s)@([A-Za-z][A-Za-z0-9]*)(?=\s|$)/g;
     const starts: { rawName: string; start: number; end: number }[] = [];
     let startMatch: RegExpExecArray | null;
     while ((startMatch = tagStartRegex.exec(cleaned)) !== null) {
@@ -49,18 +49,16 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
       starts.push({ rawName, start, end: start + rawName.length + 1 });
     }
 
-    for (let index = 0; index < starts.length; index += 1) {
+    for (let index = 0; index < starts.length; ) {
       const current = starts[index];
-      if (!current) continue;
+      if (!current) {
+        index += 1;
+        continue;
+      }
+
       const next = starts[index + 1];
       const metadata = getTagMetadata(current.rawName);
-      const nextMetadata = next ? getTagMetadata(next.rawName) : null;
-      const nextBoundary =
-        next && (metadata?.valueKind === "string" || metadata?.valueKind === "condition" || metadata?.valueKind === null)
-          ? nextMetadata
-            ? next.start
-            : cleaned.length
-          : (next?.start ?? cleaned.length);
+      const nextBoundary = next?.start ?? cleaned.length;
       const rawSegment = cleaned.slice(current.start, nextBoundary);
       const rawText = rawSegment.trimEnd();
       const rawArgument = rawText.slice(current.end - current.start).trim();
@@ -76,11 +74,14 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
         const rawTarget = targetMatch[1];
         const targetValue = rawTarget.replace(/^['"]|['"]$/g, "");
         const inferredKind =
-          metadata?.supportedTargets.includes("member") && !metadata.supportedTargets.includes("path")
-            ? "member"
-            : metadata?.supportedTargets.includes("path") && !metadata.supportedTargets.includes("member")
-              ? "path"
-              : "path";
+          metadata?.supportedTargets.includes("variant") &&
+          (targetValue === "singular" || targetValue === "plural")
+            ? "variant"
+            : metadata?.supportedTargets.includes("member") && !metadata.supportedTargets.includes("path")
+              ? "member"
+              : metadata?.supportedTargets.includes("path") && !metadata.supportedTargets.includes("member")
+                ? "path"
+                : "path";
         target = {
           kind: inferredKind,
           raw: rawTarget,
@@ -98,6 +99,11 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
         target,
         comment,
       });
+
+      index += 1;
+      while (index < starts.length && (starts[index]?.start ?? cleaned.length) < nextBoundary) {
+        index += 1;
+      }
     }
   }
 

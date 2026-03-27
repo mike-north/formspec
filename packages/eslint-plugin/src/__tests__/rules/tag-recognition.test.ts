@@ -32,7 +32,15 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
     {
       code: String.raw`
         class Form {
-          /** @pattern ^[^@]+@example\.org$ */
+          /** @pattern ^[^@]+@example\\.org$ */
+          email!: string;
+        }
+      `,
+    },
+    {
+      code: String.raw`
+        class Form {
+          /** @pattern ^\\S+ @example.org$ */
           email!: string;
         }
       `,
