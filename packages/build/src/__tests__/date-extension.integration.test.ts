@@ -38,9 +38,7 @@ describe("date extension integration", () => {
     expect(() => parseCanonicalDateTime("2026-03-01T16:00:00Z")).toThrow(
       /exactly millisecond precision/
     );
-    expect(() => parseCanonicalDateTime("2026-03-01T16:00:00.000")).toThrow(
-      /explicit timezone/
-    );
+    expect(() => parseCanonicalDateTime("2026-03-01T16:00:00.000")).toThrow(/explicit timezone/);
   });
 
   it("generates JSON Schema and UI Schema through the public class-generation API", () => {
@@ -79,7 +77,9 @@ describe("date extension integration", () => {
       title: "Booking Opens",
     });
 
-    const reminderSchema = jsonSchema.properties?.["reminderAt"] as NullableDateTimeSchema | undefined;
+    const reminderSchema = jsonSchema.properties?.["reminderAt"] as
+      | NullableDateTimeSchema
+      | undefined;
     expect(reminderSchema?.["x-formspec-after"]).toBe("2026-03-31T22:00:00.000Z");
     expect(reminderSchema?.$ref).toBe("#/$defs/NullableDateTime");
     expect(

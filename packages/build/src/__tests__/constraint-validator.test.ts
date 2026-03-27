@@ -20,7 +20,10 @@ import { validateIR } from "../validate/index.js";
 import type { ValidationDiagnostic } from "../validate/index.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
-import { createDateExtensionRegistry, DATE_TIME_TYPE_ID } from "./fixtures/example-date-extension.js";
+import {
+  createDateExtensionRegistry,
+  DATE_TIME_TYPE_ID,
+} from "./fixtures/example-date-extension.js";
 import {
   createNumericExtensionRegistry,
   BIGINT_TYPE_ID,
@@ -1580,6 +1583,170 @@ describe("validateIR", () => {
       expect(
         result.diagnostics.filter((d) => d.message.includes("cannot be traversed"))
       ).toHaveLength(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Extension-defined exact-bound semantics
+  //
+  // Tests for ConstraintSemanticRole bound: "exact" — constraints that fix a
+  // value rather than establishing a directional bound. Two exact constraints
+  // in the same family agree only when their payloads are equal; any difference
+  // signals CONTRADICTING_CONSTRAINTS (via NaN from compareCustomConstraintStrength).
+  //
+  // Exact constraints also participate in lower/upper cross-family checks: an
+  // exact constraint below a lower bound or above an upper bound is a
+  // contradiction.
+  // ---------------------------------------------------------------------------
+
+  describe("extension-defined exact-bound semantics", () => {
+    /**
+     * Minimal inline extension with one exact-bound constraint and paired
+     * lower/upper constraints in the same family, so we can test cross-bound
+     * interactions without pulling in an unrelated fixture.
+     *
+     * Family: "precision-scale"
+     *   - ScaleExact  (exact, inclusive: true) — fixes the decimal scale
+     *   - ScaleMin    (lower, inclusive: true) — minimum allowed scale
+     *   - ScaleMax    (upper, inclusive: true) — maximum allowed scale
+     *
+     * Payload type: number (integer scale value; compared numerically).
+     */
+    function compareNumberPayloads(left: JsonValue, right: JsonValue): number {
+      if (typeof left !== "number" || typeof right !== "number") {
+        throw new Error("Scale constraint comparator received a non-number payload");
+      }
+      return left - right;
+    }
+
+    const exactBoundRegistry = createExtensionRegistry([
+      defineExtension({
+        extensionId: "x-test/scale",
+        constraints: [
+          defineConstraint({
+            constraintName: "ScaleExact",
+            compositionRule: "intersect",
+            applicableTypes: null,
+            comparePayloads: compareNumberPayloads,
+            semanticRole: {
+              family: "precision-scale",
+              bound: "exact",
+              inclusive: true,
+            },
+            toJsonSchema: (payload) => ({ "x-scale-exact": payload }),
+          }),
+          defineConstraint({
+            constraintName: "ScaleMin",
+            compositionRule: "intersect",
+            applicableTypes: null,
+            comparePayloads: compareNumberPayloads,
+            semanticRole: {
+              family: "precision-scale",
+              bound: "lower",
+              inclusive: true,
+            },
+            toJsonSchema: (payload) => ({ "x-scale-min": payload }),
+          }),
+          defineConstraint({
+            constraintName: "ScaleMax",
+            compositionRule: "intersect",
+            applicableTypes: null,
+            comparePayloads: compareNumberPayloads,
+            semanticRole: {
+              family: "precision-scale",
+              bound: "upper",
+              inclusive: true,
+            },
+            toJsonSchema: (payload) => ({ "x-scale-max": payload }),
+          }),
+        ],
+      }),
+    ]);
+
+    function scaleConstraint(
+      constraintName: "ScaleExact" | "ScaleMin" | "ScaleMax",
+      payload: number,
+      line: number
+    ): CustomConstraintNode {
+      return {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: `x-test/scale/${constraintName}`,
+        payload,
+        compositionRule: "intersect",
+        provenance: prov(line, `@${constraintName}`),
+      };
+    }
+
+    it("does not emit when two exact constraints share the same payload", () => {
+      const ir = makeIR([
+        makeField("amount", NUMBER_TYPE, [
+          scaleConstraint("ScaleExact", 2, 1),
+          scaleConstraint("ScaleExact", 2, 2),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: exactBoundRegistry });
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("emits CONTRADICTING_CONSTRAINTS when two exact constraints have different payloads", () => {
+      const ir = makeIR([
+        makeField("amount", NUMBER_TYPE, [
+          scaleConstraint("ScaleExact", 2, 1),
+          scaleConstraint("ScaleExact", 4, 2),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: exactBoundRegistry });
+      expect(result.valid).toBe(false);
+      expect(result.diagnostics).toHaveLength(1);
+      const diag = result.diagnostics[0];
+      expect(diag?.code).toBe("CONTRADICTING_CONSTRAINTS");
+      expect(diag?.primaryLocation).toEqual(prov(2, "@ScaleExact"));
+      expect(diag?.relatedLocations[0]).toEqual(prov(1, "@ScaleExact"));
+    });
+
+    it("does not currently detect contradiction when an exact constraint value is below a lower bound", () => {
+      // ScaleExact = 1 but ScaleMin = 2: conceptually contradictory, but
+      // checkCustomConstraintSemantics only cross-checks lower vs upper bounds.
+      // Exact constraints are stored under a separate boundKey ("exact") and are
+      // never placed in lowerByFamily / upperByFamily, so they do not participate
+      // in the cross-family lower/upper comparison loop.
+      //
+      // TODO: If exact-vs-lower and exact-vs-upper contradiction detection is added
+      // in the future, update this test to expect a CONTRADICTING_CONSTRAINTS diagnostic.
+      const ir = makeIR([
+        makeField("amount", NUMBER_TYPE, [
+          scaleConstraint("ScaleMin", 2, 1),
+          scaleConstraint("ScaleExact", 1, 2),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: exactBoundRegistry });
+      // Current behavior: no contradiction emitted because exact/lower cross-check is unimplemented.
+      const contradictions = byCode(result.diagnostics, "CONTRADICTING_CONSTRAINTS");
+      expect(contradictions).toHaveLength(0);
+    });
+
+    it("does not currently detect contradiction when an exact constraint value is above an upper bound", () => {
+      // ScaleMax = 3 but ScaleExact = 5: conceptually contradictory, but
+      // the current implementation does not cross-check exact against upper bounds.
+      //
+      // TODO: If exact-vs-upper contradiction detection is added in the future,
+      // update this test to expect a CONTRADICTING_CONSTRAINTS diagnostic.
+      const ir = makeIR([
+        makeField("amount", NUMBER_TYPE, [
+          scaleConstraint("ScaleMax", 3, 1),
+          scaleConstraint("ScaleExact", 5, 2),
+        ]),
+      ]);
+
+      const result = validateIR(ir, { extensionRegistry: exactBoundRegistry });
+      // Current behavior: no contradiction emitted because exact/upper cross-check is unimplemented.
+      const contradictions = byCode(result.diagnostics, "CONTRADICTING_CONSTRAINTS");
+      expect(contradictions).toHaveLength(0);
     });
   });
 });

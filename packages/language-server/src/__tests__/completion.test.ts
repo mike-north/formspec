@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_CONSTRAINT_DEFINITIONS, defineConstraintTag, defineExtension } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  defineConstraintTag,
+  defineExtension,
+} from "@formspec/core";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems } from "../providers/completion.js";
 

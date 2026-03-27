@@ -59,20 +59,24 @@ export interface ExtensionRegistry {
   /**
    * Look up a TSDoc custom constraint-tag registration by tag name.
    */
-  findConstraintTag(tagName: string): {
-    readonly extensionId: string;
-    readonly registration: ConstraintTagRegistration;
-  } | undefined;
+  findConstraintTag(tagName: string):
+    | {
+        readonly extensionId: string;
+        readonly registration: ConstraintTagRegistration;
+      }
+    | undefined;
   /**
    * Look up built-in tag broadening for a given custom type ID.
    */
   findBuiltinConstraintBroadening(
     typeId: string,
     tagName: string
-  ): {
-    readonly extensionId: string;
-    readonly registration: BuiltinConstraintBroadeningRegistration;
-  } | undefined;
+  ):
+    | {
+        readonly extensionId: string;
+        readonly registration: BuiltinConstraintBroadeningRegistration;
+      }
+    | undefined;
 
   /**
    * Look up a custom annotation registration by its fully-qualified annotation ID.

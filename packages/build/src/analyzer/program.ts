@@ -7,6 +7,13 @@
 
 import * as ts from "typescript";
 import * as path from "node:path";
+import {
+  analyzeClassToIR,
+  analyzeInterfaceToIR,
+  analyzeTypeAliasToIR,
+  type IRClassAnalysis,
+} from "./class-analyzer.js";
+import type { ExtensionRegistry } from "../extensions/index.js";
 
 /**
  * Result of creating a TypeScript program for analysis.
@@ -159,4 +166,47 @@ export function findTypeAliasByName(
   aliasName: string
 ): ts.TypeAliasDeclaration | null {
   return findNodeByName(sourceFile, aliasName, ts.isTypeAliasDeclaration, (n) => n.name.text);
+}
+
+/**
+ * Analyzes a named type (class, interface, or type alias) from a TypeScript
+ * source file and returns an `IRClassAnalysis`.
+ *
+ * Tries each declaration kind in order: class → interface → type alias.
+ * Throws if the name is not found or if the type alias analysis fails.
+ *
+ * @param filePath - Absolute path to the TypeScript source file
+ * @param typeName - Name of the class, interface, or type alias to analyze
+ * @param extensionRegistry - Optional extension registry for custom type handling
+ * @returns IR analysis result
+ */
+export function analyzeNamedTypeToIR(
+  filePath: string,
+  typeName: string,
+  extensionRegistry?: ExtensionRegistry
+): IRClassAnalysis {
+  const ctx = createProgramContext(filePath);
+
+  const classDecl = findClassByName(ctx.sourceFile, typeName);
+  if (classDecl !== null) {
+    return analyzeClassToIR(classDecl, ctx.checker, filePath, extensionRegistry);
+  }
+
+  const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
+  if (interfaceDecl !== null) {
+    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, filePath, extensionRegistry);
+  }
+
+  const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
+  if (typeAlias !== null) {
+    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, filePath, extensionRegistry);
+    if (result.ok) {
+      return result.analysis;
+    }
+    throw new Error(result.error);
+  }
+
+  throw new Error(
+    `Type "${typeName}" not found as a class, interface, or type alias in ${filePath}`
+  );
 }

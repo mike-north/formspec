@@ -16,7 +16,10 @@ import {
   extractJSDocAnnotationNodes,
 } from "../analyzer/jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "../analyzer/tsdoc-parser.js";
-import { createDateExtensionRegistry, DATE_TIME_TYPE_ID } from "./fixtures/example-date-extension.js";
+import {
+  createDateExtensionRegistry,
+  DATE_TIME_TYPE_ID,
+} from "./fixtures/example-date-extension.js";
 import {
   createNumericExtensionRegistry,
   BIGINT_TYPE_ID,

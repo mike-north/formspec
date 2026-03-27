@@ -15,11 +15,7 @@
 
 import * as ts from "typescript";
 import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core";
-import {
-  parseTSDocTags,
-  hasDeprecatedTagTSDoc,
-  type ParseTSDocOptions,
-} from "./tsdoc-parser.js";
+import { parseTSDocTags, hasDeprecatedTagTSDoc, type ParseTSDocOptions } from "./tsdoc-parser.js";
 
 // =============================================================================
 // IR API — uses @microsoft/tsdoc for structured parsing

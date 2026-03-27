@@ -114,7 +114,9 @@ describe("numeric extension integration", () => {
       "x-formspec-max-sig-fig": 8,
     });
 
-    const nullableAmountSchema = jsonSchema.properties?.["nullableAmount"] as NullableSchema | undefined;
+    const nullableAmountSchema = jsonSchema.properties?.["nullableAmount"] as
+      | NullableSchema
+      | undefined;
     expect(nullableAmountSchema?.["x-formspec-max-decimal-places"]).toBe(2);
     expect(nullableAmountSchema?.oneOf).toEqual(
       expect.arrayContaining([
