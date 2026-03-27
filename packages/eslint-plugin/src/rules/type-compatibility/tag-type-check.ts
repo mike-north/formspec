@@ -1,5 +1,11 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { createDeclarationVisitor, getDeclarationName, getDeclarationType, getResolvedTypeName, resolveTagTarget } from "../../utils/rule-helpers.js";
+import {
+  createDeclarationVisitor,
+  getDeclarationName,
+  getDeclarationType,
+  getResolvedTypeName,
+  resolveTagTarget,
+} from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 import { getFieldTypeCategory } from "../../utils/type-utils.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";

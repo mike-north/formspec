@@ -1,5 +1,5 @@
 /**
- * Tests for consistent-constraints rule.
+ * Tests for no-contradictions rule.
  *
  * Coverage:
  * - Every valid constraint pair (min < max, equal for inclusive, etc.)

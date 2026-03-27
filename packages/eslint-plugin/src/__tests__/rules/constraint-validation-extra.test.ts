@@ -57,6 +57,9 @@ ruleTester.run("no-contradictory-rules", noContradictoryRules, {
   valid: [
     { code: `class Form { /** @showWhen status=draft */ name!: string; }` },
     { code: `class Form { /** @showWhen status=draft @showWhen type=internal */ name!: string; }` },
+    {
+      code: `class Form { /** @showWhen status=draft @disableWhen status=archived */ name!: string; }`,
+    },
   ],
   invalid: [
     {
@@ -65,10 +68,6 @@ ruleTester.run("no-contradictory-rules", noContradictoryRules, {
     },
     {
       code: `class Form { /** @enableWhen status=draft @disableWhen status=archived */ name!: string; }`,
-      errors: [{ messageId: "contradictoryRuleEffects" }],
-    },
-    {
-      code: `class Form { /** @showWhen status=draft @disableWhen status=archived */ name!: string; }`,
       errors: [{ messageId: "contradictoryRuleEffects" }],
     },
   ],

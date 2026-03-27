@@ -57,6 +57,7 @@ export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSourc
     kind: "form-ir",
     irVersion: IR_VERSION,
     elements,
+    rootAnnotations: analysis.rootAnnotations,
     typeRegistry: analysis.typeRegistry,
     ...(analysis.annotations !== undefined &&
       analysis.annotations.length > 0 && { annotations: analysis.annotations }),

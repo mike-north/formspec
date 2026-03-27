@@ -17,10 +17,6 @@ export interface ResolvedTagTarget {
   readonly type: ts.Type | null;
 }
 
-export function isSupportedDeclaration(node: TSESTree.Node): node is SupportedDeclaration {
-  return node.type === AST_NODE_TYPES.PropertyDefinition || node.type === AST_NODE_TYPES.TSPropertySignature;
-}
-
 export function createDeclarationVisitor(
   callback: (node: SupportedDeclaration) => void
 ): Record<string, (node: TSESTree.Node) => void> {

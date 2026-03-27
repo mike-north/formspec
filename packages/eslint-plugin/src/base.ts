@@ -33,7 +33,7 @@ export {
 } from "./utils/jsdoc-utils.js";
 export type { JSDocConstraint, RawJSDocTag } from "./utils/jsdoc-utils.js";
 
-// Type utilities — expose the helpers that power constraint-type-mismatch
+// Type utilities — expose the helpers that power type-compatibility rules
 export {
   getFieldTypeCategory,
   getPropertyType,

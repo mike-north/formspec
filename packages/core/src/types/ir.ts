@@ -527,6 +527,8 @@ export interface FormIR {
   readonly irVersion: string;
   /** Top-level elements of the form: fields and layout nodes. */
   readonly elements: readonly FormIRElement[];
+  /** Root-level annotations derived from the source declaration itself. */
+  readonly rootAnnotations?: readonly AnnotationNode[];
   /**
    * Registry of named types referenced by fields in this form.
    * Keys are fully-qualified type names matching `ReferenceTypeNode.name`.

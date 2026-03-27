@@ -1,6 +1,5 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
-  isBuiltinConstraintName,
   normalizeConstraintTagName,
   type BuiltinConstraintName,
 } from "@formspec/core";
@@ -21,11 +20,7 @@ export interface FormSpecTagMetadata {
   readonly requiresArgument: boolean;
   readonly supportedTargets: readonly FormSpecTargetKind[];
   readonly allowDuplicates: boolean;
-  readonly category:
-    | "constraint"
-    | "annotation"
-    | "structure"
-    | "ecosystem";
+  readonly category: "constraint" | "annotation" | "structure" | "ecosystem";
 }
 
 const INTEGER_VALUE_TAGS = new Set(["minLength", "maxLength", "minItems", "maxItems"]);
@@ -172,35 +167,33 @@ const BUILTIN_METADATA = Object.fromEntries(
   ])
 ) as unknown as Record<BuiltinConstraintName, FormSpecTagMetadata>;
 
-const extraTagEntries: readonly (readonly [string, FormSpecTagMetadata])[] = Object.entries(EXTRA_TAGS).map(
-  ([canonicalName, meta]) => [
+const extraTagEntries: readonly (readonly [string, FormSpecTagMetadata])[] = Object.entries(
+  EXTRA_TAGS
+).map(([canonicalName, meta]) => [
+  canonicalName,
+  {
     canonicalName,
-    {
-      canonicalName,
-      valueKind: JSON_VALUE_TAGS.has(canonicalName)
-        ? "json"
-        : BOOLEAN_VALUE_TAGS.has(canonicalName)
-          ? "boolean"
-            : INTEGER_VALUE_TAGS.has(canonicalName)
-              ? "integer"
-              : SIGNED_INTEGER_VALUE_TAGS.has(canonicalName)
-                ? "signedInteger"
-              : STRING_VALUE_TAGS.has(canonicalName)
-                ? "string"
-                : CONDITION_VALUE_TAGS.has(canonicalName)
+    valueKind: JSON_VALUE_TAGS.has(canonicalName)
+      ? "json"
+      : BOOLEAN_VALUE_TAGS.has(canonicalName)
+        ? "boolean"
+        : INTEGER_VALUE_TAGS.has(canonicalName)
+          ? "integer"
+          : SIGNED_INTEGER_VALUE_TAGS.has(canonicalName)
+            ? "signedInteger"
+            : STRING_VALUE_TAGS.has(canonicalName)
+              ? "string"
+              : CONDITION_VALUE_TAGS.has(canonicalName)
                 ? "condition"
                 : null,
-      ...meta,
-    },
-  ]
-);
+    ...meta,
+  },
+]);
 
-export const FORM_SPEC_TAGS: ReadonlyMap<string, FormSpecTagMetadata> = new Map(
-  [
-    ...Object.entries(BUILTIN_METADATA),
-    ...extraTagEntries,
-  ] satisfies readonly (readonly [string, FormSpecTagMetadata])[]
-);
+export const FORM_SPEC_TAGS: ReadonlyMap<string, FormSpecTagMetadata> = new Map([
+  ...Object.entries(BUILTIN_METADATA),
+  ...extraTagEntries,
+] satisfies readonly (readonly [string, FormSpecTagMetadata])[]);
 
 export function normalizeFormSpecTagName(rawName: string): string {
   return normalizeConstraintTagName(rawName);
@@ -211,17 +204,3 @@ export function getTagMetadata(rawName: string): FormSpecTagMetadata | null {
   return FORM_SPEC_TAGS.get(normalized) ?? null;
 }
 
-export function isKnownFormSpecTag(rawName: string): boolean {
-  const normalized = normalizeFormSpecTagName(rawName);
-  return FORM_SPEC_TAGS.has(normalized) || isBuiltinConstraintName(normalized);
-}
-
-export const NON_NEGATIVE_INTEGER_TAGS = new Set(
-  [...FORM_SPEC_TAGS.values()].flatMap((tag) =>
-    tag.valueKind === "integer" ? [tag.canonicalName] : []
-  )
-);
-
-export const JSON_VALUE_TAGS_SET = new Set(
-  [...FORM_SPEC_TAGS.values()].flatMap((tag) => (tag.valueKind === "json" ? [tag.canonicalName] : []))
-);

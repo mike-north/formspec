@@ -1,5 +1,5 @@
 /**
- * Tests for the constraint-type-mismatch rule.
+ * Tests for the tag-type-check rule.
  *
  * Ensures JSDoc constraints are only applied to fields with compatible
  * TypeScript types (e.g., @minimum only on number fields).

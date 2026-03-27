@@ -23,8 +23,5 @@ declare module "@formspec/constraints/browser" {
     constraints: FieldTypeConstraints
   ): Severity;
 
-  export function isLayoutTypeAllowed(
-    layoutType: string,
-    constraints: LayoutConstraints
-  ): boolean;
+  export function isLayoutTypeAllowed(layoutType: string, constraints: LayoutConstraints): boolean;
 }

@@ -11,7 +11,8 @@ export const noContradictoryRules = createRule<[], "contradictoryRuleEffects">({
   meta: {
     type: "problem",
     docs: {
-      description: "Reports contradictory FormSpec conditional rule effects on the same field",
+      description:
+        "Reports contradictory FormSpec conditional rules on the same behavioral axis",
     },
     schema: [],
     messages: {
@@ -40,16 +41,6 @@ export const noContradictoryRules = createRule<[], "contradictoryRuleEffects">({
           loc: disableWhen.comment.loc,
           messageId: "contradictoryRuleEffects",
           data: { tagA: enableWhen.rawName, tagB: disableWhen.rawName },
-        });
-      }
-
-      const visibilityTag = showWhen ?? hideWhen;
-      const interactivityTag = enableWhen ?? disableWhen;
-      if (visibilityTag && interactivityTag) {
-        context.report({
-          loc: interactivityTag.comment.loc,
-          messageId: "contradictoryRuleEffects",
-          data: { tagA: visibilityTag.rawName, tagB: interactivityTag.rawName },
         });
       }
     });

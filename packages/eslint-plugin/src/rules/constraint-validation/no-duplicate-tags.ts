@@ -16,7 +16,8 @@ export const noDuplicateTags = createRule<[], "duplicateTag">({
     },
     schema: [],
     messages: {
-      duplicateTag: 'Duplicate "@{{tag}}" tag. Only the last occurrence is meaningful on the same target.',
+      duplicateTag:
+        'Duplicate "@{{tag}}" tag. Only the last occurrence is meaningful on the same target.',
     },
   },
   defaultOptions: [],

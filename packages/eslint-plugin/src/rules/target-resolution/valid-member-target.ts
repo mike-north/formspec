@@ -1,5 +1,9 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { createDeclarationVisitor, getDeclarationType, resolveTagTarget } from "../../utils/rule-helpers.js";
+import {
+  createDeclarationVisitor,
+  getDeclarationType,
+  resolveTagTarget,
+} from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 
 const createRule = ESLintUtils.RuleCreator(
@@ -15,7 +19,8 @@ export const validMemberTarget = createRule<[], "unknownMemberTarget">({
     },
     schema: [],
     messages: {
-      unknownMemberTarget: 'Member target ":{{target}}" is not a valid member of this string literal union.',
+      unknownMemberTarget:
+        'Member target ":{{target}}" is not a valid member of this string literal union.',
     },
   },
   defaultOptions: [],

@@ -1,5 +1,9 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { createDeclarationVisitor, getDeclarationType, resolveTagTarget } from "../../utils/rule-helpers.js";
+import {
+  createDeclarationVisitor,
+  getDeclarationType,
+  resolveTagTarget,
+} from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 
 const createRule = ESLintUtils.RuleCreator(

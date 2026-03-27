@@ -27,10 +27,7 @@ export const validIntegerValue = createRule<[], "invalidIntegerValue">({
         if (metadata?.valueKind !== "integer" && metadata?.valueKind !== "signedInteger") continue;
         if (tag.valueText === "") continue;
         const value = Number(tag.valueText);
-        if (
-          Number.isInteger(value) &&
-          (metadata.valueKind === "signedInteger" || value >= 0)
-        ) {
+        if (Number.isInteger(value) && (metadata.valueKind === "signedInteger" || value >= 0)) {
           continue;
         }
         context.report({

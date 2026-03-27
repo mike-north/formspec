@@ -73,6 +73,7 @@ function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema202
         provenance: fieldProvenance,
       },
     ],
+    rootAnnotations: [],
     typeRegistry,
     provenance: fieldProvenance,
   };

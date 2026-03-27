@@ -62,26 +62,26 @@ export default [
 
 ## Rules
 
-| Rule                                                                  | Description                                       | Recommended | Strict |
-| --------------------------------------------------------------------- | ------------------------------------------------- | ----------- | ------ |
-| [`tag-recognition/no-unknown-tags`](#tag-recognitionno-unknown-tags) | Reject unknown FormSpec tags                      | warn        | error  |
-| [`tag-recognition/require-tag-arguments`](#tag-recognitionrequire-tag-arguments) | Require arguments for tags that need values | error | error |
-| [`tag-recognition/no-disabled-tags`](#tag-recognitionno-disabled-tags) | Reject project-disabled tags                    | warn        | error  |
-| [`value-parsing/valid-numeric-value`](#value-parsingvalid-numeric-value) | Validate numeric-valued tags                   | error       | error  |
-| [`value-parsing/valid-integer-value`](#value-parsingvalid-integer-value) | Validate non-negative integer-valued tags     | error       | error  |
-| [`value-parsing/valid-regex-pattern`](#value-parsingvalid-regex-pattern) | Validate `@pattern` values                     | error       | error  |
-| [`value-parsing/valid-json-value`](#value-parsingvalid-json-value) | Validate JSON-valued tags                          | error       | error  |
-| [`type-compatibility/tag-type-check`](#type-compatibilitytag-type-check) | FormSpec tags must match field type           | error       | error  |
-| [`target-resolution/valid-path-target`](#target-resolutionvalid-path-target) | Validate `:path` target references          | error       | error  |
-| [`target-resolution/valid-member-target`](#target-resolutionvalid-member-target) | Validate `:member` target references     | error       | error  |
-| [`target-resolution/no-unsupported-targeting`](#target-resolutionno-unsupported-targeting) | Reject target syntax on unsupported tags | error | error |
-| [`target-resolution/no-member-target-on-object`](#target-resolutionno-member-target-on-object) | Restrict member targets to string-literal unions | error | error |
-| [`constraint-validation/no-contradictions`](#constraint-validationno-contradictions) | Constraint ranges must be valid            | error       | error  |
-| [`constraint-validation/no-duplicate-tags`](#constraint-validationno-duplicate-tags) | Reject duplicate single-instance tags   | warn        | error  |
-| [`constraint-validation/no-description-conflict`](#constraint-validationno-description-conflict) | Report `@description`/`@remarks` conflicts | warn | error |
-| [`constraint-validation/no-contradictory-rules`](#constraint-validationno-contradictory-rules) | Reject conflicting conditional effects | error | error |
-| [`constraints-allowed-field-types`](#constraints-allowed-field-types) | Field types validated against `.formspec.yml`     | —           | —      |
-| [`constraints-allowed-layouts`](#constraints-allowed-layouts)         | Layout elements validated against `.formspec.yml` | —           | —      |
+| Rule                                                                                             | Description                                       | Recommended | Strict |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------- | ----------- | ------ |
+| [`tag-recognition/no-unknown-tags`](#tag-recognitionno-unknown-tags)                             | Reject unknown FormSpec tags                      | warn        | error  |
+| [`tag-recognition/require-tag-arguments`](#tag-recognitionrequire-tag-arguments)                 | Require arguments for tags that need values       | error       | error  |
+| [`tag-recognition/no-disabled-tags`](#tag-recognitionno-disabled-tags)                           | Reject project-disabled tags                      | warn        | error  |
+| [`value-parsing/valid-numeric-value`](#value-parsingvalid-numeric-value)                         | Validate numeric-valued tags                      | error       | error  |
+| [`value-parsing/valid-integer-value`](#value-parsingvalid-integer-value)                         | Validate non-negative integer-valued tags         | error       | error  |
+| [`value-parsing/valid-regex-pattern`](#value-parsingvalid-regex-pattern)                         | Validate `@pattern` values                        | error       | error  |
+| [`value-parsing/valid-json-value`](#value-parsingvalid-json-value)                               | Validate JSON-valued tags                         | error       | error  |
+| [`type-compatibility/tag-type-check`](#type-compatibilitytag-type-check)                         | FormSpec tags must match field type               | error       | error  |
+| [`target-resolution/valid-path-target`](#target-resolutionvalid-path-target)                     | Validate `:path` target references                | error       | error  |
+| [`target-resolution/valid-member-target`](#target-resolutionvalid-member-target)                 | Validate `:member` target references              | error       | error  |
+| [`target-resolution/no-unsupported-targeting`](#target-resolutionno-unsupported-targeting)       | Reject target syntax on unsupported tags          | error       | error  |
+| [`target-resolution/no-member-target-on-object`](#target-resolutionno-member-target-on-object)   | Restrict member targets to string-literal unions  | error       | error  |
+| [`constraint-validation/no-contradictions`](#constraint-validationno-contradictions)             | Constraint ranges must be valid                   | error       | error  |
+| [`constraint-validation/no-duplicate-tags`](#constraint-validationno-duplicate-tags)             | Reject duplicate single-instance tags             | warn        | error  |
+| [`constraint-validation/no-description-conflict`](#constraint-validationno-description-conflict) | Report `@description`/`@remarks` conflicts        | warn        | error  |
+| [`constraint-validation/no-contradictory-rules`](#constraint-validationno-contradictory-rules)   | Reject conflicting conditional effects            | error       | error  |
+| [`constraints-allowed-field-types`](#constraints-allowed-field-types)                            | Field types validated against `.formspec.yml`     | —           | —      |
+| [`constraints-allowed-layouts`](#constraints-allowed-layouts)                                    | Layout elements validated against `.formspec.yml` | —           | —      |
 
 ### tag-recognition/no-unknown-tags
 
@@ -168,7 +168,7 @@ Reports when both `@description` and `@remarks` are present on the same field.
 
 ### constraint-validation/no-contradictory-rules
 
-Rejects conflicting conditional effects such as `@showWhen` plus `@hideWhen`.
+Rejects conflicting conditional rules on the same axis, such as `@showWhen` plus `@hideWhen`.
 
 ### constraints-allowed-field-types
 

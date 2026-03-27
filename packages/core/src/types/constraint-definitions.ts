@@ -23,6 +23,7 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS = {
   maxLength: "number",
   minItems: "number",
   maxItems: "number",
+  uniqueItems: "boolean",
   pattern: "string",
   uniqueItems: "boolean",
   const: "json",

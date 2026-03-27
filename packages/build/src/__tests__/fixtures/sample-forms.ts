@@ -109,3 +109,15 @@ export class SimpleProduct {
     return true;
   }
 }
+
+/**
+ * @displayName Vehicle Registration
+ * @description Collect vehicle details for fleet management
+ */
+export class VehicleRegistration {
+  /** @displayName Make */
+  make!: string;
+
+  /** @displayName Model */
+  model!: string;
+}

@@ -64,6 +64,7 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS: {
     readonly maxLength: "number";
     readonly minItems: "number";
     readonly maxItems: "number";
+    readonly uniqueItems: "boolean";
     readonly pattern: "string";
     readonly uniqueItems: "boolean";
     readonly const: "json";
@@ -127,6 +128,13 @@ export interface ConstraintSemanticRole {
 export interface ConstraintTagRegistration {
     readonly constraintName: string;
     readonly isApplicableToType?: (type: TypeNode) => boolean;
+    readonly parseValue: (raw: string) => JsonValue;
+    readonly tagName: string;
+}
+
+// @public
+export interface ConstraintTagRegistration {
+    readonly constraintName: string;
     readonly parseValue: (raw: string) => JsonValue;
     readonly tagName: string;
 }
@@ -426,6 +434,7 @@ export interface FormIR {
     // (undocumented)
     readonly kind: "form-ir";
     readonly provenance: Provenance;
+    readonly rootAnnotations?: readonly AnnotationNode[];
     readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
 }
 
