@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import packageJson from "../../package.json" with { type: "json" };
 import plugin, { configs, meta, rules } from "../index.js";
 
 describe("@formspec/eslint-plugin exports", () => {
@@ -11,7 +12,7 @@ describe("@formspec/eslint-plugin exports", () => {
   it("exposes rule maps and flat configs used by consumers and doc generation", () => {
     expect(meta).toMatchObject({
       name: "@formspec/eslint-plugin",
-      version: "0.1.0-alpha.18",
+      version: packageJson.version,
     });
 
     expect(Object.keys(rules)).toEqual(
