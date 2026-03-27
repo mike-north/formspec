@@ -24,6 +24,17 @@ export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_2, Options_2, unk
     name: string;
 };
 
+// @public
+export const configs: {
+    readonly recommended: TSESLint.FlatConfig.ConfigArray;
+    readonly strict: TSESLint.FlatConfig.ConfigArray;
+};
+
+// @public
+export const meta: {
+    name: string;
+};
+
 // Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
 //
 // @public (undocumented)
@@ -68,7 +79,7 @@ export const noUnsupportedTargeting: ESLintUtils.RuleModule<"unsupportedTargetin
     name: string;
 };
 
-// @public
+// @public (undocumented)
 const plugin: {
     meta: {
         name: string;
@@ -132,16 +143,82 @@ const plugin: {
         };
     };
     configs: {
-        recommended: TSESLint.FlatConfig.ConfigArray;
-        strict: TSESLint.FlatConfig.ConfigArray;
+        readonly recommended: TSESLint.FlatConfig.ConfigArray;
+        readonly strict: TSESLint.FlatConfig.ConfigArray;
     };
 };
 export default plugin;
+
+// @public
+export const recommendedConfig: TSESLint.FlatConfig.ConfigArray;
 
 // @public (undocumented)
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export const rules: {
+    readonly "tag-recognition/no-unknown-tags": TSESLint.RuleModule<"unknownTag", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "tag-recognition/require-tag-arguments": TSESLint.RuleModule<"missingTagArgument", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "tag-recognition/no-disabled-tags": TSESLint.RuleModule<"disabledTag", [{
+        tags?: string[];
+    }], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "value-parsing/valid-numeric-value": TSESLint.RuleModule<"invalidNumericValue", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "value-parsing/valid-integer-value": TSESLint.RuleModule<"invalidIntegerValue", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "value-parsing/valid-regex-pattern": TSESLint.RuleModule<"invalidRegexPattern", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "value-parsing/valid-json-value": TSESLint.RuleModule<"invalidJsonValue", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "type-compatibility/tag-type-check": TSESLint.RuleModule<"typeMismatch", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "target-resolution/valid-path-target": TSESLint.RuleModule<"unknownPathTarget", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "target-resolution/valid-member-target": TSESLint.RuleModule<"unknownMemberTarget", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "target-resolution/no-unsupported-targeting": TSESLint.RuleModule<"unsupportedTargetingSyntax", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "target-resolution/no-member-target-on-object": TSESLint.RuleModule<"memberTargetOnNonUnion", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-contradictions": TSESLint.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "minItemsGreaterThanMaxItems" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-description-conflict": TSESLint.RuleModule<"descriptionRemarksConflict", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", Options_2, unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+};
+
+// @public
+export const strictConfig: TSESLint.FlatConfig.ConfigArray;
 
 // @public (undocumented)
 export const tagTypeCheck: ESLintUtils.RuleModule<"typeMismatch", [], unknown, ESLintUtils.RuleListener> & {

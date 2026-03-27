@@ -1,101 +1,26 @@
 # @formspec/playground
 
-Interactive playground for FormSpec - write forms and see generated schemas live.
+Private playground app for interactive FormSpec development inside this monorepo.
 
-## Features
+## What It Includes
 
-- **Real-time compilation** - TypeScript transpilation and FormSpec validation as you type
-- **Live schema generation** - See JSON Schema and UI Schema output instantly
-- **Canonical IR viewer** - Inspect the intermediate representation of your form
-- **Validation panel** - See validation results and constraint issues
-- **Interactive form preview** - Rendered forms using JSON Forms + Material UI
-- **Monaco editor** - Full TypeScript support with FormSpec type definitions
-- **ESLint integration** - Constraint violations shown as editor markers
-- **Configurable constraints** - UI for restricting which DSL features are allowed
+- Monaco editor with FormSpec-aware TypeScript support
+- live JSON Schema and UI Schema generation
+- canonical IR inspection
+- browser-based ESLint integration
+- JSON Forms preview
 
-## Running Locally
+## Run Locally
 
 ```bash
-# From the monorepo root
 pnpm install
 pnpm run build
 cd packages/playground
 pnpm run dev
 ```
 
-The playground will be available at `http://localhost:5173/formspec/`.
+The default dev URL is `http://localhost:5173/formspec/`.
 
-## Architecture
+## License
 
-```
-User Code (Monaco) ──► TypeScript Compile ──► Execute ──► FormSpec Object
-                                                              │
-Constraints Config ─────────────────────────────────────────►│
-                                                              ▼
-                                              ┌───────────────────────────┐
-                                              │    canonicalizeChainDSL() │
-                                              │    generateJsonSchema()   │
-                                              │    generateUiSchema()     │
-                                              │    validateFormSpec()     │
-                                              └───────────────────────────┘
-                                                              │
-                    ┌────────────┬─────────────┬──────────────┼───────────────────┐
-                    ▼            ▼             ▼              ▼                   ▼
-              Canonical IR  JSON Schema   UI Schema     Lint Issues          Form Preview
-                Panel         Panel        Panel          Panel              (JSON Forms)
-```
-
-### Key Components
-
-- **Editor** (`src/components/Editor/`) - Monaco editor wrapper with FormSpec types
-- **Compiler** (`src/lib/compiler.ts`) - TypeScript transpilation + sandboxed execution + schema generation
-- **Linter** (`src/lib/linter.ts`) - Browser-based ESLint with `@formspec/eslint-plugin` rules
-- **Preview** (`src/components/Preview/`) - Live form rendering with JSON Forms
-- **Constraints** (`src/components/Constraints/`) - UI for configuring DSL restrictions
-
-### Browser Entry Points
-
-The playground uses browser-safe entry points that exclude Node.js APIs:
-
-- `@formspec/build/browser` - Schema generation without `node:fs`
-- `@formspec/constraints/browser` - Validation without file system access
-
-## Deployment
-
-The playground is automatically deployed to GitHub Pages via GitHub Actions.
-
-### Automatic Deployment
-
-Changes pushed to the `main` branch trigger automatic deployment when files in these directories are modified:
-
-- `packages/playground/**`
-- `packages/core/**`
-- `packages/dsl/**`
-- `packages/build/**`
-- `packages/constraints/**`
-
-The workflow (`.github/workflows/deploy-playground.yml`) will:
-
-1. Build all packages
-2. Generate the static site from the playground
-3. Deploy to GitHub Pages with automatic enablement
-
-### GitHub Pages Setup
-
-The workflow uses the `configure-pages` action with `enablement: true`, which will automatically:
-
-- Enable GitHub Pages for the repository (if not already enabled)
-- Configure the Pages deployment source to use GitHub Actions
-- Set up the necessary permissions
-
-**Note**: On the first run, the workflow may require repository administrator permissions to enable Pages. Once enabled, subsequent deployments will work automatically.
-
-The deployed playground is available at: https://mike-north.github.io/formspec/
-
-## Scripts
-
-- `pnpm run dev` - Start development server
-- `pnpm run build` - Build for production
-- `pnpm run preview` - Preview production build
-- `pnpm run test` - Run tests
-- `pnpm run typecheck` - Type check without emitting
+UNLICENSED

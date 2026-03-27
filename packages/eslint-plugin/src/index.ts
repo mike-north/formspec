@@ -35,7 +35,7 @@ import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js"
 /**
  * All rules provided by this plugin.
  */
-const rules = {
+export const rules = {
   // Spec built-in rules
   "tag-recognition/no-unknown-tags": noUnknownTags,
   "tag-recognition/require-tag-arguments": requireTagArguments,
@@ -62,7 +62,7 @@ const rules = {
 /**
  * Plugin metadata.
  */
-const meta = {
+export const meta = {
   name: "@formspec/eslint-plugin",
 };
 
@@ -78,7 +78,7 @@ const meta = {
  * ];
  * ```
  */
-const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
+export const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
   {
     plugins: {
       "@formspec": {
@@ -110,7 +110,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
 /**
  * Strict configuration - all rules as errors.
  */
-const strictConfig: TSESLint.FlatConfig.ConfigArray = [
+export const strictConfig: TSESLint.FlatConfig.ConfigArray = [
   {
     plugins: {
       "@formspec": {
@@ -142,13 +142,15 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
 /**
  * The FormSpec ESLint plugin.
  */
+export const configs = {
+  recommended: recommendedConfig,
+  strict: strictConfig,
+} as const;
+
 const plugin = {
   meta,
   rules,
-  configs: {
-    recommended: recommendedConfig,
-    strict: strictConfig,
-  },
+  configs,
 };
 
 export default plugin;
