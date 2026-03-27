@@ -1,7 +1,7 @@
 /**
  * `@formspec/core` - Core type definitions for FormSpec
  *
- * This package provides the foundational types used throughout the FormSpec ecosystem:
+ * Provides the foundational types used throughout the FormSpec ecosystem:
  * - Form element types (fields, groups, conditionals)
  * - Field and form state types
  * - Data source registry for dynamic enums
