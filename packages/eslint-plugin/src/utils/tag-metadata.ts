@@ -13,7 +13,7 @@ export type FormSpecValueKind =
   | "json"
   | "boolean"
   | "condition";
-export type FormSpecTargetKind = "none" | "path" | "member";
+export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 
 export interface FormSpecTagMetadata {
   readonly canonicalName: string;
@@ -48,7 +48,7 @@ const CONDITION_VALUE_TAGS = new Set(["showWhen", "hideWhen", "enableWhen", "dis
 const EXTRA_TAGS = {
   displayName: {
     requiresArgument: true,
-    supportedTargets: ["none", "member"] as const,
+    supportedTargets: ["none", "member", "variant"] as const,
     allowDuplicates: false,
     category: "annotation" as const,
   },
@@ -84,7 +84,7 @@ const EXTRA_TAGS = {
   },
   apiName: {
     requiresArgument: true,
-    supportedTargets: ["none", "member"] as const,
+    supportedTargets: ["none", "member", "variant"] as const,
     allowDuplicates: false,
     category: "annotation" as const,
   },

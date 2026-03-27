@@ -63,6 +63,10 @@ export function resolveTagTarget(
     return { valid: true, reason: "none", type: declarationType };
   }
 
+  if (tag.target.kind === "variant") {
+    return { valid: true, reason: "none", type: declarationType };
+  }
+
   const checker = getTypeChecker(services);
   if (tag.target.kind === "path") {
     let currentType: ts.Type = declarationType;
