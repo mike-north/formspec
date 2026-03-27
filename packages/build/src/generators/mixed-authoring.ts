@@ -22,23 +22,9 @@ import type {
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import type { UISchema } from "../ui-schema/types.js";
-import {
-  canonicalizeChainDSL,
-  canonicalizeTSDoc,
-  type TSDocSource,
-} from "../canonicalize/index.js";
-import {
-  createProgramContext,
-  findClassByName,
-  findInterfaceByName,
-  findTypeAliasByName,
-} from "../analyzer/program.js";
-import {
-  analyzeClassToIR,
-  analyzeInterfaceToIR,
-  analyzeTypeAliasToIR,
-  type IRClassAnalysis,
-} from "../analyzer/class-analyzer.js";
+import { canonicalizeChainDSL, canonicalizeTSDoc } from "../canonicalize/index.js";
+import { analyzeNamedTypeToIR } from "../analyzer/program.js";
+import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
 
 /**
  * Result of generating schemas from a mixed-authoring composition.
@@ -78,7 +64,7 @@ export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions
 ): MixedAuthoringSchemas {
   const { filePath, typeName, overlays, ...schemaOptions } = options;
-  const analysis = analyzeNamedType(filePath, typeName, schemaOptions.extensionRegistry);
+  const analysis = analyzeNamedTypeToIR(filePath, typeName, schemaOptions.extensionRegistry);
   const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays);
   const ir = canonicalizeTSDoc(composedAnalysis, { file: filePath });
 
@@ -86,38 +72,6 @@ export function buildMixedAuthoringSchemas(
     jsonSchema: generateJsonSchemaFromIR(ir, schemaOptions),
     uiSchema: generateUiSchemaFromIR(ir),
   };
-}
-
-function analyzeNamedType(
-  filePath: string,
-  typeName: string,
-  extensionRegistry?: GenerateJsonSchemaFromIROptions["extensionRegistry"]
-): IRClassAnalysis {
-  const ctx = createProgramContext(filePath);
-  const source: TSDocSource = { file: filePath };
-
-  const classDecl = findClassByName(ctx.sourceFile, typeName);
-  if (classDecl !== null) {
-    return analyzeClassToIR(classDecl, ctx.checker, source.file, extensionRegistry);
-  }
-
-  const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
-  if (interfaceDecl !== null) {
-    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, source.file, extensionRegistry);
-  }
-
-  const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
-  if (typeAlias !== null) {
-    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, source.file, extensionRegistry);
-    if (result.ok) {
-      return result.analysis;
-    }
-    throw new Error(result.error);
-  }
-
-  throw new Error(
-    `Type "${typeName}" not found as a class, interface, or type alias in ${filePath}`
-  );
 }
 
 function composeAnalysisWithOverlays(

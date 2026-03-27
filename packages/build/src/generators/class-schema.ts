@@ -8,17 +8,11 @@
 
 import type { UISchema } from "../ui-schema/types.js";
 import {
+  analyzeNamedTypeToIR,
   createProgramContext,
   findClassByName,
-  findInterfaceByName,
-  findTypeAliasByName,
 } from "../analyzer/program.js";
-import {
-  analyzeClassToIR,
-  analyzeInterfaceToIR,
-  analyzeTypeAliasToIR,
-  type IRClassAnalysis,
-} from "../analyzer/class-analyzer.js";
+import { analyzeClassToIR, type IRClassAnalysis } from "../analyzer/class-analyzer.js";
 import { canonicalizeTSDoc, type TSDocSource } from "../canonicalize/index.js";
 import {
   generateJsonSchemaFromIR,
@@ -154,49 +148,10 @@ export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions 
  * @returns Generated JSON Schema and UI Schema
  */
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
-  const ctx = createProgramContext(options.filePath);
-  const source: TSDocSource = { file: options.filePath };
-
-  // Try class first
-  const classDecl = findClassByName(ctx.sourceFile, options.typeName);
-  if (classDecl) {
-    const analysis = analyzeClassToIR(
-      classDecl,
-      ctx.checker,
-      options.filePath,
-      options.extensionRegistry
-    );
-    return generateClassSchemas(analysis, source, options);
-  }
-
-  // Try interface
-  const interfaceDecl = findInterfaceByName(ctx.sourceFile, options.typeName);
-  if (interfaceDecl) {
-    const analysis = analyzeInterfaceToIR(
-      interfaceDecl,
-      ctx.checker,
-      options.filePath,
-      options.extensionRegistry
-    );
-    return generateClassSchemas(analysis, source, options);
-  }
-
-  // Try type alias
-  const typeAlias = findTypeAliasByName(ctx.sourceFile, options.typeName);
-  if (typeAlias) {
-    const result = analyzeTypeAliasToIR(
-      typeAlias,
-      ctx.checker,
-      options.filePath,
-      options.extensionRegistry
-    );
-    if (result.ok) {
-      return generateClassSchemas(result.analysis, source, options);
-    }
-    throw new Error(result.error);
-  }
-
-  throw new Error(
-    `Type "${options.typeName}" not found as a class, interface, or type alias in ${options.filePath}`
+  const analysis = analyzeNamedTypeToIR(
+    options.filePath,
+    options.typeName,
+    options.extensionRegistry
   );
+  return generateClassSchemas(analysis, { file: options.filePath }, options);
 }

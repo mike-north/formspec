@@ -337,7 +337,9 @@ function analyzeFieldToIR(
   }
 
   // Extract JSDoc constraints
-  constraints.push(...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type)));
+  constraints.push(
+    ...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  );
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
@@ -408,7 +410,9 @@ function analyzeInterfacePropertyToIR(
   }
 
   // JSDoc constraints
-  constraints.push(...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type)));
+  constraints.push(
+    ...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  );
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
@@ -605,7 +609,9 @@ function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined
 
 function getTypeNodeRegistrationName(typeNode: ts.TypeNode): string | null {
   if (ts.isTypeReferenceNode(typeNode)) {
-    return ts.isIdentifier(typeNode.typeName) ? typeNode.typeName.text : typeNode.typeName.right.text;
+    return ts.isIdentifier(typeNode.typeName)
+      ? typeNode.typeName.text
+      : typeNode.typeName.right.text;
   }
 
   if (ts.isParenthesizedTypeNode(typeNode)) {
@@ -1392,7 +1398,10 @@ function resolveAliasedTypeNode(
 }
 
 function isNullishTypeNode(typeNode: ts.TypeNode): boolean {
-  if (typeNode.kind === ts.SyntaxKind.NullKeyword || typeNode.kind === ts.SyntaxKind.UndefinedKeyword) {
+  if (
+    typeNode.kind === ts.SyntaxKind.NullKeyword ||
+    typeNode.kind === ts.SyntaxKind.UndefinedKeyword
+  ) {
     return true;
   }
 
@@ -1497,13 +1506,7 @@ function extractTypeAliasConstraintNodes(
   // Constraints from parent aliases are appended after the immediate alias's
   // constraints, giving the immediate alias higher precedence.
   constraints.push(
-    ...extractTypeAliasConstraintNodes(
-      aliasDecl.type,
-      checker,
-      file,
-      extensionRegistry,
-      depth + 1
-    )
+    ...extractTypeAliasConstraintNodes(aliasDecl.type, checker, file, extensionRegistry, depth + 1)
   );
 
   return constraints;

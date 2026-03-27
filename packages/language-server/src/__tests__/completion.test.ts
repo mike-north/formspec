@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_CONSTRAINT_DEFINITIONS, defineConstraintTag, defineExtension } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  defineConstraintTag,
+  defineExtension,
+} from "@formspec/core";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems } from "../providers/completion.js";
 
@@ -74,6 +78,32 @@ describe("getCompletionItems", () => {
 
     const items = getCompletionItems([extension]);
     expect(items.find((item) => item.label === "@maxSigFig")).toMatchObject({
+      kind: CompletionItemKind.Keyword,
+    });
+  });
+
+  it("includes date extension tags when extensions are provided", () => {
+    const extension = defineExtension({
+      extensionId: "x-test/date",
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "after",
+          constraintName: "After",
+          parseValue: (raw) => raw.trim(),
+        }),
+        defineConstraintTag({
+          tagName: "before",
+          constraintName: "Before",
+          parseValue: (raw) => raw.trim(),
+        }),
+      ],
+    });
+
+    const items = getCompletionItems([extension]);
+    expect(items.find((item) => item.label === "@after")).toMatchObject({
+      kind: CompletionItemKind.Keyword,
+    });
+    expect(items.find((item) => item.label === "@before")).toMatchObject({
       kind: CompletionItemKind.Keyword,
     });
   });

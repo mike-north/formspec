@@ -219,7 +219,11 @@ function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
       }
       const leftValue = left[key];
       const rightValue = right[rightKey];
-      return leftValue !== undefined && rightValue !== undefined && jsonValueEquals(leftValue, rightValue);
+      return (
+        leftValue !== undefined &&
+        rightValue !== undefined &&
+        jsonValueEquals(leftValue, rightValue)
+      );
     });
   }
 
@@ -420,13 +424,20 @@ interface CustomSemanticEntry {
   readonly comparePayloads: NonNullable<
     NonNullable<ReturnType<ExtensionRegistry["findConstraint"]>>["comparePayloads"]
   >;
-  readonly role: NonNullable<NonNullable<ReturnType<ExtensionRegistry["findConstraint"]>>["semanticRole"]>;
+  readonly role: NonNullable<
+    NonNullable<ReturnType<ExtensionRegistry["findConstraint"]>>["semanticRole"]
+  >;
 }
 
-function compareCustomConstraintStrength(current: CustomSemanticEntry, previous: CustomSemanticEntry): number {
+function compareCustomConstraintStrength(
+  current: CustomSemanticEntry,
+  previous: CustomSemanticEntry
+): number {
   const order = current.comparePayloads(current.constraint.payload, previous.constraint.payload);
   const equalPayloadTiebreaker =
-    order === 0 ? compareSemanticInclusivity(current.role.inclusive, previous.role.inclusive) : order;
+    order === 0
+      ? compareSemanticInclusivity(current.role.inclusive, previous.role.inclusive)
+      : order;
 
   switch (current.role.bound) {
     case "lower":
@@ -488,10 +499,7 @@ function checkCustomConstraintSemantics(
     }
 
     const registration = ctx.extensionRegistry.findConstraint(constraint.constraintId);
-    if (
-      registration?.comparePayloads === undefined ||
-      registration.semanticRole === undefined
-    ) {
+    if (registration?.comparePayloads === undefined || registration.semanticRole === undefined) {
       continue;
     }
 
