@@ -32,8 +32,6 @@ const ProfileForm = formspec(
 type ProfileData = InferFormSchema<typeof ProfileForm>;
 
 const { jsonSchema, uiSchema } = buildFormSchemas(ProfileForm);
-void jsonSchema;
-void uiSchema;
 ```
 
 ## Main Builders

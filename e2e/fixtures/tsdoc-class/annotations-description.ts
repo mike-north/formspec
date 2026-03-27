@@ -19,5 +19,10 @@ export class FeedbackForm {
    */
   subject!: string;
 
+  /**
+   * Free text summary becomes the description when no explicit tags are present.
+   */
+  details!: string;
+
   rating!: number;
 }

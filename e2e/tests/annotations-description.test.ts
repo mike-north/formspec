@@ -60,6 +60,12 @@ describe("Annotation: @description / @remarks", () => {
     expect(properties["subject"]["description"]).not.toContain("remarks");
   });
 
+  it("details: free text summary maps to description when no explicit tags are present", () => {
+    expect(properties["details"]["description"]).toBe(
+      "Free text summary becomes the description when no explicit tags are present."
+    );
+  });
+
   // @see 002-constraint-tags.md §2.2: "absence of annotation → keyword not emitted"
   it("rating without @description has no description", () => {
     expect(properties["rating"]["description"]).toBeUndefined();
@@ -70,6 +76,7 @@ describe("Annotation: @description / @remarks", () => {
     expect(required).toContain("name");
     expect(required).toContain("comments");
     expect(required).toContain("subject");
+    expect(required).toContain("details");
     expect(required).toContain("rating");
   });
 });

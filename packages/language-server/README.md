@@ -24,10 +24,6 @@ import { createServer, getCompletionItems, getHoverForTag } from "@formspec/lang
 const server = createServer();
 const completions = getCompletionItems();
 const hover = getHoverForTag("minimum");
-
-void server;
-void completions;
-void hover;
 ```
 
 ## License

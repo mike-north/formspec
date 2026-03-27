@@ -42,7 +42,6 @@ const resolvers = defineResolvers(Form, {
 });
 
 const countries = await resolvers.get("countries")();
-void countries;
 ```
 
 ## License

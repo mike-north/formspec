@@ -25,7 +25,6 @@ const validator = createFormSpecValidator({
 });
 
 const result = validator.validate({ name: "Alice", country: "us" });
-void result;
 ```
 
 Unknown `x-formspec-*` keywords are ignored by the underlying validator, so generated schemas work without extra vocabulary registration.

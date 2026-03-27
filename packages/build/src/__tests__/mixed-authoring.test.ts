@@ -37,6 +37,7 @@ describe("buildMixedAuthoringSchemas", () => {
     expect(result.jsonSchema).toEqual({
       $schema: "https://json-schema.org/draft/2020-12/schema",
       type: "object",
+      description: "Static shipping-address model for mixed-authoring composition tests.",
       properties: {
         country: { type: "string", title: "Country" },
         city: {
