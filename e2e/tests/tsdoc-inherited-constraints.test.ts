@@ -21,6 +21,7 @@ describe("TSDoc Inherited Constraints", () => {
   let schema: Record<string, unknown>;
   let uischema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
+  let defs: Record<string, Record<string, unknown>>;
   let elements: Record<string, unknown>[];
 
   beforeAll(() => {
@@ -34,6 +35,7 @@ describe("TSDoc Inherited Constraints", () => {
     if (!schemaFile) throw new Error("Schema file not found");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
+    defs = schema["$defs"] as Record<string, Record<string, unknown>>;
 
     const uischemaFile = findSchemaFile(tempDir, "ui_schema.json");
     expect(uischemaFile).toBeDefined();
@@ -52,25 +54,30 @@ describe("TSDoc Inherited Constraints", () => {
     // Integer (@multipleOf 1) → Percentage (@minimum 0 @maximum 100) → fields
     // multipleOf:1 on number promotes type to "integer" (keyword suppressed)
 
-    it("cpuUsage: field-level @minimum overrides alias, inherits Integer → integer type", () => {
-      // Integer's @multipleOf 1 propagates transitively → type promoted to "integer"
-      expect(properties["cpuUsage"]?.["type"]).toBe("integer");
+    it("stores inherited alias constraints once in $defs", () => {
+      expect(defs["Percentage"]).toEqual({
+        type: "integer",
+        minimum: 0,
+        maximum: 100,
+      });
+    });
+
+    it("cpuUsage: field-level @minimum overrides the referenced alias definition", () => {
+      expect(properties["cpuUsage"]?.["$ref"]).toBe("#/$defs/Percentage");
       // Field-level @minimum 10 overrides Percentage's @minimum 0
       expect(properties["cpuUsage"]?.["minimum"]).toBe(10);
-      // Inherited from Percentage alias: @maximum 100
-      expect(properties["cpuUsage"]?.["maximum"]).toBe(100);
     });
 
-    it("memoryUsage: inherits full Percentage + Integer constraint chain", () => {
-      expect(properties["memoryUsage"]?.["type"]).toBe("integer");
-      expect(properties["memoryUsage"]?.["minimum"]).toBe(0);
-      expect(properties["memoryUsage"]?.["maximum"]).toBe(100);
+    it("memoryUsage: references the inherited Percentage constraint chain", () => {
+      expect(properties["memoryUsage"]).toEqual({
+        $ref: "#/$defs/Percentage",
+      });
     });
 
-    it("diskUsage (optional): same constraints as memoryUsage", () => {
-      expect(properties["diskUsage"]?.["type"]).toBe("integer");
-      expect(properties["diskUsage"]?.["minimum"]).toBe(0);
-      expect(properties["diskUsage"]?.["maximum"]).toBe(100);
+    it("diskUsage (optional): references the same alias definition as memoryUsage", () => {
+      expect(properties["diskUsage"]).toEqual({
+        $ref: "#/$defs/Percentage",
+      });
     });
 
     it("required contains only the non-optional fields", () => {

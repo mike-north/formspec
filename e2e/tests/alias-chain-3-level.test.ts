@@ -8,6 +8,7 @@ describe("TSDoc Type Alias Chains", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
+  let defs: Record<string, Record<string, unknown>>;
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-alias-chain-"));
@@ -20,6 +21,7 @@ describe("TSDoc Type Alias Chains", () => {
     if (!schemaFile) throw new Error("Schema file not found");
     schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
     properties = schema["properties"] as Record<string, Record<string, unknown>>;
+    defs = schema["$defs"] as Record<string, Record<string, unknown>>;
   });
 
   afterAll(() => {
@@ -28,8 +30,12 @@ describe("TSDoc Type Alias Chains", () => {
     }
   });
 
-  it("composes three alias levels onto the generated field schema", () => {
+  it("emits the field as a named alias reference with the composed constraints in $defs", () => {
     expect(properties["amount"]).toEqual({
+      $ref: "#/$defs/SteppedAmount",
+    });
+
+    expect(defs["SteppedAmount"]).toEqual({
       type: "number",
       minimum: 0,
       maximum: 1000,
