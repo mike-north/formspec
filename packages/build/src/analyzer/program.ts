@@ -175,7 +175,7 @@ export function findTypeAliasByName(
  * Tries each declaration kind in order: class → interface → type alias.
  * Throws if the name is not found or if the type alias analysis fails.
  *
- * @param filePath - Absolute path to the TypeScript source file
+ * @param filePath - Absolute or relative path to the TypeScript source file (resolved internally)
  * @param typeName - Name of the class, interface, or type alias to analyze
  * @param extensionRegistry - Optional extension registry for custom type handling
  * @returns IR analysis result

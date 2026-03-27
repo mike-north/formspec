@@ -1594,9 +1594,10 @@ describe("validateIR", () => {
   // in the same family agree only when their payloads are equal; any difference
   // signals CONTRADICTING_CONSTRAINTS (via NaN from compareCustomConstraintStrength).
   //
-  // Exact constraints also participate in lower/upper cross-family checks: an
-  // exact constraint below a lower bound or above an upper bound is a
-  // contradiction.
+  // Note: exact constraints currently do NOT participate in lower/upper
+  // cross-family contradiction checks. Exact-vs-lower/upper detection is
+  // intentionally unimplemented at present, and the tests below document and
+  // verify this limitation.
   // ---------------------------------------------------------------------------
 
   describe("extension-defined exact-bound semantics", () => {
