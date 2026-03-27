@@ -624,7 +624,7 @@ export interface PrimitiveTypeNode {
     // (undocumented)
     readonly kind: "primitive";
     // (undocumented)
-    readonly primitiveKind: "string" | "number" | "boolean" | "null";
+    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
 // @public
@@ -678,6 +678,7 @@ export interface TextField<N extends string> {
 // @public
 export interface TypeDefinition {
     readonly annotations?: readonly AnnotationNode[];
+    readonly constraints?: readonly ConstraintNode[];
     readonly name: string;
     readonly provenance: Provenance;
     readonly type: TypeNode;

@@ -105,7 +105,7 @@ export type TypeNode =
  */
 export interface PrimitiveTypeNode {
   readonly kind: "primitive";
-  readonly primitiveKind: "string" | "number" | "boolean" | "null";
+  readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
 /** A member of a static enum type. */
@@ -498,6 +498,8 @@ export interface TypeDefinition {
   readonly name: string;
   /** The resolved type node. */
   readonly type: TypeNode;
+  /** Constraints declared on the named type itself. */
+  readonly constraints?: readonly ConstraintNode[];
   /** Root-level value metadata for a named type definition. */
   readonly annotations?: readonly AnnotationNode[];
   /** Where this type was declared. */

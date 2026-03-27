@@ -34,32 +34,43 @@ function findConstraint(
   return constraints.find((c) => c.constraintKind === kind);
 }
 
+function findTypeConstraints(
+  analysis: ReturnType<typeof analyzeClass>,
+  typeName: string
+): readonly ConstraintNode[] {
+  return analysis.typeRegistry[typeName]?.constraints ?? [];
+}
+
 describe("transitive type alias constraint propagation", () => {
   describe("2-level chain: Integer → Percentage → field", () => {
     it("propagates constraints from both Percentage and Integer", () => {
       const analysis = analyzeClass("TwoLevelChain");
       const mem = findField(analysis.fields, "memoryUsage");
+      const constraints = findTypeConstraints(analysis, "Percentage");
 
+      expect(mem.type).toEqual({ kind: "reference", name: "Percentage", typeArguments: [] });
       // From Percentage: @Minimum 0, @Maximum 100
-      expect(findConstraint(mem.constraints, "minimum")).toMatchObject({ value: 0 });
-      expect(findConstraint(mem.constraints, "maximum")).toMatchObject({ value: 100 });
+      expect(findConstraint(constraints, "minimum")).toMatchObject({ value: 0 });
+      expect(findConstraint(constraints, "maximum")).toMatchObject({ value: 100 });
       // From Integer (transitive): @MultipleOf 1
-      expect(findConstraint(mem.constraints, "multipleOf")).toMatchObject({ value: 1 });
+      expect(findConstraint(constraints, "multipleOf")).toMatchObject({ value: 1 });
     });
 
     it("collects both alias-level and field-level constraints for the same kind", () => {
       const analysis = analyzeClass("TwoLevelChain");
       const cpu = findField(analysis.fields, "cpuUsage");
+      const aliasMinimums = findTypeConstraints(analysis, "Percentage").filter(
+        (c) => c.constraintKind === "minimum"
+      );
 
-      // cpuUsage has @Minimum from both the Percentage alias (0) and the field (10)
-      const minimums = cpu.constraints.filter((c) => c.constraintKind === "minimum");
-      expect(minimums).toHaveLength(2);
+      expect(cpu.type).toEqual({ kind: "reference", name: "Percentage", typeArguments: [] });
+      expect(aliasMinimums).toHaveLength(1);
+      expect(aliasMinimums[0]).toMatchObject({ value: 0 });
 
-      // Alias constraints are collected first, field-level second.
-      // Downstream schema generation picks the appropriate winner.
-      const values = minimums.map((c) => "value" in c && c.value);
-      expect(values).toContain(0);
-      expect(values).toContain(10);
+      // Field-level constraints remain on the field and override alias constraints downstream.
+      const fieldMinimums = cpu.constraints.filter((c) => c.constraintKind === "minimum");
+      expect(fieldMinimums).toHaveLength(1);
+      expect(fieldMinimums[0]).toMatchObject({ value: 10 });
     });
   });
 
@@ -67,21 +78,25 @@ describe("transitive type alias constraint propagation", () => {
     it("propagates constraints from all three alias levels", () => {
       const analysis = analyzeClass("ThreeLevelChain");
       const value = findField(analysis.fields, "value");
+      const constraints = findTypeConstraints(analysis, "Leaf");
 
+      expect(value.type).toEqual({ kind: "reference", name: "Leaf", typeArguments: [] });
       // From Leaf: @MultipleOf 5
-      expect(findConstraint(value.constraints, "multipleOf")).toMatchObject({ value: 5 });
+      expect(findConstraint(constraints, "multipleOf")).toMatchObject({ value: 5 });
       // From Mid: @Maximum 1000
-      expect(findConstraint(value.constraints, "maximum")).toMatchObject({ value: 1000 });
+      expect(findConstraint(constraints, "maximum")).toMatchObject({ value: 1000 });
       // From Base: @Minimum 0
-      expect(findConstraint(value.constraints, "minimum")).toMatchObject({ value: 0 });
+      expect(findConstraint(constraints, "minimum")).toMatchObject({ value: 0 });
     });
 
     it("collects exactly 3 constraints from the chain", () => {
       const analysis = analyzeClass("ThreeLevelChain");
       const value = findField(analysis.fields, "value");
+      const constraints = findTypeConstraints(analysis, "Leaf");
 
-      expect(value.constraints).toHaveLength(3);
-      const kinds = new Set(value.constraints.map((c) => c.constraintKind));
+      expect(value.type).toEqual({ kind: "reference", name: "Leaf", typeArguments: [] });
+      expect(constraints).toHaveLength(3);
+      const kinds = new Set(constraints.map((c) => c.constraintKind));
       expect(kinds).toEqual(new Set(["multipleOf", "maximum", "minimum"]));
     });
   });

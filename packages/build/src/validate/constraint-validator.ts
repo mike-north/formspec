@@ -763,6 +763,35 @@ function dereferenceType(ctx: ValidationContext, type: TypeNode): TypeNode {
   return current;
 }
 
+function collectReferencedTypeConstraints(
+  ctx: ValidationContext,
+  type: TypeNode
+): readonly ConstraintNode[] {
+  const collected: ConstraintNode[] = [];
+  let current = type;
+  const seen = new Set<string>();
+
+  while (current.kind === "reference") {
+    if (seen.has(current.name)) {
+      break;
+    }
+    seen.add(current.name);
+
+    const definition = ctx.typeRegistry[current.name];
+    if (definition === undefined) {
+      break;
+    }
+
+    if (definition.constraints !== undefined) {
+      collected.push(...definition.constraints);
+    }
+
+    current = definition.type;
+  }
+
+  return collected;
+}
+
 function resolvePathTargetType(
   ctx: ValidationContext,
   type: TypeNode,
@@ -804,7 +833,9 @@ function checkConstraintOnType(
   constraint: ConstraintNode
 ): void {
   const effectiveType = dereferenceType(ctx, type);
-  const isNumber = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "number";
+  const isNumber =
+    effectiveType.kind === "primitive" &&
+    ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
   const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
   const isArray = effectiveType.kind === "array";
   const isEnum = effectiveType.kind === "enum";
@@ -869,7 +900,9 @@ function checkConstraintOnType(
     case "const": {
       const isPrimitiveConstType =
         (effectiveType.kind === "primitive" &&
-          ["string", "number", "boolean", "null"].includes(effectiveType.primitiveKind)) ||
+          ["string", "number", "integer", "bigint", "boolean", "null"].includes(
+            effectiveType.primitiveKind
+          )) ||
         effectiveType.kind === "enum";
 
       if (!isPrimitiveConstType) {
@@ -888,7 +921,11 @@ function checkConstraintOnType(
             : Array.isArray(constraint.value)
               ? "array"
               : typeof constraint.value;
-        if (valueType !== effectiveType.primitiveKind) {
+        const expectedValueType =
+          effectiveType.primitiveKind === "integer" || effectiveType.primitiveKind === "bigint"
+            ? "number"
+            : effectiveType.primitiveKind;
+        if (valueType !== expectedValueType) {
           addTypeMismatch(
             ctx,
             `Field "${fieldName}": @const value type "${valueType}" is incompatible with field type "${effectiveType.primitiveKind}"`,
@@ -1043,7 +1080,10 @@ function checkCustomConstraint(
 // =============================================================================
 
 function validateFieldNode(ctx: ValidationContext, field: FieldNode): void {
-  validateConstraints(ctx, field.name, field.type, field.constraints);
+  validateConstraints(ctx, field.name, field.type, [
+    ...collectReferencedTypeConstraints(ctx, field.type),
+    ...field.constraints,
+  ]);
 
   // Recurse into object type properties
   if (field.type.kind === "object") {
@@ -1059,7 +1099,10 @@ function validateObjectProperty(
   prop: ObjectProperty
 ): void {
   const qualifiedName = `${parentName}.${prop.name}`;
-  validateConstraints(ctx, qualifiedName, prop.type, prop.constraints);
+  validateConstraints(ctx, qualifiedName, prop.type, [
+    ...collectReferencedTypeConstraints(ctx, prop.type),
+    ...prop.constraints,
+  ]);
 
   // Recurse further if this property is also an object
   if (prop.type.kind === "object") {

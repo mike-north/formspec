@@ -113,6 +113,8 @@ describe("generateJsonSchemaFromIR", () => {
     it.each([
       ["string", "string"],
       ["number", "number"],
+      ["integer", "integer"],
+      ["bigint", "integer"],
       ["boolean", "boolean"],
       ["null", "null"],
     ] as const)("maps primitive kind %s → type: %s", (primitiveKind, expected) => {

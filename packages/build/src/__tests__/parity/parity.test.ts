@@ -2,8 +2,12 @@
  * Parity tests.
  *
  * Proves that both authoring surfaces (chain DSL and TSDoc/class annotations)
- * produce identical intermediate representations (IR) for equivalent form
- * definitions, modulo provenance metadata.
+ * produce identical intermediate representations (IR) for equivalent shared
+ * form constructs, modulo provenance metadata.
+ *
+ * TSDoc-only helper types that the chain DSL cannot express directly, such as
+ * constrained primitive aliases, are normalized to their effective field
+ * semantics before parity comparison.
  *
  * Three-test pattern per fixture:
  *   1. Chain DSL → IR matches expected IR

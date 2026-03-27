@@ -462,11 +462,11 @@ export function extractPathTarget(
   text: string
 ): { path: PathTarget; remainingText: string } | null {
   const trimmed = text.trimStart();
-  const match = /^:([a-zA-Z_]\w*)\s+([\s\S]*)$/.exec(trimmed);
-  if (!match?.[1] || !match[2]) return null;
+  const match = /^:([a-zA-Z_]\w*)(?:\s+([\s\S]*))?$/.exec(trimmed);
+  if (!match?.[1]) return null;
   return {
     path: { segments: [match[1]] },
-    remainingText: match[2],
+    remainingText: match[2] ?? "",
   };
 }
 

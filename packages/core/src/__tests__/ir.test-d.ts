@@ -122,16 +122,17 @@ expectAssignable<PathTarget>({ segments: ["value"] });
 // PrimitiveTypeNode
 const stringNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "string" };
 const numberNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "number" };
+const integerNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "integer" };
+const bigintNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "bigint" };
 const boolNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "boolean" };
 const nullNode: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "null" };
 
 expectAssignable<TypeNode>(stringNode);
 expectAssignable<TypeNode>(numberNode);
+expectAssignable<TypeNode>(integerNode);
+expectAssignable<TypeNode>(bigintNode);
 expectAssignable<TypeNode>(boolNode);
 expectAssignable<TypeNode>(nullNode);
-
-// "integer" is NOT a valid primitiveKind (integers use multipleOf: 1 on number)
-expectError<PrimitiveTypeNode>({ kind: "primitive", primitiveKind: "integer" });
 
 // EnumTypeNode
 const enumNode: EnumTypeNode = {

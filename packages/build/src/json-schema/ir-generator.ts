@@ -183,6 +183,9 @@ export function generateJsonSchemaFromIR(
   // by a TSDoc canonicalizer pass).
   for (const [name, typeDef] of Object.entries(ir.typeRegistry)) {
     ctx.defs[name] = generateTypeNode(typeDef.type, ctx);
+    if (typeDef.constraints && typeDef.constraints.length > 0) {
+      applyConstraints(ctx.defs[name], typeDef.constraints, ctx);
+    }
     if (typeDef.annotations && typeDef.annotations.length > 0) {
       applyAnnotations(ctx.defs[name], typeDef.annotations, ctx);
     }
@@ -473,7 +476,12 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
  * handles the promotion (per the JSON Schema vocabulary spec §2.1).
  */
 function generatePrimitiveType(type: PrimitiveTypeNode): JsonSchema2020 {
-  return { type: type.primitiveKind };
+  return {
+    type:
+      type.primitiveKind === "integer" || type.primitiveKind === "bigint"
+        ? "integer"
+        : type.primitiveKind,
+  };
 }
 
 /**
