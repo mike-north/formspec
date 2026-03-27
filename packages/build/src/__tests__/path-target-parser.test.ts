@@ -83,8 +83,11 @@ describe("extractPathTarget", () => {
     });
   });
 
-  it("returns null when colon identifier has no trailing space/text", () => {
-    expect(extractPathTarget(":value")).toBeNull();
+  it("returns an empty remainingText when colon identifier has no trailing text", () => {
+    expect(extractPathTarget(":value")).toEqual({
+      path: { segments: ["value"] },
+      remainingText: "",
+    });
   });
 
   it("handles leading whitespace before the colon", () => {

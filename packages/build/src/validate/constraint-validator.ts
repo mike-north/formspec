@@ -804,7 +804,9 @@ function checkConstraintOnType(
   constraint: ConstraintNode
 ): void {
   const effectiveType = dereferenceType(ctx, type);
-  const isNumber = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "number";
+  const isNumber =
+    effectiveType.kind === "primitive" &&
+    ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
   const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
   const isArray = effectiveType.kind === "array";
   const isEnum = effectiveType.kind === "enum";
@@ -869,7 +871,9 @@ function checkConstraintOnType(
     case "const": {
       const isPrimitiveConstType =
         (effectiveType.kind === "primitive" &&
-          ["string", "number", "boolean", "null"].includes(effectiveType.primitiveKind)) ||
+          ["string", "number", "integer", "bigint", "boolean", "null"].includes(
+            effectiveType.primitiveKind
+          )) ||
         effectiveType.kind === "enum";
 
       if (!isPrimitiveConstType) {
@@ -888,7 +892,11 @@ function checkConstraintOnType(
             : Array.isArray(constraint.value)
               ? "array"
               : typeof constraint.value;
-        if (valueType !== effectiveType.primitiveKind) {
+        const expectedValueType =
+          effectiveType.primitiveKind === "integer" || effectiveType.primitiveKind === "bigint"
+            ? "number"
+            : effectiveType.primitiveKind;
+        if (valueType !== expectedValueType) {
           addTypeMismatch(
             ctx,
             `Field "${fieldName}": @const value type "${valueType}" is incompatible with field type "${effectiveType.primitiveKind}"`,

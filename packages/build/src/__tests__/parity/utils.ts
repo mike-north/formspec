@@ -5,11 +5,14 @@
  * - `ProvenanceFree<T>` — type-level mapper that strips `provenance` fields from IR nodes
  * - `stripProvenance(ir)` — runtime equivalent for `FormIR`
  * - `compareIR(a, b)` — structured IR comparison after stripping provenance
+ * - narrow parity normalization for TSDoc-only helper types the chain DSL
+ *   cannot express directly
  *
- * `ProvenanceFree<T>` is implemented as explicit per-type mapped interfaces rather
- * than a generic deep-recursive mapped type. This keeps the type system's structural
- * guarantees intact: if an IR node gains or loses a field, the provenance-free variants
- * here will fail to compile, catching shape regressions at type-check time.
+ * `ProvenanceFree<T>` is implemented as explicit per-type mapped interfaces
+ * rather than a generic deep-recursive mapped type. This keeps the type
+ * system's structural guarantees intact: if an IR node gains or loses a
+ * field, the provenance-free variants here will fail to compile, catching
+ * shape regressions at type-check time.
  */
 
 import type {
@@ -209,6 +212,8 @@ export type ProvenanceFreeFormIRElement =
 export interface ProvenanceFreeTypeDefinition {
   readonly name: string;
   readonly type: ProvenanceFreeTypeNode;
+  readonly constraints?: readonly ProvenanceFreeConstraintNode[];
+  readonly annotations?: readonly ProvenanceFreeAnnotationNode[];
   // `provenance` intentionally omitted
 }
 
@@ -401,14 +406,90 @@ export function stripProvenance(ir: FormIR): ProvenanceFreeFormIR {
     typeRegistry[key] = {
       name: def.name,
       type: stripProvenanceFromTypeNode(def.type),
+      ...(def.constraints && def.constraints.length > 0 && {
+        constraints: def.constraints.map(stripProvenanceFromConstraint),
+      }),
+      ...(def.annotations && def.annotations.length > 0 && {
+        annotations: def.annotations.map(stripProvenanceFromAnnotation),
+      }),
     };
   }
 
-  return {
+  return normalizePrimitiveAliasParity({
     kind: "form-ir",
     irVersion: ir.irVersion,
     elements: ir.elements.map(stripProvenanceFromElement),
     typeRegistry,
+  });
+}
+
+/**
+ * Parity compares authoring-surface semantics, not whether one surface chose to
+ * preserve a named primitive alias in the registry. Inline those aliases back
+ * onto fields for comparison while leaving non-primitive named types intact.
+ */
+function normalizePrimitiveAliasParity(ir: ProvenanceFreeFormIR): ProvenanceFreeFormIR {
+  const primitiveDefs = new Map(
+    Object.entries(ir.typeRegistry).filter(
+      ([, def]) => def.type.kind === "primitive" && def.constraints && def.constraints.length > 0
+    )
+  );
+
+  if (primitiveDefs.size === 0) {
+    return ir;
+  }
+
+  const elements = ir.elements.map((element) =>
+    normalizePrimitiveAliasElement(element, primitiveDefs)
+  );
+  const typeRegistry = Object.fromEntries(
+    Object.entries(ir.typeRegistry).filter(([key]) => !primitiveDefs.has(key))
+  );
+
+  return {
+    ...ir,
+    elements,
+    typeRegistry,
+  };
+}
+
+function normalizePrimitiveAliasElement(
+  element: ProvenanceFreeFormIRElement,
+  primitiveDefs: Map<string, ProvenanceFreeTypeDefinition>
+): ProvenanceFreeFormIRElement {
+  switch (element.kind) {
+    case "field":
+      return normalizePrimitiveAliasField(element, primitiveDefs);
+    case "group":
+      return {
+        ...element,
+        elements: element.elements.map((child) => normalizePrimitiveAliasElement(child, primitiveDefs)),
+      };
+    case "conditional":
+      return {
+        ...element,
+        elements: element.elements.map((child) => normalizePrimitiveAliasElement(child, primitiveDefs)),
+      };
+  }
+}
+
+function normalizePrimitiveAliasField(
+  field: ProvenanceFreeFieldNode,
+  primitiveDefs: Map<string, ProvenanceFreeTypeDefinition>
+): ProvenanceFreeFieldNode {
+  if (field.type.kind !== "reference") {
+    return field;
+  }
+
+  const primitiveDef = primitiveDefs.get(field.type.name);
+  if (!primitiveDef || primitiveDef.type.kind !== "primitive") {
+    return field;
+  }
+
+  return {
+    ...field,
+    type: primitiveDef.type,
+    constraints: [...(primitiveDef.constraints ?? []), ...field.constraints],
   };
 }
 

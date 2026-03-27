@@ -393,10 +393,13 @@ describe("constrained type alias propagation (IR)", () => {
     const analysis = analyzeInterfaceToIR(decl, ctx.checker, interfaceFixturePath);
     const discountField = findField(analysis.fields, "discount");
 
-    expect(discountField.type).toEqual({ kind: "primitive", primitiveKind: "number" });
+    expect(discountField.type).toEqual({ kind: "reference", name: "Percent", typeArguments: [] });
+    expect(analysis.typeRegistry["Percent"]).toMatchObject({
+      type: { kind: "primitive", primitiveKind: "number" },
+    });
 
-    const minimum = findConstraint(discountField.constraints, "minimum");
-    const maximum = findConstraint(discountField.constraints, "maximum");
+    const minimum = findConstraint(analysis.typeRegistry["Percent"]?.constraints ?? [], "minimum");
+    const maximum = findConstraint(analysis.typeRegistry["Percent"]?.constraints ?? [], "maximum");
     expect(minimum).toMatchObject({ value: 0 });
     expect(maximum).toMatchObject({ value: 100 });
   });
@@ -409,11 +412,15 @@ describe("constrained type alias propagation (IR)", () => {
     const analysis = analyzeInterfaceToIR(decl, ctx.checker, interfaceFixturePath);
     const emailField = findField(analysis.fields, "contactEmail");
 
-    expect(emailField.type).toEqual({ kind: "primitive", primitiveKind: "string" });
+    expect(emailField.type).toEqual({ kind: "reference", name: "Email", typeArguments: [] });
+    expect(analysis.typeRegistry["Email"]).toMatchObject({
+      type: { kind: "primitive", primitiveKind: "string" },
+    });
 
-    const minLength = findConstraint(emailField.constraints, "minLength");
-    const maxLength = findConstraint(emailField.constraints, "maxLength");
-    const pattern = findConstraint(emailField.constraints, "pattern");
+    const aliasConstraints = analysis.typeRegistry["Email"]?.constraints ?? [];
+    const minLength = findConstraint(aliasConstraints, "minLength");
+    const maxLength = findConstraint(aliasConstraints, "maxLength");
+    const pattern = findConstraint(aliasConstraints, "pattern");
     expect(minLength).toMatchObject({ value: 1 });
     expect(maxLength).toMatchObject({ value: 255 });
     expect(pattern).toMatchObject({ constraintKind: "pattern", pattern: "^[^@]+@[^@]+$" });

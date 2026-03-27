@@ -330,7 +330,7 @@ function analyzeFieldToIR(
   const constraints: ConstraintNode[] = [];
 
   // Inherit constraints from type alias declarations (lower precedence)
-  if (prop.type) {
+  if (prop.type && !shouldEmitPrimitiveAliasDefinition(prop.type, checker)) {
     constraints.push(
       ...extractTypeAliasConstraintNodes(prop.type, checker, file, extensionRegistry)
     );
@@ -401,7 +401,7 @@ function analyzeInterfacePropertyToIR(
   const constraints: ConstraintNode[] = [];
 
   // Inherit constraints from type alias declarations
-  if (prop.type) {
+  if (prop.type && !shouldEmitPrimitiveAliasDefinition(prop.type, checker)) {
     constraints.push(
       ...extractTypeAliasConstraintNodes(prop.type, checker, file, extensionRegistry)
     );
@@ -644,6 +644,18 @@ export function resolveTypeNode(
   if (customType) {
     return customType;
   }
+  const primitiveAlias = tryResolveNamedPrimitiveAlias(
+    type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    sourceNode,
+    extensionRegistry
+  );
+  if (primitiveAlias) {
+    return primitiveAlias;
+  }
 
   // --- Primitives ---
   if (type.flags & ts.TypeFlags.String) {
@@ -651,6 +663,9 @@ export function resolveTypeNode(
   }
   if (type.flags & ts.TypeFlags.Number) {
     return { kind: "primitive", primitiveKind: "number" };
+  }
+  if (type.flags & (ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)) {
+    return { kind: "primitive", primitiveKind: "bigint" };
   }
   if (type.flags & ts.TypeFlags.Boolean) {
     return { kind: "primitive", primitiveKind: "boolean" };
@@ -712,6 +727,135 @@ export function resolveTypeNode(
 
   // --- Fallback: treat unknown/any/void as string ---
   return { kind: "primitive", primitiveKind: "string" };
+}
+
+function tryResolveNamedPrimitiveAlias(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  file: string,
+  typeRegistry: Record<string, TypeDefinition>,
+  visiting: Set<ts.Type>,
+  sourceNode?: ts.Node,
+  extensionRegistry?: ExtensionRegistry
+): TypeNode | null {
+  if (
+    !(
+      type.flags &
+      (ts.TypeFlags.String |
+        ts.TypeFlags.Number |
+        ts.TypeFlags.BigInt |
+        ts.TypeFlags.BigIntLiteral |
+        ts.TypeFlags.Boolean |
+        ts.TypeFlags.Null)
+    )
+  ) {
+    return null;
+  }
+
+  const aliasDecl =
+    type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration) ??
+    getReferencedTypeAliasDeclaration(sourceNode, checker);
+  if (!aliasDecl) {
+    return null;
+  }
+
+  const aliasName = aliasDecl.name.text;
+  if (!typeRegistry[aliasName]) {
+    const aliasType = checker.getTypeFromTypeNode(aliasDecl.type);
+    const constraints = [
+      ...extractJSDocConstraintNodes(aliasDecl, file, makeParseOptions(extensionRegistry)),
+      ...extractTypeAliasConstraintNodes(aliasDecl.type, checker, file, extensionRegistry),
+    ];
+    const annotations = extractJSDocAnnotationNodes(
+      aliasDecl,
+      file,
+      makeParseOptions(extensionRegistry)
+    );
+    typeRegistry[aliasName] = {
+      name: aliasName,
+      type: resolveAliasedPrimitiveTarget(
+        aliasType,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        extensionRegistry
+      ),
+      ...(constraints.length > 0 && { constraints }),
+      ...(annotations.length > 0 && { annotations }),
+      provenance: provenanceForDeclaration(aliasDecl, file),
+    };
+  }
+
+  return { kind: "reference", name: aliasName, typeArguments: [] };
+}
+
+function getReferencedTypeAliasDeclaration(
+  sourceNode: ts.Node | undefined,
+  checker: ts.TypeChecker
+): ts.TypeAliasDeclaration | undefined {
+  const typeNode =
+    sourceNode &&
+    (ts.isPropertyDeclaration(sourceNode) ||
+      ts.isPropertySignature(sourceNode) ||
+      ts.isParameter(sourceNode))
+      ? sourceNode.type
+      : undefined;
+  if (!typeNode || !ts.isTypeReferenceNode(typeNode)) {
+    return undefined;
+  }
+
+  return checker.getSymbolAtLocation(typeNode.typeName)?.declarations?.find(ts.isTypeAliasDeclaration);
+}
+
+function shouldEmitPrimitiveAliasDefinition(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker
+): boolean {
+  if (!ts.isTypeReferenceNode(typeNode)) {
+    return false;
+  }
+
+  const aliasDecl = checker
+    .getSymbolAtLocation(typeNode.typeName)
+    ?.declarations?.find(ts.isTypeAliasDeclaration);
+  if (!aliasDecl) {
+    return false;
+  }
+
+  const resolved = checker.getTypeFromTypeNode(aliasDecl.type);
+  return !!(
+    resolved.flags &
+    (ts.TypeFlags.String |
+      ts.TypeFlags.Number |
+      ts.TypeFlags.BigInt |
+      ts.TypeFlags.BigIntLiteral |
+      ts.TypeFlags.Boolean |
+      ts.TypeFlags.Null)
+  );
+}
+
+function resolveAliasedPrimitiveTarget(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  file: string,
+  typeRegistry: Record<string, TypeDefinition>,
+  visiting: Set<ts.Type>,
+  extensionRegistry?: ExtensionRegistry
+): TypeNode {
+  const nestedAliasDecl = type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration);
+  if (nestedAliasDecl && nestedAliasDecl.type !== undefined) {
+    return resolveAliasedPrimitiveTarget(
+      checker.getTypeFromTypeNode(nestedAliasDecl.type),
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      extensionRegistry
+    );
+  }
+
+  return resolveTypeNode(type, checker, file, typeRegistry, visiting, undefined, extensionRegistry);
 }
 
 function resolveUnionType(
