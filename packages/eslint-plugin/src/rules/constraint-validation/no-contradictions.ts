@@ -26,7 +26,7 @@ export const noContradictions = createRule<[], MessageIds>({
     schema: [],
     messages: {
       minimumGreaterThanMaximum:
-        '@minimum({{min}}) is greater than @maximum({{max}}). minimum must be less than or equal to maximum.',
+        "@minimum({{min}}) is greater than @maximum({{max}}). minimum must be less than or equal to maximum.",
       exclusiveMinGreaterOrEqualMax:
         "@exclusiveMinimum({{min}}) must be less than @exclusiveMaximum({{max}}).",
       minLengthGreaterThanMaxLength:
@@ -61,7 +61,7 @@ export const noContradictions = createRule<[], MessageIds>({
       );
 
       const groups = new Map<string, Map<string, number>>();
-      const locations = new Map<string, typeof tags[number]>();
+      const locations = new Map<string, (typeof tags)[number]>();
 
       for (const tag of tags) {
         const groupKey = tag.target ? getTagIdentity({ ...tag, normalizedName: "_" }) : "none";
@@ -134,13 +134,21 @@ export const noContradictions = createRule<[], MessageIds>({
         if (maximum !== undefined && exclusiveMaximum !== undefined) {
           report("exclusiveMaximum", "conflictingMaximumBounds");
         }
-        if (minimum !== undefined && exclusiveMaximum !== undefined && exclusiveMaximum <= minimum) {
+        if (
+          minimum !== undefined &&
+          exclusiveMaximum !== undefined &&
+          exclusiveMaximum <= minimum
+        ) {
           report("exclusiveMaximum", "exclusiveMaxLessOrEqualMin", {
             min: String(minimum),
             max: String(exclusiveMaximum),
           });
         }
-        if (exclusiveMinimum !== undefined && maximum !== undefined && maximum <= exclusiveMinimum) {
+        if (
+          exclusiveMinimum !== undefined &&
+          maximum !== undefined &&
+          maximum <= exclusiveMinimum
+        ) {
           report("maximum", "maximumLessOrEqualExclusiveMin", {
             min: String(exclusiveMinimum),
             max: String(maximum),

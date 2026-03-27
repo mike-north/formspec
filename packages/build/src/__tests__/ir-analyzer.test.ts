@@ -125,6 +125,23 @@ describe("analyzeClassToIR", () => {
     expect(emailField.required).toBe(false);
   });
 
+  it("extracts root annotations from class declarations", () => {
+    const ctx = createProgramContext(sampleFormsPath);
+    const classDecl = findClassByName(ctx.sourceFile, "VehicleRegistration");
+    if (!classDecl) throw new Error("VehicleRegistration class not found");
+
+    const analysis = analyzeClassToIR(classDecl, ctx.checker, sampleFormsPath);
+
+    expect(findAnnotation(analysis.annotations ?? [], "displayName")).toMatchObject({
+      annotationKind: "displayName",
+      value: "Vehicle Registration",
+    });
+    expect(findAnnotation(analysis.annotations ?? [], "description")).toMatchObject({
+      annotationKind: "description",
+      value: "Collect vehicle details for fleet management",
+    });
+  });
+
   it("resolves optional string as nullable primitive", () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "SimpleProduct");

@@ -1,5 +1,11 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
-import { createDeclarationVisitor, getDeclarationName, getDeclarationType, getResolvedTypeName, resolveTagTarget } from "../../utils/rule-helpers.js";
+import {
+  createDeclarationVisitor,
+  getDeclarationName,
+  getDeclarationType,
+  getResolvedTypeName,
+  resolveTagTarget,
+} from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 import { getFieldTypeCategory } from "../../utils/type-utils.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";
@@ -51,7 +57,9 @@ export const tagTypeCheck = createRule<[], MessageIds>({
         const expectedTypes = EXPECTED_TYPES[tag.normalizedName];
         if (!expectedTypes) continue;
         const metadata = getTagMetadata(tag.rawName);
-        if (tag.valueText === "") continue;
+        const supportsValueLessCheck =
+          metadata?.valueKind === "boolean" || metadata?.requiresArgument === false;
+        if (tag.valueText === "" && !supportsValueLessCheck) continue;
         if (metadata?.valueKind === "number" && !Number.isFinite(Number(tag.valueText))) continue;
         if (
           metadata?.valueKind === "integer" &&

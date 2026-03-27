@@ -26,7 +26,7 @@ export const noUnsupportedTargeting = createRule<[], "unsupportedTargetingSyntax
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
         if (!tag.target) continue;
         const metadata = getTagMetadata(tag.rawName);
-        if (metadata?.supportedTargets.includes(tag.target.kind) ?? false) continue;
+        if (metadata?.supportedTargets.includes(tag.target.kind)) continue;
         context.report({
           loc: tag.comment.loc,
           messageId: "unsupportedTargetingSyntax",

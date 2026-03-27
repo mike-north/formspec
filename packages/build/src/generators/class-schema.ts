@@ -20,6 +20,7 @@ import {
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
+import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
 /**
  * Generated schemas for a class.
@@ -47,10 +48,37 @@ export function generateClassSchemas(
   options?: GenerateJsonSchemaFromIROptions
 ): ClassSchemas {
   const ir = canonicalizeTSDoc(analysis, source);
+  const validationResult = validateIR(ir, {
+    ...(options?.extensionRegistry !== undefined && {
+      extensionRegistry: options.extensionRegistry,
+    }),
+    ...(options?.vendorPrefix !== undefined && { vendorPrefix: options.vendorPrefix }),
+  });
+  if (!validationResult.valid) {
+    throw new Error(formatValidationError(validationResult.diagnostics));
+  }
+
   return {
     jsonSchema: generateJsonSchemaFromIR(ir, options),
     uiSchema: generateUiSchemaFromIR(ir),
   };
+}
+
+function formatValidationError(diagnostics: readonly ValidationDiagnostic[]): string {
+  const lines = diagnostics.map((diagnostic) => {
+    const primary = formatLocation(diagnostic.primaryLocation);
+    const related =
+      diagnostic.relatedLocations.length > 0
+        ? ` [related: ${diagnostic.relatedLocations.map(formatLocation).join(", ")}]`
+        : "";
+    return `${diagnostic.code}: ${diagnostic.message} (${primary})${related}`;
+  });
+
+  return `FormSpec validation failed:\n${lines.map((line) => `- ${line}`).join("\n")}`;
+}
+
+function formatLocation(location: ValidationDiagnostic["primaryLocation"]): string {
+  return `${location.file}:${String(location.line)}:${String(location.column)}`;
 }
 
 /**

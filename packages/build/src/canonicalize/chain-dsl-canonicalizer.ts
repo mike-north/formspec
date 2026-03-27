@@ -95,6 +95,7 @@ export function canonicalizeChainDSL(form: FormSpec<readonly FormElement[]>): Fo
     kind: "form-ir",
     irVersion: IR_VERSION,
     elements: canonicalizeElements(form.elements),
+    rootAnnotations: [],
     typeRegistry: {},
     provenance: CHAIN_DSL_PROVENANCE,
   };

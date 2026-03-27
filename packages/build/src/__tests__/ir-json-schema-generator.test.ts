@@ -1063,6 +1063,34 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["x-formspec-deprecation-description"]).toBe("Use newField instead");
     });
 
+    it("uses vendorPrefix for deprecated messages when configured", () => {
+      const ir = makeIR([
+        makeField(
+          "legacyField",
+          { kind: "primitive", primitiveKind: "string" },
+          false,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "deprecated",
+              message: "Use newField instead",
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { vendorPrefix: "x-acme" });
+      const prop = (schema.properties as Record<string, unknown>)["legacyField"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["deprecated"]).toBe(true);
+      expect(prop["x-acme-deprecation-description"]).toBe("Use newField instead");
+      expect(prop["x-formspec-deprecation-description"]).toBeUndefined();
+    });
+
     it("does not emit placeholder annotation in JSON Schema", () => {
       const ir = makeIR([
         makeField(

@@ -830,6 +830,36 @@ function resolvePathTargetType(
   return { kind: "unresolvable", type: effectiveType };
 }
 
+function isNullType(type: TypeNode): boolean {
+  return type.kind === "primitive" && type.primitiveKind === "null";
+}
+
+function collectCustomConstraintCandidateTypes(
+  ctx: ValidationContext,
+  type: TypeNode
+): readonly TypeNode[] {
+  const effectiveType = dereferenceType(ctx, type);
+  const candidates: TypeNode[] = [effectiveType];
+
+  if (effectiveType.kind === "array") {
+    candidates.push(...collectCustomConstraintCandidateTypes(ctx, effectiveType.items));
+  }
+
+  if (effectiveType.kind === "union") {
+    const memberTypes = effectiveType.members.map((member) => dereferenceType(ctx, member));
+    const nonNullMembers = memberTypes.filter((member) => !isNullType(member));
+
+    if (nonNullMembers.length === 1 && nonNullMembers.length < memberTypes.length) {
+      const [nullableMember] = nonNullMembers;
+      if (nullableMember !== undefined) {
+        candidates.push(...collectCustomConstraintCandidateTypes(ctx, nullableMember));
+      }
+    }
+  }
+
+  return candidates;
+}
+
 function formatPathTargetFieldName(fieldName: string, path: readonly string[]): string {
   return path.length === 0 ? fieldName : `${fieldName}.${path.join(".")}`;
 }
@@ -1036,6 +1066,8 @@ function checkCustomConstraint(
     return;
   }
 
+  const candidateTypes = collectCustomConstraintCandidateTypes(ctx, type);
+
   const normalizedTagName =
     constraint.provenance.tagName === undefined
       ? undefined
@@ -1047,7 +1079,9 @@ function checkCustomConstraint(
       extensionId !== null &&
       tagRegistration?.extensionId === extensionId &&
       tagRegistration.registration.constraintName === registration.constraintName &&
-      tagRegistration.registration.isApplicableToType?.(type) === false
+      !candidateTypes.some(
+        (candidateType) => tagRegistration.registration.isApplicableToType?.(candidateType) !== false
+      )
     ) {
       addTypeMismatch(
         ctx,
@@ -1061,7 +1095,9 @@ function checkCustomConstraint(
   // If applicableTypes is null, the constraint applies to any type unless a
   // narrower extension predicate rejects the specific resolved type node.
   if (registration.applicableTypes === null) {
-    if (registration.isApplicableToType?.(type) === false) {
+    if (
+      !candidateTypes.some((candidateType) => registration.isApplicableToType?.(candidateType) !== false)
+    ) {
       addTypeMismatch(
         ctx,
         `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
@@ -1071,10 +1107,14 @@ function checkCustomConstraint(
     return;
   }
 
-  if (
-    !registration.applicableTypes.includes(type.kind) ||
-    registration.isApplicableToType?.(type) === false
-  ) {
+  const applicableTypes = registration.applicableTypes;
+  const matchesApplicableType = candidateTypes.some(
+    (candidateType) =>
+      applicableTypes.includes(candidateType.kind) &&
+      registration.isApplicableToType?.(candidateType) !== false
+  );
+
+  if (!matchesApplicableType) {
     addTypeMismatch(
       ctx,
       `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,

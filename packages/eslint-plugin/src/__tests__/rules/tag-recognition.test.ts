@@ -101,6 +101,14 @@ ruleTester.run("require-tag-arguments", requireTagArguments, {
         }
       `,
     },
+    {
+      code: `
+        class Form {
+          /** @uniqueItems */
+          tags!: string[];
+        }
+      `,
+    },
   ],
   invalid: [
     {

@@ -813,7 +813,8 @@ function applyAnnotations(
       case "deprecated":
         schema.deprecated = true;
         if (annotation.message !== undefined && annotation.message !== "") {
-          schema["x-formspec-deprecation-description"] = annotation.message;
+          schema[`${ctx.vendorPrefix}-deprecation-description` as `x-${string}`] =
+            annotation.message;
         }
         break;
 
