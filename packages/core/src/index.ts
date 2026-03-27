@@ -111,8 +111,6 @@ export type {
   BuiltinConstraintBroadeningRegistration,
   ConstraintSemanticRole,
   CustomAnnotationRegistration,
-  ConstraintTagRegistration,
-  BuiltinConstraintBroadeningRegistration,
   VocabularyKeywordRegistration,
 } from "./extensions/index.js";
 
