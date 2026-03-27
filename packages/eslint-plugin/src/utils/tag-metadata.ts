@@ -166,7 +166,7 @@ const BUILTIN_METADATA = Object.fromEntries(
   ])
 ) as unknown as Record<BuiltinConstraintName, FormSpecTagMetadata>;
 
-const extraTagEntries: Array<readonly [string, FormSpecTagMetadata]> = Object.entries(EXTRA_TAGS).map(
+const extraTagEntries: readonly (readonly [string, FormSpecTagMetadata])[] = Object.entries(EXTRA_TAGS).map(
   ([canonicalName, meta]) => [
     canonicalName,
     {
@@ -193,7 +193,7 @@ export const FORM_SPEC_TAGS: ReadonlyMap<string, FormSpecTagMetadata> = new Map(
   [
     ...Object.entries(BUILTIN_METADATA),
     ...extraTagEntries,
-  ] satisfies ReadonlyArray<readonly [string, FormSpecTagMetadata]>
+  ] satisfies readonly (readonly [string, FormSpecTagMetadata])[]
 );
 
 export function normalizeFormSpecTagName(rawName: string): string {

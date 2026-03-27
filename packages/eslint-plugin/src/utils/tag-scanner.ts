@@ -28,6 +28,7 @@ function getLeadingJSDocComments(node: TSESTree.Node, sourceCode: SourceCode): T
       }
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison -- TSESTree.Comment uses string literals
   return comments.filter((comment) => comment.type === "Block" && comment.value.startsWith("*"));
 }
 
@@ -38,7 +39,7 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
   for (const line of lines) {
     const cleaned = line.replace(/^\s*\*\s?/, "");
     const tagStartRegex = /@([A-Za-z][A-Za-z0-9]*)/g;
-    const starts: Array<{ rawName: string; start: number; end: number }> = [];
+    const starts: { rawName: string; start: number; end: number }[] = [];
     let startMatch: RegExpExecArray | null;
     while ((startMatch = tagStartRegex.exec(cleaned)) !== null) {
       const rawName = startMatch[1];
@@ -58,10 +59,7 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
             ? next.start
             : cleaned.length
           : (next?.start ?? cleaned.length);
-      const rawSegment =
-        metadata?.valueKind === "string" || metadata?.valueKind === "condition" || metadata?.valueKind === null
-          ? cleaned.slice(current.start, nextBoundary)
-          : cleaned.slice(current.start, nextBoundary);
+      const rawSegment = cleaned.slice(current.start, nextBoundary);
       const rawText = rawSegment.trimEnd();
       const rawArgument = rawText.slice(current.end - current.start).trim();
 

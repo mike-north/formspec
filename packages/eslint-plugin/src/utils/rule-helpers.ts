@@ -1,5 +1,4 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
-import { ESLintUtils } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type ts from "typescript";
 import {

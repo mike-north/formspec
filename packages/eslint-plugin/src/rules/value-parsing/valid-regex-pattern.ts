@@ -24,7 +24,6 @@ export const validRegexPattern = createRule<[], "invalidRegexPattern">({
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
         if (tag.normalizedName !== "pattern" || tag.valueText === "") continue;
         try {
-          // eslint-disable-next-line no-new
           new RegExp(tag.valueText);
         } catch {
           context.report({

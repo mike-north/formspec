@@ -61,7 +61,6 @@ export const tagTypeCheck = createRule<[], MessageIds>({
         }
         if (tag.normalizedName === "pattern") {
           try {
-            // eslint-disable-next-line no-new
             new RegExp(tag.valueText);
           } catch {
             continue;
