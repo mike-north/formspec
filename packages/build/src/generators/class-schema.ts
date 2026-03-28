@@ -47,6 +47,10 @@ export function generateClassSchemas(
   source?: TSDocSource,
   options?: GenerateJsonSchemaFromIROptions
 ): ClassSchemas {
+  if (analysis.diagnostics !== undefined && analysis.diagnostics.length > 0) {
+    throw new Error(formatValidationError(analysis.diagnostics));
+  }
+
   const ir = canonicalizeTSDoc(analysis, source);
   const validationResult = validateIR(ir, {
     ...(options?.extensionRegistry !== undefined && {

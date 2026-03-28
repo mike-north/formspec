@@ -7,6 +7,7 @@
  */
 
 import * as ts from "typescript";
+import type { ConstraintSemanticDiagnostic } from "@formspec/analysis";
 import type {
   FieldNode,
   TypeNode,
@@ -24,6 +25,7 @@ import {
   extractJSDocConstraintNodes,
   extractJSDocAnnotationNodes,
   extractDefaultValueAnnotation,
+  extractJSDocParseResult,
 } from "./jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
@@ -66,15 +68,27 @@ const RESOLVING_TYPE_PLACEHOLDER: TypeNode = {
 
 function makeParseOptions(
   extensionRegistry: ExtensionRegistry | undefined,
-  fieldType?: TypeNode
+  fieldType?: TypeNode,
+  checker?: ts.TypeChecker,
+  subjectType?: ts.Type,
+  hostType?: ts.Type
 ): import("./tsdoc-parser.js").ParseTSDocOptions | undefined {
-  if (extensionRegistry === undefined && fieldType === undefined) {
+  if (
+    extensionRegistry === undefined &&
+    fieldType === undefined &&
+    checker === undefined &&
+    subjectType === undefined &&
+    hostType === undefined
+  ) {
     return undefined;
   }
 
   return {
     ...(extensionRegistry !== undefined && { extensionRegistry }),
     ...(fieldType !== undefined && { fieldType }),
+    ...(checker !== undefined && { checker }),
+    ...(subjectType !== undefined && { subjectType }),
+    ...(hostType !== undefined && { hostType }),
   };
 }
 
@@ -107,6 +121,8 @@ export interface IRClassAnalysis {
   readonly typeRegistry: Record<string, TypeDefinition>;
   /** Root-level metadata for the analyzed declaration. */
   readonly annotations?: readonly AnnotationNode[];
+  /** Extraction-time diagnostics surfaced before IR validation. */
+  readonly diagnostics?: readonly ConstraintSemanticDiagnostic[];
   /** Instance methods (retained for downstream method-schema generation) */
   readonly instanceMethods: readonly MethodInfo[];
   /** Static methods */
@@ -137,11 +153,15 @@ export function analyzeClassToIR(
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
+  const classType = checker.getTypeAtLocation(classDecl);
+  const classDoc = extractJSDocParseResult(
     classDecl,
     file,
-    makeParseOptions(extensionRegistry)
+    makeParseOptions(extensionRegistry, undefined, checker, classType, classType)
   );
+  const annotations = [...classDoc.annotations];
+  diagnostics.push(...classDoc.diagnostics);
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
   const staticMethods: MethodInfo[] = [];
@@ -154,6 +174,8 @@ export function analyzeClassToIR(
         file,
         typeRegistry,
         visiting,
+        diagnostics,
+        classType,
         extensionRegistry
       );
       if (fieldNode) {
@@ -179,6 +201,7 @@ export function analyzeClassToIR(
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
+    ...(diagnostics.length > 0 && { diagnostics }),
     instanceMethods,
     staticMethods,
   };
@@ -196,11 +219,15 @@ export function analyzeInterfaceToIR(
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
+  const interfaceType = checker.getTypeAtLocation(interfaceDecl);
+  const interfaceDoc = extractJSDocParseResult(
     interfaceDecl,
     file,
-    makeParseOptions(extensionRegistry)
+    makeParseOptions(extensionRegistry, undefined, checker, interfaceType, interfaceType)
   );
+  const annotations = [...interfaceDoc.annotations];
+  diagnostics.push(...interfaceDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
   for (const member of interfaceDecl.members) {
@@ -211,6 +238,8 @@ export function analyzeInterfaceToIR(
         file,
         typeRegistry,
         visiting,
+        diagnostics,
+        interfaceType,
         extensionRegistry
       );
       if (fieldNode) {
@@ -226,6 +255,7 @@ export function analyzeInterfaceToIR(
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
+    ...(diagnostics.length > 0 && { diagnostics }),
     instanceMethods: [],
     staticMethods: [],
   };
@@ -254,11 +284,15 @@ export function analyzeTypeAliasToIR(
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
-  const annotations = extractJSDocAnnotationNodes(
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
+  const aliasType = checker.getTypeAtLocation(typeAlias);
+  const typeAliasDoc = extractJSDocParseResult(
     typeAlias,
     file,
-    makeParseOptions(extensionRegistry)
+    makeParseOptions(extensionRegistry, undefined, checker, aliasType, aliasType)
   );
+  const annotations = [...typeAliasDoc.annotations];
+  diagnostics.push(...typeAliasDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
   for (const member of typeAlias.type.members) {
@@ -269,6 +303,8 @@ export function analyzeTypeAliasToIR(
         file,
         typeRegistry,
         visiting,
+        diagnostics,
+        aliasType,
         extensionRegistry
       );
       if (fieldNode) {
@@ -285,6 +321,7 @@ export function analyzeTypeAliasToIR(
       fieldLayouts: fields.map(() => ({})),
       typeRegistry,
       ...(annotations.length > 0 && { annotations }),
+      ...(diagnostics.length > 0 && { diagnostics }),
       instanceMethods: [],
       staticMethods: [],
     },
@@ -304,6 +341,8 @@ function analyzeFieldToIR(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  diagnostics: ConstraintSemanticDiagnostic[],
+  hostType: ts.Type,
   extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
@@ -337,17 +376,19 @@ function analyzeFieldToIR(
   }
 
   // Extract JSDoc constraints
-  constraints.push(
-    ...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  const docResult = extractJSDocParseResult(
+    prop,
+    file,
+    makeParseOptions(extensionRegistry, type, checker, tsType, hostType)
   );
+  constraints.push(...docResult.constraints);
+  diagnostics.push(...docResult.diagnostics);
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
-  annotations.push(
-    ...extractJSDocAnnotationNodes(prop, file, makeParseOptions(extensionRegistry, type))
-  );
+  annotations.push(...docResult.annotations);
 
   // Default value annotation
   const defaultAnnotation = extractDefaultValueAnnotation(prop.initializer, file);
@@ -377,6 +418,8 @@ function analyzeInterfacePropertyToIR(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  diagnostics: ConstraintSemanticDiagnostic[],
+  hostType: ts.Type,
   extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
@@ -410,17 +453,19 @@ function analyzeInterfacePropertyToIR(
   }
 
   // JSDoc constraints
-  constraints.push(
-    ...extractJSDocConstraintNodes(prop, file, makeParseOptions(extensionRegistry, type))
+  const docResult = extractJSDocParseResult(
+    prop,
+    file,
+    makeParseOptions(extensionRegistry, type, checker, tsType, hostType)
   );
+  constraints.push(...docResult.constraints);
+  diagnostics.push(...docResult.diagnostics);
 
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
   // JSDoc annotations (@displayName, @description, @deprecated)
-  annotations.push(
-    ...extractJSDocAnnotationNodes(prop, file, makeParseOptions(extensionRegistry, type))
-  );
+  annotations.push(...docResult.annotations);
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
 
@@ -1289,6 +1334,7 @@ function getNamedTypeFieldNodeInfoMap(
     const classDecl = declarations.find(ts.isClassDeclaration);
     if (classDecl) {
       const map = new Map<string, FieldNodeInfo>();
+      const hostType = checker.getTypeAtLocation(classDecl);
       for (const member of classDecl.members) {
         if (ts.isPropertyDeclaration(member) && ts.isIdentifier(member.name)) {
           const fieldNode = analyzeFieldToIR(
@@ -1297,6 +1343,8 @@ function getNamedTypeFieldNodeInfoMap(
             file,
             typeRegistry,
             visiting,
+            [],
+            hostType,
             extensionRegistry
           );
           if (fieldNode) {
@@ -1320,6 +1368,7 @@ function getNamedTypeFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
+        checker.getTypeAtLocation(interfaceDecl),
         extensionRegistry
       );
     }
@@ -1333,6 +1382,7 @@ function getNamedTypeFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
+        checker.getTypeAtLocation(typeAliasDecl),
         extensionRegistry
       );
     }
@@ -1420,6 +1470,7 @@ function buildFieldNodeInfoMap(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  hostType: ts.Type,
   extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> {
   const map = new Map<string, FieldNodeInfo>();
@@ -1431,6 +1482,8 @@ function buildFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
+        [],
+        hostType,
         extensionRegistry
       );
       if (fieldNode) {

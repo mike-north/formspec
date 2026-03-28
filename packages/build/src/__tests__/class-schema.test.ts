@@ -121,6 +121,10 @@ describe("generateSchemas", () => {
     expect(getGenerationFailureMessage("BoxForm")).toContain("TYPE_MISMATCH");
   });
 
+  it("throws with INVALID_TAG_PLACEMENT for builtin constraints on class declarations", () => {
+    expect(getGenerationFailureMessage("InvalidPlacementForm")).toContain("INVALID_TAG_PLACEMENT");
+  });
+
   it("throws with CONSTRAINT_BROADENING for weaker use-site alias constraints", () => {
     const message = getGenerationFailureMessage("ThermostatForm");
 

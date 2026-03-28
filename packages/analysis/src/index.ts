@@ -79,7 +79,9 @@ export {
   getTypeSemanticCapabilities,
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
+  resolvePathTargetType,
   type FormSpecSemanticCapability,
+  type ResolvedPathTargetType,
 } from "./ts-binding.js";
 export type {
   CheckSyntheticTagApplicationOptions,

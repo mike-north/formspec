@@ -101,3 +101,8 @@ export class ThermostatForm {
   /** @minimum -10 */
   target!: SafeTemperature;
 }
+
+/** @minimum 0 */
+export class InvalidPlacementForm {
+  value!: number;
+}

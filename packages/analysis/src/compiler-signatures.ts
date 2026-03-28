@@ -266,12 +266,13 @@ function getSignatureTargetKind(signature: TagSignature): SyntheticTagTargetKind
   return null;
 }
 
-function getTargetParameter(signature: TagSignature): Exclude<TagSignatureParameter, { kind: "value" }> | null {
+function getTargetParameter(
+  signature: TagSignature
+): Exclude<TagSignatureParameter, { kind: "value" }> | null {
   return (
     signature.parameters.find(
-      (
-        parameter
-      ): parameter is Exclude<TagSignatureParameter, { kind: "value" }> => parameter.kind !== "value"
+      (parameter): parameter is Exclude<TagSignatureParameter, { kind: "value" }> =>
+        parameter.kind !== "value"
     ) ?? null
   );
 }
@@ -282,7 +283,9 @@ function getPathTargetCapability(signature: TagSignature): string {
     throw new Error(`Invariant violation: expected a path-target synthetic signature`);
   }
   if (parameter.capability === undefined) {
-    throw new Error(`Invariant violation: path-target synthetic signatures must declare a capability`);
+    throw new Error(
+      `Invariant violation: path-target synthetic signatures must declare a capability`
+    );
   }
 
   return JSON.stringify(parameter.capability);
@@ -306,8 +309,12 @@ function renderTargetArgument(
 }
 
 /**
- * Filters a tag definition's signatures down to the ones that apply to the
+ * Filters a tag definition's overloads down to the ones that apply to the
  * requested placement and synthetic target form.
+ *
+ * This is the overload-selection primitive used by both the lowering phase
+ * and cursor-aware tooling that wants to show only the currently-applicable
+ * signatures for a tag.
  */
 export function getMatchingTagSignatures(
   definition: TagDefinition,
@@ -323,6 +330,11 @@ export function getMatchingTagSignatures(
 /**
  * Builds the synthetic helper declarations used to validate FormSpec tag
  * applications through the TypeScript checker.
+ *
+ * The returned string is a virtual `.d.ts`-style prelude that declares the
+ * `__formspec.*` helper namespace together with context, path, member, and
+ * variant helper types. It is intended to be embedded into an in-memory
+ * TypeScript program, never emitted to disk.
  */
 export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string {
   const lines = [...PRELUDE_LINES, "", "declare namespace __formspec {"];
@@ -339,6 +351,11 @@ export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSo
 
 /**
  * Lowers a normalized tag application into a synthetic helper call.
+ *
+ * The caller is responsible for supplying trusted `hostType` and `subjectType`
+ * snippets that are valid TypeScript type syntax in the generated synthetic
+ * program. This function does not sanitize those snippets; it only assembles
+ * the helper call and selects the matching overload metadata.
  */
 export function lowerTagApplicationToSyntheticCall(
   options: LowerSyntheticTagApplicationOptions
@@ -421,6 +438,13 @@ function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): 
   return ts.flattenDiagnosticMessageText(message, "\n");
 }
 
+/**
+ * Runs the TypeScript checker against a lowered synthetic tag application.
+ *
+ * This is the compiler-backed validation entrypoint used by FormSpec analysis
+ * to verify placement, target binding, and argument compatibility without
+ * requiring comment tags themselves to be valid TypeScript syntax.
+ */
 export function checkSyntheticTagApplication(
   options: CheckSyntheticTagApplicationOptions
 ): SyntheticTagCheckResult {
