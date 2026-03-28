@@ -73,6 +73,26 @@ export interface CommentCursorTarget {
 }
 
 // @public (undocumented)
+export interface CommentHoverInfo {
+    // (undocumented)
+    readonly kind: "tag-name" | "target" | "argument";
+    // (undocumented)
+    readonly markdown: string;
+}
+
+// @public (undocumented)
+export interface CommentSemanticContextOptions {
+    // (undocumented)
+    readonly checker?: ts.TypeChecker;
+    // (undocumented)
+    readonly extensions?: readonly ExtensionTagSource[];
+    // (undocumented)
+    readonly placement?: FormSpecPlacement | null;
+    // (undocumented)
+    readonly subjectType?: ts.Type;
+}
+
+// @public (undocumented)
 export interface CommentSourceSpan {
     // (undocumented)
     readonly end: number;
@@ -82,6 +102,24 @@ export interface CommentSourceSpan {
 
 // @public (undocumented)
 export type CommentSpan = CommentSourceSpan;
+
+// @public (undocumented)
+export interface CommentTagSemanticContext {
+    // (undocumented)
+    readonly compatiblePathTargets: readonly string[];
+    // (undocumented)
+    readonly placement: FormSpecPlacement | null;
+    // (undocumented)
+    readonly signatures: readonly TagSignature[];
+    // (undocumented)
+    readonly supportedTargets: readonly FormSpecTargetKind[];
+    // (undocumented)
+    readonly tag: ParsedCommentTag;
+    // (undocumented)
+    readonly tagDefinition: TagDefinition | null;
+    // (undocumented)
+    readonly targetCompletions: readonly string[];
+}
 
 // @public (undocumented)
 export interface ConstraintRegistrationLike {
@@ -274,7 +312,13 @@ export function getCommentCursorTargetAtOffset(documentText: string, offset: num
 }): CommentCursorTarget | null;
 
 // @public (undocumented)
+export function getCommentHoverInfoAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): CommentHoverInfo | null;
+
+// @public (undocumented)
 export function getConstraintTagDefinitions(extensions?: readonly ExtensionTagSource[]): readonly TagDefinition[];
+
+// @public (undocumented)
+export function getSemanticCommentCompletionContextAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): SemanticCommentCompletionContext;
 
 // @public (undocumented)
 export function getTagCompletionPrefixAtOffset(documentText: string, offset: number): string | null;
@@ -409,6 +453,22 @@ export type ResolvedTargetState = ({
 
 // @public (undocumented)
 export type SemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "json-like" | "condition-like" | "object-like";
+
+// @public (undocumented)
+export type SemanticCommentCompletionContext = {
+    readonly kind: "tag-name";
+    readonly prefix: string;
+    readonly availableTags: readonly TagDefinition[];
+} | {
+    readonly kind: "target";
+    readonly semantic: CommentTagSemanticContext;
+} | {
+    readonly kind: "argument";
+    readonly semantic: CommentTagSemanticContext;
+    readonly valueLabels: readonly string[];
+} | {
+    readonly kind: "none";
+};
 
 // @public (undocumented)
 export function sliceCommentSpan(commentText: string, span: CommentSpan, options?: {

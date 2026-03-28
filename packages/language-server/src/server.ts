@@ -47,8 +47,8 @@ export function createServer(options: CreateServerOptions = {}): Connection {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         completionProvider: {
-          // Trigger completions inside JSDoc comments when `@` is typed
-          triggerCharacters: ["@"],
+          // Trigger completions inside JSDoc comments for tags and target specifiers
+          triggerCharacters: ["@", ":"],
         },
         hoverProvider: true,
         definitionProvider: true,

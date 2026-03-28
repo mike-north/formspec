@@ -3,7 +3,17 @@ import {
   type ParsedCommentBlock,
   type ParsedCommentTag,
 } from "./comment-syntax.js";
-import type { ExtensionTagSource } from "./tag-registry.js";
+import type * as ts from "typescript";
+import { collectCompatiblePathTargets } from "./ts-binding.js";
+import {
+  getAllTagDefinitions,
+  getTagDefinition,
+  type ExtensionTagSource,
+  type FormSpecPlacement,
+  type FormSpecTargetKind,
+  type TagDefinition,
+  type TagSignature,
+} from "./tag-registry.js";
 
 export interface EnclosingDocComment {
   readonly text: string;
@@ -34,6 +44,47 @@ export type CommentCompletionContext =
       readonly kind: "none";
     };
 
+export interface CommentSemanticContextOptions {
+  readonly extensions?: readonly ExtensionTagSource[];
+  readonly placement?: FormSpecPlacement | null;
+  readonly checker?: ts.TypeChecker;
+  readonly subjectType?: ts.Type;
+}
+
+export interface CommentTagSemanticContext {
+  readonly tag: ParsedCommentTag;
+  readonly tagDefinition: TagDefinition | null;
+  readonly placement: FormSpecPlacement | null;
+  readonly signatures: readonly TagSignature[];
+  readonly supportedTargets: readonly FormSpecTargetKind[];
+  readonly targetCompletions: readonly string[];
+  readonly compatiblePathTargets: readonly string[];
+}
+
+export type SemanticCommentCompletionContext =
+  | {
+      readonly kind: "tag-name";
+      readonly prefix: string;
+      readonly availableTags: readonly TagDefinition[];
+    }
+  | {
+      readonly kind: "target";
+      readonly semantic: CommentTagSemanticContext;
+    }
+  | {
+      readonly kind: "argument";
+      readonly semantic: CommentTagSemanticContext;
+      readonly valueLabels: readonly string[];
+    }
+  | {
+      readonly kind: "none";
+    };
+
+export interface CommentHoverInfo {
+  readonly kind: "tag-name" | "target" | "argument";
+  readonly markdown: string;
+}
+
 function isWordChar(char: string | undefined): boolean {
   return char !== undefined && /[A-Za-z0-9]/u.test(char);
 }
@@ -44,6 +95,204 @@ function isWhitespaceLike(char: string | undefined): boolean {
 
 function containsOffset(tag: ParsedCommentTag, offset: number): boolean {
   return offset >= tag.tagNameSpan.start && offset <= tag.tagNameSpan.end;
+}
+
+function filterSignaturesByPlacement(
+  signatures: readonly TagSignature[],
+  placement: FormSpecPlacement | null | undefined
+): readonly TagSignature[] {
+  if (placement === undefined || placement === null) {
+    return signatures;
+  }
+
+  const filtered = signatures.filter((signature) => signature.placements.includes(placement));
+  return filtered.length > 0 ? filtered : signatures;
+}
+
+function getCompatiblePathTargetsForSignatures(
+  signatures: readonly TagSignature[],
+  checker: ts.TypeChecker | undefined,
+  subjectType: ts.Type | undefined
+): readonly string[] {
+  if (checker === undefined || subjectType === undefined) {
+    return [];
+  }
+
+  const suggestions = new Set<string>();
+  for (const signature of signatures) {
+    for (const parameter of signature.parameters) {
+      if (parameter.kind !== "target-path" || parameter.capability === undefined) {
+        continue;
+      }
+
+      for (const target of collectCompatiblePathTargets(
+        subjectType,
+        checker,
+        parameter.capability
+      )) {
+        suggestions.add(target);
+      }
+    }
+  }
+
+  return [...suggestions].sort();
+}
+
+function getSupportedTargets(signatures: readonly TagSignature[]): readonly FormSpecTargetKind[] {
+  const supportedTargets = new Set<FormSpecTargetKind>(["none"]);
+
+  for (const signature of signatures) {
+    for (const parameter of signature.parameters) {
+      switch (parameter.kind) {
+        case "target-path":
+          supportedTargets.add("path");
+          break;
+        case "target-member":
+          supportedTargets.add("member");
+          break;
+        case "target-variant":
+          supportedTargets.add("variant");
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return [...supportedTargets];
+}
+
+function getTargetCompletions(
+  signatures: readonly TagSignature[],
+  compatiblePathTargets: readonly string[]
+): readonly string[] {
+  const completions = new Set<string>();
+
+  for (const signature of signatures) {
+    for (const parameter of signature.parameters) {
+      switch (parameter.kind) {
+        case "target-path":
+          for (const target of compatiblePathTargets) {
+            completions.add(target);
+          }
+          break;
+        case "target-variant":
+          completions.add("singular");
+          completions.add("plural");
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  return [...completions];
+}
+
+function buildCommentTagSemanticContext(
+  tag: ParsedCommentTag,
+  options?: CommentSemanticContextOptions
+): CommentTagSemanticContext {
+  const tagDefinition = getTagDefinition(tag.normalizedTagName, options?.extensions);
+  const signatures = filterSignaturesByPlacement(
+    tagDefinition?.signatures ?? [],
+    options?.placement
+  );
+  const compatiblePathTargets = getCompatiblePathTargetsForSignatures(
+    signatures,
+    options?.checker,
+    options?.subjectType
+  );
+
+  return {
+    tag,
+    tagDefinition,
+    placement: options?.placement ?? null,
+    signatures,
+    supportedTargets: getSupportedTargets(signatures),
+    targetCompletions: getTargetCompletions(signatures, compatiblePathTargets),
+    compatiblePathTargets,
+  };
+}
+
+function getValueLabels(signatures: readonly TagSignature[]): readonly string[] {
+  const labels = new Set<string>();
+  for (const signature of signatures) {
+    for (const parameter of signature.parameters) {
+      if (parameter.kind === "value") {
+        labels.add(parameter.label);
+      }
+    }
+  }
+  return [...labels];
+}
+
+function getTargetKindLabels(supportedTargets: readonly FormSpecTargetKind[]): string {
+  const labels = supportedTargets
+    .filter((kind): kind is Exclude<FormSpecTargetKind, "none"> => kind !== "none")
+    .map((kind) => `\`${kind}\``);
+  return labels.length === 0 ? "none" : labels.join(", ");
+}
+
+function buildTargetHoverMarkdown(semantic: CommentTagSemanticContext): string | null {
+  if (semantic.tagDefinition === null) {
+    return null;
+  }
+
+  const currentTarget = semantic.tag.target?.rawText ?? "";
+  const lines = [
+    `**Target for @${semantic.tagDefinition.canonicalName}**`,
+    "",
+    `Supported target forms: ${getTargetKindLabels(semantic.supportedTargets)}`,
+  ];
+
+  if (currentTarget !== "") {
+    lines.push("", `Current target: \`:${currentTarget}\``);
+  }
+
+  const MAX_HOVER_PATH_TARGETS = 8;
+  if (semantic.compatiblePathTargets.length > 0) {
+    lines.push("", "**Compatible path targets:**");
+    for (const target of semantic.compatiblePathTargets.slice(0, MAX_HOVER_PATH_TARGETS)) {
+      lines.push(`- \`:${target}\``);
+    }
+  } else if (semantic.supportedTargets.includes("variant")) {
+    lines.push("", "Use `:singular` or `:plural` for variant-specific names.");
+  } else if (semantic.supportedTargets.includes("path")) {
+    lines.push(
+      "",
+      "Type-aware path completions become available when TypeScript binding is provided."
+    );
+  }
+
+  return lines.join("\n");
+}
+
+function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string | null {
+  if (semantic.tagDefinition === null) {
+    return null;
+  }
+
+  const valueLabels = getValueLabels(semantic.signatures);
+  const formattedValueLabels = valueLabels.map((label) => `\`${label}\``);
+  const soleSignature = semantic.signatures.length === 1 ? semantic.signatures[0] : undefined;
+  const signatureLines =
+    semantic.signatures.length === 0
+      ? []
+      : soleSignature !== undefined
+        ? [`**Signature:** \`${soleSignature.label}\``]
+        : [
+            "**Signatures:**",
+            ...semantic.signatures.map((signature) => `- \`${signature.label}\``),
+          ];
+
+  return [
+    `**Argument for @${semantic.tagDefinition.canonicalName}**`,
+    "",
+    `Expected value: ${formattedValueLabels.join(" or ") || "`<value>`"}`,
+    "",
+    ...signatureLines,
+  ].join("\n");
 }
 
 export function findEnclosingDocComment(
@@ -197,4 +446,85 @@ export function getCommentCompletionContextAtOffset(
   return {
     kind: "none",
   };
+}
+
+export function getSemanticCommentCompletionContextAtOffset(
+  documentText: string,
+  offset: number,
+  options?: CommentSemanticContextOptions
+): SemanticCommentCompletionContext {
+  const prefix = getTagCompletionPrefixAtOffset(documentText, offset);
+  if (prefix !== null) {
+    return {
+      kind: "tag-name",
+      prefix,
+      availableTags: getAllTagDefinitions(options?.extensions),
+    };
+  }
+
+  const target = getCommentCursorTargetAtOffset(
+    documentText,
+    offset,
+    options?.extensions ? { extensions: options.extensions } : undefined
+  );
+  if (target?.kind === "target" || target?.kind === "colon") {
+    return {
+      kind: "target",
+      semantic: buildCommentTagSemanticContext(target.tag, options),
+    };
+  }
+
+  if (target?.kind === "argument") {
+    const semantic = buildCommentTagSemanticContext(target.tag, options);
+    return {
+      kind: "argument",
+      semantic,
+      valueLabels: getValueLabels(semantic.signatures),
+    };
+  }
+
+  return { kind: "none" };
+}
+
+export function getCommentHoverInfoAtOffset(
+  documentText: string,
+  offset: number,
+  options?: CommentSemanticContextOptions
+): CommentHoverInfo | null {
+  const target = getCommentCursorTargetAtOffset(
+    documentText,
+    offset,
+    options?.extensions ? { extensions: options.extensions } : undefined
+  );
+  if (target === null) {
+    return null;
+  }
+
+  const semantic = buildCommentTagSemanticContext(target.tag, options);
+  let markdown: string | null = null;
+
+  switch (target.kind) {
+    case "tag-name":
+      markdown = semantic.tagDefinition?.hoverMarkdown ?? null;
+      break;
+    case "colon":
+    case "target":
+      markdown = buildTargetHoverMarkdown(semantic);
+      break;
+    case "argument":
+      markdown = buildArgumentHoverMarkdown(semantic);
+      break;
+    default: {
+      const exhaustive: never = target.kind;
+      void exhaustive;
+      break;
+    }
+  }
+
+  return markdown === null
+    ? null
+    : {
+        kind: target.kind === "colon" ? "target" : target.kind,
+        markdown,
+      };
 }

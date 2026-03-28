@@ -8,15 +8,21 @@ export type {
   ParsedCommentTargetSpecifier,
 } from "./comment-syntax.js";
 export type {
+  CommentHoverInfo,
   CommentCompletionContext,
   CommentCursorTarget,
+  CommentSemanticContextOptions,
+  CommentTagSemanticContext,
   EnclosingDocComment,
+  SemanticCommentCompletionContext,
 } from "./cursor-context.js";
 export {
   findCommentTagAtOffset,
   findEnclosingDocComment,
   getCommentCompletionContextAtOffset,
+  getCommentHoverInfoAtOffset,
   getCommentCursorTargetAtOffset,
+  getSemanticCommentCompletionContextAtOffset,
   getTagCompletionPrefixAtOffset,
 } from "./cursor-context.js";
 export type {

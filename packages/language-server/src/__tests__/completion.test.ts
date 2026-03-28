@@ -128,4 +128,13 @@ describe("getCompletionItems", () => {
     const offset = source.indexOf("0");
     expect(getCompletionItemsAtOffset(source, offset)).toEqual([]);
   });
+
+  it("returns variant target completions for tags that support singular/plural specifiers", () => {
+    const source = "/** @apiName : */";
+    const offset = source.indexOf(":") + 1;
+    const items = getCompletionItemsAtOffset(source, offset);
+
+    expect(items.map((item) => item.label)).toContain("singular");
+    expect(items.map((item) => item.label)).toContain("plural");
+  });
 });
