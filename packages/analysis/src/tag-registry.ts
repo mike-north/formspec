@@ -444,7 +444,7 @@ function buildHoverMarkdown(
   return [header, "", hoverSummary, "", ...signatureLines].join("\n");
 }
 
-function makeConstraintSignature(name: BuiltinConstraintName): TagSignature {
+function makeConstraintSignatures(name: BuiltinConstraintName): readonly TagSignature[] {
   const valueKind = getBuiltinValueKind(name);
   const valueLabel =
     name === "pattern"
@@ -455,7 +455,10 @@ function makeConstraintSignature(name: BuiltinConstraintName): TagSignature {
           ? "<json-literal>"
           : valueLabelForKind(valueKind);
 
-  return createSignature(name, FIELD_PLACEMENTS, "path", valueKind, valueLabel);
+  return [
+    createSignature(name, FIELD_PLACEMENTS, null, valueKind, valueLabel),
+    createSignature(name, FIELD_PLACEMENTS, "path", valueKind, valueLabel),
+  ];
 }
 
 const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
@@ -474,7 +477,7 @@ const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
         capabilities: capabilitiesForValueKind(valueKind),
         completionDetail: CONSTRAINT_COMPLETION_DETAIL[name] ?? `@${name}`,
         hoverMarkdown: CONSTRAINT_HOVER_DOCS[name] ?? `**@${name}**`,
-        signatures: [makeConstraintSignature(name)],
+        signatures: makeConstraintSignatures(name),
       } satisfies TagDefinition,
     ];
   })
