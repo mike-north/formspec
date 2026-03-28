@@ -8,8 +8,8 @@
  * - Validate Chain DSL usage against project constraints
  * - Ensure forms comply with target environment capabilities
  */
-
 import type { TSESLint } from "@typescript-eslint/utils";
+import packageJson from "../package.json" with { type: "json" };
 import {
   noUnknownTags,
   requireTagArguments,
@@ -64,6 +64,7 @@ export const rules = {
  */
 export const meta = {
   name: "@formspec/eslint-plugin",
+  version: packageJson.version,
 };
 
 /**
@@ -78,7 +79,7 @@ export const meta = {
  * ];
  * ```
  */
-export const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
+const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
   {
     plugins: {
       "@formspec": {
@@ -110,7 +111,7 @@ export const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
 /**
  * Strict configuration - all rules as errors.
  */
-export const strictConfig: TSESLint.FlatConfig.ConfigArray = [
+const strictConfig: TSESLint.FlatConfig.ConfigArray = [
   {
     plugins: {
       "@formspec": {
@@ -140,13 +141,18 @@ export const strictConfig: TSESLint.FlatConfig.ConfigArray = [
 ];
 
 /**
- * The FormSpec ESLint plugin.
+ * Preset configurations for FormSpec projects.
  */
 export const configs = {
   recommended: recommendedConfig,
   strict: strictConfig,
 } as const;
 
+/**
+ * The FormSpec ESLint plugin.
+ *
+ * @public
+ */
 const plugin = {
   meta,
   rules,

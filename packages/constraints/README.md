@@ -43,7 +43,6 @@ const resolved = mergeWithDefaults(config.constraints);
 
 const form = formspec(field.text("name"), field.dynamicEnum("country", "countries"));
 const result = validateFormSpecElements(form.elements, { constraints: resolved });
-void result;
 ```
 
 ## Main Exports

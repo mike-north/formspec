@@ -469,6 +469,93 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("uses @remarks as a description fallback when @description is absent", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @remarks Fallback help text */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Fallback help text",
+    });
+  });
+
+  it("uses free text summary as an implicit description when neither @description nor @remarks is present", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** Free text help shown as the description. */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Free text help shown as the description.",
+    });
+  });
+
+  it("prefers @description over @remarks and free text summary", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Summary that should be ignored.
+         * @remarks Remarks that should also be ignored.
+         * @description Explicit description wins.
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Explicit description wins.",
+    });
+  });
+
+  it("prefers @remarks over free text summary when @description is absent", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Summary that should be ignored.
+         * @remarks Explicit remarks win over summary.
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Explicit remarks win over summary.",
+    });
+  });
+
+  it("uses last-one-wins semantics for repeated @description tags", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @description First @description Second */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Second",
+    });
+  });
+
   it("produces both displayName and description", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {

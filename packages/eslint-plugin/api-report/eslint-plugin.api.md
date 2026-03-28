@@ -33,6 +33,7 @@ export const configs: {
 // @public
 export const meta: {
     name: string;
+    version: string;
 };
 
 // Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
@@ -79,10 +80,11 @@ export const noUnsupportedTargeting: ESLintUtils.RuleModule<"unsupportedTargetin
     name: string;
 };
 
-// @public (undocumented)
+// @public
 const plugin: {
     meta: {
         name: string;
+        version: string;
     };
     rules: {
         readonly "tag-recognition/no-unknown-tags": TSESLint.RuleModule<"unknownTag", [], unknown, TSESLint.RuleListener> & {
@@ -149,9 +151,6 @@ const plugin: {
 };
 export default plugin;
 
-// @public
-export const recommendedConfig: TSESLint.FlatConfig.ConfigArray;
-
 // @public (undocumented)
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
@@ -216,9 +215,6 @@ export const rules: {
         name: string;
     };
 };
-
-// @public
-export const strictConfig: TSESLint.FlatConfig.ConfigArray;
 
 // @public (undocumented)
 export const tagTypeCheck: ESLintUtils.RuleModule<"typeMismatch", [], unknown, ESLintUtils.RuleListener> & {

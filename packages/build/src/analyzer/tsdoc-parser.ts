@@ -20,6 +20,11 @@
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
+ * Description precedence is:
+ * 1. Explicit `@description`
+ * 2. Explicit `@remarks`
+ * 3. Implicit summary text (free text in the comment block)
+ *
  * **Fallback strategy**: TSDoc treats `{` / `}` as inline tag delimiters and
  * `@` as a tag prefix, so content containing these characters (e.g. JSON
  * objects in `@EnumOptions`, regex patterns with `@` in `@Pattern`) gets
@@ -303,26 +308,34 @@ export function parseTSDocTags(
             parsedTag !== null
               ? provenanceForParsedTag(parsedTag, sourceFile, file)
               : provenanceForComment(range, sourceFile, file, tagName);
-          if (tagName === "displayName") {
-            if (!isMemberTargetDisplayName(text) && displayName === undefined) {
-              displayName = text;
-              displayNameProvenance = provenance;
-            }
-          } else if (tagName === "format") {
-            annotations.push({
-              kind: "annotation",
-              annotationKind: "format",
-              value: text,
-              provenance,
-            });
-          } else {
-            if (tagName === "description" && description === undefined) {
+          switch (tagName) {
+            case "displayName":
+              if (!isMemberTargetDisplayName(text) && displayName === undefined) {
+                displayName = text;
+                displayNameProvenance = provenance;
+              }
+              break;
+
+            case "format":
+              annotations.push({
+                kind: "annotation",
+                annotationKind: "format",
+                value: text,
+                provenance,
+              });
+              break;
+
+            case "description":
               description = text;
               descriptionProvenance = provenance;
-            } else if (tagName === "placeholder" && placeholder === undefined) {
-              placeholder = text;
-              placeholderProvenance = provenance;
-            }
+              break;
+
+            case "placeholder":
+              if (placeholder === undefined) {
+                placeholder = text;
+                placeholderProvenance = provenance;
+              }
+              break;
           }
           continue;
         }
@@ -371,6 +384,14 @@ export function parseTSDocTags(
         if (remarks !== "") {
           description = remarks;
           descriptionProvenance = provenanceForComment(range, sourceFile, file, "remarks");
+        }
+      }
+
+      if (description === undefined) {
+        const summary = extractPlainText(docComment.summarySection).trim();
+        if (summary !== "") {
+          description = summary;
+          descriptionProvenance = provenanceForComment(range, sourceFile, file, "summary");
         }
       }
     }

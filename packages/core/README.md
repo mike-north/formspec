@@ -43,10 +43,6 @@ const extension = defineExtension({
   constraints: [],
   annotations: [],
 });
-
-void extension;
-void ({} as FormIR);
-void isFieldElement;
 ```
 
 ## Key Exports

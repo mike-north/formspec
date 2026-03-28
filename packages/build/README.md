@@ -19,10 +19,10 @@ Most app code can use `formspec`, but use `@formspec/build` directly when you ne
 
 ## Public Entry Points
 
-| Entry point | Purpose |
-| --- | --- |
-| `@formspec/build` | Public build APIs |
-| `@formspec/build/browser` | Browser-safe schema generation surface |
+| Entry point                 | Purpose                                |
+| --------------------------- | -------------------------------------- |
+| `@formspec/build`           | Public build APIs                      |
+| `@formspec/build/browser`   | Browser-safe schema generation surface |
 | `@formspec/build/internals` | Unstable internal APIs used by the CLI |
 
 ## Chain DSL Generation

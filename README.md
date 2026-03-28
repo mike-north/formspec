@@ -101,19 +101,19 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 
 ## Package Guide
 
-| Package | Purpose |
-| --- | --- |
-| `formspec` | Umbrella package re-exporting the common `core`, `dsl`, `build`, and `runtime` APIs |
-| `@formspec/core` | Shared types, IR nodes, and extension registration APIs |
-| `@formspec/dsl` | Chain DSL authoring surface |
-| `@formspec/build` | JSON Schema / UI Schema generation and static TypeScript analysis |
-| `@formspec/runtime` | Resolver helpers for dynamic data |
-| `@formspec/constraints` | `.formspec.yml` configuration and DSL capability validation |
-| `@formspec/validator` | Runtime JSON Schema validation for secure environments |
-| `@formspec/eslint-plugin` | ESLint rules for FormSpec tags and DSL usage |
-| `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags |
-| `@formspec/cli` | Build-time CLI for schema and IR generation |
-| `@formspec/playground` | Private monorepo playground app |
+| Package                     | Purpose                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `formspec`                  | Umbrella package re-exporting the common `core`, `dsl`, `build`, and `runtime` APIs |
+| `@formspec/core`            | Shared types, IR nodes, and extension registration APIs                             |
+| `@formspec/dsl`             | Chain DSL authoring surface                                                         |
+| `@formspec/build`           | JSON Schema / UI Schema generation and static TypeScript analysis                   |
+| `@formspec/runtime`         | Resolver helpers for dynamic data                                                   |
+| `@formspec/constraints`     | `.formspec.yml` configuration and DSL capability validation                         |
+| `@formspec/validator`       | Runtime JSON Schema validation for secure environments                              |
+| `@formspec/eslint-plugin`   | ESLint rules for FormSpec tags and DSL usage                                        |
+| `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags                         |
+| `@formspec/cli`             | Build-time CLI for schema and IR generation                                         |
+| `@formspec/playground`      | Private monorepo playground app                                                     |
 
 ## Monorepo Development
 

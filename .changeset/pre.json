@@ -53,6 +53,7 @@
     "quiet-mayflies-work",
     "recursive-references-support",
     "refactor-build-type-safety",
+    "release-unpublished-followups",
     "semantic-diagnostics-cli-format",
     "tsup-dual-cjs-esm",
     "type-guards-field-constraints",
