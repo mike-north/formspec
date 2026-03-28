@@ -438,6 +438,8 @@ function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): 
   return ts.flattenDiagnosticMessageText(message, "\n");
 }
 
+const syntheticCheckCache = new Map<string, SyntheticTagCheckResult>();
+
 /**
  * Runs the TypeScript checker against a lowered synthetic tag application.
  *
@@ -456,6 +458,10 @@ export function checkSyntheticTagApplication(
     "",
     lowered.callExpression,
   ].join("\n");
+  const cached = syntheticCheckCache.get(sourceText);
+  if (cached !== undefined) {
+    return cached;
+  }
   const fileName = "/virtual/formspec-synthetic.ts";
   const compilerOptions: ts.CompilerOptions = {
     strict: true,
@@ -474,8 +480,10 @@ export function checkSyntheticTagApplication(
       message: flattenDiagnosticMessage(diagnostic.messageText),
     }));
 
-  return {
+  const result = {
     sourceText,
     diagnostics,
   };
+  syntheticCheckCache.set(sourceText, result);
+  return result;
 }

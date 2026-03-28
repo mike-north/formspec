@@ -504,6 +504,7 @@ function buildCompilerBackedConstraintDiagnostics(
  * all parse state lives in the returned ParserContext.
  */
 const parserCache = new Map<string, TSDocParser>();
+const parseResultCache = new Map<string, TSDocParseResult>();
 
 function getParser(options?: ParseTSDocOptions): TSDocParser {
   const extensionTagNames = [
@@ -572,6 +573,48 @@ export interface DisplayNameMetadata {
   readonly memberDisplayNames: ReadonlyMap<string, string>;
 }
 
+function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): string {
+  if (registry === undefined) {
+    return "";
+  }
+
+  return registry.extensions
+    .map((extension) =>
+      JSON.stringify({
+        extensionId: extension.extensionId,
+        typeNames: extension.types?.map((type) => type.typeName) ?? [],
+        constraintTags: extension.constraintTags?.map((tag) => tag.tagName) ?? [],
+      })
+    )
+    .join("|");
+}
+
+function getParseCacheKey(
+  node: ts.Node,
+  file: string,
+  options: ParseTSDocOptions | undefined
+): string {
+  const sourceFile = node.getSourceFile();
+  const checker = options?.checker;
+  return JSON.stringify({
+    file,
+    sourceFile: sourceFile.fileName,
+    sourceText: sourceFile.text,
+    start: node.getFullStart(),
+    end: node.getEnd(),
+    fieldType: options?.fieldType ?? null,
+    subjectType:
+      checker !== undefined && options?.subjectType !== undefined
+        ? checker.typeToString(options.subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        : null,
+    hostType:
+      checker !== undefined && options?.hostType !== undefined
+        ? checker.typeToString(options.hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        : null,
+    extensions: getExtensionRegistryCacheKey(options?.extensionRegistry),
+  });
+}
+
 /**
  * Parses the JSDoc comment attached to a TypeScript AST node using the
  * official TSDoc parser and returns canonical IR constraint and annotation
@@ -590,6 +633,12 @@ export function parseTSDocTags(
   file = "",
   options?: ParseTSDocOptions
 ): TSDocParseResult {
+  const cacheKey = getParseCacheKey(node, file, options);
+  const cached = parseResultCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
   const diagnostics: ConstraintSemanticDiagnostic[] = [];
@@ -880,7 +929,9 @@ export function parseTSDocTags(
     }
   }
 
-  return { constraints, annotations, diagnostics };
+  const result = { constraints, annotations, diagnostics };
+  parseResultCache.set(cacheKey, result);
+  return result;
 }
 
 /**
