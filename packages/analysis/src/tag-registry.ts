@@ -316,7 +316,7 @@ function capabilitiesForValueKind(
 
 function valueLabelForKind(
   valueKind: FormSpecValueKind | null,
-  fallback: string = "<value>"
+  fallback = "<value>"
 ): string {
   switch (valueKind) {
     case "number":
@@ -335,7 +335,8 @@ function valueLabelForKind(
       return "";
     default: {
       const exhaustive: never = valueKind;
-      return exhaustive ?? fallback;
+      void exhaustive;
+      return fallback;
     }
   }
 }

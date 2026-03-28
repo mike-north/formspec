@@ -447,20 +447,28 @@ function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
+  return Array.isArray(value);
+}
+
 function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
   if (left === right) {
     return true;
   }
 
-  if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+  if (isJsonArray(left) || isJsonArray(right)) {
+    if (!isJsonArray(left) || !isJsonArray(right) || left.length !== right.length) {
       return false;
     }
 
-    return left.every((item, index) => {
+    for (const [index, item] of left.entries()) {
       const rightItem = right[index];
-      return rightItem !== undefined && jsonValueEquals(item, rightItem);
-    });
+      if (rightItem === undefined || !jsonValueEquals(item, rightItem)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   if (isJsonObject(left) || isJsonObject(right)) {
@@ -1251,11 +1259,7 @@ function checkConstraintOnType(
       break;
     default: {
       const exhaustive: never = constraint;
-      throw new Error(
-        `Unhandled constraint kind: ${String(
-          (exhaustive as ConstraintNode & { readonly constraintKind?: string }).constraintKind
-        )}`
-      );
+      throw new Error(`Unhandled constraint: ${JSON.stringify(exhaustive)}`);
     }
   }
 }

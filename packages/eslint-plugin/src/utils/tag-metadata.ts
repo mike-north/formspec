@@ -2,8 +2,6 @@ import {
   getAllTagDefinitions,
   getTagDefinition,
   normalizeFormSpecTagName,
-  type FormSpecTargetKind,
-  type FormSpecValueKind,
   type TagDefinition,
 } from "@formspec/analysis";
 

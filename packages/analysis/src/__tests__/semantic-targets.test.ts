@@ -14,7 +14,6 @@ import {
 } from "../index.js";
 
 const NUMBER_TYPE: TypeNode = { kind: "primitive", primitiveKind: "number" };
-const STRING_TYPE: TypeNode = { kind: "primitive", primitiveKind: "string" };
 
 function provenance(line: number, tagName?: string): Provenance {
   return {

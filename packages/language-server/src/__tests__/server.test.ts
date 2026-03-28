@@ -32,7 +32,7 @@ vi.mock("vscode-languageserver/node.js", () => ({
 }));
 
 vi.mock("vscode-languageserver-textdocument", () => ({
-  TextDocument: class {},
+  TextDocument: vi.fn(),
 }));
 
 vi.mock("../providers/completion.js", () => ({

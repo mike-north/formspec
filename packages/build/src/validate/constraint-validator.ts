@@ -16,7 +16,7 @@ import {
 import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
-export interface ValidationDiagnostic extends ConstraintSemanticDiagnostic {}
+export type ValidationDiagnostic = ConstraintSemanticDiagnostic;
 
 export interface ValidationResult {
   readonly diagnostics: readonly ValidationDiagnostic[];

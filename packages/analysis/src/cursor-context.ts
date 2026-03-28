@@ -52,10 +52,6 @@ export function findEnclosingDocComment(
   for (const match of documentText.matchAll(commentPattern)) {
     const fullMatch = match[0];
     const index = match.index;
-    if (index === undefined || fullMatch === undefined) {
-      continue;
-    }
-
     const start = index;
     const end = start + fullMatch.length;
     if (offset >= start && offset <= end) {

@@ -234,11 +234,11 @@ export function parseTSDocTags(
   let displayNameProvenance: Provenance | undefined;
   let descriptionProvenance: Provenance | undefined;
   let placeholderProvenance: Provenance | undefined;
-  const rawTextTags: Array<{
+  const rawTextTags: {
     readonly tag: ParsedCommentTag;
     readonly commentText: string;
     readonly commentOffset: number;
-  }> = [];
+  }[] = [];
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
