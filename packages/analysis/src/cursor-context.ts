@@ -1,4 +1,8 @@
-import { parseCommentBlock, type ParsedCommentBlock, type ParsedCommentTag } from "./comment-syntax.js";
+import {
+  parseCommentBlock,
+  type ParsedCommentBlock,
+  type ParsedCommentTag,
+} from "./comment-syntax.js";
 import type { ExtensionTagSource } from "./tag-registry.js";
 
 export interface EnclosingDocComment {
@@ -101,22 +105,14 @@ export function getCommentCursorTargetAtOffset(
       };
     }
 
-    if (
-      tag.colonSpan !== null &&
-      offset >= tag.colonSpan.start &&
-      offset <= tag.colonSpan.end
-    ) {
+    if (tag.colonSpan !== null && offset >= tag.colonSpan.start && offset <= tag.colonSpan.end) {
       return {
         kind: "colon",
         tag,
       };
     }
 
-    if (
-      tag.target !== null &&
-      offset >= tag.target.span.start &&
-      offset <= tag.target.span.end
-    ) {
+    if (tag.target !== null && offset >= tag.target.span.start && offset <= tag.target.span.end) {
       return {
         kind: "target",
         tag,

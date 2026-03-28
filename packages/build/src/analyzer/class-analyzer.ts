@@ -811,7 +811,9 @@ function getReferencedTypeAliasDeclaration(
     return undefined;
   }
 
-  return checker.getSymbolAtLocation(typeNode.typeName)?.declarations?.find(ts.isTypeAliasDeclaration);
+  return checker
+    .getSymbolAtLocation(typeNode.typeName)
+    ?.declarations?.find(ts.isTypeAliasDeclaration);
 }
 
 function shouldEmitPrimitiveAliasDefinition(

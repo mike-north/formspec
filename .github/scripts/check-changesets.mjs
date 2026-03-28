@@ -144,9 +144,7 @@ for (const file of changedFiles) {
       lower.startsWith("documentation/");
 
     const isConfigOnly =
-      lower === "api-extractor.json" ||
-      lower === "tsconfig.json" ||
-      lower === "tsup.config.ts";
+      lower === "api-extractor.json" || lower === "tsconfig.json" || lower === "tsup.config.ts";
 
     if (!isDocLike && !isConfigOnly) {
       sourceChangedDirs.add(dirMatch);

@@ -1,6 +1,10 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import { getTagMetadata, normalizeFormSpecTagName, type FormSpecTargetKind } from "./tag-metadata.js";
+import {
+  getTagMetadata,
+  normalizeFormSpecTagName,
+  type FormSpecTargetKind,
+} from "./tag-metadata.js";
 
 export interface ScannedTagTarget {
   readonly kind: Exclude<FormSpecTargetKind, "none">;
@@ -77,9 +81,11 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
           metadata?.supportedTargets.includes("variant") &&
           (targetValue === "singular" || targetValue === "plural")
             ? "variant"
-            : metadata?.supportedTargets.includes("member") && !metadata.supportedTargets.includes("path")
+            : metadata?.supportedTargets.includes("member") &&
+                !metadata.supportedTargets.includes("path")
               ? "member"
-              : metadata?.supportedTargets.includes("path") && !metadata.supportedTargets.includes("member")
+              : metadata?.supportedTargets.includes("path") &&
+                  !metadata.supportedTargets.includes("member")
                 ? "path"
                 : "path";
         target = {

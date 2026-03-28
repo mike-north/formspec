@@ -42,9 +42,7 @@ function tryParseJson(text: string): unknown {
 export interface ConstraintTagParseRegistryLike {
   readonly extensions: readonly ExtensionDefinition[];
   findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
-  findConstraintTag(
-    tagName: string
-  ):
+  findConstraintTag(tagName: string):
     | {
         readonly extensionId: string;
         readonly registration: ConstraintTagRegistration;

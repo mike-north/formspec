@@ -314,10 +314,7 @@ function capabilitiesForValueKind(
   }
 }
 
-function valueLabelForKind(
-  valueKind: FormSpecValueKind | null,
-  fallback = "<value>"
-): string {
+function valueLabelForKind(valueKind: FormSpecValueKind | null, fallback = "<value>"): string {
   switch (valueKind) {
     case "number":
       return "<number>";
