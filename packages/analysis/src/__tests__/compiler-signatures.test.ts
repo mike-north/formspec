@@ -17,6 +17,10 @@ describe("compiler-signatures", () => {
       'ctx: TagContext<"class-field" | "interface-field" | "type-alias-field" | "variable" | "function-parameter" | "method-parameter", Host, Subject>,'
     );
     expect(prelude).toContain('target0: PathOfCapability<Subject, "numeric-comparable">,');
+    expect(prelude).toContain('function tag_minLength<Host, Subject>(');
+    expect(prelude).toContain('target0: PathOfCapability<Subject, "string-like">,');
+    expect(prelude).toContain('function tag_uniqueItems<Host, Subject>(');
+    expect(prelude).toContain('target0: PathOfCapability<Subject, "array-like">');
     expect(prelude).toContain("value: number");
   });
 

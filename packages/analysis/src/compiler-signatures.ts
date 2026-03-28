@@ -444,7 +444,7 @@ export function checkSyntheticTagApplication(
   const program = ts.createProgram([fileName], compilerOptions, host);
   const diagnostics = ts
     .getPreEmitDiagnostics(program)
-    .filter((diagnostic) => diagnostic.file?.fileName === fileName)
+    .filter((diagnostic) => diagnostic.file === undefined || diagnostic.file.fileName === fileName)
     .map((diagnostic) => ({
       code: diagnostic.code,
       message: flattenDiagnosticMessage(diagnostic.messageText),
