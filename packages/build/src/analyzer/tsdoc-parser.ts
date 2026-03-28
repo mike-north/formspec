@@ -244,6 +244,7 @@ export function parseTSDocTags(
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
+  const rawTextFallbacks = collectRawTextFallbacks(node, file);
 
   if (commentRanges) {
     for (const range of commentRanges) {
@@ -296,12 +297,7 @@ export function parseTSDocTags(
           tagName === "format" ||
           tagName === "placeholder"
         ) {
-          const text =
-            parsedTag?.payloadSpan === null
-              ? ""
-              : parsedTag?.payloadSpan !== undefined
-                ? sliceCommentSpan(commentText, parsedTag.payloadSpan, { offset: range.pos }).trim()
-                : extractBlockText(block).trim();
+          const text = getBestBlockPayloadText(parsedTag, commentText, range.pos, block);
           if (text === "") continue;
 
           const provenance =
@@ -342,12 +338,7 @@ export function parseTSDocTags(
 
         if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
-        const text =
-          parsedTag?.payloadSpan === null
-            ? ""
-            : parsedTag?.payloadSpan !== undefined
-              ? sliceCommentSpan(commentText, parsedTag.payloadSpan, { offset: range.pos }).trim()
-              : extractBlockText(block).trim();
+        const text = getBestBlockPayloadText(parsedTag, commentText, range.pos, block);
         const expectedType = isBuiltinConstraintName(tagName)
           ? BUILTIN_CONSTRAINT_DEFINITIONS[tagName]
           : undefined;
@@ -431,12 +422,12 @@ export function parseTSDocTags(
   // TS compiler API when a raw payload cannot be recovered from comments.
   if (rawTextTags.length > 0) {
     for (const rawTextTag of rawTextTags) {
-      const text =
-        rawTextTag.tag.payloadSpan === null
-          ? ""
-          : sliceCommentSpan(rawTextTag.commentText, rawTextTag.tag.payloadSpan, {
-              offset: rawTextTag.commentOffset,
-            }).trim();
+      const fallbackQueue = rawTextFallbacks.get(rawTextTag.tag.normalizedTagName);
+      const fallback = fallbackQueue?.shift();
+      const text = choosePreferredPayloadText(
+        getSharedPayloadText(rawTextTag.tag, rawTextTag.commentText, rawTextTag.commentOffset),
+        fallback?.text ?? ""
+      );
       if (text === "") continue;
 
       const provenance = provenanceForParsedTag(rawTextTag.tag, sourceFile, file);
@@ -456,17 +447,14 @@ export function parseTSDocTags(
         constraints.push(constraintNode);
       }
     }
-  } else {
-    const jsDocTagsAll = ts.getJSDocTags(node);
-    for (const tag of jsDocTagsAll) {
-      const tagName = normalizeConstraintTagName(tag.tagName.text);
-      if (!TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
+  }
 
-      const commentText = getTagCommentText(tag);
-      if (commentText === undefined || commentText.trim() === "") continue;
+  for (const [tagName, fallbacks] of rawTextFallbacks) {
+    for (const fallback of fallbacks) {
+      const text = fallback.text.trim();
+      if (text === "") continue;
 
-      const text = commentText.trim();
-      const provenance = provenanceForJSDocTag(tag, file);
+      const provenance = fallback.provenance;
       if (tagName === "defaultValue") {
         const defaultValueNode = parseDefaultValueTagValue(text, provenance);
         annotations.push(defaultValueNode);
@@ -605,6 +593,69 @@ function extractPlainText(node: DocNode): string {
     }
   }
   return result;
+}
+
+function choosePreferredPayloadText(primary: string, fallback: string): string {
+  const preferred = primary.trim();
+  const alternate = fallback.trim();
+
+  if (preferred === "") return alternate;
+  if (alternate === "") return preferred;
+  if (alternate.includes("\n")) return alternate;
+  if (alternate.length > preferred.length && alternate.startsWith(preferred)) {
+    return alternate;
+  }
+
+  return preferred;
+}
+
+function getSharedPayloadText(
+  tag: ParsedCommentTag,
+  commentText: string,
+  commentOffset: number
+): string {
+  if (tag.payloadSpan === null) {
+    return "";
+  }
+
+  return sliceCommentSpan(commentText, tag.payloadSpan, {
+    offset: commentOffset,
+  }).trim();
+}
+
+function getBestBlockPayloadText(
+  tag: ParsedCommentTag | null,
+  commentText: string,
+  commentOffset: number,
+  block: DocBlock
+): string {
+  const sharedText = tag === null ? "" : getSharedPayloadText(tag, commentText, commentOffset);
+  const blockText = extractBlockText(block).replace(/\s+/g, " ").trim();
+  return choosePreferredPayloadText(sharedText, blockText);
+}
+
+function collectRawTextFallbacks(
+  node: ts.Node,
+  file: string
+): Map<string, { text: string; provenance: Provenance }[]> {
+  const fallbacks = new Map<string, { text: string; provenance: Provenance }[]>();
+
+  for (const tag of ts.getJSDocTags(node)) {
+    const tagName = normalizeConstraintTagName(tag.tagName.text);
+    if (!TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
+
+    const commentText = getTagCommentText(tag)?.trim() ?? "";
+    if (commentText === "") continue;
+
+    const entries = fallbacks.get(tagName) ?? [];
+    entries.push({
+      text: commentText,
+      provenance: provenanceForJSDocTag(tag, file),
+    });
+    fallbacks.set(tagName, entries);
+  }
+
+  return fallbacks;
 }
 
 // =============================================================================
