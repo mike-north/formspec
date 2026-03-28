@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  parseCommentBlock,
-  sliceCommentSpan,
-} from "../index.js";
+import { parseCommentBlock, sliceCommentSpan } from "../index.js";
 
 describe("parseCommentBlock", () => {
   it("parses a single-line constraint tag with a path target", () => {
@@ -71,5 +68,14 @@ describe("parseCommentBlock", () => {
     expect(tag?.normalizedTagName).toBe("unknownTag");
     expect(sliceCommentSpan(comment, tag!.tagNameSpan)).toBe("@unknownTag");
     expect(sliceCommentSpan(comment, tag!.argumentSpan!)).toBe("value");
+  });
+
+  it("classifies apiName singular and plural specifiers as variants", () => {
+    const singular = parseCommentBlock("/** @apiName :singular home */");
+    const plural = parseCommentBlock("/** @apiName :plural homes */");
+
+    expect(singular.tags[0]?.target?.kind).toBe("variant");
+    expect(plural.tags[0]?.target?.kind).toBe("variant");
+    expect(plural.tags[0]?.target?.rawText).toBe("plural");
   });
 });

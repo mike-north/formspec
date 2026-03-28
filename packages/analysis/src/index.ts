@@ -1,9 +1,6 @@
-export {
-  parseCommentBlock,
-  parseTagSyntax,
-  sliceCommentSpan,
-} from "./comment-syntax.js";
+export { parseCommentBlock, parseTagSyntax, sliceCommentSpan } from "./comment-syntax.js";
 export type {
+  CommentSourceSpan,
   CommentSpan,
   ParseCommentSyntaxOptions,
   ParsedCommentBlock,
@@ -26,21 +23,17 @@ export type {
   ConstraintTagParseRegistryLike,
   ParseConstraintTagValueOptions,
 } from "./tag-value-parser.js";
-export {
-  parseConstraintTagValue,
-  parseDefaultValueTagValue,
-} from "./tag-value-parser.js";
-export {
-  extractPathTarget,
-  formatPathTarget,
-  type ParsedPathTarget,
-} from "./path-target.js";
+export { parseConstraintTagValue, parseDefaultValueTagValue } from "./tag-value-parser.js";
+export { extractPathTarget, formatPathTarget, type ParsedPathTarget } from "./path-target.js";
 export type {
   AnalysisTypeDefinition,
   AnalysisTypeRegistry,
+  ConstraintRegistrationLike,
   ConstraintRegistryLike,
+  ConstraintSemanticRoleLike,
   ConstraintSemanticDiagnostic,
   ConstraintTagRegistrationLike,
+  ConstraintTargetAnalysisResult,
   EffectiveTargetState,
   ResolvedTargetState,
 } from "./semantic-targets.js";
@@ -54,7 +47,9 @@ export {
   resolveConstraintTargetState,
 } from "./semantic-targets.js";
 export type {
+  ExtensionConstraintTagSource,
   ExtensionTagSource,
+  FormSpecPlacement,
   FormSpecTagCategory,
   FormSpecTagDefinition,
   FormSpecTagOverload,
@@ -78,6 +73,5 @@ export {
   getTypeSemanticCapabilities,
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
-  type FormSpecPlacement,
   type FormSpecSemanticCapability,
 } from "./ts-binding.js";

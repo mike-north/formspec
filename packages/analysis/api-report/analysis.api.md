@@ -33,8 +33,6 @@ export interface AnalysisTypeDefinition {
 // @public (undocumented)
 export type AnalysisTypeRegistry = Record<string, AnalysisTypeDefinition>;
 
-// Warning: (ae-forgotten-export) The symbol "ConstraintTargetAnalysisResult" needs to be exported by the entry point index.d.ts
-//
 // @public (undocumented)
 export function analyzeConstraintTargets(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry, options?: {
     readonly extensionRegistry?: ConstraintRegistryLike;
@@ -44,7 +42,7 @@ export function analyzeConstraintTargets(fieldName: string, fieldType: TypeNode,
 export function buildConstraintTargetStates(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry): readonly ResolvedTargetState[];
 
 // @public (undocumented)
-export function collectCompatiblePathTargets(type: ts.Type, checker: ts.TypeChecker, capability: FormSpecSemanticCapability): readonly string[];
+export function collectCompatiblePathTargets(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): readonly string[];
 
 // @public (undocumented)
 export function collectReferencedTypeAnnotations(type: TypeNode, typeRegistry: AnalysisTypeRegistry): readonly AnnotationNode[];
@@ -74,15 +72,33 @@ export interface CommentCursorTarget {
     readonly tag: ParsedCommentTag;
 }
 
-// Warning: (ae-forgotten-export) The symbol "CommentSourceSpan" needs to be exported by the entry point index.d.ts
-//
+// @public (undocumented)
+export interface CommentSourceSpan {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
 // @public (undocumented)
 export type CommentSpan = CommentSourceSpan;
 
 // @public (undocumented)
+export interface ConstraintRegistrationLike {
+    // (undocumented)
+    readonly applicableTypes: readonly TypeNode["kind"][] | null;
+    // (undocumented)
+    readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
+    // (undocumented)
+    readonly constraintName: string;
+    // (undocumented)
+    readonly isApplicableToType?: (type: TypeNode) => boolean;
+    // (undocumented)
+    readonly semanticRole?: ConstraintSemanticRoleLike;
+}
+
+// @public (undocumented)
 export interface ConstraintRegistryLike {
-    // Warning: (ae-forgotten-export) The symbol "ConstraintRegistrationLike" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     findConstraint(constraintId: string): ConstraintRegistrationLike | undefined;
     // (undocumented)
@@ -104,6 +120,16 @@ export interface ConstraintSemanticDiagnostic {
     readonly relatedLocations: readonly Provenance[];
     // (undocumented)
     readonly severity: "error" | "warning";
+}
+
+// @public (undocumented)
+export interface ConstraintSemanticRoleLike {
+    // (undocumented)
+    readonly bound: "lower" | "upper" | "exact";
+    // (undocumented)
+    readonly family: string;
+    // (undocumented)
+    readonly inclusive: boolean;
 }
 
 // @public (undocumented)
@@ -132,6 +158,14 @@ export interface ConstraintTagRegistrationLike {
     readonly isApplicableToType?: (type: TypeNode) => boolean;
     // (undocumented)
     readonly tagName: string;
+}
+
+// @public (undocumented)
+export interface ConstraintTargetAnalysisResult {
+    // (undocumented)
+    readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
+    // (undocumented)
+    readonly targetStates: readonly ResolvedTargetState[];
 }
 
 // @public (undocumented)
@@ -170,9 +204,13 @@ export interface EnclosingDocComment {
 }
 
 // @public (undocumented)
+export interface ExtensionConstraintTagSource {
+    // (undocumented)
+    readonly tagName: string;
+}
+
+// @public (undocumented)
 export interface ExtensionTagSource {
-    // Warning: (ae-forgotten-export) The symbol "ExtensionConstraintTagSource" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly constraintTags?: readonly ExtensionConstraintTagSource[];
     // (undocumented)
@@ -202,7 +240,7 @@ export function formatPathTarget(path: PathTarget | readonly string[]): string;
 export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
 
 // @public (undocumented)
-export type FormSpecSemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "object-like";
+export type FormSpecSemanticCapability = SemanticCapability;
 
 // @public (undocumented)
 export type FormSpecTagCategory = "constraint" | "annotation" | "structure" | "ecosystem";
@@ -248,10 +286,10 @@ export function getTagDefinition(rawName: string, extensions?: readonly Extensio
 export function getTagHoverMarkdown(rawName: string, extensions?: readonly ExtensionTagSource[]): string | null;
 
 // @public (undocumented)
-export function getTypeSemanticCapabilities(type: ts.Type, checker: ts.TypeChecker): readonly FormSpecSemanticCapability[];
+export function getTypeSemanticCapabilities(type: ts.Type, checker: ts.TypeChecker): readonly SemanticCapability[];
 
 // @public (undocumented)
-export function hasTypeSemanticCapability(type: ts.Type, checker: ts.TypeChecker, capability: FormSpecSemanticCapability): boolean;
+export function hasTypeSemanticCapability(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): boolean;
 
 // @public (undocumented)
 export function normalizeFormSpecTagName(rawName: string): string;
@@ -370,7 +408,7 @@ export type ResolvedTargetState = ({
 };
 
 // @public (undocumented)
-export type SemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "json-like" | "condition-like";
+export type SemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "json-like" | "condition-like" | "object-like";
 
 // @public (undocumented)
 export function sliceCommentSpan(commentText: string, span: CommentSpan, options?: {
@@ -391,10 +429,8 @@ export interface TagDefinition {
     readonly completionDetail: string;
     // (undocumented)
     readonly hoverMarkdown: string;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecPlacement_2" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    readonly placements: readonly FormSpecPlacement_2[];
+    readonly placements: readonly FormSpecPlacement[];
     // (undocumented)
     readonly requiresArgument: boolean;
     // (undocumented)
@@ -412,7 +448,7 @@ export interface TagSignature {
     // (undocumented)
     readonly parameters: readonly TagSignatureParameter[];
     // (undocumented)
-    readonly placements: readonly FormSpecPlacement_2[];
+    readonly placements: readonly FormSpecPlacement[];
 }
 
 // @public (undocumented)

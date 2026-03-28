@@ -35,7 +35,8 @@ export type SemanticCapability =
   | "array-like"
   | "enum-member-addressable"
   | "json-like"
-  | "condition-like";
+  | "condition-like"
+  | "object-like";
 
 export interface TagSignatureParameter {
   readonly kind: "value" | "target-path" | "target-member" | "target-variant";
@@ -87,7 +88,22 @@ const FIELD_PLACEMENTS = [
   "method-parameter",
 ] as const satisfies readonly FormSpecPlacement[];
 
-const TYPE_PLACEMENTS = ["class", "interface", "type-alias"] as const satisfies readonly FormSpecPlacement[];
+const TYPE_PLACEMENTS = [
+  "class",
+  "interface",
+  "type-alias",
+] as const satisfies readonly FormSpecPlacement[];
+
+const DECLARATION_PLACEMENTS = [
+  "class-method",
+  "function",
+] as const satisfies readonly FormSpecPlacement[];
+
+const ALL_PLACEMENTS = [
+  ...TYPE_PLACEMENTS,
+  ...FIELD_PLACEMENTS,
+  ...DECLARATION_PLACEMENTS,
+] as const satisfies readonly FormSpecPlacement[];
 
 const INTEGER_VALUE_TAGS = new Set(["minLength", "maxLength", "minItems", "maxItems"]);
 const SIGNED_INTEGER_VALUE_TAGS = new Set(["order"]);
@@ -103,6 +119,7 @@ const STRING_VALUE_TAGS = new Set([
   "example",
   "remarks",
   "see",
+  "apiName",
 ]);
 const CONDITION_VALUE_TAGS = new Set(["showWhen", "hideWhen", "enableWhen", "disableWhen"]);
 
@@ -242,70 +259,205 @@ const CONSTRAINT_HOVER_DOCS: Record<string, string> = {
   ].join("\n"),
 };
 
-function getBuiltinValueKind(name: BuiltinConstraintName): FormSpecValueKind {
+type SupportedSignatureTarget = Exclude<FormSpecTargetKind, "none">;
+
+interface ExtraTagSpec {
+  readonly requiresArgument: boolean;
+  readonly supportedTargets: readonly FormSpecTargetKind[];
+  readonly allowDuplicates: boolean;
+  readonly category: FormSpecTagCategory;
+  readonly placements: readonly FormSpecPlacement[];
+  readonly completionDetail: string;
+  readonly hoverSummary: string;
+  readonly valueKind?: FormSpecValueKind | null;
+  readonly valueLabel?: string;
+  readonly targetPlacements?: Partial<
+    Record<SupportedSignatureTarget, readonly FormSpecPlacement[]>
+  >;
+}
+
+function inferValueKind(name: string): FormSpecValueKind | null {
   if (INTEGER_VALUE_TAGS.has(name)) return "integer";
+  if (SIGNED_INTEGER_VALUE_TAGS.has(name)) return "signedInteger";
   if (JSON_VALUE_TAGS.has(name)) return "json";
   if (BOOLEAN_VALUE_TAGS.has(name)) return "boolean";
   if (STRING_VALUE_TAGS.has(name)) return "string";
-  return "number";
+  if (CONDITION_VALUE_TAGS.has(name)) return "condition";
+  return null;
 }
 
-function capabilitiesForValueKind(valueKind: FormSpecValueKind | null): readonly SemanticCapability[] {
+function getBuiltinValueKind(name: BuiltinConstraintName): FormSpecValueKind {
+  return inferValueKind(name) ?? "number";
+}
+
+function capabilitiesForValueKind(
+  valueKind: FormSpecValueKind | null
+): readonly SemanticCapability[] {
   switch (valueKind) {
     case "number":
     case "integer":
+    case "signedInteger":
       return ["numeric-comparable"];
     case "string":
       return ["string-like"];
     case "json":
       return ["json-like"];
-    case "boolean":
-      return [];
     case "condition":
       return ["condition-like"];
-    case "signedInteger":
-      return ["numeric-comparable"];
+    case "boolean":
     case null:
       return [];
     default: {
-      const _exhaustive: never = valueKind;
-      return _exhaustive;
+      const exhaustive: never = valueKind;
+      return exhaustive;
     }
   }
+}
+
+function valueLabelForKind(
+  valueKind: FormSpecValueKind | null,
+  fallback: string = "<value>"
+): string {
+  switch (valueKind) {
+    case "number":
+      return "<number>";
+    case "integer":
+    case "signedInteger":
+      return "<integer>";
+    case "string":
+      return "<text>";
+    case "json":
+      return "<json>";
+    case "condition":
+      return "<condition>";
+    case "boolean":
+    case null:
+      return "";
+    default: {
+      const exhaustive: never = valueKind;
+      return exhaustive ?? fallback;
+    }
+  }
+}
+
+function targetLabelForKind(kind: SupportedSignatureTarget): string {
+  switch (kind) {
+    case "path":
+      return "[:path]";
+    case "member":
+      return ":member";
+    case "variant":
+      return ":variant";
+    default: {
+      const exhaustive: never = kind;
+      return exhaustive;
+    }
+  }
+}
+
+function parameterKindForTarget(
+  targetKind: SupportedSignatureTarget
+): TagSignatureParameter["kind"] {
+  switch (targetKind) {
+    case "path":
+      return "target-path";
+    case "member":
+      return "target-member";
+    case "variant":
+      return "target-variant";
+    default: {
+      const exhaustive: never = targetKind;
+      return exhaustive;
+    }
+  }
+}
+
+function createTargetParameter(
+  targetKind: SupportedSignatureTarget,
+  valueKind: FormSpecValueKind | null
+): TagSignatureParameter {
+  const base: TagSignatureParameter = {
+    kind: parameterKindForTarget(targetKind),
+    label: targetLabelForKind(targetKind),
+    optional: targetKind === "path",
+  };
+
+  if (targetKind === "path") {
+    const capability = capabilitiesForValueKind(valueKind)[0];
+    return capability === undefined ? base : { ...base, capability };
+  }
+
+  if (targetKind === "member") {
+    return { ...base, capability: "enum-member-addressable" };
+  }
+
+  return base;
+}
+
+function createSignature(
+  name: string,
+  placements: readonly FormSpecPlacement[],
+  targetKind: SupportedSignatureTarget | null,
+  valueKind: FormSpecValueKind | null,
+  valueLabel: string
+): TagSignature {
+  const parameters: TagSignatureParameter[] = [];
+
+  if (targetKind !== null) {
+    parameters.push(createTargetParameter(targetKind, valueKind));
+  }
+  if (valueLabel !== "") {
+    parameters.push(
+      valueKind === null
+        ? {
+            kind: "value",
+            label: valueLabel,
+          }
+        : {
+            kind: "value",
+            label: valueLabel,
+            valueKind,
+          }
+    );
+  }
+
+  const targetLabel = targetKind === null ? "" : ` ${targetLabelForKind(targetKind)}`;
+  const valueLabelSuffix = valueLabel === "" ? "" : ` ${valueLabel}`;
+
+  return {
+    label: `@${name}${targetLabel}${valueLabelSuffix}`,
+    placements,
+    parameters,
+  };
+}
+
+function buildHoverMarkdown(
+  name: string,
+  hoverSummary: string,
+  signatures: readonly TagSignature[],
+  valueLabel: string
+): string {
+  const header = valueLabel === "" ? `**@${name}**` : `**@${name}** \`${valueLabel}\``;
+  const signatureLines =
+    signatures.length === 1
+      ? [`**Signature:** \`${signatures[0]?.label ?? `@${name}`}\``]
+      : ["**Signatures:**", ...signatures.map((signature) => `- \`${signature.label}\``)];
+
+  return [header, "", hoverSummary, "", ...signatureLines].join("\n");
 }
 
 function makeConstraintSignature(name: BuiltinConstraintName): TagSignature {
   const valueKind = getBuiltinValueKind(name);
   const valueLabel =
-    valueKind === "integer"
-      ? "<integer>"
-      : valueKind === "json"
-        ? "<json>"
-        : valueKind === "boolean"
-          ? ""
-          : "<number>";
+    name === "pattern"
+      ? "<regex>"
+      : name === "enumOptions"
+        ? "<json-array>"
+        : name === "const"
+          ? "<json-literal>"
+          : valueLabelForKind(valueKind);
 
-  const parameters: TagSignatureParameter[] = [];
-  const capability = capabilitiesForValueKind(valueKind)[0];
-  parameters.push({
-    kind: "target-path",
-    label: "[:path]",
-    optional: true,
-    ...(capability !== undefined && { capability }),
-  });
-  if (valueLabel !== "") {
-    parameters.push({
-      kind: "value",
-      label: valueLabel,
-      valueKind,
-    });
-  }
-
-  return {
-    label: `@${name}${valueLabel === "" ? " [:path]" : ` [:path] ${valueLabel}`}`,
-    placements: FIELD_PLACEMENTS,
-    parameters,
-  };
+  return createSignature(name, FIELD_PLACEMENTS, "path", valueKind, valueLabel);
 }
 
 const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
@@ -330,109 +482,228 @@ const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
   })
 ) as Record<string, TagDefinition>;
 
-const EXTRA_TAGS = {
+const EXTRA_TAG_SPECS = {
   displayName: {
-    valueKind: "string",
     requiresArgument: true,
     supportedTargets: ["none", "member", "variant"],
     allowDuplicates: false,
     category: "annotation",
     placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
     completionDetail: "Display label for a type, field, or enum member.",
-    hoverMarkdown: "**@displayName** `<label>`\n\nProvides a user-facing display label.",
-    signatures: [
-      {
-        label: "@displayName <label>",
-        placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
-        parameters: [{ kind: "value", label: "<label>", valueKind: "string" }],
-      },
-      {
-        label: "@displayName :member <label>",
-        placements: FIELD_PLACEMENTS,
-        parameters: [
-          { kind: "target-member", label: ":member", optional: false, capability: "enum-member-addressable" },
-          { kind: "value", label: "<label>", valueKind: "string" },
-        ],
-      },
-      {
-        label: "@displayName :variant <label>",
-        placements: FIELD_PLACEMENTS,
-        parameters: [
-          { kind: "target-variant", label: ":variant", optional: false },
-          { kind: "value", label: "<label>", valueKind: "string" },
-        ],
-      },
-    ],
+    hoverSummary: "Provides a user-facing display label.",
+    valueLabel: "<label>",
+    targetPlacements: {
+      member: FIELD_PLACEMENTS,
+      variant: TYPE_PLACEMENTS,
+    },
   },
   description: {
-    valueKind: "string",
     requiresArgument: true,
     supportedTargets: ["none"],
     allowDuplicates: false,
     category: "annotation",
     placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
     completionDetail: "Description text for a type or field.",
-    hoverMarkdown: "**@description** `<text>`\n\nProvides descriptive documentation for a type or field.",
-    signatures: [
-      {
-        label: "@description <text>",
-        placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
-        parameters: [{ kind: "value", label: "<text>", valueKind: "string" }],
-      },
-    ],
+    hoverSummary: "Provides descriptive documentation for a type or field.",
   },
   format: {
-    valueKind: "string",
     requiresArgument: true,
     supportedTargets: ["none"],
     allowDuplicates: false,
     category: "annotation",
     placements: FIELD_PLACEMENTS,
     completionDetail: "Format hint for a field.",
-    hoverMarkdown: "**@format** `<format>`\n\nProvides a format hint for a field.",
-    signatures: [
-      {
-        label: "@format <format>",
-        placements: FIELD_PLACEMENTS,
-        parameters: [{ kind: "value", label: "<format>", valueKind: "string" }],
-      },
-    ],
+    hoverSummary: "Provides a format hint for a field.",
+    valueLabel: "<format>",
   },
   placeholder: {
-    valueKind: "string",
     requiresArgument: true,
     supportedTargets: ["none"],
     allowDuplicates: false,
     category: "annotation",
     placements: FIELD_PLACEMENTS,
     completionDetail: "Placeholder text for a field.",
-    hoverMarkdown: "**@placeholder** `<text>`\n\nProvides placeholder text for a field.",
-    signatures: [
-      {
-        label: "@placeholder <text>",
-        placements: FIELD_PLACEMENTS,
-        parameters: [{ kind: "value", label: "<text>", valueKind: "string" }],
-      },
-    ],
+    hoverSummary: "Provides placeholder text for a field.",
   },
-} as const;
+  order: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: false,
+    category: "annotation",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Field display order hint.",
+    hoverSummary: "Provides an integer ordering hint for UI layout.",
+  },
+  apiName: {
+    requiresArgument: true,
+    supportedTargets: ["none", "member", "variant"],
+    allowDuplicates: false,
+    category: "annotation",
+    placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
+    completionDetail: "API-facing serialized name for a type, field, or variant.",
+    hoverSummary: "Overrides the serialized API name used in generated schema output.",
+    valueLabel: "<identifier>",
+    targetPlacements: {
+      member: FIELD_PLACEMENTS,
+      variant: TYPE_PLACEMENTS,
+    },
+  },
+  group: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: false,
+    category: "structure",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Assigns a field to a UI group.",
+    hoverSummary: "Assigns the field to a named grouping container.",
+    valueLabel: "<group>",
+  },
+  showWhen: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "structure",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Conditional visibility rule.",
+    hoverSummary: "Shows the field only when the condition is satisfied.",
+  },
+  hideWhen: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "structure",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Conditional visibility suppression rule.",
+    hoverSummary: "Hides the field when the condition is satisfied.",
+  },
+  enableWhen: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "structure",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Conditional interactivity rule.",
+    hoverSummary: "Enables the field only when the condition is satisfied.",
+  },
+  disableWhen: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "structure",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Conditional disablement rule.",
+    hoverSummary: "Disables the field when the condition is satisfied.",
+  },
+  defaultValue: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: false,
+    category: "ecosystem",
+    placements: FIELD_PLACEMENTS,
+    completionDetail: "Default JSON value for a field.",
+    hoverSummary: "Provides a default JSON value for ecosystem integrations.",
+    valueLabel: "<value>",
+  },
+  deprecated: {
+    requiresArgument: false,
+    supportedTargets: ["none"],
+    allowDuplicates: false,
+    category: "ecosystem",
+    placements: ALL_PLACEMENTS,
+    completionDetail: "Marks a declaration as deprecated.",
+    hoverSummary: "Marks the declaration as deprecated.",
+  },
+  example: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "ecosystem",
+    placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
+    completionDetail: "Example serialized value.",
+    hoverSummary: "Provides an example value for documentation and tooling.",
+  },
+  remarks: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: false,
+    category: "ecosystem",
+    placements: ALL_PLACEMENTS,
+    completionDetail: "Additional remarks text.",
+    hoverSummary: "Provides additional remarks for the declaration.",
+  },
+  see: {
+    requiresArgument: true,
+    supportedTargets: ["none"],
+    allowDuplicates: true,
+    category: "ecosystem",
+    placements: ALL_PLACEMENTS,
+    completionDetail: "Reference to related documentation.",
+    hoverSummary: "References related documentation or declarations.",
+    valueLabel: "<reference>",
+  },
+} as const satisfies Record<string, ExtraTagSpec>;
+
+function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): TagDefinition {
+  const valueKind = spec.valueKind ?? inferValueKind(canonicalName);
+  const valueLabel = spec.requiresArgument ? (spec.valueLabel ?? valueLabelForKind(valueKind)) : "";
+  const signatures: TagSignature[] = [];
+
+  if (spec.supportedTargets.includes("none")) {
+    signatures.push(createSignature(canonicalName, spec.placements, null, valueKind, valueLabel));
+  }
+  if (spec.supportedTargets.includes("path")) {
+    signatures.push(
+      createSignature(
+        canonicalName,
+        spec.targetPlacements?.path ?? spec.placements,
+        "path",
+        valueKind,
+        valueLabel
+      )
+    );
+  }
+  if (spec.supportedTargets.includes("member")) {
+    signatures.push(
+      createSignature(
+        canonicalName,
+        spec.targetPlacements?.member ?? spec.placements,
+        "member",
+        valueKind,
+        valueLabel
+      )
+    );
+  }
+  if (spec.supportedTargets.includes("variant")) {
+    signatures.push(
+      createSignature(
+        canonicalName,
+        spec.targetPlacements?.variant ?? spec.placements,
+        "variant",
+        valueKind,
+        valueLabel
+      )
+    );
+  }
+
+  return {
+    canonicalName,
+    valueKind,
+    requiresArgument: spec.requiresArgument,
+    supportedTargets: spec.supportedTargets,
+    allowDuplicates: spec.allowDuplicates,
+    category: spec.category,
+    placements: spec.placements,
+    capabilities: capabilitiesForValueKind(valueKind),
+    completionDetail: spec.completionDetail,
+    hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),
+    signatures,
+  };
+}
 
 const EXTRA_TAG_DEFINITIONS: Record<string, TagDefinition> = Object.fromEntries(
-  Object.entries(EXTRA_TAGS).map(([canonicalName, tag]) => [
+  Object.entries(EXTRA_TAG_SPECS).map(([canonicalName, spec]) => [
     canonicalName,
-    {
-      canonicalName,
-      valueKind: tag.valueKind,
-      requiresArgument: tag.requiresArgument,
-      supportedTargets: tag.supportedTargets,
-      allowDuplicates: tag.allowDuplicates,
-      category: tag.category,
-      placements: tag.placements,
-      capabilities: capabilitiesForValueKind(tag.valueKind),
-      completionDetail: tag.completionDetail,
-      hoverMarkdown: tag.hoverMarkdown,
-      signatures: tag.signatures,
-    } satisfies TagDefinition,
+    buildExtraTagDefinition(canonicalName, spec),
   ])
 );
 
@@ -455,8 +726,9 @@ export function getTagDefinition(
     return extra;
   }
 
-  const extensionRegistration = getExtensionConstraintTags(extensions)
-    .find((tag) => tag.tagName === normalized);
+  const extensionRegistration = getExtensionConstraintTags(extensions).find(
+    (tag) => tag.tagName === normalized
+  );
 
   if (extensionRegistration === undefined) {
     return null;
@@ -476,6 +748,8 @@ export function getTagDefinition(
       `**@${extensionRegistration.tagName}** \`<value>\``,
       "",
       `Extension-defined constraint tag from \`${extensionRegistration.extensionId}\`.`,
+      "",
+      `**Signature:** \`@${extensionRegistration.tagName} <value>\``,
     ].join("\n"),
     signatures: [
       {
@@ -491,10 +765,9 @@ export function getConstraintTagDefinitions(
   extensions?: readonly ExtensionTagSource[]
 ): readonly TagDefinition[] {
   const builtins = Object.values(BUILTIN_TAG_DEFINITIONS);
-  const custom =
-    getExtensionConstraintTags(extensions)
-      .map((tag) => getTagDefinition(tag.tagName, extensions))
-      .filter((tag): tag is TagDefinition => tag !== null);
+  const custom = getExtensionConstraintTags(extensions)
+    .map((tag) => getTagDefinition(tag.tagName, extensions))
+    .filter((tag): tag is TagDefinition => tag !== null);
   return [...builtins, ...custom];
 }
 
@@ -503,10 +776,9 @@ export function getAllTagDefinitions(
 ): readonly TagDefinition[] {
   const builtins = Object.values(BUILTIN_TAG_DEFINITIONS);
   const extras = Object.values(EXTRA_TAG_DEFINITIONS);
-  const custom =
-    getExtensionConstraintTags(extensions)
-      .map((tag) => getTagDefinition(tag.tagName, extensions))
-      .filter((tag): tag is TagDefinition => tag !== null);
+  const custom = getExtensionConstraintTags(extensions)
+    .map((tag) => getTagDefinition(tag.tagName, extensions))
+    .filter((tag): tag is TagDefinition => tag !== null);
   return [...builtins, ...extras, ...custom];
 }
 

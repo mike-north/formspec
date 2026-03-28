@@ -256,7 +256,10 @@ export function parseTSDocTags(
         TextRange.fromStringRange(sourceText, range.pos, range.end)
       );
       const docComment = parserContext.docComment;
-      const parsedComment = parseCommentBlock(commentText, sharedCommentSyntaxOptions(options, range.pos));
+      const parsedComment = parseCommentBlock(
+        commentText,
+        sharedCommentSyntaxOptions(options, range.pos)
+      );
       let parsedTagCursor = 0;
 
       const nextParsedTag = (normalizedTagName: string) => {
@@ -589,16 +592,6 @@ function extractPlainText(node: DocNode): string {
 
 function isMemberTargetDisplayName(text: string): boolean {
   return parseTagSyntax("displayName", text).target !== null;
-}
-
-function parseMemberTargetDisplayName(
-  text: string
-): { readonly target: string; readonly label: string } | null {
-  const parsed = parseTagSyntax("displayName", text);
-  if (parsed.target === null || parsed.argumentText === "") {
-    return null;
-  }
-  return { target: parsed.target.rawText, label: parsed.argumentText.trim() };
 }
 
 // =============================================================================

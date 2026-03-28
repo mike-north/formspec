@@ -20,11 +20,6 @@ export interface AnalysisTypeDefinition {
 
 export type AnalysisTypeRegistry = Record<string, AnalysisTypeDefinition>;
 
-interface ConstraintBearingTypeDefinition extends AnalysisTypeDefinition {
-  readonly constraints?: readonly ConstraintNode[];
-  readonly annotations?: readonly AnnotationNode[];
-}
-
 export interface EffectiveTargetState {
   readonly fieldName: string;
   readonly path: PathTarget | null;
@@ -92,7 +87,9 @@ export interface ConstraintRegistryLike {
   findConstraint(constraintId: string): ConstraintRegistrationLike | undefined;
   findConstraintTag(
     tagName: string
-  ): { readonly extensionId: string; readonly registration: ConstraintTagRegistrationLike } | undefined;
+  ):
+    | { readonly extensionId: string; readonly registration: ConstraintTagRegistrationLike }
+    | undefined;
 }
 
 function pathKey(path: PathTarget | null): string {
@@ -119,7 +116,7 @@ export function dereferenceAnalysisType(
     }
     seen.add(current.name);
 
-    const definition = typeRegistry[current.name] as ConstraintBearingTypeDefinition | undefined;
+    const definition = typeRegistry[current.name];
     if (definition === undefined) {
       return current;
     }
@@ -143,7 +140,7 @@ export function collectReferencedTypeConstraints(
     }
     seen.add(current.name);
 
-    const definition = typeRegistry[current.name] as ConstraintBearingTypeDefinition | undefined;
+    const definition = typeRegistry[current.name];
     if (definition === undefined) {
       break;
     }
@@ -172,7 +169,7 @@ export function collectReferencedTypeAnnotations(
     }
     seen.add(current.name);
 
-    const definition = typeRegistry[current.name] as ConstraintBearingTypeDefinition | undefined;
+    const definition = typeRegistry[current.name];
     if (definition === undefined) {
       break;
     }
@@ -460,7 +457,10 @@ function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
       return false;
     }
 
-    return left.every((item, index) => jsonValueEquals(item, right[index] as JsonValue));
+    return left.every((item, index) => {
+      const rightItem = right[index];
+      return rightItem !== undefined && jsonValueEquals(item, rightItem);
+    });
   }
 
   if (isJsonObject(left) || isJsonObject(right)) {
@@ -541,9 +541,7 @@ function findConstConstraints(
   constraints: readonly ConstraintNode[]
 ): readonly Extract<ConstraintNode, { readonly constraintKind: "const" }>[] {
   return constraints.filter(
-    (
-      constraint
-    ): constraint is Extract<ConstraintNode, { readonly constraintKind: "const" }> =>
+    (constraint): constraint is Extract<ConstraintNode, { readonly constraintKind: "const" }> =>
       constraint.constraintKind === "const"
   );
 }
@@ -728,7 +726,10 @@ function compareCustomConstraintStrength(
   }
 }
 
-function customConstraintsContradict(lower: CustomSemanticEntry, upper: CustomSemanticEntry): boolean {
+function customConstraintsContradict(
+  lower: CustomSemanticEntry,
+  upper: CustomSemanticEntry
+): boolean {
   const order = lower.comparePayloads(lower.constraint.payload, upper.constraint.payload);
   if (order > 0) {
     return true;
@@ -1077,7 +1078,8 @@ function checkCustomConstraint(
       tagRegistration?.extensionId === extensionId &&
       tagRegistration.registration.constraintName === registration.constraintName &&
       !candidateTypes.some(
-        (candidateType) => tagRegistration.registration.isApplicableToType?.(candidateType) !== false
+        (candidateType) =>
+          tagRegistration.registration.isApplicableToType?.(candidateType) !== false
       )
     ) {
       addTypeMismatch(

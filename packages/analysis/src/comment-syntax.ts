@@ -1,6 +1,10 @@
 import type { PathTarget } from "@formspec/core";
 import { extractPathTarget } from "./path-target.js";
-import { getTagDefinition, normalizeFormSpecTagName, type ExtensionTagSource } from "./tag-registry.js";
+import {
+  getTagDefinition,
+  normalizeFormSpecTagName,
+  type ExtensionTagSource,
+} from "./tag-registry.js";
 
 export interface CommentSourceSpan {
   readonly start: number;
@@ -109,6 +113,10 @@ function classifyTargetKind(
   targetText: string,
   extensions: readonly ExtensionTagSource[] | undefined
 ): ParsedCommentTargetSpecifier["kind"] {
+  if (targetText === "singular" || targetText === "plural") {
+    return "variant";
+  }
+
   if (targetText.includes(".")) {
     return "path";
   }
@@ -167,8 +175,7 @@ function parseTargetSpecifier(
 
 function projectCommentLines(commentText: string): readonly CommentLineProjection[] {
   const projections: CommentLineProjection[] = [];
-  const commentBodyStart =
-    commentText.startsWith("/**") ? 3 : commentText.startsWith("/*") ? 2 : 0;
+  const commentBodyStart = commentText.startsWith("/**") ? 3 : commentText.startsWith("/*") ? 2 : 0;
   const commentBodyEnd = commentText.endsWith("*/") ? commentText.length - 2 : commentText.length;
 
   let cursor = commentBodyStart;
@@ -185,7 +192,10 @@ function projectCommentLines(commentText: string): readonly CommentLineProjectio
     }
 
     let contentStart = lineStart;
-    while (contentStart < contentEnd && (commentText[contentStart] === " " || commentText[contentStart] === "\t")) {
+    while (
+      contentStart < contentEnd &&
+      (commentText[contentStart] === " " || commentText[contentStart] === "\t")
+    ) {
       contentStart += 1;
     }
     if (contentStart < contentEnd && commentText[contentStart] === "*") {
@@ -321,16 +331,12 @@ export function parseCommentBlock(
     tags,
   };
 }
-
-export const parseCommentSyntax = parseCommentBlock;
-
 export function parseTagSyntax(
   rawTagName: string,
   payloadText: string,
   options?: Omit<ParseCommentSyntaxOptions, "offset">
 ): ParsedCommentTag {
-  const separator =
-    payloadText === "" || isWhitespace(payloadText[0]) ? "" : " ";
+  const separator = payloadText === "" || isWhitespace(payloadText[0]) ? "" : " ";
   const parsed = parseCommentBlock(`/** @${rawTagName}${separator}${payloadText} */`, options);
   const [tag] = parsed.tags;
   if (tag === undefined) {

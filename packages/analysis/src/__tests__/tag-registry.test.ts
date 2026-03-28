@@ -1,0 +1,46 @@
+import { describe, expect, it } from "vitest";
+import { getTagDefinition } from "../index.js";
+
+describe("tag-registry", () => {
+  it("restores pre-extraction ecosystem and structure tags", () => {
+    expect(getTagDefinition("apiName")).not.toBeNull();
+    expect(getTagDefinition("order")).not.toBeNull();
+    expect(getTagDefinition("showWhen")).not.toBeNull();
+    expect(getTagDefinition("defaultValue")).not.toBeNull();
+    expect(getTagDefinition("deprecated")).not.toBeNull();
+    expect(getTagDefinition("remarks")).not.toBeNull();
+    expect(getTagDefinition("see")).not.toBeNull();
+  });
+
+  it("preserves legacy value kinds and target support for shared metadata", () => {
+    expect(getTagDefinition("apiName")).toMatchObject({
+      canonicalName: "apiName",
+      valueKind: "string",
+      category: "annotation",
+      supportedTargets: ["none", "member", "variant"],
+    });
+
+    expect(getTagDefinition("order")).toMatchObject({
+      canonicalName: "order",
+      valueKind: "signedInteger",
+      category: "annotation",
+    });
+
+    expect(getTagDefinition("showWhen")).toMatchObject({
+      canonicalName: "showWhen",
+      valueKind: "condition",
+      category: "structure",
+      allowDuplicates: true,
+    });
+
+    expect(getTagDefinition("defaultValue")).toMatchObject({
+      canonicalName: "defaultValue",
+      valueKind: null,
+      category: "ecosystem",
+    });
+  });
+
+  it("normalizes names through the shared registry entry point", () => {
+    expect(getTagDefinition("ApiName")?.canonicalName).toBe("apiName");
+  });
+});

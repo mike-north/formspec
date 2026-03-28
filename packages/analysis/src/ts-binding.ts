@@ -1,24 +1,7 @@
 import * as ts from "typescript";
+import type { FormSpecPlacement, SemanticCapability } from "./tag-registry.js";
 
-export type FormSpecPlacement =
-  | "class"
-  | "class-field"
-  | "class-method"
-  | "interface"
-  | "interface-field"
-  | "type-alias"
-  | "type-alias-field"
-  | "variable"
-  | "function"
-  | "function-parameter"
-  | "method-parameter";
-
-export type FormSpecSemanticCapability =
-  | "numeric-comparable"
-  | "string-like"
-  | "array-like"
-  | "enum-member-addressable"
-  | "object-like";
+export type FormSpecSemanticCapability = SemanticCapability;
 
 function stripNullishUnion(type: ts.Type): ts.Type {
   if (!type.isUnion()) {
@@ -26,8 +9,7 @@ function stripNullishUnion(type: ts.Type): ts.Type {
   }
 
   const nonNullish = type.types.filter(
-    (member) =>
-      (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0
+    (member) => (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0
   );
   if (nonNullish.length === 1 && nonNullish[0] !== undefined) {
     return nonNullish[0];
@@ -36,10 +18,7 @@ function stripNullishUnion(type: ts.Type): ts.Type {
   return type;
 }
 
-function isIntersectionWithBase(
-  type: ts.Type,
-  predicate: (member: ts.Type) => boolean
-): boolean {
+function isIntersectionWithBase(type: ts.Type, predicate: (member: ts.Type) => boolean): boolean {
   return type.isIntersection() && type.types.some((member) => predicate(member));
 }
 
@@ -47,7 +26,10 @@ function isNumberLike(type: ts.Type): boolean {
   const stripped = stripNullishUnion(type);
   if (
     stripped.flags &
-    (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral | ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)
+    (ts.TypeFlags.Number |
+      ts.TypeFlags.NumberLiteral |
+      ts.TypeFlags.BigInt |
+      ts.TypeFlags.BigIntLiteral)
   ) {
     return true;
   }
@@ -126,8 +108,8 @@ export function resolveDeclarationPlacement(node: ts.Node): FormSpecPlacement | 
 export function getTypeSemanticCapabilities(
   type: ts.Type,
   checker: ts.TypeChecker
-): readonly FormSpecSemanticCapability[] {
-  const capabilities = new Set<FormSpecSemanticCapability>();
+): readonly SemanticCapability[] {
+  const capabilities = new Set<SemanticCapability>();
 
   if (isNumberLike(type)) {
     capabilities.add("numeric-comparable");
@@ -135,14 +117,19 @@ export function getTypeSemanticCapabilities(
   if (isStringLike(type)) {
     capabilities.add("string-like");
   }
+  if (isBooleanLike(type)) {
+    capabilities.add("json-like");
+  }
   if (isArrayLike(type, checker)) {
     capabilities.add("array-like");
+    capabilities.add("json-like");
   }
   if (isStringLiteralUnion(type)) {
     capabilities.add("enum-member-addressable");
   }
   if (isObjectLike(type, checker)) {
     capabilities.add("object-like");
+    capabilities.add("json-like");
   }
 
   return [...capabilities];
@@ -151,7 +138,7 @@ export function getTypeSemanticCapabilities(
 export function hasTypeSemanticCapability(
   type: ts.Type,
   checker: ts.TypeChecker,
-  capability: FormSpecSemanticCapability
+  capability: SemanticCapability
 ): boolean {
   return getTypeSemanticCapabilities(type, checker).includes(capability);
 }
@@ -159,7 +146,7 @@ export function hasTypeSemanticCapability(
 function collectPropertyPaths(
   type: ts.Type,
   checker: ts.TypeChecker,
-  capability: FormSpecSemanticCapability,
+  capability: SemanticCapability,
   prefix: readonly string[],
   visited: Set<ts.Type>
 ): string[] {
@@ -194,7 +181,7 @@ function collectPropertyPaths(
 export function collectCompatiblePathTargets(
   type: ts.Type,
   checker: ts.TypeChecker,
-  capability: FormSpecSemanticCapability
+  capability: SemanticCapability
 ): readonly string[] {
   return collectPropertyPaths(type, checker, capability, [], new Set<ts.Type>());
 }
