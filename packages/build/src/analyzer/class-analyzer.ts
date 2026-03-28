@@ -362,7 +362,8 @@ function analyzeFieldToIR(
     typeRegistry,
     visiting,
     prop,
-    extensionRegistry
+    extensionRegistry,
+    diagnostics
   );
 
   // Collect constraints
@@ -439,7 +440,8 @@ function analyzeInterfacePropertyToIR(
     typeRegistry,
     visiting,
     prop,
-    extensionRegistry
+    extensionRegistry,
+    diagnostics
   );
 
   // Collect constraints
@@ -689,7 +691,8 @@ export function resolveTypeNode(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
   const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
   if (customType) {
@@ -702,7 +705,8 @@ export function resolveTypeNode(
     typeRegistry,
     visiting,
     sourceNode,
-    extensionRegistry
+    extensionRegistry,
+    diagnostics
   );
   if (primitiveAlias) {
     return primitiveAlias;
@@ -754,7 +758,8 @@ export function resolveTypeNode(
       typeRegistry,
       visiting,
       sourceNode,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     );
   }
 
@@ -767,13 +772,22 @@ export function resolveTypeNode(
       typeRegistry,
       visiting,
       sourceNode,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     );
   }
 
   // --- Object types ---
   if (isObjectType(type)) {
-    return resolveObjectType(type, checker, file, typeRegistry, visiting, extensionRegistry);
+    return resolveObjectType(
+      type,
+      checker,
+      file,
+      typeRegistry,
+      visiting,
+      extensionRegistry,
+      diagnostics
+    );
   }
 
   // --- Fallback: treat unknown/any/void as string ---
@@ -787,7 +801,8 @@ function tryResolveNamedPrimitiveAlias(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode | null {
   if (
     !(
@@ -830,7 +845,8 @@ function tryResolveNamedPrimitiveAlias(
         file,
         typeRegistry,
         visiting,
-        extensionRegistry
+        extensionRegistry,
+        diagnostics
       ),
       ...(constraints.length > 0 && { constraints }),
       ...(annotations.length > 0 && { annotations }),
@@ -894,7 +910,8 @@ function resolveAliasedPrimitiveTarget(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
   const nestedAliasDecl = type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration);
   if (nestedAliasDecl !== undefined) {
@@ -904,11 +921,21 @@ function resolveAliasedPrimitiveTarget(
       file,
       typeRegistry,
       visiting,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     );
   }
 
-  return resolveTypeNode(type, checker, file, typeRegistry, visiting, undefined, extensionRegistry);
+  return resolveTypeNode(
+    type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    undefined,
+    extensionRegistry,
+    diagnostics
+  );
 }
 
 function resolveUnionType(
@@ -918,7 +945,8 @@ function resolveUnionType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
   const typeName = getNamedTypeName(type);
   const namedDecl = getNamedTypeDeclaration(type);
@@ -1029,7 +1057,8 @@ function resolveUnionType(
       typeRegistry,
       visiting,
       nonNullMembers[0].sourceNode ?? sourceNode,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     );
     const result: TypeNode = hasNull
       ? {
@@ -1048,7 +1077,8 @@ function resolveUnionType(
       typeRegistry,
       visiting,
       memberSourceNode ?? sourceNode,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     )
   );
   if (hasNull) {
@@ -1064,7 +1094,8 @@ function resolveArrayType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
   const typeArgs = isTypeReference(type) ? type.typeArguments : undefined;
   const elementType = typeArgs?.[0];
@@ -1078,7 +1109,8 @@ function resolveArrayType(
         typeRegistry,
         visiting,
         elementSourceNode,
-        extensionRegistry
+        extensionRegistry,
+        diagnostics
       )
     : ({ kind: "primitive", primitiveKind: "string" } satisfies TypeNode);
 
@@ -1098,7 +1130,8 @@ function tryResolveRecordType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): RecordTypeNode | null {
   // Only types with no named properties qualify as pure dictionaries.
   if (type.getProperties().length > 0) {
@@ -1116,7 +1149,8 @@ function tryResolveRecordType(
     typeRegistry,
     visiting,
     undefined,
-    extensionRegistry
+    extensionRegistry,
+    diagnostics
   );
   return { kind: "record", valueType };
 }
@@ -1153,7 +1187,8 @@ function resolveObjectType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
   const typeName = getNamedTypeName(type);
   const namedTypeName = typeName ?? undefined;
@@ -1210,7 +1245,8 @@ function resolveObjectType(
     file,
     typeRegistry,
     visiting,
-    extensionRegistry
+    extensionRegistry,
+    diagnostics
   );
   if (recordNode) {
     visiting.delete(type);
@@ -1243,6 +1279,7 @@ function resolveObjectType(
     file,
     typeRegistry,
     visiting,
+    diagnostics ?? [],
     extensionRegistry
   );
 
@@ -1259,7 +1296,8 @@ function resolveObjectType(
       typeRegistry,
       visiting,
       declaration,
-      extensionRegistry
+      extensionRegistry,
+      diagnostics
     );
 
     // Get constraints and annotations from the declaration if available
@@ -1320,6 +1358,7 @@ function getNamedTypeFieldNodeInfoMap(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  diagnostics: ConstraintSemanticDiagnostic[],
   extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> | null {
   const symbols = [type.getSymbol(), type.aliasSymbol].filter(
@@ -1343,7 +1382,7 @@ function getNamedTypeFieldNodeInfoMap(
             file,
             typeRegistry,
             visiting,
-            [],
+            diagnostics,
             hostType,
             extensionRegistry
           );
@@ -1369,6 +1408,7 @@ function getNamedTypeFieldNodeInfoMap(
         typeRegistry,
         visiting,
         checker.getTypeAtLocation(interfaceDecl),
+        diagnostics,
         extensionRegistry
       );
     }
@@ -1383,6 +1423,7 @@ function getNamedTypeFieldNodeInfoMap(
         typeRegistry,
         visiting,
         checker.getTypeAtLocation(typeAliasDecl),
+        diagnostics,
         extensionRegistry
       );
     }
@@ -1471,6 +1512,7 @@ function buildFieldNodeInfoMap(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   hostType: ts.Type,
+  diagnostics: ConstraintSemanticDiagnostic[],
   extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> {
   const map = new Map<string, FieldNodeInfo>();
@@ -1482,7 +1524,7 @@ function buildFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
-        [],
+        diagnostics,
         hostType,
         extensionRegistry
       );

@@ -299,12 +299,46 @@ function capabilityLabel(capability: string | undefined): string {
   }
 }
 
+function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+  if (fieldType?.kind === "custom") {
+    return fieldType.typeId;
+  }
+
+  if (fieldType?.kind !== "union") {
+    return undefined;
+  }
+
+  const customMembers = fieldType.members.filter(
+    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
+  );
+  if (customMembers.length !== 1) {
+    return undefined;
+  }
+
+  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
+  const allOtherMembersAreNull = nonCustomMembers.every(
+    (member) => member.kind === "primitive" && member.primitiveKind === "null"
+  );
+  const customMember = customMembers[0];
+  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
+}
+
+function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  return (
+    broadenedTypeId !== undefined &&
+    options?.extensionRegistry?.findBuiltinConstraintBroadening(broadenedTypeId, tagName) !==
+      undefined
+  );
+}
+
 function buildCompilerBackedConstraintDiagnostics(
   node: ts.Node,
   sourceFile: ts.SourceFile,
   tagName: string,
   parsedTag: ParsedCommentTag | null,
   provenance: Provenance,
+  supportingDeclarations: readonly string[],
   options?: ParseTSDocOptions
 ): readonly ConstraintSemanticDiagnostic[] {
   if (!isBuiltinConstraintName(tagName)) {
@@ -338,6 +372,7 @@ function buildCompilerBackedConstraintDiagnostics(
   }
 
   const target = parsedTag?.target ?? null;
+  const hasBroadening = target === null && hasBuiltinConstraintBroadening(tagName, options);
   if (target !== null) {
     if (target.kind !== "path") {
       return [
@@ -364,7 +399,7 @@ function buildCompilerBackedConstraintDiagnostics(
       return [
         makeDiagnostic(
           "UNKNOWN_PATH_TARGET",
-          `Field "${target.rawText}": path-targeted constraint "${tagName}" references unknown path segment "${resolution.segment}"`,
+          `Target "${target.rawText}": path-targeted constraint "${tagName}" references unknown path segment "${resolution.segment}"`,
           provenance
         ),
       ];
@@ -375,7 +410,7 @@ function buildCompilerBackedConstraintDiagnostics(
       return [
         makeDiagnostic(
           "TYPE_MISMATCH",
-          `Field "${target.rawText}": path-targeted constraint "${tagName}" is invalid because type "${actualType}" cannot be traversed`,
+          `Target "${target.rawText}": path-targeted constraint "${tagName}" is invalid because type "${actualType}" cannot be traversed`,
           provenance
         ),
       ];
@@ -390,12 +425,12 @@ function buildCompilerBackedConstraintDiagnostics(
       return [
         makeDiagnostic(
           "TYPE_MISMATCH",
-          `Field "${target.rawText}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+          `Target "${target.rawText}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
           provenance
         ),
       ];
     }
-  } else {
+  } else if (!hasBroadening) {
     const requiredCapability = definition.capabilities[0];
     if (
       requiredCapability !== undefined &&
@@ -405,7 +440,7 @@ function buildCompilerBackedConstraintDiagnostics(
       return [
         makeDiagnostic(
           "TYPE_MISMATCH",
-          `Field "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+          `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
           provenance
         ),
       ];
@@ -420,6 +455,10 @@ function buildCompilerBackedConstraintDiagnostics(
     return [];
   }
 
+  if (hasBroadening) {
+    return [];
+  }
+
   const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
   const hostType = options?.hostType ?? subjectType;
   const hostTypeText = checker.typeToString(hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
@@ -430,7 +469,7 @@ function buildCompilerBackedConstraintDiagnostics(
     subjectType: subjectTypeText,
     ...(target?.kind === "path" ? { target: { kind: "path" as const, text: target.rawText } } : {}),
     ...(argumentExpression !== null ? { argumentExpression } : {}),
-    supportingDeclarations: buildSupportingDeclarations(sourceFile),
+    supportingDeclarations,
     ...(options?.extensionRegistry !== undefined
       ? {
           extensions: options.extensionRegistry.extensions.map((extension) => ({
@@ -569,6 +608,7 @@ export function parseTSDocTags(
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
+  const supportingDeclarations = buildSupportingDeclarations(sourceFile);
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
   const rawTextFallbacks = collectRawTextFallbacks(node, file);
 
@@ -680,6 +720,7 @@ export function parseTSDocTags(
           tagName,
           parsedTag,
           provenance,
+          supportingDeclarations,
           options
         );
         if (compilerDiagnostics.length > 0) {
@@ -781,6 +822,7 @@ export function parseTSDocTags(
         rawTextTag.tag.normalizedTagName,
         rawTextTag.tag,
         provenance,
+        supportingDeclarations,
         options
       );
       if (compilerDiagnostics.length > 0) {
@@ -818,6 +860,7 @@ export function parseTSDocTags(
         tagName,
         null,
         provenance,
+        supportingDeclarations,
         options
       );
       if (compilerDiagnostics.length > 0) {
