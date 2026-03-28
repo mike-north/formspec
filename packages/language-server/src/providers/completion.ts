@@ -6,8 +6,9 @@
  */
 
 import {
-  getCommentCompletionContextAtOffset,
   getConstraintTagDefinitions,
+  getSemanticCommentCompletionContextAtOffset,
+  type TagDefinition,
 } from "@formspec/analysis";
 import type { ExtensionDefinition } from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
@@ -20,22 +21,42 @@ export function getCompletionItems(extensions?: readonly ExtensionDefinition[]):
   }));
 }
 
+function toCompletionItem(tag: TagDefinition): CompletionItem {
+  return {
+    label: `@${tag.canonicalName}`,
+    kind: CompletionItemKind.Keyword,
+    detail: tag.completionDetail,
+  };
+}
+
 export function getCompletionItemsAtOffset(
   documentText: string,
   offset: number,
   extensions?: readonly ExtensionDefinition[]
 ): CompletionItem[] {
-  const context = getCommentCompletionContextAtOffset(
+  const semanticContext = getSemanticCommentCompletionContextAtOffset(
     documentText,
     offset,
     extensions ? { extensions } : undefined
   );
-  if (context.kind !== "tag-name") {
+
+  if (semanticContext.kind === "target") {
+    return semanticContext.semantic.targetCompletions.map((target: string) => ({
+      label: target,
+      kind:
+        target === "singular" || target === "plural"
+          ? CompletionItemKind.EnumMember
+          : CompletionItemKind.Field,
+      detail: `Target for @${semanticContext.semantic.tag.normalizedTagName}`,
+    }));
+  }
+
+  if (semanticContext.kind !== "tag-name") {
     return [];
   }
 
-  const normalizedPrefix = context.prefix.toLowerCase();
-  return getCompletionItems(extensions).filter((item) =>
+  const normalizedPrefix = semanticContext.prefix.toLowerCase();
+  return semanticContext.availableTags.map(toCompletionItem).filter((item) =>
     item.label.slice(1).toLowerCase().startsWith(normalizedPrefix)
   );
 }

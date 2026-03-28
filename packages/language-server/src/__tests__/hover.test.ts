@@ -154,9 +154,28 @@ describe("getHoverForTag", () => {
     expect(getHoverAtOffset(source, source.length)).toBeNull();
   });
 
-  it("returns null when the cursor is in a tag argument rather than the tag name", () => {
+  it("returns argument hover info when the cursor is in a tag argument", () => {
     const source = "/** @minimum 0 */";
     const offset = source.indexOf("0");
-    expect(getHoverAtOffset(source, offset)).toBeNull();
+    const hover = getHoverAtOffset(source, offset);
+
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("Argument for @minimum");
+      expect(hover.contents.value).toContain("<number>");
+    }
+  });
+
+  it("returns hover when the cursor is inside a target specifier", () => {
+    const source = "/** @apiName :plural homes */";
+    const offset = source.indexOf("plural") + 1;
+    const hover = getHoverAtOffset(source, offset);
+
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("Target for @apiName");
+      expect(hover.contents.value).toContain("singular");
+      expect(hover.contents.value).toContain("plural");
+    }
   });
 });

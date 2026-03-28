@@ -6,7 +6,7 @@
  */
 
 import {
-  getCommentCursorTargetAtOffset,
+  getCommentHoverInfoAtOffset,
   getTagDefinition,
   normalizeFormSpecTagName,
 } from "@formspec/analysis";
@@ -36,14 +36,19 @@ export function getHoverAtOffset(
   offset: number,
   extensions?: readonly ExtensionDefinition[]
 ): Hover | null {
-  const target = getCommentCursorTargetAtOffset(
+  const hoverInfo = getCommentHoverInfoAtOffset(
     documentText,
     offset,
     extensions ? { extensions } : undefined
   );
-  if (target?.kind !== "tag-name") {
+  if (hoverInfo === null) {
     return null;
   }
 
-  return getHoverForTag(target.tag.normalizedTagName, extensions);
+  return {
+    contents: {
+      kind: "markdown",
+      value: hoverInfo.markdown,
+    },
+  };
 }
