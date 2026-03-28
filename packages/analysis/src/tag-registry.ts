@@ -290,6 +290,33 @@ function getBuiltinValueKind(name: BuiltinConstraintName): FormSpecValueKind {
   return inferValueKind(name) ?? "number";
 }
 
+function getBuiltinConstraintCapability(name: BuiltinConstraintName): SemanticCapability {
+  switch (name) {
+    case "minimum":
+    case "maximum":
+    case "exclusiveMinimum":
+    case "exclusiveMaximum":
+    case "multipleOf":
+      return "numeric-comparable";
+    case "minLength":
+    case "maxLength":
+    case "pattern":
+      return "string-like";
+    case "minItems":
+    case "maxItems":
+    case "uniqueItems":
+      return "array-like";
+    case "enumOptions":
+      return "enum-member-addressable";
+    case "const":
+      return "json-like";
+    default: {
+      const exhaustive: never = name;
+      return exhaustive;
+    }
+  }
+}
+
 function capabilitiesForValueKind(
   valueKind: FormSpecValueKind | null
 ): readonly SemanticCapability[] {
@@ -372,7 +399,8 @@ function parameterKindForTarget(
 
 function createTargetParameter(
   targetKind: SupportedSignatureTarget,
-  valueKind: FormSpecValueKind | null
+  valueKind: FormSpecValueKind | null,
+  pathCapability?: SemanticCapability
 ): TagSignatureParameter {
   const base: TagSignatureParameter = {
     kind: parameterKindForTarget(targetKind),
@@ -381,7 +409,7 @@ function createTargetParameter(
   };
 
   if (targetKind === "path") {
-    const capability = capabilitiesForValueKind(valueKind)[0];
+    const capability = pathCapability ?? capabilitiesForValueKind(valueKind)[0];
     return capability === undefined ? base : { ...base, capability };
   }
 
@@ -397,12 +425,13 @@ function createSignature(
   placements: readonly FormSpecPlacement[],
   targetKind: SupportedSignatureTarget | null,
   valueKind: FormSpecValueKind | null,
-  valueLabel: string
+  valueLabel: string,
+  pathCapability?: SemanticCapability
 ): TagSignature {
   const parameters: TagSignatureParameter[] = [];
 
   if (targetKind !== null) {
-    parameters.push(createTargetParameter(targetKind, valueKind));
+    parameters.push(createTargetParameter(targetKind, valueKind, pathCapability));
   }
   if (valueLabel !== "") {
     parameters.push(
@@ -444,8 +473,9 @@ function buildHoverMarkdown(
   return [header, "", hoverSummary, "", ...signatureLines].join("\n");
 }
 
-function makeConstraintSignature(name: BuiltinConstraintName): TagSignature {
+function makeConstraintSignatures(name: BuiltinConstraintName): readonly TagSignature[] {
   const valueKind = getBuiltinValueKind(name);
+  const subjectCapability = getBuiltinConstraintCapability(name);
   const valueLabel =
     name === "pattern"
       ? "<regex>"
@@ -455,12 +485,16 @@ function makeConstraintSignature(name: BuiltinConstraintName): TagSignature {
           ? "<json-literal>"
           : valueLabelForKind(valueKind);
 
-  return createSignature(name, FIELD_PLACEMENTS, "path", valueKind, valueLabel);
+  return [
+    createSignature(name, FIELD_PLACEMENTS, null, valueKind, valueLabel),
+    createSignature(name, FIELD_PLACEMENTS, "path", valueKind, valueLabel, subjectCapability),
+  ];
 }
 
 const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
   (Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS) as BuiltinConstraintName[]).map((name) => {
     const valueKind = getBuiltinValueKind(name);
+    const subjectCapability = getBuiltinConstraintCapability(name);
     return [
       name,
       {
@@ -471,10 +505,10 @@ const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
         allowDuplicates: false,
         category: "constraint" as const,
         placements: FIELD_PLACEMENTS,
-        capabilities: capabilitiesForValueKind(valueKind),
+        capabilities: [subjectCapability],
         completionDetail: CONSTRAINT_COMPLETION_DETAIL[name] ?? `@${name}`,
         hoverMarkdown: CONSTRAINT_HOVER_DOCS[name] ?? `**@${name}**`,
-        signatures: [makeConstraintSignature(name)],
+        signatures: makeConstraintSignatures(name),
       } satisfies TagDefinition,
     ];
   })

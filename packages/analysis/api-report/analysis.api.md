@@ -41,6 +41,18 @@ export function analyzeConstraintTargets(fieldName: string, fieldType: TypeNode,
 // @public (undocumented)
 export function buildConstraintTargetStates(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry): readonly ResolvedTargetState[];
 
+// @public
+export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string;
+
+// @public (undocumented)
+export function checkSyntheticTagApplication(options: CheckSyntheticTagApplicationOptions): SyntheticTagCheckResult;
+
+// @public
+export interface CheckSyntheticTagApplicationOptions extends LowerSyntheticTagApplicationOptions {
+    // (undocumented)
+    readonly supportingDeclarations?: readonly string[];
+}
+
 // @public (undocumented)
 export function collectCompatiblePathTargets(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): readonly string[];
 
@@ -317,6 +329,9 @@ export function getCommentHoverInfoAtOffset(documentText: string, offset: number
 // @public (undocumented)
 export function getConstraintTagDefinitions(extensions?: readonly ExtensionTagSource[]): readonly TagDefinition[];
 
+// @public
+export function getMatchingTagSignatures(definition: TagDefinition, placement: FormSpecPlacement, targetKind: SyntheticTagTargetKind | null): readonly TagSignature[];
+
 // @public (undocumented)
 export function getSemanticCommentCompletionContextAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): SemanticCommentCompletionContext;
 
@@ -334,6 +349,37 @@ export function getTypeSemanticCapabilities(type: ts.Type, checker: ts.TypeCheck
 
 // @public (undocumented)
 export function hasTypeSemanticCapability(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): boolean;
+
+// @public
+export interface LoweredSyntheticTagApplication {
+    // (undocumented)
+    readonly callExpression: string;
+    // (undocumented)
+    readonly definition: TagDefinition;
+    // (undocumented)
+    readonly matchingSignatures: readonly TagSignature[];
+}
+
+// @public
+export interface LowerSyntheticTagApplicationOptions {
+    // (undocumented)
+    readonly argumentExpression?: string | null;
+    // (undocumented)
+    readonly extensions?: readonly ExtensionTagSource[];
+    // (undocumented)
+    readonly hostType: string;
+    // (undocumented)
+    readonly placement: FormSpecPlacement;
+    // (undocumented)
+    readonly subjectType: string;
+    // (undocumented)
+    readonly tagName: string;
+    // (undocumented)
+    readonly target?: SyntheticTagTargetSpecifier | null;
+}
+
+// @public
+export function lowerTagApplicationToSyntheticCall(options: LowerSyntheticTagApplicationOptions): LoweredSyntheticTagApplication;
 
 // @public (undocumented)
 export function normalizeFormSpecTagName(rawName: string): string;
@@ -474,6 +520,33 @@ export type SemanticCommentCompletionContext = {
 export function sliceCommentSpan(commentText: string, span: CommentSpan, options?: {
     readonly offset?: number;
 }): string;
+
+// @public
+export interface SyntheticCompilerDiagnostic {
+    // (undocumented)
+    readonly code: number;
+    // (undocumented)
+    readonly message: string;
+}
+
+// @public
+export interface SyntheticTagCheckResult {
+    // (undocumented)
+    readonly diagnostics: readonly SyntheticCompilerDiagnostic[];
+    // (undocumented)
+    readonly sourceText: string;
+}
+
+// @public
+export type SyntheticTagTargetKind = "path" | "member" | "variant";
+
+// @public
+export interface SyntheticTagTargetSpecifier {
+    // (undocumented)
+    readonly kind: SyntheticTagTargetKind;
+    // (undocumented)
+    readonly text: string;
+}
 
 // @public (undocumented)
 export interface TagDefinition {

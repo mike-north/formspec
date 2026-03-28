@@ -81,3 +81,18 @@ export {
   resolveDeclarationPlacement,
   type FormSpecSemanticCapability,
 } from "./ts-binding.js";
+export type {
+  CheckSyntheticTagApplicationOptions,
+  LowerSyntheticTagApplicationOptions,
+  LoweredSyntheticTagApplication,
+  SyntheticCompilerDiagnostic,
+  SyntheticTagCheckResult,
+  SyntheticTagTargetKind,
+  SyntheticTagTargetSpecifier,
+} from "./compiler-signatures.js";
+export {
+  buildSyntheticHelperPrelude,
+  checkSyntheticTagApplication,
+  getMatchingTagSignatures,
+  lowerTagApplicationToSyntheticCall,
+} from "./compiler-signatures.js";
