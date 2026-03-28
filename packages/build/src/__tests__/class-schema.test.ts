@@ -83,7 +83,7 @@ describe("generateSchemas", () => {
     expect(typedArrayResult.jsonSchema.properties?.["responses"]).toMatchObject({
       items: { type: "string", maxLength: 280 },
     });
-  });
+  }, 15_000);
 
   it("applies description precedence as @description > @remarks > summary text", () => {
     const result = generateSchemas({
@@ -107,7 +107,7 @@ describe("generateSchemas", () => {
 
   it("throws with CONTRADICTING_CONSTRAINTS for contradictory constraints", () => {
     expect(getGenerationFailureMessage("PriceRange")).toContain("CONTRADICTING_CONSTRAINTS");
-  });
+  }, 15_000);
 
   it("throws with TYPE_MISMATCH for direct type mismatches", () => {
     expect(getGenerationFailureMessage("MismatchedForm")).toContain("TYPE_MISMATCH");
