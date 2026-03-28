@@ -12,13 +12,15 @@
 import {
   createConnection,
   ProposedFeatures,
+  TextDocuments,
   TextDocumentSyncKind,
   type Connection,
   type InitializeResult,
 } from "vscode-languageserver/node.js";
 import type { ExtensionDefinition } from "@formspec/core";
-import { getCompletionItems } from "./providers/completion.js";
-import { getHoverForTag } from "./providers/hover.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { getCompletionItemsAtOffset } from "./providers/completion.js";
+import { getHoverAtOffset } from "./providers/hover.js";
 import { getDefinition } from "./providers/definition.js";
 
 export interface CreateServerOptions {
@@ -36,6 +38,9 @@ export interface CreateServerOptions {
  */
 export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
+  const documents = new TextDocuments(TextDocument);
+
+  documents.listen(connection);
 
   connection.onInitialize((): InitializeResult => {
     return {
@@ -55,22 +60,24 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     };
   });
 
-  connection.onCompletion(() => {
-    // Return all FormSpec constraint tag completions.
-    // Future phases will add context-aware filtering based on field type and
-    // cursor position within JSDoc comment ranges.
-    return getCompletionItems(options.extensions);
+  connection.onCompletion((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+      return [];
+    }
+
+    const offset = document.offsetAt(params.position);
+    return getCompletionItemsAtOffset(document.getText(), offset, options.extensions);
   });
 
-  connection.onHover((_params) => {
-    // Extract the word under the cursor and look up hover documentation.
-    // This is a stub — precise JSDoc token detection (checking that the
-    // cursor is within a JSDoc comment and extracting the tag name) will be
-    // added in a future phase.
-    //
-    // For now we return null to signal no hover is available until the
-    // token extraction is implemented.
-    return getHoverForTag("", options.extensions);
+  connection.onHover((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (!document) {
+      return null;
+    }
+
+    const offset = document.offsetAt(params.position);
+    return getHoverAtOffset(document.getText(), offset, options.extensions);
   });
 
   connection.onDefinition((_params) => {

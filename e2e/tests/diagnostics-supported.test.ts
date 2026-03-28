@@ -72,4 +72,29 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("fixtures/tsdoc-class/error-broadening-constraint.ts:7:");
     expect(output).toContain("related: fixtures/tsdoc-class/error-broadening-constraint.ts:1:");
   });
+
+  it("reports contradictions against inherited alias constraints on resolved path targets", () => {
+    const fixturePath = resolveFixture(
+      "tsdoc-class",
+      "error-path-target-inherited-contradiction.ts"
+    );
+    const result = runCli([
+      "generate",
+      fixturePath,
+      "PathTargetInheritedContradictionForm",
+      "--validate-only",
+    ]);
+    const output = result.stdout + result.stderr;
+
+    expect(result.exitCode).toBe(1);
+    expect(output).toContain("[ERROR] CONTRADICTING_CONSTRAINTS");
+    expect(output).toContain('Field "discount.percent"');
+    expect(output).toContain("minimum");
+    expect(output).toContain("maximum");
+    expect(output).toContain("fixtures/tsdoc-class/error-path-target-inherited-contradiction.ts:1:");
+    expect(output).toContain("fixtures/tsdoc-class/error-path-target-inherited-contradiction.ts:9:");
+    expect(output).toContain(
+      "related: fixtures/tsdoc-class/error-path-target-inherited-contradiction.ts:1:"
+    );
+  });
 });

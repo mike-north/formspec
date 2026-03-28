@@ -8,11 +8,18 @@ const mocks = vi.hoisted(() => {
     onHover: vi.fn(),
     onDefinition: vi.fn(),
   };
+  const documents = {
+    listen: vi.fn(),
+    get: vi.fn(),
+  };
+  const textDocuments = vi.fn(() => documents);
 
   return {
     connection,
-    getCompletionItems: vi.fn(() => []),
-    getHoverForTag: vi.fn(() => null),
+    documents,
+    textDocuments,
+    getCompletionItemsAtOffset: vi.fn(() => []),
+    getHoverAtOffset: vi.fn(() => null),
     getDefinition: vi.fn(() => null),
   };
 });
@@ -20,15 +27,20 @@ const mocks = vi.hoisted(() => {
 vi.mock("vscode-languageserver/node.js", () => ({
   createConnection: vi.fn(() => mocks.connection),
   ProposedFeatures: { all: {} },
+  TextDocuments: mocks.textDocuments,
   TextDocumentSyncKind: { Incremental: 2 },
 }));
 
+vi.mock("vscode-languageserver-textdocument", () => ({
+  TextDocument: class {},
+}));
+
 vi.mock("../providers/completion.js", () => ({
-  getCompletionItems: mocks.getCompletionItems,
+  getCompletionItemsAtOffset: mocks.getCompletionItemsAtOffset,
 }));
 
 vi.mock("../providers/hover.js", () => ({
-  getHoverForTag: mocks.getHoverForTag,
+  getHoverAtOffset: mocks.getHoverAtOffset,
 }));
 
 vi.mock("../providers/definition.js", () => ({
@@ -59,20 +71,34 @@ describe("createServer", () => {
     const hoverRegistration = mocks.connection.onHover.mock.calls[0];
     const completionHandler =
       typeof completionRegistration?.[0] === "function"
-        ? (completionRegistration[0] as () => unknown)
+        ? (completionRegistration[0] as (_params: unknown) => unknown)
         : undefined;
     const hoverHandler =
       typeof hoverRegistration?.[0] === "function"
         ? (hoverRegistration[0] as (_params: unknown) => unknown)
         : undefined;
 
+    mocks.documents.get.mockReturnValue({
+      getText: () => "/** @min */",
+      offsetAt: () => 6,
+    });
+
     expect(typeof completionHandler).toBe("function");
     expect(typeof hoverHandler).toBe("function");
 
-    completionHandler?.();
-    hoverHandler?.({});
+    completionHandler?.({
+      textDocument: { uri: "file:///test.ts" },
+      position: { line: 0, character: 6 },
+    });
+    hoverHandler?.({
+      textDocument: { uri: "file:///test.ts" },
+      position: { line: 0, character: 6 },
+    });
 
-    expect(mocks.getCompletionItems).toHaveBeenCalledWith([extension]);
-    expect(mocks.getHoverForTag).toHaveBeenCalledWith("", [extension]);
+    expect(mocks.textDocuments).toHaveBeenCalledTimes(1);
+    expect(mocks.documents.listen).toHaveBeenCalledWith(mocks.connection);
+    expect(mocks.documents.get).toHaveBeenCalledWith("file:///test.ts");
+    expect(mocks.getCompletionItemsAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension]);
+    expect(mocks.getHoverAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension]);
   });
 });

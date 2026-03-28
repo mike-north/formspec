@@ -85,8 +85,21 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/analysis:
+    dependencies:
+      '@formspec/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/build:
     dependencies:
+      '@formspec/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@formspec/core':
         specifier: workspace:*
         version: link:../core
@@ -172,6 +185,9 @@ importers:
 
   packages/eslint-plugin:
     dependencies:
+      '@formspec/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@formspec/constraints':
         specifier: workspace:*
         version: link:../constraints
@@ -215,6 +231,9 @@ importers:
 
   packages/language-server:
     dependencies:
+      '@formspec/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@formspec/core':
         specifier: workspace:*
         version: link:../core

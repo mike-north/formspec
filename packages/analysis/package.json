@@ -1,14 +1,14 @@
 {
-  "name": "@formspec/language-server",
-  "version": "0.1.0-alpha.17",
-  "description": "Language server for FormSpec — completions, hover, and go-to-definition for JSDoc constraint tags",
+  "name": "@formspec/analysis",
+  "version": "0.1.0-alpha.1",
+  "description": "Shared comment-tag analysis utilities for FormSpec tooling",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/language-server.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/language-server.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
@@ -27,10 +27,10 @@
     "api-documenter": "api-documenter markdown -i temp -o docs"
   },
   "dependencies": {
-    "@formspec/analysis": "workspace:*",
-    "@formspec/core": "workspace:*",
-    "vscode-languageserver": "^9.0.1",
-    "vscode-languageserver-textdocument": "^1.0.12"
+    "@formspec/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
@@ -38,12 +38,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "keywords": [
-    "formspec",
-    "language-server",
-    "lsp",
-    "typescript",
-    "json-schema"
-  ],
   "license": "UNLICENSED"
 }

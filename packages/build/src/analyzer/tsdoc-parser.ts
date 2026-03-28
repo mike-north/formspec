@@ -23,12 +23,22 @@
  * **Fallback strategy**: TSDoc treats `{` / `}` as inline tag delimiters and
  * `@` as a tag prefix, so content containing these characters (e.g. JSON
  * objects in `@EnumOptions`, regex patterns with `@` in `@Pattern`) gets
- * mangled by the TSDoc parser. For these tags, the raw text is extracted
- * via the TS compiler's `ts.getJSDocTags()` API which preserves content
- * verbatim.
+ * mangled by the TSDoc parser. The shared comment syntax parser is the
+ * primary source for these payloads; the TS compiler's `ts.getJSDocTags()`
+ * API remains as a fallback when a raw payload cannot be recovered from the
+ * shared parse.
  */
 
 import * as ts from "typescript";
+import {
+  extractPathTarget as extractSharedPathTarget,
+  parseConstraintTagValue,
+  parseDefaultValueTagValue,
+  type ParsedCommentTag,
+  sliceCommentSpan,
+  parseCommentBlock,
+  parseTagSyntax,
+} from "@formspec/analysis";
 import {
   TSDocParser,
   TSDocConfiguration,
@@ -47,41 +57,14 @@ import {
   type ConstraintNode,
   type AnnotationNode,
   type Provenance,
-  type NumericConstraintNode,
-  type LengthConstraintNode,
   type PathTarget,
-  type JsonValue,
   type TypeNode,
 } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
-import { tryParseJson } from "./json-utils.js";
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
-
-/**
- * Constraint tag name → constraint kind mapping for numeric constraints.
- * Keys are camelCase matching BUILTIN_CONSTRAINT_DEFINITIONS.
- */
-const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {
-  minimum: "minimum",
-  maximum: "maximum",
-  exclusiveMinimum: "exclusiveMinimum",
-  exclusiveMaximum: "exclusiveMaximum",
-  multipleOf: "multipleOf",
-};
-
-/**
- * Constraint tag name → constraint kind mapping for length constraints.
- * Keys are camelCase matching BUILTIN_CONSTRAINT_DEFINITIONS.
- */
-const LENGTH_CONSTRAINT_MAP: Record<string, LengthConstraintNode["constraintKind"]> = {
-  minLength: "minLength",
-  maxLength: "maxLength",
-  minItems: "minItems",
-  maxItems: "maxItems",
-};
 
 /**
  * Tags whose content may contain TSDoc-significant characters (`{}`, `@`)
@@ -135,6 +118,24 @@ function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): T
   }
 
   return config;
+}
+
+function sharedCommentSyntaxOptions(
+  options?: ParseTSDocOptions,
+  offset?: number
+): NonNullable<Parameters<typeof parseCommentBlock>[1]> {
+  const extensions = options?.extensionRegistry?.extensions;
+  return {
+    ...(offset !== undefined ? { offset } : {}),
+    ...(extensions !== undefined ? { extensions } : {}),
+  };
+}
+
+function sharedTagValueOptions(options?: ParseTSDocOptions) {
+  return {
+    ...(options?.extensionRegistry !== undefined ? { registry: options.extensionRegistry } : {}),
+    ...(options?.fieldType !== undefined ? { fieldType: options.fieldType } : {}),
+  };
 }
 
 /**
@@ -228,6 +229,11 @@ export function parseTSDocTags(
   let displayNameProvenance: Provenance | undefined;
   let descriptionProvenance: Provenance | undefined;
   let placeholderProvenance: Provenance | undefined;
+  const rawTextTags: Array<{
+    readonly tag: ParsedCommentTag;
+    readonly commentText: string;
+    readonly commentOffset: number;
+  }> = [];
 
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
@@ -250,22 +256,50 @@ export function parseTSDocTags(
         TextRange.fromStringRange(sourceText, range.pos, range.end)
       );
       const docComment = parserContext.docComment;
+      const parsedComment = parseCommentBlock(commentText, sharedCommentSyntaxOptions(options, range.pos));
+      let parsedTagCursor = 0;
+
+      const nextParsedTag = (normalizedTagName: string) => {
+        while (parsedTagCursor < parsedComment.tags.length) {
+          const candidate = parsedComment.tags[parsedTagCursor];
+          parsedTagCursor += 1;
+          if (candidate?.normalizedTagName === normalizedTagName) {
+            return candidate;
+          }
+        }
+        return null;
+      };
+
+      for (const parsedTag of parsedComment.tags) {
+        if (TAGS_REQUIRING_RAW_TEXT.has(parsedTag.normalizedTagName)) {
+          rawTextTags.push({ tag: parsedTag, commentText, commentOffset: range.pos });
+        }
+      }
 
       // Extract constraint nodes from custom blocks.
       // Tags in TAGS_REQUIRING_RAW_TEXT are skipped here and handled via the
       // TS compiler API in Phase 1b below.
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
+        const parsedTag = nextParsedTag(tagName);
         if (
           tagName === "displayName" ||
           tagName === "description" ||
           tagName === "format" ||
           tagName === "placeholder"
         ) {
-          const text = extractBlockText(block).trim();
+          const text =
+            parsedTag?.payloadSpan === null
+              ? ""
+              : parsedTag?.payloadSpan !== undefined
+                ? sliceCommentSpan(commentText, parsedTag.payloadSpan, { offset: range.pos }).trim()
+                : extractBlockText(block).trim();
           if (text === "") continue;
 
-          const provenance = provenanceForComment(range, sourceFile, file, tagName);
+          const provenance =
+            parsedTag !== null
+              ? provenanceForParsedTag(parsedTag, sourceFile, file)
+              : provenanceForComment(range, sourceFile, file, tagName);
           if (tagName === "displayName") {
             if (!isMemberTargetDisplayName(text) && displayName === undefined) {
               displayName = text;
@@ -292,14 +326,27 @@ export function parseTSDocTags(
 
         if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
-        const text = extractBlockText(block).trim();
+        const text =
+          parsedTag?.payloadSpan === null
+            ? ""
+            : parsedTag?.payloadSpan !== undefined
+              ? sliceCommentSpan(commentText, parsedTag.payloadSpan, { offset: range.pos }).trim()
+              : extractBlockText(block).trim();
         const expectedType = isBuiltinConstraintName(tagName)
           ? BUILTIN_CONSTRAINT_DEFINITIONS[tagName]
           : undefined;
         if (text === "" && expectedType !== "boolean") continue;
 
-        const provenance = provenanceForComment(range, sourceFile, file, tagName);
-        const constraintNode = parseConstraintValue(tagName, text, provenance, options);
+        const provenance =
+          parsedTag !== null
+            ? provenanceForParsedTag(parsedTag, sourceFile, file)
+            : provenanceForComment(range, sourceFile, file, tagName);
+        const constraintNode = parseConstraintTagValue(
+          tagName,
+          text,
+          provenance,
+          sharedTagValueOptions(options)
+        );
         if (constraintNode) {
           constraints.push(constraintNode);
         }
@@ -356,26 +403,61 @@ export function parseTSDocTags(
   // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
   // @pattern, @enumOptions, and @defaultValue content can contain `@`, `{}`,
   // or quoted JSON payloads that the TSDoc parser treats as structural markers.
-  // We extract these via the TS compiler API which preserves content verbatim.
-  const jsDocTagsAll = ts.getJSDocTags(node);
-  for (const tag of jsDocTagsAll) {
-    const tagName = normalizeConstraintTagName(tag.tagName.text);
-    if (!TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
+  // Prefer the shared syntax parse for these payloads and fall back to the
+  // TS compiler API when a raw payload cannot be recovered from comments.
+  if (rawTextTags.length > 0) {
+    for (const rawTextTag of rawTextTags) {
+      const text =
+        rawTextTag.tag.payloadSpan === null
+          ? ""
+          : sliceCommentSpan(rawTextTag.commentText, rawTextTag.tag.payloadSpan, {
+              offset: rawTextTag.commentOffset,
+            }).trim();
+      if (text === "") continue;
 
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined || commentText.trim() === "") continue;
+      const provenance = provenanceForParsedTag(rawTextTag.tag, sourceFile, file);
+      if (rawTextTag.tag.normalizedTagName === "defaultValue") {
+        const defaultValueNode = parseDefaultValueTagValue(text, provenance);
+        annotations.push(defaultValueNode);
+        continue;
+      }
 
-    const text = commentText.trim();
-    const provenance = provenanceForJSDocTag(tag, file);
-    if (tagName === "defaultValue") {
-      const defaultValueNode = parseDefaultValueValue(text, provenance);
-      annotations.push(defaultValueNode);
-      continue;
+      const constraintNode = parseConstraintTagValue(
+        rawTextTag.tag.normalizedTagName,
+        text,
+        provenance,
+        sharedTagValueOptions(options)
+      );
+      if (constraintNode) {
+        constraints.push(constraintNode);
+      }
     }
+  } else {
+    const jsDocTagsAll = ts.getJSDocTags(node);
+    for (const tag of jsDocTagsAll) {
+      const tagName = normalizeConstraintTagName(tag.tagName.text);
+      if (!TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
 
-    const constraintNode = parseConstraintValue(tagName, text, provenance, options);
-    if (constraintNode) {
-      constraints.push(constraintNode);
+      const commentText = getTagCommentText(tag);
+      if (commentText === undefined || commentText.trim() === "") continue;
+
+      const text = commentText.trim();
+      const provenance = provenanceForJSDocTag(tag, file);
+      if (tagName === "defaultValue") {
+        const defaultValueNode = parseDefaultValueTagValue(text, provenance);
+        annotations.push(defaultValueNode);
+        continue;
+      }
+
+      const constraintNode = parseConstraintTagValue(
+        tagName,
+        text,
+        provenance,
+        sharedTagValueOptions(options)
+      );
+      if (constraintNode) {
+        constraints.push(constraintNode);
+      }
     }
   }
 
@@ -420,24 +502,32 @@ export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
 export function extractDisplayNameMetadata(node: ts.Node): DisplayNameMetadata {
   let displayName: string | undefined;
   const memberDisplayNames = new Map<string, string>();
+  const sourceFile = node.getSourceFile();
+  const sourceText = sourceFile.getFullText();
+  const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
 
-  for (const tag of ts.getJSDocTags(node)) {
-    const tagName = normalizeConstraintTagName(tag.tagName.text);
-    if (tagName !== "displayName") continue;
+  if (commentRanges) {
+    for (const range of commentRanges) {
+      if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia) continue;
+      const commentText = sourceText.substring(range.pos, range.end);
+      if (!commentText.startsWith("/**")) continue;
 
-    const commentText = getTagCommentText(tag);
-    if (commentText === undefined) continue;
+      const parsed = parseCommentBlock(commentText);
+      for (const tag of parsed.tags) {
+        if (tag.normalizedTagName !== "displayName") {
+          continue;
+        }
 
-    const text = commentText.trim();
-    if (text === "") continue;
+        if (tag.target !== null && tag.argumentText !== "") {
+          memberDisplayNames.set(tag.target.rawText, tag.argumentText);
+          continue;
+        }
 
-    const memberTarget = parseMemberTargetDisplayName(text);
-    if (memberTarget) {
-      memberDisplayNames.set(memberTarget.target, memberTarget.label);
-      continue;
+        if (tag.argumentText !== "") {
+          displayName ??= tag.argumentText;
+        }
+      }
     }
-
-    displayName ??= text;
   }
 
   return {
@@ -461,13 +551,7 @@ export function extractDisplayNameMetadata(node: ts.Node): DisplayNameMetadata {
 export function extractPathTarget(
   text: string
 ): { path: PathTarget; remainingText: string } | null {
-  const trimmed = text.trimStart();
-  const match = /^:([a-zA-Z_]\w*)(?:\s+([\s\S]*))?$/.exec(trimmed);
-  if (!match?.[1]) return null;
-  return {
-    path: { segments: [match[1]] },
-    remainingText: match[2] ?? "",
-  };
+  return extractSharedPathTarget(text);
 }
 
 // =============================================================================
@@ -503,285 +587,18 @@ function extractPlainText(node: DocNode): string {
 // PRIVATE HELPERS — constraint value parsing
 // =============================================================================
 
-/**
- * Parses a raw text value extracted from a TSDoc block tag into an IR
- * ConstraintNode based on the tag name and BUILTIN_CONSTRAINT_DEFINITIONS.
- *
- * @param tagName - camelCase-normalized constraint tag name (callers normalize before calling)
- */
-function parseConstraintValue(
-  tagName: string,
-  text: string,
-  provenance: Provenance,
-  options?: ParseTSDocOptions
-): ConstraintNode | null {
-  const customConstraint = parseExtensionConstraintValue(tagName, text, provenance, options);
-  if (customConstraint) {
-    return customConstraint;
-  }
-
-  if (!isBuiltinConstraintName(tagName)) {
-    return null;
-  }
-
-  // Extract optional path target (e.g., ":value 0" → path=["value"], text="0")
-  const pathResult = extractPathTarget(text);
-  const effectiveText = pathResult ? pathResult.remainingText : text;
-  const path = pathResult?.path;
-
-  const expectedType = BUILTIN_CONSTRAINT_DEFINITIONS[tagName];
-
-  if (expectedType === "number") {
-    const value = Number(effectiveText);
-    if (Number.isNaN(value)) {
-      return null;
-    }
-
-    const numericKind = NUMERIC_CONSTRAINT_MAP[tagName];
-    if (numericKind) {
-      return {
-        kind: "constraint",
-        constraintKind: numericKind,
-        value,
-        ...(path && { path }),
-        provenance,
-      };
-    }
-
-    const lengthKind = LENGTH_CONSTRAINT_MAP[tagName];
-    if (lengthKind) {
-      return {
-        kind: "constraint",
-        constraintKind: lengthKind,
-        value,
-        ...(path && { path }),
-        provenance,
-      };
-    }
-
-    return null;
-  }
-
-  if (expectedType === "boolean") {
-    const trimmed = effectiveText.trim();
-    if (trimmed !== "" && trimmed !== "true") {
-      return null;
-    }
-
-    if (tagName === "uniqueItems") {
-      return {
-        kind: "constraint",
-        constraintKind: "uniqueItems",
-        value: true,
-        ...(path && { path }),
-        provenance,
-      };
-    }
-
-    return null;
-  }
-
-  if (expectedType === "json") {
-    if (tagName === "const") {
-      const trimmedText = effectiveText.trim();
-      if (trimmedText === "") return null;
-
-      try {
-        const parsed = JSON.parse(trimmedText) as JsonValue;
-        return {
-          kind: "constraint",
-          constraintKind: "const",
-          value: parsed,
-          ...(path && { path }),
-          provenance,
-        };
-      } catch {
-        // Bare strings like `@const USD` are accepted as a shorthand for
-        // string-valued const constraints. Non-string malformed JSON still
-        // gets rejected later during IR validation if the field type is
-        // incompatible with this fallback string value.
-        return {
-          kind: "constraint",
-          constraintKind: "const",
-          value: trimmedText,
-          ...(path && { path }),
-          provenance,
-        };
-      }
-    }
-
-    const parsed = tryParseJson(effectiveText);
-    if (!Array.isArray(parsed)) {
-      return null;
-    }
-    const members: (string | number)[] = [];
-    for (const item of parsed) {
-      if (typeof item === "string" || typeof item === "number") {
-        members.push(item);
-      } else if (typeof item === "object" && item !== null && "id" in item) {
-        const id = (item as Record<string, unknown>)["id"];
-        if (typeof id === "string" || typeof id === "number") {
-          members.push(id);
-        }
-      }
-    }
-    return {
-      kind: "constraint",
-      constraintKind: "allowedMembers",
-      members,
-      ...(path && { path }),
-      provenance,
-    };
-  }
-
-  // expectedType === "string" — only remaining case after number and json
-  return {
-    kind: "constraint",
-    constraintKind: "pattern",
-    pattern: effectiveText,
-    ...(path && { path }),
-    provenance,
-  };
-}
-
-function parseExtensionConstraintValue(
-  tagName: string,
-  text: string,
-  provenance: Provenance,
-  options?: ParseTSDocOptions
-): ConstraintNode | null {
-  const pathResult = extractPathTarget(text);
-  const effectiveText = pathResult ? pathResult.remainingText : text;
-  const path = pathResult?.path;
-  const registry = options?.extensionRegistry;
-  if (registry === undefined) {
-    return null;
-  }
-
-  const directTag = registry.findConstraintTag(tagName);
-  if (directTag !== undefined) {
-    return makeCustomConstraintNode(
-      directTag.extensionId,
-      directTag.registration.constraintName,
-      directTag.registration.parseValue(effectiveText),
-      provenance,
-      path,
-      registry
-    );
-  }
-
-  if (!isBuiltinConstraintName(tagName)) {
-    return null;
-  }
-
-  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
-  if (broadenedTypeId === undefined) {
-    return null;
-  }
-
-  const broadened = registry.findBuiltinConstraintBroadening(broadenedTypeId, tagName);
-  if (broadened === undefined) {
-    return null;
-  }
-
-  return makeCustomConstraintNode(
-    broadened.extensionId,
-    broadened.registration.constraintName,
-    broadened.registration.parseValue(effectiveText),
-    provenance,
-    path,
-    registry
-  );
-}
-
-function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
-  if (fieldType?.kind === "custom") {
-    return fieldType.typeId;
-  }
-
-  if (fieldType?.kind !== "union") {
-    return undefined;
-  }
-
-  const customMembers = fieldType.members.filter(
-    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
-  );
-  if (customMembers.length !== 1) {
-    return undefined;
-  }
-
-  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
-  const allOtherMembersAreNull = nonCustomMembers.every(
-    (member) => member.kind === "primitive" && member.primitiveKind === "null"
-  );
-
-  const customMember = customMembers[0];
-  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
-}
-
-function makeCustomConstraintNode(
-  extensionId: string,
-  constraintName: string,
-  payload: JsonValue,
-  provenance: Provenance,
-  path: PathTarget | undefined,
-  registry: ExtensionRegistry
-): ConstraintNode {
-  const constraintId = `${extensionId}/${constraintName}`;
-  const registration = registry.findConstraint(constraintId);
-  if (registration === undefined) {
-    throw new Error(
-      `Custom TSDoc tag resolved to unregistered constraint "${constraintId}". Register the constraint before using its tag.`
-    );
-  }
-
-  return {
-    kind: "constraint",
-    constraintKind: "custom",
-    constraintId,
-    payload,
-    compositionRule: registration.compositionRule,
-    ...(path && { path }),
-    provenance,
-  };
-}
-
-/**
- * Parses a raw `@defaultValue` tag payload into a JSON value annotation.
- */
-function parseDefaultValueValue(text: string, provenance: Provenance): AnnotationNode {
-  const trimmed = text.trim();
-  let value: JsonValue;
-
-  if (trimmed === "null") {
-    value = null;
-  } else if (trimmed === "true") {
-    value = true;
-  } else if (trimmed === "false") {
-    value = false;
-  } else {
-    const parsed = tryParseJson(trimmed);
-    value = parsed !== null ? (parsed as JsonValue) : trimmed;
-  }
-
-  return {
-    kind: "annotation",
-    annotationKind: "defaultValue",
-    value,
-    provenance,
-  };
-}
-
 function isMemberTargetDisplayName(text: string): boolean {
-  return parseMemberTargetDisplayName(text) !== null;
+  return parseTagSyntax("displayName", text).target !== null;
 }
 
 function parseMemberTargetDisplayName(
   text: string
 ): { readonly target: string; readonly label: string } | null {
-  const match = /^:([^\s]+)\s+([\s\S]+)$/.exec(text);
-  if (!match?.[1] || !match[2]) return null;
-  return { target: match[1], label: match[2].trim() };
+  const parsed = parseTagSyntax("displayName", text);
+  if (parsed.target === null || parsed.argumentText === "") {
+    return null;
+  }
+  return { target: parsed.target.rawText, label: parsed.argumentText.trim() };
 }
 
 // =============================================================================
@@ -801,6 +618,21 @@ function provenanceForComment(
     line: line + 1,
     column: character,
     tagName: "@" + tagName,
+  };
+}
+
+function provenanceForParsedTag(
+  tag: ParsedCommentTag,
+  sourceFile: ts.SourceFile,
+  file: string
+): Provenance {
+  const { line, character } = sourceFile.getLineAndCharacterOfPosition(tag.tagNameSpan.start);
+  return {
+    surface: "tsdoc",
+    file,
+    line: line + 1,
+    column: character,
+    tagName: "@" + tag.normalizedTagName,
   };
 }
 

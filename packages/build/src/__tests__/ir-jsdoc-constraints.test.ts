@@ -122,6 +122,23 @@ describe("extractJSDocConstraintNodes", () => {
     });
   });
 
+  it("preserves @ characters inside @Pattern payloads", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @Pattern ^[^@]+@[^@]+$ */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "pattern",
+      pattern: "^[^@]+@[^@]+$",
+    });
+  });
+
   it("handles negative numbers", () => {
     const prop = getPropertyFromSource(`
       class Foo {

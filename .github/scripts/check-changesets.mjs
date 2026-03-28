@@ -68,7 +68,9 @@ function parseChangesetPackages(filePath) {
   //            sections[1] = frontmatter
   //            sections[2] = body
   if (sections.length < 3) {
-    console.warn(`[check-changesets] Warning: ${filePath} does not look like a valid changeset (expected --- delimiters), skipping.`);
+    console.warn(
+      `[check-changesets] Warning: ${filePath} does not look like a valid changeset (expected --- delimiters), skipping.`
+    );
     return result;
   }
 
@@ -83,7 +85,9 @@ function parseChangesetPackages(filePath) {
     if (match) {
       result.add(match[1].trim());
     } else {
-      console.warn(`[check-changesets] Warning: unrecognized frontmatter line in ${filePath}: ${trimmed}`);
+      console.warn(
+        `[check-changesets] Warning: unrecognized frontmatter line in ${filePath}: ${trimmed}`
+      );
     }
   }
 
@@ -377,7 +381,10 @@ function formatDepChain(name) {
   return `\`${name}\` (depends on ${ancestors.map((p) => `\`${p}\``).join(" → ")})`;
 }
 
-const missingList = [...missing].sort().map((n) => `- \`${n}\``).join("\n");
+const missingList = [...missing]
+  .sort()
+  .map((n) => `- \`${n}\``)
+  .join("\n");
 
 let reportSections = "## Changeset Required\n\n";
 reportSections +=
@@ -406,7 +413,9 @@ try {
   fs.writeFileSync(reportPath, reportSections, "utf8");
   console.log(`[check-changesets] Report written to ${reportPath}`);
 } catch (err) {
-  console.error(`[check-changesets] Warning: could not write report to ${reportPath}: ${String(err)}`);
+  console.error(
+    `[check-changesets] Warning: could not write report to ${reportPath}: ${String(err)}`
+  );
 }
 
 // Log summary to stdout

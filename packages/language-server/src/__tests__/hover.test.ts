@@ -5,7 +5,7 @@ import {
   defineExtension,
 } from "@formspec/core";
 import type { MarkupContent } from "vscode-languageserver/node.js";
-import { getHoverForTag } from "../providers/hover.js";
+import { getHoverAtOffset, getHoverForTag } from "../providers/hover.js";
 
 /**
  * Type guard: narrows `Hover.contents` to `MarkupContent` (has `kind` and `value`).
@@ -136,5 +136,27 @@ describe("getHoverForTag", () => {
       expect(hover.contents.value).toContain("x-test/date");
       expect(hover.contents.value).toContain("@after");
     }
+  });
+
+  it("returns hover when the cursor is inside a tag name in a doc comment", () => {
+    const source = "/** @minimum 0 */";
+    const offset = source.indexOf("@minimum") + 2;
+    const hover = getHoverAtOffset(source, offset);
+
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("@minimum");
+    }
+  });
+
+  it("returns null when the cursor is outside a doc comment", () => {
+    const source = "const value = 1;";
+    expect(getHoverAtOffset(source, source.length)).toBeNull();
+  });
+
+  it("returns null when the cursor is in a tag argument rather than the tag name", () => {
+    const source = "/** @minimum 0 */";
+    const offset = source.indexOf("0");
+    expect(getHoverAtOffset(source, offset)).toBeNull();
   });
 });
