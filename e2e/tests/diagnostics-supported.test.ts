@@ -21,10 +21,18 @@ describe("Supported diagnostics", () => {
     expect(output).toContain('Field "code"');
     expect(output).toContain("minLength");
     expect(output).toContain("maxLength");
-    expect(output).toContain("fixtures/tsdoc-class/error-contradicting-constraints.ts:2:");
-    expect(output).toContain("fixtures/tsdoc-class/error-contradicting-constraints.ts:8:");
-    expect(output).toContain("related: fixtures/tsdoc-class/error-contradicting-constraints.ts:2:");
-    expect(output).toContain("related: fixtures/tsdoc-class/error-contradicting-constraints.ts:8:");
+    expect(output).toContain(
+      "[ERROR] CONTRADICTING_CONSTRAINTS fixtures/tsdoc-class/error-contradicting-constraints.ts:3:6"
+    );
+    expect(output).toContain(
+      "[ERROR] CONTRADICTING_CONSTRAINTS fixtures/tsdoc-class/error-contradicting-constraints.ts:9:6"
+    );
+    expect(output).toContain(
+      "related: fixtures/tsdoc-class/error-contradicting-constraints.ts:4:6"
+    );
+    expect(output).toContain(
+      "related: fixtures/tsdoc-class/error-contradicting-constraints.ts:10:6"
+    );
   });
 
   it("reports semantic type-mismatch diagnostics with field names, constraint names, and locations", () => {
@@ -44,8 +52,12 @@ describe("Supported diagnostics", () => {
     expect(output).toContain('constraint "minimum"');
     expect(output).toContain('Field "total"');
     expect(output).toContain('constraint "minItems"');
-    expect(output).toContain("fixtures/tsdoc-class/error-type-mismatch.ts:2:");
-    expect(output).toContain("fixtures/tsdoc-class/error-type-mismatch.ts:7:");
+    expect(output).toContain(
+      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:3:6 Field "name"'
+    );
+    expect(output).toContain(
+      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:8:6 Field "total"'
+    );
   });
 
   it("reports semantic invalid path-target diagnostics with the unresolved segment", () => {
@@ -57,7 +69,9 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("[ERROR] UNKNOWN_PATH_TARGET");
     expect(output).toContain('Field "address.zip"');
     expect(output).toContain("zip");
-    expect(output).toContain("fixtures/tsdoc-class/error-invalid-path-target.ts:7:");
+    expect(output).toContain(
+      '[ERROR] UNKNOWN_PATH_TARGET fixtures/tsdoc-class/error-invalid-path-target.ts:8:6 Field "address.zip"'
+    );
   });
 
   it("reports semantic broadening diagnostics for less restrictive follow-up constraints", () => {
@@ -69,8 +83,12 @@ describe("Supported diagnostics", () => {
     expect(output).toContain("[ERROR] CONSTRAINT_BROADENING");
     expect(output).toContain('Field "quantity"');
     expect(output).toContain("@minimum");
-    expect(output).toContain("fixtures/tsdoc-class/error-broadening-constraint.ts:7:");
-    expect(output).toContain("related: fixtures/tsdoc-class/error-broadening-constraint.ts:1:");
+    expect(output).toContain(
+      '[ERROR] CONSTRAINT_BROADENING fixtures/tsdoc-class/error-broadening-constraint.ts:8:6 Field "quantity"'
+    );
+    expect(output).toContain(
+      "related: fixtures/tsdoc-class/error-broadening-constraint.ts:2:4"
+    );
   });
 
   it("reports contradictions against inherited alias constraints on resolved path targets", () => {
