@@ -274,11 +274,13 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
   }
 
   const valueLabels = getValueLabels(semantic.signatures);
+  const formattedValueLabels = valueLabels.map((label) => `\`${label}\``);
+  const soleSignature = semantic.signatures.length === 1 ? semantic.signatures[0] : undefined;
   const signatureLines =
     semantic.signatures.length === 0
       ? []
-      : semantic.signatures.length === 1
-        ? [`**Signature:** \`${semantic.signatures[0]!.label}\``]
+      : soleSignature !== undefined
+        ? [`**Signature:** \`${soleSignature.label}\``]
         : [
             "**Signatures:**",
             ...semantic.signatures.map((signature) => `- \`${signature.label}\``),
@@ -287,7 +289,7 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
   return [
     `**Argument for @${semantic.tagDefinition.canonicalName}**`,
     "",
-    `Expected value: ${valueLabels.join(" or ") || "`<value>`"}`,
+    `Expected value: ${formattedValueLabels.join(" or ") || "`<value>`"}`,
     "",
     ...signatureLines,
   ].join("\n");
