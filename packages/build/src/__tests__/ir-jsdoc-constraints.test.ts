@@ -122,6 +122,23 @@ describe("extractJSDocConstraintNodes", () => {
     });
   });
 
+  it("preserves @ characters inside @Pattern payloads", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /** @Pattern ^[^@]+@[^@]+$ */
+        x!: string;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "pattern",
+      pattern: "^[^@]+@[^@]+$",
+    });
+  });
+
   it("handles negative numbers", () => {
     const prop = getPropertyFromSource(`
       class Foo {
@@ -452,6 +469,25 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("preserves multi-line @description payloads", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @description Help text for this field
+         *   that continues on the next line.
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Help text for this field that continues on the next line.",
+    });
+  });
+
   it("uses @remarks as a description fallback when @description is absent", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
@@ -645,6 +681,28 @@ describe("extractJSDocAnnotationNodes", () => {
     expect(result[0]?.provenance.tagName).toBe("@displayName");
     expect(result[0]?.provenance.file).toBe("/test.ts");
     expect(result[0]?.provenance.surface).toBe("tsdoc");
+  });
+
+  it("preserves multi-line @defaultValue payloads", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @defaultValue {
+         *   "enabled": true,
+         *   "mode": "email"
+         * }
+         */
+        settings?: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        annotationKind: "defaultValue",
+        value: { enabled: true, mode: "email" },
+      })
+    );
   });
 
   it("works on class properties too", () => {

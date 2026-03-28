@@ -2,11 +2,7 @@ import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
 
-const namedPrimitiveAliasesFixture = path.join(
-  __dirname,
-  "fixtures",
-  "named-primitive-aliases.ts"
-);
+const namedPrimitiveAliasesFixture = path.join(__dirname, "fixtures", "named-primitive-aliases.ts");
 const nestedArrayPathConstraintsFixture = path.join(
   __dirname,
   "fixtures",

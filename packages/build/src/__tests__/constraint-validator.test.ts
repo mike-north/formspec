@@ -608,6 +608,60 @@ describe("validateIR", () => {
     });
   });
 
+  describe("path-target inherited contradictions", () => {
+    it("detects contradictions against inherited alias constraints on resolved path targets", () => {
+      const discountField = makeField(
+        "discount",
+        { kind: "reference", name: "Discount", typeArguments: [] },
+        [
+          {
+            ...minConstraint(120, 8),
+            path: { segments: ["percent"] },
+          },
+        ]
+      );
+
+      const ir: FormIR = {
+        ...makeIR([discountField]),
+        typeRegistry: {
+          Percent: {
+            name: "Percent",
+            type: NUMBER_TYPE,
+            constraints: [maxConstraint(100, 1)],
+            provenance: prov(1, "maximum"),
+          },
+          Discount: {
+            name: "Discount",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "percent",
+                  type: { kind: "reference", name: "Percent", typeArguments: [] },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: prov(4),
+                },
+              ],
+              additionalProperties: false,
+            },
+            provenance: prov(3),
+          },
+        },
+      };
+
+      const result = validateIR(ir);
+      expect(result.valid).toBe(false);
+      const contradiction = byCode(result.diagnostics, "CONTRADICTING_CONSTRAINTS")[0];
+      expect(contradiction?.message).toContain('Field "discount.percent"');
+      expect(contradiction?.message).toContain("minimum");
+      expect(contradiction?.message).toContain("maximum");
+      expect(contradiction?.primaryLocation).toEqual(prov(8, "minimum"));
+      expect(contradiction?.relatedLocations).toEqual([prov(1, "maximum")]);
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // 10. Numeric constraints on non-number fields → TYPE_MISMATCH
   // ---------------------------------------------------------------------------

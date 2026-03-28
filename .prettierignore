@@ -4,3 +4,8 @@ temp
 coverage
 pnpm-lock.yaml
 api-report
+.Codex
+.claude
+.pnpm-store
+.worktrees
+scratch

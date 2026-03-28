@@ -5,7 +5,7 @@ import {
   defineExtension,
 } from "@formspec/core";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
-import { getCompletionItems } from "../providers/completion.js";
+import { getCompletionItems, getCompletionItemsAtOffset } from "../providers/completion.js";
 
 describe("getCompletionItems", () => {
   it("returns one item per built-in constraint", () => {
@@ -106,5 +106,26 @@ describe("getCompletionItems", () => {
     expect(items.find((item) => item.label === "@before")).toMatchObject({
       kind: CompletionItemKind.Keyword,
     });
+  });
+
+  it("returns no completions outside a doc comment", () => {
+    const source = "const value = 1;";
+    expect(getCompletionItemsAtOffset(source, source.length)).toEqual([]);
+  });
+
+  it("filters tag completions by the in-comment @ prefix at the cursor", () => {
+    const source = "/** @mi */";
+    const offset = source.indexOf("@mi") + "@mi".length;
+    const items = getCompletionItemsAtOffset(source, offset);
+
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((item) => item.label.startsWith("@mi"))).toBe(true);
+    expect(items.find((item) => item.label === "@minimum")).toBeDefined();
+  });
+
+  it("returns no completions when the cursor is not in a tag-name context", () => {
+    const source = "/** @minimum 0 */";
+    const offset = source.indexOf("0");
+    expect(getCompletionItemsAtOffset(source, offset)).toEqual([]);
   });
 });

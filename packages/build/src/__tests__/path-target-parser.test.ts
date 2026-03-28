@@ -47,6 +47,14 @@ describe("extractPathTarget", () => {
     });
   });
 
+  it("extracts a dotted path target", () => {
+    const result = extractPathTarget(":value.currency 0");
+    expect(result).toEqual({
+      path: { segments: ["value", "currency"] },
+      remainingText: "0",
+    });
+  });
+
   it("returns null when no path target present", () => {
     expect(extractPathTarget("0")).toBeNull();
     expect(extractPathTarget("42.5")).toBeNull();

@@ -1,259 +1,49 @@
 /**
- * Hover provider for FormSpec JSDoc constraint tags.
+ * Hover provider for FormSpec JSDoc tags.
  *
- * Returns Markdown documentation for a recognized FormSpec JSDoc tag when
- * the cursor is positioned over it. This is a skeleton — precise token
- * detection within JSDoc comment ranges will be added in a future phase.
+ * Uses the shared registry from `@formspec/analysis` so hover content stays in
+ * sync with the tag inventory and overload metadata.
  */
 
 import {
-  normalizeConstraintTagName,
-  isBuiltinConstraintName,
-  type BuiltinConstraintName,
-  type ExtensionDefinition,
-} from "@formspec/core";
+  getCommentCursorTargetAtOffset,
+  getTagDefinition,
+  normalizeFormSpecTagName,
+} from "@formspec/analysis";
+import type { ExtensionDefinition } from "@formspec/core";
 import type { Hover } from "vscode-languageserver/node.js";
 
-/**
- * Markdown documentation for each built-in FormSpec constraint tag.
- *
- * Keys are the canonical constraint names from `BUILTIN_CONSTRAINT_DEFINITIONS`.
- * Values are Markdown strings suitable for LSP hover responses.
- */
-const CONSTRAINT_HOVER_DOCS: Record<BuiltinConstraintName, string> = {
-  minimum: [
-    "**@minimum** `<number>`",
-    "",
-    "Sets an inclusive lower bound on a numeric field.",
-    "",
-    "Maps to `minimum` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @minimum 0 */",
-    "amount: number;",
-    "```",
-  ].join("\n"),
-
-  maximum: [
-    "**@maximum** `<number>`",
-    "",
-    "Sets an inclusive upper bound on a numeric field.",
-    "",
-    "Maps to `maximum` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @maximum 100 */",
-    "percentage: number;",
-    "```",
-  ].join("\n"),
-
-  exclusiveMinimum: [
-    "**@exclusiveMinimum** `<number>`",
-    "",
-    "Sets an exclusive lower bound on a numeric field.",
-    "",
-    "Maps to `exclusiveMinimum` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @exclusiveMinimum 0 */",
-    "positiveAmount: number;",
-    "```",
-  ].join("\n"),
-
-  exclusiveMaximum: [
-    "**@exclusiveMaximum** `<number>`",
-    "",
-    "Sets an exclusive upper bound on a numeric field.",
-    "",
-    "Maps to `exclusiveMaximum` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @exclusiveMaximum 1 */",
-    "ratio: number;",
-    "```",
-  ].join("\n"),
-
-  multipleOf: [
-    "**@multipleOf** `<number>`",
-    "",
-    "Requires the numeric value to be a multiple of the given number.",
-    "",
-    "Maps to `multipleOf` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @multipleOf 0.01 */",
-    "price: number;",
-    "```",
-  ].join("\n"),
-
-  minLength: [
-    "**@minLength** `<number>`",
-    "",
-    "Sets a minimum character length on a string field.",
-    "",
-    "Maps to `minLength` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @minLength 1 */",
-    "name: string;",
-    "```",
-  ].join("\n"),
-
-  maxLength: [
-    "**@maxLength** `<number>`",
-    "",
-    "Sets a maximum character length on a string field.",
-    "",
-    "Maps to `maxLength` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @maxLength 255 */",
-    "description: string;",
-    "```",
-  ].join("\n"),
-
-  minItems: [
-    "**@minItems** `<number>`",
-    "",
-    "Sets a minimum number of items in an array field.",
-    "",
-    "Maps to `minItems` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @minItems 1 */",
-    "tags: string[];",
-    "```",
-  ].join("\n"),
-
-  maxItems: [
-    "**@maxItems** `<number>`",
-    "",
-    "Sets a maximum number of items in an array field.",
-    "",
-    "Maps to `maxItems` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @maxItems 10 */",
-    "tags: string[];",
-    "```",
-  ].join("\n"),
-
-  uniqueItems: [
-    "**@uniqueItems**",
-    "",
-    "Requires all items in an array field to be distinct.",
-    "",
-    "Maps to `uniqueItems` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @uniqueItems */",
-    "tags: string[];",
-    "```",
-  ].join("\n"),
-
-  pattern: [
-    "**@pattern** `<regex>`",
-    "",
-    "Sets a regular expression pattern that a string field must match.",
-    "",
-    "Maps to `pattern` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    "/** @pattern ^[a-z0-9]+$ */",
-    "slug: string;",
-    "```",
-  ].join("\n"),
-
-  enumOptions: [
-    "**@enumOptions** `<json-array>`",
-    "",
-    "Specifies the allowed values for an enum field as an inline JSON array.",
-    "",
-    "Maps to `enum` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    '/** @enumOptions ["draft","sent","archived"] */',
-    "status: string;",
-    "```",
-  ].join("\n"),
-
-  const: [
-    "**@const** `<json-literal>`",
-    "",
-    "Requires the field value to equal a single constant JSON value.",
-    "",
-    "Maps to `const` in JSON Schema.",
-    "",
-    "**Example:**",
-    "```typescript",
-    '/** @const "USD" */',
-    "currency: string;",
-    "```",
-  ].join("\n"),
-} satisfies Record<BuiltinConstraintName, string>;
-
-/**
- * Returns hover documentation for a FormSpec JSDoc tag name.
- *
- * Accepts both camelCase (`"minimum"`) and PascalCase (`"Minimum"`) forms.
- * The `@` prefix is stripped before lookup if present.
- * Returns `null` when the tag is not a recognized FormSpec constraint tag.
- *
- * @param tagName - The tag name to look up (e.g., `"minimum"`, `"@pattern"`)
- * @returns An LSP `Hover` response, or `null` if the tag is not recognized
- */
 export function getHoverForTag(
   tagName: string,
   extensions?: readonly ExtensionDefinition[]
 ): Hover | null {
-  // Strip leading `@` prefix if present
   const raw = tagName.startsWith("@") ? tagName.slice(1) : tagName;
-  const name = normalizeConstraintTagName(raw);
-
-  if (!isBuiltinConstraintName(name)) {
-    const registration = extensions
-      ?.flatMap((extension) =>
-        (extension.constraintTags ?? []).map((tag) => ({
-          extensionId: extension.extensionId,
-          tag,
-        }))
-      )
-      .find(({ tag }) => tag.tagName === name);
-
-    if (registration === undefined) {
-      return null;
-    }
-
-    return {
-      contents: {
-        kind: "markdown",
-        value: [
-          `**@${registration.tag.tagName}** \`<value>\``,
-          "",
-          `Extension-defined constraint tag from \`${registration.extensionId}\`.`,
-          "",
-          "Validated through the registered FormSpec extension surface.",
-        ].join("\n"),
-      },
-    };
+  const definition = getTagDefinition(normalizeFormSpecTagName(raw), extensions);
+  if (!definition) {
+    return null;
   }
 
   return {
     contents: {
       kind: "markdown",
-      value: CONSTRAINT_HOVER_DOCS[name],
+      value: definition.hoverMarkdown,
     },
   };
+}
+
+export function getHoverAtOffset(
+  documentText: string,
+  offset: number,
+  extensions?: readonly ExtensionDefinition[]
+): Hover | null {
+  const target = getCommentCursorTargetAtOffset(
+    documentText,
+    offset,
+    extensions ? { extensions } : undefined
+  );
+  if (target?.kind !== "tag-name") {
+    return null;
+  }
+
+  return getHoverForTag(target.tag.normalizedTagName, extensions);
 }

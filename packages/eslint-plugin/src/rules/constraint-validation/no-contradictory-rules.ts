@@ -11,8 +11,7 @@ export const noContradictoryRules = createRule<[], "contradictoryRuleEffects">({
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Reports contradictory FormSpec conditional rules on the same behavioral axis",
+      description: "Reports contradictory FormSpec conditional rules on the same behavioral axis",
     },
     schema: [],
     messages: {

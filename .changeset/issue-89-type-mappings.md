@@ -1,7 +1,6 @@
 ---
 "@formspec/build": minor
 "@formspec/cli": minor
-
 ---
 
 Align generated object and type-mapping schemas with the current spec. Ordinary

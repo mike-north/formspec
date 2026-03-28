@@ -406,12 +406,14 @@ export function stripProvenance(ir: FormIR): ProvenanceFreeFormIR {
     typeRegistry[key] = {
       name: def.name,
       type: stripProvenanceFromTypeNode(def.type),
-      ...(def.constraints && def.constraints.length > 0 && {
-        constraints: def.constraints.map(stripProvenanceFromConstraint),
-      }),
-      ...(def.annotations && def.annotations.length > 0 && {
-        annotations: def.annotations.map(stripProvenanceFromAnnotation),
-      }),
+      ...(def.constraints &&
+        def.constraints.length > 0 && {
+          constraints: def.constraints.map(stripProvenanceFromConstraint),
+        }),
+      ...(def.annotations &&
+        def.annotations.length > 0 && {
+          annotations: def.annotations.map(stripProvenanceFromAnnotation),
+        }),
     };
   }
 
@@ -463,12 +465,16 @@ function normalizePrimitiveAliasElement(
     case "group":
       return {
         ...element,
-        elements: element.elements.map((child) => normalizePrimitiveAliasElement(child, primitiveDefs)),
+        elements: element.elements.map((child) =>
+          normalizePrimitiveAliasElement(child, primitiveDefs)
+        ),
       };
     case "conditional":
       return {
         ...element,
-        elements: element.elements.map((child) => normalizePrimitiveAliasElement(child, primitiveDefs)),
+        elements: element.elements.map((child) =>
+          normalizePrimitiveAliasElement(child, primitiveDefs)
+        ),
       };
   }
 }
