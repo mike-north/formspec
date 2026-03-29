@@ -16,6 +16,8 @@ import {
  * Options for generating JSON Schema from a Chain DSL form.
  *
  * These options are forwarded to the IR-based JSON Schema generator.
+ *
+ * @public
  */
 export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
@@ -46,6 +48,8 @@ export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
  *
  * @param form - The FormSpec to convert
  * @returns A JSON Schema 2020-12 object
+ *
+ * @public
  */
 export function generateJsonSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,

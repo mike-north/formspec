@@ -11,6 +11,8 @@ const CONFIG_FILE_NAMES = [".formspec.yml", ".formspec.yaml", "formspec.yml"];
 
 /**
  * Options for loading configuration.
+ *
+ * @public
  */
 export interface LoadConfigOptions {
   /**
@@ -34,6 +36,8 @@ export interface LoadConfigOptions {
 
 /**
  * Result of loading configuration.
+ *
+ * @public
  */
 export interface LoadConfigResult {
   /** The loaded and merged configuration */
@@ -112,6 +116,8 @@ async function parseConfigFile(filePath: string): Promise<FormSpecConfig> {
  * // Load from specific file
  * const result = await loadConfig({ configPath: '/path/to/config.yml' });
  * ```
+ *
+ * @public
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadConfigResult> {
   const { cwd = process.cwd(), configPath, searchParents = true } = options;
@@ -153,6 +159,8 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadC
  *
  * @param yamlContent - The YAML content to parse
  * @returns The parsed and merged configuration
+ *
+ * @public
  */
 export function loadConfigFromString(yamlContent: string): ResolvedConstraintConfig {
   const parsed = parseYaml(yamlContent) as FormSpecConfig | null | undefined;
@@ -187,6 +195,8 @@ export function loadConfigFromString(yamlContent: string): ResolvedConstraintCon
  *   },
  * });
  * ```
+ *
+ * @public
  */
 export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig {
   return mergeWithDefaults(config);

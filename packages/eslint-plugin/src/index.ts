@@ -34,6 +34,8 @@ import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js"
 
 /**
  * All rules provided by this plugin.
+ *
+ * @public
  */
 export const rules = {
   // Spec built-in rules
@@ -61,6 +63,8 @@ export const rules = {
 
 /**
  * Plugin metadata.
+ *
+ * @public
  */
 export const meta = {
   name: "@formspec/eslint-plugin",
@@ -142,6 +146,8 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
 
 /**
  * Preset configurations for FormSpec projects.
+ *
+ * @public
  */
 export const configs = {
   recommended: recommendedConfig,

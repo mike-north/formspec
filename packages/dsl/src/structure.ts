@@ -12,6 +12,8 @@ import { validateForm, logValidationIssues } from "./validation.js";
 
 /**
  * Options for creating a form specification.
+ *
+ * @public
  */
 export interface FormSpecOptions {
   /**
@@ -47,6 +49,8 @@ export interface FormSpecOptions {
  * @param label - The group's display label
  * @param elements - The form elements contained in this group
  * @returns A Group descriptor
+ *
+ * @public
  */
 export function group<const Elements extends readonly FormElement[]>(
   label: string,
@@ -74,6 +78,8 @@ export function group<const Elements extends readonly FormElement[]>(
  * @param predicate - The condition to evaluate (use `is()` to create)
  * @param elements - The form elements to show when condition is met
  * @returns A Conditional descriptor
+ *
+ * @public
  */
 export function when<
   const K extends string,
@@ -118,6 +124,8 @@ export function when<
  *
  * @param elements - The top-level form elements
  * @returns A FormSpec descriptor
+ *
+ * @public
  */
 export function formspec<const Elements extends readonly FormElement[]>(
   ...elements: Elements
@@ -143,6 +151,8 @@ export function formspec<const Elements extends readonly FormElement[]>(
  * @param options - Validation options
  * @param elements - The top-level form elements
  * @returns A FormSpec descriptor
+ *
+ * @public
  */
 export function formspecWithValidation<const Elements extends readonly FormElement[]>(
   options: FormSpecOptions,

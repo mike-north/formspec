@@ -3,22 +3,24 @@ import net from "node:net";
 import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-  buildFormSpecAnalysisFileSnapshot,
   computeFormSpecTextHash,
+  isFormSpecSemanticQuery,
+  type FormSpecAnalysisManifest,
+  type FormSpecSemanticQuery,
+  type FormSpecSemanticResponse,
+} from "@formspec/analysis/protocol";
+import {
+  buildFormSpecAnalysisFileSnapshot,
   findDeclarationForCommentOffset,
-  getSubjectType,
   getCommentHoverInfoAtOffset,
   getSemanticCommentCompletionContextAtOffset,
-  isFormSpecSemanticQuery,
+  getSubjectType,
   resolveDeclarationPlacement,
   serializeCompletionContext,
   serializeHoverInfo,
   type BuildFormSpecAnalysisFileSnapshotOptions,
   type FormSpecAnalysisFileSnapshot,
-  type FormSpecAnalysisManifest,
-  type FormSpecSemanticQuery,
-  type FormSpecSemanticResponse,
-} from "@formspec/analysis";
+} from "@formspec/analysis/internal";
 import {
   createFormSpecAnalysisManifest,
   getFormSpecWorkspaceRuntimePaths,
@@ -42,6 +44,21 @@ interface CachedFileSnapshot {
   readonly sourceHash: string;
   readonly snapshot: FormSpecAnalysisFileSnapshot;
 }
+
+interface SourceEnvironment {
+  readonly sourceFile: ts.SourceFile;
+  readonly checker: ts.TypeChecker;
+  readonly sourceHash: string;
+}
+
+interface CommentQueryContext extends SourceEnvironment {
+  readonly declaration: ts.Node | null;
+  readonly placement: ReturnType<typeof resolveDeclarationPlacement>;
+  readonly subjectType: ts.Type | undefined;
+}
+
+const MAX_SOCKET_PAYLOAD_BYTES = 256 * 1024;
+const SOCKET_IDLE_TIMEOUT_MS = 30_000;
 
 export class FormSpecPluginService {
   private readonly manifest: FormSpecAnalysisManifest;
@@ -76,8 +93,24 @@ export class FormSpecPluginService {
     this.server = net.createServer((socket) => {
       let buffer = "";
       socket.setEncoding("utf8");
+      socket.setTimeout(SOCKET_IDLE_TIMEOUT_MS, () => {
+        this.options.logger?.info(
+          `[FormSpec] Closing idle semantic query socket for ${this.runtimePaths.workspaceRoot}`
+        );
+        socket.destroy();
+      });
       socket.on("data", (chunk) => {
         buffer += String(chunk);
+        if (buffer.length > MAX_SOCKET_PAYLOAD_BYTES) {
+          socket.end(
+            `${JSON.stringify({
+              protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+              kind: "error",
+              error: `FormSpec semantic query exceeded ${String(MAX_SOCKET_PAYLOAD_BYTES)} bytes`,
+            } satisfies FormSpecSemanticResponse)}\n`
+          );
+          return;
+        }
         const newlineIndex = buffer.indexOf("\n");
         if (newlineIndex < 0) {
           return;
@@ -162,64 +195,32 @@ export class FormSpecPluginService {
           kind: "health",
           manifest: this.manifest,
         };
-      case "completion": {
-        const environment = this.getSourceEnvironment(query.filePath);
-        if (environment === null) {
-          return {
-            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-            kind: "error",
-            error: `Unable to resolve TypeScript source file for ${query.filePath}`,
-          };
-        }
-
-        const declaration = findDeclarationForCommentOffset(environment.sourceFile, query.offset);
-        const placement = declaration === null ? null : resolveDeclarationPlacement(declaration);
-        const subjectType =
-          declaration === null ? undefined : getSubjectType(declaration, environment.checker);
-        const context = getSemanticCommentCompletionContextAtOffset(
-          environment.sourceFile.text,
-          query.offset,
-          {
-            checker: environment.checker,
-            ...(placement === null ? {} : { placement }),
-            ...(subjectType === undefined ? {} : { subjectType }),
-          }
-        );
-
-        return {
+      case "completion":
+        return this.withCommentQueryContext(query.filePath, query.offset, (context) => ({
           protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "completion",
-          sourceHash: computeFormSpecTextHash(environment.sourceFile.text),
-          context: serializeCompletionContext(context),
-        };
-      }
-      case "hover": {
-        const environment = this.getSourceEnvironment(query.filePath);
-        if (environment === null) {
-          return {
-            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-            kind: "error",
-            error: `Unable to resolve TypeScript source file for ${query.filePath}`,
-          };
-        }
-
-        const declaration = findDeclarationForCommentOffset(environment.sourceFile, query.offset);
-        const placement = declaration === null ? null : resolveDeclarationPlacement(declaration);
-        const subjectType =
-          declaration === null ? undefined : getSubjectType(declaration, environment.checker);
-        const hover = getCommentHoverInfoAtOffset(environment.sourceFile.text, query.offset, {
-          checker: environment.checker,
-          ...(placement === null ? {} : { placement }),
-          ...(subjectType === undefined ? {} : { subjectType }),
-        });
-
-        return {
+          sourceHash: context.sourceHash,
+          context: serializeCompletionContext(
+            getSemanticCommentCompletionContextAtOffset(context.sourceFile.text, query.offset, {
+              checker: context.checker,
+              ...(context.placement === null ? {} : { placement: context.placement }),
+              ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
+            })
+          ),
+        }));
+      case "hover":
+        return this.withCommentQueryContext(query.filePath, query.offset, (context) => ({
           protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "hover",
-          sourceHash: computeFormSpecTextHash(environment.sourceFile.text),
-          hover: serializeHoverInfo(hover),
-        };
-      }
+          sourceHash: context.sourceHash,
+          hover: serializeHoverInfo(
+            getCommentHoverInfoAtOffset(context.sourceFile.text, query.offset, {
+              checker: context.checker,
+              ...(context.placement === null ? {} : { placement: context.placement }),
+              ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
+            })
+          ),
+        }));
       case "diagnostics": {
         const snapshot = this.getFileSnapshot(query.filePath);
         return {
@@ -276,6 +277,7 @@ export class FormSpecPluginService {
   private getSourceEnvironment(filePath: string): {
     readonly sourceFile: ts.SourceFile;
     readonly checker: ts.TypeChecker;
+    readonly sourceHash: string;
   } | null {
     const program = this.options.getProgram();
     if (program === undefined) {
@@ -290,7 +292,35 @@ export class FormSpecPluginService {
     return {
       sourceFile,
       checker: program.getTypeChecker(),
+      sourceHash: computeFormSpecTextHash(sourceFile.text),
     };
+  }
+
+  private withCommentQueryContext(
+    filePath: string,
+    offset: number,
+    handler: (context: CommentQueryContext) => FormSpecSemanticResponse
+  ): FormSpecSemanticResponse {
+    const environment = this.getSourceEnvironment(filePath);
+    if (environment === null) {
+      return {
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "error",
+        error: `Unable to resolve TypeScript source file for ${filePath}`,
+      };
+    }
+
+    const declaration = findDeclarationForCommentOffset(environment.sourceFile, offset);
+    const placement = declaration === null ? null : resolveDeclarationPlacement(declaration);
+    const subjectType =
+      declaration === null ? undefined : getSubjectType(declaration, environment.checker);
+
+    return handler({
+      ...environment,
+      declaration,
+      placement,
+      subjectType,
+    });
   }
 
   private getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot {
@@ -312,9 +342,8 @@ export class FormSpecPluginService {
       };
     }
 
-    const sourceHash = computeFormSpecTextHash(environment.sourceFile.text);
     const cached = this.snapshotCache.get(filePath);
-    if (cached?.sourceHash === sourceHash) {
+    if (cached?.sourceHash === environment.sourceHash) {
       return cached.snapshot;
     }
 
@@ -322,7 +351,7 @@ export class FormSpecPluginService {
       checker: environment.checker,
     } satisfies BuildFormSpecAnalysisFileSnapshotOptions);
     this.snapshotCache.set(filePath, {
-      sourceHash,
+      sourceHash: environment.sourceHash,
       snapshot,
     });
     return snapshot;

@@ -15,7 +15,13 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@formspec/core": ["../core/dist/core.d.ts"],
+      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"],
+      "@formspec/build/browser": ["../build/dist/browser.d.ts"],
+      "@formspec/constraints/browser": ["../constraints/dist/browser.d.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

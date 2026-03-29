@@ -5,7 +5,7 @@ import {
   getTypeSemanticCapabilities,
   resolveDeclarationPlacement,
   resolvePathTargetType,
-} from "../index.js";
+} from "../internal.js";
 import { createProgram } from "./helpers.js";
 
 function expectDefined<T>(value: T | undefined, message: string): T {

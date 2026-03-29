@@ -7,7 +7,7 @@
  */
 
 import * as ts from "typescript";
-import type { ConstraintSemanticDiagnostic } from "@formspec/analysis";
+import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
 import type {
   FieldNode,
   TypeNode,

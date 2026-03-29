@@ -24,6 +24,8 @@ import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
 /**
  * Generated schemas for a class.
+ *
+ * @public
  */
 export interface ClassSchemas {
   /** JSON Schema 2020-12 for validation */
@@ -90,6 +92,8 @@ function formatLocation(location: ValidationDiagnostic["primaryLocation"]): stri
 
 /**
  * Options for generating schemas from a decorated class.
+ *
+ * @public
  */
 export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
   /** Path to the TypeScript source file */
@@ -100,6 +104,8 @@ export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROption
 
 /**
  * Result of generating schemas from a decorated class.
+ *
+ * @public
  */
 export interface GenerateFromClassResult {
   /** JSON Schema 2020-12 for validation */
@@ -126,6 +132,8 @@ export interface GenerateFromClassResult {
  *
  * @param options - File path, class name, and optional compiler options
  * @returns Generated JSON Schema and UI Schema
+ *
+ * @public
  */
 export function generateSchemasFromClass(
   options: GenerateFromClassOptions
@@ -155,6 +163,8 @@ export function generateSchemasFromClass(
 
 /**
  * Options for generating schemas from a named type (class, interface, or type alias).
+ *
+ * @public
  */
 export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
   /** Path to the TypeScript source file */
@@ -181,6 +191,8 @@ export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions 
  *
  * @param options - File path and type name
  * @returns Generated JSON Schema and UI Schema
+ *
+ * @public
  */
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
   const analysis = analyzeNamedTypeToIR(

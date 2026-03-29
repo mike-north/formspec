@@ -10,6 +10,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that validates member-target references against string-literal unions.
+ *
+ * @public
+ */
 export const validMemberTarget = createRule<[], "unknownMemberTarget">({
   name: "target-resolution/valid-member-target",
   meta: {

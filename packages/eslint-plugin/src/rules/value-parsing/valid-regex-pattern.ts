@@ -6,6 +6,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that validates `@pattern` tag values as regular expressions.
+ *
+ * @public
+ */
 export const validRegexPattern = createRule<[], "invalidRegexPattern">({
   name: "value-parsing/valid-regex-pattern",
   meta: {

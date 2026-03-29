@@ -21,6 +21,8 @@ import type { JsonValue, TypeNode } from "../types/ir.js";
  *
  * Custom types are referenced via {@link CustomTypeNode} in the IR and
  * resolved to JSON Schema via `toJsonSchema` during generation.
+ *
+ * @public
  */
 export interface CustomTypeRegistration {
   /** The type name, unique within the extension. */
@@ -49,6 +51,8 @@ export interface CustomTypeRegistration {
  * Registration for a custom constraint that maps to JSON Schema keywords.
  *
  * Custom constraints are referenced via {@link CustomConstraintNode} in the IR.
+ *
+ * @public
  */
 export interface CustomConstraintRegistration {
   /** The constraint name, unique within the extension. */
@@ -95,6 +99,8 @@ export interface CustomConstraintRegistration {
  *
  * Custom annotations are referenced via {@link CustomAnnotationNode} in the IR.
  * They describe or present a field but do not affect which values are valid.
+ *
+ * @public
  */
 export interface CustomAnnotationRegistration {
   /** The annotation name, unique within the extension. */
@@ -108,6 +114,8 @@ export interface CustomAnnotationRegistration {
 
 /**
  * Registration for a vocabulary keyword to include in a JSON Schema `$vocabulary` declaration.
+ *
+ * @public
  */
 export interface VocabularyKeywordRegistration {
   /** The keyword name (without vendor prefix). */
@@ -118,6 +126,8 @@ export interface VocabularyKeywordRegistration {
 
 /**
  * Declarative authoring-side registration for a custom TSDoc constraint tag.
+ *
+ * @public
  */
 export interface ConstraintTagRegistration {
   /** Tag name without the `@` prefix, e.g. `"maxSigFig"`. */
@@ -137,6 +147,8 @@ export interface ConstraintTagRegistration {
 /**
  * Registration for mapping a built-in TSDoc tag onto a custom constraint when
  * it is used on a particular custom type.
+ *
+ * @public
  */
 export interface BuiltinConstraintBroadeningRegistration {
   /** The built-in tag being broadened, without the `@` prefix. */
@@ -150,6 +162,8 @@ export interface BuiltinConstraintBroadeningRegistration {
 /**
  * Semantic metadata for ordered custom constraints that should participate in
  * the generic contradiction/broadening logic.
+ *
+ * @public
  */
 export interface ConstraintSemanticRole {
   /**
@@ -186,6 +200,8 @@ export interface ConstraintSemanticRole {
  *   ],
  * });
  * ```
+ *
+ * @public
  */
 export interface ExtensionDefinition {
   /** Globally unique extension identifier, e.g., "x-stripe/monetary". */
@@ -212,6 +228,8 @@ export interface ExtensionDefinition {
  *
  * @param def - The extension definition.
  * @returns The same definition, validated at the type level.
+ *
+ * @public
  */
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
   return def;
@@ -223,6 +241,8 @@ export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
  *
  * @param reg - The custom type registration.
  * @returns The same registration, validated at the type level.
+ *
+ * @public
  */
 export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration {
   return reg;
@@ -234,6 +254,8 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
  *
  * @param reg - The custom constraint registration.
  * @returns The same registration, validated at the type level.
+ *
+ * @public
  */
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration {
   return reg;
@@ -244,6 +266,8 @@ export function defineConstraint(reg: CustomConstraintRegistration): CustomConst
  *
  * @param reg - The custom tag registration.
  * @returns The same registration, validated at the type level.
+ *
+ * @public
  */
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration {
   return reg;
@@ -255,6 +279,8 @@ export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintT
  *
  * @param reg - The custom annotation registration.
  * @returns The same registration, validated at the type level.
+ *
+ * @public
  */
 export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration {
   return reg;

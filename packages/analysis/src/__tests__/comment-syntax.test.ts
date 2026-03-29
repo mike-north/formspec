@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCommentBlock, sliceCommentSpan } from "../index.js";
+import { parseCommentBlock, sliceCommentSpan } from "../internal.js";
 
 function expectTag<T>(value: T | undefined | null): T {
   expect(value).toBeDefined();

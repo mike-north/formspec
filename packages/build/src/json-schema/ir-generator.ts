@@ -38,6 +38,8 @@ import type { ExtensionRegistry } from "../extensions/index.js";
  *
  * This interface covers the subset of JSON Schema 2020-12 that this generator
  * emits, plus an index signature for custom `x-formspec-*` extension keywords.
+ *
+ * @public
  */
 export interface JsonSchema2020 {
   $schema?: string;
@@ -97,6 +99,8 @@ interface GeneratorContext {
 
 /**
  * Options for generating JSON Schema from a canonical FormIR.
+ *
+ * @public
  */
 export interface GenerateJsonSchemaFromIROptions {
   /**
@@ -171,6 +175,8 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
  *
  * @param ir - The canonical FormIR produced by a canonicalizer
  * @returns A plain JSON-serializable JSON Schema 2020-12 object
+ *
+ * @public
  */
 export function generateJsonSchemaFromIR(
   ir: FormIR,

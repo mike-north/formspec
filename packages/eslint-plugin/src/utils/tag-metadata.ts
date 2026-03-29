@@ -1,10 +1,10 @@
-import { getTagDefinition, normalizeFormSpecTagName, type TagDefinition } from "@formspec/analysis";
+import {
+  getTagDefinition,
+  normalizeFormSpecTagName,
+  type TagDefinition,
+} from "@formspec/analysis/internal";
 
-export type {
-  FormSpecTargetKind,
-  FormSpecValueKind,
-  TagDefinition as FormSpecTagMetadata,
-} from "@formspec/analysis";
+export type { FormSpecTargetKind, FormSpecValueKind } from "@formspec/analysis/internal";
 
 export { normalizeFormSpecTagName };
 

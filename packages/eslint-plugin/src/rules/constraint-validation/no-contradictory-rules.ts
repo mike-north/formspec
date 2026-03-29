@@ -6,6 +6,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that reports contradictory FormSpec rule effects on the same field.
+ *
+ * @public
+ */
 export const noContradictoryRules = createRule<[], "contradictoryRuleEffects">({
   name: "constraint-validation/no-contradictory-rules",
   meta: {

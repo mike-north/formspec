@@ -7,7 +7,7 @@ import {
   getCommentCursorTargetAtOffset,
   getSemanticCommentCompletionContextAtOffset,
   getTagCompletionPrefixAtOffset,
-} from "../index.js";
+} from "../internal.js";
 import * as ts from "typescript";
 import { createProgram } from "./helpers.js";
 

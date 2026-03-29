@@ -51,7 +51,7 @@ import {
   type ConstraintSemanticDiagnostic,
   type FormSpecValueKind,
   type SemanticCapability,
-} from "@formspec/analysis";
+} from "@formspec/analysis/internal";
 import {
   TSDocParser,
   TSDocConfiguration,

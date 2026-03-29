@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that validates JSON-valued FormSpec tags.
+ *
+ * @public
+ */
 export const validJsonValue = createRule<[], "invalidJsonValue">({
   name: "value-parsing/valid-json-value",
   meta: {

@@ -8,14 +8,23 @@ import type {
   CommentTagSemanticContext,
   SemanticCommentCompletionContext,
 } from "./cursor-context.js";
-import type { FormSpecPlacement, FormSpecTargetKind } from "./tag-registry.js";
+import {
+  FORM_SPEC_PLACEMENTS,
+  FORM_SPEC_TARGET_KINDS,
+  type FormSpecPlacement,
+  type FormSpecTargetKind,
+} from "./tag-registry.js";
 
+/** @public */
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 1;
+/** @public */
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
 /**
  * Cross-process endpoint used by the language server to reach the semantic
  * tsserver plugin on the current workspace host.
+ *
+ * @public
  */
 export interface FormSpecIpcEndpoint {
   readonly kind: "unix-socket" | "windows-pipe";
@@ -25,6 +34,8 @@ export interface FormSpecIpcEndpoint {
 /**
  * Discovery record written by the tsserver plugin so other FormSpec tooling
  * can locate and validate the matching semantic service for a workspace.
+ *
+ * @public
  */
 export interface FormSpecAnalysisManifest {
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
@@ -40,6 +51,8 @@ export interface FormSpecAnalysisManifest {
 
 /**
  * Serializable subset of tag metadata needed by hover and completion UIs.
+ *
+ * @public
  */
 export interface FormSpecSerializedTagDefinition {
   readonly canonicalName: string;
@@ -49,6 +62,8 @@ export interface FormSpecSerializedTagDefinition {
 
 /**
  * Serializable overload/signature summary for one comment tag form.
+ *
+ * @public
  */
 export interface FormSpecSerializedTagSignature {
   readonly label: string;
@@ -57,6 +72,8 @@ export interface FormSpecSerializedTagSignature {
 
 /**
  * Serialized representation of a parsed target specifier with exact spans.
+ *
+ * @public
  */
 export interface FormSpecSerializedCommentTargetSpecifier {
   readonly rawText: string;
@@ -69,6 +86,8 @@ export interface FormSpecSerializedCommentTargetSpecifier {
 
 /**
  * Semantic facts about one parsed tag, reduced to JSON-safe data for IPC.
+ *
+ * @public
  */
 export interface FormSpecSerializedTagSemanticContext {
   readonly tagName: string;
@@ -87,6 +106,8 @@ export interface FormSpecSerializedTagSemanticContext {
 /**
  * Cursor-scoped completion context serialized for transport between the
  * semantic tsserver plugin and the lightweight LSP.
+ *
+ * @public
  */
 export type FormSpecSerializedCompletionContext =
   | {
@@ -109,6 +130,8 @@ export type FormSpecSerializedCompletionContext =
 
 /**
  * Hover payload for a single comment token under the cursor.
+ *
+ * @public
  */
 export interface FormSpecSerializedHoverInfo {
   readonly kind: CommentHoverInfo["kind"];
@@ -117,6 +140,8 @@ export interface FormSpecSerializedHoverInfo {
 
 /**
  * File-local diagnostic derived from comment parsing or semantic analysis.
+ *
+ * @public
  */
 export interface FormSpecAnalysisDiagnostic {
   readonly code: string;
@@ -127,6 +152,8 @@ export interface FormSpecAnalysisDiagnostic {
 
 /**
  * Serializable view of a single parsed FormSpec tag within a doc comment.
+ *
+ * @public
  */
 export interface FormSpecAnalysisTagSnapshot {
   readonly rawTagName: string;
@@ -143,6 +170,8 @@ export interface FormSpecAnalysisTagSnapshot {
 
 /**
  * Serializable view of one declaration-attached doc comment in a source file.
+ *
+ * @public
  */
 export interface FormSpecAnalysisCommentSnapshot {
   readonly commentSpan: CommentSpan;
@@ -155,6 +184,8 @@ export interface FormSpecAnalysisCommentSnapshot {
 
 /**
  * Serializable analysis artifact for a single source file.
+ *
+ * @public
  */
 export interface FormSpecAnalysisFileSnapshot {
   readonly filePath: string;
@@ -166,6 +197,8 @@ export interface FormSpecAnalysisFileSnapshot {
 
 /**
  * Query variants supported by the semantic tsserver plugin.
+ *
+ * @public
  */
 export type FormSpecSemanticQuery =
   | {
@@ -197,6 +230,8 @@ export type FormSpecSemanticQuery =
 
 /**
  * Response variants returned by the semantic tsserver plugin.
+ *
+ * @public
  */
 export type FormSpecSemanticResponse =
   | {
@@ -250,12 +285,24 @@ function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 
+const FORM_SPEC_PLACEMENT_VALUES = new Set<FormSpecPlacement>(FORM_SPEC_PLACEMENTS);
+
+const FORM_SPEC_TARGET_KIND_VALUES = new Set<FormSpecTargetKind>(FORM_SPEC_TARGET_KINDS);
+
+function isPlacementValue(value: unknown): value is FormSpecPlacement {
+  return typeof value === "string" && FORM_SPEC_PLACEMENT_VALUES.has(value as FormSpecPlacement);
+}
+
+function isTargetKindValue(value: unknown): value is FormSpecTargetKind {
+  return typeof value === "string" && FORM_SPEC_TARGET_KIND_VALUES.has(value as FormSpecTargetKind);
+}
+
 function isPlacementArray(value: unknown): value is readonly FormSpecPlacement[] {
-  return isStringArray(value);
+  return Array.isArray(value) && value.every(isPlacementValue);
 }
 
 function isTargetKindArray(value: unknown): value is readonly FormSpecTargetKind[] {
-  return isStringArray(value);
+  return Array.isArray(value) && value.every(isTargetKindValue);
 }
 
 function isIpcEndpoint(value: unknown): value is FormSpecIpcEndpoint {
@@ -321,7 +368,7 @@ function isSerializedTagSemanticContext(
   return (
     typeof candidate.tagName === "string" &&
     (candidate.tagDefinition === null || isSerializedTagDefinition(candidate.tagDefinition)) &&
-    (candidate.placement === null || typeof candidate.placement === "string") &&
+    (candidate.placement === null || isPlacementValue(candidate.placement)) &&
     isTargetKindArray(candidate.supportedTargets) &&
     isStringArray(candidate.targetCompletions) &&
     isStringArray(candidate.compatiblePathTargets) &&
@@ -430,7 +477,7 @@ function isAnalysisCommentSnapshot(value: unknown): value is FormSpecAnalysisCom
   return (
     isCommentSpan(candidate.commentSpan) &&
     isCommentSpan(candidate.declarationSpan) &&
-    (candidate.placement === null || typeof candidate.placement === "string") &&
+    (candidate.placement === null || isPlacementValue(candidate.placement)) &&
     (candidate.subjectType === null || typeof candidate.subjectType === "string") &&
     (candidate.hostType === null || typeof candidate.hostType === "string") &&
     Array.isArray(candidate.tags) &&
@@ -457,6 +504,8 @@ function isAnalysisFileSnapshot(value: unknown): value is FormSpecAnalysisFileSn
 
 /**
  * Validates an unknown manifest payload from disk before consumers trust it.
+ *
+ * @public
  */
 export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest {
   if (!isObjectRecord(value)) {
@@ -479,6 +528,8 @@ export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAna
 
 /**
  * Validates an unknown inbound IPC request before dispatching it.
+ *
+ * @public
  */
 export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemanticQuery {
   if (!hasCurrentProtocolVersion(value)) {
@@ -506,6 +557,8 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 
 /**
  * Validates an unknown IPC response before the language server consumes it.
+ *
+ * @public
  */
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse {
   if (!hasCurrentProtocolVersion(value)) {
@@ -547,6 +600,8 @@ export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSem
 /**
  * Computes a stable, non-cryptographic hash for document staleness checks
  * across the plugin/LSP boundary.
+ *
+ * @public
  */
 export function computeFormSpecTextHash(text: string): string {
   let hash = 0x811c9dc5;
@@ -560,6 +615,8 @@ export function computeFormSpecTextHash(text: string): string {
 
 /**
  * Converts a parsed target specifier into its transport-safe JSON form.
+ *
+ * @public
  */
 export function serializeCommentTargetSpecifier(
   target: ParsedCommentTargetSpecifier | null
@@ -580,6 +637,8 @@ export function serializeCommentTargetSpecifier(
 
 /**
  * Serializes tag-level semantic context for cross-process consumption.
+ *
+ * @public
  */
 export function serializeCommentTagSemanticContext(
   semantic: CommentTagSemanticContext
@@ -611,6 +670,8 @@ export function serializeCommentTagSemanticContext(
 
 /**
  * Serializes a cursor-scoped completion context for IPC.
+ *
+ * @public
  */
 export function serializeCompletionContext(
   context: SemanticCommentCompletionContext
@@ -648,6 +709,8 @@ export function serializeCompletionContext(
 
 /**
  * Serializes hover information for cross-process transport.
+ *
+ * @public
  */
 export function serializeHoverInfo(
   hover: CommentHoverInfo | null
@@ -662,6 +725,8 @@ export function serializeHoverInfo(
 
 /**
  * Serializes a parsed tag plus its semantic context into a file snapshot entry.
+ *
+ * @public
  */
 export function serializeParsedCommentTag(
   tag: ParsedCommentTag,

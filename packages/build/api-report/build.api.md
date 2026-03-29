@@ -54,7 +54,7 @@ export interface Categorization {
     type: "Categorization";
 }
 
-// @public (undocumented)
+// @public
 export const categorizationSchema: z.ZodType<Categorization>;
 
 // @public
@@ -73,7 +73,7 @@ export interface Category {
     type: "Category";
 }
 
-// @public (undocumented)
+// @public
 export const categorySchema: z.ZodType<Category>;
 
 // @public
@@ -103,17 +103,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -133,17 +133,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -163,17 +163,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
@@ -268,7 +268,7 @@ export interface GroupLayout {
     type: "Group";
 }
 
-// @public (undocumented)
+// @public
 export const groupLayoutSchema: z.ZodType<GroupLayout>;
 
 // @public
@@ -285,7 +285,7 @@ export interface HorizontalLayout {
     type: "HorizontalLayout";
 }
 
-// @public (undocumented)
+// @public
 export const horizontalLayoutSchema: z.ZodType<HorizontalLayout>;
 
 // @public
@@ -421,7 +421,7 @@ export interface JSONSchema7 {
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
-// @public (undocumented)
+// @public
 export const jsonSchema7Schema: z.ZodType<JSONSchema7>;
 
 // @public
@@ -450,17 +450,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -479,17 +479,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -508,17 +508,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
@@ -560,7 +560,7 @@ export interface RuleConditionSchema {
     type?: string;
 }
 
-// @public (undocumented)
+// @public
 export const ruleConditionSchema: z.ZodType<RuleConditionSchema>;
 
 // @public
@@ -583,17 +583,17 @@ export const ruleSchema: z.ZodObject<{
         scope: string;
     }>;
 }, "strict", z.ZodTypeAny, {
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     condition: {
         schema: RuleConditionSchema;
         scope: string;
     };
+    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 }, {
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     condition: {
         schema: RuleConditionSchema;
         scope: string;
     };
+    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 }>;
 
 // @public
@@ -630,7 +630,7 @@ export interface UISchemaElementBase {
     type: UISchemaElementType;
 }
 
-// @public (undocumented)
+// @public
 export const uiSchemaElementSchema: z.ZodType<UISchemaElement>;
 
 // @public
@@ -656,7 +656,7 @@ export interface VerticalLayout {
     type: "VerticalLayout";
 }
 
-// @public (undocumented)
+// @public
 export const verticalLayoutSchema: z.ZodType<VerticalLayout>;
 
 // @public

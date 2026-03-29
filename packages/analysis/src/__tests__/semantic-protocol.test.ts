@@ -11,8 +11,9 @@ import {
   serializeCompletionContext,
   serializeHoverInfo,
   type FormSpecAnalysisManifest,
+  type FormSpecSerializedCompletionContext,
   type FormSpecSemanticResponse,
-} from "../index.js";
+} from "../internal.js";
 
 describe("semantic protocol", () => {
   it("computes a deterministic text hash", () => {
@@ -104,6 +105,11 @@ describe("semantic protocol", () => {
     };
 
     expect(isFormSpecSemanticResponse(response)).toBe(true);
+    const targetContext = response.context as Extract<
+      FormSpecSerializedCompletionContext,
+      { readonly kind: "target" }
+    >;
+
     expect(
       isFormSpecSemanticResponse({
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
@@ -111,6 +117,32 @@ describe("semantic protocol", () => {
         sourceHash: response.sourceHash,
         context: {
           kind: "target",
+        },
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        ...response,
+        context: {
+          kind: "target",
+          semantic: {
+            ...targetContext.semantic,
+            placement: "banana",
+          },
+        },
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        ...response,
+        context: {
+          kind: "target",
+          semantic: {
+            ...targetContext.semantic,
+            supportedTargets: ["none", "banana"],
+          },
         },
       })
     ).toBe(false);

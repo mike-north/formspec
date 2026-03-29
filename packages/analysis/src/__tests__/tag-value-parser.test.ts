@@ -1,6 +1,6 @@
 import type { ConstraintTagParseRegistryLike } from "../tag-value-parser.js";
 import { describe, expect, it } from "vitest";
-import { parseConstraintTagValue } from "../index.js";
+import { parseConstraintTagValue } from "../internal.js";
 
 const PROVENANCE = {
   surface: "tsdoc" as const,

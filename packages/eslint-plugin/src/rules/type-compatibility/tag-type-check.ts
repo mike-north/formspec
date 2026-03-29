@@ -31,6 +31,11 @@ const EXPECTED_TYPES: Record<string, string[]> = {
   enumOptions: ["string", "union"],
 };
 
+/**
+ * ESLint rule that ensures FormSpec tags are applied to compatible field types.
+ *
+ * @public
+ */
 export const tagTypeCheck = createRule<[], MessageIds>({
   name: "type-compatibility/tag-type-check",
   meta: {

@@ -9,6 +9,8 @@
  *
  * @typeParam K - The field name to check
  * @typeParam V - The value to compare against
+ *
+ * @public
  */
 export interface EqualsPredicate<K extends string, V> {
   /** Predicate type discriminator */
@@ -26,5 +28,7 @@ export interface EqualsPredicate<K extends string, V> {
  * - `OneOfPredicate` - field value is one of several options
  * - `NotPredicate` - negation of another predicate
  * - `AndPredicate` / `OrPredicate` - logical combinations
+ *
+ * @public
  */
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;

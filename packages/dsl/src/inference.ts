@@ -49,6 +49,8 @@ import type {
  * type T4 = InferFieldValue<ArrayField<"items", [TextField<"name">]>>; // { name: string }[]
  * type T5 = InferFieldValue<ObjectField<"address", [TextField<"city">]>>; // { city: string }
  * ```
+ *
+ * @public
  */
 export type InferFieldValue<F> =
   F extends TextField<string>
@@ -79,6 +81,8 @@ export type InferFieldValue<F> =
  * - Field elements return themselves
  * - Groups extract fields from all child elements
  * - Conditionals extract fields from all child elements
+ *
+ * @public
  */
 export type ExtractFields<E> = E extends AnyField
   ? E
@@ -92,6 +96,8 @@ export type ExtractFields<E> = E extends AnyField
  * Extracts fields from an array of elements.
  *
  * Recursively processes each element and unions the results.
+ *
+ * @public
  */
 export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
   infer First,
@@ -117,6 +123,8 @@ export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
  *
  * // ExtractNonConditionalFields extracts: TextField<"name"> | NumberField<"age">
  * ```
+ *
+ * @public
  */
 export type ExtractNonConditionalFields<E> = E extends AnyField
   ? E
@@ -135,6 +143,8 @@ export type ExtractNonConditionalFields<E> = E extends AnyField
  * type Fields = ExtractNonConditionalFieldsFromArray<Elements>;
  * // TextField<"name"> | NumberField<"age">
  * ```
+ *
+ * @public
  */
 export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [
   infer First,
@@ -160,6 +170,8 @@ export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends re
  *
  * // ExtractConditionalFields extracts: TextField<"company"> | TextField<"taxId">
  * ```
+ *
+ * @public
  */
 export type ExtractConditionalFields<E> = E extends AnyField
   ? never // Top-level fields are not conditional
@@ -181,6 +193,8 @@ export type ExtractConditionalFields<E> = E extends AnyField
  * type Fields = ExtractConditionalFieldsFromArray<Elements>;
  * // TextField<"company">
  * ```
+ *
+ * @public
  */
 export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [
   infer First,
@@ -193,6 +207,8 @@ export type ExtractConditionalFieldsFromArray<Elements> = Elements extends reado
  * Builds a schema type from extracted fields.
  *
  * Maps field names to their inferred value types.
+ *
+ * @public
  */
 export type BuildSchema<Fields> = {
   [F in Fields as F extends { name: infer N extends string } ? N : never]: F extends AnyField
@@ -216,6 +232,8 @@ export type BuildSchema<Fields> = {
  * type Clean = FlattenIntersection<{ a: string } & { b: number }>;
  * // Displays as: { a: string; b: number }
  * ```
+ *
+ * @public
  */
 export type FlattenIntersection<T> = {
   [K in keyof T]: T[K];
@@ -248,6 +266,8 @@ export type FlattenIntersection<T> = {
  * type ConditionalSchema = InferSchema<typeof formWithConditional.elements>;
  * // { type: "a" | "b"; aField?: string }
  * ```
+ *
+ * @public
  */
 export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<
   BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> &
@@ -264,6 +284,8 @@ export type InferSchema<Elements extends readonly FormElement[]> = FlattenInters
  * const form = formspec(...);
  * type Schema = InferFormSchema<typeof form>;
  * ```
+ *
+ * @public
  */
 export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> =
   F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;

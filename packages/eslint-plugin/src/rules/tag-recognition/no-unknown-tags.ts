@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that reports unknown FormSpec tags.
+ *
+ * @public
+ */
 export const noUnknownTags = createRule<[], "unknownTag">({
   name: "tag-recognition/no-unknown-tags",
   meta: {

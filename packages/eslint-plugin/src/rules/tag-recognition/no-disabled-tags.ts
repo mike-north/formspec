@@ -9,6 +9,11 @@ const createRule = ESLintUtils.RuleCreator(
 
 type Options = [{ tags?: string[] }];
 
+/**
+ * ESLint rule that reports FormSpec tags disabled by project configuration.
+ *
+ * @public
+ */
 export const noDisabledTags = createRule<Options, "disabledTag">({
   name: "tag-recognition/no-disabled-tags",
   meta: {

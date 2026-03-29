@@ -79,6 +79,27 @@ export interface ExtensionTagSource {
   readonly constraintTags?: readonly ExtensionConstraintTagSource[];
 }
 
+export const FORM_SPEC_PLACEMENTS = [
+  "class",
+  "class-field",
+  "class-method",
+  "interface",
+  "interface-field",
+  "type-alias",
+  "type-alias-field",
+  "variable",
+  "function",
+  "function-parameter",
+  "method-parameter",
+] as const satisfies readonly FormSpecPlacement[];
+
+export const FORM_SPEC_TARGET_KINDS = [
+  "none",
+  "path",
+  "member",
+  "variant",
+] as const satisfies readonly FormSpecTargetKind[];
+
 const FIELD_PLACEMENTS = [
   "class-field",
   "interface-field",

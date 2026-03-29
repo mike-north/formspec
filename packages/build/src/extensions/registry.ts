@@ -27,6 +27,8 @@ import type {
  * Type IDs follow the format: `<extensionId>/<typeName>`
  * Constraint IDs follow the format: `<extensionId>/<constraintName>`
  * Annotation IDs follow the format: `<extensionId>/<annotationName>`
+ *
+ * @public
  */
 export interface ExtensionRegistry {
   /** The extensions registered in this registry (in registration order). */
@@ -101,6 +103,8 @@ export interface ExtensionRegistry {
  * @param extensions - The extension definitions to register.
  * @returns An {@link ExtensionRegistry} instance.
  * @throws If duplicate type/constraint/annotation IDs are detected across extensions.
+ *
+ * @public
  */
 export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]

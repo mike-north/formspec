@@ -4,5 +4,7 @@
  * - `"valid"` - All validations pass
  * - `"invalid"` - One or more validations failed
  * - `"unknown"` - Validation state not yet determined (e.g., async validation pending)
+ *
+ * @public
  */
 export type Validity = "valid" | "invalid" | "unknown";

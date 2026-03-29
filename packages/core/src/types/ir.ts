@@ -18,6 +18,8 @@
 /**
  * The current IR format version. Centralized here so all canonicalizers
  * and consumers reference a single source of truth.
+ *
+ * @public
  */
 export const IR_VERSION = "0.1.0" as const;
 
@@ -27,6 +29,8 @@ export const IR_VERSION = "0.1.0" as const;
 
 /**
  * A JSON-serializable value. All IR nodes must be representable as JSON.
+ *
+ * @public
  */
 export type JsonValue =
   | null
@@ -43,6 +47,8 @@ export type JsonValue =
 /**
  * Describes the origin of an IR node.
  * Enables diagnostics that point to the source of a contradiction or error.
+ *
+ * @public
  */
 export interface Provenance {
   /** The authoring surface that produced this node. */
@@ -69,6 +75,8 @@ export interface Provenance {
 /**
  * A path targeting a sub-field within a complex type.
  * Used by constraints and annotations to target nested properties.
+ *
+ * @public
  */
 export interface PathTarget {
   /**
@@ -85,6 +93,8 @@ export interface PathTarget {
 
 /**
  * Discriminated union of all type representations in the IR.
+ *
+ * @public
  */
 export type TypeNode =
   | PrimitiveTypeNode
@@ -102,13 +112,19 @@ export type TypeNode =
  *
  * Note: integer is NOT a primitive kind — integer semantics are expressed
  * via a `multipleOf: 1` constraint on a number type.
+ *
+ * @public
  */
 export interface PrimitiveTypeNode {
   readonly kind: "primitive";
   readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
-/** A member of a static enum type. */
+/**
+ * A member of a static enum type.
+ *
+ * @public
+ */
 export interface EnumMember {
   /** The serialized value stored in data. */
   readonly value: string | number;
@@ -116,19 +132,31 @@ export interface EnumMember {
   readonly displayName?: string;
 }
 
-/** Static enum type — members known at build time. */
+/**
+ * Static enum type with members known at build time.
+ *
+ * @public
+ */
 export interface EnumTypeNode {
   readonly kind: "enum";
   readonly members: readonly EnumMember[];
 }
 
-/** Array type with a single items type. */
+/**
+ * Array type with a single items type.
+ *
+ * @public
+ */
 export interface ArrayTypeNode {
   readonly kind: "array";
   readonly items: TypeNode;
 }
 
-/** A named property within an object type. */
+/**
+ * A named property within an object type.
+ *
+ * @public
+ */
 export interface ObjectProperty {
   readonly name: string;
   readonly type: TypeNode;
@@ -145,7 +173,11 @@ export interface ObjectProperty {
   readonly provenance: Provenance;
 }
 
-/** Object type with named properties. */
+/**
+ * Object type with named properties.
+ *
+ * @public
+ */
 export interface ObjectTypeNode {
   readonly kind: "object";
   /**
@@ -167,6 +199,8 @@ export interface ObjectTypeNode {
  *
  * Emitted as `{ "type": "object", "additionalProperties": <value schema> }` in
  * JSON Schema per spec 003 §2.5.
+ *
+ * @public
  */
 export interface RecordTypeNode {
   readonly kind: "record";
@@ -174,13 +208,21 @@ export interface RecordTypeNode {
   readonly valueType: TypeNode;
 }
 
-/** Union type for non-enum unions. Nullable types are `T | null` using this. */
+/**
+ * Union type for non-enum unions. Nullable types are represented as `T | null`.
+ *
+ * @public
+ */
 export interface UnionTypeNode {
   readonly kind: "union";
   readonly members: readonly TypeNode[];
 }
 
-/** Named type reference — preserved as references for `$defs`/`$ref` emission. */
+/**
+ * Named type reference preserved for `$defs` and `$ref` emission.
+ *
+ * @public
+ */
 export interface ReferenceTypeNode {
   readonly kind: "reference";
   /**
@@ -196,7 +238,11 @@ export interface ReferenceTypeNode {
   readonly typeArguments: readonly TypeNode[];
 }
 
-/** Dynamic type — schema resolved at runtime from a named data source. */
+/**
+ * Dynamic type whose schema is resolved at runtime from a named data source.
+ *
+ * @public
+ */
 export interface DynamicTypeNode {
   readonly kind: "dynamic";
   readonly dynamicKind: "enum" | "schema";
@@ -209,7 +255,11 @@ export interface DynamicTypeNode {
   readonly parameterFields: readonly string[];
 }
 
-/** Custom type registered by an extension. */
+/**
+ * Custom type registered by an extension.
+ *
+ * @public
+ */
 export interface CustomTypeNode {
   readonly kind: "custom";
   /**
@@ -232,6 +282,8 @@ export interface CustomTypeNode {
 /**
  * Discriminated union of all constraint types.
  * Constraints are set-influencing: they narrow the set of valid values.
+ *
+ * @public
  */
 export type ConstraintNode =
   | NumericConstraintNode
@@ -251,6 +303,8 @@ export type ConstraintNode =
  *
  * Type applicability: may only attach to fields with `PrimitiveTypeNode("number")`
  * or a `ReferenceTypeNode` that resolves to one.
+ *
+ * @public
  */
 export interface NumericConstraintNode {
   readonly kind: "constraint";
@@ -275,6 +329,8 @@ export interface NumericConstraintNode {
  *
  * Type applicability: `minLength`/`maxLength` require `PrimitiveTypeNode("string")`;
  * `minItems`/`maxItems` require `ArrayTypeNode`.
+ *
+ * @public
  */
 export interface LengthConstraintNode {
   readonly kind: "constraint";
@@ -291,6 +347,8 @@ export interface LengthConstraintNode {
  * all patterns must match simultaneously.
  *
  * Type applicability: requires `PrimitiveTypeNode("string")`.
+ *
+ * @public
  */
 export interface PatternConstraintNode {
   readonly kind: "constraint";
@@ -301,7 +359,11 @@ export interface PatternConstraintNode {
   readonly provenance: Provenance;
 }
 
-/** Array uniqueness constraint. */
+/**
+ * Array uniqueness constraint.
+ *
+ * @public
+ */
 export interface ArrayCardinalityConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "uniqueItems";
@@ -310,7 +372,11 @@ export interface ArrayCardinalityConstraintNode {
   readonly provenance: Provenance;
 }
 
-/** Enum member subset constraint (refinement — only narrows). */
+/**
+ * Enum member subset constraint that only narrows the allowed member set.
+ *
+ * @public
+ */
 export interface EnumMemberConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "allowedMembers";
@@ -319,7 +385,11 @@ export interface EnumMemberConstraintNode {
   readonly provenance: Provenance;
 }
 
-/** Literal-value equality constraint. */
+/**
+ * Literal-value equality constraint.
+ *
+ * @public
+ */
 export interface ConstConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "const";
@@ -328,7 +398,11 @@ export interface ConstConstraintNode {
   readonly provenance: Provenance;
 }
 
-/** Extension-registered custom constraint. */
+/**
+ * Extension-registered custom constraint.
+ *
+ * @public
+ */
 export interface CustomConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "custom";
@@ -350,6 +424,8 @@ export interface CustomConstraintNode {
  * Discriminated union of all annotation types.
  * Annotations are value-influencing: they describe or present a field
  * but do not affect which values are valid.
+ *
+ * @public
  */
 export type AnnotationNode =
   | DisplayNameAnnotationNode
@@ -361,6 +437,11 @@ export type AnnotationNode =
   | FormatHintAnnotationNode
   | CustomAnnotationNode;
 
+/**
+ * Display-name annotation.
+ *
+ * @public
+ */
 export interface DisplayNameAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "displayName";
@@ -368,6 +449,11 @@ export interface DisplayNameAnnotationNode {
   readonly provenance: Provenance;
 }
 
+/**
+ * Description annotation.
+ *
+ * @public
+ */
 export interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
@@ -375,7 +461,11 @@ export interface DescriptionAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Schema format annotation (e.g. email/date/uri). */
+/**
+ * Schema format annotation, for example `email`, `date`, or `uri`.
+ *
+ * @public
+ */
 export interface FormatAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "format";
@@ -383,6 +473,11 @@ export interface FormatAnnotationNode {
   readonly provenance: Provenance;
 }
 
+/**
+ * Placeholder annotation.
+ *
+ * @public
+ */
 export interface PlaceholderAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "placeholder";
@@ -390,6 +485,11 @@ export interface PlaceholderAnnotationNode {
   readonly provenance: Provenance;
 }
 
+/**
+ * Default-value annotation.
+ *
+ * @public
+ */
 export interface DefaultValueAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "defaultValue";
@@ -398,6 +498,11 @@ export interface DefaultValueAnnotationNode {
   readonly provenance: Provenance;
 }
 
+/**
+ * Deprecated annotation.
+ *
+ * @public
+ */
 export interface DeprecatedAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "deprecated";
@@ -409,6 +514,8 @@ export interface DeprecatedAnnotationNode {
 /**
  * UI rendering hint — does not affect schema validation.
  * Unlike FormatAnnotationNode, this never emits a JSON Schema `format`.
+ *
+ * @public
  */
 export interface FormatHintAnnotationNode {
   readonly kind: "annotation";
@@ -418,7 +525,11 @@ export interface FormatHintAnnotationNode {
   readonly provenance: Provenance;
 }
 
-/** Extension-registered custom annotation. */
+/**
+ * Extension-registered custom annotation.
+ *
+ * @public
+ */
 export interface CustomAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "custom";
@@ -432,7 +543,11 @@ export interface CustomAnnotationNode {
 // FIELD NODE
 // =============================================================================
 
-/** A single form field after canonicalization. */
+/**
+ * A single form field after canonicalization.
+ *
+ * @public
+ */
 export interface FieldNode {
   readonly kind: "field";
   /** The field's key in the data schema. */
@@ -461,10 +576,18 @@ export interface FieldNode {
 // LAYOUT NODES
 // =============================================================================
 
-/** Union of layout node types. */
+/**
+ * Union of layout node types.
+ *
+ * @public
+ */
 export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 
-/** A visual grouping of form elements. */
+/**
+ * A visual grouping of form elements.
+ *
+ * @public
+ */
 export interface GroupLayoutNode {
   readonly kind: "group";
   readonly label: string;
@@ -473,7 +596,11 @@ export interface GroupLayoutNode {
   readonly provenance: Provenance;
 }
 
-/** Conditional visibility based on another field's value. */
+/**
+ * Conditional visibility based on another field's value.
+ *
+ * @public
+ */
 export interface ConditionalLayoutNode {
   readonly kind: "conditional";
   /** The field whose value triggers visibility. */
@@ -485,14 +612,22 @@ export interface ConditionalLayoutNode {
   readonly provenance: Provenance;
 }
 
-/** Union of all IR element types. */
+/**
+ * Union of all IR element types.
+ *
+ * @public
+ */
 export type FormIRElement = FieldNode | LayoutNode;
 
 // =============================================================================
 // TYPE REGISTRY
 // =============================================================================
 
-/** A named type definition stored in the type registry. */
+/**
+ * A named type definition stored in the type registry.
+ *
+ * @public
+ */
 export interface TypeDefinition {
   /** The fully-qualified reference name (key in the registry). */
   readonly name: string;
@@ -517,6 +652,8 @@ export interface TypeDefinition {
  * and Generate (UI Schema) phases.
  *
  * Serializable to JSON — no live compiler objects.
+ *
+ * @public
  */
 export interface FormIR {
   readonly kind: "form-ir";

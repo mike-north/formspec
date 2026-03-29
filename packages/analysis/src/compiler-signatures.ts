@@ -438,7 +438,35 @@ function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): 
   return ts.flattenDiagnosticMessageText(message, "\n");
 }
 
+const MAX_SYNTHETIC_CHECK_CACHE_ENTRIES = 200;
 const syntheticCheckCache = new Map<string, SyntheticTagCheckResult>();
+
+function getCachedSyntheticCheck(sourceText: string): SyntheticTagCheckResult | undefined {
+  const cached = syntheticCheckCache.get(sourceText);
+  if (cached === undefined) {
+    return undefined;
+  }
+
+  syntheticCheckCache.delete(sourceText);
+  syntheticCheckCache.set(sourceText, cached);
+  return cached;
+}
+
+function cacheSyntheticCheck(sourceText: string, result: SyntheticTagCheckResult): void {
+  if (syntheticCheckCache.has(sourceText)) {
+    syntheticCheckCache.delete(sourceText);
+  }
+  syntheticCheckCache.set(sourceText, result);
+
+  if (syntheticCheckCache.size <= MAX_SYNTHETIC_CHECK_CACHE_ENTRIES) {
+    return;
+  }
+
+  const oldestKey = syntheticCheckCache.keys().next().value;
+  if (oldestKey !== undefined) {
+    syntheticCheckCache.delete(oldestKey);
+  }
+}
 
 /**
  * Runs the TypeScript checker against a lowered synthetic tag application.
@@ -458,7 +486,7 @@ export function checkSyntheticTagApplication(
     "",
     lowered.callExpression,
   ].join("\n");
-  const cached = syntheticCheckCache.get(sourceText);
+  const cached = getCachedSyntheticCheck(sourceText);
   if (cached !== undefined) {
     return cached;
   }
@@ -484,6 +512,6 @@ export function checkSyntheticTagApplication(
     sourceText,
     diagnostics,
   };
-  syntheticCheckCache.set(sourceText, result);
+  cacheSyntheticCheck(sourceText, result);
   return result;
 }

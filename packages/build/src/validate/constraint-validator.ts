@@ -12,7 +12,7 @@ import {
   analyzeConstraintTargets,
   type ConstraintRegistryLike,
   type ConstraintSemanticDiagnostic,
-} from "@formspec/analysis";
+} from "@formspec/analysis/internal";
 import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 

@@ -11,7 +11,7 @@ import {
   getConstraintTagDefinitions,
   getSemanticCommentCompletionContextAtOffset,
   type TagDefinition,
-} from "@formspec/analysis";
+} from "@formspec/analysis/internal";
 import type { ExtensionDefinition } from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
@@ -36,6 +36,30 @@ function toCompletionItem(tag: TagDefinition | FormSpecSerializedTagDefinition):
   };
 }
 
+function toTargetCompletionItems(
+  tagName: string,
+  targetCompletions: readonly string[]
+): CompletionItem[] {
+  return targetCompletions.map((target: string) => ({
+    label: target,
+    kind:
+      target === "singular" || target === "plural"
+        ? CompletionItemKind.EnumMember
+        : CompletionItemKind.Field,
+    detail: `Target for @${tagName}`,
+  }));
+}
+
+function filterTagNameCompletionItems(
+  prefix: string,
+  availableTags: readonly (TagDefinition | FormSpecSerializedTagDefinition)[]
+): CompletionItem[] {
+  const normalizedPrefix = prefix.toLowerCase();
+  return availableTags
+    .map(toCompletionItem)
+    .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
+}
+
 /** @internal */
 export function getCompletionItemsAtOffset(
   documentText: string,
@@ -45,24 +69,17 @@ export function getCompletionItemsAtOffset(
 ): CompletionItem[] {
   if (semanticContext !== null && semanticContext !== undefined) {
     if (semanticContext.kind === "target") {
-      return semanticContext.semantic.targetCompletions.map((target: string) => ({
-        label: target,
-        kind:
-          target === "singular" || target === "plural"
-            ? CompletionItemKind.EnumMember
-            : CompletionItemKind.Field,
-        detail: `Target for @${semanticContext.semantic.tagName}`,
-      }));
+      return toTargetCompletionItems(
+        semanticContext.semantic.tagName,
+        semanticContext.semantic.targetCompletions
+      );
     }
 
     if (semanticContext.kind !== "tag-name") {
       return [];
     }
 
-    const normalizedPrefix = semanticContext.prefix.toLowerCase();
-    return semanticContext.availableTags
-      .map(toCompletionItem)
-      .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
+    return filterTagNameCompletionItems(semanticContext.prefix, semanticContext.availableTags);
   }
 
   const resolvedContext = getSemanticCommentCompletionContextAtOffset(
@@ -72,22 +89,15 @@ export function getCompletionItemsAtOffset(
   );
 
   if (resolvedContext.kind === "target") {
-    return resolvedContext.semantic.targetCompletions.map((target: string) => ({
-      label: target,
-      kind:
-        target === "singular" || target === "plural"
-          ? CompletionItemKind.EnumMember
-          : CompletionItemKind.Field,
-      detail: `Target for @${resolvedContext.semantic.tag.normalizedTagName}`,
-    }));
+    return toTargetCompletionItems(
+      resolvedContext.semantic.tag.normalizedTagName,
+      resolvedContext.semantic.targetCompletions
+    );
   }
 
   if (resolvedContext.kind !== "tag-name") {
     return [];
   }
 
-  const normalizedPrefix = resolvedContext.prefix.toLowerCase();
-  return resolvedContext.availableTags
-    .map(toCompletionItem)
-    .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
+  return filterTagNameCompletionItems(resolvedContext.prefix, resolvedContext.availableTags);
 }

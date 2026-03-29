@@ -8,13 +8,17 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@formspec/analysis": "workspace:*",
     "@formspec/build": "workspace:*",
     "@formspec/cli": "workspace:*",
     "@formspec/core": "workspace:*",
     "@formspec/dsl": "workspace:*",
+    "@formspec/language-server": "workspace:*",
+    "@formspec/ts-plugin": "workspace:*",
     "@formspec/validator": "workspace:*"
   },
   "devDependencies": {
+    "typescript": "^5.0.0",
     "vitest": "^3.0.0"
   }
 }

@@ -28,6 +28,8 @@ import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
 
 /**
  * Result of generating schemas from a mixed-authoring composition.
+ *
+ * @public
  */
 export interface MixedAuthoringSchemas {
   /** JSON Schema 2020-12 for validation. */
@@ -41,6 +43,8 @@ export interface MixedAuthoringSchemas {
  *
  * The `typeName` can resolve to a class, interface, or object type alias, just
  * like `generateSchemas()`.
+ *
+ * @public
  */
 export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
   /** Path to the TypeScript source file. */
@@ -59,6 +63,8 @@ export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFro
  * ordering, and constraints; ChainDSL overlays may contribute dynamic runtime
  * field metadata such as dynamic enum or dynamic schema keywords, and may fill
  * in missing annotations.
+ *
+ * @public
  */
 export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions

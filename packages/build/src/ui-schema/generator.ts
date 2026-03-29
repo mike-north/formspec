@@ -52,6 +52,8 @@ import type { UISchema } from "./types.js";
  *
  * @param form - The FormSpec to convert
  * @returns A JSON Forms UI Schema
+ *
+ * @public
  */
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema {
   const ir = canonicalizeChainDSL(form);

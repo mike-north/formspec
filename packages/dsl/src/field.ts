@@ -30,6 +30,8 @@ import type {
  * field.enum("status", ["draft", "sent", "paid"]);
  * field.dynamicEnum("country", "countries", { label: "Country" });
  * ```
+ *
+ * @public
  */
 export const field = {
   /**

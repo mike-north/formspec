@@ -16,6 +16,11 @@ type MessageIds =
   | "exclusiveMaxLessOrEqualMin"
   | "maximumLessOrEqualExclusiveMin";
 
+/**
+ * ESLint rule that reports contradictory FormSpec constraint combinations.
+ *
+ * @public
+ */
 export const noContradictions = createRule<[], MessageIds>({
   name: "constraint-validation/no-contradictions",
   meta: {

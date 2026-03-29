@@ -34,7 +34,7 @@
         "logLevel": "error"
       },
       "ae-missing-release-tag": {
-        "logLevel": "warning"
+        "logLevel": "error"
       }
     },
     "tsdocMessageReporting": {
