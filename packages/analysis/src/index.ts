@@ -22,6 +22,7 @@ export {
   getCommentCompletionContextAtOffset,
   getCommentHoverInfoAtOffset,
   getCommentCursorTargetAtOffset,
+  getCommentTagSemanticContext,
   getSemanticCommentCompletionContextAtOffset,
   getTagCompletionPrefixAtOffset,
 } from "./cursor-context.js";
@@ -74,6 +75,50 @@ export {
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
 } from "./tag-registry.js";
+export {
+  buildFormSpecAnalysisFileSnapshot,
+  type BuildFormSpecAnalysisFileSnapshotOptions,
+} from "./file-snapshots.js";
+export {
+  findDeclarationForCommentOffset,
+  getHostType,
+  getLastLeadingDocCommentRange,
+  getSubjectType,
+} from "./source-bindings.js";
+export type {
+  FormSpecAnalysisCommentSnapshot,
+  FormSpecAnalysisDiagnostic,
+  FormSpecAnalysisFileSnapshot,
+  FormSpecAnalysisManifest,
+  FormSpecAnalysisTagSnapshot,
+  FormSpecIpcEndpoint,
+  FormSpecSemanticQuery,
+  FormSpecSemanticResponse,
+  FormSpecSerializedCommentTargetSpecifier,
+  FormSpecSerializedCompletionContext,
+  FormSpecSerializedHoverInfo,
+  FormSpecSerializedTagDefinition,
+  FormSpecSerializedTagSemanticContext,
+  FormSpecSerializedTagSignature,
+} from "./semantic-protocol.js";
+export {
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  FORMSPEC_ANALYSIS_SCHEMA_VERSION,
+  computeFormSpecTextHash,
+  isFormSpecAnalysisManifest,
+  isFormSpecSemanticQuery,
+  isFormSpecSemanticResponse,
+  serializeCommentTagSemanticContext,
+  serializeCommentTargetSpecifier,
+  serializeCompletionContext,
+  serializeHoverInfo,
+  serializeParsedCommentTag,
+} from "./semantic-protocol.js";
+export {
+  getFormSpecManifestPath,
+  getFormSpecWorkspaceId,
+  getFormSpecWorkspaceRuntimeDirectory,
+} from "./workspace-runtime.js";
 export {
   collectCompatiblePathTargets,
   getTypeSemanticCapabilities,

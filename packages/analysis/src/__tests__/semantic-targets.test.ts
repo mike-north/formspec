@@ -53,6 +53,20 @@ function constValue(value: JsonValue, line: number): ConstraintNode {
 }
 
 describe("semantic-targets", () => {
+  it("builds a resolved state for direct constraints without path targets", () => {
+    const result = analyzeConstraintTargets("age", NUMBER_TYPE, [minimum(18, 4)], {});
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.targetStates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "resolved",
+          targetName: "age",
+        }),
+      ])
+    );
+  });
+
   it("detects inherited contradictions on resolved path targets", () => {
     const result = analyzeConstraintTargets(
       "discount",
@@ -141,5 +155,130 @@ describe("semantic-targets", () => {
     const type: ReferenceTypeNode = { kind: "reference", name: "A", typeArguments: [] };
 
     expect(dereferenceAnalysisType(type, registry)).toEqual(type);
+  });
+
+  it("reports unknown path segments on targeted constraints", () => {
+    const result = analyzeConstraintTargets(
+      "discount",
+      {
+        kind: "object",
+        properties: [
+          {
+            name: "percent",
+            type: NUMBER_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: provenance(2),
+          },
+        ],
+        additionalProperties: false,
+      },
+      [
+        {
+          ...minimum(0, 6),
+          path: { segments: ["missing"] },
+        },
+      ],
+      {}
+    );
+
+    expect(result.targetStates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "missing-property",
+          segment: "missing",
+        }),
+      ])
+    );
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "UNKNOWN_PATH_TARGET",
+          severity: "error",
+        }),
+      ])
+    );
+  });
+
+  it("reports unresolvable traversals through non-object types", () => {
+    const result = analyzeConstraintTargets(
+      "count",
+      NUMBER_TYPE,
+      [
+        {
+          ...minimum(0, 3),
+          path: { segments: ["value"] },
+        },
+      ],
+      {}
+    );
+
+    expect(result.targetStates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "unresolvable",
+          targetName: "count.value",
+        }),
+      ])
+    );
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "TYPE_MISMATCH",
+          severity: "error",
+        }),
+      ])
+    );
+  });
+
+  it("resolves multi-segment path targets into nested properties", () => {
+    const result = analyzeConstraintTargets(
+      "payment",
+      {
+        kind: "object",
+        properties: [
+          {
+            name: "nested",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "amount",
+                  type: NUMBER_TYPE,
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: provenance(3),
+                },
+              ],
+              additionalProperties: false,
+            },
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: provenance(2),
+          },
+        ],
+        additionalProperties: false,
+      },
+      [
+        {
+          ...minimum(10, 7),
+          path: { segments: ["nested", "amount"] },
+        },
+      ],
+      {}
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.targetStates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "resolved",
+          targetName: "payment.nested.amount",
+        }),
+      ])
+    );
   });
 });

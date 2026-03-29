@@ -6,6 +6,8 @@
  */
 
 import {
+  type FormSpecSerializedCompletionContext,
+  type FormSpecSerializedTagDefinition,
   getConstraintTagDefinitions,
   getSemanticCommentCompletionContextAtOffset,
   type TagDefinition,
@@ -21,7 +23,7 @@ export function getCompletionItems(extensions?: readonly ExtensionDefinition[]):
   }));
 }
 
-function toCompletionItem(tag: TagDefinition): CompletionItem {
+function toCompletionItem(tag: TagDefinition | FormSpecSerializedTagDefinition): CompletionItem {
   return {
     label: `@${tag.canonicalName}`,
     kind: CompletionItemKind.Keyword,
@@ -29,34 +31,58 @@ function toCompletionItem(tag: TagDefinition): CompletionItem {
   };
 }
 
+/** @internal */
 export function getCompletionItemsAtOffset(
   documentText: string,
   offset: number,
-  extensions?: readonly ExtensionDefinition[]
+  extensions?: readonly ExtensionDefinition[],
+  semanticContext?: FormSpecSerializedCompletionContext | null
 ): CompletionItem[] {
-  const semanticContext = getSemanticCommentCompletionContextAtOffset(
+  if (semanticContext !== null && semanticContext !== undefined) {
+    if (semanticContext.kind === "target") {
+      return semanticContext.semantic.targetCompletions.map((target: string) => ({
+        label: target,
+        kind:
+          target === "singular" || target === "plural"
+            ? CompletionItemKind.EnumMember
+            : CompletionItemKind.Field,
+        detail: `Target for @${semanticContext.semantic.tagName}`,
+      }));
+    }
+
+    if (semanticContext.kind !== "tag-name") {
+      return [];
+    }
+
+    const normalizedPrefix = semanticContext.prefix.toLowerCase();
+    return semanticContext.availableTags
+      .map(toCompletionItem)
+      .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
+  }
+
+  const resolvedContext = getSemanticCommentCompletionContextAtOffset(
     documentText,
     offset,
     extensions ? { extensions } : undefined
   );
 
-  if (semanticContext.kind === "target") {
-    return semanticContext.semantic.targetCompletions.map((target: string) => ({
+  if (resolvedContext.kind === "target") {
+    return resolvedContext.semantic.targetCompletions.map((target: string) => ({
       label: target,
       kind:
         target === "singular" || target === "plural"
           ? CompletionItemKind.EnumMember
           : CompletionItemKind.Field,
-      detail: `Target for @${semanticContext.semantic.tag.normalizedTagName}`,
+      detail: `Target for @${resolvedContext.semantic.tag.normalizedTagName}`,
     }));
   }
 
-  if (semanticContext.kind !== "tag-name") {
+  if (resolvedContext.kind !== "tag-name") {
     return [];
   }
 
-  const normalizedPrefix = semanticContext.prefix.toLowerCase();
-  return semanticContext.availableTags.map(toCompletionItem).filter((item) =>
-    item.label.slice(1).toLowerCase().startsWith(normalizedPrefix)
-  );
+  const normalizedPrefix = resolvedContext.prefix.toLowerCase();
+  return resolvedContext.availableTags
+    .map(toCompletionItem)
+    .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
 }

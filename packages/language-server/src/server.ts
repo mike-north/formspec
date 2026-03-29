@@ -22,10 +22,19 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";
 import { getDefinition } from "./providers/definition.js";
+import {
+  fileUriToPathOrNull,
+  getPluginCompletionContextForDocument,
+  getPluginHoverForDocument,
+} from "./plugin-client.js";
 
 export interface CreateServerOptions {
   /** Optional extension definitions whose custom tags should be surfaced by tooling. */
   readonly extensions?: readonly ExtensionDefinition[];
+  /** Optional workspace roots to use before initialize() provides them. */
+  readonly workspaceRoots?: readonly string[];
+  /** Set to false to disable tsserver-plugin semantic enrichment. */
+  readonly usePluginTransport?: boolean;
 }
 
 /**
@@ -39,16 +48,24 @@ export interface CreateServerOptions {
 export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
   const documents = new TextDocuments(TextDocument);
+  let workspaceRoots = [...(options.workspaceRoots ?? [])];
 
   documents.listen(connection);
 
-  connection.onInitialize((): InitializeResult => {
+  connection.onInitialize((params): InitializeResult => {
+    workspaceRoots = [
+      ...(params.workspaceFolders
+        ?.map((workspaceFolder) => fileUriToPathOrNull(workspaceFolder.uri))
+        .filter((workspaceRoot): workspaceRoot is string => workspaceRoot !== null) ?? []),
+      ...workspaceRoots,
+    ];
+
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         completionProvider: {
           // Trigger completions inside JSDoc comments for tags and target specifiers
-          triggerCharacters: ["@", ":"],
+          triggerCharacters: ["@", ":", "."],
         },
         hoverProvider: true,
         definitionProvider: true,
@@ -60,24 +77,43 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     };
   });
 
-  connection.onCompletion((params) => {
+  connection.onCompletion(async (params) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
       return [];
     }
 
     const offset = document.offsetAt(params.position);
-    return getCompletionItemsAtOffset(document.getText(), offset, options.extensions);
+    const documentText = document.getText();
+    const filePath = fileUriToPathOrNull(params.textDocument.uri);
+    const semanticContext =
+      options.usePluginTransport === false || filePath === null
+        ? null
+        : await getPluginCompletionContextForDocument(
+            workspaceRoots,
+            filePath,
+            documentText,
+            offset
+          );
+
+    return getCompletionItemsAtOffset(documentText, offset, options.extensions, semanticContext);
   });
 
-  connection.onHover((params) => {
+  connection.onHover(async (params) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
       return null;
     }
 
     const offset = document.offsetAt(params.position);
-    return getHoverAtOffset(document.getText(), offset, options.extensions);
+    const documentText = document.getText();
+    const filePath = fileUriToPathOrNull(params.textDocument.uri);
+    const semanticHover =
+      options.usePluginTransport === false || filePath === null
+        ? null
+        : await getPluginHoverForDocument(workspaceRoots, filePath, documentText, offset);
+
+    return getHoverAtOffset(documentText, offset, options.extensions, semanticHover);
   });
 
   connection.onDefinition((_params) => {

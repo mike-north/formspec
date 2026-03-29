@@ -6,6 +6,7 @@
  */
 
 import {
+  type FormSpecSerializedHoverInfo,
   getCommentHoverInfoAtOffset,
   getTagDefinition,
   normalizeFormSpecTagName,
@@ -31,16 +32,16 @@ export function getHoverForTag(
   };
 }
 
+/** @internal */
 export function getHoverAtOffset(
   documentText: string,
   offset: number,
-  extensions?: readonly ExtensionDefinition[]
+  extensions?: readonly ExtensionDefinition[],
+  semanticHover?: FormSpecSerializedHoverInfo | null
 ): Hover | null {
-  const hoverInfo = getCommentHoverInfoAtOffset(
-    documentText,
-    offset,
-    extensions ? { extensions } : undefined
-  );
+  const hoverInfo =
+    semanticHover ??
+    getCommentHoverInfoAtOffset(documentText, offset, extensions ? { extensions } : undefined);
   if (hoverInfo === null) {
     return null;
   }

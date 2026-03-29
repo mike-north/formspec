@@ -38,7 +38,11 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 
 ## 2. Shared Semantic Analysis Pipeline
 
-Both ESLint and the language server need the same core analysis: parse TSDoc tags from a comment, resolve path/member targets against TypeScript types, detect constraint contradictions, and build provenance records. Rather than duplicating this logic in two places, it is extracted into a shared analysis pipeline that both consumers call.
+Both ESLint and interactive editor tooling need the same core analysis: parse TSDoc tags from a comment, resolve path/member targets against TypeScript types, detect constraint contradictions, and build provenance records. Rather than duplicating this logic in multiple places, it is extracted into a shared analysis pipeline that feeds three consumers:
+
+- `@formspec/eslint-plugin` for user-facing validation
+- `@formspec/ts-plugin` for TypeScript-project-aware semantic analysis inside `tsserver`
+- `@formspec/language-server` for LSP presentation features such as semantic hover and completions
 
 ### 2.1 Pipeline Position
 
@@ -97,7 +101,7 @@ This phase links each parsed tag to the TypeScript type it applies to:
    - Member-targets: look up the member in the field's string literal union; produce `UNKNOWN_MEMBER_TARGET` if absent
 4. Produces `UNSUPPORTED_TARGETING_SYNTAX` / `MEMBER_TARGET_ON_NON_UNION` for modifiers used on tags that do not accept them, or on incompatible types
 
-The TypeScript compiler API is accessed via a shared `TypeResolutionContext` that both ESLint (which receives a `parserServices` TypeScript program) and the language server (which maintains its own TS program) provide.
+The TypeScript compiler API is accessed via a shared `TypeResolutionContext`. ESLint provides it from `parserServices`, while editor tooling gets it from the FormSpec TypeScript plugin running inside the host `tsserver`. The standalone FormSpec language server does not own a second long-lived `Program` in the default architecture; it consumes plugin-produced semantic results over local transport.
 
 ### 2.5 Phase 4: Constraint Validation
 
@@ -119,8 +123,9 @@ Extension-registered constraints participate in contradiction detection by decla
 
 ```typescript
 /**
- * Context provided by the consumer (ESLint or language server).
- * Both surfaces supply their own TypeScript program and type checker.
+ * Context provided by the consumer.
+ * ESLint supplies this directly. Editor tooling receives it from the
+ * FormSpec TypeScript plugin, which reuses the host tsserver Program.
  */
 interface TypeResolutionContext {
   readonly program: import("typescript").Program;
@@ -143,7 +148,8 @@ interface AnalysisResult {
 
 /**
  * Run the four-phase analysis pipeline for a single TypeScript declaration node.
- * Both ESLint rules and language server handlers call this function.
+ * ESLint rules call this directly. The TypeScript plugin also calls it
+ * directly, then serializes the result for the lightweight LSP.
  */
 declare function analyzeDeclaration(
   node: import("typescript").Declaration,
@@ -152,7 +158,7 @@ declare function analyzeDeclaration(
 ): AnalysisResult;
 ```
 
-The pipeline is pure and stateless per invocation — no ambient configuration, no cross-call state (per A3). ESLint calls it once per relevant AST node during a lint run; the language server calls it incrementally as the user edits.
+The pipeline is pure and stateless per invocation — no ambient configuration, no cross-call state (per A3). ESLint calls it once per relevant AST node during a lint run; the TypeScript plugin calls it incrementally against the host editor's existing project state and caches/serializes the result for the lightweight language server.
 
 ---
 
@@ -366,22 +372,34 @@ The extension rule only needs to express logic that is genuinely specific to its
 
 ## 5. Language Server Responsibilities
 
-Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, and signature help. It does not duplicate ESLint's validation logic — diagnostics from TSDoc tag errors are ESLint's responsibility.
+Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, semantic tokens, and signature help. It does not duplicate ESLint's validation logic — diagnostics from TSDoc tag errors are ESLint's responsibility.
 
-The language server is implemented as a TypeScript Language Service Plugin (the standard mechanism for extending VS Code's TypeScript language service). This means it activates automatically when `@formspec/language-server` is installed and listed in `tsconfig.json`'s `plugins` array — no separate server process, no separate extension installation for VS Code users.
+FormSpec uses a hybrid architecture:
+
+- `@formspec/ts-plugin` is the semantic authority. It runs inside `tsserver`, reuses the host editor's existing `Program` and `TypeChecker`, and performs expensive semantic work such as path resolution, placement checks, compiler-backed synthetic signature validation, and effective constraint-state computation.
+- `@formspec/language-server` is a lightweight standalone LSP surface. It keeps cheap syntax-local behavior in-process, then enriches hover/completion responses with semantic results produced by the TypeScript plugin.
+
+The two components communicate on the workspace host via:
+
+- a manifest file in workspace-scoped storage (`.cache/formspec/tooling/manifest.json`) for discovery and recovery
+- a local IPC endpoint for live queries
+  - Unix/macOS/Linux: Unix domain socket
+  - Windows: named pipe
+
+This split avoids maintaining a second long-lived TypeScript project inside the LSP, while still allowing full LSP capabilities in editors and remote/containerized environments.
 
 ```json
 // tsconfig.json
 {
   "compilerOptions": {
-    "plugins": [{ "name": "@formspec/language-server" }]
+    "plugins": [{ "name": "@formspec/ts-plugin" }]
   }
 }
 ```
 
 ### 5.1 Tag Name Completions
 
-When the cursor is inside a TSDoc comment block and the author begins typing `@`, the language server offers completions for all registered FormSpec tags. The completion list is derived from the same tag inventory used by the ESLint pipeline — extensions registered via E5 appear automatically.
+When the cursor is inside a TSDoc comment block and the author begins typing `@`, the language server offers completions for all registered FormSpec tags. This path is intentionally cheap and remains available even when plugin-backed semantic data is stale or unavailable.
 
 Completion items include:
 
@@ -390,11 +408,11 @@ Completion items include:
 - A snippet template for the tag's required arguments (e.g., `@minimum ${1:value}`)
 - The tag's applicability information (shown in the completion detail: "Applies to: number")
 
-The completion list is filtered based on the field's TypeScript type at the cursor position. If the author is in the comment for a `string` field, `@minimum` is not offered (it is only applicable to `number` in core FormSpec). This filtering surfaces the right subset of tags for the current context (S4, PP2).
+When the plugin has fresh semantic data for the current file version, the completion list can also be filtered by the field's TypeScript type at the cursor position. If the author is in the comment for a `string` field, `@minimum` is not offered (it is only applicable to `number` in core FormSpec). This filtering surfaces the right subset of tags for the current context (S4, PP2) without making basic tag-name completions depend on a heavyweight semantic round-trip.
 
 ### 5.2 Path-Target Completions
 
-When the author types `@minimum :` (or any constraint tag followed by `:`) inside a comment on a complex-typed field, the language server offers completions for the field's property names.
+When the author types `@minimum :` (or any constraint tag followed by `:`) inside a comment on a complex-typed field, the language server asks the TypeScript plugin for type-compatible target candidates and offers completions for the field's property names.
 
 For example, on a field of type `MonetaryAmount { value: number; currency: string }`:
 
@@ -413,7 +431,7 @@ When the author hovers over a FormSpec tag, the language server displays:
 
 1. **Tag documentation:** A brief description of what the tag does, copied from the tag registry's `documentation` field. This is the same documentation that appears in completion items.
 
-2. **Constraint provenance:** For constraint tags, the language server shows where the effective constraint was inherited from — particularly useful when the constraint comes from a base type and the current declaration does not declare it directly. This surfaces S3 (constraint provenance) in the IDE.
+2. **Constraint provenance:** For constraint tags, the plugin can provide where the effective constraint was inherited from — particularly useful when the constraint comes from a base type and the current declaration does not declare it directly. This surfaces S3 (constraint provenance) in the IDE.
 
    ```
    @minimum 0
@@ -423,7 +441,7 @@ When the author hovers over a FormSpec tag, the language server displays:
 
 3. **Current effective value:** When a field's type has multiple constraints on the same property (from the field itself and from type inheritance), hover shows the composed effective constraint, not just the locally-declared one.
 
-4. **Conflict warnings:** If a constraint is in contradiction with another (the same pair that `CONSTRAINT_CONTRADICTION` reports in ESLint), hover shows a warning indicator and links to the conflicting location. This gives authors immediate feedback without requiring a full lint run.
+4. **Conflict warnings:** If plugin-backed semantic data includes contradiction context for the current target, hover can surface that context as advisory information. ESLint remains the authoritative validation surface.
 
 ### 5.4 Go-to-Definition
 
@@ -459,13 +477,13 @@ of a complex type (e.g., @minimum :value 0).
 
 ### 5.6 Diagnostics and the Language Server
 
-The FormSpec language server does **not** re-run the analysis pipeline for diagnostics and does not produce its own validation errors. Per A7, all validation and diagnostic emission is ESLint's responsibility. Editors surface FormSpec diagnostics through their ESLint language server integration (e.g., the vscode-eslint extension), not through the FormSpec language server.
+The FormSpec language server does **not** become a second validation authority. Per A7, all user-facing validation and diagnostic emission is ESLint's responsibility. Editors surface FormSpec diagnostics through their ESLint language server integration (for example `vscode-eslint`), not through the FormSpec language server.
 
 The FormSpec LS responsibilities are strictly:
 
-- **Completions:** tag names (filtered by field type), path-target field names, string-literal union member names (§5.1–§5.2)
+- **Completions:** tag names via local parsing, then type-aware path/member/variant candidates from the TypeScript plugin (§5.1–§5.2)
 - **Go-to-definition:** `{@link}` type references in `@showWhen`/`@hideWhen`/`@enableWhen`/`@disableWhen` (§5.4)
-- **Hover:** tag documentation, constraint provenance, effective composed value (§5.3)
+- **Hover:** tag documentation locally, enriched with plugin-provided provenance/effective-state data when available (§5.3)
 - **Signature help:** expected tag arguments, argument descriptions, path/member-target indicator (§5.5)
 
 Source-level diagnostics — tag recognition, value parsing, type compatibility, target resolution, constraint validation — are handled exclusively through ESLint. Post-generation output validation (e.g., JSON Schema + UI Schema consistency checks) may warrant a future CLI command, but that is distinct from source-level authoring feedback.
@@ -594,28 +612,9 @@ The SARIF output is emitted via `@formspec/eslint-plugin`'s formatter, which is 
 
 ### 6.4 LSP Diagnostic Integration
 
-For IDE display (D6), the language server maps `FormSpecDiagnostic` to the LSP `Diagnostic` type:
+FormSpec does not define a second diagnostics channel in the standalone language server. Per A7, IDE diagnostics come from ESLint integrations, not from `@formspec/language-server`.
 
-```typescript
-function toLanguageServerDiagnostic(
-  diag: FormSpecDiagnostic
-): import("vscode-languageclient").Diagnostic {
-  return {
-    range: sourceLocationToRange(diag.location),
-    severity: severityToLSP(diag.severity),
-    code: diag.code,
-    source: "formspec",
-    message: diag.message,
-    relatedInformation: diag.relatedLocations.map((loc, i) => ({
-      location: { uri: fileUri(loc.file), range: sourceLocationToRange(loc) },
-      message: `Related location ${i + 1}`,
-    })),
-    data: { fix: diag.fix, rawData: diag.data },
-  };
-}
-```
-
-The `data` field carries the `fix` payload for use by LSP code action requests — this is how "quick fix" suggestions appear in VS Code's light bulb menu.
+The lightweight LSP may still consume plugin-produced semantic findings as contextual data for hover/completion, but it does not surface those findings as authoritative `textDocument/publishDiagnostics` output.
 
 ---
 
@@ -660,35 +659,13 @@ Fixes produced by the pipeline are file-and-range based (using character offsets
 
 ### 7.3 Language Server Code Actions
 
-The same `fix` payload from `FormSpecDiagnostic` is also surfaced as an LSP `CodeAction` (a "quick fix") when the editor requests code actions for a diagnostic range. The language server code action handler converts `DiagnosticFix.changes` into LSP `WorkspaceEdit` entries.
-
-```typescript
-/**
- * Converts a DiagnosticFix into an LSP WorkspaceEdit for the code action response.
- */
-function toWorkspaceEdit(fix: DiagnosticFix): import("vscode-languageserver").WorkspaceEdit {
-  const changes: Record<string, import("vscode-languageserver").TextEdit[]> = {};
-
-  for (const change of fix.changes) {
-    const uri = fileUri(change.file);
-    changes[uri] ??= [];
-    changes[uri].push({
-      range: offsetRangeToLSPRange(change.range),
-      newText: change.newText,
-    });
-  }
-
-  return { changes };
-}
-```
-
-This means fixes authored in the pipeline (e.g., "remove the `@remarks` tag") work identically from `eslint --fix` on the command line and from the light bulb menu in VS Code — the same `DiagnosticFix` data drives both.
+The standalone FormSpec language server does not own quick-fix application. Code actions for FormSpec diagnostics are expected to come from ESLint integrations that already understand ESLint rule fixes.
 
 ### 7.4 Bulk Fix Support
 
 ESLint's `--fix` flag applies all auto-fixable diagnostics in a single pass. FormSpec's rule infrastructure ensures fixes from different rules do not conflict (they operate on disjoint source ranges — each tag occupies a unique span). When ESLint applies multiple fixes simultaneously, the result is correct.
 
-The language server supports "Fix All" actions via the `source.fixAll.formspec` code action kind. This triggers the same ESLint fix pass programmatically, using the file's current content rather than the on-disk version. The result is presented as a diff for the author to accept.
+The standalone FormSpec language server does not implement a separate `source.fixAll.formspec` code action. Bulk fixes come from ESLint's existing fix-all flow.
 
 ---
 

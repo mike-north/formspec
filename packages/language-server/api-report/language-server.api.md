@@ -6,7 +6,7 @@
 
 import { CompletionItem } from 'vscode-languageserver/node.js';
 import { Connection } from 'vscode-languageserver/node.js';
-import { ExtensionDefinition } from '@formspec/core';
+import type { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 
@@ -16,15 +16,17 @@ export function createServer(options?: CreateServerOptions): Connection;
 // @public (undocumented)
 export interface CreateServerOptions {
     readonly extensions?: readonly ExtensionDefinition[];
+    readonly usePluginTransport?: boolean;
+    readonly workspaceRoots?: readonly string[];
 }
 
-// @public
+// @public (undocumented)
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
 
 // @public
 export function getDefinition(): Location | null;
 
-// @public
+// @public (undocumented)
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
 
 ```

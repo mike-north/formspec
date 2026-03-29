@@ -1,4 +1,3 @@
-import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
   findCommentTagAtOffset,
@@ -9,38 +8,8 @@ import {
   getSemanticCommentCompletionContextAtOffset,
   getTagCompletionPrefixAtOffset,
 } from "../index.js";
-
-function createProgram(sourceText: string) {
-  const fileName = "/virtual/formspec.ts";
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-  };
-
-  const host = ts.createCompilerHost(compilerOptions, true);
-  host.getSourceFile = (requestedFileName, languageVersion) => {
-    if (requestedFileName === fileName) {
-      return ts.createSourceFile(fileName, sourceText, languageVersion, true, ts.ScriptKind.TS);
-    }
-    return undefined;
-  };
-  host.readFile = (requestedFileName) => (requestedFileName === fileName ? sourceText : undefined);
-  host.fileExists = (requestedFileName) => requestedFileName === fileName;
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  host.writeFile = () => {};
-
-  const program = ts.createProgram([fileName], compilerOptions, host);
-  const sourceFile = program.getSourceFile(fileName);
-  if (sourceFile === undefined) {
-    throw new Error("Expected test source file to be created");
-  }
-
-  return {
-    checker: program.getTypeChecker(),
-    sourceFile,
-  };
-}
+import * as ts from "typescript";
+import { createProgram } from "./helpers.js";
 
 describe("cursor-context", () => {
   it("finds the enclosing doc comment and parses its tags", () => {

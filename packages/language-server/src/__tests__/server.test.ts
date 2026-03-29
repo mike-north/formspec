@@ -86,11 +86,11 @@ describe("createServer", () => {
     expect(typeof completionHandler).toBe("function");
     expect(typeof hoverHandler).toBe("function");
 
-    completionHandler?.({
+    await completionHandler?.({
       textDocument: { uri: "file:///test.ts" },
       position: { line: 0, character: 6 },
     });
-    hoverHandler?.({
+    await hoverHandler?.({
       textDocument: { uri: "file:///test.ts" },
       position: { line: 0, character: 6 },
     });
@@ -98,7 +98,12 @@ describe("createServer", () => {
     expect(mocks.textDocuments).toHaveBeenCalledTimes(1);
     expect(mocks.documents.listen).toHaveBeenCalledWith(mocks.connection);
     expect(mocks.documents.get).toHaveBeenCalledWith("file:///test.ts");
-    expect(mocks.getCompletionItemsAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension]);
-    expect(mocks.getHoverAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension]);
+    expect(mocks.getCompletionItemsAtOffset).toHaveBeenCalledWith(
+      "/** @min */",
+      6,
+      [extension],
+      null
+    );
+    expect(mocks.getHoverAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension], null);
   });
 });
