@@ -104,6 +104,7 @@ describe("semantic protocol", () => {
     };
 
     expect(isFormSpecSemanticResponse(response)).toBe(true);
+    const targetContext = response.context;
 
     expect(
       isFormSpecSemanticResponse({
@@ -122,7 +123,7 @@ describe("semantic protocol", () => {
         context: {
           kind: "target",
           semantic: {
-            ...response.context.semantic,
+            ...targetContext.semantic,
             placement: "banana",
           },
         },
@@ -135,7 +136,7 @@ describe("semantic protocol", () => {
         context: {
           kind: "target",
           semantic: {
-            ...response.context.semantic,
+            ...targetContext.semantic,
             supportedTargets: ["none", "banana"],
           },
         },
