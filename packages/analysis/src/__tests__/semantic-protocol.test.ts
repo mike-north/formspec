@@ -11,6 +11,7 @@ import {
   serializeCompletionContext,
   serializeHoverInfo,
   type FormSpecAnalysisManifest,
+  type FormSpecSerializedCompletionContext,
   type FormSpecSemanticResponse,
 } from "../internal.js";
 
@@ -104,7 +105,10 @@ describe("semantic protocol", () => {
     };
 
     expect(isFormSpecSemanticResponse(response)).toBe(true);
-    const targetContext = response.context;
+    const targetContext = response.context as Extract<
+      FormSpecSerializedCompletionContext,
+      { readonly kind: "target" }
+    >;
 
     expect(
       isFormSpecSemanticResponse({

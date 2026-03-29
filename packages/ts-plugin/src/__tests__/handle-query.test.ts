@@ -24,6 +24,17 @@ async function createProgramContext(sourceText: string) {
   };
 }
 
+function expectErrorResponse(
+  response: ReturnType<FormSpecPluginService["handleQuery"]>,
+  fragment: string
+): void {
+  expect(response.kind).toBe("error");
+  if (response.kind !== "error") {
+    throw new Error("Expected an error response");
+  }
+  expect(response.error).toContain(fragment);
+}
+
 describe("FormSpecPluginService.handleQuery", () => {
   const workspaces: string[] = [];
   const services: FormSpecPluginService[] = [];
@@ -128,13 +139,21 @@ describe("FormSpecPluginService.handleQuery", () => {
     });
     expect(snapshot.kind).toBe("file-snapshot");
     if (snapshot.kind === "file-snapshot") {
+      expect(snapshot.snapshot).not.toBeNull();
+      if (snapshot.snapshot === null) {
+        throw new Error("Expected a file snapshot result");
+      }
       expect(snapshot.snapshot.comments).toHaveLength(1);
       const firstComment = snapshot.snapshot.comments[0];
-      expect(firstComment).toBeDefined();
+      if (firstComment === undefined) {
+        throw new Error("Expected the first comment snapshot");
+      }
       expect(firstComment.tags).toHaveLength(1);
       const firstTag = firstComment.tags[0];
-      expect(firstTag).toBeDefined();
-      expect(firstTag.semantic?.tagName).toBe("minimum");
+      if (firstTag === undefined) {
+        throw new Error("Expected the first tag snapshot");
+      }
+      expect(firstTag.semantic.tagName).toBe("minimum");
     }
   });
 
@@ -145,17 +164,14 @@ describe("FormSpecPluginService.handleQuery", () => {
       getProgram: () => undefined,
     });
 
-    expect(
+    expectErrorResponse(
       serviceWithoutProgram.handleQuery({
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
         kind: "completion",
         filePath: "/workspace/formspec/example.ts",
         offset: 0,
-      })
-    ).toSatisfy(
-      (response): boolean =>
-        response.kind === "error" &&
-        response.error.includes("Unable to resolve TypeScript source file")
+      }),
+      "Unable to resolve TypeScript source file"
     );
 
     const context = await createProgramContext("class Foo {}");
