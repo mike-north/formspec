@@ -84,6 +84,19 @@ function isBooleanLike(type: ts.Type): boolean {
   return isIntersectionWithBase(stripped, isBooleanLike);
 }
 
+function isNullLike(type: ts.Type): boolean {
+  const stripped = stripNullishUnion(type);
+  if (stripped.flags & ts.TypeFlags.Null) {
+    return true;
+  }
+
+  if (stripped.isUnion()) {
+    return stripped.types.every((member) => isNullLike(member));
+  }
+
+  return isIntersectionWithBase(stripped, isNullLike);
+}
+
 function isArrayLike(type: ts.Type, checker: ts.TypeChecker): boolean {
   const stripped = stripNullishUnion(type);
   if (checker.isArrayType(stripped)) {
@@ -102,6 +115,29 @@ function isStringLiteralUnion(type: ts.Type): boolean {
 function isObjectLike(type: ts.Type, checker: ts.TypeChecker): boolean {
   const stripped = stripNullishUnion(type);
   return !isArrayLike(stripped, checker) && (stripped.flags & ts.TypeFlags.Object) !== 0;
+}
+
+function isJsonLike(type: ts.Type, checker: ts.TypeChecker): boolean {
+  const stripped = stripNullishUnion(type);
+
+  if (
+    isNullLike(stripped) ||
+    isNumberLike(stripped) ||
+    isStringLike(stripped) ||
+    isBooleanLike(stripped)
+  ) {
+    return true;
+  }
+
+  if (stripped.isUnion()) {
+    return stripped.types.every((member) => isJsonLike(member, checker));
+  }
+
+  if (isArrayLike(stripped, checker) || isObjectLike(stripped, checker)) {
+    return true;
+  }
+
+  return isIntersectionWithBase(stripped, (member) => isJsonLike(member, checker));
 }
 
 function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
@@ -143,19 +179,17 @@ export function getTypeSemanticCapabilities(
   if (isStringLike(type)) {
     capabilities.add("string-like");
   }
-  if (isBooleanLike(type)) {
+  if (isJsonLike(type, checker)) {
     capabilities.add("json-like");
   }
   if (isArrayLike(type, checker)) {
     capabilities.add("array-like");
-    capabilities.add("json-like");
   }
   if (isStringLiteralUnion(type)) {
     capabilities.add("enum-member-addressable");
   }
   if (isObjectLike(type, checker)) {
     capabilities.add("object-like");
-    capabilities.add("json-like");
   }
 
   return [...capabilities];

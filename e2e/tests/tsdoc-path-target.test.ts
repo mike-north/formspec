@@ -121,9 +121,9 @@ describe("TSDoc Path-Target Constraints", () => {
 
         expect(result.exitCode).not.toBe(0);
         const output = `${result.stdout}${result.stderr}`;
-        expect(output).toContain('Field "total.currency"');
+        expect(output).toContain('Target "currency"');
         expect(output).toContain(
-          'constraint "minimum" is only valid on number fields, but field type is "string"'
+          'constraint "minimum" is only valid on number targets, but field type is "string"'
         );
       } finally {
         if (fs.existsSync(tempDir)) {
