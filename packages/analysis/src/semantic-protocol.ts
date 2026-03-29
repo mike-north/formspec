@@ -169,23 +169,28 @@ export interface FormSpecAnalysisFileSnapshot {
  */
 export type FormSpecSemanticQuery =
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "health";
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "completion";
       readonly filePath: string;
       readonly offset: number;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "hover";
       readonly filePath: string;
       readonly offset: number;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "diagnostics";
       readonly filePath: string;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "file-snapshot";
       readonly filePath: string;
     };
@@ -195,35 +200,41 @@ export type FormSpecSemanticQuery =
  */
 export type FormSpecSemanticResponse =
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "health";
       readonly manifest: FormSpecAnalysisManifest;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "completion";
       readonly sourceHash: string;
       readonly context: FormSpecSerializedCompletionContext;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "hover";
       readonly sourceHash: string;
       readonly hover: FormSpecSerializedHoverInfo | null;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "diagnostics";
       readonly sourceHash: string;
       readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "file-snapshot";
       readonly snapshot: FormSpecAnalysisFileSnapshot | null;
     }
   | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
       readonly kind: "error";
       readonly error: string;
     };
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isCommentSpan(value: unknown): value is CommentSpan {
@@ -240,11 +251,11 @@ function isStringArray(value: unknown): value is readonly string[] {
 }
 
 function isPlacementArray(value: unknown): value is readonly FormSpecPlacement[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+  return isStringArray(value);
 }
 
 function isTargetKindArray(value: unknown): value is readonly FormSpecTargetKind[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+  return isStringArray(value);
 }
 
 function isIpcEndpoint(value: unknown): value is FormSpecIpcEndpoint {
@@ -318,8 +329,7 @@ function isSerializedTagSemanticContext(
     Array.isArray(candidate.signatures) &&
     candidate.signatures.every(isSerializedTagSignature) &&
     (candidate.tagHoverMarkdown === null || typeof candidate.tagHoverMarkdown === "string") &&
-    (candidate.targetHoverMarkdown === null ||
-      typeof candidate.targetHoverMarkdown === "string") &&
+    (candidate.targetHoverMarkdown === null || typeof candidate.targetHoverMarkdown === "string") &&
     (candidate.argumentHoverMarkdown === null ||
       typeof candidate.argumentHoverMarkdown === "string")
   );
@@ -346,8 +356,7 @@ function isSerializedCompletionContext(
       return isSerializedTagSemanticContext(candidate.semantic);
     case "argument":
       return (
-        isSerializedTagSemanticContext(candidate.semantic) &&
-        isStringArray(candidate.valueLabels)
+        isSerializedTagSemanticContext(candidate.semantic) && isStringArray(candidate.valueLabels)
       );
     case "none":
       return true;
@@ -368,6 +377,12 @@ function isSerializedHoverInfo(value: unknown): value is FormSpecSerializedHover
       candidate.kind === "argument") &&
     typeof candidate.markdown === "string"
   );
+}
+
+function hasCurrentProtocolVersion(
+  value: unknown
+): value is { readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION } {
+  return isObjectRecord(value) && value["protocolVersion"] === FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
 }
 
 function isAnalysisDiagnostic(value: unknown): value is FormSpecAnalysisDiagnostic {
@@ -466,7 +481,7 @@ export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAna
  * Validates an unknown inbound IPC request before dispatching it.
  */
 export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemanticQuery {
-  if (!isObjectRecord(value)) {
+  if (!hasCurrentProtocolVersion(value)) {
     return false;
   }
 
@@ -493,7 +508,7 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
  * Validates an unknown IPC response before the language server consumes it.
  */
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse {
-  if (!isObjectRecord(value)) {
+  if (!hasCurrentProtocolVersion(value)) {
     return false;
   }
 
@@ -507,8 +522,7 @@ export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSem
       return isFormSpecAnalysisManifest(candidate.manifest);
     case "completion":
       return (
-        typeof candidate.sourceHash === "string" &&
-        isSerializedCompletionContext(candidate.context)
+        typeof candidate.sourceHash === "string" && isSerializedCompletionContext(candidate.context)
       );
     case "hover":
       return (

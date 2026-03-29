@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import * as ts from "typescript";
 import {
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   buildFormSpecAnalysisFileSnapshot,
   computeFormSpecTextHash,
   findDeclarationForCommentOffset,
@@ -18,7 +19,11 @@ import {
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
 } from "@formspec/analysis";
-import { createFormSpecAnalysisManifest, getFormSpecWorkspaceRuntimePaths } from "./workspace.js";
+import {
+  createFormSpecAnalysisManifest,
+  getFormSpecWorkspaceRuntimePaths,
+  type FormSpecWorkspaceRuntimePaths,
+} from "./workspace.js";
 
 interface LoggerLike {
   info(message: string): void;
@@ -30,6 +35,7 @@ export interface FormSpecPluginServiceOptions {
   readonly getProgram: () => ts.Program | undefined;
   readonly logger?: LoggerLike;
   readonly snapshotDebounceMs?: number;
+  readonly now?: () => Date;
 }
 
 interface CachedFileSnapshot {
@@ -39,7 +45,7 @@ interface CachedFileSnapshot {
 
 export class FormSpecPluginService {
   private readonly manifest: FormSpecAnalysisManifest;
-  private readonly runtimePaths;
+  private readonly runtimePaths: FormSpecWorkspaceRuntimePaths;
   private readonly snapshotCache = new Map<string, CachedFileSnapshot>();
   private readonly refreshTimers = new Map<string, NodeJS.Timeout>();
   private server: net.Server | null = null;
@@ -72,14 +78,24 @@ export class FormSpecPluginService {
       socket.setEncoding("utf8");
       socket.on("data", (chunk) => {
         buffer += String(chunk);
-        const newlineIndex = buffer.indexOf("\n");
-        if (newlineIndex < 0) {
+        while (true) {
+          const newlineIndex = buffer.indexOf("\n");
+          if (newlineIndex < 0) {
+            return;
+          }
+
+          const payload = buffer.slice(0, newlineIndex);
+          const remaining = buffer.slice(newlineIndex + 1);
+          if (remaining.trim().length > 0) {
+            this.options.logger?.info(
+              `[FormSpec] Ignoring extra semantic query payload data for ${this.runtimePaths.workspaceRoot}`
+            );
+          }
+          buffer = remaining;
+          // The FormSpec IPC transport is intentionally one-request-per-connection.
+          this.respondToSocket(socket, payload);
           return;
         }
-
-        const payload = buffer.slice(0, newlineIndex);
-        buffer = buffer.slice(newlineIndex + 1);
-        this.respondToSocket(socket, payload);
       });
     });
 
@@ -102,29 +118,23 @@ export class FormSpecPluginService {
       clearTimeout(timer);
     }
     this.refreshTimers.clear();
-
-    if (this.server === null) {
-      return;
-    }
+    this.snapshotCache.clear();
 
     const server = this.server;
     this.server = null;
-    if (!server.listening) {
-      return;
-    }
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error === undefined) {
-          resolve();
-          return;
-        }
-        reject(error);
+    if (server !== null && server.listening) {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error === undefined) {
+            resolve();
+            return;
+          }
+          reject(error);
+        });
       });
-    });
-
-    if (this.runtimePaths.endpoint.kind === "unix-socket") {
-      await fs.rm(this.runtimePaths.endpoint.address, { force: true });
     }
+
+    await this.cleanupRuntimeArtifacts();
   }
 
   public scheduleSnapshotRefresh(filePath: string): void {
@@ -151,6 +161,7 @@ export class FormSpecPluginService {
     switch (query.kind) {
       case "health":
         return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "health",
           manifest: this.manifest,
         };
@@ -158,14 +169,14 @@ export class FormSpecPluginService {
         const environment = this.getSourceEnvironment(query.filePath);
         if (environment === null) {
           return {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
             kind: "error",
             error: `Unable to resolve TypeScript source file for ${query.filePath}`,
           };
         }
 
         const declaration = findDeclarationForCommentOffset(environment.sourceFile, query.offset);
-        const placement =
-          declaration === null ? null : resolveDeclarationPlacement(declaration);
+        const placement = declaration === null ? null : resolveDeclarationPlacement(declaration);
         const subjectType =
           declaration === null ? undefined : getSubjectType(declaration, environment.checker);
         const context = getSemanticCommentCompletionContextAtOffset(
@@ -179,6 +190,7 @@ export class FormSpecPluginService {
         );
 
         return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "completion",
           sourceHash: computeFormSpecTextHash(environment.sourceFile.text),
           context: serializeCompletionContext(context),
@@ -188,14 +200,14 @@ export class FormSpecPluginService {
         const environment = this.getSourceEnvironment(query.filePath);
         if (environment === null) {
           return {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
             kind: "error",
             error: `Unable to resolve TypeScript source file for ${query.filePath}`,
           };
         }
 
         const declaration = findDeclarationForCommentOffset(environment.sourceFile, query.offset);
-        const placement =
-          declaration === null ? null : resolveDeclarationPlacement(declaration);
+        const placement = declaration === null ? null : resolveDeclarationPlacement(declaration);
         const subjectType =
           declaration === null ? undefined : getSubjectType(declaration, environment.checker);
         const hover = getCommentHoverInfoAtOffset(environment.sourceFile.text, query.offset, {
@@ -205,6 +217,7 @@ export class FormSpecPluginService {
         });
 
         return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "hover",
           sourceHash: computeFormSpecTextHash(environment.sourceFile.text),
           hover: serializeHoverInfo(hover),
@@ -213,6 +226,7 @@ export class FormSpecPluginService {
       case "diagnostics": {
         const snapshot = this.getFileSnapshot(query.filePath);
         return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "diagnostics",
           sourceHash: snapshot.sourceHash,
           diagnostics: snapshot.diagnostics,
@@ -220,6 +234,7 @@ export class FormSpecPluginService {
       }
       case "file-snapshot":
         return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "file-snapshot",
           snapshot: this.getFileSnapshot(query.filePath),
         };
@@ -240,6 +255,7 @@ export class FormSpecPluginService {
     } catch (error) {
       socket.end(
         `${JSON.stringify({
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
           kind: "error",
           error: error instanceof Error ? error.message : String(error),
         } satisfies FormSpecSemanticResponse)}\n`
@@ -251,6 +267,13 @@ export class FormSpecPluginService {
     const tempManifestPath = `${this.runtimePaths.manifestPath}.tmp`;
     await fs.writeFile(tempManifestPath, `${JSON.stringify(this.manifest, null, 2)}\n`, "utf8");
     await fs.rename(tempManifestPath, this.runtimePaths.manifestPath);
+  }
+
+  private async cleanupRuntimeArtifacts(): Promise<void> {
+    await fs.rm(this.runtimePaths.manifestPath, { force: true });
+    if (this.runtimePaths.endpoint.kind === "unix-socket") {
+      await fs.rm(this.runtimePaths.endpoint.address, { force: true });
+    }
   }
 
   private getSourceEnvironment(filePath: string): {
@@ -279,7 +302,7 @@ export class FormSpecPluginService {
       return {
         filePath,
         sourceHash: "",
-        generatedAt: new Date().toISOString(),
+        generatedAt: this.getNow().toISOString(),
         comments: [],
         diagnostics: [
           {
@@ -307,24 +330,16 @@ export class FormSpecPluginService {
     });
     return snapshot;
   }
+
+  private getNow(): Date {
+    return this.options.now?.() ?? new Date();
+  }
 }
 
 export function createLanguageServiceProxy(
   languageService: ts.LanguageService,
   semanticService: FormSpecPluginService
 ): ts.LanguageService {
-  const proxy = Object.create(null) as Record<string, unknown>;
-
-  for (const key of Object.keys(languageService) as (keyof ts.LanguageService)[]) {
-    const original = languageService[key];
-    if (typeof original !== "function") {
-      continue;
-    }
-
-    proxy[key as string] = (...args: unknown[]) =>
-      (original as (...innerArgs: unknown[]) => unknown).apply(languageService, args);
-  }
-
   const wrapWithSnapshotRefresh = <Args extends readonly unknown[], Result>(
     fn: (fileName: string, ...args: Args) => Result
   ) => {
@@ -336,21 +351,31 @@ export function createLanguageServiceProxy(
 
   // The plugin keeps semantic snapshots fresh for the lightweight LSP. The
   // underlying tsserver results still come from the original language service.
-  proxy["getSemanticDiagnostics"] = wrapWithSnapshotRefresh((fileName) =>
+  const getSemanticDiagnostics = wrapWithSnapshotRefresh((fileName) =>
     languageService.getSemanticDiagnostics(fileName)
   );
 
-  proxy["getCompletionsAtPosition"] = wrapWithSnapshotRefresh(
-    (
-      fileName: string,
-      position: number,
-      options: ts.GetCompletionsAtPositionOptions | undefined
-    ) => languageService.getCompletionsAtPosition(fileName, position, options)
+  const getCompletionsAtPosition = wrapWithSnapshotRefresh(
+    (fileName: string, position: number, options: ts.GetCompletionsAtPositionOptions | undefined) =>
+      languageService.getCompletionsAtPosition(fileName, position, options)
   );
 
-  proxy["getQuickInfoAtPosition"] = wrapWithSnapshotRefresh((fileName, position: number) =>
+  const getQuickInfoAtPosition = wrapWithSnapshotRefresh((fileName, position: number) =>
     languageService.getQuickInfoAtPosition(fileName, position)
   );
 
-  return proxy as unknown as ts.LanguageService;
+  return new Proxy(languageService, {
+    get(target, property, receiver) {
+      switch (property) {
+        case "getSemanticDiagnostics":
+          return getSemanticDiagnostics;
+        case "getCompletionsAtPosition":
+          return getCompletionsAtPosition;
+        case "getQuickInfoAtPosition":
+          return getQuickInfoAtPosition;
+        default:
+          return Reflect.get(target, property, receiver);
+      }
+    },
+  });
 }

@@ -15,7 +15,7 @@ import {
   type FormSpecSemanticResponse,
 } from "@formspec/analysis";
 
-const PLUGIN_QUERY_TIMEOUT_MS = 2_000;
+const DEFAULT_PLUGIN_QUERY_TIMEOUT_MS = 2_000;
 
 function getManifestPath(workspaceRoot: string): string {
   return getFormSpecManifestPath(workspaceRoot);
@@ -50,7 +50,8 @@ async function readManifest(workspaceRoot: string): Promise<FormSpecAnalysisMani
 
 async function sendSemanticQuery(
   manifest: FormSpecAnalysisManifest,
-  query: FormSpecSemanticQuery
+  query: FormSpecSemanticQuery,
+  timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
 ): Promise<FormSpecSemanticResponse | null> {
   return new Promise((resolve) => {
     const socket = net.createConnection(manifest.endpoint.address);
@@ -62,11 +63,12 @@ async function sendSemanticQuery(
         return;
       }
       settled = true;
+      socket.removeAllListeners("data");
       socket.destroy();
       resolve(response);
     };
 
-    socket.setTimeout(PLUGIN_QUERY_TIMEOUT_MS, () => {
+    socket.setTimeout(timeoutMs, () => {
       finish(null);
     });
 
@@ -76,20 +78,27 @@ async function sendSemanticQuery(
     });
     socket.on("data", (chunk) => {
       buffer += String(chunk);
-      const newlineIndex = buffer.indexOf("\n");
-      if (newlineIndex < 0) {
-        return;
-      }
+      while (true) {
+        const newlineIndex = buffer.indexOf("\n");
+        if (newlineIndex < 0) {
+          return;
+        }
 
-      const payload = buffer.slice(0, newlineIndex);
-      try {
-        const response = JSON.parse(payload) as unknown;
-        finish(isFormSpecSemanticResponse(response) ? response : null);
-      } catch {
-        finish(null);
+        const payload = buffer.slice(0, newlineIndex);
+        buffer = buffer.slice(newlineIndex + 1);
+        try {
+          const response = JSON.parse(payload) as unknown;
+          finish(isFormSpecSemanticResponse(response) ? response : null);
+        } catch {
+          finish(null);
+        }
+        return;
       }
     });
     socket.on("error", () => {
+      finish(null);
+    });
+    socket.on("close", () => {
       finish(null);
     });
   });
@@ -106,7 +115,8 @@ export function fileUriToPathOrNull(uri: string): string | null {
 async function sendFileQuery(
   workspaceRoots: readonly string[],
   filePath: string,
-  query: FormSpecSemanticQuery
+  query: FormSpecSemanticQuery,
+  timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
 ): Promise<FormSpecSemanticResponse | null> {
   const workspaceRoot = getMatchingWorkspaceRoot(workspaceRoots, filePath);
   if (workspaceRoot === null) {
@@ -118,20 +128,27 @@ async function sendFileQuery(
     return null;
   }
 
-  return sendSemanticQuery(manifest, query);
+  return sendSemanticQuery(manifest, query, timeoutMs);
 }
 
 export async function getPluginCompletionContextForDocument(
   workspaceRoots: readonly string[],
   filePath: string,
   documentText: string,
-  offset: number
+  offset: number,
+  timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
 ): Promise<FormSpecSerializedCompletionContext | null> {
-  const response = await sendFileQuery(workspaceRoots, filePath, {
-    kind: "completion",
+  const response = await sendFileQuery(
+    workspaceRoots,
     filePath,
-    offset,
-  });
+    {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "completion",
+      filePath,
+      offset,
+    },
+    timeoutMs
+  );
   if (response?.kind !== "completion") {
     return null;
   }
@@ -143,13 +160,20 @@ export async function getPluginHoverForDocument(
   workspaceRoots: readonly string[],
   filePath: string,
   documentText: string,
-  offset: number
+  offset: number,
+  timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
 ): Promise<FormSpecSerializedHoverInfo | null> {
-  const response = await sendFileQuery(workspaceRoots, filePath, {
-    kind: "hover",
+  const response = await sendFileQuery(
+    workspaceRoots,
     filePath,
-    offset,
-  });
+    {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "hover",
+      filePath,
+      offset,
+    },
+    timeoutMs
+  );
   if (response?.kind !== "hover") {
     return null;
   }

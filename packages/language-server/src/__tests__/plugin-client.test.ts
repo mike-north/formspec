@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   computeFormSpecTextHash,
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticResponse,
 } from "@formspec/analysis";
@@ -64,6 +65,7 @@ describe("plugin-client", () => {
         const response: FormSpecSemanticResponse =
           payload.kind === "completion"
             ? {
+                protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
                 kind: "completion",
                 sourceHash: computeFormSpecTextHash(documentText),
                 context: {
@@ -84,6 +86,7 @@ describe("plugin-client", () => {
                 },
               }
             : {
+                protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
                 kind: "hover",
                 sourceHash: computeFormSpecTextHash(documentText),
                 hover: {
@@ -98,7 +101,7 @@ describe("plugin-client", () => {
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
 
     const manifest: FormSpecAnalysisManifest = {
-      protocolVersion: 1,
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       analysisSchemaVersion: 1,
       workspaceRoot,
       workspaceId: "test",

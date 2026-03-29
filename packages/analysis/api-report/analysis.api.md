@@ -421,43 +421,54 @@ export type FormSpecSemanticCapability = SemanticCapability;
 
 // @public
 export type FormSpecSemanticQuery = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "health";
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "completion";
     readonly filePath: string;
     readonly offset: number;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "hover";
     readonly filePath: string;
     readonly offset: number;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "diagnostics";
     readonly filePath: string;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "file-snapshot";
     readonly filePath: string;
 };
 
 // @public
 export type FormSpecSemanticResponse = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "health";
     readonly manifest: FormSpecAnalysisManifest;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "completion";
     readonly sourceHash: string;
     readonly context: FormSpecSerializedCompletionContext;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "hover";
     readonly sourceHash: string;
     readonly hover: FormSpecSerializedHoverInfo | null;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "diagnostics";
     readonly sourceHash: string;
     readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "file-snapshot";
     readonly snapshot: FormSpecAnalysisFileSnapshot | null;
 } | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly kind: "error";
     readonly error: string;
 };

@@ -14,6 +14,7 @@ import type { Location } from "vscode-languageserver/node.js";
  * Always returns `null` in this stub implementation.
  *
  * @returns `null` — not yet implemented
+ * @public
  */
 export function getDefinition(): Location | null {
   return null;

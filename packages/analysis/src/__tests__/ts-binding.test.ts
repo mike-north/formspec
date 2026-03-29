@@ -60,17 +60,13 @@ describe("ts-binding", () => {
 
     expect(
       getTypeSemanticCapabilities(checker.getTypeFromTypeNode(amount!.type!), checker)
-    ).toEqual(
-      expect.arrayContaining(["numeric-comparable"])
-    );
+    ).toEqual(expect.arrayContaining(["numeric-comparable"]));
     expect(getTypeSemanticCapabilities(checker.getTypeFromTypeNode(tags!.type!), checker)).toEqual(
       expect.arrayContaining(["array-like", "json-like"])
     );
     expect(
       getTypeSemanticCapabilities(checker.getTypeFromTypeNode(status!.type!), checker)
-    ).toEqual(
-      expect.arrayContaining(["string-like", "enum-member-addressable"])
-    );
+    ).toEqual(expect.arrayContaining(["string-like", "enum-member-addressable"]));
   });
 
   it("collects compatible path targets and resolves dotted path types", () => {

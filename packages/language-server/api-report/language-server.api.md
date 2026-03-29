@@ -13,20 +13,21 @@ import type { Location } from 'vscode-languageserver/node.js';
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
 
-// @public (undocumented)
+// @public
 export interface CreateServerOptions {
     readonly extensions?: readonly ExtensionDefinition[];
+    readonly pluginQueryTimeoutMs?: number;
     readonly usePluginTransport?: boolean;
     readonly workspaceRoots?: readonly string[];
 }
 
-// @public (undocumented)
+// @public
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
 
 // @public
 export function getDefinition(): Location | null;
 
-// @public (undocumented)
+// @public
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
 
 ```

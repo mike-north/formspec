@@ -28,6 +28,11 @@ import {
   getPluginHoverForDocument,
 } from "./plugin-client.js";
 
+/**
+ * Public configuration for constructing the FormSpec language server.
+ *
+ * @public
+ */
 export interface CreateServerOptions {
   /** Optional extension definitions whose custom tags should be surfaced by tooling. */
   readonly extensions?: readonly ExtensionDefinition[];
@@ -35,6 +40,8 @@ export interface CreateServerOptions {
   readonly workspaceRoots?: readonly string[];
   /** Set to false to disable tsserver-plugin semantic enrichment. */
   readonly usePluginTransport?: boolean;
+  /** IPC timeout, in milliseconds, for semantic plugin requests. */
+  readonly pluginQueryTimeoutMs?: number;
 }
 
 /**
@@ -44,6 +51,7 @@ export interface CreateServerOptions {
  * Call `connection.listen()` to start accepting messages.
  *
  * @returns The configured LSP connection (not yet listening)
+ * @public
  */
 export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
@@ -93,7 +101,8 @@ export function createServer(options: CreateServerOptions = {}): Connection {
             workspaceRoots,
             filePath,
             documentText,
-            offset
+            offset,
+            options.pluginQueryTimeoutMs
           );
 
     return getCompletionItemsAtOffset(documentText, offset, options.extensions, semanticContext);
@@ -111,7 +120,13 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     const semanticHover =
       options.usePluginTransport === false || filePath === null
         ? null
-        : await getPluginHoverForDocument(workspaceRoots, filePath, documentText, offset);
+        : await getPluginHoverForDocument(
+            workspaceRoots,
+            filePath,
+            documentText,
+            offset,
+            options.pluginQueryTimeoutMs
+          );
 
     return getHoverAtOffset(documentText, offset, options.extensions, semanticHover);
   });

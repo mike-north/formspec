@@ -4,7 +4,7 @@
 "@formspec/cli": patch
 "@formspec/eslint-plugin": patch
 "@formspec/language-server": minor
-formspec: patch
+"formspec": patch
 ---
 
 Add semantic comment cursor analysis for FormSpec tags, including richer hover

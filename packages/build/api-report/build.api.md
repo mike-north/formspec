@@ -103,17 +103,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -133,17 +133,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -163,17 +163,17 @@ export const controlSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
@@ -450,17 +450,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "passthrough", z.ZodTypeAny, z.objectOutputType<{
@@ -479,17 +479,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">, z.objectInputType<{
@@ -508,17 +508,17 @@ export const labelElementSchema: z.ZodObject<{
             scope: string;
         }>;
     }, "strict", z.ZodTypeAny, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }, {
+        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
         condition: {
             schema: RuleConditionSchema;
             scope: string;
         };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     }>>;
     options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, z.ZodTypeAny, "passthrough">>;
@@ -583,17 +583,17 @@ export const ruleSchema: z.ZodObject<{
         scope: string;
     }>;
 }, "strict", z.ZodTypeAny, {
+    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     condition: {
         schema: RuleConditionSchema;
         scope: string;
     };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 }, {
+    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
     condition: {
         schema: RuleConditionSchema;
         scope: string;
     };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 }>;
 
 // @public

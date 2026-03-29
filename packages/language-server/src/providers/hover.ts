@@ -14,6 +14,11 @@ import {
 import type { ExtensionDefinition } from "@formspec/core";
 import type { Hover } from "vscode-languageserver/node.js";
 
+/**
+ * Returns hover content for a single FormSpec tag name.
+ *
+ * @public
+ */
 export function getHoverForTag(
   tagName: string,
   extensions?: readonly ExtensionDefinition[]

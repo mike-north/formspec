@@ -65,7 +65,7 @@ describe("createServer", () => {
     });
 
     const { createServer } = await import("../server.js");
-    createServer({ extensions: [extension] });
+    createServer({ extensions: [extension], pluginQueryTimeoutMs: 1_500 });
 
     const completionRegistration = mocks.connection.onCompletion.mock.calls[0];
     const hoverRegistration = mocks.connection.onHover.mock.calls[0];

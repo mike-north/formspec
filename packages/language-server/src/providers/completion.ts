@@ -15,6 +15,11 @@ import {
 import type { ExtensionDefinition } from "@formspec/core";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
+/**
+ * Returns the full set of tag-name completions currently known to FormSpec.
+ *
+ * @public
+ */
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[] {
   return getConstraintTagDefinitions(extensions).map((tag) => ({
     label: `@${tag.canonicalName}`,

@@ -4,6 +4,7 @@ import path from "node:path";
 import net from "node:net";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis";
 import { FormSpecPluginService } from "../service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";
 
@@ -84,6 +85,7 @@ describe("FormSpecPluginService", () => {
     services.push(service);
 
     const completion = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "completion",
       filePath: context.filePath,
       offset: source.indexOf("amount") + 2,
@@ -98,6 +100,7 @@ describe("FormSpecPluginService", () => {
     }
 
     const hover = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "hover",
       filePath: context.filePath,
       offset: source.indexOf("@minimum") + 3,
@@ -130,12 +133,34 @@ describe("FormSpecPluginService", () => {
     const manifestText = await fs.readFile(runtimePaths.manifestPath, "utf8");
     expect(manifestText).toContain('"protocolVersion": 1');
 
-    const response = await querySocket(runtimePaths.endpoint.address, { kind: "health" });
+    const response = await querySocket(runtimePaths.endpoint.address, {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "health",
+    });
     expect(response).toMatchObject({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "health",
       manifest: {
         workspaceRoot: context.workspaceRoot,
       },
     });
+  });
+
+  it("removes the manifest when the service stops", async () => {
+    const context = await createProgramContext("class Foo {}");
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+
+    await service.start();
+
+    const runtimePaths = getFormSpecWorkspaceRuntimePaths(context.workspaceRoot);
+    await fs.access(runtimePaths.manifestPath);
+    await service.stop();
+
+    await expect(fs.access(runtimePaths.manifestPath)).rejects.toBeDefined();
   });
 });

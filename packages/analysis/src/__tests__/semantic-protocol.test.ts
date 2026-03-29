@@ -52,6 +52,7 @@ describe("semantic protocol", () => {
   it("accepts only recognized semantic query shapes", () => {
     expect(
       isFormSpecSemanticQuery({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
         kind: "completion",
         filePath: "/workspace/formspec/example.ts",
         offset: 42,
@@ -60,16 +61,23 @@ describe("semantic protocol", () => {
 
     expect(
       isFormSpecSemanticQuery({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
         kind: "completion",
         filePath: "/workspace/formspec/example.ts",
       })
     ).toBe(false);
 
-    expect(isFormSpecSemanticQuery({ kind: "bogus" })).toBe(false);
+    expect(
+      isFormSpecSemanticQuery({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "bogus",
+      })
+    ).toBe(false);
   });
 
   it("accepts serialized completion responses and rejects malformed payloads", () => {
     const response: FormSpecSemanticResponse = {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "completion",
       sourceHash: computeFormSpecTextHash("/** @minimum :amount 0 */"),
       context: {
@@ -98,6 +106,7 @@ describe("semantic protocol", () => {
     expect(isFormSpecSemanticResponse(response)).toBe(true);
     expect(
       isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
         kind: "completion",
         sourceHash: response.sourceHash,
         context: {
@@ -105,6 +114,12 @@ describe("semantic protocol", () => {
         },
       })
     ).toBe(false);
+  });
+
+  it("rejects array payloads at the top-level object boundary", () => {
+    expect(isFormSpecAnalysisManifest([])).toBe(false);
+    expect(isFormSpecSemanticQuery([])).toBe(false);
+    expect(isFormSpecSemanticResponse([])).toBe(false);
   });
 
   it("serializes completion contexts across tag-name and target variants", () => {

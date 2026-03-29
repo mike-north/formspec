@@ -5,11 +5,7 @@ import {
   getCommentTagSemanticContext,
   type CommentSemanticContextOptions,
 } from "./cursor-context.js";
-import {
-  getHostType,
-  getLastLeadingDocCommentRange,
-  getSubjectType,
-} from "./source-bindings.js";
+import { getHostType, getLastLeadingDocCommentRange, getSubjectType } from "./source-bindings.js";
 import {
   computeFormSpecTextHash,
   serializeParsedCommentTag,

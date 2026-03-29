@@ -1,6 +1,8 @@
 import os from "node:os";
 import path from "node:path";
 import {
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  FORMSPEC_ANALYSIS_SCHEMA_VERSION,
   getFormSpecManifestPath,
   getFormSpecWorkspaceId,
   getFormSpecWorkspaceRuntimeDirectory,
@@ -18,7 +20,8 @@ export interface FormSpecWorkspaceRuntimePaths {
 
 export function getFormSpecWorkspaceRuntimePaths(
   workspaceRoot: string,
-  platform = process.platform
+  platform = process.platform,
+  userScope = getFormSpecUserScope()
 ): FormSpecWorkspaceRuntimePaths {
   const workspaceId = getFormSpecWorkspaceId(workspaceRoot);
   const runtimeDirectory = getFormSpecWorkspaceRuntimeDirectory(workspaceRoot);
@@ -26,11 +29,11 @@ export function getFormSpecWorkspaceRuntimePaths(
     platform === "win32"
       ? {
           kind: "windows-pipe",
-          address: `\\\\.\\pipe\\formspec-${workspaceId}`,
+          address: `\\\\.\\pipe\\formspec-${userScope}-${workspaceId}`,
         }
       : {
           kind: "unix-socket",
-          address: path.join(os.tmpdir(), `formspec-${workspaceId}.sock`),
+          address: path.join(os.tmpdir(), `formspec-${userScope}-${workspaceId}.sock`),
         };
 
   return {
@@ -50,8 +53,8 @@ export function createFormSpecAnalysisManifest(
 ): FormSpecAnalysisManifest {
   const paths = getFormSpecWorkspaceRuntimePaths(workspaceRoot);
   return {
-    protocolVersion: 1,
-    analysisSchemaVersion: 1,
+    protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+    analysisSchemaVersion: FORMSPEC_ANALYSIS_SCHEMA_VERSION,
     workspaceRoot,
     workspaceId: paths.workspaceId,
     endpoint: paths.endpoint,
@@ -60,4 +63,9 @@ export function createFormSpecAnalysisManifest(
     generation,
     updatedAt: new Date().toISOString(),
   };
+}
+
+function getFormSpecUserScope(): string {
+  const username = os.userInfo().username.trim();
+  return username.length > 0 ? username : "formspec";
 }
