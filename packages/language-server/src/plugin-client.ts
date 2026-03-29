@@ -21,15 +21,31 @@ function getManifestPath(workspaceRoot: string): string {
   return getFormSpecManifestPath(workspaceRoot);
 }
 
+function normalizeWorkspaceRoot(root: string): string {
+  const resolved = path.resolve(root);
+  const parsed = path.parse(resolved);
+  let normalized = resolved;
+
+  while (normalized.length > parsed.root.length && normalized.endsWith(path.sep)) {
+    normalized = normalized.slice(0, -path.sep.length);
+  }
+
+  return normalized;
+}
+
 function getMatchingWorkspaceRoot(
   workspaceRoots: readonly string[],
   filePath: string
 ): string | null {
-  const normalizedRoots = [...workspaceRoots].sort((left, right) => right.length - left.length);
+  const normalizedFilePath = path.resolve(filePath);
+  const normalizedRoots = [...workspaceRoots]
+    .map(normalizeWorkspaceRoot)
+    .sort((left, right) => right.length - left.length);
   return (
     normalizedRoots.find(
       (workspaceRoot) =>
-        filePath === workspaceRoot || filePath.startsWith(`${workspaceRoot}${path.sep}`)
+        normalizedFilePath === workspaceRoot ||
+        normalizedFilePath.startsWith(`${workspaceRoot}${path.sep}`)
     ) ?? null
   );
 }

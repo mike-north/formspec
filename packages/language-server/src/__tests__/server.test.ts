@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => {
     getCompletionItemsAtOffset: vi.fn(() => []),
     getHoverAtOffset: vi.fn(() => null),
     getDefinition: vi.fn(() => null),
+    getPluginCompletionContextForDocument: vi.fn(() => Promise.resolve(null)),
+    getPluginHoverForDocument: vi.fn(() => Promise.resolve(null)),
   };
 });
 
@@ -47,9 +49,17 @@ vi.mock("../providers/definition.js", () => ({
   getDefinition: mocks.getDefinition,
 }));
 
+vi.mock("../plugin-client.js", () => ({
+  fileUriToPathOrNull: vi.fn((uri: string) => (uri.startsWith("file://") ? uri.slice(7) : null)),
+  getPluginCompletionContextForDocument: mocks.getPluginCompletionContextForDocument,
+  getPluginHoverForDocument: mocks.getPluginHoverForDocument,
+}));
+
 describe("createServer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getPluginCompletionContextForDocument.mockResolvedValue(null);
+    mocks.getPluginHoverForDocument.mockResolvedValue(null);
   });
 
   it("forwards extension definitions to completion and hover providers", async () => {
@@ -105,5 +115,51 @@ describe("createServer", () => {
       null
     );
     expect(mocks.getHoverAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension], null);
+  });
+
+  it("falls back to rootUri when workspaceFolders are absent", async () => {
+    const { createServer } = await import("../server.js");
+    createServer();
+
+    const initializeHandler = mocks.connection.onInitialize.mock.calls[0]?.[0] as
+      | ((params: {
+          rootUri?: string | null;
+          rootPath?: string | null;
+          workspaceFolders?: readonly { uri: string }[] | null;
+        }) => { capabilities: { completionProvider: { triggerCharacters: readonly string[] } } })
+      | undefined;
+    const completionHandler = mocks.connection.onCompletion.mock.calls[0]?.[0] as
+      | ((params: {
+          textDocument: { uri: string };
+          position: { line: number; character: number };
+        }) => Promise<unknown>)
+      | undefined;
+
+    expect(typeof initializeHandler).toBe("function");
+    expect(typeof completionHandler).toBe("function");
+
+    const initializeResult = initializeHandler?.({
+      rootUri: "file:///workspace/project",
+      workspaceFolders: null,
+    });
+
+    mocks.documents.get.mockReturnValue({
+      getText: () => "/** @minimum 0 */",
+      offsetAt: () => 7,
+    });
+
+    await completionHandler?.({
+      textDocument: { uri: "file:///workspace/project/example.ts" },
+      position: { line: 0, character: 7 },
+    });
+
+    expect(initializeResult?.capabilities.completionProvider.triggerCharacters).toEqual(["@", ":"]);
+    expect(mocks.getPluginCompletionContextForDocument).toHaveBeenCalledWith(
+      ["/workspace/project"],
+      "/workspace/project/example.ts",
+      "/** @minimum 0 */",
+      7,
+      undefined
+    );
   });
 });

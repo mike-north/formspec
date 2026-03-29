@@ -25,15 +25,16 @@ export function getFormSpecWorkspaceRuntimePaths(
 ): FormSpecWorkspaceRuntimePaths {
   const workspaceId = getFormSpecWorkspaceId(workspaceRoot);
   const runtimeDirectory = getFormSpecWorkspaceRuntimeDirectory(workspaceRoot);
+  const sanitizedUserScope = sanitizeScopeSegment(userScope);
   const endpoint: FormSpecIpcEndpoint =
     platform === "win32"
       ? {
           kind: "windows-pipe",
-          address: `\\\\.\\pipe\\formspec-${userScope}-${workspaceId}`,
+          address: `\\\\.\\pipe\\formspec-${sanitizedUserScope}-${workspaceId}`,
         }
       : {
           kind: "unix-socket",
-          address: path.join(os.tmpdir(), `formspec-${userScope}-${workspaceId}.sock`),
+          address: path.join(os.tmpdir(), `formspec-${sanitizedUserScope}-${workspaceId}.sock`),
         };
 
   return {
@@ -66,6 +67,17 @@ export function createFormSpecAnalysisManifest(
 }
 
 function getFormSpecUserScope(): string {
-  const username = os.userInfo().username.trim();
-  return username.length > 0 ? username : "formspec";
+  try {
+    return sanitizeScopeSegment(os.userInfo().username);
+  } catch {
+    return sanitizeScopeSegment(
+      process.env["USER"] ?? process.env["USERNAME"] ?? process.env["LOGNAME"] ?? "formspec"
+    );
+  }
+}
+
+function sanitizeScopeSegment(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  const sanitized = trimmed.replace(/[^a-z0-9_-]+/gu, "-").replace(/-+/gu, "-");
+  return sanitized.length > 0 ? sanitized : "formspec";
 }

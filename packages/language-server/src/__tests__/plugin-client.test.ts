@@ -120,7 +120,7 @@ describe("plugin-client", () => {
     );
 
     const completion = await getPluginCompletionContextForDocument(
-      [workspaceRoot],
+      [`${workspaceRoot}${path.sep}`],
       path.join(workspaceRoot, "example.ts"),
       documentText,
       documentText.indexOf("amount") + 2

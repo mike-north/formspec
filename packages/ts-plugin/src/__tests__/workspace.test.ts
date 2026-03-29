@@ -22,6 +22,16 @@ describe("workspace runtime paths", () => {
     expect(runtimePaths.endpoint.address).toMatch(/^\\\\\.\\pipe\\formspec-alice-/u);
   });
 
+  it("sanitizes the user scope before embedding it in endpoint names", () => {
+    const runtimePaths = getFormSpecWorkspaceRuntimePaths(
+      "/workspace/formspec",
+      "linux",
+      "Alice Example"
+    );
+
+    expect(runtimePaths.endpoint.address).toContain("formspec-alice-example-");
+  });
+
   it("derives deterministic runtime paths for the same workspace", () => {
     const left = getFormSpecWorkspaceRuntimePaths("/workspace/formspec", "linux", "alice");
     const right = getFormSpecWorkspaceRuntimePaths("/workspace/formspec", "linux", "alice");

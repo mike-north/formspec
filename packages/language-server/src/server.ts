@@ -28,6 +28,32 @@ import {
   getPluginHoverForDocument,
 } from "./plugin-client.js";
 
+function dedupeWorkspaceRoots(workspaceRoots: readonly string[]): string[] {
+  return [...new Set(workspaceRoots)];
+}
+
+function getWorkspaceRootsFromInitializeParams(params: {
+  readonly workspaceFolders?: readonly { readonly uri: string }[] | null;
+  readonly rootUri?: string | null;
+  readonly rootPath?: string | null;
+}): string[] {
+  const workspaceFolders =
+    params.workspaceFolders
+      ?.map((workspaceFolder) => fileUriToPathOrNull(workspaceFolder.uri))
+      .filter((workspaceRoot): workspaceRoot is string => workspaceRoot !== null) ?? [];
+  const rootUri =
+    params.rootUri === null || params.rootUri === undefined
+      ? null
+      : fileUriToPathOrNull(params.rootUri);
+  const rootPath = params.rootPath ?? null;
+
+  return dedupeWorkspaceRoots([
+    ...workspaceFolders,
+    ...(rootUri === null ? [] : [rootUri]),
+    ...(rootPath === null ? [] : [rootPath]),
+  ]);
+}
+
 /**
  * Public configuration for constructing the FormSpec language server.
  *
@@ -61,19 +87,17 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   documents.listen(connection);
 
   connection.onInitialize((params): InitializeResult => {
-    workspaceRoots = [
-      ...(params.workspaceFolders
-        ?.map((workspaceFolder) => fileUriToPathOrNull(workspaceFolder.uri))
-        .filter((workspaceRoot): workspaceRoot is string => workspaceRoot !== null) ?? []),
+    workspaceRoots = dedupeWorkspaceRoots([
+      ...getWorkspaceRootsFromInitializeParams(params),
       ...workspaceRoots,
-    ];
+    ]);
 
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         completionProvider: {
           // Trigger completions inside JSDoc comments for tags and target specifiers
-          triggerCharacters: ["@", ":", "."],
+          triggerCharacters: ["@", ":"],
         },
         hoverProvider: true,
         definitionProvider: true,

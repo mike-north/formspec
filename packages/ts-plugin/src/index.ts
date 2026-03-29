@@ -1,7 +1,12 @@
 import type * as tsServer from "typescript/lib/tsserverlibrary.js";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
 
-const services = new Map<string, FormSpecPluginService>();
+interface ServiceEntry {
+  readonly service: FormSpecPluginService;
+  referenceCount: number;
+}
+
+const services = new Map<string, ServiceEntry>();
 
 function formatPluginError(error: unknown): string {
   return error instanceof Error ? (error.stack ?? error.message) : String(error);
@@ -11,21 +16,45 @@ function getOrCreateService(
   info: tsServer.server.PluginCreateInfo,
   typescriptVersion: string
 ): FormSpecPluginService {
-  const projectName = info.project.getProjectName();
-  const existing = services.get(projectName);
+  const workspaceRoot = info.project.getCurrentDirectory();
+  const existing = services.get(workspaceRoot);
   if (existing !== undefined) {
-    return existing;
+    existing.referenceCount += 1;
+    attachProjectCloseHandler(info, workspaceRoot, existing);
+    return existing.service;
   }
 
   const service = new FormSpecPluginService({
-    workspaceRoot: info.project.getCurrentDirectory(),
+    workspaceRoot,
     typescriptVersion,
     getProgram: () => info.languageService.getProgram(),
     logger: info.project.projectService.logger,
   });
 
+  const serviceEntry: ServiceEntry = {
+    service,
+    referenceCount: 1,
+  };
+  attachProjectCloseHandler(info, workspaceRoot, serviceEntry);
+
+  service.start().catch((error: unknown) => {
+    info.project.projectService.logger.info(
+      `[FormSpec] Plugin service failed to start for ${workspaceRoot}: ${formatPluginError(error)}`
+    );
+    services.delete(workspaceRoot);
+  });
+  services.set(workspaceRoot, serviceEntry);
+  return service;
+}
+
+function attachProjectCloseHandler(
+  info: tsServer.server.PluginCreateInfo,
+  workspaceRoot: string,
+  serviceEntry: ServiceEntry
+): void {
   const originalClose = info.project.close.bind(info.project);
   let closed = false;
+
   info.project.close = () => {
     if (closed) {
       originalClose();
@@ -33,23 +62,17 @@ function getOrCreateService(
     }
 
     closed = true;
-    services.delete(projectName);
-    void service.stop().catch((error: unknown) => {
-      info.project.projectService.logger.info(
-        `[FormSpec] Failed to stop plugin service for ${projectName}: ${formatPluginError(error)}`
-      );
-    });
+    serviceEntry.referenceCount -= 1;
+    if (serviceEntry.referenceCount <= 0) {
+      services.delete(workspaceRoot);
+      void serviceEntry.service.stop().catch((error: unknown) => {
+        info.project.projectService.logger.info(
+          `[FormSpec] Failed to stop plugin service for ${workspaceRoot}: ${formatPluginError(error)}`
+        );
+      });
+    }
     originalClose();
   };
-
-  service.start().catch((error: unknown) => {
-    info.project.projectService.logger.info(
-      `[FormSpec] Plugin service failed to start: ${formatPluginError(error)}`
-    );
-    services.delete(projectName);
-  });
-  services.set(projectName, service);
-  return service;
 }
 
 /**
