@@ -48,15 +48,15 @@ describe("Supported diagnostics", () => {
     expect(result.exitCode).toBe(1);
     expect(output).toContain('Class "TypeMismatchDiagnosticsForm": 2 diagnostic(s)');
     expect(output).toContain("[ERROR] TYPE_MISMATCH");
-    expect(output).toContain('Field "name"');
+    expect(output).toContain('Target "name!: string;"');
     expect(output).toContain('constraint "minimum"');
-    expect(output).toContain('Field "total"');
+    expect(output).toContain('Target "total!: number;"');
     expect(output).toContain('constraint "minItems"');
     expect(output).toContain(
-      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:3:6 Field "name"'
+      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:3:6 Target "name!: string;"'
     );
     expect(output).toContain(
-      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:8:6 Field "total"'
+      '[ERROR] TYPE_MISMATCH fixtures/tsdoc-class/error-type-mismatch.ts:8:6 Target "total!: number;"'
     );
   });
 
@@ -67,10 +67,10 @@ describe("Supported diagnostics", () => {
 
     expect(result.exitCode).toBe(1);
     expect(output).toContain("[ERROR] UNKNOWN_PATH_TARGET");
-    expect(output).toContain('Field "address.zip"');
+    expect(output).toContain('Target "zip"');
     expect(output).toContain("zip");
     expect(output).toContain(
-      '[ERROR] UNKNOWN_PATH_TARGET fixtures/tsdoc-class/error-invalid-path-target.ts:8:6 Field "address.zip"'
+      '[ERROR] UNKNOWN_PATH_TARGET fixtures/tsdoc-class/error-invalid-path-target.ts:8:6 Target "zip"'
     );
   });
 

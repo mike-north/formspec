@@ -36,13 +36,21 @@
 
 import * as ts from "typescript";
 import {
+  checkSyntheticTagApplication,
   extractPathTarget as extractSharedPathTarget,
+  getTagDefinition,
+  hasTypeSemanticCapability,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   type ParsedCommentTag,
+  resolveDeclarationPlacement,
+  resolvePathTargetType,
   sliceCommentSpan,
   parseCommentBlock,
   parseTagSyntax,
+  type ConstraintSemanticDiagnostic,
+  type FormSpecValueKind,
+  type SemanticCapability,
 } from "@formspec/analysis";
 import {
   TSDocParser,
@@ -143,11 +151,360 @@ function sharedTagValueOptions(options?: ParseTSDocOptions) {
   };
 }
 
+const SYNTHETIC_TYPE_FORMAT_FLAGS =
+  ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
+
+function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string[] {
+  return sourceFile.statements
+    .filter(
+      (statement) =>
+        !ts.isImportDeclaration(statement) &&
+        !ts.isImportEqualsDeclaration(statement) &&
+        !(ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
+    )
+    .map((statement) => statement.getText(sourceFile));
+}
+
+function renderSyntheticArgumentExpression(
+  valueKind: FormSpecValueKind | null,
+  argumentText: string
+): string | null {
+  const trimmed = argumentText.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  switch (valueKind) {
+    case "number":
+    case "integer":
+    case "signedInteger":
+      return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
+    case "string":
+      return JSON.stringify(argumentText);
+    case "json":
+      try {
+        JSON.parse(trimmed);
+        return `(${trimmed})`;
+      } catch {
+        return JSON.stringify(trimmed);
+      }
+    case "boolean":
+      return trimmed === "true" || trimmed === "false" ? trimmed : JSON.stringify(trimmed);
+    case "condition":
+      return "undefined as unknown as FormSpecCondition";
+    case null:
+      return null;
+    default: {
+      return String(valueKind);
+    }
+  }
+}
+
+function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
+  if (!checker.isArrayType(type)) {
+    return null;
+  }
+
+  return checker.getTypeArguments(type as ts.TypeReference)[0] ?? null;
+}
+
+function supportsConstraintCapability(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  capability: SemanticCapability | undefined
+): boolean {
+  if (capability === undefined) {
+    return true;
+  }
+
+  if (hasTypeSemanticCapability(type, checker, capability)) {
+    return true;
+  }
+
+  if (capability === "string-like") {
+    const itemType = getArrayElementType(type, checker);
+    return itemType !== null && hasTypeSemanticCapability(itemType, checker, capability);
+  }
+
+  return false;
+}
+
+function makeDiagnostic(
+  code: string,
+  message: string,
+  provenance: Provenance
+): ConstraintSemanticDiagnostic {
+  return {
+    code,
+    message,
+    severity: "error",
+    primaryLocation: provenance,
+    relatedLocations: [],
+  };
+}
+
+function placementLabel(
+  placement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>>
+): string {
+  switch (placement) {
+    case "class":
+      return "class declarations";
+    case "class-field":
+      return "class fields";
+    case "class-method":
+      return "class methods";
+    case "interface":
+      return "interface declarations";
+    case "interface-field":
+      return "interface fields";
+    case "type-alias":
+      return "type aliases";
+    case "type-alias-field":
+      return "type-alias properties";
+    case "variable":
+      return "variables";
+    case "function":
+      return "functions";
+    case "function-parameter":
+      return "function parameters";
+    case "method-parameter":
+      return "method parameters";
+    default: {
+      const exhaustive: never = placement;
+      return String(exhaustive);
+    }
+  }
+}
+
+function capabilityLabel(capability: string | undefined): string {
+  switch (capability) {
+    case "numeric-comparable":
+      return "number";
+    case "string-like":
+      return "string";
+    case "array-like":
+      return "array";
+    case "enum-member-addressable":
+      return "enum";
+    case "json-like":
+      return "JSON-compatible";
+    case "object-like":
+      return "object";
+    case "condition-like":
+      return "conditional";
+    case undefined:
+      return "compatible";
+    default:
+      return capability;
+  }
+}
+
+function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+  if (fieldType?.kind === "custom") {
+    return fieldType.typeId;
+  }
+
+  if (fieldType?.kind !== "union") {
+    return undefined;
+  }
+
+  const customMembers = fieldType.members.filter(
+    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
+  );
+  if (customMembers.length !== 1) {
+    return undefined;
+  }
+
+  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
+  const allOtherMembersAreNull = nonCustomMembers.every(
+    (member) => member.kind === "primitive" && member.primitiveKind === "null"
+  );
+  const customMember = customMembers[0];
+  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
+}
+
+function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  return (
+    broadenedTypeId !== undefined &&
+    options?.extensionRegistry?.findBuiltinConstraintBroadening(broadenedTypeId, tagName) !==
+      undefined
+  );
+}
+
+function buildCompilerBackedConstraintDiagnostics(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  tagName: string,
+  parsedTag: ParsedCommentTag | null,
+  provenance: Provenance,
+  supportingDeclarations: readonly string[],
+  options?: ParseTSDocOptions
+): readonly ConstraintSemanticDiagnostic[] {
+  if (!isBuiltinConstraintName(tagName)) {
+    return [];
+  }
+
+  const checker = options?.checker;
+  const subjectType = options?.subjectType;
+  if (checker === undefined || subjectType === undefined) {
+    return [];
+  }
+
+  const placement = resolveDeclarationPlacement(node);
+  if (placement === null) {
+    return [];
+  }
+
+  const definition = getTagDefinition(tagName, options?.extensionRegistry?.extensions);
+  if (definition === null) {
+    return [];
+  }
+
+  if (!definition.placements.includes(placement)) {
+    return [
+      makeDiagnostic(
+        "INVALID_TAG_PLACEMENT",
+        `Tag "@${tagName}" is not allowed on ${placementLabel(placement)}.`,
+        provenance
+      ),
+    ];
+  }
+
+  const target = parsedTag?.target ?? null;
+  const hasBroadening = target === null && hasBuiltinConstraintBroadening(tagName, options);
+  if (target !== null) {
+    if (target.kind !== "path") {
+      return [
+        makeDiagnostic(
+          "UNSUPPORTED_TARGETING_SYNTAX",
+          `Tag "@${tagName}" does not support ${target.kind} targeting syntax.`,
+          provenance
+        ),
+      ];
+    }
+
+    if (!target.valid || target.path === null) {
+      return [
+        makeDiagnostic(
+          "UNSUPPORTED_TARGETING_SYNTAX",
+          `Tag "@${tagName}" has invalid path targeting syntax.`,
+          provenance
+        ),
+      ];
+    }
+
+    const resolution = resolvePathTargetType(subjectType, checker, target.path.segments);
+    if (resolution.kind === "missing-property") {
+      return [
+        makeDiagnostic(
+          "UNKNOWN_PATH_TARGET",
+          `Target "${target.rawText}": path-targeted constraint "${tagName}" references unknown path segment "${resolution.segment}"`,
+          provenance
+        ),
+      ];
+    }
+
+    if (resolution.kind === "unresolvable") {
+      const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      return [
+        makeDiagnostic(
+          "TYPE_MISMATCH",
+          `Target "${target.rawText}": path-targeted constraint "${tagName}" is invalid because type "${actualType}" cannot be traversed`,
+          provenance
+        ),
+      ];
+    }
+
+    const requiredCapability = definition.capabilities[0];
+    if (
+      requiredCapability !== undefined &&
+      !supportsConstraintCapability(resolution.type, checker, requiredCapability)
+    ) {
+      const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      return [
+        makeDiagnostic(
+          "TYPE_MISMATCH",
+          `Target "${target.rawText}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+          provenance
+        ),
+      ];
+    }
+  } else if (!hasBroadening) {
+    const requiredCapability = definition.capabilities[0];
+    if (
+      requiredCapability !== undefined &&
+      !supportsConstraintCapability(subjectType, checker, requiredCapability)
+    ) {
+      const actualType = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      return [
+        makeDiagnostic(
+          "TYPE_MISMATCH",
+          `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+          provenance
+        ),
+      ];
+    }
+  }
+
+  const argumentExpression = renderSyntheticArgumentExpression(
+    definition.valueKind,
+    parsedTag?.argumentText ?? ""
+  );
+  if (definition.requiresArgument && argumentExpression === null) {
+    return [];
+  }
+
+  if (hasBroadening) {
+    return [];
+  }
+
+  const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+  const hostType = options?.hostType ?? subjectType;
+  const hostTypeText = checker.typeToString(hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+  const result = checkSyntheticTagApplication({
+    tagName,
+    placement,
+    hostType: hostTypeText,
+    subjectType: subjectTypeText,
+    ...(target?.kind === "path" ? { target: { kind: "path" as const, text: target.rawText } } : {}),
+    ...(argumentExpression !== null ? { argumentExpression } : {}),
+    supportingDeclarations,
+    ...(options?.extensionRegistry !== undefined
+      ? {
+          extensions: options.extensionRegistry.extensions.map((extension) => ({
+            extensionId: extension.extensionId,
+            ...(extension.constraintTags !== undefined
+              ? {
+                  constraintTags: extension.constraintTags.map((tag) => ({ tagName: tag.tagName })),
+                }
+              : {}),
+          })),
+        }
+      : {}),
+  });
+
+  if (result.diagnostics.length === 0) {
+    return [];
+  }
+
+  const expectedLabel =
+    definition.valueKind === null ? "compatible argument" : capabilityLabel(definition.valueKind);
+  return [
+    makeDiagnostic(
+      "TYPE_MISMATCH",
+      `Tag "@${tagName}" received an invalid argument for ${expectedLabel}.`,
+      provenance
+    ),
+  ];
+}
+
 /**
  * Shared parser instance — thread-safe because TSDocParser is stateless;
  * all parse state lives in the returned ParserContext.
  */
 const parserCache = new Map<string, TSDocParser>();
+const parseResultCache = new Map<string, TSDocParseResult>();
 
 function getParser(options?: ParseTSDocOptions): TSDocParser {
   const extensionTagNames = [
@@ -178,6 +535,8 @@ export interface TSDocParseResult {
   readonly constraints: readonly ConstraintNode[];
   /** Annotation IR nodes extracted from canonical TSDoc block tags. */
   readonly annotations: readonly AnnotationNode[];
+  /** Compiler-backed extraction diagnostics for invalid tag applications. */
+  readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
 }
 
 /**
@@ -194,6 +553,12 @@ export interface ParseTSDocOptions {
    * built-in tags may broaden onto a custom type.
    */
   readonly fieldType?: TypeNode;
+  /** Type checker used for compiler-backed placement and type validation. */
+  readonly checker?: ts.TypeChecker;
+  /** The declaration type that the parsed tag applies to. */
+  readonly subjectType?: ts.Type;
+  /** Optional enclosing host type for future cross-field signature checks. */
+  readonly hostType?: ts.Type;
 }
 
 /**
@@ -206,6 +571,48 @@ export interface ParseTSDocOptions {
 export interface DisplayNameMetadata {
   readonly displayName?: string;
   readonly memberDisplayNames: ReadonlyMap<string, string>;
+}
+
+function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): string {
+  if (registry === undefined) {
+    return "";
+  }
+
+  return registry.extensions
+    .map((extension) =>
+      JSON.stringify({
+        extensionId: extension.extensionId,
+        typeNames: extension.types?.map((type) => type.typeName) ?? [],
+        constraintTags: extension.constraintTags?.map((tag) => tag.tagName) ?? [],
+      })
+    )
+    .join("|");
+}
+
+function getParseCacheKey(
+  node: ts.Node,
+  file: string,
+  options: ParseTSDocOptions | undefined
+): string {
+  const sourceFile = node.getSourceFile();
+  const checker = options?.checker;
+  return JSON.stringify({
+    file,
+    sourceFile: sourceFile.fileName,
+    sourceText: sourceFile.text,
+    start: node.getFullStart(),
+    end: node.getEnd(),
+    fieldType: options?.fieldType ?? null,
+    subjectType:
+      checker !== undefined && options?.subjectType !== undefined
+        ? checker.typeToString(options.subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        : null,
+    hostType:
+      checker !== undefined && options?.hostType !== undefined
+        ? checker.typeToString(options.hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        : null,
+    extensions: getExtensionRegistryCacheKey(options?.extensionRegistry),
+  });
 }
 
 /**
@@ -226,8 +633,15 @@ export function parseTSDocTags(
   file = "",
   options?: ParseTSDocOptions
 ): TSDocParseResult {
+  const cacheKey = getParseCacheKey(node, file, options);
+  const cached = parseResultCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
   let displayName: string | undefined;
   let description: string | undefined;
   let placeholder: string | undefined;
@@ -243,6 +657,7 @@ export function parseTSDocTags(
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
+  const supportingDeclarations = buildSupportingDeclarations(sourceFile);
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
   const rawTextFallbacks = collectRawTextFallbacks(node, file);
 
@@ -348,6 +763,19 @@ export function parseTSDocTags(
           parsedTag !== null
             ? provenanceForParsedTag(parsedTag, sourceFile, file)
             : provenanceForComment(range, sourceFile, file, tagName);
+        const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
+          node,
+          sourceFile,
+          tagName,
+          parsedTag,
+          provenance,
+          supportingDeclarations,
+          options
+        );
+        if (compilerDiagnostics.length > 0) {
+          diagnostics.push(...compilerDiagnostics);
+          continue;
+        }
         const constraintNode = parseConstraintTagValue(
           tagName,
           text,
@@ -437,6 +865,20 @@ export function parseTSDocTags(
         continue;
       }
 
+      const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
+        node,
+        sourceFile,
+        rawTextTag.tag.normalizedTagName,
+        rawTextTag.tag,
+        provenance,
+        supportingDeclarations,
+        options
+      );
+      if (compilerDiagnostics.length > 0) {
+        diagnostics.push(...compilerDiagnostics);
+        continue;
+      }
+
       const constraintNode = parseConstraintTagValue(
         rawTextTag.tag.normalizedTagName,
         text,
@@ -461,6 +903,20 @@ export function parseTSDocTags(
         continue;
       }
 
+      const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
+        node,
+        sourceFile,
+        tagName,
+        null,
+        provenance,
+        supportingDeclarations,
+        options
+      );
+      if (compilerDiagnostics.length > 0) {
+        diagnostics.push(...compilerDiagnostics);
+        continue;
+      }
+
       const constraintNode = parseConstraintTagValue(
         tagName,
         text,
@@ -473,7 +929,9 @@ export function parseTSDocTags(
     }
   }
 
-  return { constraints, annotations };
+  const result = { constraints, annotations, diagnostics };
+  parseResultCache.set(cacheKey, result);
+  return result;
 }
 
 /**

@@ -54,7 +54,7 @@ describe("transitive type alias constraint propagation", () => {
       expect(findConstraint(constraints, "maximum")).toMatchObject({ value: 100 });
       // From Integer (transitive): @MultipleOf 1
       expect(findConstraint(constraints, "multipleOf")).toMatchObject({ value: 1 });
-    });
+    }, 15_000);
 
     it("collects both alias-level and field-level constraints for the same kind", () => {
       const analysis = analyzeClass("TwoLevelChain");

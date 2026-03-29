@@ -3,6 +3,23 @@ import type { FormSpecPlacement, SemanticCapability } from "./tag-registry.js";
 
 export type FormSpecSemanticCapability = SemanticCapability;
 
+/**
+ * Result of resolving a dotted FormSpec path target through a TypeScript type.
+ */
+export type ResolvedPathTargetType =
+  | {
+      readonly kind: "resolved";
+      readonly type: ts.Type;
+    }
+  | {
+      readonly kind: "missing-property";
+      readonly segment: string;
+    }
+  | {
+      readonly kind: "unresolvable";
+      readonly type: ts.Type;
+    };
+
 function stripNullishUnion(type: ts.Type): ts.Type {
   if (!type.isUnion()) {
     return type;
@@ -67,6 +84,19 @@ function isBooleanLike(type: ts.Type): boolean {
   return isIntersectionWithBase(stripped, isBooleanLike);
 }
 
+function isNullLike(type: ts.Type): boolean {
+  const stripped = stripNullishUnion(type);
+  if (stripped.flags & ts.TypeFlags.Null) {
+    return true;
+  }
+
+  if (stripped.isUnion()) {
+    return stripped.types.every((member) => isNullLike(member));
+  }
+
+  return isIntersectionWithBase(stripped, isNullLike);
+}
+
 function isArrayLike(type: ts.Type, checker: ts.TypeChecker): boolean {
   const stripped = stripNullishUnion(type);
   if (checker.isArrayType(stripped)) {
@@ -85,6 +115,38 @@ function isStringLiteralUnion(type: ts.Type): boolean {
 function isObjectLike(type: ts.Type, checker: ts.TypeChecker): boolean {
   const stripped = stripNullishUnion(type);
   return !isArrayLike(stripped, checker) && (stripped.flags & ts.TypeFlags.Object) !== 0;
+}
+
+function isJsonLike(type: ts.Type, checker: ts.TypeChecker): boolean {
+  const stripped = stripNullishUnion(type);
+
+  if (
+    isNullLike(stripped) ||
+    isNumberLike(stripped) ||
+    isStringLike(stripped) ||
+    isBooleanLike(stripped)
+  ) {
+    return true;
+  }
+
+  if (stripped.isUnion()) {
+    return stripped.types.every((member) => isJsonLike(member, checker));
+  }
+
+  if (isArrayLike(stripped, checker) || isObjectLike(stripped, checker)) {
+    return true;
+  }
+
+  return isIntersectionWithBase(stripped, (member) => isJsonLike(member, checker));
+}
+
+function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
+  const stripped = stripNullishUnion(type);
+  if (!checker.isArrayType(stripped)) {
+    return null;
+  }
+
+  return checker.getTypeArguments(stripped as ts.TypeReference)[0] ?? null;
 }
 
 export function resolveDeclarationPlacement(node: ts.Node): FormSpecPlacement | null {
@@ -117,19 +179,17 @@ export function getTypeSemanticCapabilities(
   if (isStringLike(type)) {
     capabilities.add("string-like");
   }
-  if (isBooleanLike(type)) {
+  if (isJsonLike(type, checker)) {
     capabilities.add("json-like");
   }
   if (isArrayLike(type, checker)) {
     capabilities.add("array-like");
-    capabilities.add("json-like");
   }
   if (isStringLiteralUnion(type)) {
     capabilities.add("enum-member-addressable");
   }
   if (isObjectLike(type, checker)) {
     capabilities.add("object-like");
-    capabilities.add("json-like");
   }
 
   return [...capabilities];
@@ -141,6 +201,66 @@ export function hasTypeSemanticCapability(
   capability: SemanticCapability
 ): boolean {
   return getTypeSemanticCapabilities(type, checker).includes(capability);
+}
+
+/**
+ * Resolves a dotted FormSpec path target against a TypeScript type.
+ *
+ * Arrays are traversed through their item type so path-targets behave the same
+ * way they do in the IR validator and cursor-context completion logic.
+ */
+export function resolvePathTargetType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  segments: readonly string[]
+): ResolvedPathTargetType {
+  const stripped = stripNullishUnion(type);
+
+  if (segments.length === 0) {
+    return {
+      kind: "resolved",
+      type: stripped,
+    };
+  }
+
+  const arrayElementType = getArrayElementType(stripped, checker);
+  if (arrayElementType !== null) {
+    return resolvePathTargetType(arrayElementType, checker, segments);
+  }
+
+  if ((stripped.flags & ts.TypeFlags.Object) === 0) {
+    return {
+      kind: "unresolvable",
+      type: stripped,
+    };
+  }
+
+  const [segment, ...rest] = segments;
+  if (segment === undefined) {
+    throw new Error("Invariant violation: path traversal requires a segment");
+  }
+
+  const property = stripped.getProperty(segment);
+  if (property === undefined) {
+    return {
+      kind: "missing-property",
+      segment,
+    };
+  }
+
+  const declaration = property.valueDeclaration ?? property.declarations?.[0];
+  if (declaration === undefined) {
+    return {
+      kind: "unresolvable",
+      type: stripped,
+    };
+  }
+
+  return resolvePathTargetType(
+    checker.getTypeOfSymbolAtLocation(property, declaration),
+    checker,
+    rest
+  );
 }
 
 function collectPropertyPaths(

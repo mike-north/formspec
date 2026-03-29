@@ -17,9 +17,9 @@ describe("compiler-signatures", () => {
       'ctx: TagContext<"class-field" | "interface-field" | "type-alias-field" | "variable" | "function-parameter" | "method-parameter", Host, Subject>,'
     );
     expect(prelude).toContain('target0: PathOfCapability<Subject, "numeric-comparable">,');
-    expect(prelude).toContain('function tag_minLength<Host, Subject>(');
+    expect(prelude).toContain("function tag_minLength<Host, Subject>(");
     expect(prelude).toContain('target0: PathOfCapability<Subject, "string-like">,');
-    expect(prelude).toContain('function tag_uniqueItems<Host, Subject>(');
+    expect(prelude).toContain("function tag_uniqueItems<Host, Subject>(");
     expect(prelude).toContain('target0: PathOfCapability<Subject, "array-like">');
     expect(prelude).toContain("value: number");
   });
@@ -209,5 +209,44 @@ describe("compiler-signatures", () => {
     ]);
 
     expect(prelude).toContain("function tag_acmeConstraint<Host, Subject>(");
+  });
+
+  it("lowers extension tag applications when extension metadata is supplied", () => {
+    const lowered = lowerTagApplicationToSyntheticCall({
+      tagName: "acmeConstraint",
+      placement: "class-field",
+      hostType: "Foo",
+      subjectType: "Foo",
+      argumentExpression: '"ok"',
+      extensions: [
+        {
+          extensionId: "acme",
+          constraintTags: [{ tagName: "acmeConstraint" }],
+        },
+      ],
+    });
+
+    expect(lowered.callExpression).toBe(
+      '__formspec.tag_acmeConstraint(__ctx<"class-field", Foo, Foo>(), "ok");'
+    );
+  });
+
+  it("lets the synthetic checker validate extension tags when extension metadata is supplied", () => {
+    const result = checkSyntheticTagApplication({
+      tagName: "acmeConstraint",
+      placement: "class-field",
+      hostType: "Foo",
+      subjectType: "Foo",
+      argumentExpression: '"ok"',
+      extensions: [
+        {
+          extensionId: "acme",
+          constraintTags: [{ tagName: "acmeConstraint" }],
+        },
+      ],
+      supportingDeclarations: ["type Foo = { value: string };"],
+    });
+
+    expect(result.diagnostics).toHaveLength(0);
   });
 });

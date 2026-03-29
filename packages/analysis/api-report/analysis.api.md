@@ -44,7 +44,7 @@ export function buildConstraintTargetStates(fieldName: string, fieldType: TypeNo
 // @public
 export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string;
 
-// @public (undocumented)
+// @public
 export function checkSyntheticTagApplication(options: CheckSyntheticTagApplicationOptions): SyntheticTagCheckResult;
 
 // @public
@@ -478,6 +478,18 @@ export function resolveConstraintTargetState(fieldName: string, fieldType: TypeN
 // @public (undocumented)
 export function resolveDeclarationPlacement(node: ts.Node): FormSpecPlacement | null;
 
+// @public
+export type ResolvedPathTargetType = {
+    readonly kind: "resolved";
+    readonly type: ts.Type;
+} | {
+    readonly kind: "missing-property";
+    readonly segment: string;
+} | {
+    readonly kind: "unresolvable";
+    readonly type: ts.Type;
+};
+
 // @public (undocumented)
 export type ResolvedTargetState = ({
     readonly kind: "resolved";
@@ -496,6 +508,9 @@ export type ResolvedTargetState = ({
     readonly type: TypeNode;
     readonly localConstraints: readonly ConstraintNode[];
 };
+
+// @public
+export function resolvePathTargetType(type: ts.Type, checker: ts.TypeChecker, segments: readonly string[]): ResolvedPathTargetType;
 
 // @public (undocumented)
 export type SemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "json-like" | "condition-like" | "object-like";

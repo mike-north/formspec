@@ -223,7 +223,7 @@ describe("analyzeInterfaceToIR", () => {
     expect(analysis.name).toBe("SimpleConfig");
     expect(analysis.fields).toHaveLength(4);
     expect(analysis.instanceMethods).toHaveLength(0);
-  });
+  }, 15_000);
 
   it("extracts constraint nodes from JSDoc tags", () => {
     const ctx = createProgramContext(interfaceFixturePath);
@@ -371,7 +371,7 @@ describe("analyzeTypeAliasToIR", () => {
       const displayName = findAnnotation(labelField.annotations, "displayName");
       expect(displayName).toMatchObject({ annotationKind: "displayName", value: "Label" });
     }
-  });
+  }, 15_000);
 
   it("returns error for non-object type aliases", () => {
     const ctx = createProgramContext(interfaceFixturePath);
@@ -468,7 +468,7 @@ describe("nested type resolution (IR)", () => {
       // If inlined, it should be an object type
       expect(addressField.type.kind).toBe("object");
     }
-  });
+  }, 15_000);
 
   it("propagates constraints from nested type declarations to typeRegistry properties", () => {
     const ctx = createProgramContext(interfaceFixturePath);

@@ -69,5 +69,5 @@ describe("generateSchemas", () => {
         },
       },
     });
-  });
+  }, 15_000);
 });

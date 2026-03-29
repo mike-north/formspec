@@ -15,11 +15,24 @@
 
 import * as ts from "typescript";
 import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core";
-import { parseTSDocTags, hasDeprecatedTagTSDoc, type ParseTSDocOptions } from "./tsdoc-parser.js";
+import {
+  parseTSDocTags,
+  hasDeprecatedTagTSDoc,
+  type ParseTSDocOptions,
+  type TSDocParseResult,
+} from "./tsdoc-parser.js";
 
 // =============================================================================
 // IR API — uses @microsoft/tsdoc for structured parsing
 // =============================================================================
+
+export function extractJSDocParseResult(
+  node: ts.Node,
+  file = "",
+  options?: ParseTSDocOptions
+): TSDocParseResult {
+  return parseTSDocTags(node, file, options);
+}
 
 /**
  * Extracts constraints from JSDoc comments on a TypeScript AST node and returns
@@ -37,7 +50,7 @@ export function extractJSDocConstraintNodes(
   file = "",
   options?: ParseTSDocOptions
 ): ConstraintNode[] {
-  const result = parseTSDocTags(node, file, options);
+  const result = extractJSDocParseResult(node, file, options);
   return [...result.constraints];
 }
 
@@ -54,7 +67,7 @@ export function extractJSDocAnnotationNodes(
   file = "",
   options?: ParseTSDocOptions
 ): AnnotationNode[] {
-  const result = parseTSDocTags(node, file, options);
+  const result = extractJSDocParseResult(node, file, options);
   return [...result.annotations];
 }
 

@@ -296,6 +296,14 @@ function printValidationResult(result: ValidationResult, label: string): boolean
   return diagnostics.some((d) => d.severity === "error");
 }
 
+function mergeValidationResults(...results: readonly ValidationResult[]): ValidationResult {
+  const diagnostics = results.flatMap((result) => result.diagnostics);
+  return {
+    diagnostics,
+    valid: diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+  };
+}
+
 function printPlannedFiles(files: readonly string[]): void {
   if (files.length === 0) {
     console.log("Dry run: no files would be written.");
@@ -420,7 +428,15 @@ async function main(): Promise<void> {
       if (options.validateOnly || options.emitIr) {
         const ir = canonicalizeTSDoc(analysis, { file: options.filePath });
 
-        const validationResult = validateIR(ir);
+        const validationResult = mergeValidationResults(
+          {
+            diagnostics: analysis.diagnostics ?? [],
+            valid: !(analysis.diagnostics ?? []).some(
+              (diagnostic) => diagnostic.severity === "error"
+            ),
+          },
+          validateIR(ir)
+        );
         const hadErrors = printValidationResult(validationResult, `Class "${analysis.name}"`);
         if (hadErrors) hasValidationErrors = true;
 
