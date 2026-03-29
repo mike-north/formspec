@@ -13,9 +13,7 @@
     "@formspec/language-server": "0.1.0-alpha.0",
     "@formspec/playground": "0.1.0-alpha.0",
     "@formspec/validator": "0.1.0-alpha.0",
-    "@formspec/e2e": "0.0.0",
-    "@formspec/analysis": "0.1.0-alpha.1",
-    "@formspec/ts-plugin": "0.1.0-alpha.1"
+    "@formspec/e2e": "0.0.0"
   },
   "changesets": [
     "add-constraints-package",
@@ -28,6 +26,7 @@
     "build-extension-runtime-surface",
     "build-integration-tools",
     "build-path-target-syntax",
+    "clean-mice-travel",
     "cli-static-analysis",
     "constraint-broadening-diagnostics",
     "constraint-literal-emission-round2",

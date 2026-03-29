@@ -77,10 +77,22 @@ export {
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
 } from "./tag-registry.js";
+export { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
 export {
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,
 } from "./file-snapshots.js";
+export type {
+  FormSpecPerformanceDetailValue,
+  FormSpecPerformanceEvent,
+  FormSpecPerformanceRecorder,
+} from "./perf-tracing.js";
+export {
+  createFormSpecPerformanceRecorder,
+  getFormSpecPerformanceNow,
+  optionalMeasure,
+  NOOP_FORMSPEC_PERFORMANCE_RECORDER,
+} from "./perf-tracing.js";
 export {
   findDeclarationForCommentOffset,
   getHostType,
@@ -98,7 +110,10 @@ export {
   type ResolvedPathTargetType,
 } from "./ts-binding.js";
 export type {
+  CheckNarrowSyntheticTagApplicabilitiesOptions,
+  CheckNarrowSyntheticTagApplicabilityOptions,
   CheckSyntheticTagApplicationOptions,
+  CheckSyntheticTagApplicationsOptions,
   LowerSyntheticTagApplicationOptions,
   LoweredSyntheticTagApplication,
   SyntheticCompilerDiagnostic,
@@ -109,6 +124,7 @@ export type {
 export {
   buildSyntheticHelperPrelude,
   checkSyntheticTagApplication,
+  checkSyntheticTagApplications,
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";

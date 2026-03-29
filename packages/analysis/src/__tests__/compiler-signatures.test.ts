@@ -1,13 +1,121 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createFormSpecPerformanceRecorder,
+  FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES,
   buildSyntheticHelperPrelude,
+  checkSyntheticTagApplications,
   checkSyntheticTagApplication,
   getMatchingTagSignatures,
   getTagDefinition,
   lowerTagApplicationToSyntheticCall,
 } from "../internal.js";
+import {
+  checkNarrowSyntheticTagApplicabilities,
+  checkNarrowSyntheticTagApplicability,
+} from "../compiler-signatures.js";
+
+const MIXED_TAG_SUPPORTING_DECLARATIONS = [
+  `
+    type Discount = {
+      amount: number;
+      secondaryAmount: number;
+      label: string;
+      code: string;
+      codes: string[];
+    };
+  `,
+  "type Foo = { discount: Discount };",
+] as const;
+
+const MIXED_TAG_APPLICATIONS = [
+  {
+    tagName: "minimum",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "amount" },
+    argumentExpression: "0",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "maximum",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "amount" },
+    argumentExpression: "100",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "minimum",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "secondaryAmount" },
+    argumentExpression: "0",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "maximum",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "secondaryAmount" },
+    argumentExpression: "100",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "minLength",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "label" },
+    argumentExpression: "1",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "maxLength",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "label" },
+    argumentExpression: "64",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "pattern",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "code" },
+    argumentExpression: '"^[A-Z]+$"',
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "minItems",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "codes" },
+    argumentExpression: "1",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+  {
+    tagName: "maxItems",
+    placement: "class-field" as const,
+    hostType: "Foo",
+    subjectType: "Discount",
+    target: { kind: "path" as const, text: "codes" },
+    argumentExpression: "10",
+    supportingDeclarations: MIXED_TAG_SUPPORTING_DECLARATIONS,
+  },
+] as const;
 
 describe("compiler-signatures", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders synthetic overloads for path-targeted builtin constraints", () => {
     const prelude = buildSyntheticHelperPrelude();
 
@@ -248,5 +356,282 @@ describe("compiler-signatures", () => {
     });
 
     expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it("checks multiple synthetic tag applications in one compiler pass", () => {
+    const results = checkSyntheticTagApplications({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          hostType: "Foo",
+          subjectType: "Discount",
+          target: {
+            kind: "path",
+            text: "percent",
+          },
+          argumentExpression: "120",
+          supportingDeclarations: [
+            "type Percent = number;",
+            "type Discount = { percent: Percent; currency: string };",
+            "type Foo = { discount: Discount };",
+          ],
+        },
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          hostType: "Foo",
+          subjectType: "Discount",
+          target: {
+            kind: "path",
+            text: "currency",
+          },
+          argumentExpression: "120",
+          supportingDeclarations: [
+            "type Percent = number;",
+            "type Discount = { percent: Percent; currency: string };",
+            "type Foo = { discount: Discount };",
+          ],
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.diagnostics).toHaveLength(0);
+    expect(results[1]?.diagnostics).not.toHaveLength(0);
+    expect(results[1]?.diagnostics[0]?.message).toContain('"currency"');
+  });
+
+  it("returns no results for an empty synthetic application batch", () => {
+    expect(checkSyntheticTagApplications({ applications: [] })).toEqual([]);
+  });
+
+  it("matches single and batched synthetic diagnostics for the same input", () => {
+    const single = checkSyntheticTagApplication({
+      tagName: "minimum",
+      placement: "class-field",
+      hostType: "Foo",
+      subjectType: "Discount",
+      target: {
+        kind: "path",
+        text: "currency",
+      },
+      argumentExpression: "120",
+      supportingDeclarations: [
+        "type Percent = number;",
+        "type Discount = { percent: Percent; currency: string };",
+        "type Foo = { discount: Discount };",
+      ],
+    });
+    const batched = checkSyntheticTagApplications({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          hostType: "Foo",
+          subjectType: "Discount",
+          target: {
+            kind: "path",
+            text: "currency",
+          },
+          argumentExpression: "120",
+          supportingDeclarations: [
+            "type Percent = number;",
+            "type Discount = { percent: Percent; currency: string };",
+            "type Foo = { discount: Discount };",
+          ],
+        },
+      ],
+    });
+
+    expect(batched).toHaveLength(1);
+    expect(batched[0]?.diagnostics).toEqual(single.diagnostics);
+  });
+
+  it("isolates batched applications with conflicting supporting declarations", () => {
+    const results = checkSyntheticTagApplications({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          hostType: "Foo",
+          subjectType: "Subject",
+          argumentExpression: "0",
+          supportingDeclarations: ["type Subject = number;", "type Foo = { value: Subject };"],
+        },
+        {
+          tagName: "minLength",
+          placement: "class-field",
+          hostType: "Bar",
+          subjectType: "Subject",
+          argumentExpression: "1",
+          supportingDeclarations: ["type Subject = string;", "type Bar = { value: Subject };"],
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.diagnostics).toHaveLength(0);
+    expect(results[1]?.diagnostics).toHaveLength(0);
+  });
+
+  it("checks narrow applicability for a valid resolved numeric target type", () => {
+    const result = checkNarrowSyntheticTagApplicability({
+      tagName: "minimum",
+      placement: "class-field",
+      resolvedTargetType: "number",
+      targetKind: "path",
+      argumentExpression: "120",
+    });
+
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it("checks narrow applicability for an invalid resolved string target type", () => {
+    const result = checkNarrowSyntheticTagApplicability({
+      tagName: "minimum",
+      placement: "class-field",
+      resolvedTargetType: "string",
+      targetKind: "path",
+      argumentExpression: "120",
+    });
+
+    expect(result.diagnostics).not.toHaveLength(0);
+    expect(result.diagnostics[0]?.message).toContain("false");
+  });
+
+  it("checks narrow applicability for an invalid argument type", () => {
+    const result = checkNarrowSyntheticTagApplicability({
+      tagName: "minimum",
+      placement: "class-field",
+      resolvedTargetType: "number",
+      argumentExpression: '"120"',
+    });
+
+    expect(result.diagnostics).not.toHaveLength(0);
+    expect(result.diagnostics[0]?.message).toContain("false");
+  });
+
+  it("rejects unknown tag names during narrow applicability checks", () => {
+    expect(() =>
+      checkNarrowSyntheticTagApplicability({
+        tagName: "doesNotExist",
+        placement: "class-field",
+        resolvedTargetType: "number",
+      })
+    ).toThrow("Unknown FormSpec tag: doesNotExist");
+  });
+
+  it("checks multiple narrow applications in one compiler pass", () => {
+    const results = checkNarrowSyntheticTagApplicabilities({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          resolvedTargetType: "number",
+          targetKind: "path",
+          argumentExpression: "120",
+        },
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          resolvedTargetType: "string",
+          targetKind: "path",
+          argumentExpression: "120",
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.diagnostics).toHaveLength(0);
+    expect(results[1]?.diagnostics).not.toHaveLength(0);
+    expect(results[1]?.diagnostics[0]?.message).toContain("false");
+  });
+
+  it("returns no results for an empty narrow synthetic application batch", () => {
+    expect(checkNarrowSyntheticTagApplicabilities({ applications: [] })).toEqual([]);
+  });
+
+  it("matches single and batched narrow diagnostics for the same input", () => {
+    const single = checkNarrowSyntheticTagApplicability({
+      tagName: "minimum",
+      placement: "class-field",
+      resolvedTargetType: "string",
+      targetKind: "path",
+      argumentExpression: "120",
+    });
+    const batched = checkNarrowSyntheticTagApplicabilities({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          resolvedTargetType: "string",
+          targetKind: "path",
+          argumentExpression: "120",
+        },
+      ],
+    });
+
+    expect(batched).toHaveLength(1);
+    expect(batched[0]?.diagnostics).toEqual(single.diagnostics);
+  });
+
+  it("isolates batched narrow applications with incompatible value types", () => {
+    const results = checkNarrowSyntheticTagApplicabilities({
+      applications: [
+        {
+          tagName: "minimum",
+          placement: "class-field",
+          resolvedTargetType: "number",
+          argumentExpression: "0",
+        },
+        {
+          tagName: "minLength",
+          placement: "class-field",
+          resolvedTargetType: "string",
+          argumentExpression: "3",
+        },
+      ],
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0]?.diagnostics).toHaveLength(0);
+    expect(results[1]?.diagnostics).toHaveLength(0);
+  });
+
+  it("keeps the synthetic batch cache at 64 entries and reuses it for mixed-tag canary batches", () => {
+    expect(FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES).toBe(64);
+
+    const firstPerformance = createFormSpecPerformanceRecorder();
+    const firstResults = checkSyntheticTagApplications({
+      applications: MIXED_TAG_APPLICATIONS,
+      performance: firstPerformance,
+    });
+
+    expect(firstResults).toHaveLength(MIXED_TAG_APPLICATIONS.length);
+    expect(firstResults.every((result) => result.diagnostics.length === 0)).toBe(true);
+    expect(
+      firstPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
+      )
+    ).toBe(true);
+
+    const secondPerformance = createFormSpecPerformanceRecorder();
+    const secondResults = checkSyntheticTagApplications({
+      applications: MIXED_TAG_APPLICATIONS,
+      performance: secondPerformance,
+    });
+
+    expect(secondResults).toEqual(firstResults);
+    expect(
+      secondPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.cacheHit"
+      )
+    ).toBe(true);
+    expect(
+      secondPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
+      )
+    ).toBe(false);
   });
 });

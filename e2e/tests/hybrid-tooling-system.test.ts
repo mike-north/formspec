@@ -15,6 +15,7 @@ import {
   getPluginHoverForDocument,
 } from "../../packages/language-server/src/plugin-client.js";
 import { FormSpecPluginService } from "../../packages/ts-plugin/src/service.js";
+import { FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS } from "../../packages/ts-plugin/src/__tests__/helpers.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../../packages/ts-plugin/src/workspace.js";
 
 interface ProgramContext {
@@ -52,6 +53,9 @@ async function queryPluginSocket(
     let buffer = "";
 
     socket.setEncoding("utf8");
+    socket.setTimeout(FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS, () => {
+      socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
+    });
     socket.on("connect", () => {
       socket.write(`${JSON.stringify(payload)}\n`);
     });

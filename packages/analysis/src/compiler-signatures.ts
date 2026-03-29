@@ -1,4 +1,6 @@
 import * as ts from "typescript";
+import { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
+import { optionalMeasure, type FormSpecPerformanceRecorder } from "./perf-tracing.js";
 import {
   getAllTagDefinitions,
   getTagDefinition,
@@ -68,6 +70,7 @@ export interface SyntheticCompilerDiagnostic {
  */
 export interface CheckSyntheticTagApplicationOptions extends LowerSyntheticTagApplicationOptions {
   readonly supportingDeclarations?: readonly string[];
+  readonly performance?: FormSpecPerformanceRecorder;
 }
 
 /**
@@ -78,6 +81,44 @@ export interface SyntheticTagCheckResult {
   readonly sourceText: string;
   readonly diagnostics: readonly SyntheticCompilerDiagnostic[];
 }
+
+/**
+ * Options for the minimal synthetic applicability checker that operates on an
+ * already-resolved target type instead of reproducing path/member resolution in
+ * the synthetic program.
+ */
+export interface CheckNarrowSyntheticTagApplicabilityOptions {
+  readonly tagName: string;
+  readonly placement: FormSpecPlacement;
+  readonly resolvedTargetType: string;
+  readonly targetKind?: SyntheticTagTargetKind | null;
+  readonly argumentExpression?: string | null;
+  readonly extensions?: readonly ExtensionTagSource[];
+  readonly performance?: FormSpecPerformanceRecorder;
+}
+
+/**
+ * Options for running the minimal synthetic applicability checker against
+ * multiple already-resolved target types in a single in-memory program.
+ */
+export interface CheckNarrowSyntheticTagApplicabilitiesOptions {
+  readonly applications: readonly CheckNarrowSyntheticTagApplicabilityOptions[];
+  readonly performance?: FormSpecPerformanceRecorder;
+}
+
+/**
+ * Options for running the TypeScript checker against multiple lowered
+ * synthetic tag calls in a single in-memory program.
+ */
+export interface CheckSyntheticTagApplicationsOptions {
+  readonly applications: readonly CheckSyntheticTagApplicationOptions[];
+  readonly performance?: FormSpecPerformanceRecorder;
+}
+
+const SYNTHETIC_CHECK_EVENT = {
+  batch: "analysis.syntheticCheckBatch",
+  narrowBatch: "analysis.narrowSyntheticCheckBatch",
+} as const;
 
 const PRELUDE_LINES = [
   "type FormSpecPlacement =",
@@ -211,6 +252,29 @@ function renderTargetParameterType(parameter: TagSignatureParameter): string {
       return renderValueType(parameter.valueKind);
     default: {
       const exhaustive: never = parameter.kind;
+      return exhaustive;
+    }
+  }
+}
+
+function renderNarrowValueType(valueKind: FormSpecValueKind | undefined): string {
+  switch (valueKind) {
+    case "number":
+    case "integer":
+    case "signedInteger":
+      return "number";
+    case "string":
+      return "string";
+    case "json":
+      return "JsonValue";
+    case "boolean":
+      return "boolean";
+    case "condition":
+      return "FormSpecCondition";
+    case undefined:
+      return "unknown";
+    default: {
+      const exhaustive: never = valueKind;
       return exhaustive;
     }
   }
@@ -434,38 +498,491 @@ function createSyntheticCompilerHost(
   return host;
 }
 
+const NARROW_PRELUDE_LINES = [
+  "type FormSpecCapability =",
+  '  | "numeric-comparable"',
+  '  | "string-like"',
+  '  | "array-like"',
+  '  | "enum-member-addressable"',
+  '  | "json-like"',
+  '  | "condition-like"',
+  '  | "object-like";',
+  "",
+  "type NonNullish<T> = Exclude<T, null | undefined>;",
+  "",
+  "type ProvidesCapability<T, Capability extends FormSpecCapability> =",
+  '  Capability extends "numeric-comparable"',
+  "    ? NonNullish<T> extends number | bigint",
+  "      ? true",
+  "      : false",
+  '    : Capability extends "string-like"',
+  "      ? NonNullish<T> extends string",
+  "        ? true",
+  "        : false",
+  '      : Capability extends "array-like"',
+  "        ? NonNullish<T> extends readonly unknown[]",
+  "          ? true",
+  "          : false",
+  '        : Capability extends "enum-member-addressable"',
+  "          ? NonNullish<T> extends string",
+  "            ? true",
+  "            : false",
+  '          : Capability extends "json-like"',
+  "            ? true",
+  '            : Capability extends "condition-like"',
+  "              ? true",
+  '              : Capability extends "object-like"',
+  "                ? NonNullish<T> extends readonly unknown[]",
+  "                  ? false",
+  "                  : NonNullish<T> extends object",
+  "                    ? true",
+  "                    : false",
+  "                : false;",
+  "",
+  "type __AssertTrue<T extends true> = T;",
+  "type __IsAssignable<Actual, Expected> = [Actual] extends [Expected] ? true : false;",
+  "type JsonValue = unknown;",
+  "type FormSpecCondition = unknown;",
+] as const;
+
+function getSignatureValueParameter(signature: TagSignature): TagSignatureParameter | null {
+  return signature.parameters.find((parameter) => parameter.kind === "value") ?? null;
+}
+
+function getTargetCapabilityForSignature(
+  definition: TagDefinition,
+  signature: TagSignature,
+  targetKind: SyntheticTagTargetKind | null
+): string | null {
+  if (targetKind === null) {
+    return definition.capabilities[0] ?? null;
+  }
+
+  const targetParameter = getTargetParameter(signature);
+  return targetParameter?.capability ?? null;
+}
+
+function buildNarrowSyntheticSourceBodyLines(
+  definition: TagDefinition,
+  signature: TagSignature,
+  options: CheckNarrowSyntheticTagApplicabilityOptions
+): string[] {
+  const lines: string[] = [];
+  lines.push(`type __Target = ${options.resolvedTargetType};`);
+
+  const capability = getTargetCapabilityForSignature(
+    definition,
+    signature,
+    options.targetKind ?? null
+  );
+  if (capability !== null) {
+    lines.push(
+      `type __CheckTarget = __AssertTrue<ProvidesCapability<__Target, ${JSON.stringify(capability)}>>;`
+    );
+  }
+
+  const valueParameter = getSignatureValueParameter(signature);
+  if (
+    valueParameter?.kind === "value" &&
+    options.argumentExpression !== undefined &&
+    options.argumentExpression !== null
+  ) {
+    lines.push(`const __value = ${options.argumentExpression};`);
+    lines.push("type __Value = typeof __value;");
+    lines.push(
+      `type __CheckValue = __AssertTrue<__IsAssignable<__Value, ${renderNarrowValueType(
+        valueParameter.valueKind
+      )}>>;`
+    );
+  }
+
+  return lines;
+}
+
 function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): string {
   return ts.flattenDiagnosticMessageText(message, "\n");
 }
 
-const MAX_SYNTHETIC_CHECK_CACHE_ENTRIES = 200;
-const syntheticCheckCache = new Map<string, SyntheticTagCheckResult>();
+const SYNTHETIC_COMPILER_OPTIONS: ts.CompilerOptions = {
+  strict: true,
+  noEmit: true,
+  target: ts.ScriptTarget.ES2022,
+  module: ts.ModuleKind.ESNext,
+  lib: ["lib.es2022.d.ts"],
+  types: [],
+};
 
-function getCachedSyntheticCheck(sourceText: string): SyntheticTagCheckResult | undefined {
-  const cached = syntheticCheckCache.get(sourceText);
-  if (cached === undefined) {
-    return undefined;
+class LruCache<K, V> {
+  private readonly map = new Map<K, V>();
+
+  public constructor(private readonly maxEntries: number) {}
+
+  public get(key: K): V | undefined {
+    const cached = this.map.get(key);
+    if (cached === undefined) {
+      return undefined;
+    }
+
+    this.map.delete(key);
+    this.map.set(key, cached);
+    return cached;
   }
 
-  syntheticCheckCache.delete(sourceText);
-  syntheticCheckCache.set(sourceText, cached);
-  return cached;
+  public set(key: K, value: V): void {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    }
+    this.map.set(key, value);
+
+    if (this.map.size <= this.maxEntries) {
+      return;
+    }
+
+    const oldestKey = this.map.keys().next().value;
+    if (oldestKey !== undefined) {
+      this.map.delete(oldestKey);
+    }
+  }
 }
 
-function cacheSyntheticCheck(sourceText: string, result: SyntheticTagCheckResult): void {
-  if (syntheticCheckCache.has(sourceText)) {
-    syntheticCheckCache.delete(sourceText);
-  }
-  syntheticCheckCache.set(sourceText, result);
+const syntheticBatchResultCache = new LruCache<string, readonly SyntheticTagCheckResult[]>(
+  FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES
+);
 
-  if (syntheticCheckCache.size <= MAX_SYNTHETIC_CHECK_CACHE_ENTRIES) {
-    return;
+interface SyntheticBatchApplication {
+  readonly lowered: LoweredSyntheticTagApplication;
+  readonly options: CheckSyntheticTagApplicationOptions;
+}
+
+interface NarrowSyntheticBatchApplication {
+  readonly definition: TagDefinition;
+  readonly signature: TagSignature;
+  readonly options: CheckNarrowSyntheticTagApplicabilityOptions;
+}
+
+interface SyntheticBatchSource {
+  readonly sourceText: string;
+  readonly applicationLineRanges: readonly {
+    readonly startLine: number;
+    readonly endLine: number;
+  }[];
+}
+
+function pushChunkLines(target: string[], chunk: string): void {
+  target.push(...chunk.split("\n"));
+}
+
+function buildSyntheticBatchSource(
+  applications: readonly SyntheticBatchApplication[]
+): SyntheticBatchSource {
+  const lines: string[] = [];
+  pushChunkLines(lines, buildSyntheticHelperPrelude(collectBatchExtensions(applications)));
+  lines.push("");
+
+  const applicationLineRanges: {
+    readonly startLine: number;
+    readonly endLine: number;
+  }[] = [];
+
+  for (const [index, application] of applications.entries()) {
+    const namespaceName = `__formspec_app_${String(index)}`;
+    const startLine = lines.length;
+    lines.push(`namespace ${namespaceName} {`);
+    for (const declaration of application.options.supportingDeclarations ?? []) {
+      pushChunkLines(lines, declaration);
+    }
+    lines.push(`type __Host = ${application.options.hostType};`);
+    lines.push(`type __Subject = ${application.options.subjectType};`);
+    lines.push(application.lowered.callExpression);
+    lines.push("}");
+    applicationLineRanges.push({
+      startLine,
+      endLine: lines.length - 1,
+    });
   }
 
-  const oldestKey = syntheticCheckCache.keys().next().value;
-  if (oldestKey !== undefined) {
-    syntheticCheckCache.delete(oldestKey);
+  return {
+    sourceText: lines.join("\n"),
+    applicationLineRanges,
+  };
+}
+
+function buildNarrowSyntheticBatchSource(
+  applications: readonly NarrowSyntheticBatchApplication[]
+): SyntheticBatchSource {
+  const lines = [...NARROW_PRELUDE_LINES, ""];
+  const applicationLineRanges: {
+    readonly startLine: number;
+    readonly endLine: number;
+  }[] = [];
+
+  for (const [index, application] of applications.entries()) {
+    const namespaceName = `__formspec_narrow_app_${String(index)}`;
+    const startLine = lines.length;
+    lines.push(`namespace ${namespaceName} {`);
+    lines.push(
+      ...buildNarrowSyntheticSourceBodyLines(
+        application.definition,
+        application.signature,
+        application.options
+      )
+    );
+    lines.push("}");
+    applicationLineRanges.push({
+      startLine,
+      endLine: lines.length - 1,
+    });
   }
+
+  return {
+    sourceText: lines.join("\n"),
+    applicationLineRanges,
+  };
+}
+
+function collectBatchExtensions(
+  applications: readonly SyntheticBatchApplication[]
+): readonly ExtensionTagSource[] | undefined {
+  const extensions = applications.flatMap((application) => application.options.extensions ?? []);
+  return extensions.length === 0 ? undefined : extensions;
+}
+
+function mapBatchDiagnostics(
+  diagnostics: readonly ts.Diagnostic[],
+  sourceFile: ts.SourceFile,
+  applicationLineRanges: readonly {
+    readonly startLine: number;
+    readonly endLine: number;
+  }[]
+): readonly SyntheticTagCheckResult[] {
+  const diagnosticsByApplication = applicationLineRanges.map<SyntheticCompilerDiagnostic[]>(
+    () => []
+  );
+  const defaultResult = diagnosticsByApplication[0];
+
+  for (const diagnostic of diagnostics) {
+    const serialized = {
+      code: diagnostic.code,
+      message: flattenDiagnosticMessage(diagnostic.messageText),
+    };
+    if (diagnostic.file === undefined || diagnostic.start === undefined) {
+      if (defaultResult !== undefined) {
+        defaultResult.push(serialized);
+      }
+      continue;
+    }
+
+    const line = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line;
+    const applicationIndex = applicationLineRanges.findIndex(
+      (range) => line >= range.startLine && line <= range.endLine
+    );
+    if (applicationIndex < 0) {
+      if (defaultResult !== undefined) {
+        defaultResult.push(serialized);
+      }
+      continue;
+    }
+    const targetResult = diagnosticsByApplication[applicationIndex];
+    if (targetResult !== undefined) {
+      targetResult.push(serialized);
+    }
+  }
+
+  return diagnosticsByApplication.map((diagnosticsForApplication) => ({
+    sourceText: sourceFile.text,
+    diagnostics: diagnosticsForApplication,
+  }));
+}
+
+function runSyntheticProgram(
+  fileName: string,
+  sourceText: string,
+  performance: FormSpecPerformanceRecorder | undefined,
+  eventPrefix: string,
+  missingSourceFileMessage: string
+): {
+  readonly sourceFile: ts.SourceFile;
+  readonly diagnostics: readonly ts.Diagnostic[];
+} {
+  const host = optionalMeasure(performance, `${eventPrefix}.createCompilerHost`, undefined, () =>
+    createSyntheticCompilerHost(fileName, sourceText, SYNTHETIC_COMPILER_OPTIONS)
+  );
+  const program = optionalMeasure(performance, `${eventPrefix}.createProgram`, undefined, () =>
+    ts.createProgram([fileName], SYNTHETIC_COMPILER_OPTIONS, host)
+  );
+  const diagnostics = optionalMeasure(
+    performance,
+    `${eventPrefix}.getPreEmitDiagnostics`,
+    undefined,
+    () =>
+      ts
+        .getPreEmitDiagnostics(program)
+        .filter(
+          (diagnostic) => diagnostic.file === undefined || diagnostic.file.fileName === fileName
+        )
+  );
+  const sourceFile = program.getSourceFile(fileName);
+  if (sourceFile === undefined) {
+    throw new Error(missingSourceFileMessage);
+  }
+
+  return {
+    sourceFile,
+    diagnostics,
+  };
+}
+
+interface BatchSyntheticCheckOptions<TApplication, TResolvedApplication> {
+  readonly applications: readonly TApplication[];
+  readonly performance: FormSpecPerformanceRecorder | undefined;
+  readonly cache: LruCache<string, readonly SyntheticTagCheckResult[]>;
+  readonly eventPrefix: string;
+  readonly missingSourceFileMessage: string;
+  readonly fileName: string;
+  readonly lowerApplications: (
+    applications: readonly TApplication[],
+    performance: FormSpecPerformanceRecorder | undefined
+  ) => readonly TResolvedApplication[];
+  readonly buildBatchSource: (
+    applications: readonly TResolvedApplication[],
+    performance: FormSpecPerformanceRecorder | undefined
+  ) => SyntheticBatchSource;
+}
+
+function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
+  options: BatchSyntheticCheckOptions<TApplication, TResolvedApplication>
+): readonly SyntheticTagCheckResult[] {
+  if (options.applications.length === 0) {
+    return [];
+  }
+
+  const resolvedApplications = options.lowerApplications(options.applications, options.performance);
+  const batchSource = options.buildBatchSource(resolvedApplications, options.performance);
+  const cached = options.cache.get(batchSource.sourceText);
+  if (cached !== undefined) {
+    options.performance?.record({
+      name: `${options.eventPrefix}.cacheHit`,
+      durationMs: 0,
+      detail: {
+        applicationCount: options.applications.length,
+      },
+    });
+    return cached;
+  }
+
+  const { sourceFile, diagnostics } = runSyntheticProgram(
+    options.fileName,
+    batchSource.sourceText,
+    options.performance,
+    options.eventPrefix,
+    options.missingSourceFileMessage
+  );
+  const results = optionalMeasure(
+    options.performance,
+    `${options.eventPrefix}.mapDiagnostics`,
+    undefined,
+    () => mapBatchDiagnostics(diagnostics, sourceFile, batchSource.applicationLineRanges)
+  );
+  options.cache.set(batchSource.sourceText, results);
+  return results;
+}
+
+function resolveNarrowSyntheticBatchApplication(
+  application: CheckNarrowSyntheticTagApplicabilityOptions
+): NarrowSyntheticBatchApplication {
+  const definition = getTagDefinition(application.tagName, application.extensions);
+  if (definition === null) {
+    throw new Error(`Unknown FormSpec tag: ${application.tagName}`);
+  }
+
+  const targetKind = application.targetKind ?? null;
+  const matchingSignatures = getMatchingTagSignatures(
+    definition,
+    application.placement,
+    targetKind
+  );
+  if (matchingSignatures.length === 0) {
+    throw new Error(
+      `No synthetic signature for @${definition.canonicalName} on placement "${application.placement}"` +
+        (targetKind === null ? "" : ` with target kind "${targetKind}"`)
+    );
+  }
+
+  const signature = matchingSignatures[0];
+  if (signature === undefined) {
+    throw new Error(
+      `Invariant violation: missing narrow synthetic signature for @${definition.canonicalName}`
+    );
+  }
+
+  return {
+    definition,
+    signature,
+    options: application,
+  };
+}
+
+/**
+ * Runs the TypeScript checker once against multiple lowered synthetic tag
+ * applications and returns per-application diagnostics.
+ */
+export function checkSyntheticTagApplications(
+  options: CheckSyntheticTagApplicationsOptions
+): readonly SyntheticTagCheckResult[] {
+  return runBatchSyntheticCheck<CheckSyntheticTagApplicationOptions, SyntheticBatchApplication>({
+    applications: options.applications,
+    performance: options.performance,
+    cache: syntheticBatchResultCache,
+    eventPrefix: SYNTHETIC_CHECK_EVENT.batch,
+    missingSourceFileMessage: "Invariant violation: missing synthetic batch source file",
+    fileName: "/virtual/formspec-synthetic-batch.ts",
+    lowerApplications: (applications, performance) =>
+      optionalMeasure(performance, `${SYNTHETIC_CHECK_EVENT.batch}.lower`, undefined, () =>
+        applications.map((application) => ({
+          options: application,
+          lowered: lowerTagApplicationToSyntheticCall({
+            ...application,
+            hostType: "__Host",
+            subjectType: "__Subject",
+          }),
+        }))
+      ),
+    buildBatchSource: (applications, performance) =>
+      optionalMeasure(performance, `${SYNTHETIC_CHECK_EVENT.batch}.buildSource`, undefined, () =>
+        buildSyntheticBatchSource(applications)
+      ),
+  });
+}
+
+/**
+ * Runs the minimal synthetic applicability checker once against multiple
+ * already-resolved target types and returns per-application diagnostics.
+ */
+export function checkNarrowSyntheticTagApplicabilities(
+  options: CheckNarrowSyntheticTagApplicabilitiesOptions
+): readonly SyntheticTagCheckResult[] {
+  return runBatchSyntheticCheck<
+    CheckNarrowSyntheticTagApplicabilityOptions,
+    NarrowSyntheticBatchApplication
+  >({
+    applications: options.applications,
+    performance: options.performance,
+    cache: syntheticBatchResultCache,
+    eventPrefix: SYNTHETIC_CHECK_EVENT.narrowBatch,
+    missingSourceFileMessage: "Invariant violation: missing narrow synthetic batch source file",
+    fileName: "/virtual/formspec-narrow-synthetic-batch.ts",
+    lowerApplications: (applications, performance) =>
+      optionalMeasure(performance, `${SYNTHETIC_CHECK_EVENT.narrowBatch}.lower`, undefined, () =>
+        applications.map(resolveNarrowSyntheticBatchApplication)
+      ),
+    buildBatchSource: (applications, performance) =>
+      optionalMeasure(
+        performance,
+        `${SYNTHETIC_CHECK_EVENT.narrowBatch}.buildSource`,
+        undefined,
+        () => buildNarrowSyntheticBatchSource(applications)
+      ),
+  });
 }
 
 /**
@@ -478,40 +995,32 @@ function cacheSyntheticCheck(sourceText: string, result: SyntheticTagCheckResult
 export function checkSyntheticTagApplication(
   options: CheckSyntheticTagApplicationOptions
 ): SyntheticTagCheckResult {
-  const lowered = lowerTagApplicationToSyntheticCall(options);
-  const sourceText = [
-    buildSyntheticHelperPrelude(options.extensions),
-    "",
-    ...(options.supportingDeclarations ?? []),
-    "",
-    lowered.callExpression,
-  ].join("\n");
-  const cached = getCachedSyntheticCheck(sourceText);
-  if (cached !== undefined) {
-    return cached;
+  const result = checkSyntheticTagApplications({
+    applications: [options],
+    ...(options.performance === undefined ? {} : { performance: options.performance }),
+  })[0];
+  if (result === undefined) {
+    throw new Error("Invariant violation: missing synthetic batch result for singular check");
   }
-  const fileName = "/virtual/formspec-synthetic.ts";
-  const compilerOptions: ts.CompilerOptions = {
-    strict: true,
-    noEmit: true,
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    lib: ["lib.es2022.d.ts"],
-  };
-  const host = createSyntheticCompilerHost(fileName, sourceText, compilerOptions);
-  const program = ts.createProgram([fileName], compilerOptions, host);
-  const diagnostics = ts
-    .getPreEmitDiagnostics(program)
-    .filter((diagnostic) => diagnostic.file === undefined || diagnostic.file.fileName === fileName)
-    .map((diagnostic) => ({
-      code: diagnostic.code,
-      message: flattenDiagnosticMessage(diagnostic.messageText),
-    }));
+  return result;
+}
 
-  const result = {
-    sourceText,
-    diagnostics,
-  };
-  cacheSyntheticCheck(sourceText, result);
+/**
+ * Runs a minimal synthetic applicability check against an already-resolved
+ * target type. This avoids reproducing path/member resolution in the synthetic
+ * program and isolates only the type-compatibility question.
+ */
+export function checkNarrowSyntheticTagApplicability(
+  options: CheckNarrowSyntheticTagApplicabilityOptions
+): SyntheticTagCheckResult {
+  const result = checkNarrowSyntheticTagApplicabilities({
+    applications: [options],
+    ...(options.performance === undefined ? {} : { performance: options.performance }),
+  })[0];
+  if (result === undefined) {
+    throw new Error(
+      "Invariant violation: missing narrow synthetic batch result for singular check"
+    );
+  }
   return result;
 }
