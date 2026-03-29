@@ -5,7 +5,7 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@formspec/analysis": ["../analysis/dist/analysis.d.ts"]
+      "@formspec/analysis": ["../analysis"]
     }
   },
   "include": ["src/**/*"]

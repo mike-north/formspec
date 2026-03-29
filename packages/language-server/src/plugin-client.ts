@@ -38,10 +38,11 @@ async function readManifest(workspaceRoot: string): Promise<FormSpecAnalysisMani
   try {
     const manifestText = await fs.readFile(getManifestPath(workspaceRoot), "utf8");
     const manifest = JSON.parse(manifestText) as unknown;
-    return isFormSpecAnalysisManifest(manifest) &&
-      manifest.protocolVersion === FORMSPEC_ANALYSIS_PROTOCOL_VERSION
-      ? manifest
-      : null;
+    if (!isFormSpecAnalysisManifest(manifest)) {
+      return null;
+    }
+
+    return manifest.protocolVersion === FORMSPEC_ANALYSIS_PROTOCOL_VERSION ? manifest : null;
   } catch {
     return null;
   }

@@ -224,8 +224,7 @@ export class FormSpecPluginService {
           snapshot: this.getFileSnapshot(query.filePath),
         };
       default: {
-        const exhaustive: never = query;
-        throw new Error(`Unhandled semantic query: ${JSON.stringify(exhaustive)}`);
+        throw new Error(`Unhandled semantic query: ${JSON.stringify(query)}`);
       }
     }
   }
@@ -295,7 +294,7 @@ export class FormSpecPluginService {
 
     const sourceHash = computeFormSpecTextHash(environment.sourceFile.text);
     const cached = this.snapshotCache.get(filePath);
-    if (cached?.sourceHash === sourceHash) {
+    if (cached !== undefined && cached.sourceHash === sourceHash) {
       return cached.snapshot;
     }
 
