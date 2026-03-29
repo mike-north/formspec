@@ -128,8 +128,13 @@ describe("FormSpecPluginService.handleQuery", () => {
     });
     expect(snapshot.kind).toBe("file-snapshot");
     if (snapshot.kind === "file-snapshot") {
-      expect(snapshot.snapshot?.comments).toHaveLength(1);
-      expect(snapshot.snapshot?.comments[0]?.tags[0]?.semantic?.tagName).toBe("minimum");
+      expect(snapshot.snapshot.comments).toHaveLength(1);
+      const firstComment = snapshot.snapshot.comments[0];
+      expect(firstComment).toBeDefined();
+      expect(firstComment.tags).toHaveLength(1);
+      const firstTag = firstComment.tags[0];
+      expect(firstTag).toBeDefined();
+      expect(firstTag.semantic?.tagName).toBe("minimum");
     }
   });
 
@@ -147,10 +152,11 @@ describe("FormSpecPluginService.handleQuery", () => {
         filePath: "/workspace/formspec/example.ts",
         offset: 0,
       })
-    ).toMatchObject({
-      kind: "error",
-      error: expect.stringContaining("Unable to resolve TypeScript source file"),
-    });
+    ).toSatisfy(
+      (response): boolean =>
+        response.kind === "error" &&
+        response.error.includes("Unable to resolve TypeScript source file")
+    );
 
     const context = await createProgramContext("class Foo {}");
     workspaces.push(context.workspaceRoot);

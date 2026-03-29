@@ -69,9 +69,15 @@ function createLanguageService(sourceText: string) {
     getScriptSnapshot: (requestedFileName: string) =>
       requestedFileName === fileName ? ts.ScriptSnapshot.fromString(sourceText) : undefined,
     getScriptVersion: () => "0",
-    readFile: ts.sys.readFile,
-    readDirectory: ts.sys.readDirectory,
-    fileExists: ts.sys.fileExists,
+    readFile: (requestedFileName: string) => ts.sys.readFile(requestedFileName),
+    readDirectory: (
+      rootDir: string,
+      extensions?: readonly string[],
+      excludes?: readonly string[],
+      includes?: readonly string[],
+      depth?: number
+    ) => ts.sys.readDirectory(rootDir, extensions, excludes, includes, depth),
+    fileExists: (requestedFileName: string) => ts.sys.fileExists(requestedFileName),
   };
 
   return {
@@ -237,8 +243,13 @@ describe("FormSpecPluginService", () => {
     });
     expect(snapshot.kind).toBe("file-snapshot");
     if (snapshot.kind === "file-snapshot") {
-      expect(snapshot.snapshot?.comments).toHaveLength(1);
-      expect(snapshot.snapshot?.comments[0]?.tags[0]?.semantic?.tagName).toBe("minimum");
+      expect(snapshot.snapshot.comments).toHaveLength(1);
+      const firstComment = snapshot.snapshot.comments[0];
+      expect(firstComment).toBeDefined();
+      expect(firstComment.tags).toHaveLength(1);
+      const firstTag = firstComment.tags[0];
+      expect(firstTag).toBeDefined();
+      expect(firstTag.semantic?.tagName).toBe("minimum");
     }
   });
 
@@ -255,10 +266,11 @@ describe("FormSpecPluginService", () => {
       filePath: "/workspace/formspec/example.ts",
       offset: 0,
     });
-    expect(completion).toMatchObject({
-      kind: "error",
-      error: expect.stringContaining("Unable to resolve TypeScript source file"),
-    });
+    expect(completion).toSatisfy(
+      (response): boolean =>
+        response.kind === "error" &&
+        response.error.includes("Unable to resolve TypeScript source file")
+    );
 
     const hover = service.handleQuery({
       protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
@@ -266,10 +278,11 @@ describe("FormSpecPluginService", () => {
       filePath: "/workspace/formspec/example.ts",
       offset: 0,
     });
-    expect(hover).toMatchObject({
-      kind: "error",
-      error: expect.stringContaining("Unable to resolve TypeScript source file"),
-    });
+    expect(hover).toSatisfy(
+      (response): boolean =>
+        response.kind === "error" &&
+        response.error.includes("Unable to resolve TypeScript source file")
+    );
   });
 
   it("returns missing-source snapshots when the file is not in the current program", async () => {
@@ -345,7 +358,8 @@ describe("createLanguageServiceProxy", () => {
     expect(proxy.getSemanticDiagnostics("example.ts")).toEqual(["diag"]);
     expect(proxy.getCompletionsAtPosition("example.ts", 4, undefined)).toEqual({ entries: [] });
     expect(proxy.getQuickInfoAtPosition("example.ts", 4)).toMatchObject({ kind: "text" });
-    expect(proxy.dispose()).toBe("disposed");
+    const disposeResult = proxy.dispose();
+    expect(disposeResult).toBe("disposed");
 
     expect(scheduleSnapshotRefresh).toHaveBeenNthCalledWith(1, "example.ts");
     expect(scheduleSnapshotRefresh).toHaveBeenNthCalledWith(2, "example.ts");

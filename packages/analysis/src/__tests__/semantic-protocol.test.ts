@@ -104,9 +104,6 @@ describe("semantic protocol", () => {
     };
 
     expect(isFormSpecSemanticResponse(response)).toBe(true);
-    if (response.kind !== "completion" || response.context.kind !== "target") {
-      throw new Error("Expected a target completion response fixture");
-    }
 
     expect(
       isFormSpecSemanticResponse({

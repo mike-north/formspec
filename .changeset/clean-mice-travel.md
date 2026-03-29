@@ -1,7 +1,15 @@
 ---
+"@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/constraints": patch
+"@formspec/core": patch
+"@formspec/dsl": patch
+"@formspec/eslint-plugin": patch
 "@formspec/analysis": minor
 "@formspec/language-server": minor
+"@formspec/runtime": patch
 "@formspec/ts-plugin": minor
+"formspec": patch
 ---
 
 Refine the hybrid editor architecture around the tsserver plugin and lightweight language server.

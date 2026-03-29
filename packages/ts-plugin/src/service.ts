@@ -343,7 +343,7 @@ export class FormSpecPluginService {
     }
 
     const cached = this.snapshotCache.get(filePath);
-    if (cached !== undefined && cached.sourceHash === environment.sourceHash) {
+    if (cached?.sourceHash === environment.sourceHash) {
       return cached.snapshot;
     }
 
