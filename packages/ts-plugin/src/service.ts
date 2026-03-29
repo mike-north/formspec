@@ -78,24 +78,21 @@ export class FormSpecPluginService {
       socket.setEncoding("utf8");
       socket.on("data", (chunk) => {
         buffer += String(chunk);
-        while (true) {
-          const newlineIndex = buffer.indexOf("\n");
-          if (newlineIndex < 0) {
-            return;
-          }
-
-          const payload = buffer.slice(0, newlineIndex);
-          const remaining = buffer.slice(newlineIndex + 1);
-          if (remaining.trim().length > 0) {
-            this.options.logger?.info(
-              `[FormSpec] Ignoring extra semantic query payload data for ${this.runtimePaths.workspaceRoot}`
-            );
-          }
-          buffer = remaining;
-          // The FormSpec IPC transport is intentionally one-request-per-connection.
-          this.respondToSocket(socket, payload);
+        const newlineIndex = buffer.indexOf("\n");
+        if (newlineIndex < 0) {
           return;
         }
+
+        const payload = buffer.slice(0, newlineIndex);
+        const remaining = buffer.slice(newlineIndex + 1);
+        if (remaining.trim().length > 0) {
+          this.options.logger?.info(
+            `[FormSpec] Ignoring extra semantic query payload data for ${this.runtimePaths.workspaceRoot}`
+          );
+        }
+        buffer = remaining;
+        // The FormSpec IPC transport is intentionally one-request-per-connection.
+        this.respondToSocket(socket, payload);
       });
     });
 
@@ -122,7 +119,7 @@ export class FormSpecPluginService {
 
     const server = this.server;
     this.server = null;
-    if (server !== null && server.listening) {
+    if (server?.listening === true) {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => {
           if (error === undefined) {
@@ -317,7 +314,7 @@ export class FormSpecPluginService {
 
     const sourceHash = computeFormSpecTextHash(environment.sourceFile.text);
     const cached = this.snapshotCache.get(filePath);
-    if (cached !== undefined && cached.sourceHash === sourceHash) {
+    if (cached?.sourceHash === sourceHash) {
       return cached.snapshot;
     }
 
@@ -374,7 +371,7 @@ export function createLanguageServiceProxy(
         case "getQuickInfoAtPosition":
           return getQuickInfoAtPosition;
         default:
-          return Reflect.get(target, property, receiver);
+          return Reflect.get(target, property, receiver) as unknown;
       }
     },
   });

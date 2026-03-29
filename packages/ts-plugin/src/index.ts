@@ -28,7 +28,8 @@ function getOrCreateService(
   let closed = false;
   info.project.close = () => {
     if (closed) {
-      return originalClose();
+      originalClose();
+      return;
     }
 
     closed = true;
@@ -38,7 +39,7 @@ function getOrCreateService(
         `[FormSpec] Failed to stop plugin service for ${projectName}: ${formatPluginError(error)}`
       );
     });
-    return originalClose();
+    originalClose();
   };
 
   service.start().catch((error: unknown) => {

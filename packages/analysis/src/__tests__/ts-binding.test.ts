@@ -8,6 +8,14 @@ import {
 } from "../index.js";
 import { createProgram } from "./helpers.js";
 
+function expectDefined<T>(value: T | undefined, message: string): T {
+  if (value === undefined) {
+    throw new Error(message);
+  }
+
+  return value;
+}
+
 describe("ts-binding", () => {
   it("resolves placements for declarations and parameters", () => {
     const source = `
@@ -26,12 +34,26 @@ describe("ts-binding", () => {
     const methodParameter = method?.parameters[0];
     const functionParameter = functionDeclaration?.parameters[0];
 
-    expect(resolveDeclarationPlacement(classDeclaration!)).toBe("class");
-    expect(resolveDeclarationPlacement(property!)).toBe("class-field");
-    expect(resolveDeclarationPlacement(method!)).toBe("class-method");
-    expect(resolveDeclarationPlacement(methodParameter!)).toBe("method-parameter");
-    expect(resolveDeclarationPlacement(functionDeclaration!)).toBe("function");
-    expect(resolveDeclarationPlacement(functionParameter!)).toBe("function-parameter");
+    expect(
+      resolveDeclarationPlacement(expectDefined(classDeclaration, "Expected class declaration"))
+    ).toBe("class");
+    expect(
+      resolveDeclarationPlacement(expectDefined(property, "Expected property declaration"))
+    ).toBe("class-field");
+    expect(resolveDeclarationPlacement(expectDefined(method, "Expected method declaration"))).toBe(
+      "class-method"
+    );
+    expect(
+      resolveDeclarationPlacement(expectDefined(methodParameter, "Expected method parameter"))
+    ).toBe("method-parameter");
+    expect(
+      resolveDeclarationPlacement(
+        expectDefined(functionDeclaration, "Expected function declaration")
+      )
+    ).toBe("function");
+    expect(
+      resolveDeclarationPlacement(expectDefined(functionParameter, "Expected function parameter"))
+    ).toBe("function-parameter");
   });
 
   it("derives semantic capabilities from TypeScript types", () => {
@@ -58,15 +80,19 @@ describe("ts-binding", () => {
         ts.isPropertySignature(member) && member.name.getText(sourceFile) === "status"
     );
 
-    expect(
-      getTypeSemanticCapabilities(checker.getTypeFromTypeNode(amount!.type!), checker)
-    ).toEqual(expect.arrayContaining(["numeric-comparable"]));
-    expect(getTypeSemanticCapabilities(checker.getTypeFromTypeNode(tags!.type!), checker)).toEqual(
+    const amountType = expectDefined(amount?.type, "Expected amount type annotation");
+    const tagsType = expectDefined(tags?.type, "Expected tags type annotation");
+    const statusType = expectDefined(status?.type, "Expected status type annotation");
+
+    expect(getTypeSemanticCapabilities(checker.getTypeFromTypeNode(amountType), checker)).toEqual(
+      expect.arrayContaining(["numeric-comparable"])
+    );
+    expect(getTypeSemanticCapabilities(checker.getTypeFromTypeNode(tagsType), checker)).toEqual(
       expect.arrayContaining(["array-like", "json-like"])
     );
-    expect(
-      getTypeSemanticCapabilities(checker.getTypeFromTypeNode(status!.type!), checker)
-    ).toEqual(expect.arrayContaining(["string-like", "enum-member-addressable"]));
+    expect(getTypeSemanticCapabilities(checker.getTypeFromTypeNode(statusType), checker)).toEqual(
+      expect.arrayContaining(["string-like", "enum-member-addressable"])
+    );
   });
 
   it("collects compatible path targets and resolves dotted path types", () => {
@@ -83,7 +109,11 @@ describe("ts-binding", () => {
     const { checker, sourceFile } = createProgram(source, "/virtual/path-targets.ts");
     const payment = sourceFile.statements.find(ts.isVariableStatement);
     const paymentDeclaration = payment?.declarationList.declarations[0];
-    const paymentType = checker.getTypeFromTypeNode(paymentDeclaration!.type!);
+    const paymentTypeNode = expectDefined(
+      paymentDeclaration?.type,
+      "Expected payment type annotation"
+    );
+    const paymentType = checker.getTypeFromTypeNode(paymentTypeNode);
 
     expect(collectCompatiblePathTargets(paymentType, checker, "numeric-comparable")).toEqual(
       expect.arrayContaining(["amount"])

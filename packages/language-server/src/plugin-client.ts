@@ -42,7 +42,7 @@ async function readManifest(workspaceRoot: string): Promise<FormSpecAnalysisMani
       return null;
     }
 
-    return manifest.protocolVersion === FORMSPEC_ANALYSIS_PROTOCOL_VERSION ? manifest : null;
+    return manifest;
   } catch {
     return null;
   }
@@ -78,21 +78,18 @@ async function sendSemanticQuery(
     });
     socket.on("data", (chunk) => {
       buffer += String(chunk);
-      while (true) {
-        const newlineIndex = buffer.indexOf("\n");
-        if (newlineIndex < 0) {
-          return;
-        }
-
-        const payload = buffer.slice(0, newlineIndex);
-        buffer = buffer.slice(newlineIndex + 1);
-        try {
-          const response = JSON.parse(payload) as unknown;
-          finish(isFormSpecSemanticResponse(response) ? response : null);
-        } catch {
-          finish(null);
-        }
+      const newlineIndex = buffer.indexOf("\n");
+      if (newlineIndex < 0) {
         return;
+      }
+
+      const payload = buffer.slice(0, newlineIndex);
+      buffer = buffer.slice(newlineIndex + 1);
+      try {
+        const response = JSON.parse(payload) as unknown;
+        finish(isFormSpecSemanticResponse(response) ? response : null);
+      } catch {
+        finish(null);
       }
     });
     socket.on("error", () => {
