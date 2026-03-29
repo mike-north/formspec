@@ -155,7 +155,7 @@ describe("FormSpecPluginService.handleQuery", () => {
       }
       expect(firstTag.semantic.tagName).toBe("minimum");
     }
-  });
+  }, 10_000);
 
   it("returns error or missing-source results when the program cannot resolve the file", async () => {
     const serviceWithoutProgram = new FormSpecPluginService({

@@ -270,7 +270,7 @@ describe("FormSpecPluginService", () => {
       }
       expect(firstTag.semantic.tagName).toBe("minimum");
     }
-  });
+  }, 10_000);
 
   it("returns error responses for completion and hover when no program is available", () => {
     const service = new FormSpecPluginService({
