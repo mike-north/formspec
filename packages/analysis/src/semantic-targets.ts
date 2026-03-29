@@ -1294,6 +1294,11 @@ function analyzeResolvedTargetState(
   }
 }
 
+/**
+ * Resolves targeted constraints against a field type, producing effective
+ * target states plus semantic diagnostics such as contradictions, unknown
+ * paths, and type mismatches.
+ */
 export function analyzeConstraintTargets(
   fieldName: string,
   fieldType: TypeNode,

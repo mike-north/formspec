@@ -22,10 +22,52 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";
 import { getDefinition } from "./providers/definition.js";
+import {
+  fileUriToPathOrNull,
+  getPluginCompletionContextForDocument,
+  getPluginHoverForDocument,
+} from "./plugin-client.js";
 
+function dedupeWorkspaceRoots(workspaceRoots: readonly string[]): string[] {
+  return [...new Set(workspaceRoots)];
+}
+
+function getWorkspaceRootsFromInitializeParams(params: {
+  readonly workspaceFolders?: readonly { readonly uri: string }[] | null;
+  readonly rootUri?: string | null;
+  readonly rootPath?: string | null;
+}): string[] {
+  const workspaceFolders =
+    params.workspaceFolders
+      ?.map((workspaceFolder) => fileUriToPathOrNull(workspaceFolder.uri))
+      .filter((workspaceRoot): workspaceRoot is string => workspaceRoot !== null) ?? [];
+  const rootUri =
+    params.rootUri === null || params.rootUri === undefined
+      ? null
+      : fileUriToPathOrNull(params.rootUri);
+  const rootPath = params.rootPath ?? null;
+
+  return dedupeWorkspaceRoots([
+    ...workspaceFolders,
+    ...(rootUri === null ? [] : [rootUri]),
+    ...(rootPath === null ? [] : [rootPath]),
+  ]);
+}
+
+/**
+ * Public configuration for constructing the FormSpec language server.
+ *
+ * @public
+ */
 export interface CreateServerOptions {
   /** Optional extension definitions whose custom tags should be surfaced by tooling. */
   readonly extensions?: readonly ExtensionDefinition[];
+  /** Optional workspace roots to use before initialize() provides them. */
+  readonly workspaceRoots?: readonly string[];
+  /** Set to false to disable tsserver-plugin semantic enrichment. */
+  readonly usePluginTransport?: boolean;
+  /** IPC timeout, in milliseconds, for semantic plugin requests. */
+  readonly pluginQueryTimeoutMs?: number;
 }
 
 /**
@@ -35,14 +77,21 @@ export interface CreateServerOptions {
  * Call `connection.listen()` to start accepting messages.
  *
  * @returns The configured LSP connection (not yet listening)
+ * @public
  */
 export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
   const documents = new TextDocuments(TextDocument);
+  let workspaceRoots = [...(options.workspaceRoots ?? [])];
 
   documents.listen(connection);
 
-  connection.onInitialize((): InitializeResult => {
+  connection.onInitialize((params): InitializeResult => {
+    workspaceRoots = dedupeWorkspaceRoots([
+      ...getWorkspaceRootsFromInitializeParams(params),
+      ...workspaceRoots,
+    ]);
+
     return {
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
@@ -60,24 +109,50 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     };
   });
 
-  connection.onCompletion((params) => {
+  connection.onCompletion(async (params) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
       return [];
     }
 
     const offset = document.offsetAt(params.position);
-    return getCompletionItemsAtOffset(document.getText(), offset, options.extensions);
+    const documentText = document.getText();
+    const filePath = fileUriToPathOrNull(params.textDocument.uri);
+    const semanticContext =
+      options.usePluginTransport === false || filePath === null
+        ? null
+        : await getPluginCompletionContextForDocument(
+            workspaceRoots,
+            filePath,
+            documentText,
+            offset,
+            options.pluginQueryTimeoutMs
+          );
+
+    return getCompletionItemsAtOffset(documentText, offset, options.extensions, semanticContext);
   });
 
-  connection.onHover((params) => {
+  connection.onHover(async (params) => {
     const document = documents.get(params.textDocument.uri);
     if (!document) {
       return null;
     }
 
     const offset = document.offsetAt(params.position);
-    return getHoverAtOffset(document.getText(), offset, options.extensions);
+    const documentText = document.getText();
+    const filePath = fileUriToPathOrNull(params.textDocument.uri);
+    const semanticHover =
+      options.usePluginTransport === false || filePath === null
+        ? null
+        : await getPluginHoverForDocument(
+            workspaceRoots,
+            filePath,
+            documentText,
+            offset,
+            options.pluginQueryTimeoutMs
+          );
+
+    return getHoverAtOffset(documentText, offset, options.extensions, semanticHover);
   });
 
   connection.onDefinition((_params) => {

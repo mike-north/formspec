@@ -33,13 +33,24 @@ export interface AnalysisTypeDefinition {
 // @public (undocumented)
 export type AnalysisTypeRegistry = Record<string, AnalysisTypeDefinition>;
 
-// @public (undocumented)
+// @public
 export function analyzeConstraintTargets(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry, options?: {
     readonly extensionRegistry?: ConstraintRegistryLike;
 }): ConstraintTargetAnalysisResult;
 
 // @public (undocumented)
 export function buildConstraintTargetStates(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry): readonly ResolvedTargetState[];
+
+// @public
+export function buildFormSpecAnalysisFileSnapshot(sourceFile: ts.SourceFile, options: BuildFormSpecAnalysisFileSnapshotOptions): FormSpecAnalysisFileSnapshot;
+
+// @public
+export interface BuildFormSpecAnalysisFileSnapshotOptions {
+    // (undocumented)
+    readonly checker: ts.TypeChecker;
+    // (undocumented)
+    readonly extensions?: readonly ExtensionTagSource[];
+}
 
 // @public
 export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string;
@@ -118,6 +129,8 @@ export type CommentSpan = CommentSourceSpan;
 // @public (undocumented)
 export interface CommentTagSemanticContext {
     // (undocumented)
+    readonly argumentHoverMarkdown: string | null;
+    // (undocumented)
     readonly compatiblePathTargets: readonly string[];
     // (undocumented)
     readonly placement: FormSpecPlacement | null;
@@ -130,8 +143,17 @@ export interface CommentTagSemanticContext {
     // (undocumented)
     readonly tagDefinition: TagDefinition | null;
     // (undocumented)
+    readonly tagHoverMarkdown: string | null;
+    // (undocumented)
     readonly targetCompletions: readonly string[];
+    // (undocumented)
+    readonly targetHoverMarkdown: string | null;
+    // (undocumented)
+    readonly valueLabels: readonly string[];
 }
+
+// @public
+export function computeFormSpecTextHash(text: string): string;
 
 // @public (undocumented)
 export interface ConstraintRegistrationLike {
@@ -275,6 +297,9 @@ export function findCommentTagAtOffset(documentText: string, offset: number, opt
     readonly extensions?: readonly ExtensionTagSource[];
 }): ParsedCommentTag | null;
 
+// @public
+export function findDeclarationForCommentOffset(sourceFile: ts.SourceFile, offset: number): ts.Node | null;
+
 // @public (undocumented)
 export function findEnclosingDocComment(documentText: string, offset: number, options?: {
     readonly extensions?: readonly ExtensionTagSource[];
@@ -287,10 +312,250 @@ export function formatConstraintTargetName(fieldName: string, path: PathTarget |
 export function formatPathTarget(path: PathTarget | readonly string[]): string;
 
 // @public (undocumented)
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 1;
+
+// @public (undocumented)
+export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
+
+// @public
+export interface FormSpecAnalysisCommentSnapshot {
+    // (undocumented)
+    readonly commentSpan: CommentSpan;
+    // (undocumented)
+    readonly declarationSpan: CommentSpan;
+    // (undocumented)
+    readonly hostType: string | null;
+    // (undocumented)
+    readonly placement: FormSpecPlacement | null;
+    // (undocumented)
+    readonly subjectType: string | null;
+    // (undocumented)
+    readonly tags: readonly FormSpecAnalysisTagSnapshot[];
+}
+
+// @public
+export interface FormSpecAnalysisDiagnostic {
+    // (undocumented)
+    readonly code: string;
+    // (undocumented)
+    readonly message: string;
+    // (undocumented)
+    readonly range: CommentSpan;
+    // (undocumented)
+    readonly severity: "error" | "warning" | "info";
+}
+
+// @public
+export interface FormSpecAnalysisFileSnapshot {
+    // (undocumented)
+    readonly comments: readonly FormSpecAnalysisCommentSnapshot[];
+    // (undocumented)
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+    // (undocumented)
+    readonly filePath: string;
+    // (undocumented)
+    readonly generatedAt: string;
+    // (undocumented)
+    readonly sourceHash: string;
+}
+
+// @public
+export interface FormSpecAnalysisManifest {
+    // (undocumented)
+    readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
+    // (undocumented)
+    readonly endpoint: FormSpecIpcEndpoint;
+    // (undocumented)
+    readonly extensionFingerprint: string;
+    // (undocumented)
+    readonly generation: number;
+    // (undocumented)
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    // (undocumented)
+    readonly typescriptVersion: string;
+    // (undocumented)
+    readonly updatedAt: string;
+    // (undocumented)
+    readonly workspaceId: string;
+    // (undocumented)
+    readonly workspaceRoot: string;
+}
+
+// @public
+export interface FormSpecAnalysisTagSnapshot {
+    // (undocumented)
+    readonly argumentSpan: CommentSpan | null;
+    // (undocumented)
+    readonly argumentText: string;
+    // (undocumented)
+    readonly fullSpan: CommentSpan;
+    // (undocumented)
+    readonly normalizedTagName: string;
+    // (undocumented)
+    readonly payloadSpan: CommentSpan | null;
+    // (undocumented)
+    readonly rawTagName: string;
+    // (undocumented)
+    readonly recognized: boolean;
+    // (undocumented)
+    readonly semantic: FormSpecSerializedTagSemanticContext;
+    // (undocumented)
+    readonly tagNameSpan: CommentSpan;
+    // (undocumented)
+    readonly target: FormSpecSerializedCommentTargetSpecifier | null;
+}
+
+// @public
+export interface FormSpecIpcEndpoint {
+    // (undocumented)
+    readonly address: string;
+    // (undocumented)
+    readonly kind: "unix-socket" | "windows-pipe";
+}
+
+// @public (undocumented)
 export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
 
 // @public (undocumented)
 export type FormSpecSemanticCapability = SemanticCapability;
+
+// @public
+export type FormSpecSemanticQuery = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly filePath: string;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly filePath: string;
+};
+
+// @public
+export type FormSpecSemanticResponse = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+    readonly manifest: FormSpecAnalysisManifest;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly sourceHash: string;
+    readonly context: FormSpecSerializedCompletionContext;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly sourceHash: string;
+    readonly hover: FormSpecSerializedHoverInfo | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly sourceHash: string;
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "error";
+    readonly error: string;
+};
+
+// @public
+export interface FormSpecSerializedCommentTargetSpecifier {
+    // (undocumented)
+    readonly colonSpan: CommentSpan;
+    // (undocumented)
+    readonly fullSpan: CommentSpan;
+    // (undocumented)
+    readonly kind: ParsedCommentTargetSpecifier["kind"];
+    // (undocumented)
+    readonly rawText: string;
+    // (undocumented)
+    readonly span: CommentSpan;
+    // (undocumented)
+    readonly valid: boolean;
+}
+
+// @public
+export type FormSpecSerializedCompletionContext = {
+    readonly kind: "tag-name";
+    readonly prefix: string;
+    readonly availableTags: readonly FormSpecSerializedTagDefinition[];
+} | {
+    readonly kind: "target";
+    readonly semantic: FormSpecSerializedTagSemanticContext;
+} | {
+    readonly kind: "argument";
+    readonly semantic: FormSpecSerializedTagSemanticContext;
+    readonly valueLabels: readonly string[];
+} | {
+    readonly kind: "none";
+};
+
+// @public
+export interface FormSpecSerializedHoverInfo {
+    // (undocumented)
+    readonly kind: CommentHoverInfo["kind"];
+    // (undocumented)
+    readonly markdown: string;
+}
+
+// @public
+export interface FormSpecSerializedTagDefinition {
+    // (undocumented)
+    readonly canonicalName: string;
+    // (undocumented)
+    readonly completionDetail: string;
+    // (undocumented)
+    readonly hoverMarkdown: string;
+}
+
+// @public
+export interface FormSpecSerializedTagSemanticContext {
+    // (undocumented)
+    readonly argumentHoverMarkdown: string | null;
+    // (undocumented)
+    readonly compatiblePathTargets: readonly string[];
+    // (undocumented)
+    readonly placement: FormSpecPlacement | null;
+    // (undocumented)
+    readonly signatures: readonly FormSpecSerializedTagSignature[];
+    // (undocumented)
+    readonly supportedTargets: readonly FormSpecTargetKind[];
+    // (undocumented)
+    readonly tagDefinition: FormSpecSerializedTagDefinition | null;
+    // (undocumented)
+    readonly tagHoverMarkdown: string | null;
+    // (undocumented)
+    readonly tagName: string;
+    // (undocumented)
+    readonly targetCompletions: readonly string[];
+    // (undocumented)
+    readonly targetHoverMarkdown: string | null;
+    // (undocumented)
+    readonly valueLabels: readonly string[];
+}
+
+// @public
+export interface FormSpecSerializedTagSignature {
+    // (undocumented)
+    readonly label: string;
+    // (undocumented)
+    readonly placements: readonly FormSpecPlacement[];
+}
 
 // @public (undocumented)
 export type FormSpecTagCategory = "constraint" | "annotation" | "structure" | "ecosystem";
@@ -323,17 +588,38 @@ export function getCommentCursorTargetAtOffset(documentText: string, offset: num
     readonly extensions?: readonly ExtensionTagSource[];
 }): CommentCursorTarget | null;
 
-// @public (undocumented)
+// @public
 export function getCommentHoverInfoAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): CommentHoverInfo | null;
+
+// @public (undocumented)
+export function getCommentTagSemanticContext(tag: ParsedCommentTag, options?: CommentSemanticContextOptions): CommentTagSemanticContext;
 
 // @public (undocumented)
 export function getConstraintTagDefinitions(extensions?: readonly ExtensionTagSource[]): readonly TagDefinition[];
 
 // @public
+export function getFormSpecManifestPath(workspaceRoot: string): string;
+
+// @public
+export function getFormSpecWorkspaceId(workspaceRoot: string): string;
+
+// @public
+export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string;
+
+// @public
+export function getHostType(node: ts.Node, checker: ts.TypeChecker): ts.Type | undefined;
+
+// @public
+export function getLastLeadingDocCommentRange(node: ts.Node, sourceFile: ts.SourceFile): ts.CommentRange | null;
+
+// @public
 export function getMatchingTagSignatures(definition: TagDefinition, placement: FormSpecPlacement, targetKind: SyntheticTagTargetKind | null): readonly TagSignature[];
 
-// @public (undocumented)
+// @public
 export function getSemanticCommentCompletionContextAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): SemanticCommentCompletionContext;
+
+// @public
+export function getSubjectType(node: ts.Node, checker: ts.TypeChecker): ts.Type | undefined;
 
 // @public (undocumented)
 export function getTagCompletionPrefixAtOffset(documentText: string, offset: number): string | null;
@@ -349,6 +635,15 @@ export function getTypeSemanticCapabilities(type: ts.Type, checker: ts.TypeCheck
 
 // @public (undocumented)
 export function hasTypeSemanticCapability(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): boolean;
+
+// @public
+export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
+
+// @public
+export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemanticQuery;
+
+// @public
+export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
 // @public
 export interface LoweredSyntheticTagApplication {
@@ -530,6 +825,21 @@ export type SemanticCommentCompletionContext = {
 } | {
     readonly kind: "none";
 };
+
+// @public
+export function serializeCommentTagSemanticContext(semantic: CommentTagSemanticContext): FormSpecSerializedTagSemanticContext;
+
+// @public
+export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpecifier | null): FormSpecSerializedCommentTargetSpecifier | null;
+
+// @public
+export function serializeCompletionContext(context: SemanticCommentCompletionContext): FormSpecSerializedCompletionContext;
+
+// @public
+export function serializeHoverInfo(hover: CommentHoverInfo | null): FormSpecSerializedHoverInfo | null;
+
+// @public
+export function serializeParsedCommentTag(tag: ParsedCommentTag, semantic: CommentTagSemanticContext): FormSpecAnalysisTagSnapshot;
 
 // @public (undocumented)
 export function sliceCommentSpan(commentText: string, span: CommentSpan, options?: {

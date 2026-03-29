@@ -59,6 +59,10 @@ export interface CommentTagSemanticContext {
   readonly supportedTargets: readonly FormSpecTargetKind[];
   readonly targetCompletions: readonly string[];
   readonly compatiblePathTargets: readonly string[];
+  readonly valueLabels: readonly string[];
+  readonly tagHoverMarkdown: string | null;
+  readonly targetHoverMarkdown: string | null;
+  readonly argumentHoverMarkdown: string | null;
 }
 
 export type SemanticCommentCompletionContext =
@@ -189,7 +193,7 @@ function getTargetCompletions(
   return [...completions];
 }
 
-function buildCommentTagSemanticContext(
+export function getCommentTagSemanticContext(
   tag: ParsedCommentTag,
   options?: CommentSemanticContextOptions
 ): CommentTagSemanticContext {
@@ -204,7 +208,7 @@ function buildCommentTagSemanticContext(
     options?.subjectType
   );
 
-  return {
+  const semantic: CommentTagSemanticContext = {
     tag,
     tagDefinition,
     placement: options?.placement ?? null,
@@ -212,6 +216,16 @@ function buildCommentTagSemanticContext(
     supportedTargets: getSupportedTargets(signatures),
     targetCompletions: getTargetCompletions(signatures, compatiblePathTargets),
     compatiblePathTargets,
+    valueLabels: getValueLabels(signatures),
+    tagHoverMarkdown: tagDefinition?.hoverMarkdown ?? null,
+    targetHoverMarkdown: null,
+    argumentHoverMarkdown: null,
+  };
+
+  return {
+    ...semantic,
+    targetHoverMarkdown: buildTargetHoverMarkdown(semantic),
+    argumentHoverMarkdown: buildArgumentHoverMarkdown(semantic),
   };
 }
 
@@ -448,6 +462,11 @@ export function getCommentCompletionContextAtOffset(
   };
 }
 
+/**
+ * Resolves the completion context at a document offset, upgrading syntax-only
+ * results with placement/type-aware semantics when TypeScript binding data is
+ * available.
+ */
 export function getSemanticCommentCompletionContextAtOffset(
   documentText: string,
   offset: number,
@@ -470,22 +489,27 @@ export function getSemanticCommentCompletionContextAtOffset(
   if (target?.kind === "target" || target?.kind === "colon") {
     return {
       kind: "target",
-      semantic: buildCommentTagSemanticContext(target.tag, options),
+      semantic: getCommentTagSemanticContext(target.tag, options),
     };
   }
 
   if (target?.kind === "argument") {
-    const semantic = buildCommentTagSemanticContext(target.tag, options);
+    const semantic = getCommentTagSemanticContext(target.tag, options);
     return {
       kind: "argument",
       semantic,
-      valueLabels: getValueLabels(semantic.signatures),
+      valueLabels: semantic.valueLabels,
     };
   }
 
   return { kind: "none" };
 }
 
+/**
+ * Returns hover information for the comment token under the given document
+ * offset, including semantic target/argument help when binding data is
+ * available.
+ */
 export function getCommentHoverInfoAtOffset(
   documentText: string,
   offset: number,
@@ -500,19 +524,19 @@ export function getCommentHoverInfoAtOffset(
     return null;
   }
 
-  const semantic = buildCommentTagSemanticContext(target.tag, options);
+  const semantic = getCommentTagSemanticContext(target.tag, options);
   let markdown: string | null = null;
 
   switch (target.kind) {
     case "tag-name":
-      markdown = semantic.tagDefinition?.hoverMarkdown ?? null;
+      markdown = semantic.tagHoverMarkdown;
       break;
     case "colon":
     case "target":
-      markdown = buildTargetHoverMarkdown(semantic);
+      markdown = semantic.targetHoverMarkdown;
       break;
     case "argument":
-      markdown = buildArgumentHoverMarkdown(semantic);
+      markdown = semantic.argumentHoverMarkdown;
       break;
     default: {
       const exhaustive: never = target.kind;

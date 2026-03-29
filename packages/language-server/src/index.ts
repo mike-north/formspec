@@ -6,9 +6,9 @@
  * `@Maximum`, `@Pattern`, etc.) in TypeScript files.
  *
  * This package implements the Language Server Protocol (LSP) using the
- * `vscode-languageserver` library. Constraint names are sourced from
- * `BUILTIN_CONSTRAINT_DEFINITIONS` in `@formspec/core`, ensuring the
- * language server stays in sync with the single source of truth.
+ * `vscode-languageserver` library. Cheap syntax-local behaviors stay in the
+ * LSP process, while TypeScript-project-aware semantics are supplied by
+ * `@formspec/ts-plugin` over a local manifest + IPC transport.
  *
  * Diagnostics are intentionally omitted per design decision A7.
  *

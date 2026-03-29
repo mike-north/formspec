@@ -4,6 +4,7 @@ import {
   defineConstraintTag,
   defineExtension,
 } from "@formspec/core";
+import type { FormSpecSerializedHoverInfo } from "@formspec/analysis";
 import type { MarkupContent } from "vscode-languageserver/node.js";
 import { getHoverAtOffset, getHoverForTag } from "../providers/hover.js";
 
@@ -176,6 +177,20 @@ describe("getHoverForTag", () => {
       expect(hover.contents.value).toContain("Target for @apiName");
       expect(hover.contents.value).toContain("singular");
       expect(hover.contents.value).toContain("plural");
+    }
+  });
+
+  it("prefers plugin-provided hover content when available", () => {
+    const source = "/** @minimum :amount 0 */";
+    const semanticHover: FormSpecSerializedHoverInfo = {
+      kind: "target",
+      markdown: "Semantic target hover",
+    };
+    const hover = getHoverAtOffset(source, source.indexOf("amount") + 1, undefined, semanticHover);
+
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.value).toContain("Semantic target hover");
     }
   });
 });

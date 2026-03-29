@@ -72,6 +72,7 @@ export default [
       "**/coverage/**",
       "scratch/**",
       ".worktrees/**",
+      "packages/ts-plugin/index.cjs",
       // CI scripts are plain JS, not part of the TypeScript project.
       ".github/**",
       // Examples have their own eslint.config.js with formspec plugin rules.

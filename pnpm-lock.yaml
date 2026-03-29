@@ -349,6 +349,22 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/ts-plugin:
+    dependencies:
+      '@formspec/analysis':
+        specifier: workspace:*
+        version: link:../analysis
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
+    devDependencies:
+      '@microsoft/api-extractor':
+        specifier: ^7.52.12
+        version: 7.55.2(@types/node@22.19.7)
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/validator:
     dependencies:
       '@cfworker/json-schema':
@@ -4042,7 +4058,7 @@ snapshots:
     dependencies:
       '@microsoft/api-extractor-model': 7.32.2(@types/node@22.19.7)
       '@microsoft/tsdoc': 0.16.0
-      '@microsoft/tsdoc-config': 0.18.0
+      '@microsoft/tsdoc-config': 0.18.1
       '@rushstack/node-core-library': 5.19.1(@types/node@22.19.7)
       '@rushstack/rig-package': 0.6.0
       '@rushstack/terminal': 0.19.5(@types/node@22.19.7)
@@ -5625,7 +5641,7 @@ snapshots:
     dependencies:
       hosted-git-info: 4.1.0
       is-core-module: 2.16.1
-      semver: 7.7.3
+      semver: 7.7.4
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}

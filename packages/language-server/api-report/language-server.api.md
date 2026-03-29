@@ -6,16 +6,19 @@
 
 import { CompletionItem } from 'vscode-languageserver/node.js';
 import { Connection } from 'vscode-languageserver/node.js';
-import { ExtensionDefinition } from '@formspec/core';
+import type { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
 
-// @public (undocumented)
+// @public
 export interface CreateServerOptions {
     readonly extensions?: readonly ExtensionDefinition[];
+    readonly pluginQueryTimeoutMs?: number;
+    readonly usePluginTransport?: boolean;
+    readonly workspaceRoots?: readonly string[];
 }
 
 // @public

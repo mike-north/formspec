@@ -4,6 +4,7 @@ import {
   defineConstraintTag,
   defineExtension,
 } from "@formspec/core";
+import type { FormSpecSerializedCompletionContext } from "@formspec/analysis";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems, getCompletionItemsAtOffset } from "../providers/completion.js";
 
@@ -136,5 +137,29 @@ describe("getCompletionItems", () => {
 
     expect(items.map((item) => item.label)).toContain("singular");
     expect(items.map((item) => item.label)).toContain("plural");
+  });
+
+  it("prefers plugin-provided semantic target completions when available", () => {
+    const source = "/** @minimum : */";
+    const offset = source.indexOf(":") + 1;
+    const semanticContext: FormSpecSerializedCompletionContext = {
+      kind: "target",
+      semantic: {
+        tagName: "minimum",
+        tagDefinition: null,
+        placement: "class-field",
+        supportedTargets: ["none", "path"],
+        targetCompletions: ["amount", "discount.percent"],
+        compatiblePathTargets: ["amount", "discount.percent"],
+        valueLabels: ["<number>"],
+        signatures: [],
+        tagHoverMarkdown: null,
+        targetHoverMarkdown: null,
+        argumentHoverMarkdown: null,
+      },
+    };
+
+    const items = getCompletionItemsAtOffset(source, offset, undefined, semanticContext);
+    expect(items.map((item) => item.label)).toEqual(["amount", "discount.percent"]);
   });
 });
