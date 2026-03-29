@@ -13,7 +13,9 @@
     "@formspec/language-server": "0.1.0-alpha.0",
     "@formspec/playground": "0.1.0-alpha.0",
     "@formspec/validator": "0.1.0-alpha.0",
-    "@formspec/e2e": "0.0.0"
+    "@formspec/e2e": "0.0.0",
+    "@formspec/analysis": "0.1.0-alpha.1",
+    "@formspec/ts-plugin": "0.1.0-alpha.1"
   },
   "changesets": [
     "add-constraints-package",
@@ -41,6 +43,9 @@
     "fix-path-target-traversability",
     "fix-prototype-pollution-guard",
     "fix-types-field",
+    "fresh-lamps-rest",
+    "funny-seas-visit",
+    "green-buses-speak",
     "interface-type-alias-schemas",
     "issue-100-remove-legacy-field-tags",
     "issue-25-dry-run-cli",
@@ -55,6 +60,8 @@
     "refactor-build-type-safety",
     "release-unpublished-followups",
     "semantic-diagnostics-cli-format",
+    "sharp-badgers-shine",
+    "tidy-rabbits-fly",
     "tsup-dual-cjs-esm",
     "type-guards-field-constraints",
     "unknown-path-target-diagnostic",
