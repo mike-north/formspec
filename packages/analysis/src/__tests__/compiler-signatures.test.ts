@@ -5,7 +5,7 @@ import {
   getMatchingTagSignatures,
   getTagDefinition,
   lowerTagApplicationToSyntheticCall,
-} from "../index.js";
+} from "../internal.js";
 
 describe("compiler-signatures", () => {
   it("renders synthetic overloads for path-targeted builtin constraints", () => {

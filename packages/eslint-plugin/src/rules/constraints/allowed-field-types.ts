@@ -56,6 +56,11 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
 
 export type Options = [FieldTypeConstraints];
 
+/**
+ * ESLint rule that validates allowed field types against project constraints.
+ *
+ * @public
+ */
 export const allowedFieldTypes = createRule<Options, MessageIds>({
   name: "constraints-allowed-field-types",
   meta: {

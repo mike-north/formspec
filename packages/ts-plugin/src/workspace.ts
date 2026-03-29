@@ -8,7 +8,7 @@ import {
   getFormSpecWorkspaceRuntimeDirectory,
   type FormSpecAnalysisManifest,
   type FormSpecIpcEndpoint,
-} from "@formspec/analysis";
+} from "@formspec/analysis/protocol";
 
 export interface FormSpecWorkspaceRuntimePaths {
   readonly workspaceRoot: string;

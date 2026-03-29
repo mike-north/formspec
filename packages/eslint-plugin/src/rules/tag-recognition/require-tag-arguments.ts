@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that requires arguments for FormSpec tags that need values.
+ *
+ * @public
+ */
 export const requireTagArguments = createRule<[], "missingTagArgument">({
   name: "tag-recognition/require-tag-arguments",
   meta: {

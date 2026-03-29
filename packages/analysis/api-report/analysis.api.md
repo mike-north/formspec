@@ -4,312 +4,10 @@
 
 ```ts
 
-import { AnnotationNode } from '@formspec/core';
-import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
-import { ConstraintNode } from '@formspec/core';
-import { ConstraintTagRegistration } from '@formspec/core';
-import { CustomConstraintRegistration } from '@formspec/core';
-import { ExtensionDefinition } from '@formspec/core';
-import type { JsonValue } from '@formspec/core';
 import type { PathTarget } from '@formspec/core';
-import { Provenance } from '@formspec/core';
-import * as ts from 'typescript';
-import { TypeNode } from '@formspec/core';
-
-// @public (undocumented)
-export interface AnalysisTypeDefinition {
-    // (undocumented)
-    readonly annotations?: readonly AnnotationNode[];
-    // (undocumented)
-    readonly constraints?: readonly ConstraintNode[];
-    // (undocumented)
-    readonly name: string;
-    // (undocumented)
-    readonly provenance: Provenance;
-    // (undocumented)
-    readonly type: TypeNode;
-}
-
-// @public (undocumented)
-export type AnalysisTypeRegistry = Record<string, AnalysisTypeDefinition>;
-
-// @public
-export function analyzeConstraintTargets(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry, options?: {
-    readonly extensionRegistry?: ConstraintRegistryLike;
-}): ConstraintTargetAnalysisResult;
-
-// @public (undocumented)
-export function buildConstraintTargetStates(fieldName: string, fieldType: TypeNode, constraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry): readonly ResolvedTargetState[];
-
-// @public
-export function buildFormSpecAnalysisFileSnapshot(sourceFile: ts.SourceFile, options: BuildFormSpecAnalysisFileSnapshotOptions): FormSpecAnalysisFileSnapshot;
-
-// @public
-export interface BuildFormSpecAnalysisFileSnapshotOptions {
-    // (undocumented)
-    readonly checker: ts.TypeChecker;
-    // (undocumented)
-    readonly extensions?: readonly ExtensionTagSource[];
-}
-
-// @public
-export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string;
-
-// @public
-export function checkSyntheticTagApplication(options: CheckSyntheticTagApplicationOptions): SyntheticTagCheckResult;
-
-// @public
-export interface CheckSyntheticTagApplicationOptions extends LowerSyntheticTagApplicationOptions {
-    // (undocumented)
-    readonly supportingDeclarations?: readonly string[];
-}
-
-// @public (undocumented)
-export function collectCompatiblePathTargets(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): readonly string[];
-
-// @public (undocumented)
-export function collectReferencedTypeAnnotations(type: TypeNode, typeRegistry: AnalysisTypeRegistry): readonly AnnotationNode[];
-
-// @public (undocumented)
-export function collectReferencedTypeConstraints(type: TypeNode, typeRegistry: AnalysisTypeRegistry): readonly ConstraintNode[];
-
-// @public (undocumented)
-export type CommentCompletionContext = {
-    readonly kind: "tag-name";
-    readonly prefix: string;
-} | {
-    readonly kind: "target";
-    readonly tag: ParsedCommentTag;
-} | {
-    readonly kind: "argument";
-    readonly tag: ParsedCommentTag;
-} | {
-    readonly kind: "none";
-};
-
-// @public (undocumented)
-export interface CommentCursorTarget {
-    // (undocumented)
-    readonly kind: "tag-name" | "colon" | "target" | "argument";
-    // (undocumented)
-    readonly tag: ParsedCommentTag;
-}
-
-// @public (undocumented)
-export interface CommentHoverInfo {
-    // (undocumented)
-    readonly kind: "tag-name" | "target" | "argument";
-    // (undocumented)
-    readonly markdown: string;
-}
-
-// @public (undocumented)
-export interface CommentSemanticContextOptions {
-    // (undocumented)
-    readonly checker?: ts.TypeChecker;
-    // (undocumented)
-    readonly extensions?: readonly ExtensionTagSource[];
-    // (undocumented)
-    readonly placement?: FormSpecPlacement | null;
-    // (undocumented)
-    readonly subjectType?: ts.Type;
-}
-
-// @public (undocumented)
-export interface CommentSourceSpan {
-    // (undocumented)
-    readonly end: number;
-    // (undocumented)
-    readonly start: number;
-}
-
-// @public (undocumented)
-export type CommentSpan = CommentSourceSpan;
-
-// @public (undocumented)
-export interface CommentTagSemanticContext {
-    // (undocumented)
-    readonly argumentHoverMarkdown: string | null;
-    // (undocumented)
-    readonly compatiblePathTargets: readonly string[];
-    // (undocumented)
-    readonly placement: FormSpecPlacement | null;
-    // (undocumented)
-    readonly signatures: readonly TagSignature[];
-    // (undocumented)
-    readonly supportedTargets: readonly FormSpecTargetKind[];
-    // (undocumented)
-    readonly tag: ParsedCommentTag;
-    // (undocumented)
-    readonly tagDefinition: TagDefinition | null;
-    // (undocumented)
-    readonly tagHoverMarkdown: string | null;
-    // (undocumented)
-    readonly targetCompletions: readonly string[];
-    // (undocumented)
-    readonly targetHoverMarkdown: string | null;
-    // (undocumented)
-    readonly valueLabels: readonly string[];
-}
 
 // @public
 export function computeFormSpecTextHash(text: string): string;
-
-// @public (undocumented)
-export interface ConstraintRegistrationLike {
-    // (undocumented)
-    readonly applicableTypes: readonly TypeNode["kind"][] | null;
-    // (undocumented)
-    readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
-    // (undocumented)
-    readonly constraintName: string;
-    // (undocumented)
-    readonly isApplicableToType?: (type: TypeNode) => boolean;
-    // (undocumented)
-    readonly semanticRole?: ConstraintSemanticRoleLike;
-}
-
-// @public (undocumented)
-export interface ConstraintRegistryLike {
-    // (undocumented)
-    findConstraint(constraintId: string): ConstraintRegistrationLike | undefined;
-    // (undocumented)
-    findConstraintTag(tagName: string): {
-        readonly extensionId: string;
-        readonly registration: ConstraintTagRegistrationLike;
-    } | undefined;
-}
-
-// @public (undocumented)
-export interface ConstraintSemanticDiagnostic {
-    // (undocumented)
-    readonly code: string;
-    // (undocumented)
-    readonly message: string;
-    // (undocumented)
-    readonly primaryLocation: Provenance;
-    // (undocumented)
-    readonly relatedLocations: readonly Provenance[];
-    // (undocumented)
-    readonly severity: "error" | "warning";
-}
-
-// @public (undocumented)
-export interface ConstraintSemanticRoleLike {
-    // (undocumented)
-    readonly bound: "lower" | "upper" | "exact";
-    // (undocumented)
-    readonly family: string;
-    // (undocumented)
-    readonly inclusive: boolean;
-}
-
-// @public (undocumented)
-export interface ConstraintTagParseRegistryLike {
-    // (undocumented)
-    readonly extensions: readonly ExtensionDefinition[];
-    // (undocumented)
-    findBuiltinConstraintBroadening(typeId: string, tagName: string): {
-        readonly extensionId: string;
-        readonly registration: BuiltinConstraintBroadeningRegistration;
-    } | undefined;
-    // (undocumented)
-    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
-    // (undocumented)
-    findConstraintTag(tagName: string): {
-        readonly extensionId: string;
-        readonly registration: ConstraintTagRegistration;
-    } | undefined;
-}
-
-// @public (undocumented)
-export interface ConstraintTagRegistrationLike {
-    // (undocumented)
-    readonly constraintName: string;
-    // (undocumented)
-    readonly isApplicableToType?: (type: TypeNode) => boolean;
-    // (undocumented)
-    readonly tagName: string;
-}
-
-// @public (undocumented)
-export interface ConstraintTargetAnalysisResult {
-    // (undocumented)
-    readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
-    // (undocumented)
-    readonly targetStates: readonly ResolvedTargetState[];
-}
-
-// @public (undocumented)
-export function dereferenceAnalysisType(type: TypeNode, typeRegistry: AnalysisTypeRegistry): TypeNode;
-
-// @public (undocumented)
-export interface EffectiveTargetState {
-    // (undocumented)
-    readonly effectiveConstraints: readonly ConstraintNode[];
-    // (undocumented)
-    readonly fieldName: string;
-    // (undocumented)
-    readonly inheritedAnnotations: readonly AnnotationNode[];
-    // (undocumented)
-    readonly inheritedConstraints: readonly ConstraintNode[];
-    // (undocumented)
-    readonly localConstraints: readonly ConstraintNode[];
-    // (undocumented)
-    readonly path: PathTarget | null;
-    // (undocumented)
-    readonly targetName: string;
-    // (undocumented)
-    readonly type: TypeNode;
-}
-
-// @public (undocumented)
-export interface EnclosingDocComment {
-    // (undocumented)
-    readonly end: number;
-    // (undocumented)
-    readonly parsed: ParsedCommentBlock;
-    // (undocumented)
-    readonly start: number;
-    // (undocumented)
-    readonly text: string;
-}
-
-// @public (undocumented)
-export interface ExtensionConstraintTagSource {
-    // (undocumented)
-    readonly tagName: string;
-}
-
-// @public (undocumented)
-export interface ExtensionTagSource {
-    // (undocumented)
-    readonly constraintTags?: readonly ExtensionConstraintTagSource[];
-    // (undocumented)
-    readonly extensionId: string;
-}
-
-// @public
-export function extractPathTarget(text: string): ParsedPathTarget | null;
-
-// @public (undocumented)
-export function findCommentTagAtOffset(documentText: string, offset: number, options?: {
-    readonly extensions?: readonly ExtensionTagSource[];
-}): ParsedCommentTag | null;
-
-// @public
-export function findDeclarationForCommentOffset(sourceFile: ts.SourceFile, offset: number): ts.Node | null;
-
-// @public (undocumented)
-export function findEnclosingDocComment(documentText: string, offset: number, options?: {
-    readonly extensions?: readonly ExtensionTagSource[];
-}): EnclosingDocComment | null;
-
-// @public (undocumented)
-export function formatConstraintTargetName(fieldName: string, path: PathTarget | null): string;
-
-// @public (undocumented)
-export function formatPathTarget(path: PathTarget | readonly string[]): string;
 
 // @public (undocumented)
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 1;
@@ -319,12 +17,16 @@ export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
 // @public
 export interface FormSpecAnalysisCommentSnapshot {
+    // Warning: (ae-forgotten-export) The symbol "CommentSpan" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly commentSpan: CommentSpan;
     // (undocumented)
     readonly declarationSpan: CommentSpan;
     // (undocumented)
     readonly hostType: string | null;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecPlacement" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly placement: FormSpecPlacement | null;
     // (undocumented)
@@ -413,12 +115,6 @@ export interface FormSpecIpcEndpoint {
     readonly kind: "unix-socket" | "windows-pipe";
 }
 
-// @public (undocumented)
-export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
-
-// @public (undocumented)
-export type FormSpecSemanticCapability = SemanticCapability;
-
 // @public
 export type FormSpecSemanticQuery = {
     readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
@@ -479,6 +175,8 @@ export interface FormSpecSerializedCommentTargetSpecifier {
     readonly colonSpan: CommentSpan;
     // (undocumented)
     readonly fullSpan: CommentSpan;
+    // Warning: (ae-forgotten-export) The symbol "ParsedCommentTargetSpecifier" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly kind: ParsedCommentTargetSpecifier["kind"];
     // (undocumented)
@@ -507,6 +205,8 @@ export type FormSpecSerializedCompletionContext = {
 
 // @public
 export interface FormSpecSerializedHoverInfo {
+    // Warning: (ae-forgotten-export) The symbol "CommentHoverInfo" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly kind: CommentHoverInfo["kind"];
     // (undocumented)
@@ -533,6 +233,8 @@ export interface FormSpecSerializedTagSemanticContext {
     readonly placement: FormSpecPlacement | null;
     // (undocumented)
     readonly signatures: readonly FormSpecSerializedTagSignature[];
+    // Warning: (ae-forgotten-export) The symbol "FormSpecTargetKind" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly supportedTargets: readonly FormSpecTargetKind[];
     // (undocumented)
@@ -557,46 +259,6 @@ export interface FormSpecSerializedTagSignature {
     readonly placements: readonly FormSpecPlacement[];
 }
 
-// @public (undocumented)
-export type FormSpecTagCategory = "constraint" | "annotation" | "structure" | "ecosystem";
-
-// @public (undocumented)
-export type FormSpecTagDefinition = TagDefinition;
-
-// @public (undocumented)
-export type FormSpecTagOverload = TagSignature;
-
-// @public (undocumented)
-export type FormSpecTagParameter = TagSignatureParameter;
-
-// @public (undocumented)
-export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
-
-// @public (undocumented)
-export type FormSpecValueKind = "number" | "integer" | "signedInteger" | "string" | "json" | "boolean" | "condition";
-
-// @public (undocumented)
-export function getAllTagDefinitions(extensions?: readonly ExtensionTagSource[]): readonly TagDefinition[];
-
-// @public (undocumented)
-export function getCommentCompletionContextAtOffset(documentText: string, offset: number, options?: {
-    readonly extensions?: readonly ExtensionTagSource[];
-}): CommentCompletionContext;
-
-// @public (undocumented)
-export function getCommentCursorTargetAtOffset(documentText: string, offset: number, options?: {
-    readonly extensions?: readonly ExtensionTagSource[];
-}): CommentCursorTarget | null;
-
-// @public
-export function getCommentHoverInfoAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): CommentHoverInfo | null;
-
-// @public (undocumented)
-export function getCommentTagSemanticContext(tag: ParsedCommentTag, options?: CommentSemanticContextOptions): CommentTagSemanticContext;
-
-// @public (undocumented)
-export function getConstraintTagDefinitions(extensions?: readonly ExtensionTagSource[]): readonly TagDefinition[];
-
 // @public
 export function getFormSpecManifestPath(workspaceRoot: string): string;
 
@@ -607,36 +269,6 @@ export function getFormSpecWorkspaceId(workspaceRoot: string): string;
 export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string;
 
 // @public
-export function getHostType(node: ts.Node, checker: ts.TypeChecker): ts.Type | undefined;
-
-// @public
-export function getLastLeadingDocCommentRange(node: ts.Node, sourceFile: ts.SourceFile): ts.CommentRange | null;
-
-// @public
-export function getMatchingTagSignatures(definition: TagDefinition, placement: FormSpecPlacement, targetKind: SyntheticTagTargetKind | null): readonly TagSignature[];
-
-// @public
-export function getSemanticCommentCompletionContextAtOffset(documentText: string, offset: number, options?: CommentSemanticContextOptions): SemanticCommentCompletionContext;
-
-// @public
-export function getSubjectType(node: ts.Node, checker: ts.TypeChecker): ts.Type | undefined;
-
-// @public (undocumented)
-export function getTagCompletionPrefixAtOffset(documentText: string, offset: number): string | null;
-
-// @public (undocumented)
-export function getTagDefinition(rawName: string, extensions?: readonly ExtensionTagSource[]): TagDefinition | null;
-
-// @public (undocumented)
-export function getTagHoverMarkdown(rawName: string, extensions?: readonly ExtensionTagSource[]): string | null;
-
-// @public (undocumented)
-export function getTypeSemanticCapabilities(type: ts.Type, checker: ts.TypeChecker): readonly SemanticCapability[];
-
-// @public (undocumented)
-export function hasTypeSemanticCapability(type: ts.Type, checker: ts.TypeChecker, capability: SemanticCapability): boolean;
-
-// @public
 export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
 
 // @public
@@ -645,283 +277,26 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
-// @public
-export interface LoweredSyntheticTagApplication {
-    // (undocumented)
-    readonly callExpression: string;
-    // (undocumented)
-    readonly definition: TagDefinition;
-    // (undocumented)
-    readonly matchingSignatures: readonly TagSignature[];
-}
-
-// @public
-export interface LowerSyntheticTagApplicationOptions {
-    // (undocumented)
-    readonly argumentExpression?: string | null;
-    // (undocumented)
-    readonly extensions?: readonly ExtensionTagSource[];
-    // (undocumented)
-    readonly hostType: string;
-    // (undocumented)
-    readonly placement: FormSpecPlacement;
-    // (undocumented)
-    readonly subjectType: string;
-    // (undocumented)
-    readonly tagName: string;
-    // (undocumented)
-    readonly target?: SyntheticTagTargetSpecifier | null;
-}
-
-// @public
-export function lowerTagApplicationToSyntheticCall(options: LowerSyntheticTagApplicationOptions): LoweredSyntheticTagApplication;
-
-// @public (undocumented)
-export function normalizeFormSpecTagName(rawName: string): string;
-
-// @public (undocumented)
-export function parseCommentBlock(commentText: string, options?: ParseCommentSyntaxOptions): ParsedCommentBlock;
-
-// @public (undocumented)
-export interface ParseCommentSyntaxOptions {
-    // (undocumented)
-    readonly extensions?: readonly ExtensionTagSource[];
-    // (undocumented)
-    readonly offset?: number;
-}
-
-// @public (undocumented)
-export function parseConstraintTagValue(tagName: string, text: string, provenance: Provenance, options?: ParseConstraintTagValueOptions): ConstraintNode | null;
-
-// @public (undocumented)
-export interface ParseConstraintTagValueOptions {
-    // (undocumented)
-    readonly fieldType?: TypeNode;
-    // (undocumented)
-    readonly registry?: ConstraintTagParseRegistryLike;
-}
-
-// @public (undocumented)
-export interface ParsedCommentBlock {
-    // (undocumented)
-    readonly commentText: string;
-    // (undocumented)
-    readonly offset: number;
-    // (undocumented)
-    readonly tags: readonly ParsedCommentTag[];
-}
-
-// @public (undocumented)
-export interface ParsedCommentTag {
-    // (undocumented)
-    readonly argumentSpan: CommentSourceSpan | null;
-    // (undocumented)
-    readonly argumentText: string;
-    // (undocumented)
-    readonly colonSpan: CommentSourceSpan | null;
-    // (undocumented)
-    readonly fullSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly normalizedTagName: string;
-    // (undocumented)
-    readonly payloadSpan: CommentSourceSpan | null;
-    // (undocumented)
-    readonly rawTagName: string;
-    // (undocumented)
-    readonly recognized: boolean;
-    // (undocumented)
-    readonly tagNameSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly target: ParsedCommentTargetSpecifier | null;
-}
-
-// @public (undocumented)
-export interface ParsedCommentTargetSpecifier {
-    // (undocumented)
-    readonly colonSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly fullSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly kind: "path" | "member" | "variant" | "ambiguous";
-    // (undocumented)
-    readonly path: PathTarget | null;
-    // (undocumented)
-    readonly rawText: string;
-    // (undocumented)
-    readonly span: CommentSourceSpan;
-    // (undocumented)
-    readonly valid: boolean;
-}
-
-// @public (undocumented)
-export function parseDefaultValueTagValue(text: string, provenance: Provenance): AnnotationNode;
-
-// @public (undocumented)
-export interface ParsedPathTarget {
-    // (undocumented)
-    readonly path: PathTarget;
-    // (undocumented)
-    readonly remainingText: string;
-}
-
-// @public (undocumented)
-export function parseTagSyntax(rawTagName: string, payloadText: string, options?: Omit<ParseCommentSyntaxOptions, "offset">): ParsedCommentTag;
-
-// @public (undocumented)
-export function resolveConstraintTargetState(fieldName: string, fieldType: TypeNode, path: PathTarget | null, localConstraints: readonly ConstraintNode[], typeRegistry: AnalysisTypeRegistry): ResolvedTargetState;
-
-// @public (undocumented)
-export function resolveDeclarationPlacement(node: ts.Node): FormSpecPlacement | null;
-
-// @public
-export type ResolvedPathTargetType = {
-    readonly kind: "resolved";
-    readonly type: ts.Type;
-} | {
-    readonly kind: "missing-property";
-    readonly segment: string;
-} | {
-    readonly kind: "unresolvable";
-    readonly type: ts.Type;
-};
-
-// @public (undocumented)
-export type ResolvedTargetState = ({
-    readonly kind: "resolved";
-} & EffectiveTargetState) | {
-    readonly kind: "missing-property";
-    readonly fieldName: string;
-    readonly path: PathTarget;
-    readonly targetName: string;
-    readonly segment: string;
-    readonly localConstraints: readonly ConstraintNode[];
-} | {
-    readonly kind: "unresolvable";
-    readonly fieldName: string;
-    readonly path: PathTarget;
-    readonly targetName: string;
-    readonly type: TypeNode;
-    readonly localConstraints: readonly ConstraintNode[];
-};
-
-// @public
-export function resolvePathTargetType(type: ts.Type, checker: ts.TypeChecker, segments: readonly string[]): ResolvedPathTargetType;
-
-// @public (undocumented)
-export type SemanticCapability = "numeric-comparable" | "string-like" | "array-like" | "enum-member-addressable" | "json-like" | "condition-like" | "object-like";
-
-// @public (undocumented)
-export type SemanticCommentCompletionContext = {
-    readonly kind: "tag-name";
-    readonly prefix: string;
-    readonly availableTags: readonly TagDefinition[];
-} | {
-    readonly kind: "target";
-    readonly semantic: CommentTagSemanticContext;
-} | {
-    readonly kind: "argument";
-    readonly semantic: CommentTagSemanticContext;
-    readonly valueLabels: readonly string[];
-} | {
-    readonly kind: "none";
-};
-
+// Warning: (ae-forgotten-export) The symbol "CommentTagSemanticContext" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function serializeCommentTagSemanticContext(semantic: CommentTagSemanticContext): FormSpecSerializedTagSemanticContext;
 
 // @public
 export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpecifier | null): FormSpecSerializedCommentTargetSpecifier | null;
 
+// Warning: (ae-forgotten-export) The symbol "SemanticCommentCompletionContext" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function serializeCompletionContext(context: SemanticCommentCompletionContext): FormSpecSerializedCompletionContext;
 
 // @public
 export function serializeHoverInfo(hover: CommentHoverInfo | null): FormSpecSerializedHoverInfo | null;
 
+// Warning: (ae-forgotten-export) The symbol "ParsedCommentTag" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function serializeParsedCommentTag(tag: ParsedCommentTag, semantic: CommentTagSemanticContext): FormSpecAnalysisTagSnapshot;
-
-// @public (undocumented)
-export function sliceCommentSpan(commentText: string, span: CommentSpan, options?: {
-    readonly offset?: number;
-}): string;
-
-// @public
-export interface SyntheticCompilerDiagnostic {
-    // (undocumented)
-    readonly code: number;
-    // (undocumented)
-    readonly message: string;
-}
-
-// @public
-export interface SyntheticTagCheckResult {
-    // (undocumented)
-    readonly diagnostics: readonly SyntheticCompilerDiagnostic[];
-    // (undocumented)
-    readonly sourceText: string;
-}
-
-// @public
-export type SyntheticTagTargetKind = "path" | "member" | "variant";
-
-// @public
-export interface SyntheticTagTargetSpecifier {
-    // (undocumented)
-    readonly kind: SyntheticTagTargetKind;
-    // (undocumented)
-    readonly text: string;
-}
-
-// @public (undocumented)
-export interface TagDefinition {
-    // (undocumented)
-    readonly allowDuplicates: boolean;
-    // (undocumented)
-    readonly canonicalName: string;
-    // (undocumented)
-    readonly capabilities: readonly SemanticCapability[];
-    // (undocumented)
-    readonly category: FormSpecTagCategory;
-    // (undocumented)
-    readonly completionDetail: string;
-    // (undocumented)
-    readonly hoverMarkdown: string;
-    // (undocumented)
-    readonly placements: readonly FormSpecPlacement[];
-    // (undocumented)
-    readonly requiresArgument: boolean;
-    // (undocumented)
-    readonly signatures: readonly TagSignature[];
-    // (undocumented)
-    readonly supportedTargets: readonly FormSpecTargetKind[];
-    // (undocumented)
-    readonly valueKind: FormSpecValueKind | null;
-}
-
-// @public (undocumented)
-export interface TagSignature {
-    // (undocumented)
-    readonly label: string;
-    // (undocumented)
-    readonly parameters: readonly TagSignatureParameter[];
-    // (undocumented)
-    readonly placements: readonly FormSpecPlacement[];
-}
-
-// @public (undocumented)
-export interface TagSignatureParameter {
-    // (undocumented)
-    readonly capability?: SemanticCapability;
-    // (undocumented)
-    readonly kind: "value" | "target-path" | "target-member" | "target-variant";
-    // (undocumented)
-    readonly label: string;
-    // (undocumented)
-    readonly optional?: boolean;
-    // (undocumented)
-    readonly valueKind?: FormSpecValueKind;
-}
 
 // (No @packageDocumentation comment for this package)
 

@@ -12,7 +12,7 @@ import {
   serializeHoverInfo,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticResponse,
-} from "../index.js";
+} from "../internal.js";
 
 describe("semantic protocol", () => {
   it("computes a deterministic text hash", () => {
@@ -104,6 +104,10 @@ describe("semantic protocol", () => {
     };
 
     expect(isFormSpecSemanticResponse(response)).toBe(true);
+    if (response.kind !== "completion" || response.context.kind !== "target") {
+      throw new Error("Expected a target completion response fixture");
+    }
+
     expect(
       isFormSpecSemanticResponse({
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
@@ -111,6 +115,32 @@ describe("semantic protocol", () => {
         sourceHash: response.sourceHash,
         context: {
           kind: "target",
+        },
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        ...response,
+        context: {
+          kind: "target",
+          semantic: {
+            ...response.context.semantic,
+            placement: "banana",
+          },
+        },
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        ...response,
+        context: {
+          kind: "target",
+          semantic: {
+            ...response.context.semantic,
+            supportedTargets: ["none", "banana"],
+          },
         },
       })
     ).toBe(false);

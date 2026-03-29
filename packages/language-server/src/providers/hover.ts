@@ -10,7 +10,7 @@ import {
   getCommentHoverInfoAtOffset,
   getTagDefinition,
   normalizeFormSpecTagName,
-} from "@formspec/analysis";
+} from "@formspec/analysis/internal";
 import type { ExtensionDefinition } from "@formspec/core";
 import type { Hover } from "vscode-languageserver/node.js";
 

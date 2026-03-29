@@ -21,6 +21,8 @@ import type {
  *
  * @typeParam Source - The data source key from DataSourceRegistry
  * @typeParam T - The data type for options (from DataSourceRegistry)
+ *
+ * @public
  */
 export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (
   params?: Record<string, unknown>
@@ -47,6 +49,8 @@ type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
 
 /**
  * Map of resolver functions for a form's dynamic data sources.
+ *
+ * @public
  */
 export type ResolverMap<Sources extends string> = {
   [S in Sources]: S extends keyof DataSourceRegistry
@@ -56,6 +60,8 @@ export type ResolverMap<Sources extends string> = {
 
 /**
  * A resolver registry that provides type-safe access to resolvers.
+ *
+ * @public
  */
 export interface ResolverRegistry<Sources extends string> {
   /**
@@ -135,6 +141,8 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
  * @param form - The FormSpec containing dynamic enum fields
  * @param resolvers - Map of resolver functions for each data source
  * @returns A ResolverRegistry for type-safe access to resolvers
+ *
+ * @public
  */
 export function defineResolvers<
   E extends readonly FormElement[],

@@ -11,7 +11,7 @@ import {
   analyzeConstraintTargets,
   dereferenceAnalysisType,
   type AnalysisTypeRegistry,
-} from "../index.js";
+} from "../internal.js";
 
 const NUMBER_TYPE: TypeNode = { kind: "primitive", primitiveKind: "number" };
 

@@ -13,6 +13,8 @@
  * A text input field.
  *
  * @typeParam N - The field name (string literal type)
+ *
+ * @public
  */
 export interface TextField<N extends string> {
   /** Type discriminator for form elements */
@@ -39,6 +41,8 @@ export interface TextField<N extends string> {
  * A numeric input field.
  *
  * @typeParam N - The field name (string literal type)
+ *
+ * @public
  */
 export interface NumberField<N extends string> {
   /** Type discriminator for form elements */
@@ -63,6 +67,8 @@ export interface NumberField<N extends string> {
  * A boolean checkbox field.
  *
  * @typeParam N - The field name (string literal type)
+ *
+ * @public
  */
 export interface BooleanField<N extends string> {
   /** Type discriminator for form elements */
@@ -81,6 +87,8 @@ export interface BooleanField<N extends string> {
  * An enum option with a separate ID and display label.
  *
  * Use this when the stored value (id) should differ from the display text (label).
+ *
+ * @public
  */
 export interface EnumOption {
   readonly id: string;
@@ -89,6 +97,8 @@ export interface EnumOption {
 
 /**
  * Valid enum option types: either plain strings or objects with id/label.
+ *
+ * @public
  */
 export type EnumOptionValue = string | EnumOption;
 
@@ -99,6 +109,8 @@ export type EnumOptionValue = string | EnumOption;
  *
  * @typeParam N - The field name (string literal type)
  * @typeParam O - Tuple of option values (strings or EnumOption objects)
+ *
+ * @public
  */
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
   /** Type discriminator for form elements */
@@ -120,6 +132,8 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
  *
  * @typeParam N - The field name (string literal type)
  * @typeParam Source - The data source key (from DataSourceRegistry)
+ *
+ * @public
  */
 export interface DynamicEnumField<N extends string, Source extends string> {
   /** Type discriminator for form elements */
@@ -142,6 +156,8 @@ export interface DynamicEnumField<N extends string, Source extends string> {
  * A field that loads its schema dynamically (e.g., from an extension).
  *
  * @typeParam N - The field name (string literal type)
+ *
+ * @public
  */
 export interface DynamicSchemaField<N extends string> {
   /** Type discriminator for form elements */
@@ -167,6 +183,8 @@ export interface DynamicSchemaField<N extends string> {
  *
  * @typeParam N - The field name (string literal type)
  * @typeParam Items - The form elements that define each array item
+ *
+ * @public
  */
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
   /** Type discriminator for form elements */
@@ -194,6 +212,8 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
  *
  * @typeParam N - The field name (string literal type)
  * @typeParam Properties - The form elements that define the object's properties
+ *
+ * @public
  */
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
   /** Type discriminator for form elements */
@@ -212,6 +232,8 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 
 /**
  * Union of all field types.
+ *
+ * @public
  */
 export type AnyField =
   | TextField<string>
@@ -233,6 +255,8 @@ export type AnyField =
  * Groups provide visual organization and can be rendered as fieldsets or sections.
  *
  * @typeParam Elements - Tuple of contained form elements
+ *
+ * @public
  */
 export interface Group<Elements extends readonly FormElement[]> {
   /** Type discriminator - identifies this as a group element */
@@ -249,6 +273,8 @@ export interface Group<Elements extends readonly FormElement[]> {
  * @typeParam FieldName - The field to check
  * @typeParam Value - The value that triggers the condition
  * @typeParam Elements - Tuple of contained form elements
+ *
+ * @public
  */
 export interface Conditional<
   FieldName extends string,
@@ -267,6 +293,8 @@ export interface Conditional<
 
 /**
  * Union of all form element types (fields and structural elements).
+ *
+ * @public
  */
 export type FormElement =
   | AnyField
@@ -281,6 +309,8 @@ export type FormElement =
  * A complete form specification.
  *
  * @typeParam Elements - Tuple of top-level form elements
+ *
+ * @public
  */
 export interface FormSpec<Elements extends readonly FormElement[]> {
   /** Top-level form elements */

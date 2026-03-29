@@ -4,6 +4,8 @@ import type { Validity } from "./validity.js";
  * Represents the runtime state of a single form field.
  *
  * @typeParam T - The value type of the field
+ *
+ * @public
  */
 export interface FieldState<T> {
   /** Current value of the field */
@@ -28,6 +30,8 @@ export interface FieldState<T> {
  * @typeParam T - The value type of the field
  * @param value - The initial value for the field
  * @returns Initial field state
+ *
+ * @public
  */
 export function createInitialFieldState<T>(value: T): FieldState<T> {
   return {

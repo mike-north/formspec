@@ -31,6 +31,8 @@ import type { Rule, UISchemaElementType } from "./schema.js";
  * shared by all element types. It is kept as an interface (rather than
  * derived from Zod) because it is the base of a discriminated union, not
  * a union member itself.
+ *
+ * @public
  */
 export interface UISchemaElementBase {
   type: UISchemaElementType;

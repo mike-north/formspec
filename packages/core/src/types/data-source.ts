@@ -12,6 +12,8 @@
  *   }
  * }
  * ```
+ *
+ * @public
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface DataSourceRegistry {
@@ -22,6 +24,8 @@ export interface DataSourceRegistry {
  * A single option returned by a data source resolver.
  *
  * @typeParam T - The data type for additional option metadata
+ *
+ * @public
  */
 export interface DataSourceOption<T = unknown> {
   /** The value stored when this option is selected */
@@ -38,6 +42,8 @@ export interface DataSourceOption<T = unknown> {
  * Response from a data source resolver function.
  *
  * @typeParam T - The data type for option metadata
+ *
+ * @public
  */
 export interface FetchOptionsResponse<T = unknown> {
   /** The available options */
@@ -55,6 +61,8 @@ export interface FetchOptionsResponse<T = unknown> {
  *
  * If the source has an `id` property, that becomes the value type.
  * Otherwise, defaults to `string`.
+ *
+ * @public
  */
 export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry
   ? DataSourceRegistry[Source] extends { id: infer ID }

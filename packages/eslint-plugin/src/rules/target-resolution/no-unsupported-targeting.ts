@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that disallows unsupported targeting syntax for a given tag.
+ *
+ * @public
+ */
 export const noUnsupportedTargeting = createRule<[], "unsupportedTargetingSyntax">({
   name: "target-resolution/no-unsupported-targeting",
   meta: {

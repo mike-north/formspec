@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTagDefinition } from "../index.js";
+import { getTagDefinition } from "../internal.js";
 
 describe("tag-registry", () => {
   it("restores pre-extraction ecosystem and structure tags", () => {

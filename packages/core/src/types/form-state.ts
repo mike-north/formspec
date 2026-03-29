@@ -5,6 +5,8 @@ import type { Validity } from "./validity.js";
  * Represents the runtime state of an entire form.
  *
  * @typeParam Schema - The form schema type (maps field names to value types)
+ *
+ * @public
  */
 export interface FormState<Schema extends Record<string, unknown>> {
   /** State for each field, keyed by field name */

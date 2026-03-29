@@ -3,9 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import net from "node:net";
 import * as ts from "typescript";
-import { afterEach, describe, expect, it } from "vitest";
-import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis";
-import { FormSpecPluginService } from "../service.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
+import { createLanguageServiceProxy, FormSpecPluginService } from "../service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";
 
 async function createProgramContext(sourceText: string) {
@@ -33,6 +33,9 @@ async function querySocket(address: string, payload: object): Promise<unknown> {
     let buffer = "";
 
     socket.setEncoding("utf8");
+    socket.setTimeout(1_000, () => {
+      socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
+    });
     socket.on("connect", () => {
       socket.write(`${JSON.stringify(payload)}\n`);
     });
@@ -48,6 +51,33 @@ async function querySocket(address: string, payload: object): Promise<unknown> {
     });
     socket.on("error", reject);
   });
+}
+
+function createLanguageService(sourceText: string) {
+  const fileName = "/virtual/formspec.ts";
+  const compilerOptions: ts.CompilerOptions = {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    strict: true,
+  };
+
+  const host: ts.LanguageServiceHost = {
+    getCompilationSettings: () => compilerOptions,
+    getCurrentDirectory: () => "/virtual",
+    getDefaultLibFileName: ts.getDefaultLibFilePath,
+    getScriptFileNames: () => [fileName],
+    getScriptSnapshot: (requestedFileName: string) =>
+      requestedFileName === fileName ? ts.ScriptSnapshot.fromString(sourceText) : undefined,
+    getScriptVersion: () => "0",
+    readFile: ts.sys.readFile,
+    readDirectory: ts.sys.readDirectory,
+    fileExists: ts.sys.fileExists,
+  };
+
+  return {
+    fileName,
+    service: ts.createLanguageService(host),
+  };
 }
 
 describe("FormSpecPluginService", () => {
@@ -162,5 +192,177 @@ describe("FormSpecPluginService", () => {
     await service.stop();
 
     await expect(fs.access(runtimePaths.manifestPath)).rejects.toBeDefined();
+  });
+
+  it("serves diagnostics and file snapshots for invalid tagged comments", async () => {
+    const source = `
+      class Foo {
+        /** @minimum :label 0 */
+        value!: {
+          amount: number;
+          label: string;
+        };
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const diagnostics = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "diagnostics",
+      filePath: context.filePath,
+    });
+    expect(diagnostics.kind).toBe("diagnostics");
+    if (diagnostics.kind === "diagnostics") {
+      expect(diagnostics.diagnostics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "TYPE_MISMATCH",
+            severity: "error",
+          }),
+        ])
+      );
+    }
+
+    const snapshot = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "file-snapshot",
+      filePath: context.filePath,
+    });
+    expect(snapshot.kind).toBe("file-snapshot");
+    if (snapshot.kind === "file-snapshot") {
+      expect(snapshot.snapshot?.comments).toHaveLength(1);
+      expect(snapshot.snapshot?.comments[0]?.tags[0]?.semantic?.tagName).toBe("minimum");
+    }
+  });
+
+  it("returns error responses for completion and hover when no program is available", () => {
+    const service = new FormSpecPluginService({
+      workspaceRoot: "/workspace/formspec",
+      typescriptVersion: ts.version,
+      getProgram: () => undefined,
+    });
+
+    const completion = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "completion",
+      filePath: "/workspace/formspec/example.ts",
+      offset: 0,
+    });
+    expect(completion).toMatchObject({
+      kind: "error",
+      error: expect.stringContaining("Unable to resolve TypeScript source file"),
+    });
+
+    const hover = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "hover",
+      filePath: "/workspace/formspec/example.ts",
+      offset: 0,
+    });
+    expect(hover).toMatchObject({
+      kind: "error",
+      error: expect.stringContaining("Unable to resolve TypeScript source file"),
+    });
+  });
+
+  it("returns missing-source snapshots when the file is not in the current program", async () => {
+    const context = await createProgramContext("class Foo {}");
+    workspaces.push(context.workspaceRoot);
+    const missingFilePath = path.join(context.workspaceRoot, "missing.ts");
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const diagnostics = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "diagnostics",
+      filePath: missingFilePath,
+    });
+    expect(diagnostics).toMatchObject({
+      kind: "diagnostics",
+      diagnostics: [
+        expect.objectContaining({
+          code: "MISSING_SOURCE_FILE",
+          severity: "warning",
+        }),
+      ],
+    });
+
+    const snapshot = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "file-snapshot",
+      filePath: missingFilePath,
+    });
+    expect(snapshot.kind).toBe("file-snapshot");
+    if (snapshot.kind === "file-snapshot") {
+      expect(snapshot.snapshot?.diagnostics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: "MISSING_SOURCE_FILE",
+          }),
+        ])
+      );
+    }
+  });
+});
+
+describe("createLanguageServiceProxy", () => {
+  it("refreshes snapshots for the wrapped semantic entry points and delegates other methods", () => {
+    const scheduleSnapshotRefresh = vi.fn();
+    const getSemanticDiagnostics = vi.fn(() => ["diag"]);
+    const getCompletionsAtPosition = vi.fn(() => ({ entries: [] }));
+    const getQuickInfoAtPosition = vi.fn(() => ({
+      kind: "text",
+      kindModifiers: "",
+      textSpan: { start: 0, length: 1 },
+      displayParts: [],
+      documentation: [],
+    }));
+    const dispose = vi.fn(() => "disposed");
+
+    const proxy = createLanguageServiceProxy(
+      {
+        getSemanticDiagnostics,
+        getCompletionsAtPosition,
+        getQuickInfoAtPosition,
+        dispose,
+      } as unknown as ts.LanguageService,
+      {
+        scheduleSnapshotRefresh,
+      } as unknown as FormSpecPluginService
+    );
+
+    expect(proxy.getSemanticDiagnostics("example.ts")).toEqual(["diag"]);
+    expect(proxy.getCompletionsAtPosition("example.ts", 4, undefined)).toEqual({ entries: [] });
+    expect(proxy.getQuickInfoAtPosition("example.ts", 4)).toMatchObject({ kind: "text" });
+    expect(proxy.dispose()).toBe("disposed");
+
+    expect(scheduleSnapshotRefresh).toHaveBeenNthCalledWith(1, "example.ts");
+    expect(scheduleSnapshotRefresh).toHaveBeenNthCalledWith(2, "example.ts");
+    expect(scheduleSnapshotRefresh).toHaveBeenNthCalledWith(3, "example.ts");
+    expect(scheduleSnapshotRefresh).toHaveBeenCalledTimes(3);
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("works against a real TypeScript language service", () => {
+    const scheduleSnapshotRefresh = vi.fn();
+    const { fileName, service } = createLanguageService("const value = 1;\nvalue;\n");
+    const proxy = createLanguageServiceProxy(service, {
+      scheduleSnapshotRefresh,
+    } as unknown as FormSpecPluginService);
+
+    expect(proxy.getSemanticDiagnostics(fileName)).toEqual([]);
+    expect(proxy.getQuickInfoAtPosition(fileName, 19)).not.toBeNull();
+    expect(scheduleSnapshotRefresh).toHaveBeenCalledWith(fileName);
   });
 });

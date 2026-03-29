@@ -17,13 +17,21 @@ formspec (umbrella — re-exports everything)
 @formspec/constraints      (constraint validation)
 └── @formspec/core
 
+@formspec/analysis         (shared comment-tag analysis utilities)
+└── @formspec/core
+
 @formspec/eslint-plugin    (lint rules for FormSpec)
+├── @formspec/analysis
 ├── @formspec/constraints
 └── @formspec/core
 
 @formspec/validator        (JSON Schema validator — @cfworker/json-schema)
 
-@formspec/language-server  (LSP features for editors)
+@formspec/ts-plugin        (TypeScript language service plugin — semantic authority inside tsserver)
+└── @formspec/analysis
+
+@formspec/language-server  (LSP presentation layer — consumes plugin transport)
+├── @formspec/analysis
 └── @formspec/core
 
 @formspec/playground       (interactive browser editor — private)
@@ -36,10 +44,13 @@ Packages build in dependency order. `pnpm run build` at the root handles this au
 
 1. `@formspec/core` — no dependencies
 2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` — depend on core
-3. `@formspec/build` — depends on core
-4. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/constraints
-5. `formspec` — umbrella, depends on all above
-6. `@formspec/playground` — depends on everything, private
+3. `@formspec/analysis` — depends on core
+4. `@formspec/build` — depends on core
+5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/constraints/analysis
+6. `@formspec/ts-plugin` — depends on analysis
+7. `@formspec/language-server` — depends on analysis, core
+8. `formspec` — umbrella, depends on all above
+9. `@formspec/playground` — depends on everything, private
 
 ## DSL
 
@@ -203,6 +214,14 @@ constraints:
 | --------------------------------- | ----------------------------------------------------------------------------- |
 | `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `.formspec.yml` |
 | `constraints-allowed-layouts`     | `group()`, `when()` validated against `.formspec.yml`                         |
+
+## Tooling Architecture
+
+FormSpec editor tooling uses a hybrid split:
+
+- `@formspec/analysis` owns shared comment parsing, semantic modeling, and transport-safe snapshot/protocol types.
+- `@formspec/ts-plugin` runs inside `tsserver`, reuses the host `Program`/`TypeChecker`, and serves semantic comment data over a local manifest + IPC channel.
+- `@formspec/language-server` stays cheap locally for syntax-aware behavior, then upgrades hover/completion responses with plugin-provided semantic data when available.
 
 ## Entry Points
 

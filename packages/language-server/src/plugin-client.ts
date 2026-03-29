@@ -13,7 +13,7 @@ import {
   type FormSpecSerializedHoverInfo,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis";
+} from "@formspec/analysis/protocol";
 
 const DEFAULT_PLUGIN_QUERY_TIMEOUT_MS = 2_000;
 

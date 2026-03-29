@@ -10,6 +10,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that validates path-target references against the resolved field type.
+ *
+ * @public
+ */
 export const validPathTarget = createRule<[], "unknownPathTarget">({
   name: "target-resolution/valid-path-target",
   meta: {

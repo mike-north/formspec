@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that reports duplicate FormSpec tags on the same target.
+ *
+ * @public
+ */
 export const noDuplicateTags = createRule<[], "duplicateTag">({
   name: "constraint-validation/no-duplicate-tags",
   meta: {

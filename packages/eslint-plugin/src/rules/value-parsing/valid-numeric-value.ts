@@ -7,6 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that validates numeric-valued FormSpec tags.
+ *
+ * @public
+ */
 export const validNumericValue = createRule<[], "invalidNumericValue">({
   name: "value-parsing/valid-numeric-value",
   meta: {

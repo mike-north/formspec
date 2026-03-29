@@ -3,12 +3,16 @@
  * - "error": Violation fails validation
  * - "warn": Violation emits warning but passes
  * - "off": Feature is allowed (no violation)
+ *
+ * @public
  */
 export type Severity = "error" | "warn" | "off";
 
 /**
  * Field type constraints - control which field types are allowed.
  * Fine-grained control over each DSL field builder.
+ *
+ * @public
  */
 export interface FieldTypeConstraints {
   /** field.text() - basic text input */
@@ -31,6 +35,8 @@ export interface FieldTypeConstraints {
 
 /**
  * Layout and structure constraints - control grouping, conditionals, nesting.
+ *
+ * @public
  */
 export interface LayoutConstraints {
   /** group() - visual grouping of fields */
@@ -43,6 +49,8 @@ export interface LayoutConstraints {
 
 /**
  * JSONForms layout type constraints.
+ *
+ * @public
  */
 export interface LayoutTypeConstraints {
   /** VerticalLayout - stack elements vertically */
@@ -59,6 +67,8 @@ export interface LayoutTypeConstraints {
 
 /**
  * JSONForms rule effect constraints.
+ *
+ * @public
  */
 export interface RuleEffectConstraints {
   /** SHOW - show element when condition is true */
@@ -73,6 +83,8 @@ export interface RuleEffectConstraints {
 
 /**
  * JSONForms rule constraints.
+ *
+ * @public
  */
 export interface RuleConstraints {
   /** Whether rules are enabled at all */
@@ -83,6 +95,8 @@ export interface RuleConstraints {
 
 /**
  * UI Schema feature constraints - control JSONForms-specific features.
+ *
+ * @public
  */
 export interface UISchemaConstraints {
   /** Layout type constraints */
@@ -93,6 +107,8 @@ export interface UISchemaConstraints {
 
 /**
  * Field configuration option constraints - control which field options are allowed.
+ *
+ * @public
  */
 export interface FieldOptionConstraints {
   /** label - field label text */
@@ -114,6 +130,8 @@ export interface FieldOptionConstraints {
 /**
  * Control options constraints - control which JSONForms Control.options are allowed.
  * These are renderer-specific options that may not be universally supported.
+ *
+ * @public
  */
 export interface ControlOptionConstraints {
   /** format - renderer format hint (e.g., "radio", "textarea") */
@@ -132,6 +150,8 @@ export interface ControlOptionConstraints {
 
 /**
  * Complete constraint configuration for a FormSpec project.
+ *
+ * @public
  */
 export interface ConstraintConfig {
   /** Field type constraints */
@@ -148,6 +168,8 @@ export interface ConstraintConfig {
 
 /**
  * Fully resolved rule constraints with all properties required.
+ *
+ * @public
  */
 export interface ResolvedRuleConstraints {
   enabled: Severity;
@@ -156,6 +178,8 @@ export interface ResolvedRuleConstraints {
 
 /**
  * Fully resolved UI schema constraints with all properties required.
+ *
+ * @public
  */
 export interface ResolvedUISchemaConstraints {
   layouts: Required<LayoutTypeConstraints>;
@@ -165,6 +189,8 @@ export interface ResolvedUISchemaConstraints {
 /**
  * Fully resolved constraint configuration with all properties required.
  * This is the type returned by mergeWithDefaults().
+ *
+ * @public
  */
 export interface ResolvedConstraintConfig {
   fieldTypes: Required<FieldTypeConstraints>;
@@ -177,6 +203,8 @@ export interface ResolvedConstraintConfig {
 /**
  * Top-level FormSpec configuration file structure.
  * The .formspec.yml file uses this structure.
+ *
+ * @public
  */
 export interface FormSpecConfig {
   /** Constraint configuration */
@@ -188,6 +216,8 @@ export interface FormSpecConfig {
 
 /**
  * A single validation issue found during constraint checking.
+ *
+ * @public
  */
 export interface ValidationIssue {
   /** Unique code identifying the issue type */
@@ -208,6 +238,8 @@ export interface ValidationIssue {
 
 /**
  * Result of validating a FormSpec or schema against constraints.
+ *
+ * @public
  */
 export interface ValidationResult {
   /** Whether validation passed (no errors, warnings OK) */

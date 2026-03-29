@@ -52,11 +52,13 @@ formspec (umbrella — re-exports everything)
     ├── @formspec/build    (schema generators + static analysis pipeline)
     └── @formspec/runtime  (resolver helpers: defineResolvers)
 
+@formspec/analysis         (shared comment-tag analysis — depends on @formspec/core)
 @formspec/cli              (CLI tool — depends on @formspec/build/internals)
-@formspec/eslint-plugin    (ESLint rules — depends on @formspec/constraints, @formspec/core)
+@formspec/eslint-plugin    (ESLint rules — depends on @formspec/analysis, @formspec/constraints, @formspec/core)
 @formspec/constraints      (constraint validation — depends on @formspec/core)
 @formspec/validator        (JSON Schema validation — @cfworker/json-schema)
-@formspec/language-server  (LSP features for editors)
+@formspec/ts-plugin        (TypeScript language service plugin — semantic authority inside tsserver, depends on @formspec/analysis)
+@formspec/language-server  (LSP presentation layer — consumes plugin transport, depends on @formspec/analysis)
 @formspec/playground       (interactive browser editor — private, depends on all)
 ```
 
@@ -69,6 +71,7 @@ formspec (umbrella — re-exports everything)
 5. **Dynamic Fields**: `field.dynamicEnum()` for runtime-fetched options; resolver functions defined via `defineResolvers()`
 6. **JSDoc Constraints**: Tags like `/** @Minimum 0 */` produce constraint nodes in the Canonical IR; they propagate through nested class types
 7. **Canonical IR**: All form definitions pass through an intermediate representation before schema generation
+8. **Hybrid Tooling**: `@formspec/ts-plugin` reuses the editor's TypeScript program for semantic comment analysis; `@formspec/language-server` stays cheap locally and enriches responses over manifest + IPC
 
 ### Build Order
 
@@ -76,10 +79,13 @@ Packages must build in dependency order. The root `pnpm run build` handles this 
 
 1. `@formspec/core` (no deps)
 2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` (depend on core)
-3. `@formspec/build` (depends on core; peer dep on typescript)
-4. `@formspec/cli`, `@formspec/eslint-plugin` (depend on build/constraints)
-5. `formspec` (umbrella, depends on all above)
-6. `@formspec/playground` (depends on everything, private)
+3. `@formspec/analysis` (depends on core)
+4. `@formspec/build` (depends on core; peer dep on typescript)
+5. `@formspec/cli`, `@formspec/eslint-plugin` (depend on build/constraints/analysis)
+6. `@formspec/ts-plugin` (depends on analysis)
+7. `@formspec/language-server` (depends on analysis, core)
+8. `formspec` (umbrella, depends on all above)
+9. `@formspec/playground` (depends on everything, private)
 
 ### Entry Points
 

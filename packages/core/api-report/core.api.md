@@ -211,7 +211,7 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
     id: infer ID;
 } ? ID : string : string;
 
-// @public (undocumented)
+// @public
 export interface DefaultValueAnnotationNode {
     // (undocumented)
     readonly annotationKind: "defaultValue";
@@ -237,7 +237,7 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
 // @public
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
-// @public (undocumented)
+// @public
 export interface DeprecatedAnnotationNode {
     // (undocumented)
     readonly annotationKind: "deprecated";
@@ -248,7 +248,7 @@ export interface DeprecatedAnnotationNode {
     readonly provenance: Provenance;
 }
 
-// @public (undocumented)
+// @public
 export interface DescriptionAnnotationNode {
     // (undocumented)
     readonly annotationKind: "description";
@@ -260,7 +260,7 @@ export interface DescriptionAnnotationNode {
     readonly value: string;
 }
 
-// @public (undocumented)
+// @public
 export interface DisplayNameAnnotationNode {
     // (undocumented)
     readonly annotationKind: "displayName";
@@ -605,7 +605,7 @@ export interface PatternConstraintNode {
     readonly provenance: Provenance;
 }
 
-// @public (undocumented)
+// @public
 export interface PlaceholderAnnotationNode {
     // (undocumented)
     readonly annotationKind: "placeholder";

@@ -3,6 +3,8 @@ import type { ConstraintConfig, FormSpecConfig, ResolvedConstraintConfig } from 
 /**
  * Default constraint configuration that allows all features.
  * All constraints default to "off" (allowed).
+ *
+ * @public
  */
 export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
   fieldTypes: {
@@ -59,6 +61,8 @@ export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
 
 /**
  * Default FormSpec configuration.
+ *
+ * @public
  */
 export const DEFAULT_CONFIG: FormSpecConfig = {
   constraints: DEFAULT_CONSTRAINTS,
@@ -66,6 +70,8 @@ export const DEFAULT_CONFIG: FormSpecConfig = {
 
 /**
  * Merges user constraints with defaults, filling in any missing values.
+ *
+ * @public
  */
 export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig {
   if (!config) {

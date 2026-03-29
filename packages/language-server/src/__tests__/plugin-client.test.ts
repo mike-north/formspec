@@ -8,17 +8,62 @@ import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis";
+} from "@formspec/analysis/protocol";
 import {
   getPluginCompletionContextForDocument,
   getPluginHoverForDocument,
 } from "../plugin-client.js";
 
+async function createWorkspaceRoot(workspaces: string[]): Promise<string> {
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-lsp-client-"));
+  workspaces.push(workspaceRoot);
+  await fs.mkdir(path.join(workspaceRoot, ".cache", "formspec", "tooling"), { recursive: true });
+  return workspaceRoot;
+}
+
+async function writeManifest(
+  workspaceRoot: string,
+  manifest: FormSpecAnalysisManifest
+): Promise<void> {
+  await fs.writeFile(
+    path.join(workspaceRoot, ".cache", "formspec", "tooling", "manifest.json"),
+    `${JSON.stringify(manifest)}\n`
+  );
+}
+
+function createManifest(
+  workspaceRoot: string,
+  address: string,
+  overrides: Partial<FormSpecAnalysisManifest> = {}
+): FormSpecAnalysisManifest {
+  return {
+    protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+    analysisSchemaVersion: 1,
+    workspaceRoot,
+    workspaceId: "test",
+    endpoint: {
+      kind: "unix-socket",
+      address,
+    },
+    typescriptVersion: "5.9.3",
+    extensionFingerprint: "builtin",
+    generation: 1,
+    updatedAt: "2025-01-15T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
 describe("plugin-client", () => {
   const workspaces: string[] = [];
   const servers: net.Server[] = [];
+  const sockets: net.Socket[] = [];
 
   afterEach(async () => {
+    sockets.forEach((socket) => {
+      socket.destroy();
+    });
+    sockets.length = 0;
+
     await Promise.all(
       servers.map(
         (server) =>
@@ -44,14 +89,12 @@ describe("plugin-client", () => {
   });
 
   it("uses the plugin manifest and only trusts responses whose source hash matches", async () => {
-    const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-lsp-client-"));
-    workspaces.push(workspaceRoot);
-    const runtimeDirectory = path.join(workspaceRoot, ".cache", "formspec", "tooling");
-    await fs.mkdir(runtimeDirectory, { recursive: true });
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
     const socketPath = path.join(os.tmpdir(), `formspec-plugin-client-${String(Date.now())}.sock`);
     const documentText = "/** @minimum :amount 0 */";
 
     const server = net.createServer((socket) => {
+      sockets.push(socket);
       socket.setEncoding("utf8");
       let buffer = "";
       socket.on("data", (chunk) => {
@@ -100,24 +143,7 @@ describe("plugin-client", () => {
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(socketPath, resolve));
 
-    const manifest: FormSpecAnalysisManifest = {
-      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-      analysisSchemaVersion: 1,
-      workspaceRoot,
-      workspaceId: "test",
-      endpoint: {
-        kind: "unix-socket",
-        address: socketPath,
-      },
-      typescriptVersion: "5.9.3",
-      extensionFingerprint: "builtin",
-      generation: 1,
-      updatedAt: "2025-01-15T10:00:00.000Z",
-    };
-    await fs.writeFile(
-      path.join(runtimeDirectory, "manifest.json"),
-      `${JSON.stringify(manifest)}\n`
-    );
+    await writeManifest(workspaceRoot, createManifest(workspaceRoot, socketPath));
 
     const completion = await getPluginCompletionContextForDocument(
       [`${workspaceRoot}${path.sep}`],
@@ -145,5 +171,85 @@ describe("plugin-client", () => {
       documentText.indexOf("amount") + 2
     );
     expect(staleCompletion).toBeNull();
+  });
+
+  it("returns null when no manifest exists for the workspace yet", async () => {
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
+    await fs.rm(path.join(workspaceRoot, ".cache", "formspec", "tooling", "manifest.json"), {
+      force: true,
+    });
+
+    const completion = await getPluginCompletionContextForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      "/** @minimum 0 */",
+      7
+    );
+
+    expect(completion).toBeNull();
+  });
+
+  it("returns null when the manifest payload fails protocol validation", async () => {
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
+    await writeManifest(
+      workspaceRoot,
+      createManifest(workspaceRoot, path.join(os.tmpdir(), "unused.sock"), {
+        protocolVersion: (FORMSPEC_ANALYSIS_PROTOCOL_VERSION +
+          1) as typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      })
+    );
+
+    const hover = await getPluginHoverForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      "/** @minimum 0 */",
+      7
+    );
+
+    expect(hover).toBeNull();
+  });
+
+  it("returns null when the plugin socket is unavailable", async () => {
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
+    const socketPath = path.join(os.tmpdir(), `formspec-plugin-missing-${String(Date.now())}.sock`);
+    await writeManifest(workspaceRoot, createManifest(workspaceRoot, socketPath));
+
+    const completion = await getPluginCompletionContextForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      "/** @minimum 0 */",
+      7,
+      50
+    );
+
+    expect(completion).toBeNull();
+  });
+
+  it("returns null when the plugin responds with an error payload", async () => {
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
+    const socketPath = path.join(os.tmpdir(), `formspec-plugin-error-${String(Date.now())}.sock`);
+
+    const server = net.createServer((socket) => {
+      sockets.push(socket);
+      socket.end(
+        `${JSON.stringify({
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          kind: "error",
+          error: "plugin unavailable",
+        } satisfies FormSpecSemanticResponse)}\n`
+      );
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    await writeManifest(workspaceRoot, createManifest(workspaceRoot, socketPath));
+
+    const completion = await getPluginCompletionContextForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      "/** @minimum 0 */",
+      7
+    );
+
+    expect(completion).toBeNull();
   });
 });

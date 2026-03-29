@@ -65,6 +65,9 @@ importers:
 
   e2e:
     dependencies:
+      '@formspec/analysis':
+        specifier: workspace:*
+        version: link:../packages/analysis
       '@formspec/build':
         specifier: workspace:*
         version: link:../packages/build
@@ -77,10 +80,19 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../packages/dsl
+      '@formspec/language-server':
+        specifier: workspace:*
+        version: link:../packages/language-server
+      '@formspec/ts-plugin':
+        specifier: workspace:*
+        version: link:../packages/ts-plugin
       '@formspec/validator':
         specifier: workspace:*
         version: link:../packages/validator
     devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)

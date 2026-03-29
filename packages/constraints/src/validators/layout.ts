@@ -2,6 +2,8 @@ import type { LayoutConstraints, Severity, ValidationIssue } from "../types.js";
 
 /**
  * Context for layout validation.
+ *
+ * @public
  */
 export interface LayoutContext {
   /** The type of layout element ("group" | "conditional") */
@@ -20,6 +22,8 @@ export interface LayoutContext {
  * @param context - Information about the layout element
  * @param constraints - Layout constraints
  * @returns Array of validation issues (empty if valid)
+ *
+ * @public
  */
 export function validateLayout(
   context: LayoutContext,
@@ -107,6 +111,8 @@ function createNestingDepthIssue(context: LayoutContext, maxDepth: number): Vali
  * @param layoutType - The type of layout element
  * @param constraints - Layout constraints
  * @returns true if allowed, false if disallowed
+ *
+ * @public
  */
 export function isLayoutTypeAllowed(
   layoutType: "group" | "conditional",
@@ -128,6 +134,8 @@ export function isLayoutTypeAllowed(
  * @param depth - Current nesting depth
  * @param constraints - Layout constraints
  * @returns true if allowed, false if exceeds limit
+ *
+ * @public
  */
 export function isNestingDepthAllowed(depth: number, constraints: LayoutConstraints): boolean {
   const maxDepth = constraints.maxNestingDepth;

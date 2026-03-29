@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "paths": {
+      "@formspec/analysis": ["../analysis/dist/analysis.d.ts"],
+      "@formspec/analysis/protocol": ["../analysis/dist/protocol.d.ts"],
+      "@formspec/analysis/internal": ["../analysis/dist/internal.d.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

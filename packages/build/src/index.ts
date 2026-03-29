@@ -129,6 +129,8 @@ export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
 
 /**
  * Result of building form schemas.
+ *
+ * @public
  */
 export interface BuildResult {
   /** JSON Schema 2020-12 for validation */
@@ -142,6 +144,8 @@ export interface BuildResult {
  *
  * Currently identical to `GenerateJsonSchemaOptions`. Defined separately so the
  * Chain DSL surface can grow independently in the future if needed.
+ *
+ * @public
  */
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
@@ -171,6 +175,8 @@ export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
  *
  * @param form - The FormSpec to build schemas from
  * @returns Object containing both jsonSchema and uiSchema
+ *
+ * @public
  */
 export function buildFormSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
@@ -184,6 +190,8 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
 
 /**
  * Options for writing schemas to disk.
+ *
+ * @public
  */
 export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
   /** Output directory for the schema files */
@@ -196,6 +204,8 @@ export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
 
 /**
  * Result of writing schemas to disk.
+ *
+ * @public
  */
 export interface WriteSchemasResult {
   /** Path to the generated JSON Schema file */
@@ -232,6 +242,8 @@ export interface WriteSchemasResult {
  * @param form - The FormSpec to build schemas from
  * @param options - Output options (directory, file name, indentation)
  * @returns Object containing paths to the generated files
+ *
+ * @public
  */
 export function writeSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFormSpecAnalysisFileSnapshot, computeFormSpecTextHash } from "../index.js";
+import { buildFormSpecAnalysisFileSnapshot, computeFormSpecTextHash } from "../internal.js";
 import { createProgram } from "./helpers.js";
 
 describe("file-snapshots", () => {

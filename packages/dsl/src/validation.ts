@@ -10,11 +10,15 @@ import type { FormElement, Group, Conditional, ArrayField, ObjectField } from "@
 
 /**
  * Validation issue severity levels.
+ *
+ * @public
  */
 export type ValidationSeverity = "error" | "warning";
 
 /**
  * A validation issue found in a form specification.
+ *
+ * @public
  */
 export interface ValidationIssue {
   /** Severity of the issue */
@@ -27,6 +31,8 @@ export interface ValidationIssue {
 
 /**
  * Result of validating a form specification.
+ *
+ * @public
  */
 export interface ValidationResult {
   /** Whether the form is valid (no errors, warnings are ok) */
@@ -178,6 +184,8 @@ function collectConditionalReferences(
  *
  * @param elements - The form elements to validate
  * @returns Validation result with any issues found
+ *
+ * @public
  */
 export function validateForm(elements: readonly FormElement[]): ValidationResult {
   const issues: ValidationIssue[] = [];
@@ -221,6 +229,8 @@ export function validateForm(elements: readonly FormElement[]): ValidationResult
  *
  * @param result - The validation result to log
  * @param formName - Optional name for the form (for better error messages)
+ *
+ * @public
  */
 export function logValidationIssues(result: ValidationResult, formName?: string): void {
   if (result.issues.length === 0) {

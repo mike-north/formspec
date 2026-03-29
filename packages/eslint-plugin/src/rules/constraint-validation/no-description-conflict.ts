@@ -6,6 +6,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that reports conflicting `@description` and `@remarks` usage.
+ *
+ * @public
+ */
 export const noDescriptionConflict = createRule<[], "descriptionRemarksConflict">({
   name: "constraint-validation/no-description-conflict",
   meta: {

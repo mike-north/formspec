@@ -12,6 +12,8 @@ import { validateFieldOptions, extractFieldOptions } from "./field-options.js";
 
 /**
  * Options for validating FormSpec elements.
+ *
+ * @public
  */
 export interface FormSpecValidationOptions {
   /** Constraint configuration (will be merged with defaults) */
@@ -52,6 +54,8 @@ export interface FormSpecValidationOptions {
  *   console.error('Validation failed:', result.issues);
  * }
  * ```
+ *
+ * @public
  */
 export function validateFormSpecElements(
   elements: readonly FormElement[],
@@ -75,6 +79,8 @@ export function validateFormSpecElements(
  * @param formSpec - The FormSpec to validate
  * @param options - Validation options including constraints
  * @returns Validation result with all issues found
+ *
+ * @public
  */
 export function validateFormSpec(
   formSpec: FormSpec<readonly FormElement[]>,

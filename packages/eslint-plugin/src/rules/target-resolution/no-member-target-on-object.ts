@@ -10,6 +10,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * ESLint rule that disallows member-target syntax on non-union object fields.
+ *
+ * @public
+ */
 export const noMemberTargetOnObject = createRule<[], "memberTargetOnNonUnion">({
   name: "target-resolution/no-member-target-on-object",
   meta: {

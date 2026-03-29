@@ -12,6 +12,8 @@
  * (e.g., `@minimum 0`) and chain DSL options (e.g., `{ minimum: 0 }`).
  *
  * Keys use camelCase matching JSON Schema property names.
+ *
+ * @public
  */
 export const BUILTIN_CONSTRAINT_DEFINITIONS = {
   minimum: "number",
@@ -29,7 +31,11 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS = {
   enumOptions: "json",
 } as const;
 
-/** Type of a built-in constraint name. */
+/**
+ * Type of a built-in constraint name.
+ *
+ * @public
+ */
 export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
 
 /**
@@ -42,6 +48,8 @@ export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
  * normalizeConstraintTagName("Minimum")   // "minimum"
  * normalizeConstraintTagName("MinLength") // "minLength"
  * normalizeConstraintTagName("minimum")   // "minimum" (idempotent)
+ *
+ * @public
  */
 export function normalizeConstraintTagName(tagName: string): string {
   return tagName.charAt(0).toLowerCase() + tagName.slice(1);
@@ -55,6 +63,8 @@ export function normalizeConstraintTagName(tagName: string): string {
  *
  * Callers should normalize with {@link normalizeConstraintTagName} first
  * if the input may be PascalCase.
+ *
+ * @public
  */
 export function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
   return Object.hasOwn(BUILTIN_CONSTRAINT_DEFINITIONS, tagName);

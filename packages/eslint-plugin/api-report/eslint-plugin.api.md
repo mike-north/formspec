@@ -11,7 +11,7 @@ import type { TSESLint } from '@typescript-eslint/utils';
 
 // Warning: (ae-forgotten-export) The symbol "Options" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", Options, unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
@@ -19,7 +19,7 @@ export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", Op
 // Warning: (ae-forgotten-export) The symbol "MessageIds_2" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "Options_2" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_2, Options_2, unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
@@ -38,44 +38,44 @@ export const meta: {
 
 // Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export const noContradictions: ESLintUtils.RuleModule<MessageIds, [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noContradictoryRules: ESLintUtils.RuleModule<"contradictoryRuleEffects", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noDescriptionConflict: ESLintUtils.RuleModule<"descriptionRemarksConflict", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
 // Warning: (ae-forgotten-export) The symbol "Options_3" needs to be exported by the entry point index.d.ts
 //
-// @public (undocumented)
+// @public
 export const noDisabledTags: ESLintUtils.RuleModule<"disabledTag", Options_3, unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noMemberTargetOnObject: ESLintUtils.RuleModule<"memberTargetOnNonUnion", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noUnknownTags: ESLintUtils.RuleModule<"unknownTag", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const noUnsupportedTargeting: ESLintUtils.RuleModule<"unsupportedTargetingSyntax", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
@@ -151,7 +151,7 @@ const plugin: {
 };
 export default plugin;
 
-// @public (undocumented)
+// @public
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
@@ -216,37 +216,37 @@ export const rules: {
     };
 };
 
-// @public (undocumented)
+// @public
 export const tagTypeCheck: ESLintUtils.RuleModule<"typeMismatch", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validIntegerValue: ESLintUtils.RuleModule<"invalidIntegerValue", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validJsonValue: ESLintUtils.RuleModule<"invalidJsonValue", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validMemberTarget: ESLintUtils.RuleModule<"unknownMemberTarget", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validNumericValue: ESLintUtils.RuleModule<"invalidNumericValue", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validPathTarget: ESLintUtils.RuleModule<"unknownPathTarget", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
-// @public (undocumented)
+// @public
 export const validRegexPattern: ESLintUtils.RuleModule<"invalidRegexPattern", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };

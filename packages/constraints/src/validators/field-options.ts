@@ -2,6 +2,8 @@ import type { FieldOptionConstraints, Severity, ValidationIssue } from "../types
 
 /**
  * Known field options that can be validated.
+ *
+ * @public
  */
 export type FieldOption =
   | "label"
@@ -14,6 +16,8 @@ export type FieldOption =
 
 /**
  * Context for field option validation.
+ *
+ * @public
  */
 export interface FieldOptionsContext {
   /** The field name */
@@ -30,6 +34,8 @@ export interface FieldOptionsContext {
  * @param context - Information about the field and its options
  * @param constraints - Field option constraints
  * @returns Array of validation issues (empty if valid)
+ *
+ * @public
  */
 export function validateFieldOptions(
   context: FieldOptionsContext,
@@ -72,6 +78,8 @@ function createFieldOptionIssue(
  *
  * @param field - A field object with potential options
  * @returns Array of present option names
+ *
+ * @public
  */
 export function extractFieldOptions(field: Record<string, unknown>): FieldOption[] {
   const options: FieldOption[] = [];
@@ -94,6 +102,8 @@ export function extractFieldOptions(field: Record<string, unknown>): FieldOption
  * @param option - The option to check
  * @param constraints - Field option constraints
  * @returns true if allowed, false if disallowed
+ *
+ * @public
  */
 export function isFieldOptionAllowed(
   option: FieldOption,
@@ -109,6 +119,8 @@ export function isFieldOptionAllowed(
  * @param option - The option to check
  * @param constraints - Field option constraints
  * @returns Severity level, or "off" if not constrained
+ *
+ * @public
  */
 export function getFieldOptionSeverity(
   option: FieldOption,

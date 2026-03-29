@@ -28,8 +28,24 @@ import {
   getPluginHoverForDocument,
 } from "./plugin-client.js";
 
+const PLUGIN_QUERY_TIMEOUT_ENV_VAR = "FORMSPEC_PLUGIN_QUERY_TIMEOUT_MS";
+
 function dedupeWorkspaceRoots(workspaceRoots: readonly string[]): string[] {
   return [...new Set(workspaceRoots)];
+}
+
+function resolvePluginQueryTimeoutMs(explicitTimeoutMs: number | undefined): number | undefined {
+  if (explicitTimeoutMs !== undefined) {
+    return explicitTimeoutMs;
+  }
+
+  const rawValue = process.env[PLUGIN_QUERY_TIMEOUT_ENV_VAR];
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(rawValue, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function getWorkspaceRootsFromInitializeParams(params: {
@@ -83,6 +99,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
   const documents = new TextDocuments(TextDocument);
   let workspaceRoots = [...(options.workspaceRoots ?? [])];
+  const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
 
   documents.listen(connection);
 
@@ -126,7 +143,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
             filePath,
             documentText,
             offset,
-            options.pluginQueryTimeoutMs
+            pluginQueryTimeoutMs
           );
 
     return getCompletionItemsAtOffset(documentText, offset, options.extensions, semanticContext);
@@ -149,7 +166,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
             filePath,
             documentText,
             offset,
-            options.pluginQueryTimeoutMs
+            pluginQueryTimeoutMs
           );
 
     return getHoverAtOffset(documentText, offset, options.extensions, semanticHover);

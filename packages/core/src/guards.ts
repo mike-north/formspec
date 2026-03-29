@@ -20,65 +20,109 @@ import type {
   EnumOptionValue,
 } from "./types/elements.js";
 
-/** Narrows a FormElement to any field type. */
+/**
+ * Narrows a `FormElement` to any field type.
+ *
+ * @public
+ */
 export function isField(element: FormElement): element is AnyField {
   return element._type === "field";
 }
 
-/** Narrows a FormElement to a text input field. */
+/**
+ * Narrows a `FormElement` to a text input field.
+ *
+ * @public
+ */
 export function isTextField(element: FormElement): element is TextField<string> {
   return element._type === "field" && element._field === "text";
 }
 
-/** Narrows a FormElement to a numeric input field. */
+/**
+ * Narrows a `FormElement` to a numeric input field.
+ *
+ * @public
+ */
 export function isNumberField(element: FormElement): element is NumberField<string> {
   return element._type === "field" && element._field === "number";
 }
 
-/** Narrows a FormElement to a boolean checkbox field. */
+/**
+ * Narrows a `FormElement` to a boolean checkbox field.
+ *
+ * @public
+ */
 export function isBooleanField(element: FormElement): element is BooleanField<string> {
   return element._type === "field" && element._field === "boolean";
 }
 
-/** Narrows a FormElement to a static enum field. */
+/**
+ * Narrows a `FormElement` to a static enum field.
+ *
+ * @public
+ */
 export function isStaticEnumField(
   element: FormElement
 ): element is StaticEnumField<string, readonly EnumOptionValue[]> {
   return element._type === "field" && element._field === "enum";
 }
 
-/** Narrows a FormElement to a dynamic enum field. */
+/**
+ * Narrows a `FormElement` to a dynamic enum field.
+ *
+ * @public
+ */
 export function isDynamicEnumField(
   element: FormElement
 ): element is DynamicEnumField<string, string> {
   return element._type === "field" && element._field === "dynamic_enum";
 }
 
-/** Narrows a FormElement to a dynamic schema field. */
+/**
+ * Narrows a `FormElement` to a dynamic schema field.
+ *
+ * @public
+ */
 export function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string> {
   return element._type === "field" && element._field === "dynamic_schema";
 }
 
-/** Narrows a FormElement to an array field. */
+/**
+ * Narrows a `FormElement` to an array field.
+ *
+ * @public
+ */
 export function isArrayField(
   element: FormElement
 ): element is ArrayField<string, readonly FormElement[]> {
   return element._type === "field" && element._field === "array";
 }
 
-/** Narrows a FormElement to an object field. */
+/**
+ * Narrows a `FormElement` to an object field.
+ *
+ * @public
+ */
 export function isObjectField(
   element: FormElement
 ): element is ObjectField<string, readonly FormElement[]> {
   return element._type === "field" && element._field === "object";
 }
 
-/** Narrows a FormElement to a visual group. */
+/**
+ * Narrows a `FormElement` to a visual group.
+ *
+ * @public
+ */
 export function isGroup(element: FormElement): element is Group<readonly FormElement[]> {
   return element._type === "group";
 }
 
-/** Narrows a FormElement to a conditional wrapper. */
+/**
+ * Narrows a `FormElement` to a conditional wrapper.
+ *
+ * @public
+ */
 export function isConditional(
   element: FormElement
 ): element is Conditional<string, unknown, readonly FormElement[]> {
