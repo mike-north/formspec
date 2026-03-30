@@ -17,6 +17,8 @@ import {
 import { FormSpecPluginService } from "../../packages/ts-plugin/src/service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../../packages/ts-plugin/src/workspace.js";
 
+const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 1_000;
+
 interface ProgramContext {
   readonly workspaceRoot: string;
   readonly filePath: string;
@@ -52,6 +54,9 @@ async function queryPluginSocket(
     let buffer = "";
 
     socket.setEncoding("utf8");
+    socket.setTimeout(FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS, () => {
+      socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
+    });
     socket.on("connect", () => {
       socket.write(`${JSON.stringify(payload)}\n`);
     });

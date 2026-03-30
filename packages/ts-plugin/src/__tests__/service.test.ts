@@ -1,31 +1,16 @@
 import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import net from "node:net";
+import path from "node:path";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "../service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";
-
-async function createProgramContext(sourceText: string) {
-  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-ts-plugin-"));
-  const filePath = path.join(workspaceRoot, "example.ts");
-  await fs.writeFile(filePath, sourceText, "utf8");
-
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-  };
-  const program = ts.createProgram([filePath], compilerOptions);
-
-  return {
-    workspaceRoot,
-    filePath,
-    program,
-  };
-}
+import {
+  createProgramContext,
+  expectErrorResponse,
+  FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS,
+} from "./helpers.js";
 
 async function querySocket(address: string, payload: object): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -33,7 +18,7 @@ async function querySocket(address: string, payload: object): Promise<unknown> {
     let buffer = "";
 
     socket.setEncoding("utf8");
-    socket.setTimeout(1_000, () => {
+    socket.setTimeout(FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS, () => {
       socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
     });
     socket.on("connect", () => {
@@ -51,17 +36,6 @@ async function querySocket(address: string, payload: object): Promise<unknown> {
     });
     socket.on("error", reject);
   });
-}
-
-function expectErrorResponse(
-  response: ReturnType<FormSpecPluginService["handleQuery"]>,
-  fragment: string
-): void {
-  expect(response.kind).toBe("error");
-  if (response.kind !== "error") {
-    throw new Error("Expected an error response");
-  }
-  expect(response.error).toContain(fragment);
 }
 
 function createLanguageService(sourceText: string) {
@@ -271,6 +245,67 @@ describe("FormSpecPluginService", () => {
       expect(firstTag.semantic.tagName).toBe("minimum");
     }
   }, 10_000);
+
+  it("logs performance hotspots when profiling is enabled", async () => {
+    const source = `
+      class Foo {
+        /** @minimum :title 0 */
+        value!: {
+          amount: number;
+          title: string;
+        };
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const logger = {
+      info: vi.fn(),
+    };
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+      logger,
+      enablePerformanceLogging: true,
+      performanceLogThresholdMs: 0,
+    });
+    services.push(service);
+
+    service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "diagnostics",
+      filePath: context.filePath,
+    });
+
+    const loggedOutput = logger.info.mock.calls.map(([message]) => String(message)).join("\n");
+    expect(loggedOutput).toContain("[FormSpec][perf]");
+    expect(loggedOutput).toMatch(/\d+\.\d+ms plugin\.handleQuery/);
+    expect(loggedOutput).toContain("plugin.getFileSnapshot");
+    expect(loggedOutput).toContain("analysis.buildFileSnapshot");
+    expect(loggedOutput).toContain("analysis.syntheticCheckBatch.createProgram");
+    expect(loggedOutput).toContain("analysis.syntheticCheckBatch.getPreEmitDiagnostics");
+  });
+
+  it("does not log performance hotspots below the configured threshold", () => {
+    const logger = {
+      info: vi.fn(),
+    };
+    const service = new FormSpecPluginService({
+      workspaceRoot: "/workspace/formspec",
+      typescriptVersion: ts.version,
+      getProgram: () => undefined,
+      logger,
+      enablePerformanceLogging: true,
+      performanceLogThresholdMs: Number.POSITIVE_INFINITY,
+    });
+
+    service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "health",
+    });
+
+    expect(logger.info).not.toHaveBeenCalled();
+  });
 
   it("returns error responses for completion and hover when no program is available", () => {
     const service = new FormSpecPluginService({

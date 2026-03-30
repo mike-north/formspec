@@ -1,8 +1,38 @@
-import { describe, expect, it } from "vitest";
-import { buildFormSpecAnalysisFileSnapshot, computeFormSpecTextHash } from "../internal.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  buildFormSpecAnalysisFileSnapshot,
+  computeFormSpecTextHash,
+  createFormSpecPerformanceRecorder,
+} from "../internal.js";
 import { createProgram } from "./helpers.js";
 
+const MIXED_TAG_CANARY_SOURCE = `
+  type Checkout = {
+    /**
+     * @minimum :amount 0
+     * @maximum :amount 100
+     * @minimum :secondaryAmount 0
+     * @maximum :secondaryAmount 100
+     * @minLength :label 1
+     * @maxLength :label 64
+     * @pattern :code ^[A-Z]+$
+     * @minItems :codes 1
+     * @maxItems :codes 10
+     */
+    discount: {
+      amount: number;
+      secondaryAmount: number;
+      label: string;
+      code: string;
+      codes: string[];
+    };
+  };
+`;
 describe("file-snapshots", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("builds a serializable snapshot with semantic target completions and diagnostics", () => {
     const source = `
       /** @maximum 100 */
@@ -45,6 +75,18 @@ describe("file-snapshots", () => {
 
     expect(snapshot.comments).toEqual([]);
     expect(snapshot.diagnostics).toEqual([]);
+  });
+
+  it("uses an injected clock for deterministic generatedAt values", () => {
+    const source = "class Foo { /** @minimum 0 */ value!: number; }";
+    const { checker, sourceFile } = createProgram(source, "/virtual/formspec-timestamp.ts");
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      now: () => new Date("2026-03-29T12:34:56.000Z"),
+    });
+
+    expect(snapshot.generatedAt).toBe("2026-03-29T12:34:56.000Z");
   });
 
   it("captures UNKNOWN_PATH_TARGET diagnostics for invalid targeted subfields", () => {
@@ -107,6 +149,78 @@ describe("file-snapshots", () => {
 
     expect(snapshot.comments.map((comment) => comment.placement)).toEqual(
       expect.arrayContaining(["type-alias", "interface"])
+    );
+  });
+
+  it("uses one synthetic compiler pass for a mixed-tag canary comment and reuses the synthetic batch cache on repeated analysis", () => {
+    const { checker, sourceFile } = createProgram(
+      MIXED_TAG_CANARY_SOURCE,
+      "/virtual/formspec-mixed-tag-canary.ts"
+    );
+
+    const firstPerformance = createFormSpecPerformanceRecorder();
+    const firstSnapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      performance: firstPerformance,
+    });
+
+    expect(firstSnapshot.diagnostics).toEqual([]);
+    expect(
+      firstPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
+      )
+    ).toBe(true);
+
+    const secondPerformance = createFormSpecPerformanceRecorder();
+    const secondSnapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      performance: secondPerformance,
+    });
+
+    expect(secondSnapshot.diagnostics).toEqual([]);
+    expect(secondSnapshot.comments).toEqual(firstSnapshot.comments);
+    expect(
+      secondPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.cacheHit"
+      )
+    ).toBe(true);
+    expect(
+      secondPerformance.events.some(
+        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
+      )
+    ).toBe(false);
+  });
+
+  it("regression: does not emit false missing-name TYPE_MISMATCH diagnostics when a class field host type lowers to a named outer type", () => {
+    const source = `
+      class Checkout {
+        /**
+         * @minimum :amount 0
+         * @maximum :amount 100
+         * @minLength :label 1
+         */
+        discount!: {
+          amount: number;
+          label: string;
+        };
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-host-type-name-regression.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    expect(snapshot.comments).toHaveLength(1);
+    expect(snapshot.diagnostics).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "TYPE_MISMATCH",
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Vitest matcher type inference limitation
+          message: expect.stringContaining("Cannot find name 'Checkout'"),
+        }),
+      ])
     );
   });
 });

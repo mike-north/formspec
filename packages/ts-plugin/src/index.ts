@@ -7,9 +7,26 @@ interface ServiceEntry {
 }
 
 const services = new Map<string, ServiceEntry>();
+const PERF_LOG_ENV_VAR = "FORMSPEC_PLUGIN_PROFILE";
+const PERF_LOG_THRESHOLD_ENV_VAR = "FORMSPEC_PLUGIN_PROFILE_THRESHOLD_MS";
 
 function formatPluginError(error: unknown): string {
   return error instanceof Error ? (error.stack ?? error.message) : String(error);
+}
+
+function readBooleanEnvFlag(name: string): boolean {
+  const rawValue = process.env[name];
+  return rawValue === "1" || rawValue === "true";
+}
+
+function readNumberEnvFlag(name: string): number | undefined {
+  const rawValue = process.env[name];
+  if (rawValue === undefined || rawValue.trim() === "") {
+    return undefined;
+  }
+
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function getOrCreateService(
@@ -24,11 +41,14 @@ function getOrCreateService(
     return existing.service;
   }
 
+  const performanceLogThresholdMs = readNumberEnvFlag(PERF_LOG_THRESHOLD_ENV_VAR);
   const service = new FormSpecPluginService({
     workspaceRoot,
     typescriptVersion,
     getProgram: () => info.languageService.getProgram(),
     logger: info.project.projectService.logger,
+    enablePerformanceLogging: readBooleanEnvFlag(PERF_LOG_ENV_VAR),
+    ...(performanceLogThresholdMs === undefined ? {} : { performanceLogThresholdMs }),
   });
 
   const serviceEntry: ServiceEntry = {

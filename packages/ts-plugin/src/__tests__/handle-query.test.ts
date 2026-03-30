@@ -1,39 +1,9 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
-import * as ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
 import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
 import { FormSpecPluginService } from "../service.js";
-
-async function createProgramContext(sourceText: string) {
-  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-handle-query-"));
-  const filePath = path.join(workspaceRoot, "example.ts");
-  await fs.writeFile(filePath, sourceText, "utf8");
-
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-  };
-
-  return {
-    workspaceRoot,
-    filePath,
-    program: ts.createProgram([filePath], compilerOptions),
-  };
-}
-
-function expectErrorResponse(
-  response: ReturnType<FormSpecPluginService["handleQuery"]>,
-  fragment: string
-): void {
-  expect(response.kind).toBe("error");
-  if (response.kind !== "error") {
-    throw new Error("Expected an error response");
-  }
-  expect(response.error).toContain(fragment);
-}
+import { createProgramContext, expectErrorResponse } from "./helpers.js";
 
 describe("FormSpecPluginService.handleQuery", () => {
   const workspaces: string[] = [];
@@ -64,7 +34,7 @@ describe("FormSpecPluginService.handleQuery", () => {
     workspaces.push(context.workspaceRoot);
     const service = new FormSpecPluginService({
       workspaceRoot: context.workspaceRoot,
-      typescriptVersion: ts.version,
+      typescriptVersion: "test",
       getProgram: () => context.program,
     });
     services.push(service);
@@ -110,7 +80,7 @@ describe("FormSpecPluginService.handleQuery", () => {
     workspaces.push(context.workspaceRoot);
     const service = new FormSpecPluginService({
       workspaceRoot: context.workspaceRoot,
-      typescriptVersion: ts.version,
+      typescriptVersion: "test",
       getProgram: () => context.program,
     });
     services.push(service);
@@ -160,7 +130,7 @@ describe("FormSpecPluginService.handleQuery", () => {
   it("returns error or missing-source results when the program cannot resolve the file", async () => {
     const serviceWithoutProgram = new FormSpecPluginService({
       workspaceRoot: "/workspace/formspec",
-      typescriptVersion: ts.version,
+      typescriptVersion: "test",
       getProgram: () => undefined,
     });
 
@@ -179,7 +149,7 @@ describe("FormSpecPluginService.handleQuery", () => {
     const missingFilePath = path.join(context.workspaceRoot, "missing.ts");
     const service = new FormSpecPluginService({
       workspaceRoot: context.workspaceRoot,
-      typescriptVersion: ts.version,
+      typescriptVersion: "test",
       getProgram: () => context.program,
     });
     services.push(service);

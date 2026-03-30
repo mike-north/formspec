@@ -28,6 +28,7 @@
     "build-extension-runtime-surface",
     "build-integration-tools",
     "build-path-target-syntax",
+    "clean-mice-travel",
     "cli-static-analysis",
     "constraint-broadening-diagnostics",
     "constraint-literal-emission-round2",
