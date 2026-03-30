@@ -46,7 +46,9 @@ export async function queryPluginSocket(
         try {
           const response = JSON.parse(message) as unknown;
           if (!isFormSpecSemanticResponse(response)) {
-            reject(new Error(`Invalid FormSpec plugin response payload from ${address}: ${message}`));
+            reject(
+              new Error(`Invalid FormSpec plugin response payload from ${address}: ${message}`)
+            );
             return;
           }
           resolve(response);
