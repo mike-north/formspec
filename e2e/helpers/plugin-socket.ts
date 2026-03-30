@@ -4,7 +4,7 @@ import {
   type FormSpecSemanticResponse,
 } from "../../packages/analysis/src/protocol.js";
 
-export const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 1_000;
+export const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 5_000;
 
 export async function queryPluginSocket(
   address: string,
@@ -13,10 +13,22 @@ export async function queryPluginSocket(
   return new Promise((resolve, reject) => {
     const socket = net.createConnection(address);
     let buffer = "";
+    let settled = false;
+
+    const finish = (handler: () => void): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      handler();
+    };
 
     socket.setEncoding("utf8");
     socket.setTimeout(FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS, () => {
-      socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
+      finish(() => {
+        socket.destroy();
+        reject(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
+      });
     });
     socket.on("connect", () => {
       socket.write(`${JSON.stringify(payload)}\n`);
@@ -28,28 +40,33 @@ export async function queryPluginSocket(
         return;
       }
 
-      socket.end();
-      try {
-        const response = JSON.parse(buffer.slice(0, newlineIndex)) as unknown;
-        if (!isFormSpecSemanticResponse(response)) {
+      finish(() => {
+        socket.end();
+        const message = buffer.slice(0, newlineIndex);
+        try {
+          const response = JSON.parse(message) as unknown;
+          if (!isFormSpecSemanticResponse(response)) {
+            reject(
+              new Error(`Invalid FormSpec plugin response payload from ${address}: ${message}`)
+            );
+            return;
+          }
+          resolve(response);
+        } catch (error) {
           reject(
             new Error(
-              `Invalid FormSpec plugin response payload from ${address}: ${buffer.slice(0, newlineIndex)}`
+              `Failed to parse FormSpec plugin response from ${address}: ${
+                error instanceof Error ? error.message : String(error)
+              }\nPayload: ${message}`
             )
           );
-          return;
         }
-        resolve(response);
-      } catch (error) {
-        reject(
-          new Error(
-            `Failed to parse FormSpec plugin response from ${address}: ${
-              error instanceof Error ? error.message : String(error)
-            }\nPayload: ${buffer.slice(0, newlineIndex)}`
-          )
-        );
-      }
+      });
     });
-    socket.on("error", reject);
+    socket.on("error", (error) => {
+      finish(() => {
+        reject(error);
+      });
+    });
   });
 }
