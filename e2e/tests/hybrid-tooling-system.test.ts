@@ -1,13 +1,9 @@
 import fs from "node:fs/promises";
-import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-  type FormSpecSemanticResponse,
-} from "../../packages/analysis/src/protocol.js";
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "../../packages/analysis/src/protocol.js";
 import { getHoverAtOffset } from "../../packages/language-server/src/providers/hover.js";
 import { getCompletionItemsAtOffset } from "../../packages/language-server/src/providers/completion.js";
 import {
@@ -15,9 +11,11 @@ import {
   getPluginHoverForDocument,
 } from "../../packages/language-server/src/plugin-client.js";
 import { FormSpecPluginService } from "../../packages/ts-plugin/src/service.js";
-import { getFormSpecWorkspaceRuntimePaths } from "../../packages/ts-plugin/src/workspace.js";
-
-const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 1_000;
+import {
+  getFormSpecWorkspaceRuntimePaths,
+  type FormSpecWorkspaceRuntimePaths,
+} from "../../packages/ts-plugin/src/workspace.js";
+import { queryPluginSocket } from "../helpers/plugin-socket.js";
 
 interface ProgramContext {
   readonly workspaceRoot: string;
@@ -43,35 +41,6 @@ async function createProgramContext(sourceText: string): Promise<ProgramContext>
     documentText: sourceText,
     program: ts.createProgram([filePath], compilerOptions),
   };
-}
-
-async function queryPluginSocket(
-  address: string,
-  payload: object
-): Promise<FormSpecSemanticResponse> {
-  return new Promise((resolve, reject) => {
-    const socket = net.createConnection(address);
-    let buffer = "";
-
-    socket.setEncoding("utf8");
-    socket.setTimeout(FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS, () => {
-      socket.destroy(new Error(`Timed out waiting for FormSpec plugin response from ${address}`));
-    });
-    socket.on("connect", () => {
-      socket.write(`${JSON.stringify(payload)}\n`);
-    });
-    socket.on("data", (chunk) => {
-      buffer += String(chunk);
-      const newlineIndex = buffer.indexOf("\n");
-      if (newlineIndex < 0) {
-        return;
-      }
-
-      socket.end();
-      resolve(JSON.parse(buffer.slice(0, newlineIndex)) as FormSpecSemanticResponse);
-    });
-    socket.on("error", reject);
-  });
 }
 
 describe("hybrid tooling system", () => {
@@ -186,7 +155,9 @@ describe("hybrid tooling system", () => {
     services.push(service);
     await service.start();
 
-    const runtimePaths = getFormSpecWorkspaceRuntimePaths(context.workspaceRoot);
+    const runtimePaths: FormSpecWorkspaceRuntimePaths = getFormSpecWorkspaceRuntimePaths(
+      context.workspaceRoot
+    );
     const response = await queryPluginSocket(runtimePaths.endpoint.address, {
       protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "diagnostics",
