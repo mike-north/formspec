@@ -151,5 +151,6 @@ vite.config.ts.timestamp-*
 scratch
 .worktrees
 .cache/
+.tmp-tsserver-plugin-*/
 .pnpm-store/
 .Codex/worktrees/
