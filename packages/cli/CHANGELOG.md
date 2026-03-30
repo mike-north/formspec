@@ -1,5 +1,14 @@
 # @formspec/cli
 
+## 0.1.0-alpha.21
+
+### Patch Changes
+
+- [#172](https://github.com/mike-north/formspec/pull/172) [`fafddcf`](https://github.com/mike-north/formspec/commit/fafddcf6fe8ef99263016390c92cad23f3bbef4c) Thanks [@mike-north](https://github.com/mike-north)! - Remove @description tag; use TSDoc summary text for JSON Schema description and @remarks for x-vendor-remarks extension keyword
+
+- Updated dependencies [[`fafddcf`](https://github.com/mike-north/formspec/commit/fafddcf6fe8ef99263016390c92cad23f3bbef4c)]:
+  - @formspec/build@0.1.0-alpha.21
+
 ## 0.1.0-alpha.20
 
 ### Patch Changes
