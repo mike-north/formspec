@@ -473,7 +473,7 @@ interface FormatHintAnnotationNode {
 }
 ```
 
-**Ecosystem tag alignment (S6):** `description` derives from the standard `@description`/`@remarks` family, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName` is FormSpec-specific rather than a standard TSDoc tag.
+**Ecosystem tag alignment (S6):** `description` derives from TSDoc summary text (bare text before the first block tag), `remarks` derives from `@remarks`, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName` is FormSpec-specific rather than a standard TSDoc tag.
 
 ### 4.3 Custom Annotations
 

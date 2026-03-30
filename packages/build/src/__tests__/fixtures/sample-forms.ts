@@ -111,8 +111,8 @@ export class SimpleProduct {
 }
 
 /**
+ * Collect vehicle details for fleet management
  * @displayName Vehicle Registration
- * @description Collect vehicle details for fleet management
  */
 export class VehicleRegistration {
   /** @displayName Make */

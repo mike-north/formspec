@@ -452,10 +452,10 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
-  it("produces DescriptionAnnotationNode for @description", () => {
+  it("extracts summary text as description annotation (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @description Help text for this field */
+        /** Help text for this field */
         name: string;
       }
     `);
@@ -469,12 +469,12 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
-  it("preserves multi-line @description payloads", () => {
+  it("preserves multi-line summary text as description", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
         /**
-         * @description Help text for this field
-         *   that continues on the next line.
+         * Help text for this field
+         * that continues on the next line.
          */
         name: string;
       }
@@ -488,10 +488,10 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
-  it("uses @remarks as a description fallback when @description is absent", () => {
+  it("extracts @remarks as a separate remarks annotation (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** @remarks Fallback help text */
+        /** @remarks Supplementary documentation */
         name: string;
       }
     `);
@@ -499,88 +499,69 @@ describe("extractJSDocAnnotationNodes", () => {
     const result = extractJSDocAnnotationNodes(prop);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
-      annotationKind: "description",
-      value: "Fallback help text",
+      annotationKind: "remarks",
+      value: "Supplementary documentation",
     });
   });
 
-  it("uses free text summary as an implicit description when neither @description nor @remarks is present", () => {
+  it("@remarks alone does NOT produce a description annotation (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /** Free text help shown as the description. */
+        /** @remarks Only remarks, no summary */
         name: string;
       }
     `);
 
     const result = extractJSDocAnnotationNodes(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      annotationKind: "description",
-      value: "Free text help shown as the description.",
-    });
+    const descriptions = result.filter((n) => n.annotationKind === "description");
+    expect(descriptions).toHaveLength(0);
   });
 
-  it("prefers @description over @remarks and free text summary", () => {
+  it("summary + @remarks produces both description and remarks annotations (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
         /**
-         * Summary that should be ignored.
-         * @remarks Remarks that should also be ignored.
-         * @description Explicit description wins.
+         * Summary becomes the description.
+         * @remarks Remarks become a separate annotation.
          */
         name: string;
       }
     `);
 
     const result = extractJSDocAnnotationNodes(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
+    const description = result.find((n) => n.annotationKind === "description");
+    const remarks = result.find((n) => n.annotationKind === "remarks");
+
+    expect(description).toMatchObject({
       annotationKind: "description",
-      value: "Explicit description wins.",
+      value: "Summary becomes the description.",
+    });
+    expect(remarks).toMatchObject({
+      annotationKind: "remarks",
+      value: "Remarks become a separate annotation.",
     });
   });
 
-  it("prefers @remarks over free text summary when @description is absent", () => {
+  it("no comment produces no description or remarks annotations", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
-        /**
-         * Summary that should be ignored.
-         * @remarks Explicit remarks win over summary.
-         */
         name: string;
       }
     `);
 
     const result = extractJSDocAnnotationNodes(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      annotationKind: "description",
-      value: "Explicit remarks win over summary.",
-    });
+    const descriptions = result.filter((n) => n.annotationKind === "description");
+    const remarks = result.filter((n) => n.annotationKind === "remarks");
+    expect(descriptions).toHaveLength(0);
+    expect(remarks).toHaveLength(0);
   });
 
-  it("uses last-one-wins semantics for repeated @description tags", () => {
-    const prop = getInterfacePropertyFromSource(`
-      interface Foo {
-        /** @description First @description Second */
-        name: string;
-      }
-    `);
-
-    const result = extractJSDocAnnotationNodes(prop);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      annotationKind: "description",
-      value: "Second",
-    });
-  });
-
-  it("produces both displayName and description", () => {
+  it("produces both displayName and description from summary", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
         /**
+         * The user's legal name
          * @displayName Full Name
-         * @description The user's legal name
          */
         name: string;
       }
@@ -588,8 +569,11 @@ describe("extractJSDocAnnotationNodes", () => {
 
     const result = extractJSDocAnnotationNodes(prop);
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ annotationKind: "displayName", value: "Full Name" });
-    expect(result[1]).toMatchObject({
+    expect(result.find((n) => n.annotationKind === "displayName")).toMatchObject({
+      annotationKind: "displayName",
+      value: "Full Name",
+    });
+    expect(result.find((n) => n.annotationKind === "description")).toMatchObject({
       annotationKind: "description",
       value: "The user's legal name",
     });

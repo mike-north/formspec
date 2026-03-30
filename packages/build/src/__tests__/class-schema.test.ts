@@ -85,23 +85,32 @@ describe("generateSchemas", () => {
     });
   }, 15_000);
 
-  it("applies description precedence as @description > @remarks > summary text", () => {
+  it("maps summary text to description and @remarks to x-formspec-remarks", () => {
     const result = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "DescriptionPrecedenceForm",
     });
 
+    // Class-level summary populates root schema description (spec 002 §2.1)
     expect(result.jsonSchema.description).toBe(
       "Summary text becomes the root schema description when no explicit tag is present."
     );
-    expect(result.jsonSchema.properties?.["explicit"]).toMatchObject({
-      description: "Explicit description wins.",
-    });
-    expect(result.jsonSchema.properties?.["remarks"]).toMatchObject({
-      description: "Remarks become description when no explicit description is present.",
-    });
+
+    // summary only → description is set from summary text (spec 002 §2.1)
     expect(result.jsonSchema.properties?.["summary"]).toMatchObject({
-      description: "Summary text becomes the description when there are no explicit tags.",
+      description: "Summary text becomes the description.",
+    });
+
+    // summary + @remarks → description from summary, remarks to x-formspec-remarks (spec 002 §2.3)
+    expect(result.jsonSchema.properties?.["summaryAndRemarks"]).toMatchObject({
+      description: "Summary populates description; remarks go to x-formspec-remarks.",
+      "x-formspec-remarks": "Additional context for tooling.",
+    });
+
+    // @remarks only → no description, remarks to x-formspec-remarks (spec 003 §3.2)
+    expect(result.jsonSchema.properties?.["remarksOnly"]).not.toHaveProperty("description");
+    expect(result.jsonSchema.properties?.["remarksOnly"]).toMatchObject({
+      "x-formspec-remarks": "Remarks go to x-formspec-remarks, not description.",
     });
   });
 

@@ -9,8 +9,8 @@
 
 export interface SimpleConfig {
   /**
+   * The user's legal name
    * @displayName Full Name
-   * @description The user's legal name
    * @minLength 1
    * @maxLength 200
    */
@@ -94,7 +94,12 @@ export type Percent = number;
 /** @minLength 1 @maxLength 255 @pattern ^[^@]+@[^@]+$ */
 export type Email = string;
 
-/** @displayName Discount Rate @description Percentage discount applied @minimum 0 @maximum 100 */
+/**
+ * Percentage discount applied
+ * @displayName Discount Rate
+ * @minimum 0
+ * @maximum 100
+ */
 export type AnnotatedPercent = number;
 
 export interface ConfigWithAliasedTypes {

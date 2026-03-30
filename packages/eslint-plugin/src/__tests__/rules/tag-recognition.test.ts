@@ -24,7 +24,7 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
     {
       code: `
         class Form {
-          /** @minimum 0 @description Legal name */
+          /** Legal name @minimum 0 */
           name!: string;
         }
       `,
@@ -64,7 +64,7 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
     {
       code: `
         class Form {
-          /** @description Legal name @minimum 1 */
+          /** Legal name @minimum 1 */
           name!: string;
         }
       `,
@@ -115,7 +115,7 @@ ruleTester.run("require-tag-arguments", requireTagArguments, {
       code: `
         class Form {
           /**
-           * @description
+           * @remarks
            */
           name!: string;
         }

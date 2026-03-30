@@ -991,6 +991,93 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["description"]).toBe("Internal notes only");
     });
 
+    it("maps remarks → x-formspec-remarks (spec 003 §3.2)", () => {
+      const ir = makeIR([
+        makeField(
+          "notes",
+          { kind: "primitive", primitiveKind: "string" },
+          false,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "remarks",
+              value: "Accepts markdown-formatted text",
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["notes"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["x-formspec-remarks"]).toBe("Accepts markdown-formatted text");
+      expect(prop["description"]).toBeUndefined();
+    });
+
+    it("maps description + remarks to separate JSON Schema fields (spec 002 §2.3)", () => {
+      const ir = makeIR([
+        makeField(
+          "email",
+          { kind: "primitive", primitiveKind: "string" },
+          false,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "description",
+              value: "The customer's primary email address.",
+              provenance: PROVENANCE,
+            },
+            {
+              kind: "annotation",
+              annotationKind: "remarks",
+              value: "Must conform to RFC 5322.",
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["email"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["description"]).toBe("The customer's primary email address.");
+      expect(prop["x-formspec-remarks"]).toBe("Must conform to RFC 5322.");
+    });
+
+    it("uses configured vendor prefix for remarks (spec 003 §3.1)", () => {
+      const ir = makeIR([
+        makeField(
+          "notes",
+          { kind: "primitive", primitiveKind: "string" },
+          false,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "remarks",
+              value: "SDK-facing documentation",
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { vendorPrefix: "x-acme" });
+      const prop = (schema.properties as Record<string, unknown>)["notes"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["x-acme-remarks"]).toBe("SDK-facing documentation");
+      expect(prop["x-formspec-remarks"]).toBeUndefined();
+    });
+
     it("maps defaultValue → default", () => {
       const ir = makeIR([
         makeField(

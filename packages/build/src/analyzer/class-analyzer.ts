@@ -388,7 +388,7 @@ function analyzeFieldToIR(
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
-  // JSDoc annotations (@displayName, @description, @deprecated)
+  // JSDoc annotations (@displayName, @deprecated, summary, @remarks)
   annotations.push(...docResult.annotations);
 
   // Default value annotation
@@ -466,7 +466,7 @@ function analyzeInterfacePropertyToIR(
   // Collect annotations
   let annotations: AnnotationNode[] = [];
 
-  // JSDoc annotations (@displayName, @description, @deprecated)
+  // JSDoc annotations (@displayName, @deprecated, summary, @remarks)
   annotations.push(...docResult.annotations);
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));

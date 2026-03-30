@@ -1,8 +1,9 @@
 export class ExampleAForm {
-  /** @displayName Full Name
-   *  @description Your legal name
-   *  @minLength 2
-   *  @maxLength 100
+  /**
+   * Your legal name
+   * @displayName Full Name
+   * @minLength 2
+   * @maxLength 100
    */
   name!: string;
 

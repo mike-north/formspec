@@ -430,6 +430,7 @@ export interface CustomConstraintNode {
 export type AnnotationNode =
   | DisplayNameAnnotationNode
   | DescriptionAnnotationNode
+  | RemarksAnnotationNode
   | FormatAnnotationNode
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
@@ -457,6 +458,23 @@ export interface DisplayNameAnnotationNode {
 export interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
+  readonly value: string;
+  readonly provenance: Provenance;
+}
+
+/**
+ * Remarks annotation — programmatic-persona documentation carried via
+ * the `x-<vendor>-remarks` JSON Schema extension keyword.
+ *
+ * Populated from `@remarks` TSDoc tag content. SDK codegen can include
+ * this in doc comments; API Documenter renders the source `@remarks`
+ * natively in a dedicated Remarks section.
+ *
+ * @public
+ */
+export interface RemarksAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "remarks";
   readonly value: string;
   readonly provenance: Provenance;
 }

@@ -1,7 +1,7 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as vitest from "vitest";
 import { noDuplicateTags } from "../../rules/constraint-validation/no-duplicate-tags.js";
-import { noDescriptionConflict } from "../../rules/constraint-validation/no-description-conflict.js";
+import { noDescriptionTag } from "../../rules/constraint-validation/no-description-tag.js";
 import { noContradictoryRules } from "../../rules/constraint-validation/no-contradictory-rules.js";
 
 RuleTester.afterAll = vitest.afterAll;
@@ -43,12 +43,12 @@ ruleTester.run("no-duplicate-tags", noDuplicateTags, {
   ],
 });
 
-ruleTester.run("no-description-conflict", noDescriptionConflict, {
-  valid: [{ code: `class Form { /** @description A name */ name!: string; }` }],
+ruleTester.run("no-description-tag", noDescriptionTag, {
+  valid: [{ code: `class Form { /** A name */ name!: string; }` }],
   invalid: [
     {
-      code: `class Form { /** @description A name @remarks Fallback */ name!: string; }`,
-      errors: [{ messageId: "descriptionRemarksConflict" }],
+      code: `class Form { /** @description A name */ name!: string; }`,
+      errors: [{ messageId: "descriptionTagForbidden" }],
     },
   ],
 });

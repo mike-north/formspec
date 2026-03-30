@@ -135,10 +135,10 @@ describe("file-snapshots", () => {
 
   it("captures comments attached to interfaces and type aliases", () => {
     const source = `
-      /** @description Payment status */
+      /** Payment status @pattern ^(draft|sent)$ */
       type FormSpecInvoiceLifecycleStatus = "draft" | "sent";
 
-      /** @description Invoice payload */
+      /** Invoice payload @minimum :total 0 */
       interface Invoice {
         total: number;
       }

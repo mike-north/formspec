@@ -785,7 +785,8 @@ function applyConstraints(
  *
  * Mapping per the JSON Schema vocabulary spec §2.8:
  * - `displayName`   → `title`
- * - `description`   → `description`
+ * - `description`   → `description` (from summary text, spec 002 §2.3)
+ * - `remarks`       → `x-<vendor>-remarks` (from @remarks, spec 003 §3.2)
  * - `defaultValue`  → `default`
  * - `deprecated`    → `deprecated: true` (2020-12 standard annotation)
  * - `format`        → `format`
@@ -806,6 +807,10 @@ function applyAnnotations(
 
       case "description":
         schema.description = annotation.value;
+        break;
+
+      case "remarks":
+        schema[`${ctx.vendorPrefix}-remarks` as `x-${string}`] = annotation.value;
         break;
 
       case "defaultValue":
