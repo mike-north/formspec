@@ -383,6 +383,7 @@ function stripProvenanceFromAnnotation(annotation: AnnotationNode): ProvenanceFr
   switch (annotation.annotationKind) {
     case "displayName":
     case "description":
+    case "remarks":
     case "format":
     case "placeholder":
     case "defaultValue":
