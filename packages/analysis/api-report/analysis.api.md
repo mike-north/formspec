@@ -10,7 +10,7 @@ import type { PathTarget } from '@formspec/core';
 export function computeFormSpecTextHash(text: string): string;
 
 // @public (undocumented)
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 1;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
 
 // @public (undocumented)
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
@@ -38,13 +38,35 @@ export interface FormSpecAnalysisCommentSnapshot {
 // @public
 export interface FormSpecAnalysisDiagnostic {
     // (undocumented)
+    readonly category: FormSpecAnalysisDiagnosticCategory;
+    // (undocumented)
     readonly code: string;
+    // (undocumented)
+    readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
     // (undocumented)
     readonly message: string;
     // (undocumented)
     readonly range: CommentSpan;
     // (undocumented)
+    readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
+    // (undocumented)
     readonly severity: "error" | "warning" | "info";
+}
+
+// @public
+export type FormSpecAnalysisDiagnosticCategory = "tag-recognition" | "value-parsing" | "type-compatibility" | "target-resolution" | "constraint-validation" | "infrastructure";
+
+// @public
+export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | readonly string[] | readonly number[] | readonly boolean[];
+
+// @public
+export interface FormSpecAnalysisDiagnosticLocation {
+    // (undocumented)
+    readonly filePath: string;
+    // (undocumented)
+    readonly message?: string;
+    // (undocumented)
+    readonly range: CommentSpan;
 }
 
 // @public

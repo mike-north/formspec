@@ -3,93 +3,58 @@ import net from "node:net";
 import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-  computeFormSpecTextHash,
   isFormSpecSemanticQuery,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
 } from "@formspec/analysis/protocol";
-import {
-  buildFormSpecAnalysisFileSnapshot,
-  createFormSpecPerformanceRecorder,
-  findDeclarationForCommentOffset,
-  getCommentHoverInfoAtOffset,
-  getSemanticCommentCompletionContextAtOffset,
-  getFormSpecPerformanceNow,
-  getSubjectType,
-  optionalMeasure,
-  resolveDeclarationPlacement,
-  serializeCompletionContext,
-  serializeHoverInfo,
-  type BuildFormSpecAnalysisFileSnapshotOptions,
-  type FormSpecAnalysisFileSnapshot,
-  type FormSpecPerformanceEvent,
-  type FormSpecPerformanceRecorder,
-} from "@formspec/analysis/internal";
+import { type FormSpecPerformanceEvent } from "@formspec/analysis/internal";
 import {
   createFormSpecAnalysisManifest,
   getFormSpecWorkspaceRuntimePaths,
   type FormSpecWorkspaceRuntimePaths,
 } from "./workspace.js";
 import {
+  FormSpecSemanticService,
+  type FormSpecSemanticServiceOptions,
+  type LoggerLike,
+} from "./semantic-service.js";
+import {
   FORM_SPEC_PLUGIN_DEFAULT_PERFORMANCE_LOG_THRESHOLD_MS,
-  FORM_SPEC_PLUGIN_DEFAULT_SNAPSHOT_DEBOUNCE_MS,
   FORM_SPEC_PLUGIN_MAX_SOCKET_PAYLOAD_BYTES,
-  FORM_SPEC_PLUGIN_PERFORMANCE_EVENT,
   FORM_SPEC_PLUGIN_SOCKET_IDLE_TIMEOUT_MS,
 } from "./constants.js";
+import { formatPerformanceEvent } from "./perf-utils.js";
 
-interface LoggerLike {
-  info(message: string): void;
-}
+/**
+ * Public configuration for the reference plugin wrapper that exposes
+ * `FormSpecSemanticService` over the local manifest + IPC transport.
+ *
+ * Supports the same semantic-service options, including
+ * `enablePerformanceLogging`, `performanceLogThresholdMs`, and
+ * `snapshotDebounceMs`. The packaged tsserver plugin wires these from
+ * `FORMSPEC_PLUGIN_PROFILE=1` and `FORMSPEC_PLUGIN_PROFILE_THRESHOLD_MS`.
+ *
+ * @public
+ */
+export type FormSpecPluginServiceOptions = FormSpecSemanticServiceOptions;
 
-export interface FormSpecPluginServiceOptions {
-  readonly workspaceRoot: string;
-  readonly typescriptVersion: string;
-  readonly getProgram: () => ts.Program | undefined;
-  readonly logger?: LoggerLike;
-  /**
-   * Enables structured hotspot logging for semantic queries.
-   *
-   * The tsserver plugin sets this from `FORMSPEC_PLUGIN_PROFILE=1`.
-   */
-  readonly enablePerformanceLogging?: boolean;
-  /**
-   * Minimum total query duration in milliseconds before profiling is logged.
-   *
-   * Defaults to `50` when unset. The tsserver plugin sets this from
-   * `FORMSPEC_PLUGIN_PROFILE_THRESHOLD_MS`.
-   */
-  readonly performanceLogThresholdMs?: number;
-  readonly snapshotDebounceMs?: number;
-  readonly now?: () => Date;
-}
-
-interface CachedFileSnapshot {
-  readonly sourceHash: string;
-  readonly snapshot: FormSpecAnalysisFileSnapshot;
-}
-
-interface SourceEnvironment {
-  readonly sourceFile: ts.SourceFile;
-  readonly checker: ts.TypeChecker;
-  readonly sourceHash: string;
-}
-
-interface CommentQueryContext extends SourceEnvironment {
-  readonly declaration: ts.Node | null;
-  readonly placement: ReturnType<typeof resolveDeclarationPlacement>;
-  readonly subjectType: ts.Type | undefined;
-}
-
+/**
+ * Reference manifest/socket wrapper around `FormSpecSemanticService`.
+ *
+ * Downstream TypeScript hosts that already control their own plugin/runtime
+ * lifecycle can use `FormSpecSemanticService` directly and skip this wrapper.
+ *
+ * @public
+ */
 export class FormSpecPluginService {
   private readonly manifest: FormSpecAnalysisManifest;
   private readonly runtimePaths: FormSpecWorkspaceRuntimePaths;
-  private readonly snapshotCache = new Map<string, CachedFileSnapshot>();
-  private readonly refreshTimers = new Map<string, NodeJS.Timeout>();
+  private readonly semanticService: FormSpecSemanticService;
   private server: net.Server | null = null;
 
   public constructor(private readonly options: FormSpecPluginServiceOptions) {
+    this.semanticService = new FormSpecSemanticService(options);
     this.runtimePaths = getFormSpecWorkspaceRuntimePaths(options.workspaceRoot);
     this.manifest = createFormSpecAnalysisManifest(
       options.workspaceRoot,
@@ -100,6 +65,15 @@ export class FormSpecPluginService {
 
   public getManifest(): FormSpecAnalysisManifest {
     return this.manifest;
+  }
+
+  /**
+   * Returns the underlying semantic service used by this reference wrapper.
+   *
+   * @public
+   */
+  public getSemanticService(): FormSpecSemanticService {
+    return this.semanticService;
   }
 
   public async start(): Promise<void> {
@@ -133,6 +107,7 @@ export class FormSpecPluginService {
           );
           return;
         }
+
         const newlineIndex = buffer.indexOf("\n");
         if (newlineIndex < 0) {
           return;
@@ -166,11 +141,7 @@ export class FormSpecPluginService {
   }
 
   public async stop(): Promise<void> {
-    for (const timer of this.refreshTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.refreshTimers.clear();
-    this.snapshotCache.clear();
+    this.semanticService.dispose();
 
     const server = this.server;
     this.server = null;
@@ -190,45 +161,75 @@ export class FormSpecPluginService {
   }
 
   public scheduleSnapshotRefresh(filePath: string): void {
-    const existing = this.refreshTimers.get(filePath);
-    if (existing !== undefined) {
-      clearTimeout(existing);
-    }
-
-    const timer = setTimeout(() => {
-      try {
-        this.getFileSnapshot(filePath, undefined);
-      } catch (error: unknown) {
-        this.options.logger?.info(
-          `[FormSpec] Failed to refresh semantic snapshot for ${filePath}: ${String(error)}`
-        );
-      }
-      this.refreshTimers.delete(filePath);
-    }, this.options.snapshotDebounceMs ?? FORM_SPEC_PLUGIN_DEFAULT_SNAPSHOT_DEBOUNCE_MS);
-
-    this.refreshTimers.set(filePath, timer);
+    this.semanticService.scheduleSnapshotRefresh(filePath);
   }
 
   public handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse {
-    const performance =
-      this.options.enablePerformanceLogging === true
-        ? createFormSpecPerformanceRecorder()
-        : undefined;
-    const response = optionalMeasure(
-      performance,
-      FORM_SPEC_PLUGIN_PERFORMANCE_EVENT.handleQuery,
-      {
-        kind: query.kind,
-        ...(query.kind === "health" ? {} : { filePath: query.filePath }),
-      },
-      () => this.executeQuery(query, performance)
-    );
-
-    if (performance !== undefined) {
-      this.logPerformanceEvents(performance.events);
+    if (this.options.enablePerformanceLogging === true) {
+      const startedAt = performance.now();
+      const response = this.executeQuery(query);
+      this.logQueryDuration(query, performance.now() - startedAt);
+      return response;
     }
 
-    return response;
+    return this.executeQuery(query);
+  }
+
+  private executeQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse {
+    switch (query.kind) {
+      case "health":
+        return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          kind: "health",
+          manifest: this.manifest,
+        };
+      case "completion": {
+        const result = this.semanticService.getCompletionContext(query.filePath, query.offset);
+        if (result === null) {
+          return {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            kind: "error",
+            error: `Unable to resolve TypeScript source file for ${query.filePath}`,
+          };
+        }
+
+        return {
+          ...result,
+          kind: "completion",
+        };
+      }
+      case "hover": {
+        const result = this.semanticService.getHover(query.filePath, query.offset);
+        if (result === null) {
+          return {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            kind: "error",
+            error: `Unable to resolve TypeScript source file for ${query.filePath}`,
+          };
+        }
+
+        return {
+          ...result,
+          kind: "hover",
+        };
+      }
+      case "diagnostics": {
+        const result = this.semanticService.getDiagnostics(query.filePath);
+        return {
+          ...result,
+          kind: "diagnostics",
+        };
+      }
+      case "file-snapshot":
+        return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          kind: "file-snapshot",
+          snapshot: this.semanticService.getFileSnapshot(query.filePath),
+        };
+      default: {
+        throw new Error(`Unhandled semantic query: ${JSON.stringify(query)}`);
+      }
+    }
   }
 
   private respondToSocket(socket: net.Socket, payload: string): void {
@@ -258,303 +259,46 @@ export class FormSpecPluginService {
 
   private async cleanupRuntimeArtifacts(): Promise<void> {
     await fs.rm(this.runtimePaths.manifestPath, { force: true });
+
     if (this.runtimePaths.endpoint.kind === "unix-socket") {
       await fs.rm(this.runtimePaths.endpoint.address, { force: true });
     }
   }
 
-  private withCommentQueryContext(
-    filePath: string,
-    offset: number,
-    handler: (context: CommentQueryContext) => FormSpecSemanticResponse,
-    performance: FormSpecPerformanceRecorder | undefined
-  ): FormSpecSemanticResponse {
-    return optionalMeasure(
-      performance,
-      "plugin.resolveCommentQueryContext",
-      {
-        filePath,
-        offset,
-      },
-      () => {
-        const environment = this.getSourceEnvironment(filePath, performance);
-        if (environment === null) {
-          return {
-            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-            kind: "error",
-            error: `Unable to resolve TypeScript source file for ${filePath}`,
-          };
-        }
-
-        const declaration = optionalMeasure(
-          performance,
-          "plugin.findDeclarationForCommentOffset",
-          {
-            filePath,
-            offset,
-          },
-          () => findDeclarationForCommentOffset(environment.sourceFile, offset)
-        );
-        const placement =
-          declaration === null
-            ? null
-            : optionalMeasure(performance, "plugin.resolveDeclarationPlacement", undefined, () =>
-                resolveDeclarationPlacement(declaration)
-              );
-        const subjectType =
-          declaration === null
-            ? undefined
-            : optionalMeasure(performance, "plugin.getSubjectType", undefined, () =>
-                getSubjectType(declaration, environment.checker)
-              );
-
-        return handler({
-          ...environment,
-          declaration,
-          placement,
-          subjectType,
-        });
-      }
-    );
-  }
-
-  private getFileSnapshot(
-    filePath: string,
-    performance: FormSpecPerformanceRecorder | undefined
-  ): FormSpecAnalysisFileSnapshot {
-    const startedAt = getFormSpecPerformanceNow();
-    const environment = this.getSourceEnvironment(filePath, performance);
-    if (environment === null) {
-      const missingSourceSnapshot: FormSpecAnalysisFileSnapshot = {
-        filePath,
-        sourceHash: "",
-        generatedAt: this.getNow().toISOString(),
-        comments: [],
-        diagnostics: [
-          {
-            code: "MISSING_SOURCE_FILE",
-            message: `Unable to resolve TypeScript source file for ${filePath}`,
-            range: { start: 0, end: 0 },
-            severity: "warning",
-          },
-        ],
-      };
-      performance?.record({
-        name: "plugin.getFileSnapshot",
-        durationMs: getFormSpecPerformanceNow() - startedAt,
-        detail: {
-          filePath,
-          cache: "missing-source",
-        },
-      });
-      return missingSourceSnapshot;
-    }
-
-    const cached = this.snapshotCache.get(filePath);
-    if (cached?.sourceHash === environment.sourceHash) {
-      performance?.record({
-        name: "plugin.getFileSnapshot",
-        durationMs: getFormSpecPerformanceNow() - startedAt,
-        detail: {
-          filePath,
-          cache: "hit",
-        },
-      });
-      return cached.snapshot;
-    }
-
-    const snapshot = buildFormSpecAnalysisFileSnapshot(environment.sourceFile, {
-      checker: environment.checker,
-      now: () => this.getNow(),
-      ...(performance === undefined ? {} : { performance }),
-    } satisfies BuildFormSpecAnalysisFileSnapshotOptions);
-    this.snapshotCache.set(filePath, {
-      sourceHash: environment.sourceHash,
-      snapshot,
-    });
-    performance?.record({
-      name: "plugin.getFileSnapshot",
-      durationMs: getFormSpecPerformanceNow() - startedAt,
-      detail: {
-        filePath,
-        cache: "miss",
-      },
-    });
-    return snapshot;
-  }
-
-  private getNow(): Date {
-    return this.options.now?.() ?? new Date();
-  }
-
-  private executeQuery(
-    query: FormSpecSemanticQuery,
-    performance: FormSpecPerformanceRecorder | undefined
-  ): FormSpecSemanticResponse {
-    switch (query.kind) {
-      case "health":
-        return {
-          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-          kind: "health",
-          manifest: this.manifest,
-        };
-      case "completion":
-        return this.withCommentQueryContext(
-          query.filePath,
-          query.offset,
-          (context) => ({
-            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-            kind: "completion",
-            sourceHash: context.sourceHash,
-            context: serializeCompletionContext(
-              getSemanticCommentCompletionContextAtOffset(context.sourceFile.text, query.offset, {
-                checker: context.checker,
-                ...(context.placement === null ? {} : { placement: context.placement }),
-                ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
-              })
-            ),
-          }),
-          performance
-        );
-      case "hover":
-        return this.withCommentQueryContext(
-          query.filePath,
-          query.offset,
-          (context) => ({
-            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-            kind: "hover",
-            sourceHash: context.sourceHash,
-            hover: serializeHoverInfo(
-              getCommentHoverInfoAtOffset(context.sourceFile.text, query.offset, {
-                checker: context.checker,
-                ...(context.placement === null ? {} : { placement: context.placement }),
-                ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
-              })
-            ),
-          }),
-          performance
-        );
-      case "diagnostics": {
-        const snapshot = this.getFileSnapshot(query.filePath, performance);
-        return {
-          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-          kind: "diagnostics",
-          sourceHash: snapshot.sourceHash,
-          diagnostics: snapshot.diagnostics,
-        };
-      }
-      case "file-snapshot":
-        return {
-          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-          kind: "file-snapshot",
-          snapshot: this.getFileSnapshot(query.filePath, performance),
-        };
-      default: {
-        throw new Error(`Unhandled semantic query: ${JSON.stringify(query)}`);
-      }
-    }
-  }
-
-  private getSourceEnvironment(
-    filePath: string,
-    performance: FormSpecPerformanceRecorder | undefined
-  ): SourceEnvironment | null {
-    return optionalMeasure(
-      performance,
-      "plugin.getSourceEnvironment",
-      {
-        filePath,
-      },
-      () => {
-        const program = optionalMeasure(
-          performance,
-          "plugin.sourceEnvironment.getProgram",
-          undefined,
-          () => this.options.getProgram()
-        );
-        if (program === undefined) {
-          return null;
-        }
-
-        const sourceFile = optionalMeasure(
-          performance,
-          "plugin.sourceEnvironment.getSourceFile",
-          undefined,
-          () => program.getSourceFile(filePath)
-        );
-        if (sourceFile === undefined) {
-          return null;
-        }
-
-        const checker = optionalMeasure(
-          performance,
-          "plugin.sourceEnvironment.getTypeChecker",
-          undefined,
-          () => program.getTypeChecker()
-        );
-        const sourceHash = optionalMeasure(
-          performance,
-          "plugin.sourceEnvironment.computeTextHash",
-          undefined,
-          () => computeFormSpecTextHash(sourceFile.text)
-        );
-
-        return {
-          sourceFile,
-          checker,
-          sourceHash,
-        };
-      }
-    );
-  }
-
-  private logPerformanceEvents(events: readonly FormSpecPerformanceEvent[]): void {
+  private logQueryDuration(query: FormSpecSemanticQuery, durationMs: number): void {
     const logger = this.options.logger;
-    if (logger === undefined || events.length === 0) {
-      return;
-    }
-
-    let rootEvent: FormSpecPerformanceEvent | undefined;
-    for (let index = events.length - 1; index >= 0; index -= 1) {
-      const candidate = events[index];
-      if (candidate?.name === FORM_SPEC_PLUGIN_PERFORMANCE_EVENT.handleQuery) {
-        rootEvent = candidate;
-        break;
-      }
-    }
-    if (rootEvent === undefined) {
+    if (logger === undefined) {
       return;
     }
 
     const thresholdMs =
       this.options.performanceLogThresholdMs ??
       FORM_SPEC_PLUGIN_DEFAULT_PERFORMANCE_LOG_THRESHOLD_MS;
-    if (rootEvent.durationMs < thresholdMs) {
+    if (durationMs < thresholdMs) {
       return;
     }
 
-    const sortedHotspots = [...events]
-      .filter((event) => event.name !== FORM_SPEC_PLUGIN_PERFORMANCE_EVENT.handleQuery)
-      .sort((left, right) => right.durationMs - left.durationMs)
-      .slice(0, 8);
-    const lines = [
-      `[FormSpec][perf] ${rootEvent.name} ${formatPerformanceEvent(rootEvent)}`,
-      ...sortedHotspots.map((event) => `  ${formatPerformanceEvent(event)}`),
-    ];
-    logger.info(lines.join("\n"));
+    const event: FormSpecPerformanceEvent = {
+      name: "plugin.handleQuery",
+      durationMs,
+      detail: {
+        kind: query.kind,
+        ...(query.kind === "health" ? {} : { filePath: query.filePath }),
+      },
+    };
+    logger.info(`[FormSpec][perf] ${formatPerformanceEvent(event)}`);
   }
 }
 
-function formatPerformanceEvent(event: FormSpecPerformanceEvent): string {
-  const detailEntries = Object.entries(event.detail ?? {})
-    .map(([key, value]) => `${key}=${String(value)}`)
-    .join(" ");
-  return `${event.durationMs.toFixed(1)}ms ${event.name}${detailEntries === "" ? "" : ` ${detailEntries}`}`;
-}
-
+/**
+ * Reference proxy wrapper that keeps FormSpec semantic snapshots fresh while
+ * delegating actual TypeScript editor features to the original service.
+ *
+ * @public
+ */
 export function createLanguageServiceProxy(
   languageService: ts.LanguageService,
-  semanticService: FormSpecPluginService
+  semanticService: FormSpecSemanticService
 ): ts.LanguageService {
   const wrapWithSnapshotRefresh = <Args extends readonly unknown[], Result>(
     fn: (fileName: string, ...args: Args) => Result
@@ -565,8 +309,6 @@ export function createLanguageServiceProxy(
     };
   };
 
-  // The plugin keeps semantic snapshots fresh for the lightweight LSP. The
-  // underlying tsserver results still come from the original language service.
   const getSemanticDiagnostics = wrapWithSnapshotRefresh((fileName) =>
     languageService.getSemanticDiagnostics(fileName)
   );
@@ -595,3 +337,5 @@ export function createLanguageServiceProxy(
     },
   });
 }
+
+export type { LoggerLike };

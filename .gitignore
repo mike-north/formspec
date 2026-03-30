@@ -153,4 +153,4 @@ scratch
 .cache/
 .tmp-tsserver-plugin-*/
 .pnpm-store/
-.Codex/worktrees/
+.Codex/

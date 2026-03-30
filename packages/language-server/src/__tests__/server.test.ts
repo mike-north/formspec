@@ -7,10 +7,17 @@ const mocks = vi.hoisted(() => {
     onCompletion: vi.fn(),
     onHover: vi.fn(),
     onDefinition: vi.fn(),
+    sendDiagnostics: vi.fn(),
+    console: {
+      error: vi.fn(),
+    },
   };
   const documents = {
     listen: vi.fn(),
     get: vi.fn(),
+    onDidOpen: vi.fn(),
+    onDidChangeContent: vi.fn(),
+    onDidClose: vi.fn(),
   };
   const textDocuments = vi.fn(() => documents);
 
@@ -23,6 +30,8 @@ const mocks = vi.hoisted(() => {
     getDefinition: vi.fn(() => null),
     getPluginCompletionContextForDocument: vi.fn(() => Promise.resolve(null)),
     getPluginHoverForDocument: vi.fn(() => Promise.resolve(null)),
+    getPluginDiagnosticsForDocument: vi.fn(() => Promise.resolve(null)),
+    toLspDiagnostics: vi.fn(() => []),
   };
 });
 
@@ -49,6 +58,11 @@ vi.mock("../providers/definition.js", () => ({
   getDefinition: mocks.getDefinition,
 }));
 
+vi.mock("../diagnostics.js", () => ({
+  getPluginDiagnosticsForDocument: mocks.getPluginDiagnosticsForDocument,
+  toLspDiagnostics: mocks.toLspDiagnostics,
+}));
+
 vi.mock("../plugin-client.js", () => ({
   fileUriToPathOrNull: vi.fn((uri: string) => (uri.startsWith("file://") ? uri.slice(7) : null)),
   getPluginCompletionContextForDocument: mocks.getPluginCompletionContextForDocument,
@@ -60,6 +74,8 @@ describe("createServer", () => {
     vi.clearAllMocks();
     mocks.getPluginCompletionContextForDocument.mockResolvedValue(null);
     mocks.getPluginHoverForDocument.mockResolvedValue(null);
+    mocks.getPluginDiagnosticsForDocument.mockResolvedValue(null as never);
+    mocks.toLspDiagnostics.mockReturnValue([] as never);
   });
 
   it("forwards extension definitions to completion and hover providers", async () => {
@@ -161,5 +177,116 @@ describe("createServer", () => {
       7,
       undefined
     );
+  });
+
+  it("publishes no diagnostics by default", async () => {
+    const { createServer } = await import("../server.js");
+    createServer();
+
+    expect(mocks.documents.onDidOpen).toHaveBeenCalledTimes(1);
+    const openHandler = mocks.documents.onDidOpen.mock.calls[0]?.[0] as
+      | ((event: { document: { uri: string; getText(): string } }) => void)
+      | undefined;
+
+    openHandler?.({
+      document: {
+        uri: "file:///workspace/project/example.ts",
+        getText: () => "/** @minimum 0 */",
+      },
+    });
+
+    expect(mocks.getPluginDiagnosticsForDocument).not.toHaveBeenCalled();
+    expect(mocks.connection.sendDiagnostics).not.toHaveBeenCalled();
+  });
+
+  it("publishes plugin diagnostics through the exported diagnostics helpers when enabled", async () => {
+    const lspDiagnostics = [
+      {
+        message: "bad target",
+      },
+    ];
+    mocks.getPluginDiagnosticsForDocument.mockResolvedValue([
+      {
+        code: "TYPE_MISMATCH",
+        category: "type-compatibility",
+        message: "bad target",
+        range: { start: 4, end: 12 },
+        severity: "error",
+        relatedLocations: [],
+        data: {
+          tagName: "minimum",
+        },
+      },
+    ] as never);
+    mocks.toLspDiagnostics.mockReturnValue(lspDiagnostics as never);
+
+    const { createServer } = await import("../server.js");
+    createServer({
+      diagnosticsMode: "plugin",
+      diagnosticSource: "downstream-brand",
+      pluginQueryTimeoutMs: 750,
+    });
+
+    const openHandler = mocks.documents.onDidOpen.mock.calls[0]?.[0] as
+      | ((event: { document: { uri: string; getText(): string } }) => void)
+      | undefined;
+
+    const document = {
+      uri: "file:///workspace/project/example.ts",
+      getText: () => "/** @minimum 0 */",
+    };
+    openHandler?.({ document });
+    await Promise.resolve();
+
+    expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
+      [],
+      "/workspace/project/example.ts",
+      "/** @minimum 0 */",
+      750
+    );
+    expect(mocks.toLspDiagnostics).toHaveBeenCalledWith(document, expect.any(Array), {
+      source: "downstream-brand",
+    });
+    expect(mocks.connection.sendDiagnostics).toHaveBeenCalledWith({
+      uri: "file:///workspace/project/example.ts",
+      diagnostics: lspDiagnostics,
+    });
+  });
+
+  it("refreshes diagnostics on content changes and clears them on close", async () => {
+    mocks.getPluginDiagnosticsForDocument.mockResolvedValue([] as never);
+    mocks.toLspDiagnostics.mockReturnValue([] as never);
+
+    const { createServer } = await import("../server.js");
+    createServer({
+      diagnosticsMode: "plugin",
+    });
+
+    const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+      | ((event: { document: { uri: string; getText(): string } }) => void)
+      | undefined;
+    const closeHandler = mocks.documents.onDidClose.mock.calls[0]?.[0] as
+      | ((event: { document: { uri: string } }) => void)
+      | undefined;
+
+    const document = {
+      uri: "file:///workspace/project/example.ts",
+      getText: () => "/** @minimum 0 */",
+    };
+
+    changeHandler?.({ document });
+    await Promise.resolve();
+    closeHandler?.({ document });
+
+    expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
+      [],
+      "/workspace/project/example.ts",
+      "/** @minimum 0 */",
+      undefined
+    );
+    expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+      uri: "file:///workspace/project/example.ts",
+      diagnostics: [],
+    });
   });
 });

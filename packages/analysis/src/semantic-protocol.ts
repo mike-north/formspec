@@ -16,7 +16,7 @@ import {
 } from "./tag-registry.js";
 
 /** @public */
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 1;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
 /** @public */
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
@@ -139,15 +139,56 @@ export interface FormSpecSerializedHoverInfo {
 }
 
 /**
+ * Machine-readable diagnostic category used by FormSpec tooling surfaces.
+ *
+ * @public
+ */
+export type FormSpecAnalysisDiagnosticCategory =
+  | "tag-recognition"
+  | "value-parsing"
+  | "type-compatibility"
+  | "target-resolution"
+  | "constraint-validation"
+  | "infrastructure";
+
+/**
+ * Primitive structured values carried in diagnostic facts for white-label
+ * downstream rendering.
+ *
+ * @public
+ */
+export type FormSpecAnalysisDiagnosticDataValue =
+  | string
+  | number
+  | boolean
+  | readonly string[]
+  | readonly number[]
+  | readonly boolean[];
+
+/**
+ * Additional source location associated with a diagnostic.
+ *
+ * @public
+ */
+export interface FormSpecAnalysisDiagnosticLocation {
+  readonly filePath: string;
+  readonly range: CommentSpan;
+  readonly message?: string;
+}
+
+/**
  * File-local diagnostic derived from comment parsing or semantic analysis.
  *
  * @public
  */
 export interface FormSpecAnalysisDiagnostic {
   readonly code: string;
+  readonly category: FormSpecAnalysisDiagnosticCategory;
   readonly message: string;
   readonly range: CommentSpan;
   readonly severity: "error" | "warning" | "info";
+  readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
+  readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
 }
 
 /**
@@ -285,6 +326,31 @@ function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "string");
 }
 
+function isNumberArray(value: unknown): value is readonly number[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "number");
+}
+
+function isBooleanArray(value: unknown): value is readonly boolean[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "boolean");
+}
+
+function isDiagnosticDataValue(value: unknown): value is FormSpecAnalysisDiagnosticDataValue {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    isStringArray(value) ||
+    isNumberArray(value) ||
+    isBooleanArray(value)
+  );
+}
+
+function isDiagnosticDataRecord(
+  value: unknown
+): value is Record<string, FormSpecAnalysisDiagnosticDataValue> {
+  return isObjectRecord(value) && Object.values(value).every(isDiagnosticDataValue);
+}
+
 const FORM_SPEC_PLACEMENT_VALUES = new Set<FormSpecPlacement>(FORM_SPEC_PLACEMENTS);
 
 const FORM_SPEC_TARGET_KIND_VALUES = new Set<FormSpecTargetKind>(FORM_SPEC_TARGET_KINDS);
@@ -303,6 +369,17 @@ function isPlacementArray(value: unknown): value is readonly FormSpecPlacement[]
 
 function isTargetKindArray(value: unknown): value is readonly FormSpecTargetKind[] {
   return Array.isArray(value) && value.every(isTargetKindValue);
+}
+
+function isDiagnosticCategory(value: unknown): value is FormSpecAnalysisDiagnosticCategory {
+  return (
+    value === "tag-recognition" ||
+    value === "value-parsing" ||
+    value === "type-compatibility" ||
+    value === "target-resolution" ||
+    value === "constraint-validation" ||
+    value === "infrastructure"
+  );
 }
 
 function isIpcEndpoint(value: unknown): value is FormSpecIpcEndpoint {
@@ -432,6 +509,19 @@ function hasCurrentProtocolVersion(
   return isObjectRecord(value) && value["protocolVersion"] === FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
 }
 
+function isAnalysisDiagnosticLocation(value: unknown): value is FormSpecAnalysisDiagnosticLocation {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecAnalysisDiagnosticLocation>;
+  return (
+    typeof candidate.filePath === "string" &&
+    isCommentSpan(candidate.range) &&
+    (candidate.message === undefined || typeof candidate.message === "string")
+  );
+}
+
 function isAnalysisDiagnostic(value: unknown): value is FormSpecAnalysisDiagnostic {
   if (!isObjectRecord(value)) {
     return false;
@@ -440,11 +530,15 @@ function isAnalysisDiagnostic(value: unknown): value is FormSpecAnalysisDiagnost
   const candidate = value as Partial<FormSpecAnalysisDiagnostic>;
   return (
     typeof candidate.code === "string" &&
+    isDiagnosticCategory(candidate.category) &&
     typeof candidate.message === "string" &&
     isCommentSpan(candidate.range) &&
     (candidate.severity === "error" ||
       candidate.severity === "warning" ||
-      candidate.severity === "info")
+      candidate.severity === "info") &&
+    Array.isArray(candidate.relatedLocations) &&
+    candidate.relatedLocations.every(isAnalysisDiagnosticLocation) &&
+    isDiagnosticDataRecord(candidate.data)
   );
 }
 

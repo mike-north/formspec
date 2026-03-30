@@ -78,6 +78,7 @@ export {
   normalizeFormSpecTagName,
 } from "./tag-registry.js";
 export { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
+export { LruCache } from "./lru-cache.js";
 export {
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,

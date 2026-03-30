@@ -14,19 +14,19 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 
 ### Principles Satisfied
 
-| Principle                                           | How this document satisfies it                                                                                                                                                                    |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **A7** (clear linting vs. language server boundary) | ESLint owns all validation, error detection, and auto-fixes. The language server owns completions, hover, go-to-definition, and signature help. The boundary is architectural, not advisory       |
-| **D1** (structured diagnostics)                     | Every FormSpec diagnostic carries source location, severity, machine-readable code, and human-readable message                                                                                    |
-| **D2** (source-located diagnostics)                 | Diagnostics point to author source, not IR or generated output. Multi-source diagnostics (contradictions) reference all participating locations                                                   |
-| **D3** (deterministic diagnostics)                  | The same input always produces the same diagnostic set in the same order. No non-deterministic map/set iteration                                                                                  |
-| **D4** (actionable diagnostics)                     | Every diagnostic message explains what is wrong and what the author should do. Codes like `CONSTRAINT_CONTRADICTION` carry structured context (the conflicting values, both source locations)     |
-| **D5** (auto-fixes when unambiguous)                | Rules offer auto-fixes only when intent is unambiguous. The confidence threshold is explicit: if more than one reasonable fix exists, the diagnostic describes the issue and defers to the author |
-| **D6** (machine-consumable diagnostics)             | The diagnostic format supports LSP, SARIF, and ESLint's RuleTester. Structured codes enable filtering and aggregation in CI                                                                       |
-| **PP9** (configurable surface area)                 | Every FormSpec diagnostic severity is overridable via project configuration. Rules can be set to `off`, `warn`, or `error` per project                                                            |
-| **PP10** (white-labelable)                          | Diagnostic presentation is configurable for downstream organizations, while canonical machine-readable diagnostic codes remain stable symbolic identifiers                                        |
-| **PP11** (consumer-controlled messaging)            | Diagnostic message templates are overridable via project configuration. Organizations can substitute their own terminology, instructional text, and style                                         |
-| **E1** (built-in types use the same extension API)  | The ESLint rule infrastructure described here is the same API used by built-in rules. Extensions get tag-on-type validation, contradiction detection, and path-target resolution for free         |
+| Principle                                           | How this document satisfies it                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **A7** (clear linting vs. language server boundary) | ESLint remains the recommended validation surface, while the shared semantic APIs provide the canonical facts. The packaged language server owns completions/hover and may optionally publish plugin-derived diagnostics as a reference implementation |
+| **D1** (structured diagnostics)                     | Every FormSpec diagnostic carries source location, severity, machine-readable code, and human-readable message                                                                                                                                         |
+| **D2** (source-located diagnostics)                 | Diagnostics point to author source, not IR or generated output. Multi-source diagnostics (contradictions) reference all participating locations                                                                                                        |
+| **D3** (deterministic diagnostics)                  | The same input always produces the same diagnostic set in the same order. No non-deterministic map/set iteration                                                                                                                                       |
+| **D4** (actionable diagnostics)                     | Every diagnostic message explains what is wrong and what the author should do. Codes like `CONSTRAINT_CONTRADICTION` carry structured context (the conflicting values, both source locations)                                                          |
+| **D5** (auto-fixes when unambiguous)                | Rules offer auto-fixes only when intent is unambiguous. The confidence threshold is explicit: if more than one reasonable fix exists, the diagnostic describes the issue and defers to the author                                                      |
+| **D6** (machine-consumable diagnostics)             | The diagnostic format supports LSP, SARIF, and ESLint's RuleTester. Structured codes enable filtering and aggregation in CI                                                                                                                            |
+| **PP9** (configurable surface area)                 | Every FormSpec diagnostic severity is overridable via project configuration. Rules can be set to `off`, `warn`, or `error` per project                                                                                                                 |
+| **PP10** (white-labelable)                          | Canonical machine-readable diagnostic codes and structured raw facts stay stable, while downstream organizations own final presentation and branding                                                                                                   |
+| **PP11** (consumer-controlled messaging)            | Downstream tooling can ignore default messages and render from `code` + structured `data`. This phase does not require project-level message-template configuration                                                                                    |
+| **E1** (built-in types use the same extension API)  | The ESLint rule infrastructure described here is the same API used by built-in rules. Extensions get tag-on-type validation, contradiction detection, and path-target resolution for free                                                              |
 
 ### Relationship to Other Documents
 
@@ -38,11 +38,12 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 
 ## 2. Shared Semantic Analysis Pipeline
 
-Both ESLint and interactive editor tooling need the same core analysis: parse TSDoc tags from a comment, resolve path/member targets against TypeScript types, detect constraint contradictions, and build provenance records. Rather than duplicating this logic in multiple places, it is extracted into a shared analysis pipeline that feeds three consumers:
+Both ESLint and interactive editor tooling need the same core analysis: parse TSDoc tags from a comment, resolve path/member targets against TypeScript types, detect constraint contradictions, and build provenance records. Rather than duplicating this logic in multiple places, it is extracted into a shared analysis pipeline that feeds four consumers:
 
 - `@formspec/eslint-plugin` for user-facing validation
 - `@formspec/ts-plugin` for TypeScript-project-aware semantic analysis inside `tsserver`
-- `@formspec/language-server` for LSP presentation features such as semantic hover and completions
+- `@formspec/language-server` for LSP presentation features such as semantic hover, completions, and optional diagnostics publishing
+- downstream TypeScript hosts that want to reuse the same `Program` and surface diagnostics their own way
 
 ### 2.1 Pipeline Position
 
@@ -101,7 +102,7 @@ This phase links each parsed tag to the TypeScript type it applies to:
    - Member-targets: look up the member in the field's string literal union; produce `UNKNOWN_MEMBER_TARGET` if absent
 4. Produces `UNSUPPORTED_TARGETING_SYNTAX` / `MEMBER_TARGET_ON_NON_UNION` for modifiers used on tags that do not accept them, or on incompatible types
 
-The TypeScript compiler API is accessed via a shared `TypeResolutionContext`. ESLint provides it from `parserServices`, while editor tooling gets it from the FormSpec TypeScript plugin running inside the host `tsserver`. The standalone FormSpec language server does not own a second long-lived `Program` in the default architecture; it consumes plugin-produced semantic results over local transport.
+The TypeScript compiler API is accessed via a shared `TypeResolutionContext`. ESLint provides it from `parserServices`, while editor tooling gets it from the FormSpec TypeScript plugin running inside the host `tsserver` or from downstream hosts that construct `FormSpecSemanticService` directly. The standalone FormSpec language server does not own a second long-lived `Program` in the default architecture; it consumes plugin-produced semantic results over local transport.
 
 ### 2.5 Phase 4: Constraint Validation
 
@@ -373,12 +374,12 @@ The extension rule only needs to express logic that is genuinely specific to its
 
 ## 5. Language Server Responsibilities
 
-Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, semantic tokens, and signature help. It does not duplicate ESLint's validation logic — diagnostics from TSDoc tag errors are ESLint's responsibility.
+Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, semantic tokens, and signature help. The packaged server is a reference implementation over the same public helpers that downstream consumers can call directly. Diagnostics are off by default in the packaged server, but it may optionally publish plugin-derived diagnostics using those same helpers.
 
 FormSpec uses a hybrid architecture:
 
-- `@formspec/ts-plugin` is the semantic authority. It runs inside `tsserver`, reuses the host editor's existing `Program` and `TypeChecker`, and performs expensive semantic work such as path resolution, placement checks, compiler-backed synthetic signature validation, and effective constraint-state computation.
-- `@formspec/language-server` is a lightweight standalone LSP surface. It keeps cheap syntax-local behavior in-process, then enriches hover/completion responses with semantic results produced by the TypeScript plugin.
+- `@formspec/ts-plugin` is the semantic authority. It runs inside `tsserver`, reuses the host editor's existing `Program` and `TypeChecker`, and performs expensive semantic work such as path resolution, placement checks, compiler-backed synthetic signature validation, and effective constraint-state computation. Its shipped plugin wrapper is a reference implementation over the public in-process semantic service.
+- `@formspec/language-server` is a lightweight standalone LSP surface. It keeps cheap syntax-local behavior in-process, then enriches hover/completion responses with semantic results produced by the TypeScript plugin. Its shipped server is a reference implementation over exported completion, hover, and diagnostics helpers.
 
 The two components communicate on the workspace host via:
 
@@ -478,7 +479,7 @@ of a complex type (e.g., @minimum :value 0).
 
 ### 5.6 Diagnostics and the Language Server
 
-The FormSpec language server does **not** become a second validation authority. Per A7, all user-facing validation and diagnostic emission is ESLint's responsibility. Editors surface FormSpec diagnostics through their ESLint language server integration (for example `vscode-eslint`), not through the FormSpec language server.
+The FormSpec language server does **not** become a second semantic authority. The canonical findings come from the shared analysis pipeline and, in editor contexts, from `@formspec/ts-plugin` reusing the host `Program`. ESLint remains the recommended validation surface, but the packaged language server may optionally publish those canonical plugin-derived findings as a reference implementation.
 
 The FormSpec LS responsibilities are strictly:
 
@@ -613,9 +614,7 @@ The SARIF output is emitted via `@formspec/eslint-plugin`'s formatter, which is 
 
 ### 6.4 LSP Diagnostic Integration
 
-FormSpec does not define a second diagnostics channel in the standalone language server. Per A7, IDE diagnostics come from ESLint integrations, not from `@formspec/language-server`.
-
-The lightweight LSP may still consume plugin-produced semantic findings as contextual data for hover/completion, but it does not surface those findings as authoritative `textDocument/publishDiagnostics` output.
+FormSpec does define an optional diagnostics channel in the standalone language server, but it is intentionally built on the same public helpers exposed to downstream consumers. By default the packaged LSP leaves diagnostics off and relies on ESLint integrations. When explicitly enabled, it converts canonical plugin-derived diagnostics into `textDocument/publishDiagnostics` output without becoming a separate validation engine.
 
 ---
 
@@ -625,17 +624,17 @@ The lightweight LSP may still consume plugin-produced semantic findings as conte
 
 Fixes are offered only when the intent is unambiguous and the transformation is purely mechanical (D5). The guiding question is: "Is there exactly one reasonable thing the author should do here?"
 
-| Scenario                                                              | Fix offered?                     | Rationale                                        |
-| --------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------ |
-| Unknown tag with close match (edit distance ≤ 2)                      | Yes — rename to the matched tag  | Only one plausible intent                        |
-| Disabled tag present                                                  | Yes — remove the tag             | Only one valid action: remove it                 |
-| Float passed to integer-only tag (e.g., `@minLength 1.0`)             | Yes — truncate to `1`            | Clearly a formatting mistake                     |
-| Duplicate tag (`DUPLICATE_TAG`) — second instance wins                | Yes — remove first               | Composition rule is clear (C1)                   |
-| `@description` tag present (`UNSUPPORTED_DESCRIPTION_TAG`)             | Yes — move to summary position   | `@description` is not a standard TSDoc tag       |
-| Unknown path-target with close match (≤ 2 edits)                      | Yes — rename to matched property | Only one plausible property                      |
-| Constraint contradiction (`CONSTRAINT_CONTRADICTION`)                 | No                               | The author must decide which constraint is wrong |
-| Tag applied to wrong type (`TYPE_MISMATCH`)                           | No                               | The author must change the field type or the tag |
-| Missing required argument (`MISSING_TAG_ARGUMENT`)                    | No                               | The intent (which value?) is unknown             |
+| Scenario                                                   | Fix offered?                     | Rationale                                        |
+| ---------------------------------------------------------- | -------------------------------- | ------------------------------------------------ |
+| Unknown tag with close match (edit distance ≤ 2)           | Yes — rename to the matched tag  | Only one plausible intent                        |
+| Disabled tag present                                       | Yes — remove the tag             | Only one valid action: remove it                 |
+| Float passed to integer-only tag (e.g., `@minLength 1.0`)  | Yes — truncate to `1`            | Clearly a formatting mistake                     |
+| Duplicate tag (`DUPLICATE_TAG`) — second instance wins     | Yes — remove first               | Composition rule is clear (C1)                   |
+| `@description` tag present (`UNSUPPORTED_DESCRIPTION_TAG`) | Yes — move to summary position   | `@description` is not a standard TSDoc tag       |
+| Unknown path-target with close match (≤ 2 edits)           | Yes — rename to matched property | Only one plausible property                      |
+| Constraint contradiction (`CONSTRAINT_CONTRADICTION`)      | No                               | The author must decide which constraint is wrong |
+| Tag applied to wrong type (`TYPE_MISMATCH`)                | No                               | The author must change the field type or the tag |
+| Missing required argument (`MISSING_TAG_ARGUMENT`)         | No                               | The intent (which value?) is unknown             |
 
 ### 7.2 ESLint Fixer
 
@@ -674,7 +673,7 @@ The standalone FormSpec language server does not implement a separate `source.fi
 
 ### 8.1 Diagnostic Branding (PP10)
 
-Diagnostic branding is configurable in `.formspec.yml`, but it does not change the canonical machine-readable `code`. It affects displayed message wrappers, help links, and organization-specific presentation.
+Diagnostic branding is owned by the consumer. FormSpec keeps the canonical machine-readable `code`, structured `category`, and raw `data` stable; downstream tools may add their own source labels, help links, and organization-specific presentation on top.
 
 ### 8.2 Per-Rule Severity Overrides (PP9)
 
@@ -702,26 +701,9 @@ export default [
 ];
 ```
 
-### 8.3 Message Templates (PP11)
+### 8.3 Presentation Ownership (PP11)
 
-Diagnostic message templates are overridable in `.formspec.yml`. Templates use `{placeholder}` syntax. Available placeholders for each code are part of the public API (documented alongside each code in 002 §6).
-
-```yaml
-# .formspec.yml
-diagnostics:
-  messages:
-    # Override the unknown-tag message to match internal documentation style
-    UNKNOWN_TAG: >
-      "@{tagName}" is not a recognized annotation in this project.
-      See go/formspec-tags for the complete tag reference.
-
-    # Override the contradiction message to reference internal runbooks
-    CONSTRAINT_CONTRADICTION: >
-      Constraint conflict: {details}.
-      To resolve, see go/formspec-constraint-conflicts.
-```
-
-Template overrides apply to both ESLint rule reports and language server hover/diagnostic display. The same message the author sees in their editor is the same message CI reports — PP11's "consumer-controlled messaging" applies uniformly across all delivery surfaces.
+This phase does not add project-level message-template configuration. Instead, FormSpec ships a default human-readable `message` for convenience while treating `code` + structured `data` as the stable customization surface. Downstream tools that want full white-label messaging can ignore the default `message` and render their own wording from those canonical facts.
 
 ### 8.4 Disabled Tags (PP9)
 

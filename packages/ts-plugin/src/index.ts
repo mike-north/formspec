@@ -1,5 +1,29 @@
 import type * as tsServer from "typescript/lib/tsserverlibrary.js";
+export {
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  type FormSpecAnalysisDiagnostic,
+  type FormSpecAnalysisManifest,
+  type FormSpecAnalysisFileSnapshot,
+  type FormSpecSemanticQuery,
+  type FormSpecSemanticResponse,
+  type FormSpecSerializedCompletionContext,
+  type FormSpecSerializedHoverInfo,
+} from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
+export {
+  createLanguageServiceProxy,
+  FormSpecPluginService,
+  type FormSpecPluginServiceOptions,
+  type LoggerLike,
+} from "./service.js";
+export {
+  FormSpecSemanticService,
+  type FormSpecSemanticCompletionResult,
+  type FormSpecSemanticDiagnosticsResult,
+  type FormSpecSemanticHoverResult,
+  type FormSpecSemanticServiceOptions,
+  type FormSpecSemanticServiceStats,
+} from "./semantic-service.js";
 
 interface ServiceEntry {
   readonly service: FormSpecPluginService;
@@ -107,7 +131,7 @@ export function init(modules: {
   return {
     create(info) {
       const service = getOrCreateService(info, typescriptVersion);
-      return createLanguageServiceProxy(info.languageService, service);
+      return createLanguageServiceProxy(info.languageService, service.getSemanticService());
     },
   };
 }

@@ -4,12 +4,278 @@
 
 ```ts
 
+import type { PathTarget } from '@formspec/core';
+import * as ts from 'typescript';
 import type * as tsServer from 'typescript/lib/tsserverlibrary.js';
+
+// @public
+export function createLanguageServiceProxy(languageService: ts.LanguageService, semanticService: FormSpecSemanticService): ts.LanguageService;
+
+// @public (undocumented)
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
+
+// @public
+export interface FormSpecAnalysisDiagnostic {
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticCategory" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly category: FormSpecAnalysisDiagnosticCategory;
+    // (undocumented)
+    readonly code: string;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticDataValue" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
+    // (undocumented)
+    readonly message: string;
+    // Warning: (ae-forgotten-export) The symbol "CommentSpan" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly range: CommentSpan;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticLocation" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
+    // (undocumented)
+    readonly severity: "error" | "warning" | "info";
+}
+
+// @public
+export interface FormSpecAnalysisFileSnapshot {
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisCommentSnapshot" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly comments: readonly FormSpecAnalysisCommentSnapshot[];
+    // (undocumented)
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+    // (undocumented)
+    readonly filePath: string;
+    // (undocumented)
+    readonly generatedAt: string;
+    // (undocumented)
+    readonly sourceHash: string;
+}
+
+// @public
+export interface FormSpecAnalysisManifest {
+    // Warning: (ae-forgotten-export) The symbol "FORMSPEC_ANALYSIS_SCHEMA_VERSION" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecIpcEndpoint" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly endpoint: FormSpecIpcEndpoint;
+    // (undocumented)
+    readonly extensionFingerprint: string;
+    // (undocumented)
+    readonly generation: number;
+    // (undocumented)
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    // (undocumented)
+    readonly typescriptVersion: string;
+    // (undocumented)
+    readonly updatedAt: string;
+    // (undocumented)
+    readonly workspaceId: string;
+    // (undocumented)
+    readonly workspaceRoot: string;
+}
+
+// @public
+export class FormSpecPluginService {
+    constructor(options: FormSpecPluginServiceOptions);
+    // (undocumented)
+    getManifest(): FormSpecAnalysisManifest;
+    getSemanticService(): FormSpecSemanticService;
+    // (undocumented)
+    handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse;
+    // (undocumented)
+    scheduleSnapshotRefresh(filePath: string): void;
+    // (undocumented)
+    start(): Promise<void>;
+    // (undocumented)
+    stop(): Promise<void>;
+}
+
+// @public
+export type FormSpecPluginServiceOptions = FormSpecSemanticServiceOptions;
+
+// @public (undocumented)
+export interface FormSpecSemanticCompletionResult {
+    // (undocumented)
+    readonly context: FormSpecSerializedCompletionContext;
+    // (undocumented)
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    // (undocumented)
+    readonly sourceHash: string;
+}
+
+// @public (undocumented)
+export interface FormSpecSemanticDiagnosticsResult {
+    // (undocumented)
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+    // (undocumented)
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    // (undocumented)
+    readonly sourceHash: string;
+}
+
+// @public (undocumented)
+export interface FormSpecSemanticHoverResult {
+    // (undocumented)
+    readonly hover: FormSpecSerializedHoverInfo | null;
+    // (undocumented)
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    // (undocumented)
+    readonly sourceHash: string;
+}
+
+// @public
+export type FormSpecSemanticQuery = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly filePath: string;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly filePath: string;
+};
+
+// @public
+export type FormSpecSemanticResponse = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+    readonly manifest: FormSpecAnalysisManifest;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly sourceHash: string;
+    readonly context: FormSpecSerializedCompletionContext;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly sourceHash: string;
+    readonly hover: FormSpecSerializedHoverInfo | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly sourceHash: string;
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "error";
+    readonly error: string;
+};
+
+// @public
+export class FormSpecSemanticService {
+    constructor(options: FormSpecSemanticServiceOptions);
+    dispose(): void;
+    getCompletionContext(filePath: string, offset: number): FormSpecSemanticCompletionResult | null;
+    getDiagnostics(filePath: string): FormSpecSemanticDiagnosticsResult;
+    getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot;
+    getHover(filePath: string, offset: number): FormSpecSemanticHoverResult | null;
+    getStats(): FormSpecSemanticServiceStats;
+    scheduleSnapshotRefresh(filePath: string): void;
+}
+
+// @public (undocumented)
+export interface FormSpecSemanticServiceOptions {
+    readonly enablePerformanceLogging?: boolean;
+    readonly getProgram: () => ts.Program | undefined;
+    readonly logger?: LoggerLike;
+    readonly now?: () => Date;
+    readonly performanceLogThresholdMs?: number;
+    readonly snapshotDebounceMs?: number;
+    readonly typescriptVersion: string;
+    readonly workspaceRoot: string;
+}
+
+// @public (undocumented)
+export interface FormSpecSemanticServiceStats {
+    readonly fileSnapshotCacheHits: number;
+    readonly fileSnapshotCacheMisses: number;
+    readonly queryPathTotals: {
+        readonly diagnostics: {
+            readonly cold: number;
+            readonly warm: number;
+        };
+        readonly fileSnapshot: {
+            readonly cold: number;
+            readonly warm: number;
+        };
+    };
+    readonly queryTotals: {
+        readonly completion: number;
+        readonly hover: number;
+        readonly diagnostics: number;
+        readonly fileSnapshot: number;
+    };
+    readonly syntheticBatchCacheHits: number;
+    readonly syntheticBatchCacheMisses: number;
+    readonly syntheticCompileApplications: number;
+    readonly syntheticCompileCount: number;
+}
+
+// @public
+export type FormSpecSerializedCompletionContext = {
+    readonly kind: "tag-name";
+    readonly prefix: string;
+    readonly availableTags: readonly FormSpecSerializedTagDefinition[];
+} | {
+    readonly kind: "target";
+    readonly semantic: FormSpecSerializedTagSemanticContext;
+} | {
+    readonly kind: "argument";
+    readonly semantic: FormSpecSerializedTagSemanticContext;
+    readonly valueLabels: readonly string[];
+} | {
+    readonly kind: "none";
+};
+
+// @public
+export interface FormSpecSerializedHoverInfo {
+    // Warning: (ae-forgotten-export) The symbol "CommentHoverInfo" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly kind: CommentHoverInfo["kind"];
+    // (undocumented)
+    readonly markdown: string;
+}
 
 // @public
 export function init(modules: {
     readonly typescript: typeof tsServer;
 }): tsServer.server.PluginModule;
+
+// @public (undocumented)
+export interface LoggerLike {
+    // (undocumented)
+    info(message: string): void;
+}
+
+// Warnings were encountered during analysis:
+//
+// /Users/mnorth/Development/formspec/packages/analysis/src/semantic-protocol.ts:116:7 - (ae-forgotten-export) The symbol "FormSpecSerializedTagDefinition" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/analysis/src/semantic-protocol.ts:120:7 - (ae-forgotten-export) The symbol "FormSpecSerializedTagSemanticContext" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

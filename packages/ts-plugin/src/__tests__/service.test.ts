@@ -5,6 +5,7 @@ import * as ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "../service.js";
+import type { FormSpecSemanticService } from "../semantic-service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";
 import {
   createProgramContext,
@@ -152,7 +153,7 @@ describe("FormSpecPluginService", () => {
 
     const runtimePaths = getFormSpecWorkspaceRuntimePaths(context.workspaceRoot);
     const manifestText = await fs.readFile(runtimePaths.manifestPath, "utf8");
-    expect(manifestText).toContain('"protocolVersion": 1');
+    expect(manifestText).toContain(`"protocolVersion": ${String(FORMSPEC_ANALYSIS_PROTOCOL_VERSION)}`);
 
     const response = await querySocket(runtimePaths.endpoint.address, {
       protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
@@ -280,7 +281,8 @@ describe("FormSpecPluginService", () => {
     const loggedOutput = logger.info.mock.calls.map(([message]) => String(message)).join("\n");
     expect(loggedOutput).toContain("[FormSpec][perf]");
     expect(loggedOutput).toMatch(/\d+\.\d+ms plugin\.handleQuery/);
-    expect(loggedOutput).toContain("plugin.getFileSnapshot");
+    expect(loggedOutput).toContain("semantic.getDiagnostics");
+    expect(loggedOutput).toContain("semantic.getFileSnapshot.result");
     expect(loggedOutput).toContain("analysis.buildFileSnapshot");
     expect(loggedOutput).toContain("analysis.syntheticCheckBatch.createProgram");
     expect(loggedOutput).toContain("analysis.syntheticCheckBatch.getPreEmitDiagnostics");
@@ -398,7 +400,7 @@ describe("createLanguageServiceProxy", () => {
       } as unknown as ts.LanguageService,
       {
         scheduleSnapshotRefresh,
-      } as unknown as FormSpecPluginService
+      } as unknown as FormSpecSemanticService
     );
 
     expect(proxy.getSemanticDiagnostics("example.ts")).toEqual(["diag"]);
@@ -420,7 +422,7 @@ describe("createLanguageServiceProxy", () => {
     const { fileName, service } = createLanguageService("const value = 1;\nvalue;\n");
     const proxy = createLanguageServiceProxy(service, {
       scheduleSnapshotRefresh,
-    } as unknown as FormSpecPluginService);
+    } as unknown as FormSpecSemanticService);
 
     expect(proxy.getSemanticDiagnostics(fileName)).toEqual([]);
     expect(proxy.getQuickInfoAtPosition(fileName, 19)).not.toBeNull();

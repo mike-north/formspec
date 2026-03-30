@@ -27,10 +27,10 @@ formspec (umbrella — re-exports everything)
 
 @formspec/validator        (JSON Schema validator — @cfworker/json-schema)
 
-@formspec/ts-plugin        (TypeScript language service plugin — semantic authority inside tsserver)
+@formspec/ts-plugin        (TypeScript plugin + composable semantic service — reference implementation inside tsserver)
 └── @formspec/analysis
 
-@formspec/language-server  (LSP presentation layer — consumes plugin transport)
+@formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers)
 ├── @formspec/analysis
 └── @formspec/core
 
@@ -219,9 +219,13 @@ constraints:
 
 FormSpec editor tooling uses a hybrid split:
 
-- `@formspec/analysis` owns shared comment parsing, semantic modeling, and transport-safe snapshot/protocol types.
-- `@formspec/ts-plugin` runs inside `tsserver`, reuses the host `Program`/`TypeChecker`, and serves semantic comment data over a local manifest + IPC channel.
-- `@formspec/language-server` stays cheap locally for syntax-aware behavior, then upgrades hover/completion responses with plugin-provided semantic data when available.
+- `@formspec/analysis` owns shared comment parsing, semantic modeling, caching primitives, and transport-safe snapshot/protocol types.
+- `@formspec/ts-plugin` owns the reusable semantic service that works directly against a host `Program`/`TypeChecker`. Its shipped tsserver plugin and IPC server are reference implementations built on that same public service.
+- `@formspec/language-server` exports composable completion, hover, and diagnostics helpers. Its packaged LSP is a thin reference implementation that wires those helpers together.
+
+This is intentionally white-labelable: downstream tools can reuse the same
+TypeScript `Program`, call `FormSpecSemanticService` directly, and decide for
+themselves how diagnostics are surfaced.
 
 ## Entry Points
 
