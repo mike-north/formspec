@@ -1,5 +1,18 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.21
+
+### Patch Changes
+
+- Updated dependencies [[`fafddcf`](https://github.com/mike-north/formspec/commit/fafddcf6fe8ef99263016390c92cad23f3bbef4c)]:
+  - @formspec/core@0.1.0-alpha.21
+  - @formspec/build@0.1.0-alpha.21
+  - @formspec/analysis@0.1.0-alpha.21
+  - @formspec/cli@0.1.0-alpha.21
+  - @formspec/dsl@0.1.0-alpha.21
+  - @formspec/language-server@0.1.0-alpha.21
+  - @formspec/ts-plugin@0.1.0-alpha.21
+
 ## 0.1.0-alpha.20
 
 ### Patch Changes

@@ -33,6 +33,7 @@
     "constraint-broadening-diagnostics",
     "constraint-literal-emission-round2",
     "constraints-fixes",
+    "description-precedence-remarks",
     "dx-evaluation-round2",
     "dx-improvements",
     "enum-object-options",
