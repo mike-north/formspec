@@ -15,8 +15,9 @@ import {
   getPluginHoverForDocument,
 } from "../../packages/language-server/src/plugin-client.js";
 import { FormSpecPluginService } from "../../packages/ts-plugin/src/service.js";
-import { FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS } from "../../packages/ts-plugin/src/__tests__/helpers.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../../packages/ts-plugin/src/workspace.js";
+
+const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 1_000;
 
 interface ProgramContext {
   readonly workspaceRoot: string;

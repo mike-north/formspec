@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import net from "node:net";
+import path from "node:path";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
@@ -333,7 +334,7 @@ describe("FormSpecPluginService", () => {
   it("returns missing-source snapshots when the file is not in the current program", async () => {
     const context = await createProgramContext("class Foo {}");
     workspaces.push(context.workspaceRoot);
-    const missingFilePath = `${context.workspaceRoot}/missing.ts`;
+    const missingFilePath = path.join(context.workspaceRoot, "missing.ts");
     const service = new FormSpecPluginService({
       workspaceRoot: context.workspaceRoot,
       typescriptVersion: ts.version,
