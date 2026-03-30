@@ -179,7 +179,6 @@ class StatsOnlyPerformanceRecorder implements FormSpecPerformanceRecorder {
     }
   }
 }
-
 /**
  * Reusable in-process semantic service for FormSpec authoring features.
  *
