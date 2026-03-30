@@ -39,6 +39,7 @@ import type {
   AnnotationNode,
   DisplayNameAnnotationNode,
   DescriptionAnnotationNode,
+  RemarksAnnotationNode,
   FormatAnnotationNode,
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
@@ -162,11 +163,13 @@ export type ProvenanceFreeDefaultValueAnnotationNode = Omit<
 >;
 export type ProvenanceFreeDeprecatedAnnotationNode = Omit<DeprecatedAnnotationNode, "provenance">;
 export type ProvenanceFreeFormatHintAnnotationNode = Omit<FormatHintAnnotationNode, "provenance">;
+export type ProvenanceFreeRemarksAnnotationNode = Omit<RemarksAnnotationNode, "provenance">;
 export type ProvenanceFreeCustomAnnotationNode = Omit<CustomAnnotationNode, "provenance">;
 
 export type ProvenanceFreeAnnotationNode =
   | ProvenanceFreeDisplayNameAnnotationNode
   | ProvenanceFreeDescriptionAnnotationNode
+  | ProvenanceFreeRemarksAnnotationNode
   | ProvenanceFreeFormatAnnotationNode
   | ProvenanceFreePlaceholderAnnotationNode
   | ProvenanceFreeDefaultValueAnnotationNode
