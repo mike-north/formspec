@@ -44,8 +44,9 @@ describe("parseCommentBlock", () => {
   it("parses multi-line doc comments with leading stars and preserves dotted targets", () => {
     const comment = [
       "/**",
+      " * Human readable amount",
       " * @minimum :amount.currency 0",
-      " * @description Human readable amount",
+      " * @maximum 100",
       " */",
     ].join("\n");
     const parsed = parseCommentBlock(comment);
@@ -56,9 +57,9 @@ describe("parseCommentBlock", () => {
     expect(parsed.tags).toHaveLength(2);
     expect(firstTag.target?.path).toEqual({ segments: ["amount", "currency"] });
     expect(firstTag.argumentText).toBe("0");
-    expect(secondTag.argumentText).toBe("Human readable amount");
+    expect(secondTag.argumentText).toBe("100");
     expect(sliceCommentSpan(comment, firstTag.tagNameSpan)).toBe("@minimum");
-    expect(sliceCommentSpan(comment, secondArgumentSpan)).toBe("Human readable amount");
+    expect(sliceCommentSpan(comment, secondArgumentSpan)).toBe("100");
   });
 
   it("does not split a single tag when the argument contains @", () => {

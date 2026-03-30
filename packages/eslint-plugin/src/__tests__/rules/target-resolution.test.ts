@@ -111,7 +111,7 @@ ruleTester.run("no-unsupported-targeting", noUnsupportedTargeting, {
     {
       code: `
         class Form {
-          /** @description :value Text */
+          /** @remarks :value Text */
           name!: string;
         }
       `,

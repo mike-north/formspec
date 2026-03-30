@@ -50,18 +50,17 @@ export class SurveyForm {
  * Summary text becomes the root schema description when no explicit tag is present.
  */
 export class DescriptionPrecedenceForm {
-  /**
-   * Summary that should be ignored.
-   * @remarks Ignored remarks.
-   * @description Explicit description wins.
-   */
-  explicit!: string;
-
-  /** @remarks Remarks become description when no explicit description is present. */
-  remarks!: string;
-
-  /** Summary text becomes the description when there are no explicit tags. */
+  /** Summary text becomes the description. */
   summary!: string;
+
+  /**
+   * Summary populates description; remarks go to x-formspec-remarks.
+   * @remarks Additional context for tooling.
+   */
+  summaryAndRemarks!: string;
+
+  /** @remarks Remarks go to x-formspec-remarks, not description. */
+  remarksOnly!: string;
 }
 
 export class PriceRange {

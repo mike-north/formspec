@@ -14,16 +14,16 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@displayName`, `@description`, `@format`, `@placeholder`):
+ * 2. **Annotation tags** (`@displayName`, `@format`, `@placeholder`):
  *    These are parsed as structured custom block tags and mapped directly
  *    onto annotation IR nodes.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
- * Description precedence is:
- * 1. Explicit `@description`
- * 2. Explicit `@remarks`
- * 3. Implicit summary text (free text in the comment block)
+ * Description and remarks extraction (spec 002 §2.3):
+ * - Summary text (bare text before the first block tag) → `description` annotation
+ * - `@remarks` block → `remarks` annotation (separate channel)
+ * - `@description` is NOT supported (not a standard TSDoc tag)
  *
  * **Fallback strategy**: TSDoc treats `{` / `}` as inline tag delimiters and
  * `@` as a tag prefix, so content containing these characters (e.g. JSON
@@ -110,7 +110,7 @@ function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): T
   }
 
   // Register annotation tags that participate in the canonical IR.
-  for (const tagName of ["displayName", "description", "format", "placeholder"]) {
+  for (const tagName of ["displayName", "format", "placeholder"]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -622,7 +622,8 @@ function getParseCacheKey(
  *
  * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
  * the structured TSDoc parser is used. Canonical annotation tags
- * (`@displayName`, `@description`) are also parsed structurally.
+ * (`@displayName`) are also parsed structurally. Summary text and `@remarks`
+ * are extracted as separate annotation nodes.
  *
  * @param node - The TS AST node to inspect (PropertyDeclaration, PropertySignature, etc.)
  * @param file - Absolute source file path for provenance
@@ -643,10 +644,8 @@ export function parseTSDocTags(
   const annotations: AnnotationNode[] = [];
   const diagnostics: ConstraintSemanticDiagnostic[] = [];
   let displayName: string | undefined;
-  let description: string | undefined;
   let placeholder: string | undefined;
   let displayNameProvenance: Provenance | undefined;
-  let descriptionProvenance: Provenance | undefined;
   let placeholderProvenance: Provenance | undefined;
   const rawTextTags: {
     readonly tag: ParsedCommentTag;
@@ -708,7 +707,6 @@ export function parseTSDocTags(
         const parsedTag = nextParsedTag(tagName);
         if (
           tagName === "displayName" ||
-          tagName === "description" ||
           tagName === "format" ||
           tagName === "placeholder"
         ) {
@@ -734,11 +732,6 @@ export function parseTSDocTags(
                 value: text,
                 provenance,
               });
-              break;
-
-            case "description":
-              description = text;
-              descriptionProvenance = provenance;
               break;
 
             case "placeholder":
@@ -798,19 +791,29 @@ export function parseTSDocTags(
         });
       }
 
-      if (description === undefined && docComment.remarksBlock !== undefined) {
-        const remarks = extractBlockText(docComment.remarksBlock).trim();
-        if (remarks !== "") {
-          description = remarks;
-          descriptionProvenance = provenanceForComment(range, sourceFile, file, "remarks");
+      // Summary text → description annotation (spec 002 §2.3)
+      {
+        const summary = extractPlainText(docComment.summarySection).trim();
+        if (summary !== "") {
+          annotations.push({
+            kind: "annotation",
+            annotationKind: "description",
+            value: summary,
+            provenance: provenanceForComment(range, sourceFile, file, "summary"),
+          });
         }
       }
 
-      if (description === undefined) {
-        const summary = extractPlainText(docComment.summarySection).trim();
-        if (summary !== "") {
-          description = summary;
-          descriptionProvenance = provenanceForComment(range, sourceFile, file, "summary");
+      // @remarks → separate remarks annotation (spec 002 §2.3)
+      if (docComment.remarksBlock !== undefined) {
+        const remarksText = extractBlockText(docComment.remarksBlock).trim();
+        if (remarksText !== "") {
+          annotations.push({
+            kind: "annotation",
+            annotationKind: "remarks",
+            value: remarksText,
+            provenance: provenanceForComment(range, sourceFile, file, "remarks"),
+          });
         }
       }
     }
@@ -822,15 +825,6 @@ export function parseTSDocTags(
       annotationKind: "displayName",
       value: displayName,
       provenance: displayNameProvenance,
-    });
-  }
-
-  if (description !== undefined && descriptionProvenance !== undefined) {
-    annotations.push({
-      kind: "annotation",
-      annotationKind: "description",
-      value: description,
-      provenance: descriptionProvenance,
     });
   }
 

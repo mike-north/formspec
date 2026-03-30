@@ -67,7 +67,7 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 | Heterogeneous union `A \| B`             | `{ "oneOf": [<A schema>, <B schema>] }`         |
 | Boolean shorthand (`true \| false`)      | `{ "type": "boolean" }` (not `oneOf`)           |
 
-**Note on `enum` vs `oneOf[const]`:** When enum members carry per-member metadata (via member-level `@displayName` or `@description`), the generator uses `oneOf` with per-member `const`/`title`/`description` instead of the flat `enum` keyword. This preserves the member metadata in a way that is standard-compliant and usable by form renderers:
+**Note on `enum` vs `oneOf[const]`:** When enum members carry per-member metadata (via member-level `@displayName`), the generator uses `oneOf` with per-member `const`/`title` instead of the flat `enum` keyword. This preserves the member metadata in a way that is standard-compliant and usable by form renderers:
 
 ```json
 {
@@ -141,7 +141,8 @@ FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-reg
 | IR annotation            | JSON Schema annotation key                                                                 |
 | ------------------------ | ------------------------------------------------------------------------------------------ |
 | `DisplayNameAnnotation`  | `"title"`                                                                                  |
-| `DescriptionAnnotation`  | `"description"`                                                                            |
+| `DescriptionAnnotation`  | `"description"` — populated from TSDoc summary text (bare text before first block tag)     |
+| `RemarksAnnotation`      | `"x-<vendor>-remarks"` — programmatic-persona documentation from `@remarks`                |
 | `DefaultValueAnnotation` | `"default"`                                                                                |
 | `ExampleAnnotation[]`    | `"examples"` (array)                                                                       |
 | `DeprecatedAnnotation`   | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
@@ -240,6 +241,23 @@ Example:
 }
 ```
 
+#### `x-<vendor>-remarks`
+
+**Type:** string
+**Applies to:** Any schema that also carries a `"description"` or could benefit from supplementary documentation
+**Semantics:** Carries the programmatic-persona documentation from `@remarks`. SDK generators can include this in doc comments alongside the `description`. API Documenter renders the source `@remarks` natively in a dedicated Remarks section; this keyword ensures the same content is available to consumers of the JSON Schema (e.g., OpenAPI codegen).
+**Validation behavior:** Annotation-only.
+
+Example:
+
+```json
+{
+  "type": "string",
+  "description": "The customer's primary email address.",
+  "x-formspec-remarks": "Must conform to RFC 5322. Used for transactional notifications including password resets and billing updates."
+}
+```
+
 ### 3.3 Extension-Defined Vocabulary Keywords (e.g., Decimal Precision)
 
 FormSpec does not ship built-in decimal or precision vocabulary keywords. Instead, the `@maxSigFig` tag and its corresponding JSON Schema keyword are designed to be introduced by downstream consumers via the extension API (E1, E5). This is an intentional extensibility pressure test — a consumer defining a decimal type must be able to:
@@ -296,6 +314,7 @@ FormSpec custom annotation keywords:
 - `x-<vendor>-option-source-params`
 - `x-<vendor>-schema-source`
 - `x-<vendor>-deprecation-description`
+- `x-<vendor>-remarks`
 - Extension-specific keywords (unless the extension registers a validator)
 
 The first three may be absent from purely TSDoc-authored forms because their built-in authoring surface is ChainDSL or mixed-authoring composition rather than TSDoc comments.

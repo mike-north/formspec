@@ -7,21 +7,21 @@ const createRule = ESLintUtils.RuleCreator(
 );
 
 /**
- * ESLint rule that reports conflicting `@description` and `@remarks` usage.
+ * ESLint rule that bans `@description` usage entirely.
  *
  * @public
  */
-export const noDescriptionConflict = createRule<[], "descriptionRemarksConflict">({
-  name: "constraint-validation/no-description-conflict",
+export const noDescriptionTag = createRule<[], "descriptionTagForbidden">({
+  name: "constraint-validation/no-description-tag",
   meta: {
     type: "problem",
     docs: {
-      description: "Reports conflicting @description and @remarks tags on the same field",
+      description: 'Bans @description, which is not a standard TSDoc tag',
     },
     schema: [],
     messages: {
-      descriptionRemarksConflict:
-        'Both "@description" and "@remarks" are present. "@description" takes precedence.',
+      descriptionTagForbidden:
+        '"@description" is not a standard TSDoc tag and is not supported. Move the description text before the first tag as summary text.',
     },
   },
   defaultOptions: [],
@@ -29,11 +29,10 @@ export const noDescriptionConflict = createRule<[], "descriptionRemarksConflict"
     return createDeclarationVisitor((node) => {
       const tags = scanFormSpecTags(node, context.sourceCode);
       const description = tags.find((tag) => tag.normalizedName === "description");
-      const remarks = tags.find((tag) => tag.normalizedName === "remarks");
-      if (!description || !remarks) return;
+      if (!description) return;
       context.report({
-        loc: remarks.comment.loc,
-        messageId: "descriptionRemarksConflict",
+        loc: description.comment.loc,
+        messageId: "descriptionTagForbidden",
       });
     });
   },

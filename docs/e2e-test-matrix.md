@@ -30,7 +30,7 @@
 ### NOT yet covered (this matrix adds these)
 
 - `@displayName` (all variants: bare, `:singular`/`:plural`, `:member`, absence/inference)
-- `@description` / `@remarks` / summary-text description precedence
+- Summary text → `description`, `@remarks` → `x-<vendor>-remarks` precedence
 - `@placeholder`
 - `@deprecated` with message text
 - `@defaultValue` (all types)
@@ -146,29 +146,21 @@ export class UserProfileForm {
 ```typescript
 /**
  * Form for collecting user feedback.
- * @description Collect detailed feedback from users about their experience.
  */
 export class FeedbackForm {
-  /**
-   * @description The user's full name as it appears on their ID.
-   */
+  /** The user's full name as it appears on their ID. */
   name!: string;
 
   /**
+   * Free-form comments about the experience.
    * @remarks This field accepts markdown-formatted text.
    */
   comments!: string;
 
   /**
-   * @description Explicit description wins.
-   * @remarks This remarks should be ignored when description is present.
+   * @remarks Remarks only, no summary text.
    */
-  subject!: string;
-
-  /**
-   * Free text summary becomes the description when no explicit tags are present.
-   */
-  details!: string;
+  notes!: string;
 
   rating!: number;
 }
@@ -180,7 +172,7 @@ export class FeedbackForm {
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "description": "Collect detailed feedback from users about their experience.",
+  "description": "Form for collecting user feedback.",
   "properties": {
     "name": {
       "type": "string",
@@ -188,32 +180,28 @@ export class FeedbackForm {
     },
     "comments": {
       "type": "string",
-      "description": "This field accepts markdown-formatted text."
+      "description": "Free-form comments about the experience.",
+      "x-formspec-remarks": "This field accepts markdown-formatted text."
     },
-    "subject": {
+    "notes": {
       "type": "string",
-      "description": "Explicit description wins."
-    },
-    "details": {
-      "type": "string",
-      "description": "Free text summary becomes the description when no explicit tags are present."
+      "x-formspec-remarks": "Remarks only, no summary text."
     },
     "rating": {
       "type": "number"
     }
   },
-  "required": ["name", "comments", "subject", "details", "rating"]
+  "required": ["name", "comments", "notes", "rating"]
 }
 ```
 
 #### Test assertions (e2e/tests/annotations-description.test.ts)
 
-- [ ] Root schema has `"description"` from class-level `@description` (spec 002 §3.2)
-- [ ] `name` has `"description"` from field-level `@description` (spec 002 §3.2)
-- [ ] `comments` has `"description"` derived from `@remarks` fallback (spec 002 §2.3 — `@remarks` treated as `@description` when no explicit `@description`)
-- [ ] `subject` has `"description"` from `@description`, NOT from `@remarks` (spec 002 §2.3 — `@description` wins per C1 override)
-- [ ] `details` has `"description"` derived from free-text summary when neither `@description` nor `@remarks` is present (spec 002 §2.3 precedence chain)
-- [ ] `rating` has NO `description` — absence (spec 002 §2.2)
+- [ ] Root schema has `"description"` from class-level summary text (spec 002 §2.3)
+- [ ] `name` has `"description"` from field-level summary text (spec 002 §2.3)
+- [ ] `comments` has `"description"` from summary AND `"x-formspec-remarks"` from `@remarks` (spec 002 §2.3 — summary → description, remarks → extension keyword)
+- [ ] `notes` has NO `"description"` but has `"x-formspec-remarks"` (spec 002 §2.3 — `@remarks` alone does not populate `description`; `REMARKS_WITHOUT_SUMMARY` diagnostic emitted)
+- [ ] `rating` has NO `description` and NO `x-formspec-remarks` — absence (spec 002 §2.2)
 
 ---
 

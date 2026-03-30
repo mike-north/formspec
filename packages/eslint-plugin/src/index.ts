@@ -25,7 +25,7 @@ import {
   noMemberTargetOnObject,
   noContradictions,
   noDuplicateTags,
-  noDescriptionConflict,
+  noDescriptionTag,
   noContradictoryRules,
 } from "./rules/index.js";
 
@@ -53,7 +53,7 @@ export const rules = {
   "target-resolution/no-member-target-on-object": noMemberTargetOnObject,
   "constraint-validation/no-contradictions": noContradictions,
   "constraint-validation/no-duplicate-tags": noDuplicateTags,
-  "constraint-validation/no-description-conflict": noDescriptionConflict,
+  "constraint-validation/no-description-tag": noDescriptionTag,
   "constraint-validation/no-contradictory-rules": noContradictoryRules,
 
   // Constraint rules for Chain DSL
@@ -106,7 +106,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "@formspec/target-resolution/no-member-target-on-object": "error",
       "@formspec/constraint-validation/no-contradictions": "error",
       "@formspec/constraint-validation/no-duplicate-tags": "warn",
-      "@formspec/constraint-validation/no-description-conflict": "warn",
+      "@formspec/constraint-validation/no-description-tag": "error",
       "@formspec/constraint-validation/no-contradictory-rules": "error",
     },
   },
@@ -138,7 +138,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "@formspec/target-resolution/no-member-target-on-object": "error",
       "@formspec/constraint-validation/no-contradictions": "error",
       "@formspec/constraint-validation/no-duplicate-tags": "error",
-      "@formspec/constraint-validation/no-description-conflict": "error",
+      "@formspec/constraint-validation/no-description-tag": "error",
       "@formspec/constraint-validation/no-contradictory-rules": "error",
     },
   },
@@ -183,7 +183,7 @@ export {
   noMemberTargetOnObject,
   noContradictions,
   noDuplicateTags,
-  noDescriptionConflict,
+  noDescriptionTag,
   noContradictoryRules,
   // Constraint rules for Chain DSL
   allowedFieldTypes,

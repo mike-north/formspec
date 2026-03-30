@@ -69,6 +69,7 @@ export type {
   AnnotationNode,
   DisplayNameAnnotationNode,
   DescriptionAnnotationNode,
+  RemarksAnnotationNode,
   FormatAnnotationNode,
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,

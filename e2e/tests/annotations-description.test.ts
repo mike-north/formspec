@@ -1,7 +1,7 @@
 /**
- * @see 002-constraint-tags.md §3.2: "@description → description field on JSON Schema object"
- * @see 002-constraint-tags.md §2.3: "@remarks fallback when no @description present"
- * @see 002-constraint-tags.md §2.3 C1: "@description wins over @remarks when both present"
+ * @see 002-tsdoc-grammar.md §2.3: Summary text → JSON Schema "description"
+ * @see 002-tsdoc-grammar.md §2.3: @remarks → x-<vendor>-remarks extension keyword
+ * @see 003-json-schema-vocabulary.md §3.2: x-<vendor>-remarks annotation keyword
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
@@ -9,7 +9,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
-describe("Annotation: @description / @remarks", () => {
+describe("Annotation: summary text and @remarks", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
@@ -33,50 +33,49 @@ describe("Annotation: @description / @remarks", () => {
     }
   });
 
-  // @see 002-constraint-tags.md §3.2: "class-level @description → root schema description"
-  it("class-level @description produces root schema description", () => {
+  // @see 002-tsdoc-grammar.md §2.3: summary text → root JSON Schema description
+  it("class-level summary text produces root schema description", () => {
     expect(schema["description"]).toBe(
-      "Collect detailed feedback from users about their experience."
+      "Form for collecting user feedback."
     );
   });
 
-  // @see 002-constraint-tags.md §3.2: "@description → property description"
-  it("name: @description maps to property description", () => {
+  // @see 002-tsdoc-grammar.md §2.3: summary text → property description
+  it("name: summary text maps to property description", () => {
     expect(properties["name"]["description"]).toBe(
       "The user's full name as it appears on their ID."
     );
   });
 
-  // @see 002-constraint-tags.md §2.3: "@remarks fallback — treated as @description when no @description present"
-  it("comments: @remarks maps to description when no @description", () => {
+  // @see 002-tsdoc-grammar.md §2.3: summary → description, @remarks → x-formspec-remarks
+  it("comments: summary → description, @remarks → x-formspec-remarks", () => {
     expect(properties["comments"]["description"]).toBe(
+      "Free-form comments about the experience."
+    );
+    expect(properties["comments"]["x-formspec-remarks"]).toBe(
       "This field accepts markdown-formatted text."
     );
   });
 
-  // @see 002-constraint-tags.md §2.3 C1: "@description wins when both @description and @remarks present"
-  it("subject: @description wins over @remarks", () => {
-    expect(properties["subject"]["description"]).toBe("Explicit description wins.");
-    expect(properties["subject"]["description"]).not.toContain("remarks");
-  });
-
-  it("details: free text summary maps to description when no explicit tags are present", () => {
-    expect(properties["details"]["description"]).toBe(
-      "Free text summary becomes the description when no explicit tags are present."
+  // @see 002-tsdoc-grammar.md §2.3: @remarks alone does NOT populate description
+  it("notes: @remarks alone produces x-formspec-remarks but no description", () => {
+    expect(properties["notes"]["description"]).toBeUndefined();
+    expect(properties["notes"]["x-formspec-remarks"]).toBe(
+      "Remarks only, no summary text."
     );
   });
 
-  // @see 002-constraint-tags.md §2.2: "absence of annotation → keyword not emitted"
-  it("rating without @description has no description", () => {
+  // @see 002-tsdoc-grammar.md §2.2: absence of annotation → keyword not emitted
+  it("rating: no comment produces no description or remarks", () => {
     expect(properties["rating"]["description"]).toBeUndefined();
+    expect(properties["rating"]["x-formspec-remarks"]).toBeUndefined();
   });
 
   it("all four fields are required", () => {
     const required = schema["required"] as string[];
     expect(required).toContain("name");
     expect(required).toContain("comments");
-    expect(required).toContain("subject");
-    expect(required).toContain("details");
+    expect(required).toContain("notes");
     expect(required).toContain("rating");
   });
 });

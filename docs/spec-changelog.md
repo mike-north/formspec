@@ -137,6 +137,44 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - The matrix now distinguishes data-model conformance tests from dynamic-option tests and dynamic-schema resolver tests.
   - These are explicitly framed as user integration-confidence tests rather than parity tests.
 
+# 2026-03-29
+
+## 002-tsdoc-grammar
+
+- Removed `@description` tag from the DSL.
+  - Not a standard TSDoc tag (JSDoc only); required custom `tsdoc.json` registration to pass API Extractor.
+  - API Documenter silently drops it even when registered — invisible in generated docs.
+  - Summary text (bare text before the first block tag) now populates JSON Schema `description` directly.
+  - An `UNSUPPORTED_DESCRIPTION_TAG` diagnostic (error) is emitted when `@description` is used, with auto-fix to move content to summary position.
+  - Per-member `@description :member` syntax on string literal unions is deferred — no replacement in this revision.
+- Redefined `@remarks` role from `@description` fallback to a separate channel.
+  - `@remarks` no longer populates JSON Schema `description`. It populates `x-<vendor>-remarks` instead.
+  - SDK codegen can include `x-<vendor>-remarks` in doc comments; API Documenter renders source `@remarks` natively.
+  - A `REMARKS_WITHOUT_SUMMARY` diagnostic (info) is emitted when `@remarks` is present but no summary text exists.
+- Replaced `DESCRIPTION_REMARKS_CONFLICT` diagnostic with `REMARKS_WITHOUT_SUMMARY` and `UNSUPPORTED_DESCRIPTION_TAG`.
+- Updated `DescriptionAnnotation` source note: now populated from TSDoc summary text rather than `@description` tag.
+- Added `RemarksAnnotation` IR node mapping to `x-<vendor>-remarks`.
+
+## 003-json-schema-vocabulary
+
+- Added `x-<vendor>-remarks` custom annotation keyword (§3.2) for carrying `@remarks` content through JSON Schema.
+- Updated annotation mapping table (§2.8): `DescriptionAnnotation` source note updated, `RemarksAnnotation` → `"x-<vendor>-remarks"` added.
+- Removed `@description` from enum `oneOf[const]` note — per-member descriptions deferred.
+
+## 001-canonical-ir
+
+- Updated ecosystem tag alignment note: `description` now derives from TSDoc summary text, not `@description`/`@remarks`.
+
+## 004-tooling
+
+- Replaced `DESCRIPTION_REMARKS_CONFLICT` check with `REMARKS_WITHOUT_SUMMARY` and `UNSUPPORTED_DESCRIPTION_TAG` checks.
+- Updated auto-fix table: `@description` auto-fix moves content to summary position.
+
+## e2e-test-matrix
+
+- Rewrote `annotations-description` fixture to use summary text instead of `@description`.
+- Updated test assertions: summary → `description`, `@remarks` → `x-<vendor>-remarks`, no `@description` fallback.
+
 # 2026-03-26
 
 ## 001-canonical-ir

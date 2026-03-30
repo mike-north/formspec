@@ -1,28 +1,20 @@
 /**
  * Form for collecting user feedback.
- * @description Collect detailed feedback from users about their experience.
  */
 export class FeedbackForm {
-  /**
-   * @description The user's full name as it appears on their ID.
-   */
+  /** The user's full name as it appears on their ID. */
   name!: string;
 
   /**
+   * Free-form comments about the experience.
    * @remarks This field accepts markdown-formatted text.
    */
   comments!: string;
 
   /**
-   * @description Explicit description wins.
-   * @remarks This remarks should be ignored when description is present.
+   * @remarks Remarks only, no summary text.
    */
-  subject!: string;
-
-  /**
-   * Free text summary becomes the description when no explicit tags are present.
-   */
-  details!: string;
+  notes!: string;
 
   rating!: number;
 }

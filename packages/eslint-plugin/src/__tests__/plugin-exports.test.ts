@@ -18,7 +18,7 @@ describe("@formspec/eslint-plugin exports", () => {
     expect(Object.keys(rules)).toEqual(
       expect.arrayContaining([
         "tag-recognition/no-unknown-tags",
-        "constraint-validation/no-description-conflict",
+        "constraint-validation/no-description-tag",
         "constraints-allowed-field-types",
       ])
     );

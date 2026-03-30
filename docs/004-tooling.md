@@ -114,8 +114,9 @@ This phase validates constraint composition across the resolved IR nodes:
    - Array length: `@minItems` > `@maxItems`
    - Rule effects: `@showWhen` + `@hideWhen` on same field; `@enableWhen` + `@disableWhen`
 3. Checks for duplicate tags where only one instance is meaningful (producing `DUPLICATE_TAG`)
-4. Checks for annotation conflicts (producing `DESCRIPTION_REMARKS_CONFLICT` for `@description` + `@remarks`)
-5. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
+4. Checks for missing summary text when `@remarks` is present (producing `REMARKS_WITHOUT_SUMMARY`)
+5. Checks for unsupported `@description` tag usage (producing `UNSUPPORTED_DESCRIPTION_TAG`)
+6. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
 
 Extension-registered constraints participate in contradiction detection by declaring their contradiction predicate (see §4.2).
 
@@ -630,7 +631,7 @@ Fixes are offered only when the intent is unambiguous and the transformation is 
 | Disabled tag present                                                  | Yes — remove the tag             | Only one valid action: remove it                 |
 | Float passed to integer-only tag (e.g., `@minLength 1.0`)             | Yes — truncate to `1`            | Clearly a formatting mistake                     |
 | Duplicate tag (`DUPLICATE_TAG`) — second instance wins                | Yes — remove first               | Composition rule is clear (C1)                   |
-| `@description` + `@remarks` conflict (`DESCRIPTION_REMARKS_CONFLICT`) | Yes — remove `@remarks`          | `@description` always wins per C1                |
+| `@description` tag present (`UNSUPPORTED_DESCRIPTION_TAG`)             | Yes — move to summary position   | `@description` is not a standard TSDoc tag       |
 | Unknown path-target with close match (≤ 2 edits)                      | Yes — rename to matched property | Only one plausible property                      |
 | Constraint contradiction (`CONSTRAINT_CONTRADICTION`)                 | No                               | The author must decide which constraint is wrong |
 | Tag applied to wrong type (`TYPE_MISMATCH`)                           | No                               | The author must change the field type or the tag |
