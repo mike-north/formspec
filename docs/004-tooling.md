@@ -45,6 +45,10 @@ Both ESLint and interactive editor tooling need the same core analysis: parse TS
 - `@formspec/language-server` for LSP presentation features such as semantic hover, completions, and optional diagnostics publishing
 - downstream TypeScript hosts that want to reuse the same `Program` and surface diagnostics their own way
 
+The packaged FormSpec `tsserver` plugin and lightweight language server are
+reference implementations over those shared APIs, not the only supported
+integration path.
+
 ### 2.1 Pipeline Position
 
 The shared pipeline sits between the TypeScript AST and the consumers (ESLint rules, language server request handlers). It is not the same as the build-time pipeline described in 001 — this is an incremental, source-level analysis suitable for IDE and lint contexts, where full program builds are impractical for every keystroke.
@@ -103,6 +107,22 @@ This phase links each parsed tag to the TypeScript type it applies to:
 4. Produces `UNSUPPORTED_TARGETING_SYNTAX` / `MEMBER_TARGET_ON_NON_UNION` for modifiers used on tags that do not accept them, or on incompatible types
 
 The TypeScript compiler API is accessed via a shared `TypeResolutionContext`. ESLint provides it from `parserServices`, while editor tooling gets it from the FormSpec TypeScript plugin running inside the host `tsserver` or from downstream hosts that construct `FormSpecSemanticService` directly. The standalone FormSpec language server does not own a second long-lived `Program` in the default architecture; it consumes plugin-produced semantic results over local transport.
+
+#### 2.4.1 Reference Host Pattern
+
+Downstream TypeScript hosts that already control their own plugin/runtime can
+skip IPC entirely:
+
+1. Construct `FormSpecSemanticService` with the host's existing `getProgram`
+2. Call `getDiagnostics(filePath)`, `getCompletionContext(filePath, offset)`,
+   and `getHover(filePath, offset)` directly
+3. Render author feedback from canonical `code` + structured `data`
+4. Treat the shipped FormSpec `tsserver` plugin and LSP as reference
+   implementations of the same composition model
+
+The repository includes a concrete reference example at
+`packages/ts-plugin/src/reference-host-example.ts` and a test that
+exercises it against a real TypeScript program.
 
 ### 2.5 Phase 4: Constraint Validation
 
