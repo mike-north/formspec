@@ -141,6 +141,45 @@ interface MutableSemanticServiceStats {
   syntheticCompileApplications: number;
 }
 
+const STATS_ONLY_EVENT_NAMES = new Set<string>([
+  "analysis.syntheticCheckBatch.cacheHit",
+  "analysis.narrowSyntheticCheckBatch.cacheHit",
+  "analysis.syntheticCheckBatch.cacheMiss",
+  "analysis.narrowSyntheticCheckBatch.cacheMiss",
+  "analysis.syntheticCheckBatch.createProgram",
+  "analysis.narrowSyntheticCheckBatch.createProgram",
+]);
+
+class StatsOnlyPerformanceRecorder implements FormSpecPerformanceRecorder {
+  private readonly mutableEvents: FormSpecPerformanceEvent[] = [];
+
+  public get events(): readonly FormSpecPerformanceEvent[] {
+    return this.mutableEvents;
+  }
+
+  public measure<T>(
+    name: string,
+    detail: Readonly<Record<string, string | number | boolean>> | undefined,
+    callback: () => T
+  ): T {
+    const result = callback();
+    if (STATS_ONLY_EVENT_NAMES.has(name)) {
+      this.mutableEvents.push({
+        name,
+        durationMs: 0,
+        ...(detail === undefined ? {} : { detail }),
+      });
+    }
+    return result;
+  }
+
+  public record(event: FormSpecPerformanceEvent): void {
+    if (STATS_ONLY_EVENT_NAMES.has(event.name)) {
+      this.mutableEvents.push(event);
+    }
+  }
+}
+
 /**
  * Reusable in-process semantic service for FormSpec authoring features.
  *
@@ -290,7 +329,10 @@ export class FormSpecSemanticService {
     detail: Record<string, string | number>,
     fn: (performance: FormSpecPerformanceRecorder) => T
   ): T {
-    const performance = createFormSpecPerformanceRecorder();
+    const performance =
+      this.options.enablePerformanceLogging === true
+        ? createFormSpecPerformanceRecorder()
+        : new StatsOnlyPerformanceRecorder();
     const result = optionalMeasure(performance, name, detail, () => fn(performance));
     this.updateStatsFromPerformanceEvents(performance.events);
     if (this.options.enablePerformanceLogging === true) {
