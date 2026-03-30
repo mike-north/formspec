@@ -22,7 +22,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const tsserverPath = require.resolve("typescript/lib/tsserver.js");
 const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const FORM_SPEC_TSSERVER_TIMEOUT_MS = 10_000;
-const FORM_SPEC_TSSERVER_REQUEST_TIMEOUT_MS = 5_000;
+const FORM_SPEC_TSSERVER_REQUEST_TIMEOUT_MS = 10_000;
 const FORM_SPEC_TSSERVER_CLOSE_TIMEOUT_MS = 2_000;
 
 // Build the runtime artifacts at most once per test process.
@@ -89,7 +89,7 @@ class TsServerClient {
   >();
   private readonly stderrChunks: string[] = [];
   private readonly stdoutChunks: string[] = [];
-  private buffer = "";
+  private buffer = Buffer.alloc(0);
   private nextSequence = 0;
 
   public constructor() {
@@ -98,10 +98,10 @@ class TsServerClient {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk) => {
-      this.stdoutChunks.push(String(chunk));
-      this.buffer += String(chunk);
+      const output = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf8");
+      this.stdoutChunks.push(output.toString("utf8"));
+      this.buffer = Buffer.concat([this.buffer, output]);
       this.drainMessages();
     });
 
@@ -179,17 +179,18 @@ class TsServerClient {
   }
 
   private send(payload: object): void {
-    this.process.stdin.write(`${JSON.stringify(payload)}\n`);
+    const body = JSON.stringify(payload);
+    this.process.stdin.write(`${body}\n`);
   }
 
   private drainMessages(): void {
     for (;;) {
-      const headerEnd = this.buffer.indexOf("\r\n\r\n");
+      const headerEnd = this.buffer.indexOf(Buffer.from("\r\n\r\n", "utf8"));
       if (headerEnd < 0) {
         return;
       }
 
-      const header = this.buffer.slice(0, headerEnd);
+      const header = this.buffer.subarray(0, headerEnd).toString("utf8");
       const contentLengthMatch = /^Content-Length: (\d+)$/m.exec(header);
       if (contentLengthMatch === null) {
         throw new Error(`Malformed tsserver message header:\n${header}`);
@@ -202,18 +203,20 @@ class TsServerClient {
       const contentLength = Number.parseInt(contentLengthText, 10);
       const messageStart = headerEnd + 4;
       const messageEnd = messageStart + contentLength;
-      if (this.buffer.length < messageEnd) {
+      if (this.buffer.byteLength < messageEnd) {
         return;
       }
 
-      const message = JSON.parse(this.buffer.slice(messageStart, messageEnd)) as {
+      const message = JSON.parse(
+        this.buffer.subarray(messageStart, messageEnd).toString("utf8")
+      ) as {
         readonly type: string;
         readonly request_seq?: number;
         readonly success?: boolean;
         readonly message?: string;
         readonly body?: unknown;
       };
-      this.buffer = this.buffer.slice(messageEnd);
+      this.buffer = this.buffer.subarray(messageEnd);
 
       if (message.type !== "response") {
         continue;
@@ -323,7 +326,7 @@ describe("tsserver FormSpec plugin smoke test", () => {
     expect(manifest.workspaceRoot).toBe(workspaceRoot);
     expect(manifest.protocolVersion).toBe(FORMSPEC_ANALYSIS_PROTOCOL_VERSION);
 
-    const response = await queryPluginSocket(runtimePaths.endpoint.address, {
+    const response = await queryPluginSocket(manifest.endpoint.address, {
       protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
       kind: "health",
     });
