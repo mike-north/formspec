@@ -57,8 +57,8 @@ formspec (umbrella — re-exports everything)
 @formspec/eslint-plugin    (ESLint rules — depends on @formspec/analysis, @formspec/constraints, @formspec/core)
 @formspec/constraints      (constraint validation — depends on @formspec/core)
 @formspec/validator        (JSON Schema validation — @cfworker/json-schema)
-@formspec/ts-plugin        (TypeScript language service plugin — semantic authority inside tsserver, depends on @formspec/analysis)
-@formspec/language-server  (LSP presentation layer — consumes plugin transport, depends on @formspec/analysis)
+@formspec/ts-plugin        (TypeScript plugin + composable semantic service — reference implementation inside tsserver, depends on @formspec/analysis)
+@formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers, depends on @formspec/analysis)
 @formspec/playground       (interactive browser editor — private, depends on all)
 ```
 
@@ -71,7 +71,7 @@ formspec (umbrella — re-exports everything)
 5. **Dynamic Fields**: `field.dynamicEnum()` for runtime-fetched options; resolver functions defined via `defineResolvers()`
 6. **JSDoc Constraints**: Tags like `/** @Minimum 0 */` produce constraint nodes in the Canonical IR; they propagate through nested class types
 7. **Canonical IR**: All form definitions pass through an intermediate representation before schema generation
-8. **Hybrid Tooling**: `@formspec/ts-plugin` reuses the editor's TypeScript program for semantic comment analysis; `@formspec/language-server` stays cheap locally and enriches responses over manifest + IPC
+8. **Hybrid Tooling**: `@formspec/ts-plugin` exposes the reusable semantic service that works against a host TypeScript program; the shipped tsserver plugin and `@formspec/language-server` are reference implementations built on those lower-level APIs
 
 ### Build Order
 

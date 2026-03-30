@@ -177,4 +177,98 @@ describe("semantic protocol", () => {
       })
     );
   });
+
+  it("accepts diagnostics with structured white-label data and related locations", () => {
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "diagnostics",
+        sourceHash: computeFormSpecTextHash("/** @minimum :amount 0 */"),
+        diagnostics: [
+          {
+            code: "TYPE_MISMATCH",
+            category: "type-compatibility",
+            message: "Expected a numeric target",
+            range: { start: 4, end: 12 },
+            severity: "error",
+            relatedLocations: [
+              {
+                filePath: "/workspace/formspec/example.ts",
+                range: { start: 20, end: 28 },
+                message: "Constraint target",
+              },
+            ],
+            data: {
+              tagName: "minimum",
+              targetKind: "path",
+              pathSegments: ["discount", "amount"],
+            },
+          },
+        ],
+      })
+    ).toBe(true);
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "diagnostics",
+        sourceHash: computeFormSpecTextHash("/** @minimum :amount 0 */"),
+        diagnostics: [
+          {
+            code: "TYPE_MISMATCH",
+            category: "banana",
+            message: "bad",
+            range: { start: 0, end: 1 },
+            severity: "error",
+            relatedLocations: [],
+            data: {},
+          },
+        ],
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "diagnostics",
+        sourceHash: computeFormSpecTextHash("/** @minimum :amount 0 */"),
+        diagnostics: [
+          {
+            code: "TYPE_MISMATCH",
+            category: "type-compatibility",
+            message: "bad",
+            range: { start: 0, end: 1 },
+            severity: "error",
+            relatedLocations: [],
+            data: {
+              nested: {},
+            },
+          },
+        ],
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "diagnostics",
+        sourceHash: computeFormSpecTextHash("/** @minimum :amount 0 */"),
+        diagnostics: [
+          {
+            code: "TYPE_MISMATCH",
+            category: "type-compatibility",
+            message: "bad",
+            range: { start: 0, end: 1 },
+            severity: "error",
+            relatedLocations: [
+              {
+                range: { start: 2, end: 3 },
+              },
+            ],
+            data: {},
+          },
+        ],
+      })
+    ).toBe(false);
+  });
 });

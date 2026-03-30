@@ -6,19 +6,49 @@
 
 import { CompletionItem } from 'vscode-languageserver/node.js';
 import { Connection } from 'vscode-languageserver/node.js';
+import { Diagnostic } from 'vscode-languageserver/node.js';
 import type { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
+import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
 
 // @public
 export interface CreateServerOptions {
+    readonly diagnosticsMode?: "off" | "plugin";
+    readonly diagnosticSource?: string;
     readonly extensions?: readonly ExtensionDefinition[];
     readonly pluginQueryTimeoutMs?: number;
     readonly usePluginTransport?: boolean;
     readonly workspaceRoots?: readonly string[];
+}
+
+// @public
+export interface FormSpecAnalysisDiagnostic {
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticCategory" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly category: FormSpecAnalysisDiagnosticCategory;
+    // (undocumented)
+    readonly code: string;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticDataValue" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
+    // (undocumented)
+    readonly message: string;
+    // Warning: (ae-forgotten-export) The symbol "CommentSpan" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly range: CommentSpan;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticLocation" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
+    // (undocumented)
+    readonly severity: "error" | "warning" | "info";
 }
 
 // @public
@@ -29,5 +59,16 @@ export function getDefinition(): Location | null;
 
 // @public
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
+
+// @public
+export function getPluginDiagnosticsForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, timeoutMs?: number): Promise<readonly FormSpecAnalysisDiagnostic[] | null>;
+
+// @public
+export function toLspDiagnostics(document: TextDocument, diagnostics: readonly FormSpecAnalysisDiagnostic[], options?: ToLspDiagnosticsOptions): Diagnostic[];
+
+// @public
+export interface ToLspDiagnosticsOptions {
+    readonly source?: string;
+}
 
 ```

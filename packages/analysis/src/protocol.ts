@@ -1,5 +1,8 @@
 export type {
   FormSpecAnalysisCommentSnapshot,
+  FormSpecAnalysisDiagnosticCategory,
+  FormSpecAnalysisDiagnosticDataValue,
+  FormSpecAnalysisDiagnosticLocation,
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisFileSnapshot,
   FormSpecAnalysisManifest,

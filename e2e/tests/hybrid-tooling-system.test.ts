@@ -7,6 +7,10 @@ import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "../../packages/analysis/src/
 import { getHoverAtOffset } from "../../packages/language-server/src/providers/hover.js";
 import { getCompletionItemsAtOffset } from "../../packages/language-server/src/providers/completion.js";
 import {
+  getPluginDiagnosticsForDocument,
+  toLspDiagnostics,
+} from "../../packages/language-server/src/diagnostics.js";
+import {
   getPluginCompletionContextForDocument,
   getPluginHoverForDocument,
 } from "../../packages/language-server/src/plugin-client.js";
@@ -174,6 +178,43 @@ describe("hybrid tooling system", () => {
         expect.objectContaining({
           code: "TYPE_MISMATCH",
           severity: "error",
+        }),
+      ])
+    );
+
+    const diagnostics = await getPluginDiagnosticsForDocument(
+      [context.workspaceRoot],
+      context.filePath,
+      context.documentText
+    );
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "TYPE_MISMATCH",
+          category: "type-compatibility",
+        }),
+      ])
+    );
+
+    const document = {
+      uri: `file://${context.filePath}`,
+      positionAt(offset: number) {
+        const priorText = context.documentText.slice(0, offset);
+        const lines = priorText.split("\n");
+        return {
+          line: lines.length - 1,
+          character: lines.at(-1)?.length ?? 0,
+        };
+      },
+    };
+    const lspDiagnostics = toLspDiagnostics(document, diagnostics ?? [], {
+      source: "formspec-reference",
+    });
+    expect(lspDiagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "TYPE_MISMATCH",
+          source: "formspec-reference",
         }),
       ])
     );

@@ -6,11 +6,13 @@
  * - `textDocument/hover` — Documentation for recognized constraint tags
  * - `textDocument/definition` — Go-to-definition (stub, returns null)
  *
- * Diagnostics are intentionally omitted per design decision A7.
+ * The packaged language server is a reference implementation built on the same
+ * composable helpers that downstream consumers can call directly.
  */
 
 import {
   createConnection,
+  Diagnostic,
   ProposedFeatures,
   TextDocuments,
   TextDocumentSyncKind,
@@ -22,6 +24,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";
 import { getDefinition } from "./providers/definition.js";
+import { getPluginDiagnosticsForDocument, toLspDiagnostics } from "./diagnostics.js";
 import {
   fileUriToPathOrNull,
   getPluginCompletionContextForDocument,
@@ -84,6 +87,10 @@ export interface CreateServerOptions {
   readonly usePluginTransport?: boolean;
   /** IPC timeout, in milliseconds, for semantic plugin requests. */
   readonly pluginQueryTimeoutMs?: number;
+  /** Optional diagnostics publishing mode for the packaged reference LSP. */
+  readonly diagnosticsMode?: "off" | "plugin";
+  /** Source label to use when publishing plugin-derived diagnostics. */
+  readonly diagnosticSource?: string;
 }
 
 /**
@@ -100,8 +107,36 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const documents = new TextDocuments(TextDocument);
   let workspaceRoots = [...(options.workspaceRoots ?? [])];
   const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
+  const diagnosticsMode = options.diagnosticsMode ?? "off";
+  const diagnosticSource = options.diagnosticSource ?? "formspec";
 
   documents.listen(connection);
+
+  async function publishDiagnosticsForDocument(document: TextDocument): Promise<void> {
+    if (diagnosticsMode !== "plugin" || options.usePluginTransport === false) {
+      return;
+    }
+
+    const filePath = fileUriToPathOrNull(document.uri);
+    if (filePath === null) {
+      return;
+    }
+
+    const diagnostics =
+      (await getPluginDiagnosticsForDocument(
+        workspaceRoots,
+        filePath,
+        document.getText(),
+        pluginQueryTimeoutMs
+      )) ?? [];
+
+    void connection.sendDiagnostics({
+      uri: document.uri,
+      diagnostics: toLspDiagnostics(document, diagnostics, {
+        source: diagnosticSource,
+      }),
+    });
+  }
 
   connection.onInitialize((params): InitializeResult => {
     workspaceRoots = dedupeWorkspaceRoots([
@@ -175,6 +210,27 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   connection.onDefinition((_params) => {
     // Go-to-definition is not yet implemented.
     return getDefinition();
+  });
+
+  documents.onDidOpen(({ document }) => {
+    void publishDiagnosticsForDocument(document).catch((error: unknown) => {
+      connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
+    });
+  });
+
+  documents.onDidChangeContent(({ document }) => {
+    void publishDiagnosticsForDocument(document).catch((error: unknown) => {
+      connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
+    });
+  });
+
+  documents.onDidClose(({ document }) => {
+    if (diagnosticsMode === "plugin") {
+      void connection.sendDiagnostics({
+        uri: document.uri,
+        diagnostics: [] satisfies Diagnostic[],
+      });
+    }
   });
 
   return connection;

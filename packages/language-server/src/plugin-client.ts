@@ -8,6 +8,7 @@ import {
   getFormSpecManifestPath,
   isFormSpecAnalysisManifest,
   isFormSpecSemanticResponse,
+  type FormSpecAnalysisDiagnostic,
   type FormSpecAnalysisManifest,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,
@@ -192,4 +193,36 @@ export async function getPluginHoverForDocument(
   }
 
   return response.sourceHash === computeFormSpecTextHash(documentText) ? response.hover : null;
+}
+
+/**
+ * Retrieves canonical FormSpec diagnostics for the current document revision
+ * from the plugin transport. Returns `null` when the transport is missing,
+ * stale, or invalid.
+ *
+ * @public
+ */
+export async function getPluginDiagnosticsForDocument(
+  workspaceRoots: readonly string[],
+  filePath: string,
+  documentText: string,
+  timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
+): Promise<readonly FormSpecAnalysisDiagnostic[] | null> {
+  const response = await sendFileQuery(
+    workspaceRoots,
+    filePath,
+    {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "diagnostics",
+      filePath,
+    },
+    timeoutMs
+  );
+  if (response?.kind !== "diagnostics") {
+    return null;
+  }
+
+  return response.sourceHash === computeFormSpecTextHash(documentText)
+    ? response.diagnostics
+    : null;
 }

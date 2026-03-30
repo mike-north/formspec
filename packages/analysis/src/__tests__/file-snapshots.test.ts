@@ -101,14 +101,11 @@ describe("file-snapshots", () => {
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
 
     expect(snapshot.comments).toHaveLength(1);
-    expect(snapshot.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "UNKNOWN_PATH_TARGET",
-          severity: "error",
-        }),
-      ])
-    );
+    const diagnostic = snapshot.diagnostics.find((entry) => entry.code === "UNKNOWN_PATH_TARGET");
+    expect(diagnostic).toBeDefined();
+    expect(diagnostic?.category).toBe("target-resolution");
+    expect(diagnostic?.severity).toBe("error");
+    expect(diagnostic?.data["tagName"]).toBe("minimum");
   });
 
   it("captures TYPE_MISMATCH diagnostics for incompatible targeted constraints", () => {
@@ -123,14 +120,12 @@ describe("file-snapshots", () => {
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
 
     expect(snapshot.comments).toHaveLength(1);
-    expect(snapshot.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          code: "TYPE_MISMATCH",
-          severity: "error",
-        }),
-      ])
-    );
+    const diagnostic = snapshot.diagnostics.find((entry) => entry.code === "TYPE_MISMATCH");
+    expect(diagnostic).toBeDefined();
+    expect(diagnostic?.category).toBe("type-compatibility");
+    expect(diagnostic?.severity).toBe("error");
+    expect(diagnostic?.data["tagName"]).toBe("minimum");
+    expect(diagnostic?.data["targetKind"]).toBe("path");
   });
 
   it("captures comments attached to interfaces and type aliases", () => {

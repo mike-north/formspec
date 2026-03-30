@@ -11,6 +11,7 @@ import {
 } from "@formspec/analysis/protocol";
 import {
   getPluginCompletionContextForDocument,
+  getPluginDiagnosticsForDocument,
   getPluginHoverForDocument,
 } from "../plugin-client.js";
 
@@ -105,38 +106,59 @@ describe("plugin-client", () => {
         }
 
         const payload = JSON.parse(buffer.slice(0, newlineIndex)) as { kind: string };
-        const response: FormSpecSemanticResponse =
-          payload.kind === "completion"
-            ? {
-                protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-                kind: "completion",
-                sourceHash: computeFormSpecTextHash(documentText),
-                context: {
-                  kind: "target",
-                  semantic: {
-                    tagName: "minimum",
-                    tagDefinition: null,
-                    placement: "class-field",
-                    supportedTargets: ["none", "path"],
-                    targetCompletions: ["amount"],
-                    compatiblePathTargets: ["amount"],
-                    valueLabels: ["<number>"],
-                    signatures: [],
-                    tagHoverMarkdown: null,
-                    targetHoverMarkdown: null,
-                    argumentHoverMarkdown: null,
-                  },
+        let response: FormSpecSemanticResponse;
+        if (payload.kind === "completion") {
+          response = {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            kind: "completion",
+            sourceHash: computeFormSpecTextHash(documentText),
+            context: {
+              kind: "target",
+              semantic: {
+                tagName: "minimum",
+                tagDefinition: null,
+                placement: "class-field",
+                supportedTargets: ["none", "path"],
+                targetCompletions: ["amount"],
+                compatiblePathTargets: ["amount"],
+                valueLabels: ["<number>"],
+                signatures: [],
+                tagHoverMarkdown: null,
+                targetHoverMarkdown: null,
+                argumentHoverMarkdown: null,
+              },
+            },
+          };
+        } else if (payload.kind === "hover") {
+          response = {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            kind: "hover",
+            sourceHash: computeFormSpecTextHash(documentText),
+            hover: {
+              kind: "target",
+              markdown: "Target for @minimum",
+            },
+          };
+        } else {
+          response = {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            kind: "diagnostics",
+            sourceHash: computeFormSpecTextHash(documentText),
+            diagnostics: [
+              {
+                code: "TYPE_MISMATCH",
+                category: "type-compatibility",
+                message: "Expected a number-compatible target",
+                range: { start: 4, end: 12 },
+                severity: "error",
+                relatedLocations: [],
+                data: {
+                  tagName: "minimum",
                 },
-              }
-            : {
-                protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-                kind: "hover",
-                sourceHash: computeFormSpecTextHash(documentText),
-                hover: {
-                  kind: "target",
-                  markdown: "Target for @minimum",
-                },
-              };
+              },
+            ],
+          };
+        }
         socket.end(`${JSON.stringify(response)}\n`);
       });
     });
@@ -171,6 +193,20 @@ describe("plugin-client", () => {
       documentText.indexOf("amount") + 2
     );
     expect(staleCompletion).toBeNull();
+
+    const diagnostics = await getPluginDiagnosticsForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      documentText
+    );
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "TYPE_MISMATCH",
+          category: "type-compatibility",
+        }),
+      ])
+    );
   });
 
   it("returns null when no manifest exists for the workspace yet", async () => {
@@ -251,5 +287,36 @@ describe("plugin-client", () => {
     );
 
     expect(completion).toBeNull();
+  });
+
+  it("returns null for stale plugin diagnostics just like completion and hover", async () => {
+    const workspaceRoot = await createWorkspaceRoot(workspaces);
+    const socketPath = path.join(
+      os.tmpdir(),
+      `formspec-plugin-diagnostics-${String(Date.now())}.sock`
+    );
+
+    const server = net.createServer((socket) => {
+      sockets.push(socket);
+      socket.end(
+        `${JSON.stringify({
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          kind: "diagnostics",
+          sourceHash: computeFormSpecTextHash("/** @minimum 0 */"),
+          diagnostics: [],
+        } satisfies FormSpecSemanticResponse)}\n`
+      );
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+    await writeManifest(workspaceRoot, createManifest(workspaceRoot, socketPath));
+
+    const diagnostics = await getPluginDiagnosticsForDocument(
+      [workspaceRoot],
+      path.join(workspaceRoot, "example.ts"),
+      "/** @minimum 1 */"
+    );
+
+    expect(diagnostics).toBeNull();
   });
 });

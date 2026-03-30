@@ -163,7 +163,11 @@ function getSyntheticTargetForTag(tag: ReturnType<typeof parseCommentBlock>["tag
   }
 }
 
-function getDeclaredSubjectType(node: ts.Node, checker: ts.TypeChecker, subjectType: ts.Type): ts.Type {
+function getDeclaredSubjectType(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+  subjectType: ts.Type
+): ts.Type {
   if (
     (ts.isPropertyDeclaration(node) ||
       ts.isPropertySignature(node) ||
@@ -221,6 +225,44 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
     default:
       return "warning";
   }
+}
+
+function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"] {
+  switch (code) {
+    case "INVALID_TAG_ARGUMENT":
+      return "value-parsing";
+    case "INVALID_TAG_PLACEMENT":
+      return "tag-recognition";
+    case "TYPE_MISMATCH":
+      return "type-compatibility";
+    case "UNKNOWN_PATH_TARGET":
+      return "target-resolution";
+    case "MISSING_SOURCE_FILE":
+      return "infrastructure";
+    default:
+      return "constraint-validation";
+  }
+}
+
+function createAnalysisDiagnostic(
+  code: string,
+  message: string,
+  range: CommentSpan,
+  data: FormSpecAnalysisDiagnostic["data"],
+  // Related locations are reserved for cross-source diagnostics once the
+  // snapshot builder starts threading multi-location provenance through the
+  // transport surface.
+  relatedLocations: readonly FormSpecAnalysisDiagnostic["relatedLocations"][number][] = []
+): FormSpecAnalysisDiagnostic {
+  return {
+    code,
+    category: diagnosticCategory(code),
+    message,
+    range,
+    severity: diagnosticSeverity(code),
+    relatedLocations,
+    data,
+  };
 }
 
 function buildTagDiagnostics(
@@ -319,12 +361,18 @@ function buildTagDiagnostics(
         options: syntheticOptions,
       });
     } catch (error) {
-      diagnostics.push({
-        code: "INVALID_TAG_PLACEMENT",
-        message: error instanceof Error ? error.message : String(error),
-        range: tag.fullSpan,
-        severity: "error",
-      });
+      diagnostics.push(
+        createAnalysisDiagnostic(
+          "INVALID_TAG_PLACEMENT",
+          error instanceof Error ? error.message : String(error),
+          tag.fullSpan,
+          {
+            tagName: tag.normalizedTagName,
+            placement,
+            ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+          }
+        )
+      );
     }
   }
 
@@ -359,12 +407,22 @@ function buildTagDiagnostics(
             : diagnostic.message.includes("No overload")
               ? "INVALID_TAG_PLACEMENT"
               : "TYPE_MISMATCH";
-      diagnostics.push({
-        code,
-        message: diagnostic.message,
-        range: application.tag.fullSpan,
-        severity: diagnosticSeverity(code),
-      });
+      diagnostics.push(
+        createAnalysisDiagnostic(code, diagnostic.message, application.tag.fullSpan, {
+          tagName: application.tag.normalizedTagName,
+          placement,
+          typescriptDiagnosticCode: diagnostic.code,
+          ...(application.target === null
+            ? {}
+            : {
+                targetKind: application.target.kind,
+                targetText: application.target.text,
+              }),
+          ...(application.pathTargetResolution?.kind === "missing-property"
+            ? { missingPathSegment: application.pathTargetResolution.segment }
+            : {}),
+        })
+      );
     }
   }
 

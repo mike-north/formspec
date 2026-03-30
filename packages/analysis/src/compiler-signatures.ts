@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
+import { LruCache } from "./lru-cache.js";
 import { optionalMeasure, type FormSpecPerformanceRecorder } from "./perf-tracing.js";
 import {
   getAllTagDefinitions,
@@ -612,39 +613,6 @@ const SYNTHETIC_COMPILER_OPTIONS: ts.CompilerOptions = {
   types: [],
 };
 
-class LruCache<K, V> {
-  private readonly map = new Map<K, V>();
-
-  public constructor(private readonly maxEntries: number) {}
-
-  public get(key: K): V | undefined {
-    const cached = this.map.get(key);
-    if (cached === undefined) {
-      return undefined;
-    }
-
-    this.map.delete(key);
-    this.map.set(key, cached);
-    return cached;
-  }
-
-  public set(key: K, value: V): void {
-    if (this.map.has(key)) {
-      this.map.delete(key);
-    }
-    this.map.set(key, value);
-
-    if (this.map.size <= this.maxEntries) {
-      return;
-    }
-
-    const oldestKey = this.map.keys().next().value;
-    if (oldestKey !== undefined) {
-      this.map.delete(oldestKey);
-    }
-  }
-}
-
 const syntheticBatchResultCache = new LruCache<string, readonly SyntheticTagCheckResult[]>(
   FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES
 );
@@ -869,6 +837,14 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
     });
     return cached;
   }
+
+  options.performance?.record({
+    name: `${options.eventPrefix}.cacheMiss`,
+    durationMs: 0,
+    detail: {
+      applicationCount: options.applications.length,
+    },
+  });
 
   const { sourceFile, diagnostics } = runSyntheticProgram(
     options.fileName,

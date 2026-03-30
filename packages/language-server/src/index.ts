@@ -10,7 +10,8 @@
  * LSP process, while TypeScript-project-aware semantics are supplied by
  * `@formspec/ts-plugin` over a local manifest + IPC transport.
  *
- * Diagnostics are intentionally omitted per design decision A7.
+ * The packaged server acts as a reference implementation over the composable
+ * completion, hover, and diagnostics helpers exported from this package.
  *
  * @example
  * ```ts
@@ -25,6 +26,12 @@
 
 export { createServer } from "./server.js";
 export type { CreateServerOptions } from "./server.js";
+export type { FormSpecAnalysisDiagnostic } from "@formspec/analysis/protocol";
+export {
+  getPluginDiagnosticsForDocument,
+  toLspDiagnostics,
+  type ToLspDiagnosticsOptions,
+} from "./diagnostics.js";
 export { getCompletionItems } from "./providers/completion.js";
 export { getHoverForTag } from "./providers/hover.js";
 export { getDefinition } from "./providers/definition.js";
