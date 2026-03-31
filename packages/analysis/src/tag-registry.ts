@@ -13,9 +13,11 @@ export type FormSpecValueKind =
   | "boolean"
   | "condition";
 
+/** @public */
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 export type FormSpecTagCategory = "constraint" | "annotation" | "structure" | "ecosystem";
 
+/** @public */
 export type FormSpecPlacement =
   | "class"
   | "class-field"

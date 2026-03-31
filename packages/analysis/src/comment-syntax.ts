@@ -6,12 +6,14 @@ import {
   type ExtensionTagSource,
 } from "./tag-registry.js";
 
-export interface CommentSourceSpan {
+/** @public */
+export interface CommentSpan {
   readonly start: number;
   readonly end: number;
 }
 
-export type CommentSpan = CommentSourceSpan;
+/** @public */
+export type CommentSourceSpan = CommentSpan;
 
 export interface ParsedCommentTargetSpecifier {
   readonly rawText: string;

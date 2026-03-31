@@ -78,7 +78,7 @@ export interface FormSpecSerializedTagSignature {
 export interface FormSpecSerializedCommentTargetSpecifier {
   readonly rawText: string;
   readonly valid: boolean;
-  readonly kind: ParsedCommentTargetSpecifier["kind"];
+  readonly kind: "path" | "member" | "variant" | "ambiguous";
   readonly fullSpan: CommentSpan;
   readonly colonSpan: CommentSpan;
   readonly span: CommentSpan;
@@ -134,7 +134,7 @@ export type FormSpecSerializedCompletionContext =
  * @public
  */
 export interface FormSpecSerializedHoverInfo {
-  readonly kind: CommentHoverInfo["kind"];
+  readonly kind: "tag-name" | "target" | "argument";
   readonly markdown: string;
 }
 

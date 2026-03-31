@@ -128,4 +128,31 @@ describe("toLspDiagnostics", () => {
     expect(diagnostic?.relatedInformation).toHaveLength(1);
     expect(diagnostic?.relatedInformation?.[0]?.message).toBe("Related FormSpec location");
   });
+
+  it("keeps the canonical diagnostic category when data also contains a category key", () => {
+    const document = {
+      uri: "file:///workspace/example.ts",
+      positionAt: vi.fn((offset: number) => ({ line: 0, character: offset })),
+    } as unknown as TextDocument;
+
+    const [diagnostic] = toLspDiagnostics(document, [
+      {
+        code: "TYPE_MISMATCH",
+        category: "type-compatibility",
+        message: "bad target",
+        range: { start: 0, end: 1 },
+        severity: "error",
+        relatedLocations: [],
+        data: {
+          category: "user-overridden",
+          tagName: "minimum",
+        },
+      },
+    ]);
+
+    expect(diagnostic?.data).toEqual({
+      category: "type-compatibility",
+      tagName: "minimum",
+    });
+  });
 });

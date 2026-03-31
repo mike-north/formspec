@@ -71,6 +71,20 @@ describe("semantic protocol", () => {
     expect(
       isFormSpecSemanticQuery({
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "diagnostics",
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticQuery({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "file-snapshot",
+      })
+    ).toBe(false);
+
+    expect(
+      isFormSpecSemanticQuery({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
         kind: "bogus",
       })
     ).toBe(false);

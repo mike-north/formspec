@@ -6,6 +6,17 @@
 
 import type { PathTarget } from '@formspec/core';
 
+// @public (undocumented)
+export type CommentSourceSpan = CommentSpan;
+
+// @public (undocumented)
+export interface CommentSpan {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
 // @public
 export function computeFormSpecTextHash(text: string): string;
 
@@ -17,16 +28,12 @@ export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
 // @public
 export interface FormSpecAnalysisCommentSnapshot {
-    // Warning: (ae-forgotten-export) The symbol "CommentSpan" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly commentSpan: CommentSpan;
     // (undocumented)
     readonly declarationSpan: CommentSpan;
     // (undocumented)
     readonly hostType: string | null;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecPlacement" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly placement: FormSpecPlacement | null;
     // (undocumented)
@@ -137,6 +144,9 @@ export interface FormSpecIpcEndpoint {
     readonly kind: "unix-socket" | "windows-pipe";
 }
 
+// @public (undocumented)
+export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
+
 // @public
 export type FormSpecSemanticQuery = {
     readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
@@ -197,10 +207,8 @@ export interface FormSpecSerializedCommentTargetSpecifier {
     readonly colonSpan: CommentSpan;
     // (undocumented)
     readonly fullSpan: CommentSpan;
-    // Warning: (ae-forgotten-export) The symbol "ParsedCommentTargetSpecifier" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    readonly kind: ParsedCommentTargetSpecifier["kind"];
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
     // (undocumented)
     readonly rawText: string;
     // (undocumented)
@@ -227,10 +235,8 @@ export type FormSpecSerializedCompletionContext = {
 
 // @public
 export interface FormSpecSerializedHoverInfo {
-    // Warning: (ae-forgotten-export) The symbol "CommentHoverInfo" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
-    readonly kind: CommentHoverInfo["kind"];
+    readonly kind: "tag-name" | "target" | "argument";
     // (undocumented)
     readonly markdown: string;
 }
@@ -255,8 +261,6 @@ export interface FormSpecSerializedTagSemanticContext {
     readonly placement: FormSpecPlacement | null;
     // (undocumented)
     readonly signatures: readonly FormSpecSerializedTagSignature[];
-    // Warning: (ae-forgotten-export) The symbol "FormSpecTargetKind" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly supportedTargets: readonly FormSpecTargetKind[];
     // (undocumented)
@@ -281,6 +285,9 @@ export interface FormSpecSerializedTagSignature {
     readonly placements: readonly FormSpecPlacement[];
 }
 
+// @public (undocumented)
+export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
+
 // @public
 export function getFormSpecManifestPath(workspaceRoot: string): string;
 
@@ -304,6 +311,8 @@ export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSem
 // @public
 export function serializeCommentTagSemanticContext(semantic: CommentTagSemanticContext): FormSpecSerializedTagSemanticContext;
 
+// Warning: (ae-forgotten-export) The symbol "ParsedCommentTargetSpecifier" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpecifier | null): FormSpecSerializedCommentTargetSpecifier | null;
 
@@ -312,6 +321,8 @@ export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpeci
 // @public
 export function serializeCompletionContext(context: SemanticCommentCompletionContext): FormSpecSerializedCompletionContext;
 
+// Warning: (ae-forgotten-export) The symbol "CommentHoverInfo" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function serializeHoverInfo(hover: CommentHoverInfo | null): FormSpecSerializedHoverInfo | null;
 

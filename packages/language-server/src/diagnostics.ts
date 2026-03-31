@@ -2,7 +2,6 @@ import type {
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisDiagnosticLocation,
 } from "@formspec/analysis/protocol";
-import { fileURLToPath } from "node:url";
 import {
   DiagnosticRelatedInformation,
   DiagnosticSeverity,
@@ -11,6 +10,7 @@ import {
   type Diagnostic,
 } from "vscode-languageserver/node.js";
 import type { TextDocument } from "vscode-languageserver-textdocument";
+import { fileUriToPathOrNull } from "./plugin-client.js";
 export { getPluginDiagnosticsForDocument } from "./plugin-client.js";
 
 /**
@@ -47,8 +47,8 @@ export function toLspDiagnostics(
       message: diagnostic.message,
       ...(relatedInformation === undefined ? {} : { relatedInformation }),
       data: {
-        category: diagnostic.category,
         ...diagnostic.data,
+        category: diagnostic.category,
       },
     };
   });
@@ -96,9 +96,5 @@ function toRelatedInformation(
 }
 
 function getDocumentFilePath(document: TextDocument): string | null {
-  try {
-    return fileURLToPath(document.uri);
-  } catch {
-    return null;
-  }
+  return fileUriToPathOrNull(document.uri);
 }
