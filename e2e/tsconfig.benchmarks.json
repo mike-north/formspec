@@ -1,8 +1,7 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": ".",
+    "rootDir": "..",
     "noEmit": true,
     "baseUrl": "..",
     "paths": {
@@ -10,5 +9,5 @@
       "@formspec/language-server": ["packages/language-server/src/index.ts"]
     }
   },
-  "include": ["helpers", "fixtures", "tests", "benchmarks"]
+  "include": ["benchmarks", "tests/hybrid-tooling-benchmark.test.ts"]
 }

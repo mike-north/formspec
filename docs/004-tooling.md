@@ -123,6 +123,45 @@ skip IPC entirely:
 The source repository includes a concrete reference example in the TypeScript
 plugin package and a test that exercises it against a real TypeScript program.
 
+#### 2.4.2 Benchmark Harness
+
+The source repository also includes a benchmark harness for comparing the three
+supported integration modes against the same fixture workspaces:
+
+1. direct in-process `FormSpecSemanticService`
+2. manifest/socket transport through `FormSpecPluginService`
+3. the packaged language-server helper assembly on top of that transport
+
+Run it with:
+
+```bash
+pnpm --filter @formspec/e2e run benchmark:hybrid-tooling
+```
+
+The report prints:
+
+- `startupMs` for wrapper/service setup cost
+- `coldMs` for the first diagnostics/completion/hover query on a fresh instance
+- `warmMs` for the immediately repeated query
+- file-snapshot cache hit/miss totals
+- synthetic batch cache hit/miss totals
+- synthetic compiler program counts and application counts
+
+Use the benchmark to guide downstream integration choices:
+
+- prefer direct `FormSpecSemanticService` when the host already owns a
+  TypeScript `Program` and wants the lowest-latency, most controllable path
+- prefer the shipped `tsserver` plugin when the host wants turnkey semantic
+  analysis inside TypeScript's normal project lifecycle
+- prefer the packaged language-server stack when the host wants the full
+  reference implementation, including LSP-oriented data shaping and publishing
+
+The benchmark scenarios intentionally include:
+
+- mixed direct and path-targeted tags in one file
+- repeated path-targeted tags as a regression canary for batch scaling
+- a multi-file workspace so snapshot reuse can be observed across files
+
 ### 2.5 Phase 4: Constraint Validation
 
 This phase validates constraint composition across the resolved IR nodes:
