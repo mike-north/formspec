@@ -1,5 +1,22 @@
 # @formspec/cli
 
+## 0.1.0-alpha.22
+
+### Patch Changes
+
+- [#176](https://github.com/mike-north/formspec/pull/176) [`cf6a280`](https://github.com/mike-north/formspec/commit/cf6a2807552c0e330037d79f619da5448ce36cac) Thanks [@mike-north](https://github.com/mike-north)! - Tighten the white-label tooling surface by fixing protocol-type exports,
+  preserving canonical diagnostic categories in the LSP adapter, and avoiding
+  lingering refresh timers in direct semantic-service hosts.
+
+- [#173](https://github.com/mike-north/formspec/pull/173) [`c6c4b8c`](https://github.com/mike-north/formspec/commit/c6c4b8c196b1eac7f2f5a917463687e2ee40d57b) Thanks [@mike-north](https://github.com/mike-north)! - Add white-label hybrid tooling composition APIs.
+  - enrich FormSpec analysis diagnostics with structured category, related-location, and raw data fields for white-label consumers
+  - add public `FormSpecSemanticService` APIs to `@formspec/ts-plugin` so downstream TypeScript hosts can reuse the same `Program`
+  - add public diagnostics retrieval and LSP conversion helpers to `@formspec/language-server`, with the packaged server acting as the reference implementation
+  - publish downstream packages with compatible dependency bumps for the new analysis-driven tooling surface
+
+- Updated dependencies [[`cf6a280`](https://github.com/mike-north/formspec/commit/cf6a2807552c0e330037d79f619da5448ce36cac), [`c6c4b8c`](https://github.com/mike-north/formspec/commit/c6c4b8c196b1eac7f2f5a917463687e2ee40d57b)]:
+  - @formspec/build@0.1.0-alpha.22
+
 ## 0.1.0-alpha.21
 
 ### Patch Changes
