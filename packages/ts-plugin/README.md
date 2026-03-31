@@ -30,6 +30,21 @@ import { FormSpecSemanticService, createLanguageServiceProxy } from "@formspec/t
 `FormSpecPluginService` wraps the same semantic service with the manifest + IPC
 transport used by the packaged language server.
 
+## Reference Host Example
+
+The shipped FormSpec `tsserver` plugin is only one reference implementation.
+Downstream tools that already own a TypeScript `Program` can build their own
+feedback layer directly on top of `FormSpecSemanticService`.
+
+See:
+
+- [reference-host-example.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/reference-host-example.ts)
+- [downstream-authoring-host.test.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/__tests__/downstream-authoring-host.test.ts)
+
+These source-repository references intentionally show a downstream host that
+renders diagnostics from `code` + `data` instead of reusing FormSpec's default
+message text.
+
 ## White-Label Diagnostics
 
 Diagnostics returned by the semantic service and plugin transport include:
