@@ -25,6 +25,7 @@ import {
   type HybridBenchmarkScenario,
   subtractHybridBenchmarkStats,
 } from "./hybrid-tooling-benchmark-shared.js";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 export { renderHybridToolingBenchmarkReport } from "./hybrid-tooling-benchmark-shared.js";
 
@@ -408,39 +409,7 @@ async function disposeWorkspaceContext(context: WorkspaceContext): Promise<void>
 }
 
 function createDocument(filePath: string, text: string): Parameters<typeof toLspDiagnostics>[0] {
-  const lines = text.split("\n");
-
-  const positionAt = (offset: number) => {
-    const priorText = text.slice(0, offset);
-    const priorLines = priorText.split("\n");
-    return {
-      line: priorLines.length - 1,
-      character: priorLines.at(-1)?.length ?? 0,
-    };
-  };
-
-  const offsetAt = (position: { readonly line: number; readonly character: number }) => {
-    const prefix = lines.slice(0, position.line).join("\n");
-    const prefixLength = position.line === 0 ? 0 : prefix.length + 1;
-    return prefixLength + position.character;
-  };
-
-  return {
-    uri: pathToFileURL(filePath).href,
-    languageId: "typescript",
-    version: 1,
-    lineCount: lines.length,
-    getText(range) {
-      if (range === undefined) {
-        return text;
-      }
-      return text.slice(offsetAt(range.start), offsetAt(range.end));
-    },
-    positionAt,
-    offsetAt(position) {
-      return offsetAt(position);
-    },
-  };
+  return TextDocument.create(pathToFileURL(filePath).href, "typescript", 1, text);
 }
 
 function getScenarioFilePath(context: WorkspaceContext, fileName: string): string {

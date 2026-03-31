@@ -2,7 +2,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@formspec/ts-plugin": ["packages/ts-plugin/src/index.ts"],
+      "@formspec/language-server": ["packages/language-server/src/index.ts"]
+    }
   },
   "include": ["benchmarks", "tests/hybrid-tooling-benchmark.test.ts"]
 }
