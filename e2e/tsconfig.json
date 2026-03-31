@@ -5,5 +5,5 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["helpers", "fixtures", "tests"]
+  "include": ["helpers", "fixtures", "tests", "benchmarks"]
 }

@@ -5,7 +5,8 @@
   "description": "End-to-end tests for FormSpec",
   "type": "module",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "benchmark:hybrid-tooling": "pnpm --filter @formspec/language-server... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && tsx ./benchmarks/hybrid-tooling-comparison.ts"
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",
@@ -18,6 +19,7 @@
     "@formspec/validator": "workspace:*"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
   }
