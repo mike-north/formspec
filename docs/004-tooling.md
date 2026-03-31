@@ -120,9 +120,8 @@ skip IPC entirely:
 4. Treat the shipped FormSpec `tsserver` plugin and LSP as reference
    implementations of the same composition model
 
-The repository includes a concrete reference example at
-`packages/ts-plugin/src/reference-host-example.ts` and a test that
-exercises it against a real TypeScript program.
+The source repository includes a concrete reference example in the TypeScript
+plugin package and a test that exercises it against a real TypeScript program.
 
 ### 2.5 Phase 4: Constraint Validation
 

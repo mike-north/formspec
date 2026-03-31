@@ -38,11 +38,12 @@ feedback layer directly on top of `FormSpecSemanticService`.
 
 See:
 
-- `packages/ts-plugin/src/reference-host-example.ts`
-- `packages/ts-plugin/src/__tests__/downstream-authoring-host.test.ts`
+- [reference-host-example.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/reference-host-example.ts)
+- [downstream-authoring-host.test.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/__tests__/downstream-authoring-host.test.ts)
 
-That example intentionally renders diagnostics from `code` + `data` instead of
-reusing FormSpec's default message text.
+These source-repository references intentionally show a downstream host that
+renders diagnostics from `code` + `data` instead of reusing FormSpec's default
+message text.
 
 ## White-Label Diagnostics
 
