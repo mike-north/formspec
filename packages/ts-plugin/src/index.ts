@@ -1,13 +1,28 @@
 import type * as tsServer from "typescript/lib/tsserverlibrary.js";
 export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  FORMSPEC_ANALYSIS_SCHEMA_VERSION,
+  type CommentSourceSpan,
+  type CommentSpan,
+  type FormSpecAnalysisCommentSnapshot,
   type FormSpecAnalysisDiagnostic,
+  type FormSpecAnalysisDiagnosticCategory,
+  type FormSpecAnalysisDiagnosticDataValue,
+  type FormSpecAnalysisDiagnosticLocation,
   type FormSpecAnalysisManifest,
   type FormSpecAnalysisFileSnapshot,
+  type FormSpecAnalysisTagSnapshot,
+  type FormSpecIpcEndpoint,
+  type FormSpecPlacement,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
+  type FormSpecSerializedCommentTargetSpecifier,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,
+  type FormSpecSerializedTagDefinition,
+  type FormSpecSerializedTagSemanticContext,
+  type FormSpecSerializedTagSignature,
+  type FormSpecTargetKind,
 } from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
 export {

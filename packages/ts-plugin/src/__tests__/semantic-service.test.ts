@@ -188,9 +188,66 @@ describe("FormSpecSemanticService", () => {
       typescriptVersion: ts.version,
       getProgram: () => undefined,
     });
+    services.push(service);
 
     expect(service.getCompletionContext("/workspace/formspec/example.ts", 0)).toBeNull();
     expect(service.getHover("/workspace/formspec/example.ts", 0)).toBeNull();
+  });
+
+  it("logs semantic performance summaries when enabled", async () => {
+    const source = `
+      class Checkout {
+        /** @minimum :amount 0 */
+        discount!: {
+          amount: number;
+        };
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const logger = {
+      info: vi.fn(),
+    };
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+      logger,
+      enablePerformanceLogging: true,
+      performanceLogThresholdMs: 0,
+    });
+    services.push(service);
+
+    service.getDiagnostics(context.filePath);
+
+    expect(logger.info).toHaveBeenCalled();
+    const loggedOutput = logger.info.mock.calls.map(([message]) => String(message)).join("\n");
+    expect(loggedOutput).toContain("semantic.getDiagnostics");
+  });
+
+  it("unrefs snapshot refresh timers so direct hosts do not stay alive accidentally", () => {
+    const unref = vi.fn();
+    const clearTimeoutSpy = vi
+      .spyOn(global, "clearTimeout")
+      .mockImplementation((() => undefined) as typeof clearTimeout);
+    const setTimeoutSpy = vi.spyOn(global, "setTimeout").mockImplementation(((
+      callback: () => void
+    ) => {
+      void callback;
+      return { unref } as unknown as NodeJS.Timeout;
+    }) as typeof setTimeout);
+    const service = new FormSpecSemanticService({
+      workspaceRoot: "/workspace/formspec",
+      typescriptVersion: ts.version,
+      getProgram: () => undefined,
+    });
+    services.push(service);
+
+    service.scheduleSnapshotRefresh("/workspace/formspec/example.ts");
+
+    expect(unref).toHaveBeenCalledTimes(1);
+    setTimeoutSpy.mockRestore();
+    clearTimeoutSpy.mockRestore();
   });
 
   it("debounces scheduled refreshes and clears timers on dispose", async () => {

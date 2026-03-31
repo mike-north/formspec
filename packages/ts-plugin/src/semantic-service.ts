@@ -294,6 +294,7 @@ export class FormSpecSemanticService {
       }
       this.refreshTimers.delete(filePath);
     }, this.options.snapshotDebounceMs ?? FORM_SPEC_PLUGIN_DEFAULT_SNAPSHOT_DEBOUNCE_MS);
+    timer.unref();
 
     this.refreshTimers.set(filePath, timer);
   }

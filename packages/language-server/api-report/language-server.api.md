@@ -12,6 +12,14 @@ import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
+// @public (undocumented)
+export interface CommentSpan {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
 
@@ -27,28 +35,36 @@ export interface CreateServerOptions {
 
 // @public
 export interface FormSpecAnalysisDiagnostic {
-    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticCategory" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly category: FormSpecAnalysisDiagnosticCategory;
     // (undocumented)
     readonly code: string;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticDataValue" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
     // (undocumented)
     readonly message: string;
-    // Warning: (ae-forgotten-export) The symbol "CommentSpan" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly range: CommentSpan;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisDiagnosticLocation" needs to be exported by the entry point index.d.ts
-    //
     // (undocumented)
     readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
     // (undocumented)
     readonly severity: "error" | "warning" | "info";
+}
+
+// @public
+export type FormSpecAnalysisDiagnosticCategory = "tag-recognition" | "value-parsing" | "type-compatibility" | "target-resolution" | "constraint-validation" | "infrastructure";
+
+// @public
+export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | readonly string[] | readonly number[] | readonly boolean[];
+
+// @public
+export interface FormSpecAnalysisDiagnosticLocation {
+    // (undocumented)
+    readonly filePath: string;
+    // (undocumented)
+    readonly message?: string;
+    // (undocumented)
+    readonly range: CommentSpan;
 }
 
 // @public

@@ -1,3 +1,5 @@
+export type { CommentSourceSpan, CommentSpan } from "./comment-syntax.js";
+export type { FormSpecPlacement, FormSpecTargetKind } from "./tag-registry.js";
 export type {
   FormSpecAnalysisCommentSnapshot,
   FormSpecAnalysisDiagnosticCategory,

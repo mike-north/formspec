@@ -26,7 +26,13 @@
 
 export { createServer } from "./server.js";
 export type { CreateServerOptions } from "./server.js";
-export type { FormSpecAnalysisDiagnostic } from "@formspec/analysis/protocol";
+export type {
+  CommentSpan,
+  FormSpecAnalysisDiagnostic,
+  FormSpecAnalysisDiagnosticCategory,
+  FormSpecAnalysisDiagnosticDataValue,
+  FormSpecAnalysisDiagnosticLocation,
+} from "@formspec/analysis/protocol";
 export {
   getPluginDiagnosticsForDocument,
   toLspDiagnostics,
