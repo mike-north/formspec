@@ -11,7 +11,7 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.js"],
+          allowDefaultProject: ["eslint.config.js", "scripts/normalize-generated-markdown.mjs"],
         },
         tsconfigRootDir: import.meta.dirname,
       },

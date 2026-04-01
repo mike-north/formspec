@@ -1,6 +1,11 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
 
+/**
+ * @param {string} entryPath
+ * @returns {AsyncGenerator<string>}
+ */
 async function* walkMarkdownFiles(entryPath) {
   const entryStat = await stat(entryPath);
   if (entryStat.isDirectory()) {
@@ -15,6 +20,10 @@ async function* walkMarkdownFiles(entryPath) {
   }
 }
 
+/**
+ * @param {string} filePath
+ * @returns {Promise<void>}
+ */
 async function normalizeFile(filePath) {
   const source = await readFile(filePath, "utf8");
   const normalized = source.replace(/\r\n/g, "\n");
@@ -26,7 +35,7 @@ async function normalizeFile(filePath) {
 const targets = process.argv.slice(2);
 
 if (targets.length === 0) {
-  console.error("Usage: node ../../scripts/normalize-generated-markdown.mjs <path> [...paths]");
+  globalThis.console.error("Usage: node ../../scripts/normalize-generated-markdown.mjs <path> [...paths]");
   process.exit(1);
 }
 
