@@ -41,7 +41,7 @@ describe("@formspec/eslint-plugin exports", () => {
   });
 
   describe("ESLint 9 flat config integration", () => {
-    let tmpDir: string;
+    let tmpDir: string | undefined;
 
     beforeAll(() => {
       tmpDir = mkdtempSync(join(tmpdir(), "formspec-eslint-test-"));
@@ -50,7 +50,9 @@ describe("@formspec/eslint-plugin exports", () => {
     });
 
     afterAll(() => {
-      rmSync(tmpDir, { recursive: true, force: true });
+      if (tmpDir) {
+        rmSync(tmpDir, { recursive: true, force: true });
+      }
     });
 
     it("resolves and loads every rule against a real project", async () => {
@@ -61,7 +63,6 @@ describe("@formspec/eslint-plugin exports", () => {
       const eslint = new ESLint({
         cwd: tmpDir,
         overrideConfigFile: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         overrideConfig: {
           files: ["**/*.ts"],
           languageOptions: {
