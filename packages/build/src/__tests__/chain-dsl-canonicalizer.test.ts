@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { field, formspec, group, is, when } from "@formspec/dsl";
-import { IR_VERSION } from "@formspec/core";
+import { IR_VERSION } from "@formspec/core/internals";
 import type {
   ArrayTypeNode,
   ConditionalLayoutNode,
@@ -11,7 +11,7 @@ import type {
   GroupLayoutNode,
   ObjectTypeNode,
   PrimitiveTypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
 
 // =============================================================================

@@ -5,7 +5,7 @@ import type {
   Provenance,
   ReferenceTypeNode,
   TypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { describe, expect, it } from "vitest";
 import {
   analyzeConstraintTargets,

@@ -5,7 +5,7 @@ import {
   defineConstraint,
   defineConstraintTag,
   IR_VERSION,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type {
   ExtensionDefinition,
   CustomTypeRegistration,
@@ -16,7 +16,7 @@ import type {
   CustomTypeNode,
   CustomConstraintNode,
   PrimitiveTypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { createExtensionRegistry } from "../extensions/index.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { validateIR } from "../validate/index.js";

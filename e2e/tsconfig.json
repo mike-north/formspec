@@ -2,12 +2,18 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": ".",
     "noEmit": true,
     "baseUrl": "..",
     "paths": {
-      "@formspec/ts-plugin": ["packages/ts-plugin/src/index.ts"],
-      "@formspec/language-server": ["packages/language-server/src/index.ts"]
+      "@formspec/analysis": ["packages/analysis/dist/analysis.d.ts"],
+      "@formspec/analysis/protocol": ["packages/analysis/dist/protocol.d.ts"],
+      "@formspec/build": ["packages/build/dist/build.d.ts"],
+      "@formspec/build/internals": ["packages/build/dist/internals.d.ts"],
+      "@formspec/cli": ["packages/cli/dist/index.d.ts"],
+      "@formspec/core/internals": ["packages/core/dist/internals.d.ts"],
+      "@formspec/language-server": ["packages/language-server/dist/index.d.ts"],
+      "@formspec/ts-plugin": ["packages/ts-plugin/dist/index.d.ts"],
+      "@formspec/validator": ["packages/validator/dist/validator.d.ts"]
     }
   },
   "include": ["helpers", "fixtures", "tests", "benchmarks"]

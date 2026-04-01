@@ -47,7 +47,7 @@ import type {
   FormatHintAnnotationNode,
   CustomAnnotationNode,
   JsonValue,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 
 // =============================================================================
 // ProvenanceFree — typed recursive mapper (NOT generic deep recursion)

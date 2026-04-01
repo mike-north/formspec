@@ -12,7 +12,7 @@ import type {
   GroupLayoutNode,
   ConditionalLayoutNode,
   Provenance,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type { UISchemaElement, ControlElement, GroupLayout, Rule } from "../ui-schema/types.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";

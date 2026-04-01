@@ -3,7 +3,6 @@ import { buildFormSchemas, writeSchemas } from "../index.js";
 import {
   createExtensionRegistry,
   generateJsonSchemaFromIR,
-  type GenerateJsonSchemaFromIROptions,
 } from "../internals.js";
 import {
   defineAnnotation,
@@ -18,7 +17,7 @@ import {
   type FormIR,
   type PrimitiveTypeNode,
   type Provenance,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { field, formspec } from "@formspec/dsl";
 import * as fs from "node:fs";
 import * as os from "node:os";

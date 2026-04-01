@@ -8,7 +8,7 @@ import {
   type CustomTypeRegistration,
   type ExtensionApplicableType,
   type ExtensionPayloadValue,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { createExtensionRegistry } from "../../extensions/index.js";
 
 export const DATE_EXTENSION_ID = "x-formspec/example-date";

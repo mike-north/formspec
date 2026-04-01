@@ -14,8 +14,13 @@ import type {
   EnumTypeNode,
   ObjectTypeNode,
   JsonValue,
-} from "@formspec/core";
-import { IR_VERSION, defineConstraint, defineConstraintTag, defineExtension } from "@formspec/core";
+} from "@formspec/core/internals";
+import {
+  IR_VERSION,
+  defineConstraint,
+  defineConstraintTag,
+  defineExtension,
+} from "@formspec/core/internals";
 import { validateIR } from "../validate/index.js";
 import type { ValidationDiagnostic } from "../validate/index.js";
 import { createExtensionRegistry } from "../extensions/index.js";

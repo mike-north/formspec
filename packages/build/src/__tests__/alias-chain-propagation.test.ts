@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import type { FieldNode, ConstraintNode } from "@formspec/core";
+import type { FieldNode, ConstraintNode } from "@formspec/core/internals";
 import { createProgramContext, findClassByName } from "../analyzer/program.js";
 import { analyzeClassToIR } from "../analyzer/class-analyzer.js";
 
