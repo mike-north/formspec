@@ -599,6 +599,27 @@ describe("compiler-signatures", () => {
     expect(results[1]?.diagnostics).toHaveLength(0);
   });
 
+  it("propagates compilerOptions to the synthetic program without cross-contaminating the cache", () => {
+    const application = {
+      tagName: "minimum",
+      placement: "class-field" as const,
+      hostType: "FindLastResult",
+      subjectType: "number",
+      argumentExpression: "0",
+      supportingDeclarations: ['type FindLastResult = ReturnType<number[]["findLast"]>;'],
+    };
+
+    const defaultLibResult = checkSyntheticTagApplication(application);
+    expect(defaultLibResult.diagnostics).not.toHaveLength(0);
+    expect(defaultLibResult.diagnostics[0]?.message).toContain("findLast");
+
+    const es2023Result = checkSyntheticTagApplication({
+      ...application,
+      compilerOptions: { lib: ["lib.es2023.d.ts"] },
+    });
+    expect(es2023Result.diagnostics).toHaveLength(0);
+  });
+
   it("keeps the synthetic batch cache at 64 entries and reuses it for mixed-tag canary batches", () => {
     expect(FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES).toBe(64);
 
