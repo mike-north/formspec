@@ -8,9 +8,9 @@
 import type * as ts from "typescript";
 import type { MethodInfo, ParameterInfo } from "../analyzer/class-analyzer.js";
 import { resolveTypeNode } from "../analyzer/class-analyzer.js";
-import type { TypeDefinition } from "@formspec/core";
+import type { TypeDefinition } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
-import { IR_VERSION } from "@formspec/core";
+import { IR_VERSION } from "@formspec/core/internals";
 
 /**
  * Runtime-loaded FormSpec schemas, compatible with the CLI's FormSpecSchemas type.

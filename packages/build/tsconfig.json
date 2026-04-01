@@ -5,7 +5,6 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/core": ["../core/dist/internals.d.ts"],
       "@formspec/core/internals": ["../core/dist/internals.d.ts"],
       "@formspec/dsl": ["../dsl/dist/dsl.d.ts"],
       "@formspec/analysis": ["../analysis/dist/analysis.d.ts"],
@@ -13,5 +12,6 @@
       "@formspec/analysis/internal": ["../analysis/dist/internal.d.ts"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/__tests__/**/*"]
 }

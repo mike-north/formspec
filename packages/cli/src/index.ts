@@ -28,7 +28,7 @@ import {
   validateIR,
 } from "@formspec/build/internals";
 import type { LoadedFormSpecSchemas, ValidationResult } from "@formspec/build/internals";
-import type { FormIR } from "@formspec/core";
+import type { FormIR } from "@formspec/core/internals";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,

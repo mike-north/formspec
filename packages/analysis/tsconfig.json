@@ -5,9 +5,9 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/core": ["../core/dist/internals.d.ts"],
       "@formspec/core/internals": ["../core/dist/internals.d.ts"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/__tests__/**/*"]
 }

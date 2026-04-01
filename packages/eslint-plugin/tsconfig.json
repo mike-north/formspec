@@ -6,7 +6,6 @@
     "rootDir": ".",
     "resolveJsonModule": true,
     "paths": {
-      "@formspec/core": ["../core/dist/internals.d.ts"],
       "@formspec/core/internals": ["../core/dist/internals.d.ts"]
     }
   },

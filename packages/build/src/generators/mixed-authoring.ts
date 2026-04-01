@@ -8,13 +8,15 @@
  */
 
 import type {
+  FormElement,
+  FormSpec,
+} from "@formspec/core";
+import type {
   AnnotationNode,
   FieldNode,
-  FormElement,
   FormIRElement,
-  FormSpec,
   TypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";

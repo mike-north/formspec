@@ -4,29 +4,39 @@
 
 ```ts
 
-// @public
-export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+import { AnyField } from '@formspec/core';
+import { ArrayField } from '@formspec/core';
+import { BooleanField } from '@formspec/core';
+import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
+import { BuiltinConstraintName } from '@formspec/core';
+import { Conditional } from '@formspec/core';
+import { ConstraintSemanticRole } from '@formspec/core';
+import { ConstraintTagRegistration } from '@formspec/core';
+import { CustomAnnotationRegistration } from '@formspec/core';
+import { CustomConstraintRegistration } from '@formspec/core';
+import { CustomTypeRegistration } from '@formspec/core';
+import { DynamicEnumField } from '@formspec/core';
+import { DynamicSchemaField } from '@formspec/core';
+import { EnumOption } from '@formspec/core';
+import { EnumOptionValue } from '@formspec/core';
+import { ExtensionApplicableType } from '@formspec/core';
+import { ExtensionDefinition } from '@formspec/core';
+import { ExtensionPayloadValue } from '@formspec/core';
+import { ExtensionTypeKind } from '@formspec/core';
+import { FormElement } from '@formspec/core';
+import { FormSpec } from '@formspec/core';
+import { Group } from '@formspec/core';
+import { NumberField } from '@formspec/core';
+import { ObjectField } from '@formspec/core';
+import { StaticEnumField } from '@formspec/core';
+import { TextField } from '@formspec/core';
+import { VocabularyKeywordRegistration } from '@formspec/core';
 
-// @public
-export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
-    readonly _field: "array";
-    readonly items: Items;
-    readonly label?: string;
-    readonly maxItems?: number;
-    readonly minItems?: number;
-    readonly name: N;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { AnyField }
 
-// @public
-export interface BooleanField<N extends string> {
-    readonly _field: "boolean";
-    readonly label?: string;
-    readonly name: N;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { ArrayField }
+
+export { BooleanField }
 
 // @public
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
@@ -50,15 +60,9 @@ export interface BuildResult {
     readonly uiSchema: UISchema;
 }
 
-// @public
-export interface BuiltinConstraintBroadeningRegistration {
-    readonly constraintName: string;
-    readonly parseValue: (raw: string) => ExtensionPayloadValue;
-    readonly tagName: BuiltinConstraintName;
-}
+export { BuiltinConstraintBroadeningRegistration }
 
-// @public
-export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
+export { BuiltinConstraintName }
 
 // @public
 export interface Categorization {
@@ -92,28 +96,11 @@ export interface Category {
     readonly type: "Category";
 }
 
-// @public
-export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
-    readonly elements: Elements;
-    readonly field: FieldName;
-    readonly _type: "conditional";
-    readonly value: Value;
-}
+export { Conditional }
 
-// @public
-export interface ConstraintSemanticRole {
-    readonly bound: "lower" | "upper" | "exact";
-    readonly family: string;
-    readonly inclusive: boolean;
-}
+export { ConstraintSemanticRole }
 
-// @public
-export interface ConstraintTagRegistration {
-    readonly constraintName: string;
-    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
-    readonly parseValue: (raw: string) => ExtensionPayloadValue;
-    readonly tagName: string;
-}
+export { ConstraintTagRegistration }
 
 // @public
 export interface ControlElement {
@@ -134,93 +121,28 @@ export interface ControlElement {
 // @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
-// @public
-export interface CustomAnnotationRegistration {
-    readonly annotationName: string;
-    readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
-}
+export { CustomAnnotationRegistration }
 
-// @public
-export interface CustomConstraintRegistration {
-    readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
-    readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
-    readonly compositionRule: "intersect" | "override";
-    readonly constraintName: string;
-    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
-    readonly semanticRole?: ConstraintSemanticRole;
-    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
-}
+export { CustomConstraintRegistration }
 
-// @public
-export interface CustomTypeRegistration {
-    readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
-    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
-    readonly tsTypeNames?: readonly string[];
-    readonly typeName: string;
-}
+export { CustomTypeRegistration }
 
-// @public
-export interface DynamicEnumField<N extends string, Source extends string> {
-    readonly _field: "dynamic_enum";
-    readonly label?: string;
-    readonly name: N;
-    readonly params?: readonly string[];
-    readonly required?: boolean;
-    readonly source: Source;
-    readonly _type: "field";
-}
+export { DynamicEnumField }
 
-// @public
-export interface DynamicSchemaField<N extends string> {
-    readonly _field: "dynamic_schema";
-    readonly label?: string;
-    readonly name: N;
-    readonly params?: readonly string[];
-    readonly required?: boolean;
-    readonly schemaSource: string;
-    readonly _type: "field";
-}
+export { DynamicSchemaField }
 
-// @public
-export interface EnumOption {
-    // (undocumented)
-    readonly id: string;
-    // (undocumented)
-    readonly label: string;
-}
+export { EnumOption }
 
-// @public
-export type EnumOptionValue = string | EnumOption;
+export { EnumOptionValue }
 
 // @beta
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
-// @public
-export type ExtensionApplicableType = {
-    readonly kind: "primitive";
-    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
-} | {
-    readonly kind: "custom";
-    readonly typeId: string;
-    readonly payload: ExtensionPayloadValue;
-} | {
-    readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
-};
+export { ExtensionApplicableType }
 
-// @public
-export interface ExtensionDefinition {
-    readonly annotations?: readonly CustomAnnotationRegistration[];
-    readonly constraints?: readonly CustomConstraintRegistration[];
-    readonly constraintTags?: readonly ConstraintTagRegistration[];
-    readonly extensionId: string;
-    readonly types?: readonly CustomTypeRegistration[];
-    readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
-}
+export { ExtensionDefinition }
 
-// @public
-export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
-    readonly [key: string]: ExtensionPayloadValue;
-};
+export { ExtensionPayloadValue }
 
 // @public
 export interface ExtensionRegistry {
@@ -242,16 +164,11 @@ export interface ExtensionRegistry {
     } | undefined;
 }
 
-// @public
-export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
+export { ExtensionTypeKind }
 
-// @public
-export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+export { FormElement }
 
-// @public
-export interface FormSpec<Elements extends readonly FormElement[]> {
-    readonly elements: Elements;
-}
+export { FormSpec }
 
 // @beta
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
@@ -291,12 +208,7 @@ export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
 // @public
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
 
-// @public
-export interface Group<Elements extends readonly FormElement[]> {
-    readonly elements: Elements;
-    readonly label: string;
-    readonly _type: "group";
-}
+export { Group }
 
 // @public
 export interface GroupLayout {
@@ -484,27 +396,9 @@ export interface MixedAuthoringSchemas {
     readonly uiSchema: UISchema;
 }
 
-// @public
-export interface NumberField<N extends string> {
-    readonly _field: "number";
-    readonly label?: string;
-    readonly max?: number;
-    readonly min?: number;
-    readonly multipleOf?: number;
-    readonly name: N;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { NumberField }
 
-// @public
-export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
-    readonly _field: "object";
-    readonly label?: string;
-    readonly name: N;
-    readonly properties: Properties;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { ObjectField }
 
 // @public
 export interface Rule {
@@ -553,15 +447,7 @@ export interface SchemaBasedCondition {
     readonly scope: string;
 }
 
-// @public
-export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
-    readonly _field: "enum";
-    readonly label?: string;
-    readonly name: N;
-    readonly options: O;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { StaticEnumField }
 
 // @public
 export interface StaticSchemaGenerationOptions {
@@ -569,18 +455,7 @@ export interface StaticSchemaGenerationOptions {
     readonly vendorPrefix?: string | undefined;
 }
 
-// @public
-export interface TextField<N extends string> {
-    readonly _field: "text";
-    readonly label?: string;
-    readonly maxLength?: number;
-    readonly minLength?: number;
-    readonly name: N;
-    readonly pattern?: string;
-    readonly placeholder?: string;
-    readonly required?: boolean;
-    readonly _type: "field";
-}
+export { TextField }
 
 // @public
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
@@ -615,11 +490,7 @@ export interface VerticalLayout {
     readonly type: "VerticalLayout";
 }
 
-// @public
-export interface VocabularyKeywordRegistration {
-    readonly keyword: string;
-    readonly schema: ExtensionPayloadValue;
-}
+export { VocabularyKeywordRegistration }
 
 // @public
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;

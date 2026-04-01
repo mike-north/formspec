@@ -1,4 +1,4 @@
-import type { PathTarget } from "@formspec/core";
+import type { PathTarget } from "@formspec/core/internals";
 
 export interface ParsedPathTarget {
   readonly path: PathTarget;

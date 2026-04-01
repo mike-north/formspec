@@ -25,8 +25,7 @@ import type {
   ConstraintNode,
   AnnotationNode,
   ObjectProperty,
-  JsonValue,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================

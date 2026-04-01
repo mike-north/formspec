@@ -10,8 +10,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ClassSchemas } from "@formspec/build";
-import type { MethodSchemas } from "@formspec/build/internals";
+import type { ClassSchemas, MethodSchemas } from "@formspec/build/internals";
 import type { FormSpecSchemas } from "../runtime/formspec-loader.js";
 
 /**

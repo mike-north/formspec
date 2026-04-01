@@ -13,7 +13,7 @@ import {
   type ConstraintRegistryLike,
   type ConstraintSemanticDiagnostic,
 } from "@formspec/analysis/internal";
-import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core";
+import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
 export type ValidationDiagnostic = ConstraintSemanticDiagnostic;

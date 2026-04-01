@@ -24,6 +24,8 @@ import type {
   ObjectField,
   StaticEnumField,
   TextField,
+} from "@formspec/core";
+import type {
   // IR types
   JsonValue,
   AnnotationNode,
@@ -47,8 +49,8 @@ import type {
   PrimitiveTypeNode,
   Provenance,
   TypeNode,
-} from "@formspec/core";
-import { IR_VERSION } from "@formspec/core";
+} from "@formspec/core/internals";
+import { IR_VERSION } from "@formspec/core/internals";
 
 // =============================================================================
 // CONSTANTS

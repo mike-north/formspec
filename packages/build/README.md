@@ -86,7 +86,7 @@ export interface ProductConfig {
 
 ## Extension-Aware Generation
 
-Static-analysis and mixed-authoring generation APIs accept `extensionRegistry` and `vendorPrefix`.
+Static-analysis and mixed-authoring generation APIs accept `extensionRegistry` and `vendorPrefix`. Chain DSL generation accepts `vendorPrefix`, but not `extensionRegistry`.
 
 ```ts
 import { createExtensionRegistry, generateSchemas } from "@formspec/build";

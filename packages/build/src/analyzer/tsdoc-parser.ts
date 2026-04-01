@@ -74,7 +74,7 @@ import {
   type Provenance,
   type PathTarget,
   type TypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
