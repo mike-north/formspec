@@ -225,6 +225,9 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
     devDependencies:
+      '@typescript-eslint/parser':
+        specifier: ^8.55.0
+        version: 8.55.0(eslint@9.39.2)(typescript@5.9.3)
       '@typescript-eslint/rule-tester':
         specifier: ^8.0.0
         version: 8.54.0(eslint@9.39.2)(typescript@5.9.3)
