@@ -3,7 +3,7 @@ import type { FieldOptionConstraints, Severity, ValidationIssue } from "../types
 /**
  * Known field options that can be validated.
  *
- * @public
+ * @beta
  */
 export type FieldOption =
   | "label"
@@ -17,7 +17,7 @@ export type FieldOption =
 /**
  * Context for field option validation.
  *
- * @public
+ * @beta
  */
 export interface FieldOptionsContext {
   /** The field name */
@@ -35,7 +35,7 @@ export interface FieldOptionsContext {
  * @param constraints - Field option constraints
  * @returns Array of validation issues (empty if valid)
  *
- * @public
+ * @beta
  */
 export function validateFieldOptions(
   context: FieldOptionsContext,
@@ -79,7 +79,7 @@ function createFieldOptionIssue(
  * @param field - A field object with potential options
  * @returns Array of present option names
  *
- * @public
+ * @beta
  */
 export function extractFieldOptions(field: Record<string, unknown>): FieldOption[] {
   const options: FieldOption[] = [];
@@ -103,7 +103,7 @@ export function extractFieldOptions(field: Record<string, unknown>): FieldOption
  * @param constraints - Field option constraints
  * @returns true if allowed, false if disallowed
  *
- * @public
+ * @beta
  */
 export function isFieldOptionAllowed(
   option: FieldOption,
@@ -120,7 +120,7 @@ export function isFieldOptionAllowed(
  * @param constraints - Field option constraints
  * @returns Severity level, or "off" if not constrained
  *
- * @public
+ * @beta
  */
 export function getFieldOptionSeverity(
   option: FieldOption,

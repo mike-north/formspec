@@ -4,7 +4,10 @@
 
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import { BUILTIN_CONSTRAINT_DEFINITIONS, normalizeConstraintTagName } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  normalizeConstraintTagName,
+} from "@formspec/core/internals";
 
 /** A constraint extracted from a JSDoc comment tag. */
 export interface JSDocConstraint {

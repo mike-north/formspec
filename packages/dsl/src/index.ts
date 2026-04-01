@@ -59,4 +59,24 @@ export type {
 } from "./inference.js";
 
 // Re-export enum option types from core for convenience
-export type { EnumOption, EnumOptionValue } from "@formspec/core";
+export type {
+  AnyField,
+  ArrayField,
+  BooleanField,
+  Conditional,
+  DataSourceRegistry,
+  DataSourceValueType,
+  DynamicEnumField,
+  DynamicSchemaField,
+  EnumOption,
+  EnumOptionValue,
+  EqualsPredicate,
+  FormElement,
+  FormSpec,
+  Group,
+  NumberField,
+  ObjectField,
+  Predicate,
+  StaticEnumField,
+  TextField,
+} from "@formspec/core";

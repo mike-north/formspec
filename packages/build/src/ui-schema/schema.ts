@@ -23,21 +23,21 @@ const jsonPointerSchema = z.string();
 /**
  * Zod schema for rule effect values.
  *
- * @public
+ * @internal
  */
 export const ruleEffectSchema = z.enum(["SHOW", "HIDE", "ENABLE", "DISABLE"]);
 
 /**
  * Rule effect types for conditional visibility.
  *
- * @public
+ * @internal
  */
 export type RuleEffect = z.infer<typeof ruleEffectSchema>;
 
 /**
  * Zod schema for UI Schema element type strings.
  *
- * @public
+ * @internal
  */
 export const uiSchemaElementTypeSchema = z.enum([
   "Control",
@@ -52,7 +52,7 @@ export const uiSchemaElementTypeSchema = z.enum([
 /**
  * UI Schema element types.
  *
- * @public
+ * @internal
  */
 export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
 
@@ -66,7 +66,7 @@ export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
 /**
  * JSON Schema subset used in rule conditions.
  *
- * @public
+ * @internal
  */
 export interface RuleConditionSchema {
   const?: unknown;
@@ -86,7 +86,7 @@ export interface RuleConditionSchema {
 /**
  * Zod schema for the rule-condition JSON Schema subset.
  *
- * @public
+ * @internal
  */
 export const ruleConditionSchema: z.ZodType<RuleConditionSchema> = z.lazy(() =>
   z
@@ -114,7 +114,7 @@ export const ruleConditionSchema: z.ZodType<RuleConditionSchema> = z.lazy(() =>
 /**
  * Zod schema for a schema-based rule condition.
  *
- * @public
+ * @internal
  */
 export const schemaBasedConditionSchema = z
   .object({
@@ -126,14 +126,14 @@ export const schemaBasedConditionSchema = z
 /**
  * Condition for a rule.
  *
- * @public
+ * @internal
  */
 export type SchemaBasedCondition = z.infer<typeof schemaBasedConditionSchema>;
 
 /**
  * Zod schema for a UI Schema rule.
  *
- * @public
+ * @internal
  */
 export const ruleSchema = z
   .object({
@@ -145,7 +145,7 @@ export const ruleSchema = z
 /**
  * Rule for conditional element visibility/enablement.
  *
- * @public
+ * @internal
  */
 export type Rule = z.infer<typeof ruleSchema>;
 
@@ -158,7 +158,7 @@ export type Rule = z.infer<typeof ruleSchema>;
 /**
  * Union of all UI Schema element types.
  *
- * @public
+ * @internal
  */
 export type UISchemaElement =
   | ControlElement
@@ -175,7 +175,7 @@ export type UISchemaElement =
 /**
  * Zod schema for any UI Schema element.
  *
- * @public
+ * @internal
  */
 export const uiSchemaElementSchema: z.ZodType<UISchemaElement> = z.lazy(() =>
   z.union([
@@ -196,7 +196,7 @@ export const uiSchemaElementSchema: z.ZodType<UISchemaElement> = z.lazy(() =>
 /**
  * Zod schema for a Control element.
  *
- * @public
+ * @internal
  */
 export const controlSchema = z
   .object({
@@ -211,7 +211,7 @@ export const controlSchema = z
 /**
  * A Control element that binds to a JSON Schema property.
  *
- * @public
+ * @internal
  */
 export type ControlElement = z.infer<typeof controlSchema>;
 
@@ -223,7 +223,7 @@ export type ControlElement = z.infer<typeof controlSchema>;
 /**
  * A vertical layout element.
  *
- * @public
+ * @internal
  */
 export interface VerticalLayout {
   type: "VerticalLayout";
@@ -236,7 +236,7 @@ export interface VerticalLayout {
 /**
  * Zod schema for a vertical layout element.
  *
- * @public
+ * @internal
  */
 export const verticalLayoutSchema: z.ZodType<VerticalLayout> = z.lazy(() =>
   z
@@ -256,7 +256,7 @@ export const verticalLayoutSchema: z.ZodType<VerticalLayout> = z.lazy(() =>
 /**
  * A horizontal layout element.
  *
- * @public
+ * @internal
  */
 export interface HorizontalLayout {
   type: "HorizontalLayout";
@@ -269,7 +269,7 @@ export interface HorizontalLayout {
 /**
  * Zod schema for a horizontal layout element.
  *
- * @public
+ * @internal
  */
 export const horizontalLayoutSchema: z.ZodType<HorizontalLayout> = z.lazy(() =>
   z
@@ -289,7 +289,7 @@ export const horizontalLayoutSchema: z.ZodType<HorizontalLayout> = z.lazy(() =>
 /**
  * A group element with a label.
  *
- * @public
+ * @internal
  */
 export interface GroupLayout {
   type: "Group";
@@ -303,7 +303,7 @@ export interface GroupLayout {
 /**
  * Zod schema for a group layout element.
  *
- * @public
+ * @internal
  */
 export const groupLayoutSchema: z.ZodType<GroupLayout> = z.lazy(() =>
   z
@@ -324,7 +324,7 @@ export const groupLayoutSchema: z.ZodType<GroupLayout> = z.lazy(() =>
 /**
  * A Category element, used inside a Categorization layout.
  *
- * @public
+ * @internal
  */
 export interface Category {
   type: "Category";
@@ -338,7 +338,7 @@ export interface Category {
 /**
  * Zod schema for a category element.
  *
- * @public
+ * @internal
  */
 export const categorySchema: z.ZodType<Category> = z.lazy(() =>
   z
@@ -359,7 +359,7 @@ export const categorySchema: z.ZodType<Category> = z.lazy(() =>
 /**
  * A Categorization element (tab-based layout).
  *
- * @public
+ * @internal
  */
 export interface Categorization {
   type: "Categorization";
@@ -373,7 +373,7 @@ export interface Categorization {
 /**
  * Zod schema for a categorization element.
  *
- * @public
+ * @internal
  */
 export const categorizationSchema: z.ZodType<Categorization> = z.lazy(() =>
   z
@@ -394,7 +394,7 @@ export const categorizationSchema: z.ZodType<Categorization> = z.lazy(() =>
 /**
  * Zod schema for a Label element.
  *
- * @public
+ * @internal
  */
 export const labelElementSchema = z
   .object({
@@ -408,7 +408,7 @@ export const labelElementSchema = z
 /**
  * A Label element for displaying static text.
  *
- * @public
+ * @internal
  */
 export type LabelElement = z.infer<typeof labelElementSchema>;
 
@@ -419,14 +419,14 @@ export type LabelElement = z.infer<typeof labelElementSchema>;
 /**
  * Root UI Schema (always a layout — not a Control, Category, or Label).
  *
- * @public
+ * @internal
  */
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
 
 /**
  * Zod schema for the root UI Schema (layout types only).
  *
- * @public
+ * @internal
  */
 export const uiSchema: z.ZodType<UISchema> = z.lazy(() =>
   z.union([verticalLayoutSchema, horizontalLayoutSchema, groupLayoutSchema, categorizationSchema])

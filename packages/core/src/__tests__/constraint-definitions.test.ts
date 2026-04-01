@@ -3,9 +3,9 @@
  */
 import { describe, it, expect } from "vitest";
 import {
-  normalizeConstraintTagName,
-  isBuiltinConstraintName,
-  BUILTIN_CONSTRAINT_DEFINITIONS,
+  _normalizeConstraintTagName as normalizeConstraintTagName,
+  _isBuiltinConstraintName as isBuiltinConstraintName,
+  _BUILTIN_CONSTRAINT_DEFINITIONS as BUILTIN_CONSTRAINT_DEFINITIONS,
 } from "../types/constraint-definitions.js";
 
 describe("normalizeConstraintTagName", () => {

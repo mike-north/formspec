@@ -1,18 +1,20 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   isBuiltinConstraintName,
-  type AnnotationNode,
-  type BuiltinConstraintBroadeningRegistration,
-  type ConstraintNode,
-  type ConstraintTagRegistration,
-  type CustomConstraintRegistration,
-  type ExtensionDefinition,
-  type JsonValue,
-  type LengthConstraintNode,
-  type NumericConstraintNode,
-  type PathTarget,
-  type Provenance,
-  type TypeNode,
+} from "@formspec/core/internals";
+import type {
+  AnnotationNode,
+  BuiltinConstraintBroadeningRegistration,
+  ConstraintNode,
+  ConstraintTagRegistration,
+  CustomConstraintRegistration,
+  ExtensionDefinition,
+  JsonValue,
+  LengthConstraintNode,
+  NumericConstraintNode,
+  PathTarget,
+  Provenance,
+  TypeNode,
 } from "@formspec/core";
 import { parseTagSyntax } from "./comment-syntax.js";
 

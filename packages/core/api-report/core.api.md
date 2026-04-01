@@ -4,13 +4,13 @@
 
 ```ts
 
-// @public
-export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
+// @beta
+export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
 // @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
 
-// @public
+// @beta
 export interface ArrayCardinalityConstraintNode {
     // (undocumented)
     readonly constraintKind: "uniqueItems";
@@ -36,7 +36,7 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
     readonly _type: "field";
 }
 
-// @public
+// @beta
 export interface ArrayTypeNode {
     // (undocumented)
     readonly items: TypeNode;
@@ -54,31 +54,14 @@ export interface BooleanField<N extends string> {
 }
 
 // @public
-export const BUILTIN_CONSTRAINT_DEFINITIONS: {
-    readonly minimum: "number";
-    readonly maximum: "number";
-    readonly exclusiveMinimum: "number";
-    readonly exclusiveMaximum: "number";
-    readonly multipleOf: "number";
-    readonly minLength: "number";
-    readonly maxLength: "number";
-    readonly minItems: "number";
-    readonly maxItems: "number";
-    readonly uniqueItems: "boolean";
-    readonly pattern: "string";
-    readonly const: "json";
-    readonly enumOptions: "json";
-};
-
-// @public
 export interface BuiltinConstraintBroadeningRegistration {
     readonly constraintName: string;
-    readonly parseValue: (raw: string) => JsonValue;
+    readonly parseValue: (raw: string) => ExtensionPayloadValue;
     readonly tagName: BuiltinConstraintName;
 }
 
 // @public
-export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
+export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
 
 // @public
 export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
@@ -88,7 +71,7 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
     readonly value: Value;
 }
 
-// @public
+// @beta
 export interface ConditionalLayoutNode {
     readonly elements: readonly FormIRElement[];
     readonly fieldName: string;
@@ -99,7 +82,7 @@ export interface ConditionalLayoutNode {
     readonly value: JsonValue;
 }
 
-// @public
+// @beta
 export interface ConstConstraintNode {
     // (undocumented)
     readonly constraintKind: "const";
@@ -113,7 +96,7 @@ export interface ConstConstraintNode {
     readonly value: JsonValue;
 }
 
-// @public
+// @beta
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
 
 // @public
@@ -126,15 +109,15 @@ export interface ConstraintSemanticRole {
 // @public
 export interface ConstraintTagRegistration {
     readonly constraintName: string;
-    readonly isApplicableToType?: (type: TypeNode) => boolean;
-    readonly parseValue: (raw: string) => JsonValue;
+    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
+    readonly parseValue: (raw: string) => ExtensionPayloadValue;
     readonly tagName: string;
 }
 
 // @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
 
-// @public
+// @beta
 export interface CustomAnnotationNode {
     readonly annotationId: string;
     // (undocumented)
@@ -150,10 +133,10 @@ export interface CustomAnnotationNode {
 // @public
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
-    readonly toJsonSchema?: (value: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
 }
 
-// @public
+// @beta
 export interface CustomConstraintNode {
     readonly compositionRule: "intersect" | "override";
     readonly constraintId: string;
@@ -170,16 +153,16 @@ export interface CustomConstraintNode {
 
 // @public
 export interface CustomConstraintRegistration {
-    readonly applicableTypes: readonly TypeNode["kind"][] | null;
-    readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
+    readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
+    readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
     readonly compositionRule: "intersect" | "override";
     readonly constraintName: string;
-    readonly isApplicableToType?: (type: TypeNode) => boolean;
+    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
     readonly semanticRole?: ConstraintSemanticRole;
-    readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
 }
 
-// @public
+// @beta
 export interface CustomTypeNode {
     // (undocumented)
     readonly kind: "custom";
@@ -190,7 +173,7 @@ export interface CustomTypeNode {
 // @public
 export interface CustomTypeRegistration {
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
-    readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
     readonly tsTypeNames?: readonly string[];
     readonly typeName: string;
 }
@@ -211,7 +194,7 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
     id: infer ID;
 } ? ID : string : string;
 
-// @public
+// @beta
 export interface DefaultValueAnnotationNode {
     // (undocumented)
     readonly annotationKind: "defaultValue";
@@ -237,7 +220,7 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
 // @public
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
-// @public
+// @beta
 export interface DeprecatedAnnotationNode {
     // (undocumented)
     readonly annotationKind: "deprecated";
@@ -248,7 +231,7 @@ export interface DeprecatedAnnotationNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// @beta
 export interface DescriptionAnnotationNode {
     // (undocumented)
     readonly annotationKind: "description";
@@ -260,7 +243,7 @@ export interface DescriptionAnnotationNode {
     readonly value: string;
 }
 
-// @public
+// @beta
 export interface DisplayNameAnnotationNode {
     // (undocumented)
     readonly annotationKind: "displayName";
@@ -294,7 +277,7 @@ export interface DynamicSchemaField<N extends string> {
     readonly _type: "field";
 }
 
-// @public
+// @beta
 export interface DynamicTypeNode {
     // (undocumented)
     readonly dynamicKind: "enum" | "schema";
@@ -304,13 +287,13 @@ export interface DynamicTypeNode {
     readonly sourceKey: string;
 }
 
-// @public
+// @beta
 export interface EnumMember {
     readonly displayName?: string;
     readonly value: string | number;
 }
 
-// @public
+// @beta
 export interface EnumMemberConstraintNode {
     // (undocumented)
     readonly constraintKind: "allowedMembers";
@@ -335,7 +318,7 @@ export interface EnumOption {
 // @public
 export type EnumOptionValue = string | EnumOption;
 
-// @public
+// @beta
 export interface EnumTypeNode {
     // (undocumented)
     readonly kind: "enum";
@@ -351,6 +334,18 @@ export interface EqualsPredicate<K extends string, V> {
 }
 
 // @public
+export type ExtensionApplicableType = {
+    readonly kind: "primitive";
+    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
+} | {
+    readonly kind: "custom";
+    readonly typeId: string;
+    readonly payload: ExtensionPayloadValue;
+} | {
+    readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
+};
+
+// @public
 export interface ExtensionDefinition {
     readonly annotations?: readonly CustomAnnotationRegistration[];
     readonly constraints?: readonly CustomConstraintRegistration[];
@@ -361,13 +356,21 @@ export interface ExtensionDefinition {
 }
 
 // @public
+export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
+    readonly [key: string]: ExtensionPayloadValue;
+};
+
+// @public
+export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
+
+// @public
 export interface FetchOptionsResponse<T = unknown> {
     readonly message?: string;
     readonly options: readonly DataSourceOption<T>[];
     readonly validity: "valid" | "invalid" | "unknown";
 }
 
-// @public
+// @beta
 export interface FieldNode {
     readonly annotations: readonly AnnotationNode[];
     readonly constraints: readonly ConstraintNode[];
@@ -392,7 +395,7 @@ export interface FieldState<T> {
     readonly value: T;
 }
 
-// @public
+// @beta
 export interface FormatAnnotationNode {
     // (undocumented)
     readonly annotationKind: "format";
@@ -404,7 +407,7 @@ export interface FormatAnnotationNode {
     readonly value: string;
 }
 
-// @public
+// @beta
 export interface FormatHintAnnotationNode {
     // (undocumented)
     readonly annotationKind: "formatHint";
@@ -418,7 +421,7 @@ export interface FormatHintAnnotationNode {
 // @public
 export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
 
-// @public
+// @beta
 export interface FormIR {
     readonly annotations?: readonly AnnotationNode[];
     readonly elements: readonly FormIRElement[];
@@ -430,7 +433,7 @@ export interface FormIR {
     readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
 }
 
-// @public
+// @beta
 export type FormIRElement = FieldNode | LayoutNode;
 
 // @public
@@ -455,7 +458,7 @@ export interface Group<Elements extends readonly FormElement[]> {
     readonly _type: "group";
 }
 
-// @public
+// @beta
 export interface GroupLayoutNode {
     readonly elements: readonly FormIRElement[];
     // (undocumented)
@@ -466,7 +469,7 @@ export interface GroupLayoutNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// @beta
 export const IR_VERSION: "0.1.0";
 
 // @public
@@ -474,9 +477,6 @@ export function isArrayField(element: FormElement): element is ArrayField<string
 
 // @public
 export function isBooleanField(element: FormElement): element is BooleanField<string>;
-
-// @public
-export function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName;
 
 // @public
 export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
@@ -505,15 +505,15 @@ export function isStaticEnumField(element: FormElement): element is StaticEnumFi
 // @public
 export function isTextField(element: FormElement): element is TextField<string>;
 
-// @public
+// @beta
 export type JsonValue = null | boolean | number | string | readonly JsonValue[] | {
     readonly [key: string]: JsonValue;
 };
 
-// @public
+// @beta
 export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 
-// @public
+// @beta
 export interface LengthConstraintNode {
     // (undocumented)
     readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
@@ -528,9 +528,6 @@ export interface LengthConstraintNode {
 }
 
 // @public
-export function normalizeConstraintTagName(tagName: string): string;
-
-// @public
 export interface NumberField<N extends string> {
     readonly _field: "number";
     readonly label?: string;
@@ -542,7 +539,7 @@ export interface NumberField<N extends string> {
     readonly _type: "field";
 }
 
-// @public
+// @beta
 export interface NumericConstraintNode {
     // (undocumented)
     readonly constraintKind: "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf";
@@ -565,7 +562,7 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
     readonly _type: "field";
 }
 
-// @public
+// @beta
 export interface ObjectProperty {
     readonly annotations: readonly AnnotationNode[];
     readonly constraints: readonly ConstraintNode[];
@@ -579,7 +576,7 @@ export interface ObjectProperty {
     readonly type: TypeNode;
 }
 
-// @public
+// @beta
 export interface ObjectTypeNode {
     readonly additionalProperties: boolean;
     // (undocumented)
@@ -587,12 +584,12 @@ export interface ObjectTypeNode {
     readonly properties: readonly ObjectProperty[];
 }
 
-// @public
+// @beta
 export interface PathTarget {
     readonly segments: readonly string[];
 }
 
-// @public
+// @beta
 export interface PatternConstraintNode {
     // (undocumented)
     readonly constraintKind: "pattern";
@@ -605,7 +602,7 @@ export interface PatternConstraintNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// @beta
 export interface PlaceholderAnnotationNode {
     // (undocumented)
     readonly annotationKind: "placeholder";
@@ -620,7 +617,7 @@ export interface PlaceholderAnnotationNode {
 // @public
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
 
-// @public
+// @beta
 export interface PrimitiveTypeNode {
     // (undocumented)
     readonly kind: "primitive";
@@ -628,7 +625,7 @@ export interface PrimitiveTypeNode {
     readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
-// @public
+// @beta
 export interface Provenance {
     readonly column: number;
     readonly file: string;
@@ -638,19 +635,31 @@ export interface Provenance {
     readonly tagName?: string;
 }
 
-// @public
+// @beta
 export interface RecordTypeNode {
     // (undocumented)
     readonly kind: "record";
     readonly valueType: TypeNode;
 }
 
-// @public
+// @beta
 export interface ReferenceTypeNode {
     // (undocumented)
     readonly kind: "reference";
     readonly name: string;
     readonly typeArguments: readonly TypeNode[];
+}
+
+// @beta
+export interface RemarksAnnotationNode {
+    // (undocumented)
+    readonly annotationKind: "remarks";
+    // (undocumented)
+    readonly kind: "annotation";
+    // (undocumented)
+    readonly provenance: Provenance;
+    // (undocumented)
+    readonly value: string;
 }
 
 // @public
@@ -676,7 +685,7 @@ export interface TextField<N extends string> {
     readonly _type: "field";
 }
 
-// @public
+// @beta
 export interface TypeDefinition {
     readonly annotations?: readonly AnnotationNode[];
     readonly constraints?: readonly ConstraintNode[];
@@ -685,10 +694,10 @@ export interface TypeDefinition {
     readonly type: TypeNode;
 }
 
-// @public
+// @beta
 export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | ObjectTypeNode | RecordTypeNode | UnionTypeNode | ReferenceTypeNode | DynamicTypeNode | CustomTypeNode;
 
-// @public
+// @beta
 export interface UnionTypeNode {
     // (undocumented)
     readonly kind: "union";
@@ -702,7 +711,7 @@ export type Validity = "valid" | "invalid" | "unknown";
 // @public
 export interface VocabularyKeywordRegistration {
     readonly keyword: string;
-    readonly schema: JsonValue;
+    readonly schema: ExtensionPayloadValue;
 }
 
 ```

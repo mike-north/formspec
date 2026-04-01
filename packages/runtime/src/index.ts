@@ -35,7 +35,10 @@
 
 export {
   defineResolvers,
+  type ExtractDynamicSources,
+  type ExtractDynamicSourcesFromArray,
   type Resolver,
   type ResolverMap,
   type ResolverRegistry,
+  type ResolverSourcesForForm,
 } from "./resolvers.js";

@@ -6,8 +6,8 @@ import {
   type ConstraintTagRegistration,
   type CustomConstraintRegistration,
   type CustomTypeRegistration,
-  type JsonValue,
-  type TypeNode,
+  type ExtensionApplicableType,
+  type ExtensionPayloadValue,
 } from "@formspec/core";
 import { createExtensionRegistry } from "../../extensions/index.js";
 
@@ -33,11 +33,14 @@ export function parseCanonicalDateTime(raw: string): string {
   return value.toISOString();
 }
 
-function isDateTimeType(type: TypeNode): boolean {
+function isDateTimeType(type: ExtensionApplicableType): boolean {
   return type.kind === "custom" && type.typeId === DATE_TIME_TYPE_ID;
 }
 
-function compareDateTimePayloads(left: JsonValue, right: JsonValue): number {
+function compareDateTimePayloads(
+  left: ExtensionPayloadValue,
+  right: ExtensionPayloadValue
+): number {
   if (typeof left !== "string" || typeof right !== "string") {
     throw new Error("DateTime constraint payload comparator received a non-string payload");
   }

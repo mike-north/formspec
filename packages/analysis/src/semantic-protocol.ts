@@ -710,7 +710,7 @@ export function computeFormSpecTextHash(text: string): string {
 /**
  * Converts a parsed target specifier into its transport-safe JSON form.
  *
- * @public
+ * @internal
  */
 export function serializeCommentTargetSpecifier(
   target: ParsedCommentTargetSpecifier | null
@@ -732,7 +732,7 @@ export function serializeCommentTargetSpecifier(
 /**
  * Serializes tag-level semantic context for cross-process consumption.
  *
- * @public
+ * @internal
  */
 export function serializeCommentTagSemanticContext(
   semantic: CommentTagSemanticContext
@@ -765,7 +765,7 @@ export function serializeCommentTagSemanticContext(
 /**
  * Serializes a cursor-scoped completion context for IPC.
  *
- * @public
+ * @internal
  */
 export function serializeCompletionContext(
   context: SemanticCommentCompletionContext
@@ -804,7 +804,7 @@ export function serializeCompletionContext(
 /**
  * Serializes hover information for cross-process transport.
  *
- * @public
+ * @internal
  */
 export function serializeHoverInfo(
   hover: CommentHoverInfo | null
@@ -820,7 +820,7 @@ export function serializeHoverInfo(
 /**
  * Serializes a parsed tag plus its semantic context into a file snapshot entry.
  *
- * @public
+ * @internal
  */
 export function serializeParsedCommentTag(
   tag: ParsedCommentTag,

@@ -4,17 +4,29 @@
 
 ```ts
 
-import type { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
-import type { ConstraintTagRegistration } from '@formspec/core';
-import type { CustomAnnotationRegistration } from '@formspec/core';
-import type { CustomConstraintRegistration } from '@formspec/core';
-import type { CustomTypeRegistration } from '@formspec/core';
-import type { ExtensionDefinition } from '@formspec/core';
-import type { FormElement } from '@formspec/core';
-import type { FormIR } from '@formspec/core';
-import type { FormSpec } from '@formspec/core';
-import type { JsonValue } from '@formspec/core';
-import { z } from 'zod';
+// @public
+export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+
+// @public
+export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly _field: "array";
+    readonly items: Items;
+    readonly label?: string;
+    readonly maxItems?: number;
+    readonly minItems?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface BooleanField<N extends string> {
+    readonly _field: "boolean";
+    readonly label?: string;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
@@ -26,7 +38,7 @@ export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
 
 // @public
-export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
     readonly filePath: string;
     readonly overlays: FormSpec<readonly FormElement[]>;
     readonly typeName: string;
@@ -39,150 +51,176 @@ export interface BuildResult {
 }
 
 // @public
-export interface Categorization {
-    // (undocumented)
-    [k: string]: unknown;
-    // (undocumented)
-    elements: Category[];
-    // (undocumented)
-    label?: string | undefined;
-    // (undocumented)
-    options?: Record<string, unknown> | undefined;
-    // (undocumented)
-    rule?: Rule | undefined;
-    // (undocumented)
-    type: "Categorization";
+export interface BuiltinConstraintBroadeningRegistration {
+    readonly constraintName: string;
+    readonly parseValue: (raw: string) => ExtensionPayloadValue;
+    readonly tagName: BuiltinConstraintName;
 }
 
 // @public
-export const categorizationSchema: z.ZodType<Categorization>;
+export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
+
+// @public
+export interface Categorization {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: Category[];
+    // (undocumented)
+    readonly label?: string | undefined;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "Categorization";
+}
 
 // @public
 export interface Category {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    label: string;
+    readonly label: string;
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "Category";
+    readonly type: "Category";
 }
 
 // @public
-export const categorySchema: z.ZodType<Category>;
-
-// @public
-export interface ClassSchemas {
-    jsonSchema: JsonSchema2020;
-    uiSchema: UISchema;
+export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly field: FieldName;
+    readonly _type: "conditional";
+    readonly value: Value;
 }
 
 // @public
-export type ControlElement = z.infer<typeof controlSchema>;
+export interface ConstraintSemanticRole {
+    readonly bound: "lower" | "upper" | "exact";
+    readonly family: string;
+    readonly inclusive: boolean;
+}
 
 // @public
-export const controlSchema: z.ZodObject<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">>;
+export interface ConstraintTagRegistration {
+    readonly constraintName: string;
+    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
+    readonly parseValue: (raw: string) => ExtensionPayloadValue;
+    readonly tagName: string;
+}
+
+// @public
+export interface ControlElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly label?: string | false | undefined;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly scope: string;
+    // (undocumented)
+    readonly type: "Control";
+}
 
 // @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
 // @public
+export interface CustomAnnotationRegistration {
+    readonly annotationName: string;
+    readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
+}
+
+// @public
+export interface CustomConstraintRegistration {
+    readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
+    readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
+    readonly compositionRule: "intersect" | "override";
+    readonly constraintName: string;
+    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
+    readonly semanticRole?: ConstraintSemanticRole;
+    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
+}
+
+// @public
+export interface CustomTypeRegistration {
+    readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
+    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
+    readonly tsTypeNames?: readonly string[];
+    readonly typeName: string;
+}
+
+// @public
+export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly _field: "dynamic_enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly source: Source;
+    readonly _type: "field";
+}
+
+// @public
+export interface DynamicSchemaField<N extends string> {
+    readonly _field: "dynamic_schema";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly schemaSource: string;
+    readonly _type: "field";
+}
+
+// @public
+export interface EnumOption {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly label: string;
+}
+
+// @public
+export type EnumOptionValue = string | EnumOption;
+
+// @beta
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+// @public
+export type ExtensionApplicableType = {
+    readonly kind: "primitive";
+    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
+} | {
+    readonly kind: "custom";
+    readonly typeId: string;
+    readonly payload: ExtensionPayloadValue;
+} | {
+    readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
+};
+
+// @public
+export interface ExtensionDefinition {
+    readonly annotations?: readonly CustomAnnotationRegistration[];
+    readonly constraints?: readonly CustomConstraintRegistration[];
+    readonly constraintTags?: readonly ConstraintTagRegistration[];
+    readonly extensionId: string;
+    readonly types?: readonly CustomTypeRegistration[];
+    readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
+}
+
+// @public
+export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
+    readonly [key: string]: ExtensionPayloadValue;
+};
 
 // @public
 export interface ExtensionRegistry {
@@ -205,10 +243,21 @@ export interface ExtensionRegistry {
 }
 
 // @public
+export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
+
+// @public
+export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export interface FormSpec<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+}
+
+// @beta
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
     className: string;
     filePath: string;
 }
@@ -223,16 +272,9 @@ export interface GenerateFromClassResult {
 export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
 
 // @public
-export function generateJsonSchemaFromIR(ir: FormIR, options?: GenerateJsonSchemaFromIROptions): JsonSchema2020;
-
-// @public
-export interface GenerateJsonSchemaFromIROptions {
-    readonly extensionRegistry?: ExtensionRegistry | undefined;
+export interface GenerateJsonSchemaOptions {
     readonly vendorPrefix?: string | undefined;
 }
-
-// @public
-export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
 // @public
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
@@ -241,7 +283,7 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
     filePath: string;
     typeName: string;
 }
@@ -250,43 +292,41 @@ export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions 
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
 
 // @public
-export function getSchemaExtension(schema: object, key: `x-formspec-${string}`): unknown;
+export interface Group<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly label: string;
+    readonly _type: "group";
+}
 
 // @public
 export interface GroupLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    label: string;
+    readonly label: string;
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "Group";
+    readonly type: "Group";
 }
-
-// @public
-export const groupLayoutSchema: z.ZodType<GroupLayout>;
 
 // @public
 export interface HorizontalLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "HorizontalLayout";
+    readonly type: "HorizontalLayout";
 }
-
-// @public
-export const horizontalLayoutSchema: z.ZodType<HorizontalLayout>;
 
 // @public
 export interface JsonSchema2020 {
@@ -305,7 +345,7 @@ export interface JsonSchema2020 {
     // (undocumented)
     anyOf?: readonly JsonSchema2020[];
     // (undocumented)
-    const?: JsonValue;
+    const?: unknown;
     // (undocumented)
     default?: unknown;
     // (undocumented)
@@ -352,7 +392,7 @@ export interface JsonSchema2020 {
     uniqueItems?: boolean;
 }
 
-// @public
+// @beta
 export interface JSONSchema7 {
     "x-formspec-params"?: readonly string[];
     "x-formspec-schemaSource"?: string;
@@ -421,107 +461,22 @@ export interface JSONSchema7 {
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
-// @public
-export const jsonSchema7Schema: z.ZodType<JSONSchema7>;
-
-// @public
+// @beta
 export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
 
 // @public
-export const jsonSchemaTypeSchema: z.ZodEnum<["string", "number", "integer", "boolean", "object", "array", "null"]>;
-
-// @public
-export type LabelElement = z.infer<typeof labelElementSchema>;
-
-// @public
-export const labelElementSchema: z.ZodObject<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">>;
+export interface LabelElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly type: "Label";
+}
 
 // @public
 export interface MixedAuthoringSchemas {
@@ -530,7 +485,34 @@ export interface MixedAuthoringSchemas {
 }
 
 // @public
-export type Rule = z.infer<typeof ruleSchema>;
+export interface NumberField<N extends string> {
+    readonly _field: "number";
+    readonly label?: string;
+    readonly max?: number;
+    readonly min?: number;
+    readonly multipleOf?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly _field: "object";
+    readonly label?: string;
+    readonly name: N;
+    readonly properties: Properties;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface Rule {
+    // (undocumented)
+    readonly condition: SchemaBasedCondition;
+    // (undocumented)
+    readonly effect: RuleEffect;
+}
 
 // @public
 export interface RuleConditionSchema {
@@ -561,58 +543,44 @@ export interface RuleConditionSchema {
 }
 
 // @public
-export const ruleConditionSchema: z.ZodType<RuleConditionSchema>;
+export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 
 // @public
-export type RuleEffect = z.infer<typeof ruleEffectSchema>;
+export interface SchemaBasedCondition {
+    // (undocumented)
+    readonly schema: RuleConditionSchema;
+    // (undocumented)
+    readonly scope: string;
+}
 
 // @public
-export const ruleEffectSchema: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly _field: "enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly options: O;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
-export const ruleSchema: z.ZodObject<{
-    effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-    condition: z.ZodObject<{
-        scope: z.ZodString;
-        schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-    }, "strict", z.ZodTypeAny, {
-        schema: RuleConditionSchema;
-        scope: string;
-    }, {
-        schema: RuleConditionSchema;
-        scope: string;
-    }>;
-}, "strict", z.ZodTypeAny, {
-    condition: {
-        schema: RuleConditionSchema;
-        scope: string;
-    };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-}, {
-    condition: {
-        schema: RuleConditionSchema;
-        scope: string;
-    };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-}>;
+export interface StaticSchemaGenerationOptions {
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
+}
 
 // @public
-export type SchemaBasedCondition = z.infer<typeof schemaBasedConditionSchema>;
-
-// @public
-export const schemaBasedConditionSchema: z.ZodObject<{
-    scope: z.ZodString;
-    schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-}, "strict", z.ZodTypeAny, {
-    schema: RuleConditionSchema;
-    scope: string;
-}, {
-    schema: RuleConditionSchema;
-    scope: string;
-}>;
-
-// @public
-export function setSchemaExtension(schema: object, key: `x-formspec-${string}`, value: unknown): void;
+export interface TextField<N extends string> {
+    readonly _field: "text";
+    readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
+    readonly name: N;
+    readonly pattern?: string;
+    readonly placeholder?: string;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
@@ -631,39 +599,33 @@ export interface UISchemaElementBase {
 }
 
 // @public
-export const uiSchemaElementSchema: z.ZodType<UISchemaElement>;
-
-// @public
-export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
-
-// @public
-export const uiSchemaElementTypeSchema: z.ZodEnum<["Control", "VerticalLayout", "HorizontalLayout", "Group", "Categorization", "Category", "Label"]>;
-
-// @public
-export const uiSchemaSchema: z.ZodType<UISchema>;
+export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
 
 // @public
 export interface VerticalLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "VerticalLayout";
+    readonly type: "VerticalLayout";
 }
 
 // @public
-export const verticalLayoutSchema: z.ZodType<VerticalLayout>;
+export interface VocabularyKeywordRegistration {
+    readonly keyword: string;
+    readonly schema: ExtensionPayloadValue;
+}
 
 // @public
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
 
 // @public
-export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
     readonly indent?: number;
     readonly name?: string;
     readonly outDir: string;

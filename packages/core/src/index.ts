@@ -95,16 +95,13 @@ export type {
 } from "./types/index.js";
 
 // Re-export functions and constants
-export {
-  createInitialFieldState,
-  BUILTIN_CONSTRAINT_DEFINITIONS,
-  normalizeConstraintTagName,
-  isBuiltinConstraintName,
-  IR_VERSION,
-} from "./types/index.js";
+export { createInitialFieldState, IR_VERSION } from "./types/index.js";
 
 // Extension API
 export type {
+  ExtensionPayloadValue,
+  ExtensionTypeKind,
+  ExtensionApplicableType,
   ExtensionDefinition,
   CustomTypeRegistration,
   CustomConstraintRegistration,

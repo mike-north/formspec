@@ -4,24 +4,29 @@
 
 ```ts
 
-import type { AnyField } from '@formspec/core';
-import type { ArrayField } from '@formspec/core';
-import type { BooleanField } from '@formspec/core';
-import type { Conditional } from '@formspec/core';
-import type { DataSourceValueType } from '@formspec/core';
-import type { DynamicEnumField } from '@formspec/core';
-import type { DynamicSchemaField } from '@formspec/core';
-import { EnumOption } from '@formspec/core';
-import { EnumOptionValue } from '@formspec/core';
-import type { EqualsPredicate } from '@formspec/core';
-import type { FormElement } from '@formspec/core';
-import type { FormSpec } from '@formspec/core';
-import type { Group } from '@formspec/core';
-import type { NumberField } from '@formspec/core';
-import type { ObjectField } from '@formspec/core';
-import type { Predicate } from '@formspec/core';
-import type { StaticEnumField } from '@formspec/core';
-import type { TextField } from '@formspec/core';
+// @public
+export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+
+// @public
+export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly _field: "array";
+    readonly items: Items;
+    readonly label?: string;
+    readonly maxItems?: number;
+    readonly minItems?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface BooleanField<N extends string> {
+    readonly _field: "boolean";
+    readonly label?: string;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
 export type BuildSchema<Fields> = {
@@ -30,9 +35,62 @@ export type BuildSchema<Fields> = {
     } ? N : never]: F extends AnyField ? InferFieldValue<F> : never;
 };
 
-export { EnumOption }
+// @public
+export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly field: FieldName;
+    readonly _type: "conditional";
+    readonly value: Value;
+}
 
-export { EnumOptionValue }
+// @public
+export interface DataSourceRegistry {
+}
+
+// @public
+export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry ? DataSourceRegistry[Source] extends {
+    id: infer ID;
+} ? ID : string : string;
+
+// @public
+export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly _field: "dynamic_enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly source: Source;
+    readonly _type: "field";
+}
+
+// @public
+export interface DynamicSchemaField<N extends string> {
+    readonly _field: "dynamic_schema";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly schemaSource: string;
+    readonly _type: "field";
+}
+
+// @public
+export interface EnumOption {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly label: string;
+}
+
+// @public
+export type EnumOptionValue = string | EnumOption;
+
+// @public
+export interface EqualsPredicate<K extends string, V> {
+    readonly field: K;
+    readonly _predicate: "equals";
+    readonly value: V;
+}
 
 // @public
 export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
@@ -81,6 +139,14 @@ export type FlattenIntersection<T> = {
 } & {};
 
 // @public
+export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export interface FormSpec<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+}
+
+// @public
 export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
 
 // @public
@@ -91,6 +157,13 @@ export interface FormSpecOptions {
 
 // @public
 export function formspecWithValidation<const Elements extends readonly FormElement[]>(options: FormSpecOptions, ...elements: Elements): FormSpec<Elements>;
+
+// @public
+export interface Group<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly label: string;
+    readonly _type: "group";
+}
 
 // @public
 export function group<const Elements extends readonly FormElement[]>(label: string, ...elements: Elements): Group<Elements>;
@@ -109,6 +182,54 @@ export function is<const K extends string, const V>(field: K, value: V): EqualsP
 
 // @public
 export function logValidationIssues(result: ValidationResult, formName?: string): void;
+
+// @public
+export interface NumberField<N extends string> {
+    readonly _field: "number";
+    readonly label?: string;
+    readonly max?: number;
+    readonly min?: number;
+    readonly multipleOf?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly _field: "object";
+    readonly label?: string;
+    readonly name: N;
+    readonly properties: Properties;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
+
+// @public
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly _field: "enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly options: O;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface TextField<N extends string> {
+    readonly _field: "text";
+    readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
+    readonly name: N;
+    readonly pattern?: string;
+    readonly placeholder?: string;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
 export function validateForm(elements: readonly FormElement[]): ValidationResult;

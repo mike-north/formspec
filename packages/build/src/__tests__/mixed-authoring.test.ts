@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { formspec } from "@formspec/dsl";
-import { buildMixedAuthoringSchemas } from "../index.js";
+import { buildMixedAuthoringSchemas } from "../generators/mixed-authoring.js";
 import { createNumericExtensionRegistry } from "./fixtures/example-numeric-extension.js";
 import {
   constrainedShippingAddressOverlays,

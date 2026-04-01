@@ -1,9 +1,14 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "outDir": "./dist",
     "rootDir": ".",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": {
+      "@formspec/core": ["../core/dist/internals.d.ts"],
+      "@formspec/core/internals": ["../core/dist/internals.d.ts"]
+    }
   },
   "include": ["src/**/*", "package.json"],
   "exclude": ["src/__tests__/**/*"]

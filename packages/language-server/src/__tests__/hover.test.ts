@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
+} from "@formspec/core/internals";
+import {
   defineConstraintTag,
   defineExtension,
 } from "@formspec/core";

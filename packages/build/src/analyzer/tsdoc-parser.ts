@@ -67,6 +67,8 @@ import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,
   isBuiltinConstraintName,
+} from "@formspec/core/internals";
+import {
   type ConstraintNode,
   type AnnotationNode,
   type Provenance,

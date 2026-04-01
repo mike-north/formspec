@@ -10,16 +10,64 @@
  */
 
 import type { BuiltinConstraintName } from "../types/constraint-definitions.js";
-import type { JsonValue, TypeNode } from "../types/ir.js";
 
 // =============================================================================
 // REGISTRATION TYPES
 // =============================================================================
 
 /**
+ * A JSON-serializable payload value used by extension registration hooks.
+ *
+ * @public
+ */
+export type ExtensionPayloadValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly ExtensionPayloadValue[]
+  | { readonly [key: string]: ExtensionPayloadValue };
+
+/**
+ * Top-level type kinds that extension applicability hooks may inspect.
+ *
+ * @public
+ */
+export type ExtensionTypeKind =
+  | "primitive"
+  | "enum"
+  | "array"
+  | "object"
+  | "record"
+  | "union"
+  | "reference"
+  | "dynamic"
+  | "custom";
+
+/**
+ * A curated type shape exposed to extension applicability hooks.
+ *
+ * This intentionally exposes only the fields needed to determine tag/type
+ * applicability without committing the entire canonical IR as public API.
+ *
+ * @public
+ */
+export type ExtensionApplicableType =
+  | {
+      readonly kind: "primitive";
+      readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
+    }
+  | {
+      readonly kind: "custom";
+      readonly typeId: string;
+      readonly payload: ExtensionPayloadValue;
+    }
+  | { readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom"> };
+
+/**
  * Registration for a custom type that maps to a JSON Schema representation.
  *
- * Custom types are referenced via {@link CustomTypeNode} in the IR and
+ * Custom types are referenced by FormSpec's internal custom-type IR nodes and
  * resolved to JSON Schema via `toJsonSchema` during generation.
  *
  * @public
@@ -35,11 +83,14 @@ export interface CustomTypeRegistration {
   /**
    * Converts the custom type's payload into a JSON Schema fragment.
    *
-   * @param payload - The opaque JSON payload from the {@link CustomTypeNode}.
+   * @param payload - The opaque JSON payload stored on the custom type node.
    * @param vendorPrefix - The vendor prefix for extension keywords (e.g., "x-stripe").
    * @returns A JSON Schema fragment representing this type.
    */
-  readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+  readonly toJsonSchema: (
+    payload: ExtensionPayloadValue,
+    vendorPrefix: string
+  ) => Record<string, unknown>;
   /**
    * Optional broadening of built-in constraint tags so they can apply to this
    * custom type without modifying the core built-in constraint tables.
@@ -50,7 +101,7 @@ export interface CustomTypeRegistration {
 /**
  * Registration for a custom constraint that maps to JSON Schema keywords.
  *
- * Custom constraints are referenced via {@link CustomConstraintNode} in the IR.
+ * Custom constraints are referenced by FormSpec's internal custom-constraint nodes.
  *
  * @public
  */
@@ -67,18 +118,18 @@ export interface CustomConstraintRegistration {
    * TypeNode kinds this constraint is applicable to, or `null` for any type.
    * Used by the validator to emit TYPE_MISMATCH diagnostics.
    */
-  readonly applicableTypes: readonly TypeNode["kind"][] | null;
+  readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
   /**
    * Optional precise type predicate used when kind-level applicability is too
    * broad (for example, constraints that apply to integer-like primitives but
    * not strings).
    */
-  readonly isApplicableToType?: (type: TypeNode) => boolean;
+  readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
   /**
    * Optional comparator for payloads belonging to the same custom constraint.
    * Return values follow the `Array.prototype.sort()` contract.
    */
-  readonly comparePayloads?: (left: JsonValue, right: JsonValue) => number;
+  readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
   /**
    * Optional semantic family metadata for generic contradiction/broadening
    * handling across ordered constraints.
@@ -87,17 +138,20 @@ export interface CustomConstraintRegistration {
   /**
    * Converts the custom constraint's payload into JSON Schema keywords.
    *
-   * @param payload - The opaque JSON payload from the {@link CustomConstraintNode}.
+   * @param payload - The opaque JSON payload stored on the custom constraint node.
    * @param vendorPrefix - The vendor prefix for extension keywords.
    * @returns A JSON Schema fragment with the constraint keywords.
    */
-  readonly toJsonSchema: (payload: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+  readonly toJsonSchema: (
+    payload: ExtensionPayloadValue,
+    vendorPrefix: string
+  ) => Record<string, unknown>;
 }
 
 /**
  * Registration for a custom annotation that may produce JSON Schema keywords.
  *
- * Custom annotations are referenced via {@link CustomAnnotationNode} in the IR.
+ * Custom annotations are referenced by FormSpec's internal custom-annotation nodes.
  * They describe or present a field but do not affect which values are valid.
  *
  * @public
@@ -109,7 +163,10 @@ export interface CustomAnnotationRegistration {
    * Optionally converts the annotation value into JSON Schema keywords.
    * If omitted, the annotation has no JSON Schema representation (UI-only).
    */
-  readonly toJsonSchema?: (value: JsonValue, vendorPrefix: string) => Record<string, unknown>;
+  readonly toJsonSchema?: (
+    value: ExtensionPayloadValue,
+    vendorPrefix: string
+  ) => Record<string, unknown>;
 }
 
 /**
@@ -121,7 +178,7 @@ export interface VocabularyKeywordRegistration {
   /** The keyword name (without vendor prefix). */
   readonly keyword: string;
   /** JSON Schema that describes the valid values for this keyword. */
-  readonly schema: JsonValue;
+  readonly schema: ExtensionPayloadValue;
 }
 
 /**
@@ -135,13 +192,13 @@ export interface ConstraintTagRegistration {
   /** The custom constraint that this tag should produce. */
   readonly constraintName: string;
   /** Parser from raw TSDoc text to JSON-serializable payload. */
-  readonly parseValue: (raw: string) => JsonValue;
+  readonly parseValue: (raw: string) => ExtensionPayloadValue;
   /**
    * Optional precise applicability predicate for the field type being parsed.
    * When omitted, the target custom constraint registration controls type
    * applicability during validation.
    */
-  readonly isApplicableToType?: (type: TypeNode) => boolean;
+  readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
 }
 
 /**
@@ -156,7 +213,7 @@ export interface BuiltinConstraintBroadeningRegistration {
   /** The custom constraint to emit for this built-in tag. */
   readonly constraintName: string;
   /** Parser from raw TSDoc text to extension payload. */
-  readonly parseValue: (raw: string) => JsonValue;
+  readonly parseValue: (raw: string) => ExtensionPayloadValue;
 }
 
 /**

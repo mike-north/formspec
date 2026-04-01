@@ -4,8 +4,37 @@
 
 ```ts
 
-import type { FormElement } from '@formspec/core';
-import type { FormSpec } from '@formspec/core';
+// @public
+export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+
+// @public
+export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly _field: "array";
+    readonly items: Items;
+    readonly label?: string;
+    readonly maxItems?: number;
+    readonly minItems?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface BooleanField<N extends string> {
+    readonly _field: "boolean";
+    readonly label?: string;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly field: FieldName;
+    readonly _type: "conditional";
+    readonly value: Value;
+}
 
 // @public
 export interface ConstraintConfig {
@@ -26,19 +55,52 @@ export interface ControlOptionConstraints {
     showUnfocusedDescription?: Severity;
 }
 
-// @public
+// @beta
 export const DEFAULT_CONFIG: FormSpecConfig;
 
-// @public
+// @beta
 export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig;
 
 // @public
 export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig;
 
 // @public
-export function extractFieldOptions(field: Record<string, unknown>): FieldOption[];
+export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly _field: "dynamic_enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly source: Source;
+    readonly _type: "field";
+}
 
 // @public
+export interface DynamicSchemaField<N extends string> {
+    readonly _field: "dynamic_schema";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly schemaSource: string;
+    readonly _type: "field";
+}
+
+// @public
+export interface EnumOption {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly label: string;
+}
+
+// @public
+export type EnumOptionValue = string | EnumOption;
+
+// @beta
+export function extractFieldOptions(field: Record<string, unknown>): FieldOption[];
+
+// @beta
 export type FieldOption = "label" | "placeholder" | "required" | "minValue" | "maxValue" | "minItems" | "maxItems";
 
 // @public
@@ -52,7 +114,7 @@ export interface FieldOptionConstraints {
     required?: Severity;
 }
 
-// @public
+// @beta
 export interface FieldOptionsContext {
     fieldName: string;
     path?: string;
@@ -71,11 +133,19 @@ export interface FieldTypeConstraints {
     text?: Severity;
 }
 
-// @public
+// @beta
 export interface FieldTypeContext {
     fieldName: string;
     fieldType: string;
     path?: string;
+}
+
+// @public
+export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export interface FormSpec<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
 }
 
 // @public
@@ -88,22 +158,29 @@ export interface FormSpecValidationOptions {
     constraints?: ConstraintConfig;
 }
 
-// @public
+// @beta
 export function getFieldOptionSeverity(option: FieldOption, constraints: FieldOptionConstraints): Severity;
 
-// @public
+// @beta
 export function getFieldTypeSeverity(fieldType: string, constraints: FieldTypeConstraints): Severity;
 
 // @public
+export interface Group<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly label: string;
+    readonly _type: "group";
+}
+
+// @beta
 export function isFieldOptionAllowed(option: FieldOption, constraints: FieldOptionConstraints): boolean;
 
-// @public
+// @beta
 export function isFieldTypeAllowed(fieldType: string, constraints: FieldTypeConstraints): boolean;
 
-// @public
+// @beta
 export function isLayoutTypeAllowed(layoutType: "group" | "conditional", constraints: LayoutConstraints): boolean;
 
-// @public
+// @beta
 export function isNestingDepthAllowed(depth: number, constraints: LayoutConstraints): boolean;
 
 // @public
@@ -113,7 +190,7 @@ export interface LayoutConstraints {
     maxNestingDepth?: number;
 }
 
-// @public
+// @beta
 export interface LayoutContext {
     depth: number;
     label?: string;
@@ -150,8 +227,30 @@ export interface LoadConfigResult {
     found: boolean;
 }
 
-// @public
+// @beta
 export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig;
+
+// @public
+export interface NumberField<N extends string> {
+    readonly _field: "number";
+    readonly label?: string;
+    readonly max?: number;
+    readonly min?: number;
+    readonly multipleOf?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly _field: "object";
+    readonly label?: string;
+    readonly name: N;
+    readonly properties: Properties;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
 
 // @public
 export interface ResolvedConstraintConfig {
@@ -201,15 +300,38 @@ export interface RuleEffectConstraints {
 export type Severity = "error" | "warn" | "off";
 
 // @public
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly _field: "enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly options: O;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface TextField<N extends string> {
+    readonly _field: "text";
+    readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
+    readonly name: N;
+    readonly pattern?: string;
+    readonly placeholder?: string;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
 export interface UISchemaConstraints {
     layouts?: LayoutTypeConstraints;
     rules?: RuleConstraints;
 }
 
-// @public
+// @beta
 export function validateFieldOptions(context: FieldOptionsContext, constraints: FieldOptionConstraints): ValidationIssue[];
 
-// @public
+// @beta
 export function validateFieldTypes(context: FieldTypeContext, constraints: FieldTypeConstraints): ValidationIssue[];
 
 // @public
@@ -218,7 +340,7 @@ export function validateFormSpec(formSpec: FormSpec<readonly FormElement[]>, opt
 // @public
 export function validateFormSpecElements(elements: readonly FormElement[], options?: FormSpecValidationOptions): ValidationResult;
 
-// @public
+// @beta
 export function validateLayout(context: LayoutContext, constraints: LayoutConstraints): ValidationIssue[];
 
 // @public

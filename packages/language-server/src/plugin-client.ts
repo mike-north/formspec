@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   computeFormSpecTextHash,
-  getFormSpecManifestPath,
   isFormSpecAnalysisManifest,
   isFormSpecSemanticResponse,
   type FormSpecAnalysisDiagnostic,
@@ -15,6 +14,7 @@ import {
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
 } from "@formspec/analysis/protocol";
+import { getFormSpecManifestPath } from "@formspec/analysis/internal";
 
 const DEFAULT_PLUGIN_QUERY_TIMEOUT_MS = 2_000;
 

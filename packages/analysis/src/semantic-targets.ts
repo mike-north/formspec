@@ -8,7 +8,7 @@ import type {
   Provenance,
   TypeNode,
 } from "@formspec/core";
-import { normalizeConstraintTagName } from "@formspec/core";
+import { normalizeConstraintTagName } from "@formspec/core/internals";
 
 export interface AnalysisTypeDefinition {
   readonly name: string;

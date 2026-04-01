@@ -31,7 +31,7 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
 /**
  * Context for field type validation.
  *
- * @public
+ * @beta
  */
 export interface FieldTypeContext {
   /** The _field discriminator value (e.g., "text", "number", "enum") */
@@ -49,7 +49,7 @@ export interface FieldTypeContext {
  * @param constraints - Field type constraints
  * @returns Array of validation issues (empty if valid)
  *
- * @public
+ * @beta
  */
 export function validateFieldTypes(
   context: FieldTypeContext,
@@ -100,7 +100,7 @@ function createFieldTypeIssue(
  * @param constraints - Field type constraints
  * @returns true if allowed, false if disallowed
  *
- * @public
+ * @beta
  */
 export function isFieldTypeAllowed(fieldType: string, constraints: FieldTypeConstraints): boolean {
   const constraintKey = FIELD_TYPE_MAP[fieldType];
@@ -119,7 +119,7 @@ export function isFieldTypeAllowed(fieldType: string, constraints: FieldTypeCons
  * @param constraints - Field type constraints
  * @returns Severity level, or "off" if not constrained
  *
- * @public
+ * @beta
  */
 export function getFieldTypeSeverity(
   fieldType: string,

@@ -6,8 +6,8 @@ import {
   type ConstraintTagRegistration,
   type CustomConstraintRegistration,
   type CustomTypeRegistration,
-  type JsonValue,
-  type TypeNode,
+  type ExtensionApplicableType,
+  type ExtensionPayloadValue,
 } from "@formspec/core";
 import { createExtensionRegistry } from "../../extensions/index.js";
 
@@ -107,26 +107,26 @@ function parseNonNegativeInteger(raw: string): number {
   return Number(trimmed);
 }
 
-function isNumberLike(type: TypeNode): boolean {
+function isNumberLike(type: ExtensionApplicableType): boolean {
   return type.kind === "primitive" && type.primitiveKind === "number";
 }
 
-function isDecimalType(type: TypeNode): boolean {
+function isDecimalType(type: ExtensionApplicableType): boolean {
   return type.kind === "custom" && type.typeId === DECIMAL_TYPE_ID;
 }
 
-function isBigIntType(type: TypeNode): boolean {
+function isBigIntType(type: ExtensionApplicableType): boolean {
   return type.kind === "custom" && type.typeId === BIGINT_TYPE_ID;
 }
 
-function compareNumericPayloads(left: JsonValue, right: JsonValue): number {
+function compareNumericPayloads(left: ExtensionPayloadValue, right: ExtensionPayloadValue): number {
   if (typeof left !== "number" || typeof right !== "number") {
     throw new Error("Numeric constraint payload comparator received a non-number payload");
   }
   return left - right;
 }
 
-function compareDecimalPayloads(left: JsonValue, right: JsonValue): number {
+function compareDecimalPayloads(left: ExtensionPayloadValue, right: ExtensionPayloadValue): number {
   if (typeof left !== "string" || typeof right !== "string") {
     throw new Error("Decimal constraint payload comparator received a non-string payload");
   }

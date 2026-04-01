@@ -1,6 +1,8 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,
+} from "@formspec/core/internals";
+import {
   type BuiltinConstraintName,
 } from "@formspec/core";
 

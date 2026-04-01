@@ -26,14 +26,4 @@ export {
   isFormSpecAnalysisManifest,
   isFormSpecSemanticQuery,
   isFormSpecSemanticResponse,
-  serializeCommentTagSemanticContext,
-  serializeCommentTargetSpecifier,
-  serializeCompletionContext,
-  serializeHoverInfo,
-  serializeParsedCommentTag,
 } from "./semantic-protocol.js";
-export {
-  getFormSpecManifestPath,
-  getFormSpecWorkspaceId,
-  getFormSpecWorkspaceRuntimeDirectory,
-} from "./workspace-runtime.js";
