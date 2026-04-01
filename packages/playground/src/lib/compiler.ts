@@ -8,7 +8,8 @@
  * 4. Validating FormSpec against constraints
  */
 
-import type { FormSpec, FormElement, FormIR } from "@formspec/core";
+import type { FormSpec, FormElement } from "@formspec/core";
+import type { FormIR } from "@formspec/core/internals";
 import * as dsl from "@formspec/dsl";
 import {
   buildFormSchemas,

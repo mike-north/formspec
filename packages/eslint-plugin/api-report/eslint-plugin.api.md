@@ -49,7 +49,7 @@ export const noContradictoryRules: ESLintUtils.RuleModule<"contradictoryRuleEffe
 };
 
 // @public
-export const noDescriptionConflict: ESLintUtils.RuleModule<"descriptionRemarksConflict", [], unknown, ESLintUtils.RuleListener> & {
+export const noDescriptionTag: ESLintUtils.RuleModule<"descriptionTagForbidden", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -131,7 +131,7 @@ const plugin: {
         readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "constraint-validation/no-description-conflict": TSESLint.RuleModule<"descriptionRemarksConflict", [], unknown, TSESLint.RuleListener> & {
+        readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
@@ -202,7 +202,7 @@ export const rules: {
     readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
-    readonly "constraint-validation/no-description-conflict": TSESLint.RuleModule<"descriptionRemarksConflict", [], unknown, TSESLint.RuleListener> & {
+    readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { compileFormSpec, type CompileResult, type DiagnosticMessage } from "../lib/compiler";
-import type { FormSpec, FormElement, FormIR } from "@formspec/core";
+import type { FormSpec, FormElement } from "@formspec/core";
+import type { FormIR } from "@formspec/core/internals";
 import type { JsonSchema2020, UISchema, ValidationDiagnostic } from "@formspec/build/browser";
 import type { ConstraintsConfig } from "../components/Constraints";
 import { toConstraintConfig } from "../lib/constraintAdapter";

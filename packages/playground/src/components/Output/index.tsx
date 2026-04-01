@@ -8,7 +8,7 @@ import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import type { JsonSchema2020, UISchema } from "@formspec/build/browser";
-import type { FormIR } from "@formspec/core";
+import type { FormIR } from "@formspec/core/internals";
 
 export interface OutputProps {
   jsonSchema: JsonSchema2020 | null;
