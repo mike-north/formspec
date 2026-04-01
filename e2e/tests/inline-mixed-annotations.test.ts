@@ -2,8 +2,8 @@
  * Regression test: inline mixed annotations with constraints.
  *
  * Reproduces the pattern from apps-extensibility-sdk where @displayName,
- * @description, and constraint tags (@minLength, @maxLength, @minimum,
- * @maximum) are all on a single JSDoc line per field.
+ * summary text, and constraint tags (@minLength, @maxLength, @minimum,
+ * @maximum) share the same JSDoc block per field.
  *
  * The expected behavior is that constraint tag arguments are parsed correctly
  * even when preceded by annotation tags with free-form text values.
@@ -14,7 +14,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
-describe("Inline mixed annotations — @displayName + @description + constraints on one line", () => {
+describe("Inline mixed annotations parse display names and constraints from the same JSDoc block", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
   let properties: Record<string, Record<string, unknown>>;
@@ -74,7 +74,7 @@ describe("Inline mixed annotations — @displayName + @description + constraints
     });
   });
 
-  it("discountType is a string enum with 'percentage' and 'fixed'", () => {
+  it('discountType is a string enum with "percentage" and "fixed"', () => {
     expect(properties["discountType"]).toHaveProperty("enum");
     const enumValues = properties["discountType"]["enum"] as string[];
     expect(enumValues).toContain("percentage");

@@ -154,12 +154,9 @@ function sharedTagValueOptions(options?: ParseTSDocOptions) {
 const SYNTHETIC_TYPE_FORMAT_FLAGS =
   ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
-function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string[] {
-  // Collect identifiers introduced by import declarations so we can
-  // skip non-import statements that reference them (the synthetic
-  // program doesn't have module resolution, so referencing an imported
-  // type would cause spurious type errors).
+function collectImportedNames(sourceFile: ts.SourceFile): ReadonlySet<string> {
   const importedNames = new Set<string>();
+
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement) && statement.importClause !== undefined) {
       const clause = statement.importClause;
@@ -175,24 +172,103 @@ function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string
           importedNames.add(clause.namedBindings.name.text);
         }
       }
+      continue;
+    }
+
+    if (ts.isImportEqualsDeclaration(statement)) {
+      importedNames.add(statement.name.text);
     }
   }
+
+  return importedNames;
+}
+
+function isNonReferenceIdentifier(node: ts.Identifier): boolean {
+  const parent = node.parent;
+
+  if (
+    (ts.isBindingElement(parent) ||
+      ts.isClassDeclaration(parent) ||
+      ts.isEnumDeclaration(parent) ||
+      ts.isEnumMember(parent) ||
+      ts.isFunctionDeclaration(parent) ||
+      ts.isFunctionExpression(parent) ||
+      ts.isImportClause(parent) ||
+      ts.isImportEqualsDeclaration(parent) ||
+      ts.isImportSpecifier(parent) ||
+      ts.isInterfaceDeclaration(parent) ||
+      ts.isMethodDeclaration(parent) ||
+      ts.isMethodSignature(parent) ||
+      ts.isModuleDeclaration(parent) ||
+      ts.isNamespaceExport(parent) ||
+      ts.isNamespaceImport(parent) ||
+      ts.isParameter(parent) ||
+      ts.isPropertyDeclaration(parent) ||
+      ts.isPropertySignature(parent) ||
+      ts.isSetAccessorDeclaration(parent) ||
+      ts.isGetAccessorDeclaration(parent) ||
+      ts.isTypeAliasDeclaration(parent) ||
+      ts.isTypeParameterDeclaration(parent) ||
+      ts.isVariableDeclaration(parent)) &&
+    parent.name === node
+  ) {
+    return true;
+  }
+
+  if (
+    (ts.isPropertyAssignment(parent) || ts.isPropertyAccessExpression(parent)) &&
+    parent.name === node
+  ) {
+    return true;
+  }
+
+  if (ts.isQualifiedName(parent) && parent.right === node) {
+    return true;
+  }
+
+  return false;
+}
+
+function statementReferencesImportedName(
+  statement: ts.Statement,
+  importedNames: ReadonlySet<string>
+): boolean {
+  let referencesImportedName = false;
+
+  const visit = (node: ts.Node): void => {
+    if (referencesImportedName) {
+      return;
+    }
+
+    if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
+      referencesImportedName = true;
+      return;
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(statement);
+  return referencesImportedName;
+}
+
+function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string[] {
+  const importedNames = collectImportedNames(sourceFile);
 
   return sourceFile.statements
     .filter((statement) => {
       // Always exclude imports and re-exports
       if (ts.isImportDeclaration(statement)) return false;
       if (ts.isImportEqualsDeclaration(statement)) return false;
-      if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) return false;
+      if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
+        return false;
 
-      // Skip declarations whose text references an imported identifier.
+      // Skip declarations whose AST references an imported identifier.
       // This prevents the synthetic program from emitting errors about
-      // unresolvable types introduced by filtered-out imports.
-      if (importedNames.size > 0) {
-        const text = statement.getText(sourceFile);
-        for (const name of importedNames) {
-          if (text.includes(name)) return false;
-        }
+      // unresolvable imported types without falsely matching comments,
+      // string literals, or unrelated property names.
+      if (importedNames.size > 0 && statementReferencesImportedName(statement, importedNames)) {
+        return false;
       }
 
       return true;
@@ -740,11 +816,7 @@ export function parseTSDocTags(
       for (const block of docComment.customBlocks) {
         const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
         const parsedTag = nextParsedTag(tagName);
-        if (
-          tagName === "displayName" ||
-          tagName === "format" ||
-          tagName === "placeholder"
-        ) {
+        if (tagName === "displayName" || tagName === "format" || tagName === "placeholder") {
           const text = getBestBlockPayloadText(parsedTag, commentText, range.pos, block);
           if (text === "") continue;
 

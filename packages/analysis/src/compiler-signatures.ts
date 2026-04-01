@@ -620,6 +620,42 @@ const syntheticBatchResultCache = new LruCache<string, readonly SyntheticTagChec
   FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES
 );
 
+function getEffectiveSyntheticCompilerOptions(
+  compilerOptionsOverrides?: ts.CompilerOptions
+): ts.CompilerOptions {
+  return compilerOptionsOverrides !== undefined
+    ? { ...SYNTHETIC_COMPILER_OPTIONS, ...compilerOptionsOverrides }
+    : SYNTHETIC_COMPILER_OPTIONS;
+}
+
+function stableSerializeCacheValue(value: unknown): string {
+  if (value === undefined) {
+    return "undefined";
+  }
+
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerializeCacheValue(entry)).join(",")}]`;
+  }
+
+  const entries = Object.entries(value)
+    .filter(([, entry]) => entry !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right));
+  return `{${entries
+    .map(([key, entry]) => `${JSON.stringify(key)}:${stableSerializeCacheValue(entry)}`)
+    .join(",")}}`;
+}
+
+function buildSyntheticBatchCacheKey(
+  sourceText: string,
+  compilerOptionsOverrides?: ts.CompilerOptions
+): string {
+  return `${stableSerializeCacheValue(getEffectiveSyntheticCompilerOptions(compilerOptionsOverrides))}\n${sourceText}`;
+}
+
 interface SyntheticBatchApplication {
   readonly lowered: LoweredSyntheticTagApplication;
   readonly options: CheckSyntheticTagApplicationOptions;
@@ -776,10 +812,7 @@ function runSyntheticProgram(
   readonly sourceFile: ts.SourceFile;
   readonly diagnostics: readonly ts.Diagnostic[];
 } {
-  const effectiveOptions: ts.CompilerOptions =
-    compilerOptionsOverrides !== undefined
-      ? { ...SYNTHETIC_COMPILER_OPTIONS, ...compilerOptionsOverrides }
-      : SYNTHETIC_COMPILER_OPTIONS;
+  const effectiveOptions = getEffectiveSyntheticCompilerOptions(compilerOptionsOverrides);
   const host = optionalMeasure(performance, `${eventPrefix}.createCompilerHost`, undefined, () =>
     createSyntheticCompilerHost(fileName, sourceText, effectiveOptions)
   );
@@ -835,7 +868,8 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
 
   const resolvedApplications = options.lowerApplications(options.applications, options.performance);
   const batchSource = options.buildBatchSource(resolvedApplications, options.performance);
-  const cached = options.cache.get(batchSource.sourceText);
+  const cacheKey = buildSyntheticBatchCacheKey(batchSource.sourceText, options.compilerOptions);
+  const cached = options.cache.get(cacheKey);
   if (cached !== undefined) {
     options.performance?.record({
       name: `${options.eventPrefix}.cacheHit`,
@@ -869,7 +903,7 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
     undefined,
     () => mapBatchDiagnostics(diagnostics, sourceFile, batchSource.applicationLineRanges)
   );
-  options.cache.set(batchSource.sourceText, results);
+  options.cache.set(cacheKey, results);
   return results;
 }
 

@@ -15,7 +15,7 @@ export class InlineMixedAnnotationsForm {
   programName!: string;
 
   /** @displayName Discount Type */
-  discountType!: 'percentage' | 'fixed';
+  discountType!: "percentage" | "fixed";
 
   /**
    * Percentage to discount (0-100)

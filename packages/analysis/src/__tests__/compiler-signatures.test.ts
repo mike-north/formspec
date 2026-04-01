@@ -599,20 +599,25 @@ describe("compiler-signatures", () => {
     expect(results[1]?.diagnostics).toHaveLength(0);
   });
 
-  it("propagates compilerOptions to the synthetic program", () => {
-    // Verify that compilerOptions flows through without errors.
-    // The primary regression test for noUncheckedIndexedAccess + imports
-    // lives in packages/build (nounchecked-index-access.test.ts).
-    const result = checkSyntheticTagApplication({
+  it("propagates compilerOptions to the synthetic program without cross-contaminating the cache", () => {
+    const application = {
       tagName: "minimum",
-      placement: "class-field",
-      hostType: "number",
+      placement: "class-field" as const,
+      hostType: "FindLastResult",
       subjectType: "number",
       argumentExpression: "0",
-      compilerOptions: { noUncheckedIndexedAccess: true },
-    });
+      supportingDeclarations: ['type FindLastResult = ReturnType<number[]["findLast"]>;'],
+    };
 
-    expect(result.diagnostics).toHaveLength(0);
+    const defaultLibResult = checkSyntheticTagApplication(application);
+    expect(defaultLibResult.diagnostics).not.toHaveLength(0);
+    expect(defaultLibResult.diagnostics[0]?.message).toContain("findLast");
+
+    const es2023Result = checkSyntheticTagApplication({
+      ...application,
+      compilerOptions: { lib: ["lib.es2023.d.ts"] },
+    });
+    expect(es2023Result.diagnostics).toHaveLength(0);
   });
 
   it("keeps the synthetic batch cache at 64 entries and reuses it for mixed-tag canary batches", () => {
