@@ -6,7 +6,7 @@
  * should use this module for UI Schema generation.
  */
 
-import type { FormIR, FormIRElement, FieldNode, GroupLayoutNode } from "@formspec/core";
+import type { FormIR, FormIRElement, FieldNode, GroupLayoutNode } from "@formspec/core/internals";
 import type {
   UISchema,
   UISchemaElement,

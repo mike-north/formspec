@@ -13,9 +13,9 @@
  *
  * Keys use camelCase matching JSON Schema property names.
  *
- * @public
+ * @internal
  */
-export const BUILTIN_CONSTRAINT_DEFINITIONS = {
+export const _BUILTIN_CONSTRAINT_DEFINITIONS = {
   minimum: "number",
   maximum: "number",
   exclusiveMinimum: "number",
@@ -36,7 +36,20 @@ export const BUILTIN_CONSTRAINT_DEFINITIONS = {
  *
  * @public
  */
-export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
+export type BuiltinConstraintName =
+  | "minimum"
+  | "maximum"
+  | "exclusiveMinimum"
+  | "exclusiveMaximum"
+  | "multipleOf"
+  | "minLength"
+  | "maxLength"
+  | "minItems"
+  | "maxItems"
+  | "uniqueItems"
+  | "pattern"
+  | "const"
+  | "enumOptions";
 
 /**
  * Normalizes a constraint tag name from PascalCase to camelCase.
@@ -49,9 +62,9 @@ export type BuiltinConstraintName = keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS;
  * normalizeConstraintTagName("MinLength") // "minLength"
  * normalizeConstraintTagName("minimum")   // "minimum" (idempotent)
  *
- * @public
+ * @internal
  */
-export function normalizeConstraintTagName(tagName: string): string {
+export function _normalizeConstraintTagName(tagName: string): string {
   return tagName.charAt(0).toLowerCase() + tagName.slice(1);
 }
 
@@ -61,11 +74,11 @@ export function normalizeConstraintTagName(tagName: string): string {
  * Uses `Object.hasOwn()` rather than `in` to prevent prototype-chain
  * matches on names like `"toString"` or `"constructor"`.
  *
- * Callers should normalize with {@link normalizeConstraintTagName} first
+ * Callers should normalize with {@link _normalizeConstraintTagName} first
  * if the input may be PascalCase.
  *
- * @public
+ * @internal
  */
-export function isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
-  return Object.hasOwn(BUILTIN_CONSTRAINT_DEFINITIONS, tagName);
+export function _isBuiltinConstraintName(tagName: string): tagName is BuiltinConstraintName {
+  return Object.hasOwn(_BUILTIN_CONSTRAINT_DEFINITIONS, tagName);
 }

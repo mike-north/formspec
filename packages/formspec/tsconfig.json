@@ -1,8 +1,15 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "paths": {
+      "@formspec/core": ["../core/dist/core.d.ts"],
+      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"],
+      "@formspec/build": ["../build/dist/build.d.ts"],
+      "@formspec/runtime": ["../runtime/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

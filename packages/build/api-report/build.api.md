@@ -4,17 +4,39 @@
 
 ```ts
 
-import type { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
-import type { ConstraintTagRegistration } from '@formspec/core';
-import type { CustomAnnotationRegistration } from '@formspec/core';
-import type { CustomConstraintRegistration } from '@formspec/core';
-import type { CustomTypeRegistration } from '@formspec/core';
-import type { ExtensionDefinition } from '@formspec/core';
-import type { FormElement } from '@formspec/core';
-import type { FormIR } from '@formspec/core';
-import type { FormSpec } from '@formspec/core';
-import type { JsonValue } from '@formspec/core';
-import { z } from 'zod';
+import { AnyField } from '@formspec/core';
+import { ArrayField } from '@formspec/core';
+import { BooleanField } from '@formspec/core';
+import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
+import { BuiltinConstraintName } from '@formspec/core';
+import { Conditional } from '@formspec/core';
+import { ConstraintSemanticRole } from '@formspec/core';
+import { ConstraintTagRegistration } from '@formspec/core';
+import { CustomAnnotationRegistration } from '@formspec/core';
+import { CustomConstraintRegistration } from '@formspec/core';
+import { CustomTypeRegistration } from '@formspec/core';
+import { DynamicEnumField } from '@formspec/core';
+import { DynamicSchemaField } from '@formspec/core';
+import { EnumOption } from '@formspec/core';
+import { EnumOptionValue } from '@formspec/core';
+import { ExtensionApplicableType } from '@formspec/core';
+import { ExtensionDefinition } from '@formspec/core';
+import { ExtensionPayloadValue } from '@formspec/core';
+import { ExtensionTypeKind } from '@formspec/core';
+import { FormElement } from '@formspec/core';
+import { FormSpec } from '@formspec/core';
+import { Group } from '@formspec/core';
+import { NumberField } from '@formspec/core';
+import { ObjectField } from '@formspec/core';
+import { StaticEnumField } from '@formspec/core';
+import { TextField } from '@formspec/core';
+import { VocabularyKeywordRegistration } from '@formspec/core';
+
+export { AnyField }
+
+export { ArrayField }
+
+export { BooleanField }
 
 // @public
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
@@ -26,7 +48,7 @@ export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
 
 // @public
-export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
     readonly filePath: string;
     readonly overlays: FormSpec<readonly FormElement[]>;
     readonly typeName: string;
@@ -38,151 +60,89 @@ export interface BuildResult {
     readonly uiSchema: UISchema;
 }
 
+export { BuiltinConstraintBroadeningRegistration }
+
+export { BuiltinConstraintName }
+
 // @public
 export interface Categorization {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: Category[];
+    readonly elements: Category[];
     // (undocumented)
-    label?: string | undefined;
+    readonly label?: string | undefined;
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "Categorization";
+    readonly type: "Categorization";
 }
-
-// @public
-export const categorizationSchema: z.ZodType<Categorization>;
 
 // @public
 export interface Category {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    label: string;
+    readonly label: string;
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "Category";
+    readonly type: "Category";
 }
 
-// @public
-export const categorySchema: z.ZodType<Category>;
+export { Conditional }
+
+export { ConstraintSemanticRole }
+
+export { ConstraintTagRegistration }
 
 // @public
-export interface ClassSchemas {
-    jsonSchema: JsonSchema2020;
-    uiSchema: UISchema;
+export interface ControlElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly label?: string | false | undefined;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly scope: string;
+    // (undocumented)
+    readonly type: "Control";
 }
-
-// @public
-export type ControlElement = z.infer<typeof controlSchema>;
-
-// @public
-export const controlSchema: z.ZodObject<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
-    type: z.ZodLiteral<"Control">;
-    scope: z.ZodString;
-    label: z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodLiteral<false>]>>;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">>;
 
 // @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
-// @public
+export { CustomAnnotationRegistration }
+
+export { CustomConstraintRegistration }
+
+export { CustomTypeRegistration }
+
+export { DynamicEnumField }
+
+export { DynamicSchemaField }
+
+export { EnumOption }
+
+export { EnumOptionValue }
+
+// @beta
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+export { ExtensionApplicableType }
+
+export { ExtensionDefinition }
+
+export { ExtensionPayloadValue }
 
 // @public
 export interface ExtensionRegistry {
@@ -204,11 +164,17 @@ export interface ExtensionRegistry {
     } | undefined;
 }
 
-// @public
+export { ExtensionTypeKind }
+
+export { FormElement }
+
+export { FormSpec }
+
+// @beta
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
     className: string;
     filePath: string;
 }
@@ -223,16 +189,9 @@ export interface GenerateFromClassResult {
 export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
 
 // @public
-export function generateJsonSchemaFromIR(ir: FormIR, options?: GenerateJsonSchemaFromIROptions): JsonSchema2020;
-
-// @public
-export interface GenerateJsonSchemaFromIROptions {
-    readonly extensionRegistry?: ExtensionRegistry | undefined;
+export interface GenerateJsonSchemaOptions {
     readonly vendorPrefix?: string | undefined;
 }
-
-// @public
-export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
 
 // @public
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
@@ -241,7 +200,7 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
     filePath: string;
     typeName: string;
 }
@@ -249,44 +208,37 @@ export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions 
 // @public
 export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
 
-// @public
-export function getSchemaExtension(schema: object, key: `x-formspec-${string}`): unknown;
+export { Group }
 
 // @public
 export interface GroupLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    label: string;
+    readonly label: string;
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "Group";
+    readonly type: "Group";
 }
-
-// @public
-export const groupLayoutSchema: z.ZodType<GroupLayout>;
 
 // @public
 export interface HorizontalLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "HorizontalLayout";
+    readonly type: "HorizontalLayout";
 }
-
-// @public
-export const horizontalLayoutSchema: z.ZodType<HorizontalLayout>;
 
 // @public
 export interface JsonSchema2020 {
@@ -305,7 +257,7 @@ export interface JsonSchema2020 {
     // (undocumented)
     anyOf?: readonly JsonSchema2020[];
     // (undocumented)
-    const?: JsonValue;
+    const?: unknown;
     // (undocumented)
     default?: unknown;
     // (undocumented)
@@ -352,7 +304,7 @@ export interface JsonSchema2020 {
     uniqueItems?: boolean;
 }
 
-// @public
+// @beta
 export interface JSONSchema7 {
     "x-formspec-params"?: readonly string[];
     "x-formspec-schemaSource"?: string;
@@ -421,107 +373,22 @@ export interface JSONSchema7 {
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
-// @public
-export const jsonSchema7Schema: z.ZodType<JSONSchema7>;
-
-// @public
+// @beta
 export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
 
 // @public
-export const jsonSchemaTypeSchema: z.ZodEnum<["string", "number", "integer", "boolean", "object", "array", "null"]>;
-
-// @public
-export type LabelElement = z.infer<typeof labelElementSchema>;
-
-// @public
-export const labelElementSchema: z.ZodObject<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, "passthrough", z.ZodTypeAny, z.objectOutputType<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">, z.objectInputType<{
-    type: z.ZodLiteral<"Label">;
-    text: z.ZodString;
-    rule: z.ZodOptional<z.ZodObject<{
-        effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-        condition: z.ZodObject<{
-            scope: z.ZodString;
-            schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-        }, "strict", z.ZodTypeAny, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }, {
-            schema: RuleConditionSchema;
-            scope: string;
-        }>;
-    }, "strict", z.ZodTypeAny, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }, {
-        condition: {
-            schema: RuleConditionSchema;
-            scope: string;
-        };
-        effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-    }>>;
-    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, z.ZodTypeAny, "passthrough">>;
+export interface LabelElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly type: "Label";
+}
 
 // @public
 export interface MixedAuthoringSchemas {
@@ -529,8 +396,17 @@ export interface MixedAuthoringSchemas {
     readonly uiSchema: UISchema;
 }
 
+export { NumberField }
+
+export { ObjectField }
+
 // @public
-export type Rule = z.infer<typeof ruleSchema>;
+export interface Rule {
+    // (undocumented)
+    readonly condition: SchemaBasedCondition;
+    // (undocumented)
+    readonly effect: RuleEffect;
+}
 
 // @public
 export interface RuleConditionSchema {
@@ -561,58 +437,25 @@ export interface RuleConditionSchema {
 }
 
 // @public
-export const ruleConditionSchema: z.ZodType<RuleConditionSchema>;
+export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 
 // @public
-export type RuleEffect = z.infer<typeof ruleEffectSchema>;
+export interface SchemaBasedCondition {
+    // (undocumented)
+    readonly schema: RuleConditionSchema;
+    // (undocumented)
+    readonly scope: string;
+}
+
+export { StaticEnumField }
 
 // @public
-export const ruleEffectSchema: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
+export interface StaticSchemaGenerationOptions {
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
+}
 
-// @public
-export const ruleSchema: z.ZodObject<{
-    effect: z.ZodEnum<["SHOW", "HIDE", "ENABLE", "DISABLE"]>;
-    condition: z.ZodObject<{
-        scope: z.ZodString;
-        schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-    }, "strict", z.ZodTypeAny, {
-        schema: RuleConditionSchema;
-        scope: string;
-    }, {
-        schema: RuleConditionSchema;
-        scope: string;
-    }>;
-}, "strict", z.ZodTypeAny, {
-    condition: {
-        schema: RuleConditionSchema;
-        scope: string;
-    };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-}, {
-    condition: {
-        schema: RuleConditionSchema;
-        scope: string;
-    };
-    effect: "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
-}>;
-
-// @public
-export type SchemaBasedCondition = z.infer<typeof schemaBasedConditionSchema>;
-
-// @public
-export const schemaBasedConditionSchema: z.ZodObject<{
-    scope: z.ZodString;
-    schema: z.ZodType<RuleConditionSchema, z.ZodTypeDef, RuleConditionSchema>;
-}, "strict", z.ZodTypeAny, {
-    schema: RuleConditionSchema;
-    scope: string;
-}, {
-    schema: RuleConditionSchema;
-    scope: string;
-}>;
-
-// @public
-export function setSchemaExtension(schema: object, key: `x-formspec-${string}`, value: unknown): void;
+export { TextField }
 
 // @public
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
@@ -631,39 +474,29 @@ export interface UISchemaElementBase {
 }
 
 // @public
-export const uiSchemaElementSchema: z.ZodType<UISchemaElement>;
-
-// @public
-export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
-
-// @public
-export const uiSchemaElementTypeSchema: z.ZodEnum<["Control", "VerticalLayout", "HorizontalLayout", "Group", "Categorization", "Category", "Label"]>;
-
-// @public
-export const uiSchemaSchema: z.ZodType<UISchema>;
+export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
 
 // @public
 export interface VerticalLayout {
     // (undocumented)
-    [k: string]: unknown;
+    readonly [k: string]: unknown;
     // (undocumented)
-    elements: UISchemaElement[];
+    readonly elements: UISchemaElement[];
     // (undocumented)
-    options?: Record<string, unknown> | undefined;
+    readonly options?: Record<string, unknown> | undefined;
     // (undocumented)
-    rule?: Rule | undefined;
+    readonly rule?: Rule | undefined;
     // (undocumented)
-    type: "VerticalLayout";
+    readonly type: "VerticalLayout";
 }
 
-// @public
-export const verticalLayoutSchema: z.ZodType<VerticalLayout>;
+export { VocabularyKeywordRegistration }
 
 // @public
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
 
 // @public
-export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
     readonly indent?: number;
     readonly name?: string;
     readonly outDir: string;

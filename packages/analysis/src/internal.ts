@@ -95,6 +95,11 @@ export {
   NOOP_FORMSPEC_PERFORMANCE_RECORDER,
 } from "./perf-tracing.js";
 export {
+  getFormSpecManifestPath,
+  getFormSpecWorkspaceId,
+  getFormSpecWorkspaceRuntimeDirectory,
+} from "./workspace-runtime.js";
+export {
   findDeclarationForCommentOffset,
   getHostType,
   getLastLeadingDocCommentRange,
@@ -129,3 +134,10 @@ export {
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
+export {
+  serializeCommentTagSemanticContext,
+  serializeCommentTargetSpecifier,
+  serializeCompletionContext,
+  serializeHoverInfo,
+  serializeParsedCommentTag,
+} from "./semantic-protocol.js";

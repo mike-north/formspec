@@ -54,6 +54,23 @@ export type {
   ValidationIssue,
   ValidationResult,
 } from "./types.js";
+export type {
+  AnyField,
+  ArrayField,
+  BooleanField,
+  Conditional,
+  DynamicEnumField,
+  DynamicSchemaField,
+  EnumOption,
+  EnumOptionValue,
+  FormElement,
+  FormSpec,
+  Group,
+  NumberField,
+  ObjectField,
+  StaticEnumField,
+  TextField,
+} from "@formspec/core";
 
 // Config loading
 export {

@@ -29,9 +29,11 @@ export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegi
 ) => Promise<FetchOptionsResponse<T>>;
 
 /**
- * Extracts all dynamic enum source keys from a form's elements.
+ * Extracts dynamic data-source names referenced by a single FormSpec element.
+ *
+ * @public
  */
-type ExtractDynamicSources<E> =
+export type ExtractDynamicSources<E> =
   E extends DynamicEnumField<string, infer S>
     ? S
     : E extends Group<infer Elements>
@@ -40,12 +42,25 @@ type ExtractDynamicSources<E> =
         ? ExtractDynamicSourcesFromArray<Elements>
         : never;
 
-type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
+/**
+ * Extracts dynamic data-source names referenced anywhere in an element array.
+ *
+ * @public
+ */
+export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
   infer First,
   ...infer Rest,
 ]
   ? ExtractDynamicSources<First> | ExtractDynamicSourcesFromArray<Rest>
   : never;
+
+/**
+ * Derives the resolver source-key union for a FormSpec element array.
+ *
+ * @public
+ */
+export type ResolverSourcesForForm<E extends readonly FormElement[]> =
+  ExtractDynamicSourcesFromArray<E> & string;
 
 /**
  * Map of resolver functions for a form's dynamic data sources.
@@ -146,7 +161,7 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
  */
 export function defineResolvers<
   E extends readonly FormElement[],
-  Sources extends string = ExtractDynamicSourcesFromArray<E> & string,
+  Sources extends string = ResolverSourcesForForm<E>,
 >(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources> {
   const sourceSet = extractSources(form.elements);
   const resolverMap = new Map<string, Resolver<keyof DataSourceRegistry>>(

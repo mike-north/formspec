@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { buildFormSchemas, writeSchemas } from "../index.js";
 import {
-  buildFormSchemas,
   createExtensionRegistry,
   generateJsonSchemaFromIR,
-  writeSchemas,
-  type GenerateJsonSchemaFromIROptions,
-} from "../index.js";
+} from "../internals.js";
 import {
   defineAnnotation,
   defineConstraint,
@@ -19,7 +17,7 @@ import {
   type FormIR,
   type PrimitiveTypeNode,
   type Provenance,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { field, formspec } from "@formspec/dsl";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -231,10 +229,8 @@ describe("extension runtime integration", () => {
     );
   });
 
-  it("keeps buildFormSchemas usable for ordinary forms when extension options are present", () => {
-    const registry = createExtensionRegistry([moneyExtension]);
-    const options: GenerateJsonSchemaFromIROptions = {
-      extensionRegistry: registry,
+  it("keeps buildFormSchemas usable for ordinary forms when public options are present", () => {
+    const options = {
       vendorPrefix: "x-stripe",
     };
     const form = formspec(field.text("name", { label: "Name", required: true }));
@@ -279,8 +275,7 @@ describe("extension runtime integration", () => {
     });
   });
 
-  it("passes extension options through writeSchemas", () => {
-    const registry = createExtensionRegistry([moneyExtension]);
+  it("passes public JSON Schema options through writeSchemas", () => {
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-build-ext-"));
 
     try {
@@ -289,7 +284,6 @@ describe("extension runtime integration", () => {
         {
           outDir,
           name: "customer",
-          extensionRegistry: registry,
           vendorPrefix: "x-stripe",
         }
       );

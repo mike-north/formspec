@@ -20,7 +20,7 @@ import type {
   RecordTypeNode,
   TypeDefinition,
   JsonValue,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import {
   extractJSDocConstraintNodes,
   extractJSDocAnnotationNodes,

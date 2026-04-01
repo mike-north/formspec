@@ -13,7 +13,7 @@ import {
   type PathTarget,
   type Provenance,
   type TypeNode,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import { parseTagSyntax } from "./comment-syntax.js";
 
 const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {

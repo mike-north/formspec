@@ -12,10 +12,17 @@ import type { FormElement } from '@formspec/core';
 import type { FormSpec } from '@formspec/core';
 import type { Group } from '@formspec/core';
 
-// Warning: (ae-forgotten-export) The symbol "ExtractDynamicSourcesFromArray" needs to be exported by the entry point index.d.ts
-//
 // @public
-export function defineResolvers<E extends readonly FormElement[], Sources extends string = ExtractDynamicSourcesFromArray<E> & string>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
+export function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
+
+// @public
+export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
+
+// @public
+export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
+infer First,
+...infer Rest
+] ? ExtractDynamicSources<First> | ExtractDynamicSourcesFromArray<Rest> : never;
 
 // @public
 export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (params?: Record<string, unknown>) => Promise<FetchOptionsResponse<T>>;
@@ -31,5 +38,8 @@ export interface ResolverRegistry<Sources extends string> {
     has(source: string): boolean;
     sources(): Sources[];
 }
+
+// @public
+export type ResolverSourcesForForm<E extends readonly FormElement[]> = ExtractDynamicSourcesFromArray<E> & string;
 
 ```

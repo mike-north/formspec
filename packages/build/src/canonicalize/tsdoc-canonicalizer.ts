@@ -16,8 +16,8 @@ import type {
   GroupLayoutNode,
   ConditionalLayoutNode,
   Provenance,
-} from "@formspec/core";
-import { IR_VERSION } from "@formspec/core";
+} from "@formspec/core/internals";
+import { IR_VERSION } from "@formspec/core/internals";
 import type { IRClassAnalysis, FieldLayoutMetadata } from "../analyzer/class-analyzer.js";
 
 /**

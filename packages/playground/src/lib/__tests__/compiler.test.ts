@@ -586,7 +586,9 @@ export default formspec(
 
       const fieldNames = result.ir.elements
         .filter(
-          (el): el is Extract<(typeof result.ir.elements)[number], { kind: "field" }> =>
+          (
+            el
+          ): el is Extract<(typeof result.ir.elements)[number], { kind: "field" }> =>
             el.kind === "field"
         )
         .map((el) => el.name);

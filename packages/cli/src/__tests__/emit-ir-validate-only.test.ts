@@ -22,8 +22,8 @@ import {
   validateIR,
 } from "@formspec/build/internals";
 import type { ValidationResult } from "@formspec/build/internals";
-import type { FormIR } from "@formspec/core";
-import { IR_VERSION } from "@formspec/core";
+import type { FormIR } from "@formspec/core/internals";
+import { IR_VERSION } from "@formspec/core/internals";
 import { loadFormSpecs } from "../runtime/formspec-loader.js";
 import { ensureCompiledFixture } from "./compiled-fixture.js";
 

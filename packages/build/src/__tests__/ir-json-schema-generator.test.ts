@@ -17,8 +17,8 @@ import type {
   AnnotationNode,
   Provenance,
   ObjectProperty,
-} from "@formspec/core";
-import { IR_VERSION } from "@formspec/core";
+} from "@formspec/core/internals";
+import { IR_VERSION } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 
 // =============================================================================

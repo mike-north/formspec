@@ -26,10 +26,7 @@
 import type { FormElement, FormSpec } from "@formspec/core";
 import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
-import {
-  type GenerateJsonSchemaFromIROptions,
-  type JsonSchema2020,
-} from "./json-schema/ir-generator.js";
+import { type JsonSchema2020 } from "./json-schema/ir-generator.js";
 import type { UISchema } from "./ui-schema/types.js";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -39,8 +36,36 @@ import * as path from "node:path";
 // =============================================================================
 
 export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
-export type { GenerateJsonSchemaFromIROptions } from "./json-schema/ir-generator.js";
 export type { GenerateJsonSchemaOptions } from "./json-schema/generator.js";
+export type {
+  AnyField,
+  ArrayField,
+  BooleanField,
+  Conditional,
+  DynamicEnumField,
+  DynamicSchemaField,
+  ExtensionApplicableType,
+  ExtensionDefinition,
+  ExtensionPayloadValue,
+  ExtensionTypeKind,
+  EnumOption,
+  EnumOptionValue,
+  FormElement,
+  FormSpec,
+  Group,
+  NumberField,
+  ObjectField,
+  StaticEnumField,
+  TextField,
+  CustomAnnotationRegistration,
+  CustomConstraintRegistration,
+  CustomTypeRegistration,
+  ConstraintTagRegistration,
+  BuiltinConstraintBroadeningRegistration,
+  BuiltinConstraintName,
+  ConstraintSemanticRole,
+  VocabularyKeywordRegistration,
+} from "@formspec/core";
 
 export type {
   JSONSchema7,
@@ -49,7 +74,6 @@ export type {
   FormSpecSchemaExtensions,
 } from "./json-schema/types.js";
 
-export { setSchemaExtension, getSchemaExtension } from "./json-schema/types.js";
 export { createExtensionRegistry } from "./extensions/index.js";
 export type { ExtensionRegistry } from "./extensions/index.js";
 
@@ -72,7 +96,7 @@ export type {
 } from "./ui-schema/types.js";
 
 export type {
-  ClassSchemas,
+  StaticSchemaGenerationOptions,
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
@@ -83,49 +107,13 @@ export type {
 } from "./generators/mixed-authoring.js";
 
 // =============================================================================
-// Zod Validation Schemas
-// =============================================================================
-
-export {
-  ruleEffectSchema,
-  uiSchemaElementTypeSchema,
-  ruleConditionSchema,
-  schemaBasedConditionSchema,
-  ruleSchema,
-  controlSchema,
-  verticalLayoutSchema,
-  horizontalLayoutSchema,
-  groupLayoutSchema,
-  categorizationSchema,
-  categorySchema,
-  labelElementSchema,
-  uiSchemaElementSchema,
-  uiSchema as uiSchemaSchema,
-} from "./ui-schema/schema.js";
-
-export { jsonSchemaTypeSchema, jsonSchema7Schema } from "./json-schema/schema.js";
-
-// =============================================================================
 // Chain DSL Generators
 // =============================================================================
 
 export { generateJsonSchema } from "./json-schema/generator.js";
-/**
- * Advanced API — consumers are responsible for supplying canonical FormIR.
- * Most callers should prefer `generateJsonSchema()` or `buildFormSchemas()`.
- */
-export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
-
-// =============================================================================
-// Class/Interface Analysis: High-Level Entry Points
-// =============================================================================
-
 export { generateSchemasFromClass, generateSchemas } from "./generators/class-schema.js";
 export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
-
-// generateSchemas is the recommended entry point — it auto-detects class/interface/type alias.
-// generateSchemasFromClass is retained for backwards compatibility.
 
 /**
  * Result of building form schemas.
@@ -193,7 +181,7 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
  *
  * @public
  */
-export interface WriteSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
   /** Output directory for the schema files */
   readonly outDir: string;
   /** Base name for the output files (without extension). Defaults to "schema" */
@@ -249,16 +237,10 @@ export function writeSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options: WriteSchemasOptions
 ): WriteSchemasResult {
-  const { outDir, name = "schema", indent = 2, extensionRegistry, vendorPrefix } = options;
+  const { outDir, name = "schema", indent = 2, vendorPrefix } = options;
 
   // Build schemas
-  const buildOptions =
-    extensionRegistry === undefined && vendorPrefix === undefined
-      ? undefined
-      : {
-          extensionRegistry,
-          vendorPrefix,
-        };
+  const buildOptions = vendorPrefix === undefined ? undefined : { vendorPrefix };
 
   const { jsonSchema, uiSchema } = buildFormSchemas(form, buildOptions);
 

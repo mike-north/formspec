@@ -7,7 +7,7 @@
 /**
  * JSON Schema primitive types.
  *
- * @public
+ * @beta
  */
 export type JSONSchemaType =
   | "string"
@@ -21,7 +21,7 @@ export type JSONSchemaType =
 /**
  * A JSON Schema definition (legacy subset used by Zod validator and types.ts).
  *
- * @public
+ * @beta
  */
 export interface JSONSchema7 {
   $schema?: string;
@@ -104,14 +104,14 @@ export interface JSONSchema7 {
 /**
  * Extension properties for custom FormSpec constraint tags.
  *
- * @public
+ * @beta
  */
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 /**
  * JSON Schema with FormSpec extension properties for arbitrary `x-formspec-*` keys.
  *
- * @public
+ * @beta
  */
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
@@ -126,7 +126,7 @@ export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
  * @param key - Extension key (must start with `x-formspec-`)
  * @param value - Extension value
  *
- * @public
+ * @internal
  */
 export function setSchemaExtension(
   schema: object,
@@ -145,7 +145,7 @@ export function setSchemaExtension(
  * @param key - Extension key (must start with `x-formspec-`)
  * @returns The extension value, or `undefined` if not present
  *
- * @public
+ * @internal
  */
 export function getSchemaExtension(schema: object, key: `x-formspec-${string}`): unknown {
   return (schema as Record<string, unknown>)[key];

@@ -8,23 +8,23 @@
  */
 
 import type {
-  AnnotationNode,
-  FieldNode,
   FormElement,
-  FormIRElement,
   FormSpec,
-  TypeNode,
 } from "@formspec/core";
 import type {
-  GenerateJsonSchemaFromIROptions,
-  JsonSchema2020,
-} from "../json-schema/ir-generator.js";
+  AnnotationNode,
+  FieldNode,
+  FormIRElement,
+  TypeNode,
+} from "@formspec/core/internals";
+import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import type { UISchema } from "../ui-schema/types.js";
 import { canonicalizeChainDSL, canonicalizeTSDoc } from "../canonicalize/index.js";
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
 import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
+import type { StaticSchemaGenerationOptions } from "./class-schema.js";
 
 /**
  * Result of generating schemas from a mixed-authoring composition.
@@ -46,7 +46,7 @@ export interface MixedAuthoringSchemas {
  *
  * @public
  */
-export interface BuildMixedAuthoringSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file. */
   readonly filePath: string;
   /** Name of the class, interface, or type alias to analyze. */

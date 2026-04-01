@@ -4,7 +4,7 @@ import { computeFormSpecTextHash } from "./semantic-protocol.js";
 /**
  * Stable workspace-scoped identifier derived from the absolute workspace root.
  *
- * @public
+ * @internal
  */
 export function getFormSpecWorkspaceId(workspaceRoot: string): string {
   return computeFormSpecTextHash(workspaceRoot);
@@ -14,7 +14,7 @@ export function getFormSpecWorkspaceId(workspaceRoot: string): string {
  * Directory used for machine-generated FormSpec tooling state inside a
  * workspace.
  *
- * @public
+ * @internal
  */
 export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string {
   return path.join(workspaceRoot, ".cache", "formspec", "tooling");
@@ -24,7 +24,7 @@ export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): str
  * Path to the manifest that advertises the local FormSpec semantic service for
  * a workspace.
  *
- * @public
+ * @internal
  */
 export function getFormSpecManifestPath(workspaceRoot: string): string {
   return path.join(getFormSpecWorkspaceRuntimeDirectory(workspaceRoot), "manifest.json");

@@ -4,248 +4,618 @@
 
 ```ts
 
-import { AnyField } from '@formspec/core';
-import { ArrayField } from '@formspec/core';
-import { BooleanField } from '@formspec/core';
-import { buildFormSchemas } from '@formspec/build';
-import { buildMixedAuthoringSchemas } from '@formspec/build';
-import { BuildMixedAuthoringSchemasOptions } from '@formspec/build';
-import { BuildResult } from '@formspec/build';
-import { BuildSchema } from '@formspec/dsl';
-import { Conditional } from '@formspec/core';
-import { ControlElement } from '@formspec/build';
-import { createInitialFieldState } from '@formspec/core';
-import { DataSourceOption } from '@formspec/core';
-import { DataSourceRegistry } from '@formspec/core';
-import { DataSourceValueType } from '@formspec/core';
-import { defineResolvers } from '@formspec/runtime';
-import { DynamicEnumField } from '@formspec/core';
-import { DynamicSchemaField } from '@formspec/core';
-import { EnumOption } from '@formspec/dsl';
-import { EnumOptionValue } from '@formspec/dsl';
-import { EqualsPredicate } from '@formspec/core';
-import { ExtractFields } from '@formspec/dsl';
-import { ExtractFieldsFromArray } from '@formspec/dsl';
-import { FetchOptionsResponse } from '@formspec/core';
-import { field } from '@formspec/dsl';
-import { FieldState } from '@formspec/core';
-import { FormElement } from '@formspec/core';
-import { FormSpec } from '@formspec/core';
-import { formspec } from '@formspec/dsl';
-import { FormSpecOptions } from '@formspec/dsl';
-import { formspecWithValidation } from '@formspec/dsl';
-import { FormState } from '@formspec/core';
-import { generateJsonSchema } from '@formspec/build';
-import { generateUiSchema } from '@formspec/build';
-import { Group } from '@formspec/core';
-import { group } from '@formspec/dsl';
-import { GroupLayout } from '@formspec/build';
-import { HorizontalLayout } from '@formspec/build';
-import { InferFieldValue } from '@formspec/dsl';
-import { InferFormSchema } from '@formspec/dsl';
-import { InferSchema } from '@formspec/dsl';
-import { is } from '@formspec/dsl';
-import { isArrayField } from '@formspec/core';
-import { isBooleanField } from '@formspec/core';
-import { isConditional } from '@formspec/core';
-import { isDynamicEnumField } from '@formspec/core';
-import { isDynamicSchemaField } from '@formspec/core';
-import { isField } from '@formspec/core';
-import { isGroup } from '@formspec/core';
-import { isNumberField } from '@formspec/core';
-import { isObjectField } from '@formspec/core';
-import { isStaticEnumField } from '@formspec/core';
-import { isTextField } from '@formspec/core';
-import { JsonSchema2020 } from '@formspec/build';
-import { JSONSchema7 } from '@formspec/build';
-import { JSONSchemaType } from '@formspec/build';
-import { logValidationIssues } from '@formspec/dsl';
-import { MixedAuthoringSchemas } from '@formspec/build';
-import { NumberField } from '@formspec/core';
-import { ObjectField } from '@formspec/core';
-import { Predicate } from '@formspec/core';
-import { Resolver } from '@formspec/runtime';
-import { ResolverMap } from '@formspec/runtime';
-import { ResolverRegistry } from '@formspec/runtime';
-import { Rule } from '@formspec/build';
-import { RuleEffect } from '@formspec/build';
-import { SchemaBasedCondition } from '@formspec/build';
-import { StaticEnumField } from '@formspec/core';
-import { TextField } from '@formspec/core';
-import { UISchema } from '@formspec/build';
-import { UISchemaElement } from '@formspec/build';
-import { UISchemaElementType } from '@formspec/build';
-import { validateForm } from '@formspec/dsl';
-import { ValidationIssue } from '@formspec/dsl';
-import { ValidationResult } from '@formspec/dsl';
-import { ValidationSeverity } from '@formspec/dsl';
-import { Validity } from '@formspec/core';
-import { VerticalLayout } from '@formspec/build';
-import { when } from '@formspec/dsl';
-import { writeSchemas } from '@formspec/build';
-import { WriteSchemasOptions } from '@formspec/build';
-import { WriteSchemasResult } from '@formspec/build';
-
-export { AnyField }
-
-export { ArrayField }
-
-export { BooleanField }
-
-export { buildFormSchemas }
-
-export { buildMixedAuthoringSchemas }
-
-export { BuildMixedAuthoringSchemasOptions }
-
-export { BuildResult }
-
-export { BuildSchema }
-
-export { Conditional }
-
-export { ControlElement }
-
-export { createInitialFieldState }
-
-export { DataSourceOption }
-
-export { DataSourceRegistry }
-
-export { DataSourceValueType }
-
-export { defineResolvers }
-
-export { DynamicEnumField }
-
-export { DynamicSchemaField }
-
-export { EnumOption }
-
-export { EnumOptionValue }
-
-export { EqualsPredicate }
-
-export { ExtractFields }
-
-export { ExtractFieldsFromArray }
-
-export { FetchOptionsResponse }
-
-export { field }
-
-export { FieldState }
-
-export { FormElement }
-
-export { FormSpec }
-
-export { formspec }
-
-export { FormSpecOptions }
-
-export { formspecWithValidation }
-
-export { FormState }
-
-export { generateJsonSchema }
-
-export { generateUiSchema }
-
-export { Group }
-
-export { group }
-
-export { GroupLayout }
-
-export { HorizontalLayout }
-
-export { InferFieldValue }
-
-export { InferFormSchema }
-
-export { InferSchema }
-
-export { is }
-
-export { isArrayField }
-
-export { isBooleanField }
-
-export { isConditional }
-
-export { isDynamicEnumField }
-
-export { isDynamicSchemaField }
-
-export { isField }
-
-export { isGroup }
-
-export { isNumberField }
-
-export { isObjectField }
-
-export { isStaticEnumField }
-
-export { isTextField }
-
-export { JsonSchema2020 }
-
-export { JSONSchema7 }
-
-export { JSONSchemaType }
-
-export { logValidationIssues }
-
-export { MixedAuthoringSchemas }
-
-export { NumberField }
-
-export { ObjectField }
-
-export { Predicate }
-
-export { Resolver }
-
-export { ResolverMap }
-
-export { ResolverRegistry }
-
-export { Rule }
-
-export { RuleEffect }
-
-export { SchemaBasedCondition }
-
-export { StaticEnumField }
-
-export { TextField }
-
-export { UISchema }
-
-export { UISchemaElement }
-
-export { UISchemaElementType }
-
-export { validateForm }
-
-export { ValidationIssue }
-
-export { ValidationResult }
-
-export { ValidationSeverity }
-
-export { Validity }
-
-export { VerticalLayout }
-
-export { when }
-
-export { writeSchemas }
-
-export { WriteSchemasOptions }
-
-export { WriteSchemasResult }
+// @public
+export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+
+// @public
+export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly _field: "array";
+    readonly items: Items;
+    readonly label?: string;
+    readonly maxItems?: number;
+    readonly minItems?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface BooleanField<N extends string> {
+    readonly _field: "boolean";
+    readonly label?: string;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
+
+// @public
+export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+
+// @public
+export interface BuildResult {
+    readonly jsonSchema: JsonSchema2020;
+    readonly uiSchema: UISchema;
+}
+
+// @public
+export type BuildSchema<Fields> = { [N in Fields extends { name: infer K extends string } ? K : never]: InferFieldValue<Extract<Fields, { name: N } & AnyField>> };
+
+// @public
+export interface Categorization {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: Category[];
+    // (undocumented)
+    readonly label?: string | undefined;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "Categorization";
+}
+
+// @public
+export interface Category {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: UISchemaElement[];
+    // (undocumented)
+    readonly label: string;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "Category";
+}
+
+// @public
+export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly field: FieldName;
+    readonly _type: "conditional";
+    readonly value: Value;
+}
+
+// @public
+export interface ControlElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly label?: string | false | undefined;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly scope: string;
+    // (undocumented)
+    readonly type: "Control";
+}
+
+// @public
+export function createInitialFieldState<T>(value: T): FieldState<T>;
+
+// @public
+export interface DataSourceOption<T = unknown> {
+    readonly data?: T;
+    readonly label: string;
+    readonly value: string;
+}
+
+// @public
+export interface DataSourceRegistry {
+}
+
+// @public
+export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry ? DataSourceRegistry[Source] extends {
+    id: infer ID;
+} ? ID : string : string;
+
+// @public
+export function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
+
+// @public
+export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly _field: "dynamic_enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly source: Source;
+    readonly _type: "field";
+}
+
+// @public
+export interface DynamicSchemaField<N extends string> {
+    readonly _field: "dynamic_schema";
+    readonly label?: string;
+    readonly name: N;
+    readonly params?: readonly string[];
+    readonly required?: boolean;
+    readonly schemaSource: string;
+    readonly _type: "field";
+}
+
+// @public
+export interface EnumOption {
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    readonly label: string;
+}
+
+// @public
+export type EnumOptionValue = string | EnumOption;
+
+// @public
+export interface EqualsPredicate<K extends string, V> {
+    readonly field: K;
+    readonly _predicate: "equals";
+    readonly value: V;
+}
+
+// @public
+export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+
+// @public
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
+
+// @public
+export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
+
+// @public
+export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
+infer First,
+...infer Rest
+] ? ExtractDynamicSources<First> | ExtractDynamicSourcesFromArray<Rest> : never;
+
+// @public
+export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+
+// @public
+export type ExtractFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractFields<First> | ExtractFieldsFromArray<Rest> : never;
+
+// @public
+export type ExtractNonConditionalFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractNonConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer _Elements> ? never : never;
+
+// @public
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
+
+// @public
+export interface FetchOptionsResponse<T = unknown> {
+    readonly message?: string;
+    readonly options: readonly DataSourceOption<T>[];
+    readonly validity: "valid" | "invalid" | "unknown";
+}
+
+// @public
+export const field: {
+    text: <const N extends string>(name: N, config?: Omit<TextField_2<N>, "_type" | "_field" | "name">) => TextField_2<N>;
+    number: <const N extends string>(name: N, config?: Omit<NumberField_2<N>, "_type" | "_field" | "name">) => NumberField_2<N>;
+    boolean: <const N extends string>(name: N, config?: Omit<BooleanField_2<N>, "_type" | "_field" | "name">) => BooleanField_2<N>;
+    enum: <const N extends string, const O extends readonly EnumOptionValue_2[]>(name: N, options: O, config?: Omit<StaticEnumField_2<N, O>, "_type" | "_field" | "name" | "options">) => StaticEnumField_2<N, O>;
+    dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField_2<N, Source>, "_type" | "_field" | "name" | "source">) => DynamicEnumField_2<N, Source>;
+    dynamicSchema: <const N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField_2<N>, "_type" | "_field" | "name" | "schemaSource">) => DynamicSchemaField_2<N>;
+    array: <const N extends string, const Items extends readonly FormElement_2[]>(name: N, ...items: Items) => ArrayField_2<N, Items>;
+    arrayWithConfig: <const N extends string, const Items extends readonly FormElement_2[]>(name: N, config: Omit<ArrayField_2<N, Items>, "_type" | "_field" | "name" | "items">, ...items: Items) => ArrayField_2<N, Items>;
+    object: <const N extends string, const Properties extends readonly FormElement_2[]>(name: N, ...properties: Properties) => ObjectField_2<N, Properties>;
+    objectWithConfig: <const N extends string, const Properties extends readonly FormElement_2[]>(name: N, config: Omit<ObjectField_2<N, Properties>, "_type" | "_field" | "name" | "properties">, ...properties: Properties) => ObjectField_2<N, Properties>;
+};
+
+// @public
+export interface FieldState<T> {
+    readonly dirty: boolean;
+    readonly errors: readonly string[];
+    readonly touched: boolean;
+    readonly validity: Validity;
+    readonly value: T;
+}
+
+// @public
+export type FlattenIntersection<T> = { [K in keyof T]: T[K] } & {};
+
+// @public
+export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export interface FormSpec<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+}
+
+// @public
+export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
+
+// @public
+export interface FormSpecOptions {
+    name?: string;
+    validate?: boolean | "warn" | "throw";
+}
+
+// @public
+export function formspecWithValidation<const Elements extends readonly FormElement[]>(options: FormSpecOptions, ...elements: Elements): FormSpec<Elements>;
+
+// @public
+export interface FormState<Schema extends Record<string, unknown>> {
+    readonly dirty: boolean;
+    readonly fields: {
+        readonly [K in keyof Schema]: FieldState<Schema[K]>;
+    };
+    readonly submitting: boolean;
+    readonly validity: Validity;
+}
+
+// @public
+export function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
+
+// @public
+export interface GenerateJsonSchemaOptions {
+    readonly vendorPrefix?: string | undefined;
+}
+
+// @public
+export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+
+// @public
+export interface Group<Elements extends readonly FormElement[]> {
+    readonly elements: Elements;
+    readonly label: string;
+    readonly _type: "group";
+}
+
+// @public
+export function group<const Elements extends readonly FormElement[]>(label: string, ...elements: Elements): Group<Elements>;
+
+// @public
+export interface GroupLayout {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: UISchemaElement[];
+    // (undocumented)
+    readonly label: string;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "Group";
+}
+
+// @public
+export interface HorizontalLayout {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: UISchemaElement[];
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "HorizontalLayout";
+}
+
+// @public
+export type InferFieldValue<F> = F extends TextField<string> ? string : F extends NumberField<string> ? number : F extends BooleanField<string> ? boolean : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]> ? O extends readonly EnumOption[] ? O[number]["id"] : O extends readonly string[] ? O[number] : never : F extends DynamicEnumField<string, infer Source> ? DataSourceValueType<Source> : F extends DynamicSchemaField<string> ? Record<string, unknown> : F extends ArrayField<string, infer Items extends readonly FormElement[]> ? InferSchema<Items>[] : F extends ObjectField<string, infer Properties extends readonly FormElement[]> ? InferSchema<Properties> : never;
+
+// @public
+export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
+
+// @public
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
+
+// @public
+export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
+
+// @public
+export function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
+
+// @public
+export function isBooleanField(element: FormElement): element is BooleanField<string>;
+
+// @public
+export function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
+
+// @public
+export function isDynamicEnumField(element: FormElement): element is DynamicEnumField<string, string>;
+
+// @public
+export function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string>;
+
+// @public
+export function isField(element: FormElement): element is AnyField;
+
+// @public
+export function isGroup(element: FormElement): element is Group<readonly FormElement[]>;
+
+// @public
+export function isNumberField(element: FormElement): element is NumberField<string>;
+
+// @public
+export function isObjectField(element: FormElement): element is ObjectField<string, readonly FormElement[]>;
+
+// @public
+export function isStaticEnumField(element: FormElement): element is StaticEnumField<string, readonly EnumOptionValue[]>;
+
+// @public
+export function isTextField(element: FormElement): element is TextField<string>;
+
+// @public
+export interface JsonSchema2020 {
+    // (undocumented)
+    $defs?: Record<string, JsonSchema2020>;
+    // (undocumented)
+    $ref?: string;
+    // (undocumented)
+    $schema?: string;
+    // (undocumented)
+    [key: `x-${string}`]: unknown;
+    // (undocumented)
+    additionalProperties?: boolean | JsonSchema2020;
+    // (undocumented)
+    allOf?: readonly JsonSchema2020[];
+    // (undocumented)
+    anyOf?: readonly JsonSchema2020[];
+    // (undocumented)
+    const?: unknown;
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    deprecated?: boolean;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    enum?: readonly (string | number)[];
+    // (undocumented)
+    exclusiveMaximum?: number;
+    // (undocumented)
+    exclusiveMinimum?: number;
+    // (undocumented)
+    format?: string;
+    // (undocumented)
+    items?: JsonSchema2020;
+    // (undocumented)
+    maximum?: number;
+    // (undocumented)
+    maxItems?: number;
+    // (undocumented)
+    maxLength?: number;
+    // (undocumented)
+    minimum?: number;
+    // (undocumented)
+    minItems?: number;
+    // (undocumented)
+    minLength?: number;
+    // (undocumented)
+    multipleOf?: number;
+    // (undocumented)
+    oneOf?: readonly JsonSchema2020[];
+    // (undocumented)
+    pattern?: string;
+    // (undocumented)
+    properties?: Record<string, JsonSchema2020>;
+    // (undocumented)
+    required?: string[];
+    // (undocumented)
+    title?: string;
+    // (undocumented)
+    type?: string;
+    // (undocumented)
+    uniqueItems?: boolean;
+}
+
+// @public
+export interface LabelElement {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly text: string;
+    // (undocumented)
+    readonly type: "Label";
+}
+
+// @public
+export function logValidationIssues(result: ValidationResult, formName?: string): void;
+
+// @public
+export interface NumberField<N extends string> {
+    readonly _field: "number";
+    readonly label?: string;
+    readonly max?: number;
+    readonly min?: number;
+    readonly multipleOf?: number;
+    readonly name: N;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly _field: "object";
+    readonly label?: string;
+    readonly name: N;
+    readonly properties: Properties;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
+
+// @public
+export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (params?: Record<string, unknown>) => Promise<FetchOptionsResponse<T>>;
+
+// @public
+export type ResolverMap<Sources extends string> = {
+    [S in Sources]: S extends keyof DataSourceRegistry ? Resolver<S> : (params?: Record<string, unknown>) => Promise<FetchOptionsResponse>;
+};
+
+// @public
+export interface ResolverRegistry<Sources extends string> {
+    get<S extends Sources>(source: S): S extends keyof DataSourceRegistry ? Resolver<S> : (params?: Record<string, unknown>) => Promise<FetchOptionsResponse>;
+    has(source: string): boolean;
+    sources(): Sources[];
+}
+
+// @public
+export type ResolverSourcesForForm<E extends readonly FormElement[]> = ExtractDynamicSourcesFromArray<E> & string;
+
+// @public
+export interface Rule {
+    // (undocumented)
+    readonly condition: SchemaBasedCondition;
+    // (undocumented)
+    readonly effect: RuleEffect;
+}
+
+// @public
+export interface RuleConditionSchema {
+    // (undocumented)
+    allOf?: RuleConditionSchema[];
+    // (undocumented)
+    const?: unknown;
+    // (undocumented)
+    enum?: readonly unknown[];
+    // (undocumented)
+    exclusiveMaximum?: number;
+    // (undocumented)
+    exclusiveMinimum?: number;
+    // (undocumented)
+    maximum?: number;
+    // (undocumented)
+    minimum?: number;
+    // (undocumented)
+    minLength?: number;
+    // (undocumented)
+    not?: RuleConditionSchema;
+    // (undocumented)
+    properties?: Record<string, RuleConditionSchema>;
+    // (undocumented)
+    required?: string[];
+    // (undocumented)
+    type?: string;
+}
+
+// @public
+export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
+
+// @public
+export interface SchemaBasedCondition {
+    // (undocumented)
+    readonly schema: RuleConditionSchema;
+    // (undocumented)
+    readonly scope: string;
+}
+
+// @public
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly _field: "enum";
+    readonly label?: string;
+    readonly name: N;
+    readonly options: O;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export interface TextField<N extends string> {
+    readonly _field: "text";
+    readonly label?: string;
+    readonly maxLength?: number;
+    readonly minLength?: number;
+    readonly name: N;
+    readonly pattern?: string;
+    readonly placeholder?: string;
+    readonly required?: boolean;
+    readonly _type: "field";
+}
+
+// @public
+export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
+
+// @public
+export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
+
+// @public
+export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
+
+// @public
+export function validateForm(elements: readonly FormElement_2[]): ValidationResult;
+
+// @public
+export interface ValidationIssue {
+    message: string;
+    path: string;
+    severity: ValidationSeverity;
+}
+
+// @public
+export interface ValidationResult {
+    issues: ValidationIssue[];
+    valid: boolean;
+}
+
+// @public
+export type ValidationSeverity = "error" | "warning";
+
+// @public
+export type Validity = "valid" | "invalid" | "unknown";
+
+// @public
+export interface VerticalLayout {
+    // (undocumented)
+    readonly [k: string]: unknown;
+    // (undocumented)
+    readonly elements: UISchemaElement[];
+    // (undocumented)
+    readonly options?: Record<string, unknown> | undefined;
+    // (undocumented)
+    readonly rule?: Rule | undefined;
+    // (undocumented)
+    readonly type: "VerticalLayout";
+}
+
+// @public
+export function when<const K extends string, const V, const Elements extends readonly FormElement[]>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements>;
+
+// @public
+export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
+
+// @public
+export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
+    readonly indent?: number;
+    readonly name?: string;
+    readonly outDir: string;
+}
+
+// @public
+export interface WriteSchemasResult {
+    readonly jsonSchemaPath: string;
+    readonly uiSchemaPath: string;
+}
+
+// Warnings were encountered during analysis:
+//
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:370:5 - (ae-forgotten-export) The symbol "TextField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:378:5 - (ae-forgotten-export) The symbol "NumberField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:386:5 - (ae-forgotten-export) The symbol "BooleanField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:413:5 - (ae-forgotten-export) The symbol "EnumOptionValue_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:413:5 - (ae-forgotten-export) The symbol "StaticEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:433:5 - (ae-forgotten-export) The symbol "DynamicEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:442:5 - (ae-forgotten-export) The symbol "DynamicSchemaField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:461:5 - (ae-forgotten-export) The symbol "FormElement_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:461:5 - (ae-forgotten-export) The symbol "ArrayField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:501:5 - (ae-forgotten-export) The symbol "ObjectField_2" needs to be exported by the entry point index.d.ts
 
 ```

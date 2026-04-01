@@ -34,12 +34,12 @@ export type {
 
 export type { EqualsPredicate, Predicate } from "./predicate.js";
 
-export {
-  BUILTIN_CONSTRAINT_DEFINITIONS,
-  normalizeConstraintTagName,
-  isBuiltinConstraintName,
-} from "./constraint-definitions.js";
 export type { BuiltinConstraintName } from "./constraint-definitions.js";
+export {
+  _BUILTIN_CONSTRAINT_DEFINITIONS,
+  _normalizeConstraintTagName,
+  _isBuiltinConstraintName,
+} from "./constraint-definitions.js";
 
 export { IR_VERSION } from "./ir.js";
 export type {

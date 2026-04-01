@@ -56,6 +56,27 @@
 // Core types
 // =============================================================================
 
+import type {
+  AnyField,
+  ArrayField,
+  BooleanField,
+  Conditional,
+  DataSourceValueType,
+  DynamicEnumField,
+  DynamicSchemaField,
+  EnumOption,
+  EnumOptionValue,
+  EqualsPredicate,
+  FormElement,
+  FormSpec,
+  Group,
+  NumberField,
+  ObjectField,
+  Predicate,
+  StaticEnumField,
+  TextField,
+} from "@formspec/core";
+
 export type {
   // Validity
   Validity,
@@ -71,11 +92,12 @@ export type {
   DataSourceOption,
   FetchOptionsResponse,
   DataSourceValueType,
-
   // Elements
   TextField,
   NumberField,
   BooleanField,
+  EnumOption,
+  EnumOptionValue,
   StaticEnumField,
   DynamicEnumField,
   DynamicSchemaField,
@@ -86,7 +108,6 @@ export type {
   Conditional,
   FormElement,
   FormSpec,
-
   // Predicates
   EqualsPredicate,
   Predicate,
@@ -113,28 +134,16 @@ export {
 // DSL functions
 // =============================================================================
 
-export {
-  field,
-  group,
-  when,
-  is,
-  formspec,
-  formspecWithValidation,
-  validateForm,
-  logValidationIssues,
+export { field, validateForm, logValidationIssues } from "@formspec/dsl";
+import {
+  group as dslGroup,
+  when as dslWhen,
+  is as dslIs,
+  formspec as dslFormspec,
+  formspecWithValidation as dslFormspecWithValidation,
+  type FormSpecOptions,
 } from "@formspec/dsl";
-
-// Re-export enum option types (commonly used)
-export type { EnumOption, EnumOptionValue } from "@formspec/dsl";
-
 export type {
-  // Type inference
-  InferFieldValue,
-  ExtractFields,
-  ExtractFieldsFromArray,
-  BuildSchema,
-  InferSchema,
-  InferFormSchema,
   // Validation
   FormSpecOptions,
   ValidationSeverity,
@@ -146,18 +155,24 @@ export type {
 // Build tools
 // =============================================================================
 
-export {
-  generateJsonSchema,
-  generateUiSchema,
-  buildFormSchemas,
-  buildMixedAuthoringSchemas,
-  writeSchemas,
+import {
+  buildFormSchemas as buildFormSchemasInternal,
+  generateJsonSchema as generateJsonSchemaInternal,
+  generateUiSchema as generateUiSchemaInternal,
+  writeSchemas as writeSchemasInternal,
+  type BuildFormSchemasOptions,
+  type BuildResult,
+  type GenerateJsonSchemaOptions,
+  type JsonSchema2020,
+  type UISchema,
+  type WriteSchemasOptions,
+  type WriteSchemasResult,
 } from "@formspec/build";
 
 export type {
+  BuildFormSchemasOptions,
+  GenerateJsonSchemaOptions,
   JsonSchema2020,
-  JSONSchema7,
-  JSONSchemaType,
   UISchema,
   UISchemaElement,
   UISchemaElementType,
@@ -165,12 +180,14 @@ export type {
   VerticalLayout,
   HorizontalLayout,
   GroupLayout,
+  Categorization,
+  Category,
+  LabelElement,
   Rule,
   RuleEffect,
+  RuleConditionSchema,
   SchemaBasedCondition,
   BuildResult,
-  BuildMixedAuthoringSchemasOptions,
-  MixedAuthoringSchemas,
   WriteSchemasOptions,
   WriteSchemasResult,
 } from "@formspec/build";
@@ -179,6 +196,277 @@ export type {
 // Runtime helpers
 // =============================================================================
 
-export { defineResolvers } from "@formspec/runtime";
+import {
+  defineResolvers as defineResolversInternal,
+  type ResolverMap,
+  type ResolverRegistry,
+  type ResolverSourcesForForm,
+} from "@formspec/runtime";
 
-export type { Resolver, ResolverMap, ResolverRegistry } from "@formspec/runtime";
+export type {
+  ExtractDynamicSources,
+  ExtractDynamicSourcesFromArray,
+  Resolver,
+  ResolverMap,
+  ResolverRegistry,
+  ResolverSourcesForForm,
+} from "@formspec/runtime";
+
+// =============================================================================
+// Local DSL wrappers and inference helpers
+// =============================================================================
+
+/**
+ * Creates a visual group of form elements.
+ *
+ * @public
+ */
+export function group<const Elements extends readonly FormElement[]>(
+  label: string,
+  ...elements: Elements
+): Group<Elements> {
+  return dslGroup(label, ...elements);
+}
+
+/**
+ * Creates a conditional wrapper that shows elements based on a predicate.
+ *
+ * @public
+ */
+export function when<
+  const K extends string,
+  const V,
+  const Elements extends readonly FormElement[],
+>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements> {
+  return dslWhen(predicate, ...elements);
+}
+
+/**
+ * Creates an equality predicate that checks if a field equals a specific value.
+ *
+ * @public
+ */
+export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V> {
+  return dslIs(field, value);
+}
+
+/**
+ * Creates a complete form specification.
+ *
+ * @public
+ */
+export function formspec<const Elements extends readonly FormElement[]>(
+  ...elements: Elements
+): FormSpec<Elements> {
+  return dslFormspec(...elements);
+}
+
+/**
+ * Creates a complete form specification with validation options.
+ *
+ * @public
+ */
+export function formspecWithValidation<const Elements extends readonly FormElement[]>(
+  options: FormSpecOptions,
+  ...elements: Elements
+): FormSpec<Elements> {
+  return dslFormspecWithValidation(options, ...elements);
+}
+
+/**
+ * Infers the value type from a single field.
+ *
+ * @public
+ */
+export type InferFieldValue<F> =
+  F extends TextField<string>
+    ? string
+    : F extends NumberField<string>
+      ? number
+      : F extends BooleanField<string>
+        ? boolean
+        : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
+          ? O extends readonly EnumOption[]
+            ? O[number]["id"]
+            : O extends readonly string[]
+              ? O[number]
+              : never
+          : F extends DynamicEnumField<string, infer Source>
+            ? DataSourceValueType<Source>
+            : F extends DynamicSchemaField<string>
+              ? Record<string, unknown>
+              : F extends ArrayField<string, infer Items extends readonly FormElement[]>
+                ? InferSchema<Items>[]
+                : F extends ObjectField<string, infer Properties extends readonly FormElement[]>
+                  ? InferSchema<Properties>
+                  : never;
+
+/**
+ * Extracts all fields from a single element.
+ *
+ * @public
+ */
+export type ExtractFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
+
+/**
+ * Extracts fields from an array of elements.
+ *
+ * @public
+ */
+export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractFields<First> | ExtractFieldsFromArray<Rest>
+  : never;
+
+/**
+ * Extracts fields that are not inside conditionals.
+ *
+ * @public
+ */
+export type ExtractNonConditionalFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractNonConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer _Elements>
+      ? never
+      : never;
+
+/**
+ * Extracts non-conditional fields from an array of elements.
+ *
+ * @public
+ */
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
+  : never;
+
+/**
+ * Extracts fields that are inside conditionals.
+ *
+ * @public
+ */
+export type ExtractConditionalFields<E> = E extends AnyField
+  ? never
+  : E extends Group<infer Elements>
+    ? ExtractConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
+
+/**
+ * Extracts conditional fields from an array of elements.
+ *
+ * @public
+ */
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
+  : never;
+
+/**
+ * Builds a schema type from extracted fields.
+ *
+ * @public
+ */
+export type BuildSchema<Fields> = {
+  [N in Fields extends { name: infer K extends string } ? K : never]: InferFieldValue<
+    Extract<Fields, { name: N } & AnyField>
+  >;
+};
+
+/**
+ * Utility type that flattens intersection types.
+ *
+ * @public
+ */
+export type FlattenIntersection<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
+/**
+ * Infers the schema type from an array of form elements.
+ *
+ * @public
+ */
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<
+  BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> &
+    Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>
+>;
+
+/**
+ * Infers the schema type from a FormSpec.
+ *
+ * @public
+ */
+export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> =
+  F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
+
+/**
+ * Generates a JSON Schema 2020-12 from a FormSpec.
+ *
+ * @public
+ */
+export function generateJsonSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: GenerateJsonSchemaOptions
+): JsonSchema2020 {
+  return generateJsonSchemaInternal(form, options);
+}
+
+/**
+ * Generates a UI schema from a FormSpec.
+ *
+ * @public
+ */
+export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema {
+  return generateUiSchemaInternal(form);
+}
+
+/**
+ * Builds both JSON Schema and UI Schema from a FormSpec.
+ *
+ * @public
+ */
+export function buildFormSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: BuildFormSchemasOptions
+): BuildResult {
+  return buildFormSchemasInternal(form, options);
+}
+
+/**
+ * Builds and writes both JSON Schema and UI Schema files to disk.
+ *
+ * @public
+ */
+export function writeSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options: WriteSchemasOptions
+): WriteSchemasResult {
+  return writeSchemasInternal(form, options);
+}
+
+/**
+ * Defines resolvers for a form's dynamic data sources.
+ *
+ * @public
+ */
+export function defineResolvers<
+  E extends readonly FormElement[],
+  Sources extends string = ResolverSourcesForForm<E>,
+>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources> {
+  return defineResolversInternal(form, resolvers);
+}

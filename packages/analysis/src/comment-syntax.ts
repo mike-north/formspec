@@ -1,4 +1,4 @@
-import type { PathTarget } from "@formspec/core";
+import type { PathTarget } from "@formspec/core/internals";
 import { extractPathTarget } from "./path-target.js";
 import {
   getTagDefinition,

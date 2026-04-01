@@ -6,7 +6,7 @@ This package covers:
 
 - Chain DSL to JSON Schema / UI Schema compilation
 - Static analysis of TypeScript classes, interfaces, and type aliases with TSDoc tags
-- Canonical IR generation and validation
+- Mixed-authoring schema generation
 - Extension-aware schema generation with custom vendor keywords
 
 ## Install
@@ -23,7 +23,7 @@ Most app code can use `formspec`, but use `@formspec/build` directly when you ne
 | --------------------------- | -------------------------------------- |
 | `@formspec/build`           | Public build APIs                      |
 | `@formspec/build/browser`   | Browser-safe schema generation surface |
-| `@formspec/build/internals` | Unstable internal APIs used by the CLI |
+| `@formspec/build/internals` | Unstable low-level IR/analyzer APIs    |
 
 ## Chain DSL Generation
 
@@ -86,7 +86,7 @@ export interface ProductConfig {
 
 ## Extension-Aware Generation
 
-Both chain and static generation APIs accept `extensionRegistry` and `vendorPrefix` where relevant.
+Static-analysis and mixed-authoring generation APIs accept `extensionRegistry` and `vendorPrefix`. Chain DSL generation accepts `vendorPrefix`, but not `extensionRegistry`.
 
 ```ts
 import { createExtensionRegistry, generateSchemas } from "@formspec/build";
@@ -103,6 +103,10 @@ const result = generateSchemas({
 
 Generation validates canonical IR before emitting schemas. Invalid inputs now fail generation with structured diagnostic codes surfaced in the thrown error.
 
+## Internal Entry Point
+
+Low-level canonical IR generators, analyzer primitives, and validation helpers are intentionally no longer exported from the package root. If you need those unstable internals inside the monorepo, import them from `@formspec/build/internals`.
+
 ## Main Exports
 
 - `buildFormSchemas(form, options?)`
@@ -111,9 +115,10 @@ Generation validates canonical IR before emitting schemas. Invalid inputs now fa
 - `writeSchemas(form, options)`
 - `generateSchemas(options)`
 - `generateSchemasFromClass(options)`
-- `generateJsonSchemaFromIR(ir, options?)`
 - `buildMixedAuthoringSchemas(options)`
 - `createExtensionRegistry(extensions)`
+
+`writeSchemas()` is the chain-DSL convenience wrapper for writing emitted files. Extension registries apply to the static-analysis and mixed-authoring generation flows above, not to `writeSchemas()`.
 
 ## License
 

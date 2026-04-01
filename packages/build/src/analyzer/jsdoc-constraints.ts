@@ -14,7 +14,7 @@
  */
 
 import * as ts from "typescript";
-import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core";
+import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core/internals";
 import {
   parseTSDocTags,
   hasDeprecatedTagTSDoc,

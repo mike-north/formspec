@@ -15,11 +15,15 @@ import {
 /**
  * Options for generating JSON Schema from a Chain DSL form.
  *
- * These options are forwarded to the IR-based JSON Schema generator.
- *
  * @public
  */
-export type GenerateJsonSchemaOptions = GenerateJsonSchemaFromIROptions;
+export interface GenerateJsonSchemaOptions {
+  /**
+   * Vendor prefix for emitted extension keywords.
+   * @defaultValue "x-formspec"
+   */
+  readonly vendorPrefix?: string | undefined;
+}
 
 /**
  * Generates a JSON Schema 2020-12 from a FormSpec.
@@ -56,5 +60,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
   const ir = canonicalizeChainDSL(form);
-  return generateJsonSchemaFromIR(ir, options);
+  const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
+    options?.vendorPrefix === undefined ? undefined : { vendorPrefix: options.vendorPrefix };
+  return generateJsonSchemaFromIR(ir, internalOptions);
 }

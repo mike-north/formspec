@@ -41,10 +41,14 @@ export type {
 
 // Generators: class schema (now routes through IR)
 export { generateClassSchemas } from "./generators/class-schema.js";
+export type { ClassSchemas } from "./generators/class-schema.js";
 
 // JSON Schema 2020-12: IR-based generator
 export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";
-export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
+export type {
+  GenerateJsonSchemaFromIROptions,
+  JsonSchema2020,
+} from "./json-schema/ir-generator.js";
 
 // UI Schema: IR-based generator
 export { generateUiSchemaFromIR } from "./ui-schema/ir-generator.js";

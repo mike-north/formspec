@@ -19,13 +19,14 @@ import {
   type GenerateJsonSchemaFromIROptions,
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
+import type { ExtensionRegistry } from "../extensions/index.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
 /**
  * Generated schemas for a class.
  *
- * @public
+ * @beta
  */
 export interface ClassSchemas {
   /** JSON Schema 2020-12 for validation */
@@ -91,11 +92,28 @@ function formatLocation(location: ValidationDiagnostic["primaryLocation"]): stri
 }
 
 /**
+ * Shared options for schema generation flows that support custom extensions.
+ *
+ * @public
+ */
+export interface StaticSchemaGenerationOptions {
+  /**
+   * Registry used to resolve custom types, constraints, and annotations.
+   */
+  readonly extensionRegistry?: ExtensionRegistry | undefined;
+  /**
+   * Vendor prefix for emitted extension keywords.
+   * @defaultValue "x-formspec"
+   */
+  readonly vendorPrefix?: string | undefined;
+}
+
+/**
  * Options for generating schemas from a decorated class.
  *
  * @public
  */
-export interface GenerateFromClassOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Class name to analyze */
@@ -166,7 +184,7 @@ export function generateSchemasFromClass(
  *
  * @public
  */
-export interface GenerateSchemasOptions extends GenerateJsonSchemaFromIROptions {
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Name of the exported class, interface, or type alias to analyze */

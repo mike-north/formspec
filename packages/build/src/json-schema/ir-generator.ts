@@ -25,8 +25,7 @@ import type {
   ConstraintNode,
   AnnotationNode,
   ObjectProperty,
-  JsonValue,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
@@ -51,7 +50,7 @@ export interface JsonSchema2020 {
   items?: JsonSchema2020;
   additionalProperties?: boolean | JsonSchema2020;
   enum?: readonly (string | number)[];
-  const?: JsonValue;
+  const?: unknown;
   allOf?: readonly JsonSchema2020[];
   oneOf?: readonly JsonSchema2020[];
   anyOf?: readonly JsonSchema2020[];
@@ -100,7 +99,7 @@ interface GeneratorContext {
 /**
  * Options for generating JSON Schema from a canonical FormIR.
  *
- * @public
+ * @internal
  */
 export interface GenerateJsonSchemaFromIROptions {
   /**
@@ -176,7 +175,7 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
  * @param ir - The canonical FormIR produced by a canonicalizer
  * @returns A plain JSON-serializable JSON Schema 2020-12 object
  *
- * @public
+ * @internal
  */
 export function generateJsonSchemaFromIR(
   ir: FormIR,

@@ -19,7 +19,7 @@
  * The current IR format version. Centralized here so all canonicalizers
  * and consumers reference a single source of truth.
  *
- * @public
+ * @beta
  */
 export const IR_VERSION = "0.1.0" as const;
 
@@ -30,7 +30,7 @@ export const IR_VERSION = "0.1.0" as const;
 /**
  * A JSON-serializable value. All IR nodes must be representable as JSON.
  *
- * @public
+ * @beta
  */
 export type JsonValue =
   | null
@@ -48,7 +48,7 @@ export type JsonValue =
  * Describes the origin of an IR node.
  * Enables diagnostics that point to the source of a contradiction or error.
  *
- * @public
+ * @beta
  */
 export interface Provenance {
   /** The authoring surface that produced this node. */
@@ -76,7 +76,7 @@ export interface Provenance {
  * A path targeting a sub-field within a complex type.
  * Used by constraints and annotations to target nested properties.
  *
- * @public
+ * @beta
  */
 export interface PathTarget {
   /**
@@ -94,7 +94,7 @@ export interface PathTarget {
 /**
  * Discriminated union of all type representations in the IR.
  *
- * @public
+ * @beta
  */
 export type TypeNode =
   | PrimitiveTypeNode
@@ -113,7 +113,7 @@ export type TypeNode =
  * Note: integer is NOT a primitive kind — integer semantics are expressed
  * via a `multipleOf: 1` constraint on a number type.
  *
- * @public
+ * @beta
  */
 export interface PrimitiveTypeNode {
   readonly kind: "primitive";
@@ -123,7 +123,7 @@ export interface PrimitiveTypeNode {
 /**
  * A member of a static enum type.
  *
- * @public
+ * @beta
  */
 export interface EnumMember {
   /** The serialized value stored in data. */
@@ -135,7 +135,7 @@ export interface EnumMember {
 /**
  * Static enum type with members known at build time.
  *
- * @public
+ * @beta
  */
 export interface EnumTypeNode {
   readonly kind: "enum";
@@ -145,7 +145,7 @@ export interface EnumTypeNode {
 /**
  * Array type with a single items type.
  *
- * @public
+ * @beta
  */
 export interface ArrayTypeNode {
   readonly kind: "array";
@@ -155,7 +155,7 @@ export interface ArrayTypeNode {
 /**
  * A named property within an object type.
  *
- * @public
+ * @beta
  */
 export interface ObjectProperty {
   readonly name: string;
@@ -176,7 +176,7 @@ export interface ObjectProperty {
 /**
  * Object type with named properties.
  *
- * @public
+ * @beta
  */
 export interface ObjectTypeNode {
   readonly kind: "object";
@@ -200,7 +200,7 @@ export interface ObjectTypeNode {
  * Emitted as `{ "type": "object", "additionalProperties": <value schema> }` in
  * JSON Schema per spec 003 §2.5.
  *
- * @public
+ * @beta
  */
 export interface RecordTypeNode {
   readonly kind: "record";
@@ -211,7 +211,7 @@ export interface RecordTypeNode {
 /**
  * Union type for non-enum unions. Nullable types are represented as `T | null`.
  *
- * @public
+ * @beta
  */
 export interface UnionTypeNode {
   readonly kind: "union";
@@ -221,7 +221,7 @@ export interface UnionTypeNode {
 /**
  * Named type reference preserved for `$defs` and `$ref` emission.
  *
- * @public
+ * @beta
  */
 export interface ReferenceTypeNode {
   readonly kind: "reference";
@@ -241,7 +241,7 @@ export interface ReferenceTypeNode {
 /**
  * Dynamic type whose schema is resolved at runtime from a named data source.
  *
- * @public
+ * @beta
  */
 export interface DynamicTypeNode {
   readonly kind: "dynamic";
@@ -258,7 +258,7 @@ export interface DynamicTypeNode {
 /**
  * Custom type registered by an extension.
  *
- * @public
+ * @beta
  */
 export interface CustomTypeNode {
   readonly kind: "custom";
@@ -283,7 +283,7 @@ export interface CustomTypeNode {
  * Discriminated union of all constraint types.
  * Constraints are set-influencing: they narrow the set of valid values.
  *
- * @public
+ * @beta
  */
 export type ConstraintNode =
   | NumericConstraintNode
@@ -304,7 +304,7 @@ export type ConstraintNode =
  * Type applicability: may only attach to fields with `PrimitiveTypeNode("number")`
  * or a `ReferenceTypeNode` that resolves to one.
  *
- * @public
+ * @beta
  */
 export interface NumericConstraintNode {
   readonly kind: "constraint";
@@ -330,7 +330,7 @@ export interface NumericConstraintNode {
  * Type applicability: `minLength`/`maxLength` require `PrimitiveTypeNode("string")`;
  * `minItems`/`maxItems` require `ArrayTypeNode`.
  *
- * @public
+ * @beta
  */
 export interface LengthConstraintNode {
   readonly kind: "constraint";
@@ -348,7 +348,7 @@ export interface LengthConstraintNode {
  *
  * Type applicability: requires `PrimitiveTypeNode("string")`.
  *
- * @public
+ * @beta
  */
 export interface PatternConstraintNode {
   readonly kind: "constraint";
@@ -362,7 +362,7 @@ export interface PatternConstraintNode {
 /**
  * Array uniqueness constraint.
  *
- * @public
+ * @beta
  */
 export interface ArrayCardinalityConstraintNode {
   readonly kind: "constraint";
@@ -375,7 +375,7 @@ export interface ArrayCardinalityConstraintNode {
 /**
  * Enum member subset constraint that only narrows the allowed member set.
  *
- * @public
+ * @beta
  */
 export interface EnumMemberConstraintNode {
   readonly kind: "constraint";
@@ -388,7 +388,7 @@ export interface EnumMemberConstraintNode {
 /**
  * Literal-value equality constraint.
  *
- * @public
+ * @beta
  */
 export interface ConstConstraintNode {
   readonly kind: "constraint";
@@ -401,7 +401,7 @@ export interface ConstConstraintNode {
 /**
  * Extension-registered custom constraint.
  *
- * @public
+ * @beta
  */
 export interface CustomConstraintNode {
   readonly kind: "constraint";
@@ -425,7 +425,7 @@ export interface CustomConstraintNode {
  * Annotations are value-influencing: they describe or present a field
  * but do not affect which values are valid.
  *
- * @public
+ * @beta
  */
 export type AnnotationNode =
   | DisplayNameAnnotationNode
@@ -441,7 +441,7 @@ export type AnnotationNode =
 /**
  * Display-name annotation.
  *
- * @public
+ * @beta
  */
 export interface DisplayNameAnnotationNode {
   readonly kind: "annotation";
@@ -453,7 +453,7 @@ export interface DisplayNameAnnotationNode {
 /**
  * Description annotation.
  *
- * @public
+ * @beta
  */
 export interface DescriptionAnnotationNode {
   readonly kind: "annotation";
@@ -470,7 +470,7 @@ export interface DescriptionAnnotationNode {
  * this in doc comments; API Documenter renders the source `@remarks`
  * natively in a dedicated Remarks section.
  *
- * @public
+ * @beta
  */
 export interface RemarksAnnotationNode {
   readonly kind: "annotation";
@@ -482,7 +482,7 @@ export interface RemarksAnnotationNode {
 /**
  * Schema format annotation, for example `email`, `date`, or `uri`.
  *
- * @public
+ * @beta
  */
 export interface FormatAnnotationNode {
   readonly kind: "annotation";
@@ -494,7 +494,7 @@ export interface FormatAnnotationNode {
 /**
  * Placeholder annotation.
  *
- * @public
+ * @beta
  */
 export interface PlaceholderAnnotationNode {
   readonly kind: "annotation";
@@ -506,7 +506,7 @@ export interface PlaceholderAnnotationNode {
 /**
  * Default-value annotation.
  *
- * @public
+ * @beta
  */
 export interface DefaultValueAnnotationNode {
   readonly kind: "annotation";
@@ -519,7 +519,7 @@ export interface DefaultValueAnnotationNode {
 /**
  * Deprecated annotation.
  *
- * @public
+ * @beta
  */
 export interface DeprecatedAnnotationNode {
   readonly kind: "annotation";
@@ -533,7 +533,7 @@ export interface DeprecatedAnnotationNode {
  * UI rendering hint — does not affect schema validation.
  * Unlike FormatAnnotationNode, this never emits a JSON Schema `format`.
  *
- * @public
+ * @beta
  */
 export interface FormatHintAnnotationNode {
   readonly kind: "annotation";
@@ -546,7 +546,7 @@ export interface FormatHintAnnotationNode {
 /**
  * Extension-registered custom annotation.
  *
- * @public
+ * @beta
  */
 export interface CustomAnnotationNode {
   readonly kind: "annotation";
@@ -564,7 +564,7 @@ export interface CustomAnnotationNode {
 /**
  * A single form field after canonicalization.
  *
- * @public
+ * @beta
  */
 export interface FieldNode {
   readonly kind: "field";
@@ -597,14 +597,14 @@ export interface FieldNode {
 /**
  * Union of layout node types.
  *
- * @public
+ * @beta
  */
 export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 
 /**
  * A visual grouping of form elements.
  *
- * @public
+ * @beta
  */
 export interface GroupLayoutNode {
   readonly kind: "group";
@@ -617,7 +617,7 @@ export interface GroupLayoutNode {
 /**
  * Conditional visibility based on another field's value.
  *
- * @public
+ * @beta
  */
 export interface ConditionalLayoutNode {
   readonly kind: "conditional";
@@ -633,7 +633,7 @@ export interface ConditionalLayoutNode {
 /**
  * Union of all IR element types.
  *
- * @public
+ * @beta
  */
 export type FormIRElement = FieldNode | LayoutNode;
 
@@ -644,7 +644,7 @@ export type FormIRElement = FieldNode | LayoutNode;
 /**
  * A named type definition stored in the type registry.
  *
- * @public
+ * @beta
  */
 export interface TypeDefinition {
   /** The fully-qualified reference name (key in the registry). */
@@ -671,7 +671,7 @@ export interface TypeDefinition {
  *
  * Serializable to JSON — no live compiler objects.
  *
- * @public
+ * @beta
  */
 export interface FormIR {
   readonly kind: "form-ir";
