@@ -22,15 +22,15 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
+    "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
     "check:eslint-docs": "eslint-doc-generator --check --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
     "clean": "rm -rf dist temp",
     "fix:eslint-docs": "eslint-doc-generator --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "api-extractor": "api-extractor run",
-    "api-extractor:local": "api-extractor run --local",
-    "api-documenter": "api-documenter markdown -i temp -o docs"
+    "api-extractor": "api-extractor run && node ../../scripts/normalize-generated-markdown.mjs api-report",
+    "api-extractor:local": "api-extractor run --local && node ../../scripts/normalize-generated-markdown.mjs api-report",
+    "api-documenter": "api-documenter markdown -i temp -o docs && node ../../scripts/normalize-generated-markdown.mjs docs"
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",

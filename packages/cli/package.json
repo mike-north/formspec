@@ -21,12 +21,12 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly && api-extractor run --local",
+    "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "api-extractor": "api-extractor run",
-    "api-extractor:local": "api-extractor run --local"
+    "api-extractor": "api-extractor run && node ../../scripts/normalize-generated-markdown.mjs api-report",
+    "api-extractor:local": "api-extractor run --local && node ../../scripts/normalize-generated-markdown.mjs api-report"
   },
   "dependencies": {
     "typescript": "^5.0.0",
