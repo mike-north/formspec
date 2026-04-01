@@ -3,7 +3,7 @@ import { ESLint } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
+import os from "node:os";
 import packageJson from "../../package.json" with { type: "json" };
 import plugin, { configs, meta, rules } from "../index.js";
 
@@ -44,7 +44,7 @@ describe("@formspec/eslint-plugin exports", () => {
     let tmpDir: string | undefined;
 
     beforeAll(() => {
-      tmpDir = mkdtempSync(join(tmpdir(), "formspec-eslint-test-"));
+      tmpDir = mkdtempSync(join(os.tmpdir(), "formspec-eslint-test-"));
       writeFileSync(join(tmpDir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true } }));
       writeFileSync(join(tmpDir, "test.ts"), "export const x = 1;\n");
     });
