@@ -72,6 +72,7 @@ export interface SyntheticCompilerDiagnostic {
 export interface CheckSyntheticTagApplicationOptions extends LowerSyntheticTagApplicationOptions {
   readonly supportingDeclarations?: readonly string[];
   readonly performance?: FormSpecPerformanceRecorder;
+  readonly compilerOptions?: ts.CompilerOptions;
 }
 
 /**
@@ -105,6 +106,7 @@ export interface CheckNarrowSyntheticTagApplicabilityOptions {
 export interface CheckNarrowSyntheticTagApplicabilitiesOptions {
   readonly applications: readonly CheckNarrowSyntheticTagApplicabilityOptions[];
   readonly performance?: FormSpecPerformanceRecorder;
+  readonly compilerOptions?: ts.CompilerOptions;
 }
 
 /**
@@ -114,6 +116,7 @@ export interface CheckNarrowSyntheticTagApplicabilitiesOptions {
 export interface CheckSyntheticTagApplicationsOptions {
   readonly applications: readonly CheckSyntheticTagApplicationOptions[];
   readonly performance?: FormSpecPerformanceRecorder;
+  readonly compilerOptions?: ts.CompilerOptions;
 }
 
 const SYNTHETIC_CHECK_EVENT = {
@@ -767,16 +770,21 @@ function runSyntheticProgram(
   sourceText: string,
   performance: FormSpecPerformanceRecorder | undefined,
   eventPrefix: string,
-  missingSourceFileMessage: string
+  missingSourceFileMessage: string,
+  compilerOptionsOverrides?: ts.CompilerOptions
 ): {
   readonly sourceFile: ts.SourceFile;
   readonly diagnostics: readonly ts.Diagnostic[];
 } {
+  const effectiveOptions: ts.CompilerOptions =
+    compilerOptionsOverrides !== undefined
+      ? { ...SYNTHETIC_COMPILER_OPTIONS, ...compilerOptionsOverrides }
+      : SYNTHETIC_COMPILER_OPTIONS;
   const host = optionalMeasure(performance, `${eventPrefix}.createCompilerHost`, undefined, () =>
-    createSyntheticCompilerHost(fileName, sourceText, SYNTHETIC_COMPILER_OPTIONS)
+    createSyntheticCompilerHost(fileName, sourceText, effectiveOptions)
   );
   const program = optionalMeasure(performance, `${eventPrefix}.createProgram`, undefined, () =>
-    ts.createProgram([fileName], SYNTHETIC_COMPILER_OPTIONS, host)
+    ts.createProgram([fileName], effectiveOptions, host)
   );
   const diagnostics = optionalMeasure(
     performance,
@@ -803,6 +811,7 @@ function runSyntheticProgram(
 interface BatchSyntheticCheckOptions<TApplication, TResolvedApplication> {
   readonly applications: readonly TApplication[];
   readonly performance: FormSpecPerformanceRecorder | undefined;
+  readonly compilerOptions: ts.CompilerOptions | undefined;
   readonly cache: LruCache<string, readonly SyntheticTagCheckResult[]>;
   readonly eventPrefix: string;
   readonly missingSourceFileMessage: string;
@@ -851,7 +860,8 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
     batchSource.sourceText,
     options.performance,
     options.eventPrefix,
-    options.missingSourceFileMessage
+    options.missingSourceFileMessage,
+    options.compilerOptions
   );
   const results = optionalMeasure(
     options.performance,
@@ -908,6 +918,7 @@ export function checkSyntheticTagApplications(
   return runBatchSyntheticCheck<CheckSyntheticTagApplicationOptions, SyntheticBatchApplication>({
     applications: options.applications,
     performance: options.performance,
+    compilerOptions: options.compilerOptions,
     cache: syntheticBatchResultCache,
     eventPrefix: SYNTHETIC_CHECK_EVENT.batch,
     missingSourceFileMessage: "Invariant violation: missing synthetic batch source file",
@@ -943,6 +954,7 @@ export function checkNarrowSyntheticTagApplicabilities(
   >({
     applications: options.applications,
     performance: options.performance,
+    compilerOptions: options.compilerOptions,
     cache: syntheticBatchResultCache,
     eventPrefix: SYNTHETIC_CHECK_EVENT.narrowBatch,
     missingSourceFileMessage: "Invariant violation: missing narrow synthetic batch source file",
@@ -974,6 +986,7 @@ export function checkSyntheticTagApplication(
   const result = checkSyntheticTagApplications({
     applications: [options],
     ...(options.performance === undefined ? {} : { performance: options.performance }),
+    ...(options.compilerOptions === undefined ? {} : { compilerOptions: options.compilerOptions }),
   })[0];
   if (result === undefined) {
     throw new Error("Invariant violation: missing synthetic batch result for singular check");

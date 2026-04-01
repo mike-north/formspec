@@ -599,6 +599,22 @@ describe("compiler-signatures", () => {
     expect(results[1]?.diagnostics).toHaveLength(0);
   });
 
+  it("propagates compilerOptions to the synthetic program", () => {
+    // Verify that compilerOptions flows through without errors.
+    // The primary regression test for noUncheckedIndexedAccess + imports
+    // lives in packages/build (nounchecked-index-access.test.ts).
+    const result = checkSyntheticTagApplication({
+      tagName: "minimum",
+      placement: "class-field",
+      hostType: "number",
+      subjectType: "number",
+      argumentExpression: "0",
+      compilerOptions: { noUncheckedIndexedAccess: true },
+    });
+
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it("keeps the synthetic batch cache at 64 entries and reuses it for mixed-tag canary batches", () => {
     expect(FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES).toBe(64);
 

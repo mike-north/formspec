@@ -155,13 +155,48 @@ const SYNTHETIC_TYPE_FORMAT_FLAGS =
   ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
 function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string[] {
+  // Collect identifiers introduced by import declarations so we can
+  // skip non-import statements that reference them (the synthetic
+  // program doesn't have module resolution, so referencing an imported
+  // type would cause spurious type errors).
+  const importedNames = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement) && statement.importClause !== undefined) {
+      const clause = statement.importClause;
+      if (clause.name !== undefined) {
+        importedNames.add(clause.name.text);
+      }
+      if (clause.namedBindings !== undefined) {
+        if (ts.isNamedImports(clause.namedBindings)) {
+          for (const specifier of clause.namedBindings.elements) {
+            importedNames.add(specifier.name.text);
+          }
+        } else if (ts.isNamespaceImport(clause.namedBindings)) {
+          importedNames.add(clause.namedBindings.name.text);
+        }
+      }
+    }
+  }
+
   return sourceFile.statements
-    .filter(
-      (statement) =>
-        !ts.isImportDeclaration(statement) &&
-        !ts.isImportEqualsDeclaration(statement) &&
-        !(ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
-    )
+    .filter((statement) => {
+      // Always exclude imports and re-exports
+      if (ts.isImportDeclaration(statement)) return false;
+      if (ts.isImportEqualsDeclaration(statement)) return false;
+      if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) return false;
+
+      // Skip declarations whose text references an imported identifier.
+      // This prevents the synthetic program from emitting errors about
+      // unresolvable types introduced by filtered-out imports.
+      if (importedNames.size > 0) {
+        const text = statement.getText(sourceFile);
+        for (const name of importedNames) {
+          if (text.includes(name)) return false;
+        }
+      }
+
+      return true;
+    })
     .map((statement) => statement.getText(sourceFile));
 }
 
