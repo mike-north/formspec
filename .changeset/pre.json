@@ -35,6 +35,7 @@
     "constraint-literal-emission-round2",
     "constraints-fixes",
     "description-precedence-remarks",
+    "document-exported-api-docs",
     "dx-evaluation-round2",
     "dx-improvements",
     "enum-object-options",
