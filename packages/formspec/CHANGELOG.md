@@ -1,5 +1,14 @@
 # formspec
 
+## 0.1.0-alpha.24
+
+### Patch Changes
+
+- [#183](https://github.com/mike-north/formspec/pull/183) [`6815fec`](https://github.com/mike-north/formspec/commit/6815fec2ff1bc925b5e3fdf71b515ef3239bb58c) Thanks [@mike-north](https://github.com/mike-north)! - Preserve markdown formatting from TSDoc summary, remarks, and deprecated text in emitted schema descriptions and vendor extensions.
+
+- Updated dependencies [[`6815fec`](https://github.com/mike-north/formspec/commit/6815fec2ff1bc925b5e3fdf71b515ef3239bb58c)]:
+  - @formspec/build@0.1.0-alpha.24
+
 ## 0.1.0-alpha.23
 
 ### Minor Changes

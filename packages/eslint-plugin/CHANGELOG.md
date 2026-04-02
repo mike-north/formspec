@@ -1,5 +1,15 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.24
+
+### Minor Changes
+
+- [#182](https://github.com/mike-north/formspec/pull/182) [`8810079`](https://github.com/mike-north/formspec/commit/8810079555d6749d529463e4e98d4bfbb05b940b) Thanks [@dzou-stripe](https://github.com/dzou-stripe)! - Fix ESLint 9 imports by updating lint rule names to be namespaced under formspec/ instead of @formspec/
+
+### Patch Changes
+
+- [#184](https://github.com/mike-north/formspec/pull/184) [`a352685`](https://github.com/mike-north/formspec/commit/a35268575c1685edcf3e9828e6fa13062d957686) Thanks [@mike-north](https://github.com/mike-north)! - Add a configurable rule that strips markdown formatting from selected FormSpec tag values.
+
 ## 0.1.0-alpha.23
 
 ### Minor Changes
