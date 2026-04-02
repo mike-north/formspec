@@ -39,6 +39,11 @@ export {
   toLspDiagnostics,
   type ToLspDiagnosticsOptions,
 } from "./diagnostics.js";
-export { getCompletionItems } from "./providers/completion.js";
-export { getHoverForTag } from "./providers/hover.js";
+export { getCompletionItems, getCompletionItemsAtOffset } from "./providers/completion.js";
+export { getHoverForTag, getHoverAtOffset } from "./providers/hover.js";
 export { getDefinition } from "./providers/definition.js";
+export {
+  fileUriToPathOrNull,
+  getPluginCompletionContextForDocument,
+  getPluginHoverForDocument,
+} from "./plugin-client.js";

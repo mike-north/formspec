@@ -118,6 +118,15 @@ async function sendSemanticQuery(
   });
 }
 
+/**
+ * Converts a `file://` URI to an absolute filesystem path.
+ *
+ * Returns `null` for any URI that is not a valid `file://` URI (e.g. `untitled:`, `vscode-notebook-cell:`,
+ * malformed URIs). On Windows the returned path uses backslash separators as produced by
+ * `url.fileURLToPath`.
+ *
+ * @public
+ */
 export function fileUriToPathOrNull(uri: string): string | null {
   try {
     return fileURLToPath(uri);
@@ -145,6 +154,20 @@ async function sendFileQuery(
   return sendSemanticQuery(manifest, query, timeoutMs);
 }
 
+/**
+ * Queries the FormSpec TypeScript plugin for semantic completion context at `offset` in the
+ * document identified by `filePath`.
+ *
+ * The workspace root containing `filePath` is located automatically from `workspaceRoots`. The
+ * plugin manifest is read from disk on each call. Returns `null` when no matching workspace root
+ * is found, the manifest is missing or invalid, the IPC socket is unavailable, the plugin times
+ * out (default 2 s), or the plugin's response was computed against a different version of the
+ * document than `documentText` (stale response guard).
+ *
+ * Pass the result to {@link getCompletionItemsAtOffset} as `semanticContext`.
+ *
+ * @public
+ */
 export async function getPluginCompletionContextForDocument(
   workspaceRoots: readonly string[],
   filePath: string,
@@ -170,6 +193,20 @@ export async function getPluginCompletionContextForDocument(
   return response.sourceHash === computeFormSpecTextHash(documentText) ? response.context : null;
 }
 
+/**
+ * Queries the FormSpec TypeScript plugin for semantic hover information at `offset` in the
+ * document identified by `filePath`.
+ *
+ * The workspace root containing `filePath` is located automatically from `workspaceRoots`. The
+ * plugin manifest is read from disk on each call. Returns `null` when no matching workspace root
+ * is found, the manifest is missing or invalid, the IPC socket is unavailable, the plugin times
+ * out (default 2 s), or the plugin's response was computed against a different version of the
+ * document than `documentText` (stale response guard).
+ *
+ * Pass the result to {@link getHoverAtOffset} as `semanticHover`.
+ *
+ * @public
+ */
 export async function getPluginHoverForDocument(
   workspaceRoots: readonly string[],
   filePath: string,

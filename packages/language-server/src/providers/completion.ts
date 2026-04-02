@@ -60,7 +60,15 @@ function filterTagNameCompletionItems(
     .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
 }
 
-/** @internal */
+/**
+ * Returns completion items for the cursor position at `offset` in `documentText`.
+ *
+ * When `semanticContext` is supplied (e.g. from {@link getPluginCompletionContextForDocument}),
+ * it is used directly to produce target-value or tag-name completions. Pass `null` or omit it
+ * to fall back to syntax-only analysis, which works without the TypeScript plugin.
+ *
+ * @public
+ */
 export function getCompletionItemsAtOffset(
   documentText: string,
   offset: number,

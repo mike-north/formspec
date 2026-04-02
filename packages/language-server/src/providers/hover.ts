@@ -37,7 +37,16 @@ export function getHoverForTag(
   };
 }
 
-/** @internal */
+/**
+ * Returns LSP hover content for the cursor position at `offset` in `documentText`.
+ *
+ * When `semanticHover` is supplied (e.g. from {@link getPluginHoverForDocument}), it is used
+ * directly as the hover source. Pass `null` or omit it to fall back to syntax-only analysis,
+ * which works without the TypeScript plugin. Returns `null` when the cursor is not over a
+ * recognised FormSpec tag.
+ *
+ * @public
+ */
 export function getHoverAtOffset(
   documentText: string,
   offset: number,
