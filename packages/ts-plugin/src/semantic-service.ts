@@ -29,12 +29,21 @@ import {
 } from "./constants.js";
 import { formatPerformanceEvent } from "./perf-utils.js";
 
-/** @public */
+/**
+ * Minimal logging surface used by the semantic service and plugin wrapper.
+ *
+ * @public
+ */
 export interface LoggerLike {
+  /** Writes a human-readable diagnostic or profiling message. */
   info(message: string): void;
 }
 
-/** @public */
+/**
+ * Configuration for the reusable in-process semantic service.
+ *
+ * @public
+ */
 export interface FormSpecSemanticServiceOptions {
   /** Workspace root used for runtime paths and contextual logging. */
   readonly workspaceRoot: string;
@@ -54,28 +63,53 @@ export interface FormSpecSemanticServiceOptions {
   readonly now?: () => Date;
 }
 
-/** @public */
+/**
+ * Serialized completion result returned by the semantic service.
+ *
+ * @public
+ */
 export interface FormSpecSemanticCompletionResult {
+  /** Protocol version used by the serialized response. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+  /** Hash of the source file used to compute the response. */
   readonly sourceHash: string;
+  /** Serialized completion payload for the active cursor context. */
   readonly context: FormSpecSerializedCompletionContext;
 }
 
-/** @public */
+/**
+ * Serialized hover result returned by the semantic service.
+ *
+ * @public
+ */
 export interface FormSpecSemanticHoverResult {
+  /** Protocol version used by the serialized response. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+  /** Hash of the source file used to compute the response. */
   readonly sourceHash: string;
+  /** Serialized hover payload, or `null` when nothing is available at the cursor. */
   readonly hover: FormSpecSerializedHoverInfo | null;
 }
 
-/** @public */
+/**
+ * Serialized diagnostics result returned by the semantic service.
+ *
+ * @public
+ */
 export interface FormSpecSemanticDiagnosticsResult {
+  /** Protocol version used by the serialized response. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+  /** Hash of the source file used to compute the response. */
   readonly sourceHash: string;
+  /** Canonical FormSpec diagnostics for the requested file. */
   readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
 }
 
-/** @public */
+/**
+ * Performance and cache counters exposed by the semantic service.
+ *
+ * @public
+ */
 export interface FormSpecSemanticServiceStats {
   /** Total number of calls by semantic query kind. */
   readonly queryTotals: {

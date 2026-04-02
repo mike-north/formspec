@@ -91,7 +91,9 @@ export interface BooleanField<N extends string> {
  * @public
  */
 export interface EnumOption {
+  /** Stored enum value written into submitted data. */
   readonly id: string;
+  /** Human-readable label shown to end users. */
   readonly label: string;
 }
 

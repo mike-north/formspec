@@ -66,33 +66,21 @@ export { BuiltinConstraintName }
 
 // @public
 export interface Categorization {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: Category[];
-    // (undocumented)
     readonly label?: string | undefined;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Categorization";
 }
 
 // @public
 export interface Category {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly label: string;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Category";
 }
 
@@ -104,17 +92,11 @@ export { ConstraintTagRegistration }
 
 // @public
 export interface ControlElement {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly label?: string | false | undefined;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly scope: string;
-    // (undocumented)
     readonly type: "Control";
 }
 
@@ -212,95 +194,54 @@ export { Group }
 
 // @public
 export interface GroupLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly label: string;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Group";
 }
 
 // @public
 export interface HorizontalLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "HorizontalLayout";
 }
 
 // @public
 export interface JsonSchema2020 {
-    // (undocumented)
     $defs?: Record<string, JsonSchema2020>;
-    // (undocumented)
     $ref?: string;
-    // (undocumented)
     $schema?: string;
-    // (undocumented)
     [key: `x-${string}`]: unknown;
-    // (undocumented)
     additionalProperties?: boolean | JsonSchema2020;
-    // (undocumented)
     allOf?: readonly JsonSchema2020[];
-    // (undocumented)
     anyOf?: readonly JsonSchema2020[];
-    // (undocumented)
     const?: unknown;
-    // (undocumented)
     default?: unknown;
-    // (undocumented)
     deprecated?: boolean;
-    // (undocumented)
     description?: string;
-    // (undocumented)
     enum?: readonly (string | number)[];
-    // (undocumented)
     exclusiveMaximum?: number;
-    // (undocumented)
     exclusiveMinimum?: number;
-    // (undocumented)
     format?: string;
-    // (undocumented)
     items?: JsonSchema2020;
-    // (undocumented)
     maximum?: number;
-    // (undocumented)
     maxItems?: number;
-    // (undocumented)
     maxLength?: number;
-    // (undocumented)
     minimum?: number;
-    // (undocumented)
     minItems?: number;
-    // (undocumented)
     minLength?: number;
-    // (undocumented)
     multipleOf?: number;
-    // (undocumented)
     oneOf?: readonly JsonSchema2020[];
-    // (undocumented)
     pattern?: string;
-    // (undocumented)
     properties?: Record<string, JsonSchema2020>;
-    // (undocumented)
     required?: string[];
-    // (undocumented)
     title?: string;
-    // (undocumented)
     type?: string;
-    // (undocumented)
     uniqueItems?: boolean;
 }
 
@@ -309,67 +250,36 @@ export interface JSONSchema7 {
     "x-formspec-params"?: readonly string[];
     "x-formspec-schemaSource"?: string;
     "x-formspec-source"?: string;
-    // (undocumented)
     $id?: string;
-    // (undocumented)
     $ref?: string;
-    // (undocumented)
     $schema?: string;
-    // (undocumented)
     additionalProperties?: boolean | JSONSchema7;
-    // (undocumented)
     allOf?: JSONSchema7[];
-    // (undocumented)
     anyOf?: JSONSchema7[];
-    // (undocumented)
     const?: string | number | boolean | null;
-    // (undocumented)
     default?: unknown;
-    // (undocumented)
     deprecated?: boolean;
-    // (undocumented)
     description?: string;
-    // (undocumented)
     else?: JSONSchema7;
-    // (undocumented)
     enum?: readonly (string | number | boolean | null)[];
-    // (undocumented)
     exclusiveMaximum?: number;
-    // (undocumented)
     exclusiveMinimum?: number;
-    // (undocumented)
     format?: string;
-    // (undocumented)
     if?: JSONSchema7;
-    // (undocumented)
     items?: JSONSchema7 | JSONSchema7[];
-    // (undocumented)
     maximum?: number;
-    // (undocumented)
     maxItems?: number;
-    // (undocumented)
     maxLength?: number;
-    // (undocumented)
     minimum?: number;
-    // (undocumented)
     minItems?: number;
-    // (undocumented)
     minLength?: number;
-    // (undocumented)
     not?: JSONSchema7;
-    // (undocumented)
     oneOf?: JSONSchema7[];
-    // (undocumented)
     pattern?: string;
-    // (undocumented)
     properties?: Record<string, JSONSchema7>;
-    // (undocumented)
     required?: string[];
-    // (undocumented)
     then?: JSONSchema7;
-    // (undocumented)
     title?: string;
-    // (undocumented)
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
@@ -378,15 +288,10 @@ export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "obje
 
 // @public
 export interface LabelElement {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly text: string;
-    // (undocumented)
     readonly type: "Label";
 }
 
@@ -402,37 +307,23 @@ export { ObjectField }
 
 // @public
 export interface Rule {
-    // (undocumented)
     readonly condition: SchemaBasedCondition;
-    // (undocumented)
     readonly effect: RuleEffect;
 }
 
 // @public
 export interface RuleConditionSchema {
-    // (undocumented)
     allOf?: RuleConditionSchema[];
-    // (undocumented)
     const?: unknown;
-    // (undocumented)
     enum?: readonly unknown[];
-    // (undocumented)
     exclusiveMaximum?: number;
-    // (undocumented)
     exclusiveMinimum?: number;
-    // (undocumented)
     maximum?: number;
-    // (undocumented)
     minimum?: number;
-    // (undocumented)
     minLength?: number;
-    // (undocumented)
     not?: RuleConditionSchema;
-    // (undocumented)
     properties?: Record<string, RuleConditionSchema>;
-    // (undocumented)
     required?: string[];
-    // (undocumented)
     type?: string;
 }
 
@@ -441,9 +332,7 @@ export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 
 // @public
 export interface SchemaBasedCondition {
-    // (undocumented)
     readonly schema: RuleConditionSchema;
-    // (undocumented)
     readonly scope: string;
 }
 
@@ -465,11 +354,8 @@ export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout
 
 // @public
 export interface UISchemaElementBase {
-    // (undocumented)
     options?: Record<string, unknown>;
-    // (undocumented)
     rule?: Rule;
-    // (undocumented)
     type: UISchemaElementType;
 }
 
@@ -478,15 +364,10 @@ export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayo
 
 // @public
 export interface VerticalLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "VerticalLayout";
 }
 

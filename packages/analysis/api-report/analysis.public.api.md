@@ -4,65 +4,48 @@
 
 ```ts
 
-// @public (undocumented)
+// @public
 export interface CommentHoverInfo {
-    // (undocumented)
     readonly kind: "tag-name" | "target" | "argument";
-    // (undocumented)
     readonly markdown: string;
 }
 
-// @public (undocumented)
+// @public
 export interface CommentSourceSpan {
-    // (undocumented)
     readonly end: number;
-    // (undocumented)
     readonly start: number;
 }
 
-// @public (undocumented)
+// @public
 export type CommentSpan = CommentSourceSpan;
 
 // @public
 export function computeFormSpecTextHash(text: string): string;
 
-// @public (undocumented)
+// @public
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
 
-// @public (undocumented)
+// @public
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
 // @public
 export interface FormSpecAnalysisCommentSnapshot {
-    // (undocumented)
     readonly commentSpan: CommentSpan;
-    // (undocumented)
     readonly declarationSpan: CommentSpan;
-    // (undocumented)
     readonly hostType: string | null;
-    // (undocumented)
     readonly placement: FormSpecPlacement | null;
-    // (undocumented)
     readonly subjectType: string | null;
-    // (undocumented)
     readonly tags: readonly FormSpecAnalysisTagSnapshot[];
 }
 
 // @public
 export interface FormSpecAnalysisDiagnostic {
-    // (undocumented)
     readonly category: FormSpecAnalysisDiagnosticCategory;
-    // (undocumented)
     readonly code: string;
-    // (undocumented)
     readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
-    // (undocumented)
     readonly message: string;
-    // (undocumented)
     readonly range: CommentSpan;
-    // (undocumented)
     readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
-    // (undocumented)
     readonly severity: "error" | "warning" | "info";
 }
 
@@ -74,152 +57,44 @@ export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | re
 
 // @public
 export interface FormSpecAnalysisDiagnosticLocation {
-    // (undocumented)
     readonly filePath: string;
-    // (undocumented)
     readonly message?: string;
-    // (undocumented)
     readonly range: CommentSpan;
 }
 
 // @public
 export interface FormSpecAnalysisFileSnapshot {
-    // (undocumented)
     readonly comments: readonly FormSpecAnalysisCommentSnapshot[];
-    // (undocumented)
     readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
-    // (undocumented)
     readonly filePath: string;
-    // (undocumented)
     readonly generatedAt: string;
-    // (undocumented)
     readonly sourceHash: string;
-}
-
-// @public
-export interface FormSpecAnalysisManifest {
-    // (undocumented)
-    readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
-    // (undocumented)
-    readonly endpoint: FormSpecIpcEndpoint;
-    // (undocumented)
-    readonly extensionFingerprint: string;
-    // (undocumented)
-    readonly generation: number;
-    // (undocumented)
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    // (undocumented)
-    readonly typescriptVersion: string;
-    // (undocumented)
-    readonly updatedAt: string;
-    // (undocumented)
-    readonly workspaceId: string;
-    // (undocumented)
-    readonly workspaceRoot: string;
 }
 
 // @public
 export interface FormSpecAnalysisTagSnapshot {
-    // (undocumented)
     readonly argumentSpan: CommentSpan | null;
-    // (undocumented)
     readonly argumentText: string;
-    // (undocumented)
     readonly fullSpan: CommentSpan;
-    // (undocumented)
     readonly normalizedTagName: string;
-    // (undocumented)
     readonly payloadSpan: CommentSpan | null;
-    // (undocumented)
     readonly rawTagName: string;
-    // (undocumented)
     readonly recognized: boolean;
-    // (undocumented)
     readonly semantic: FormSpecSerializedTagSemanticContext;
-    // (undocumented)
     readonly tagNameSpan: CommentSpan;
-    // (undocumented)
     readonly target: FormSpecSerializedCommentTargetSpecifier | null;
 }
 
 // @public
-export interface FormSpecIpcEndpoint {
-    // (undocumented)
-    readonly address: string;
-    // (undocumented)
-    readonly kind: "unix-socket" | "windows-pipe";
-}
-
-// @public (undocumented)
 export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
 
 // @public
-export type FormSpecSemanticQuery = {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "health";
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "completion";
-    readonly filePath: string;
-    readonly offset: number;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "hover";
-    readonly filePath: string;
-    readonly offset: number;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "diagnostics";
-    readonly filePath: string;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "file-snapshot";
-    readonly filePath: string;
-};
-
-// @public
-export type FormSpecSemanticResponse = {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "health";
-    readonly manifest: FormSpecAnalysisManifest;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "completion";
-    readonly sourceHash: string;
-    readonly context: FormSpecSerializedCompletionContext;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "hover";
-    readonly sourceHash: string;
-    readonly hover: FormSpecSerializedHoverInfo | null;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "diagnostics";
-    readonly sourceHash: string;
-    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "file-snapshot";
-    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "error";
-    readonly error: string;
-};
-
-// @public
 export interface FormSpecSerializedCommentTargetSpecifier {
-    // (undocumented)
     readonly colonSpan: CommentSpan;
-    // (undocumented)
     readonly fullSpan: CommentSpan;
-    // (undocumented)
     readonly kind: "path" | "member" | "variant" | "ambiguous";
-    // (undocumented)
     readonly rawText: string;
-    // (undocumented)
     readonly span: CommentSpan;
-    // (undocumented)
     readonly valid: boolean;
 }
 
@@ -241,86 +116,39 @@ export type FormSpecSerializedCompletionContext = {
 
 // @public
 export interface FormSpecSerializedHoverInfo {
-    // (undocumented)
     readonly kind: "tag-name" | "target" | "argument";
-    // (undocumented)
     readonly markdown: string;
 }
 
 // @public
 export interface FormSpecSerializedTagDefinition {
-    // (undocumented)
     readonly canonicalName: string;
-    // (undocumented)
     readonly completionDetail: string;
-    // (undocumented)
     readonly hoverMarkdown: string;
 }
 
 // @public
 export interface FormSpecSerializedTagSemanticContext {
-    // (undocumented)
     readonly argumentHoverMarkdown: string | null;
-    // (undocumented)
     readonly compatiblePathTargets: readonly string[];
-    // (undocumented)
     readonly placement: FormSpecPlacement | null;
-    // (undocumented)
     readonly signatures: readonly FormSpecSerializedTagSignature[];
-    // (undocumented)
     readonly supportedTargets: readonly FormSpecTargetKind[];
-    // (undocumented)
     readonly tagDefinition: FormSpecSerializedTagDefinition | null;
-    // (undocumented)
     readonly tagHoverMarkdown: string | null;
-    // (undocumented)
     readonly tagName: string;
-    // (undocumented)
     readonly targetCompletions: readonly string[];
-    // (undocumented)
     readonly targetHoverMarkdown: string | null;
-    // (undocumented)
     readonly valueLabels: readonly string[];
 }
 
 // @public
 export interface FormSpecSerializedTagSignature {
-    // (undocumented)
     readonly label: string;
-    // (undocumented)
     readonly placements: readonly FormSpecPlacement[];
 }
 
-// @public (undocumented)
+// @public
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
-
-// @public
-export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
-
-// @public
-export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemanticQuery;
-
-// @public
-export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
-
-// @public (undocumented)
-export interface ParsedCommentTargetSpecifier {
-    // (undocumented)
-    readonly colonSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly fullSpan: CommentSourceSpan;
-    // (undocumented)
-    readonly kind: "path" | "member" | "variant" | "ambiguous";
-    // (undocumented)
-    readonly path: PathTarget | null;
-    // (undocumented)
-    readonly rawText: string;
-    // (undocumented)
-    readonly span: CommentSourceSpan;
-    // (undocumented)
-    readonly valid: boolean;
-}
-
-// (No @packageDocumentation comment for this package)
 
 ```

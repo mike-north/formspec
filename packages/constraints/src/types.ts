@@ -172,7 +172,9 @@ export interface ConstraintConfig {
  * @public
  */
 export interface ResolvedRuleConstraints {
+  /** Effective severity controlling whether UI schema rules are allowed. */
   enabled: Severity;
+  /** Effective severity for each supported JSON Forms rule effect. */
   effects: Required<RuleEffectConstraints>;
 }
 
@@ -182,7 +184,9 @@ export interface ResolvedRuleConstraints {
  * @public
  */
 export interface ResolvedUISchemaConstraints {
+  /** Effective severities for each supported JSON Forms layout type. */
   layouts: Required<LayoutTypeConstraints>;
+  /** Effective rule policy after defaults have been applied. */
   rules: ResolvedRuleConstraints;
 }
 
@@ -193,10 +197,15 @@ export interface ResolvedUISchemaConstraints {
  * @public
  */
 export interface ResolvedConstraintConfig {
+  /** Effective field-builder policy after defaults and overrides are merged. */
   fieldTypes: Required<FieldTypeConstraints>;
+  /** Effective nesting and grouping policy after defaults are applied. */
   layout: Required<LayoutConstraints>;
+  /** Effective UI-schema policy after defaults and overrides are merged. */
   uiSchema: ResolvedUISchemaConstraints;
+  /** Effective policy for field-level builder options. */
   fieldOptions: Required<FieldOptionConstraints>;
+  /** Effective policy for renderer-specific control options. */
   controlOptions: Required<ControlOptionConstraints>;
 }
 

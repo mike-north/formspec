@@ -45,33 +45,21 @@ export type BuildSchema<Fields> = { [N in Fields extends { name: infer K extends
 
 // @public
 export interface Categorization {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: Category[];
-    // (undocumented)
     readonly label?: string | undefined;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Categorization";
 }
 
 // @public
 export interface Category {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly label: string;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Category";
 }
 
@@ -85,17 +73,11 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
 
 // @public
 export interface ControlElement {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly label?: string | false | undefined;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly scope: string;
-    // (undocumented)
     readonly type: "Control";
 }
 
@@ -145,9 +127,7 @@ export interface DynamicSchemaField<N extends string> {
 
 // @public
 export interface EnumOption {
-    // (undocumented)
     readonly id: string;
-    // (undocumented)
     readonly label: string;
 }
 
@@ -274,31 +254,20 @@ export function group<const Elements extends readonly FormElement[]>(label: stri
 
 // @public
 export interface GroupLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly label: string;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "Group";
 }
 
 // @public
 export interface HorizontalLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "HorizontalLayout";
 }
 
@@ -349,79 +318,44 @@ export function isTextField(element: FormElement): element is TextField<string>;
 
 // @public
 export interface JsonSchema2020 {
-    // (undocumented)
     $defs?: Record<string, JsonSchema2020>;
-    // (undocumented)
     $ref?: string;
-    // (undocumented)
     $schema?: string;
-    // (undocumented)
     [key: `x-${string}`]: unknown;
-    // (undocumented)
     additionalProperties?: boolean | JsonSchema2020;
-    // (undocumented)
     allOf?: readonly JsonSchema2020[];
-    // (undocumented)
     anyOf?: readonly JsonSchema2020[];
-    // (undocumented)
     const?: unknown;
-    // (undocumented)
     default?: unknown;
-    // (undocumented)
     deprecated?: boolean;
-    // (undocumented)
     description?: string;
-    // (undocumented)
     enum?: readonly (string | number)[];
-    // (undocumented)
     exclusiveMaximum?: number;
-    // (undocumented)
     exclusiveMinimum?: number;
-    // (undocumented)
     format?: string;
-    // (undocumented)
     items?: JsonSchema2020;
-    // (undocumented)
     maximum?: number;
-    // (undocumented)
     maxItems?: number;
-    // (undocumented)
     maxLength?: number;
-    // (undocumented)
     minimum?: number;
-    // (undocumented)
     minItems?: number;
-    // (undocumented)
     minLength?: number;
-    // (undocumented)
     multipleOf?: number;
-    // (undocumented)
     oneOf?: readonly JsonSchema2020[];
-    // (undocumented)
     pattern?: string;
-    // (undocumented)
     properties?: Record<string, JsonSchema2020>;
-    // (undocumented)
     required?: string[];
-    // (undocumented)
     title?: string;
-    // (undocumented)
     type?: string;
-    // (undocumented)
     uniqueItems?: boolean;
 }
 
 // @public
 export interface LabelElement {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly text: string;
-    // (undocumented)
     readonly type: "Label";
 }
 
@@ -473,37 +407,23 @@ export type ResolverSourcesForForm<E extends readonly FormElement[]> = ExtractDy
 
 // @public
 export interface Rule {
-    // (undocumented)
     readonly condition: SchemaBasedCondition;
-    // (undocumented)
     readonly effect: RuleEffect;
 }
 
 // @public
 export interface RuleConditionSchema {
-    // (undocumented)
     allOf?: RuleConditionSchema[];
-    // (undocumented)
     const?: unknown;
-    // (undocumented)
     enum?: readonly unknown[];
-    // (undocumented)
     exclusiveMaximum?: number;
-    // (undocumented)
     exclusiveMinimum?: number;
-    // (undocumented)
     maximum?: number;
-    // (undocumented)
     minimum?: number;
-    // (undocumented)
     minLength?: number;
-    // (undocumented)
     not?: RuleConditionSchema;
-    // (undocumented)
     properties?: Record<string, RuleConditionSchema>;
-    // (undocumented)
     required?: string[];
-    // (undocumented)
     type?: string;
 }
 
@@ -512,9 +432,7 @@ export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 
 // @public
 export interface SchemaBasedCondition {
-    // (undocumented)
     readonly schema: RuleConditionSchema;
-    // (undocumented)
     readonly scope: string;
 }
 
@@ -574,15 +492,10 @@ export type Validity = "valid" | "invalid" | "unknown";
 
 // @public
 export interface VerticalLayout {
-    // (undocumented)
     readonly [k: string]: unknown;
-    // (undocumented)
     readonly elements: UISchemaElement[];
-    // (undocumented)
     readonly options?: Record<string, unknown> | undefined;
-    // (undocumented)
     readonly rule?: Rule | undefined;
-    // (undocumented)
     readonly type: "VerticalLayout";
 }
 
@@ -607,15 +520,15 @@ export interface WriteSchemasResult {
 
 // Warnings were encountered during analysis:
 //
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:370:5 - (ae-forgotten-export) The symbol "TextField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:378:5 - (ae-forgotten-export) The symbol "NumberField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:386:5 - (ae-forgotten-export) The symbol "BooleanField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:413:5 - (ae-forgotten-export) The symbol "EnumOptionValue_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:413:5 - (ae-forgotten-export) The symbol "StaticEnumField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:433:5 - (ae-forgotten-export) The symbol "DynamicEnumField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:442:5 - (ae-forgotten-export) The symbol "DynamicSchemaField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:461:5 - (ae-forgotten-export) The symbol "FormElement_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:461:5 - (ae-forgotten-export) The symbol "ArrayField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/Development/formspec/.worktrees/release-tag-pruning/packages/dsl/dist/dsl.d.ts:501:5 - (ae-forgotten-export) The symbol "ObjectField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:372:5 - (ae-forgotten-export) The symbol "TextField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:380:5 - (ae-forgotten-export) The symbol "NumberField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:388:5 - (ae-forgotten-export) The symbol "BooleanField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "EnumOptionValue_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "StaticEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:435:5 - (ae-forgotten-export) The symbol "DynamicEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:444:5 - (ae-forgotten-export) The symbol "DynamicSchemaField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "FormElement_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "ArrayField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec-doc-pass/packages/dsl/dist/dsl.d.ts:503:5 - (ae-forgotten-export) The symbol "ObjectField_2" needs to be exported by the entry point index.d.ts
 
 ```

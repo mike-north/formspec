@@ -45,7 +45,7 @@ export function getHoverForTag(
  * which works without the TypeScript plugin. Returns `null` when the cursor is not over a
  * recognised FormSpec tag.
  *
- * @public
+ * @internal
  */
 export function getHoverAtOffset(
   documentText: string,

@@ -3,13 +3,13 @@ import path from "node:path";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   FORMSPEC_ANALYSIS_SCHEMA_VERSION,
-  type FormSpecAnalysisManifest,
-  type FormSpecIpcEndpoint,
 } from "@formspec/analysis/protocol";
 import {
   getFormSpecManifestPath,
   getFormSpecWorkspaceId,
   getFormSpecWorkspaceRuntimeDirectory,
+  type FormSpecAnalysisManifest,
+  type FormSpecIpcEndpoint,
 } from "@formspec/analysis/internal";
 
 export interface FormSpecWorkspaceRuntimePaths {

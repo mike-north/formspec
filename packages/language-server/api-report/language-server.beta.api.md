@@ -12,16 +12,14 @@ import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-// @public (undocumented)
-export type CommentSourceSpan = CommentSpan;
-
-// @public (undocumented)
-export interface CommentSpan {
-    // (undocumented)
+// @public
+export interface CommentSourceSpan {
     readonly end: number;
-    // (undocumented)
     readonly start: number;
 }
+
+// @public
+export type CommentSpan = CommentSourceSpan;
 
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
@@ -41,19 +39,12 @@ export function fileUriToPathOrNull(uri: string): string | null;
 
 // @public
 export interface FormSpecAnalysisDiagnostic {
-    // (undocumented)
     readonly category: FormSpecAnalysisDiagnosticCategory;
-    // (undocumented)
     readonly code: string;
-    // (undocumented)
     readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
-    // (undocumented)
     readonly message: string;
-    // (undocumented)
     readonly range: CommentSpan;
-    // (undocumented)
     readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
-    // (undocumented)
     readonly severity: "error" | "warning" | "info";
 }
 
@@ -65,11 +56,8 @@ export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | re
 
 // @public
 export interface FormSpecAnalysisDiagnosticLocation {
-    // (undocumented)
     readonly filePath: string;
-    // (undocumented)
     readonly message?: string;
-    // (undocumented)
     readonly range: CommentSpan;
 }
 
@@ -77,25 +65,13 @@ export interface FormSpecAnalysisDiagnosticLocation {
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
 
 // @public
-export function getCompletionItemsAtOffset(documentText: string, offset: number, extensions?: readonly ExtensionDefinition[], semanticContext?: FormSpecSerializedCompletionContext | null): CompletionItem[];
-
-// @public
 export function getDefinition(): Location | null;
-
-// @public
-export function getHoverAtOffset(documentText: string, offset: number, extensions?: readonly ExtensionDefinition[], semanticHover?: FormSpecSerializedHoverInfo | null): Hover | null;
 
 // @public
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
 
 // @public
-export function getPluginCompletionContextForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, offset: number, timeoutMs?: number): Promise<FormSpecSerializedCompletionContext | null>;
-
-// @public
 export function getPluginDiagnosticsForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, timeoutMs?: number): Promise<readonly FormSpecAnalysisDiagnostic[] | null>;
-
-// @public
-export function getPluginHoverForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, offset: number, timeoutMs?: number): Promise<FormSpecSerializedHoverInfo | null>;
 
 // @public
 export function toLspDiagnostics(document: TextDocument, diagnostics: readonly FormSpecAnalysisDiagnostic[], options?: ToLspDiagnosticsOptions): Diagnostic[];

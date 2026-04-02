@@ -9,7 +9,7 @@ import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   isFormSpecAnalysisManifest,
   type FormSpecAnalysisManifest,
-} from "../../packages/analysis/src/protocol.js";
+} from "../../packages/analysis/src/internal.js";
 import {
   getFormSpecWorkspaceRuntimePaths,
   type FormSpecWorkspaceRuntimePaths,

@@ -15,9 +15,18 @@ import {
   type FormSpecTargetKind,
 } from "./tag-registry.js";
 
-/** @public */
+/**
+ * Current semantic-query protocol version shared by FormSpec analysis clients
+ * and servers.
+ *
+ * @public
+ */
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
-/** @public */
+/**
+ * Current schema version for serialized analysis artifacts.
+ *
+ * @public
+ */
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
 
 /**
@@ -27,7 +36,9 @@ export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
  * @public
  */
 export interface FormSpecIpcEndpoint {
+  /** Transport kind used to connect to the workspace semantic service. */
   readonly kind: "unix-socket" | "windows-pipe";
+  /** Absolute socket path or pipe name for the semantic service endpoint. */
   readonly address: string;
 }
 
@@ -38,14 +49,23 @@ export interface FormSpecIpcEndpoint {
  * @public
  */
 export interface FormSpecAnalysisManifest {
+  /** Protocol version expected by both the client and semantic service. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+  /** Schema version for serialized analysis artifacts. */
   readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
+  /** Absolute workspace root the manifest was generated for. */
   readonly workspaceRoot: string;
+  /** Stable identifier derived from the workspace root. */
   readonly workspaceId: string;
+  /** IPC endpoint clients should connect to for semantic queries. */
   readonly endpoint: FormSpecIpcEndpoint;
+  /** TypeScript version reported by the host environment. */
   readonly typescriptVersion: string;
+  /** Fingerprint representing the active extension-tag registry. */
   readonly extensionFingerprint: string;
+  /** Monotonic generation number for manifest refreshes. */
   readonly generation: number;
+  /** ISO timestamp for when the manifest was last written. */
   readonly updatedAt: string;
 }
 
@@ -55,8 +75,11 @@ export interface FormSpecAnalysisManifest {
  * @public
  */
 export interface FormSpecSerializedTagDefinition {
+  /** Canonical tag name, including the `@` prefix. */
   readonly canonicalName: string;
+  /** Short completion label shown in completion menus. */
   readonly completionDetail: string;
+  /** Markdown hover content describing the tag. */
   readonly hoverMarkdown: string;
 }
 
@@ -66,7 +89,9 @@ export interface FormSpecSerializedTagDefinition {
  * @public
  */
 export interface FormSpecSerializedTagSignature {
+  /** Human-readable rendering of one supported tag signature. */
   readonly label: string;
+  /** Declaration placements where this signature is valid. */
   readonly placements: readonly FormSpecPlacement[];
 }
 
@@ -76,11 +101,17 @@ export interface FormSpecSerializedTagSignature {
  * @public
  */
 export interface FormSpecSerializedCommentTargetSpecifier {
+  /** Raw target text without the leading colon. */
   readonly rawText: string;
+  /** Whether the serialized target parsed successfully. */
   readonly valid: boolean;
+  /** Target syntax kind inferred for the serialized specifier. */
   readonly kind: "path" | "member" | "variant" | "ambiguous";
+  /** Span covering the entire target, including the leading colon. */
   readonly fullSpan: CommentSpan;
+  /** Span covering only the colon token. */
   readonly colonSpan: CommentSpan;
+  /** Span covering only the target text. */
   readonly span: CommentSpan;
 }
 
@@ -90,16 +121,27 @@ export interface FormSpecSerializedCommentTargetSpecifier {
  * @public
  */
 export interface FormSpecSerializedTagSemanticContext {
+  /** Canonical tag name, including the `@` prefix. */
   readonly tagName: string;
+  /** Tag metadata when the tag is recognized by the registry. */
   readonly tagDefinition: FormSpecSerializedTagDefinition | null;
+  /** Declaration placement the tag was evaluated in, if known. */
   readonly placement: FormSpecPlacement | null;
+  /** Target syntaxes supported by the matching signatures. */
   readonly supportedTargets: readonly FormSpecTargetKind[];
+  /** Suggested targets for completion UIs. */
   readonly targetCompletions: readonly string[];
+  /** Compatible path targets computed from the subject type, if available. */
   readonly compatiblePathTargets: readonly string[];
+  /** Suggested value labels derived from the matching signatures. */
   readonly valueLabels: readonly string[];
+  /** Signature summaries for the recognized tag in the current placement. */
   readonly signatures: readonly FormSpecSerializedTagSignature[];
+  /** Markdown hover for the tag name token. */
   readonly tagHoverMarkdown: string | null;
+  /** Markdown hover for the target token, when available. */
   readonly targetHoverMarkdown: string | null;
+  /** Markdown hover for the argument token, when available. */
   readonly argumentHoverMarkdown: string | null;
 }
 
@@ -134,7 +176,9 @@ export type FormSpecSerializedCompletionContext =
  * @public
  */
 export interface FormSpecSerializedHoverInfo {
+  /** Comment token kind being described. */
   readonly kind: "tag-name" | "target" | "argument";
+  /** Markdown payload that should be rendered for the hover. */
   readonly markdown: string;
 }
 
@@ -171,8 +215,11 @@ export type FormSpecAnalysisDiagnosticDataValue =
  * @public
  */
 export interface FormSpecAnalysisDiagnosticLocation {
+  /** Absolute file path for the related diagnostic location. */
   readonly filePath: string;
+  /** Source range for the related diagnostic location. */
   readonly range: CommentSpan;
+  /** Optional explanatory text for the related location. */
   readonly message?: string;
 }
 
@@ -182,12 +229,19 @@ export interface FormSpecAnalysisDiagnosticLocation {
  * @public
  */
 export interface FormSpecAnalysisDiagnostic {
+  /** Stable diagnostic code for downstream rendering or filtering. */
   readonly code: string;
+  /** High-level diagnostic category. */
   readonly category: FormSpecAnalysisDiagnosticCategory;
+  /** Human-readable diagnostic message. */
   readonly message: string;
+  /** Source range where the diagnostic applies. */
   readonly range: CommentSpan;
+  /** Severity to surface in editor or CLI UIs. */
   readonly severity: "error" | "warning" | "info";
+  /** Additional source locations related to the diagnostic. */
   readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
+  /** Structured diagnostic facts for white-label downstream formatting. */
   readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
 }
 
@@ -197,15 +251,25 @@ export interface FormSpecAnalysisDiagnostic {
  * @public
  */
 export interface FormSpecAnalysisTagSnapshot {
+  /** Raw tag name as written in the source comment. */
   readonly rawTagName: string;
+  /** Canonicalized tag name used for registry lookup. */
   readonly normalizedTagName: string;
+  /** Whether the tag matched a known FormSpec tag definition. */
   readonly recognized: boolean;
+  /** Span covering the full tag payload on the source line. */
   readonly fullSpan: CommentSpan;
+  /** Span covering only the tag-name token. */
   readonly tagNameSpan: CommentSpan;
+  /** Span covering the payload after the tag name, if present. */
   readonly payloadSpan: CommentSpan | null;
+  /** Parsed target specifier, if the tag includes one. */
   readonly target: FormSpecSerializedCommentTargetSpecifier | null;
+  /** Span covering the argument token or payload segment, if present. */
   readonly argumentSpan: CommentSpan | null;
+  /** Raw argument text after any target specifier. */
   readonly argumentText: string;
+  /** Semantic context derived for the parsed tag. */
   readonly semantic: FormSpecSerializedTagSemanticContext;
 }
 
@@ -215,11 +279,17 @@ export interface FormSpecAnalysisTagSnapshot {
  * @public
  */
 export interface FormSpecAnalysisCommentSnapshot {
+  /** Span covering the full doc comment block. */
   readonly commentSpan: CommentSpan;
+  /** Span covering the declaration that owns the comment. */
   readonly declarationSpan: CommentSpan;
+  /** Normalized placement where the comment was found, if known. */
   readonly placement: FormSpecPlacement | null;
+  /** String form of the subject type targeted by the comment, if known. */
   readonly subjectType: string | null;
+  /** String form of the host declaration type, if known. */
   readonly hostType: string | null;
+  /** Parsed tag snapshots found inside the comment. */
   readonly tags: readonly FormSpecAnalysisTagSnapshot[];
 }
 
@@ -229,10 +299,15 @@ export interface FormSpecAnalysisCommentSnapshot {
  * @public
  */
 export interface FormSpecAnalysisFileSnapshot {
+  /** Absolute path of the analyzed source file. */
   readonly filePath: string;
+  /** Stable hash of the file text used to detect drift. */
   readonly sourceHash: string;
+  /** ISO timestamp recording when the snapshot was generated. */
   readonly generatedAt: string;
+  /** Parsed comment snapshots extracted from the file. */
   readonly comments: readonly FormSpecAnalysisCommentSnapshot[];
+  /** Diagnostics produced for the file at snapshot time. */
   readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
 }
 

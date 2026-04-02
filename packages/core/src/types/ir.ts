@@ -116,7 +116,9 @@ export type TypeNode =
  * @beta
  */
 export interface PrimitiveTypeNode {
+  /** Discriminator identifying this node as a primitive type. */
   readonly kind: "primitive";
+  /** Primitive value family represented by this node. */
   readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
@@ -138,7 +140,9 @@ export interface EnumMember {
  * @beta
  */
 export interface EnumTypeNode {
+  /** Discriminator identifying this node as an enum type. */
   readonly kind: "enum";
+  /** Allowed enum members in declaration order. */
   readonly members: readonly EnumMember[];
 }
 
@@ -148,7 +152,9 @@ export interface EnumTypeNode {
  * @beta
  */
 export interface ArrayTypeNode {
+  /** Discriminator identifying this node as an array type. */
   readonly kind: "array";
+  /** Item type for each array entry. */
   readonly items: TypeNode;
 }
 
@@ -158,8 +164,11 @@ export interface ArrayTypeNode {
  * @beta
  */
 export interface ObjectProperty {
+  /** Property name as it appears in the containing object type. */
   readonly name: string;
+  /** Canonical IR type for this property. */
   readonly type: TypeNode;
+  /** Whether the property may be omitted from object values. */
   readonly optional: boolean;
   /**
    * Use-site constraints on this property.
@@ -170,6 +179,7 @@ export interface ObjectProperty {
   readonly constraints: readonly ConstraintNode[];
   /** Use-site annotations on this property. */
   readonly annotations: readonly AnnotationNode[];
+  /** Source location that produced this property entry. */
   readonly provenance: Provenance;
 }
 
@@ -179,6 +189,7 @@ export interface ObjectProperty {
  * @beta
  */
 export interface ObjectTypeNode {
+  /** Discriminator identifying this node as an object type. */
   readonly kind: "object";
   /**
    * Named properties of this object. Order is preserved from the source
@@ -203,6 +214,7 @@ export interface ObjectTypeNode {
  * @beta
  */
 export interface RecordTypeNode {
+  /** Discriminator identifying this node as a record type. */
   readonly kind: "record";
   /** The type of each value in the dictionary. */
   readonly valueType: TypeNode;
@@ -214,7 +226,9 @@ export interface RecordTypeNode {
  * @beta
  */
 export interface UnionTypeNode {
+  /** Discriminator identifying this node as a union type. */
   readonly kind: "union";
+  /** Member types that participate in the union. */
   readonly members: readonly TypeNode[];
 }
 
@@ -224,6 +238,7 @@ export interface UnionTypeNode {
  * @beta
  */
 export interface ReferenceTypeNode {
+  /** Discriminator identifying this node as a named reference type. */
   readonly kind: "reference";
   /**
    * The fully-qualified name of the referenced type.
@@ -244,7 +259,9 @@ export interface ReferenceTypeNode {
  * @beta
  */
 export interface DynamicTypeNode {
+  /** Discriminator identifying this node as a runtime-resolved type. */
   readonly kind: "dynamic";
+  /** Dynamic schema family resolved for this field. */
   readonly dynamicKind: "enum" | "schema";
   /** Key identifying the runtime data source or schema provider. */
   readonly sourceKey: string;
@@ -261,6 +278,7 @@ export interface DynamicTypeNode {
  * @beta
  */
 export interface CustomTypeNode {
+  /** Discriminator identifying this node as an extension-provided type. */
   readonly kind: "custom";
   /**
    * The extension-qualified type identifier.
@@ -307,16 +325,20 @@ export type ConstraintNode =
  * @beta
  */
 export interface NumericConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific numeric constraint represented by this node. */
   readonly constraintKind:
     | "minimum"
     | "maximum"
     | "exclusiveMinimum"
     | "exclusiveMaximum"
     | "multipleOf";
+  /** Numeric value carried by the constraint. */
   readonly value: number;
   /** If present, targets a nested sub-field rather than the field itself. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -333,10 +355,15 @@ export interface NumericConstraintNode {
  * @beta
  */
 export interface LengthConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific length or cardinality constraint represented by this node. */
   readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
+  /** Inclusive bound value carried by the constraint. */
   readonly value: number;
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -351,11 +378,15 @@ export interface LengthConstraintNode {
  * @beta
  */
 export interface PatternConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific pattern constraint represented by this node. */
   readonly constraintKind: "pattern";
   /** ECMA-262 regular expression, without delimiters. */
   readonly pattern: string;
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -365,10 +396,15 @@ export interface PatternConstraintNode {
  * @beta
  */
 export interface ArrayCardinalityConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific array-cardinality constraint represented by this node. */
   readonly constraintKind: "uniqueItems";
+  /** Marker value used for boolean-style array uniqueness constraints. */
   readonly value: true;
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -378,10 +414,15 @@ export interface ArrayCardinalityConstraintNode {
  * @beta
  */
 export interface EnumMemberConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific enum-membership constraint represented by this node. */
   readonly constraintKind: "allowedMembers";
+  /** Subset of enum member values that remain valid. */
   readonly members: readonly (string | number)[];
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -391,10 +432,15 @@ export interface EnumMemberConstraintNode {
  * @beta
  */
 export interface ConstConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific literal-equality constraint represented by this node. */
   readonly constraintKind: "const";
+  /** JSON-serializable literal value the field must equal. */
   readonly value: JsonValue;
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -404,7 +450,9 @@ export interface ConstConstraintNode {
  * @beta
  */
 export interface CustomConstraintNode {
+  /** Discriminator identifying this node as a constraint. */
   readonly kind: "constraint";
+  /** Specific custom-constraint marker used for extension nodes. */
   readonly constraintKind: "custom";
   /** Extension-qualified ID: `"<vendor-prefix>/<extension-name>/<constraint-name>"` */
   readonly constraintId: string;
@@ -412,7 +460,9 @@ export interface CustomConstraintNode {
   readonly payload: JsonValue;
   /** How this constraint composes with others of the same `constraintId`. */
   readonly compositionRule: "intersect" | "override";
+  /** Nested path target, when the constraint applies below the field root. */
   readonly path?: PathTarget;
+  /** Source location that produced this constraint. */
   readonly provenance: Provenance;
 }
 
@@ -444,9 +494,13 @@ export type AnnotationNode =
  * @beta
  */
 export interface DisplayNameAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "displayName";
+  /** Human-readable display label for the field or type. */
   readonly value: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -456,9 +510,13 @@ export interface DisplayNameAnnotationNode {
  * @beta
  */
 export interface DescriptionAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "description";
+  /** Description text surfaced in generated schemas and tooling. */
   readonly value: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -473,9 +531,13 @@ export interface DescriptionAnnotationNode {
  * @beta
  */
 export interface RemarksAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "remarks";
+  /** Long-form remarks content carried through canonicalization. */
   readonly value: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -485,9 +547,13 @@ export interface RemarksAnnotationNode {
  * @beta
  */
 export interface FormatAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "format";
+  /** Schema format keyword value to emit downstream. */
   readonly value: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -497,9 +563,13 @@ export interface FormatAnnotationNode {
  * @beta
  */
 export interface PlaceholderAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "placeholder";
+  /** Placeholder text intended for UI renderers. */
   readonly value: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -509,10 +579,13 @@ export interface PlaceholderAnnotationNode {
  * @beta
  */
 export interface DefaultValueAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "defaultValue";
   /** Must be JSON-serializable and type-compatible (verified during Validate phase). */
   readonly value: JsonValue;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -522,10 +595,13 @@ export interface DefaultValueAnnotationNode {
  * @beta
  */
 export interface DeprecatedAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "deprecated";
   /** Optional deprecation message. */
   readonly message?: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -536,10 +612,13 @@ export interface DeprecatedAnnotationNode {
  * @beta
  */
 export interface FormatHintAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "formatHint";
   /** Renderer-specific format identifier: "textarea", "radio", "date", "color", etc. */
   readonly format: string;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -549,11 +628,15 @@ export interface FormatHintAnnotationNode {
  * @beta
  */
 export interface CustomAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
   readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
   readonly annotationKind: "custom";
   /** Extension-qualified ID: `"<vendor-prefix>/<extension-name>/<annotation-name>"` */
   readonly annotationId: string;
+  /** JSON-serializable extension payload carried by this annotation. */
   readonly value: JsonValue;
+  /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }
 
@@ -567,6 +650,7 @@ export interface CustomAnnotationNode {
  * @beta
  */
 export interface FieldNode {
+  /** Discriminator identifying this node as a field. */
   readonly kind: "field";
   /** The field's key in the data schema. */
   readonly name: string;
@@ -607,10 +691,13 @@ export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
  * @beta
  */
 export interface GroupLayoutNode {
+  /** Discriminator identifying this node as a group layout. */
   readonly kind: "group";
+  /** Display label associated with the visual group. */
   readonly label: string;
   /** Elements contained in this group — may be fields or nested groups. */
   readonly elements: readonly FormIRElement[];
+  /** Source location that produced this layout node. */
   readonly provenance: Provenance;
 }
 
@@ -620,6 +707,7 @@ export interface GroupLayoutNode {
  * @beta
  */
 export interface ConditionalLayoutNode {
+  /** Discriminator identifying this node as a conditional layout. */
   readonly kind: "conditional";
   /** The field whose value triggers visibility. */
   readonly fieldName: string;
@@ -627,6 +715,7 @@ export interface ConditionalLayoutNode {
   readonly value: JsonValue;
   /** Elements shown when the condition is met. */
   readonly elements: readonly FormIRElement[];
+  /** Source location that produced this layout node. */
   readonly provenance: Provenance;
 }
 
@@ -674,6 +763,7 @@ export interface TypeDefinition {
  * @beta
  */
 export interface FormIR {
+  /** Discriminator identifying this document as a top-level FormIR payload. */
   readonly kind: "form-ir";
   /**
    * Schema version for the IR format itself.

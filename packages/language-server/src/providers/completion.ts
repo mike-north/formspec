@@ -67,7 +67,7 @@ function filterTagNameCompletionItems(
  * it is used directly to produce target-value or tag-name completions. Pass `null` or omit it
  * to fall back to syntax-only analysis, which works without the TypeScript plugin.
  *
- * @public
+ * @internal
  */
 export function getCompletionItemsAtOffset(
   documentText: string,

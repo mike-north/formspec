@@ -15,11 +15,19 @@ export type FormSpecValueKind =
   | "boolean"
   | "condition";
 
-/** @public */
+/**
+ * Target syntaxes that a FormSpec tag can accept.
+ *
+ * @public
+ */
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 export type FormSpecTagCategory = "constraint" | "annotation" | "structure" | "ecosystem";
 
-/** @public */
+/**
+ * Declaration contexts where a FormSpec tag may appear.
+ *
+ * @public
+ */
 export type FormSpecPlacement =
   | "class"
   | "class-field"
