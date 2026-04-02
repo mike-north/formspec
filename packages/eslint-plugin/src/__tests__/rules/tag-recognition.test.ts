@@ -3,6 +3,7 @@ import * as vitest from "vitest";
 import { noUnknownTags } from "../../rules/tag-recognition/no-unknown-tags.js";
 import { requireTagArguments } from "../../rules/tag-recognition/require-tag-arguments.js";
 import { noDisabledTags } from "../../rules/tag-recognition/no-disabled-tags.js";
+import { noMarkdownFormatting } from "../../rules/tag-recognition/no-markdown-formatting.js";
 
 RuleTester.afterAll = vitest.afterAll;
 RuleTester.it = vitest.it;
@@ -147,6 +148,88 @@ ruleTester.run("no-disabled-tags", noDisabledTags, {
       `,
       options: [{ tags: ["minimum"] }],
       errors: [{ messageId: "disabledTag" }],
+    },
+  ],
+});
+
+ruleTester.run("no-markdown-formatting", noMarkdownFormatting, {
+  valid: [
+    {
+      code: `
+        class Form {
+          /** @remarks Plain text only */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName **Full Name** */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName :plural Customer Names */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["displayName"] }],
+    },
+  ],
+  invalid: [
+    {
+      code: `
+        class Form {
+          /** @remarks Use \`customer.email\` in the follow-up. */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+      errors: [{ messageId: "markdownFormattingForbidden" }],
+      output: `
+        class Form {
+          /** @remarks Use customer.email in the follow-up. */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName **Full Name** */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["displayName"] }],
+      errors: [{ messageId: "markdownFormattingForbidden" }],
+      output: `
+        class Form {
+          /** @displayName Full Name */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName :plural [Customer Names](https://example.com) */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["displayName"] }],
+      errors: [{ messageId: "markdownFormattingForbidden" }],
+      output: `
+        class Form {
+          /** @displayName :plural Customer Names */
+          name!: string;
+        }
+      `,
     },
   ],
 });
