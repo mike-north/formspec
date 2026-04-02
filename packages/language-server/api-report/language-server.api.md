@@ -13,23 +13,15 @@ import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 // @public (undocumented)
+export type CommentSourceSpan = CommentSpan;
+
+// @public (undocumented)
 export interface CommentSpan {
     // (undocumented)
     readonly end: number;
     // (undocumented)
     readonly start: number;
 }
-
-// @public (undocumented)
-export interface CommentSourceSpan {
-    // (undocumented)
-    readonly end: number;
-    // (undocumented)
-    readonly start: number;
-}
-
-// @public (undocumented)
-export type CommentSpan = CommentSourceSpan;
 
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
@@ -43,6 +35,9 @@ export interface CreateServerOptions {
     readonly usePluginTransport?: boolean;
     readonly workspaceRoots?: readonly string[];
 }
+
+// @public
+export function fileUriToPathOrNull(uri: string): string | null;
 
 // @public
 export interface FormSpecAnalysisDiagnostic {
@@ -81,14 +76,30 @@ export interface FormSpecAnalysisDiagnosticLocation {
 // @public
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
 
+// Warning: (ae-forgotten-export) The symbol "FormSpecSerializedCompletionContext" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function getCompletionItemsAtOffset(documentText: string, offset: number, extensions?: readonly ExtensionDefinition[], semanticContext?: FormSpecSerializedCompletionContext | null): CompletionItem[];
+
 // @public
 export function getDefinition(): Location | null;
+
+// Warning: (ae-forgotten-export) The symbol "FormSpecSerializedHoverInfo" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function getHoverAtOffset(documentText: string, offset: number, extensions?: readonly ExtensionDefinition[], semanticHover?: FormSpecSerializedHoverInfo | null): Hover | null;
 
 // @public
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
 
 // @public
+export function getPluginCompletionContextForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, offset: number, timeoutMs?: number): Promise<FormSpecSerializedCompletionContext | null>;
+
+// @public
 export function getPluginDiagnosticsForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, timeoutMs?: number): Promise<readonly FormSpecAnalysisDiagnostic[] | null>;
+
+// @public
+export function getPluginHoverForDocument(workspaceRoots: readonly string[], filePath: string, documentText: string, offset: number, timeoutMs?: number): Promise<FormSpecSerializedHoverInfo | null>;
 
 // @public
 export function toLspDiagnostics(document: TextDocument, diagnostics: readonly FormSpecAnalysisDiagnostic[], options?: ToLspDiagnosticsOptions): Diagnostic[];
