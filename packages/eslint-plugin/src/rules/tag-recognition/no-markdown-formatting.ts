@@ -13,7 +13,7 @@ type MessageIds = "markdownFormattingForbidden";
 function stripMarkdownFormatting(value: string): string {
   let result = value;
 
-  while (true) {
+  for (;;) {
     const next = result
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
@@ -66,8 +66,9 @@ export const noMarkdownFormatting = createRule<Options, MessageIds>({
   },
   defaultOptions: [{}],
   create(context) {
+    const [options] = context.options as readonly ({ tags?: string[] } | undefined)[];
     const configuredTags = new Set(
-      (context.options[0]?.tags ?? []).map((tagName) => normalizeFormSpecTagName(tagName))
+      (options?.tags ?? []).map((tagName) => normalizeFormSpecTagName(tagName))
     );
 
     if (configuredTags.size === 0) {
