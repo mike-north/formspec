@@ -20,6 +20,17 @@ export interface CommentSpan {
     readonly start: number;
 }
 
+// @public (undocumented)
+export interface CommentSourceSpan {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
+// @public (undocumented)
+export type CommentSpan = CommentSourceSpan;
+
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
 

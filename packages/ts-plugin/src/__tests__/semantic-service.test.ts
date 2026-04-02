@@ -249,7 +249,6 @@ describe("FormSpecSemanticService", () => {
     setTimeoutSpy.mockRestore();
     clearTimeoutSpy.mockRestore();
   });
-
   it("debounces scheduled refreshes and clears timers on dispose", async () => {
     vi.useFakeTimers();
     const source = `

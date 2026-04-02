@@ -5,15 +5,23 @@
 ```ts
 
 // @public (undocumented)
-export type CommentSourceSpan = CommentSpan;
+export interface CommentHoverInfo {
+    // (undocumented)
+    readonly kind: "tag-name" | "target" | "argument";
+    // (undocumented)
+    readonly markdown: string;
+}
 
 // @public (undocumented)
-export interface CommentSpan {
+export interface CommentSourceSpan {
     // (undocumented)
     readonly end: number;
     // (undocumented)
     readonly start: number;
 }
+
+// @public (undocumented)
+export type CommentSpan = CommentSourceSpan;
 
 // @public
 export function computeFormSpecTextHash(text: string): string;
@@ -294,6 +302,24 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
+
+// @public (undocumented)
+export interface ParsedCommentTargetSpecifier {
+    // (undocumented)
+    readonly colonSpan: CommentSourceSpan;
+    // (undocumented)
+    readonly fullSpan: CommentSourceSpan;
+    // (undocumented)
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
+    // (undocumented)
+    readonly path: PathTarget | null;
+    // (undocumented)
+    readonly rawText: string;
+    // (undocumented)
+    readonly span: CommentSourceSpan;
+    // (undocumented)
+    readonly valid: boolean;
+}
 
 // (No @packageDocumentation comment for this package)
 

@@ -84,6 +84,7 @@ export type SemanticCommentCompletionContext =
       readonly kind: "none";
     };
 
+/** @public */
 export interface CommentHoverInfo {
   readonly kind: "tag-name" | "target" | "argument";
   readonly markdown: string;

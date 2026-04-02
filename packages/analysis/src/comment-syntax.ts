@@ -7,14 +7,15 @@ import {
 } from "./tag-registry.js";
 
 /** @public */
-export interface CommentSpan {
+export interface CommentSourceSpan {
   readonly start: number;
   readonly end: number;
 }
 
 /** @public */
-export type CommentSourceSpan = CommentSpan;
+export type CommentSpan = CommentSourceSpan;
 
+/** @public */
 export interface ParsedCommentTargetSpecifier {
   readonly rawText: string;
   readonly valid: boolean;

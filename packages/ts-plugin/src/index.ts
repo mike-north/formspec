@@ -2,8 +2,10 @@ import type * as tsServer from "typescript/lib/tsserverlibrary.js";
 export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   FORMSPEC_ANALYSIS_SCHEMA_VERSION,
+  type CommentHoverInfo,
   type CommentSourceSpan,
   type CommentSpan,
+  type ParsedCommentTargetSpecifier,
   type FormSpecAnalysisCommentSnapshot,
   type FormSpecAnalysisDiagnostic,
   type FormSpecAnalysisDiagnosticCategory,
@@ -14,6 +16,7 @@ export {
   type FormSpecAnalysisTagSnapshot,
   type FormSpecIpcEndpoint,
   type FormSpecPlacement,
+  type FormSpecTargetKind,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
   type FormSpecSerializedCommentTargetSpecifier,
@@ -22,7 +25,6 @@ export {
   type FormSpecSerializedTagDefinition,
   type FormSpecSerializedTagSemanticContext,
   type FormSpecSerializedTagSignature,
-  type FormSpecTargetKind,
 } from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
 export {

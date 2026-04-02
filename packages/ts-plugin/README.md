@@ -44,7 +44,6 @@ See:
 These source-repository references intentionally show a downstream host that
 renders diagnostics from `code` + `data` instead of reusing FormSpec's default
 message text.
-
 ## White-Label Diagnostics
 
 Diagnostics returned by the semantic service and plugin transport include:
