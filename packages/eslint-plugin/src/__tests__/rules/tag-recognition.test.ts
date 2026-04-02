@@ -218,7 +218,9 @@ ruleTester.run("no-markdown-formatting", noMarkdownFormatting, {
     {
       code: `
         class Form {
-          /** @displayName :plural [Customer Names](https://example.com) */
+          /**
+           * @displayName :plural [Customer Names](https://example.com)
+           */
           name!: string;
         }
       `,
@@ -226,7 +228,9 @@ ruleTester.run("no-markdown-formatting", noMarkdownFormatting, {
       errors: [{ messageId: "markdownFormattingForbidden" }],
       output: `
         class Form {
-          /** @displayName :plural Customer Names */
+          /**
+           * @displayName :plural Customer Names
+           */
           name!: string;
         }
       `,
