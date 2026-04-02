@@ -5,17 +5,6 @@
 ```ts
 
 // @public (undocumented)
-export type CommentSourceSpan = CommentSpan;
-
-// @public (undocumented)
-export interface CommentSpan {
-    // (undocumented)
-    readonly end: number;
-    // (undocumented)
-    readonly start: number;
-}
-
-// @public (undocumented)
 export interface CommentHoverInfo {
     // (undocumented)
     readonly kind: "tag-name" | "target" | "argument";
@@ -305,13 +294,19 @@ export interface FormSpecSerializedTagSignature {
 // @public (undocumented)
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecManifestPath" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function getFormSpecManifestPath(workspaceRoot: string): string;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecWorkspaceId" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function getFormSpecWorkspaceId(workspaceRoot: string): string;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecWorkspaceRuntimeDirectory" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string;
 
 // @public
@@ -331,6 +326,8 @@ export interface ParsedCommentTargetSpecifier {
     readonly fullSpan: CommentSourceSpan;
     // (undocumented)
     readonly kind: "path" | "member" | "variant" | "ambiguous";
+    // Warning: (ae-forgotten-export) The symbol "PathTarget" needs to be exported by the entry point index.d.ts
+    //
     // (undocumented)
     readonly path: PathTarget | null;
     // (undocumented)
@@ -342,25 +339,33 @@ export interface ParsedCommentTargetSpecifier {
 }
 
 // Warning: (ae-forgotten-export) The symbol "CommentTagSemanticContext" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "serializeCommentTagSemanticContext" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public
+// @internal
 export function serializeCommentTagSemanticContext(semantic: CommentTagSemanticContext): FormSpecSerializedTagSemanticContext;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "serializeCommentTargetSpecifier" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpecifier | null): FormSpecSerializedCommentTargetSpecifier | null;
 
 // Warning: (ae-forgotten-export) The symbol "SemanticCommentCompletionContext" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "serializeCompletionContext" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public
+// @internal
 export function serializeCompletionContext(context: SemanticCommentCompletionContext): FormSpecSerializedCompletionContext;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "serializeHoverInfo" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function serializeHoverInfo(hover: CommentHoverInfo | null): FormSpecSerializedHoverInfo | null;
 
 // Warning: (ae-forgotten-export) The symbol "ParsedCommentTag" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "serializeParsedCommentTag" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @public
+// @internal
 export function serializeParsedCommentTag(tag: ParsedCommentTag, semantic: CommentTagSemanticContext): FormSpecAnalysisTagSnapshot;
+
 // (No @packageDocumentation comment for this package)
 
 ```

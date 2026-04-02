@@ -4,7 +4,7 @@
 
 ```ts
 
-// @public
+// @beta
 export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
 // @public
@@ -650,7 +650,7 @@ export interface ReferenceTypeNode {
     readonly typeArguments: readonly TypeNode[];
 }
 
-// @public
+// @beta
 export interface RemarksAnnotationNode {
     // (undocumented)
     readonly annotationKind: "remarks";
