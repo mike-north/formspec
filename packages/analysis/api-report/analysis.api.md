@@ -15,6 +15,25 @@ export interface CommentSpan {
     readonly start: number;
 }
 
+// @public (undocumented)
+export interface CommentHoverInfo {
+    // (undocumented)
+    readonly kind: "tag-name" | "target" | "argument";
+    // (undocumented)
+    readonly markdown: string;
+}
+
+// @public (undocumented)
+export interface CommentSourceSpan {
+    // (undocumented)
+    readonly end: number;
+    // (undocumented)
+    readonly start: number;
+}
+
+// @public (undocumented)
+export type CommentSpan = CommentSourceSpan;
+
 // @public
 export function computeFormSpecTextHash(text: string): string;
 
@@ -287,6 +306,15 @@ export interface FormSpecSerializedTagSignature {
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 
 // @public
+export function getFormSpecManifestPath(workspaceRoot: string): string;
+
+// @public
+export function getFormSpecWorkspaceId(workspaceRoot: string): string;
+
+// @public
+export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string;
+
+// @public
 export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
 
 // @public
@@ -295,6 +323,44 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
+// @public (undocumented)
+export interface ParsedCommentTargetSpecifier {
+    // (undocumented)
+    readonly colonSpan: CommentSourceSpan;
+    // (undocumented)
+    readonly fullSpan: CommentSourceSpan;
+    // (undocumented)
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
+    // (undocumented)
+    readonly path: PathTarget | null;
+    // (undocumented)
+    readonly rawText: string;
+    // (undocumented)
+    readonly span: CommentSourceSpan;
+    // (undocumented)
+    readonly valid: boolean;
+}
+
+// Warning: (ae-forgotten-export) The symbol "CommentTagSemanticContext" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function serializeCommentTagSemanticContext(semantic: CommentTagSemanticContext): FormSpecSerializedTagSemanticContext;
+
+// @public
+export function serializeCommentTargetSpecifier(target: ParsedCommentTargetSpecifier | null): FormSpecSerializedCommentTargetSpecifier | null;
+
+// Warning: (ae-forgotten-export) The symbol "SemanticCommentCompletionContext" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function serializeCompletionContext(context: SemanticCommentCompletionContext): FormSpecSerializedCompletionContext;
+
+// @public
+export function serializeHoverInfo(hover: CommentHoverInfo | null): FormSpecSerializedHoverInfo | null;
+
+// Warning: (ae-forgotten-export) The symbol "ParsedCommentTag" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function serializeParsedCommentTag(tag: ParsedCommentTag, semantic: CommentTagSemanticContext): FormSpecAnalysisTagSnapshot;
 // (No @packageDocumentation comment for this package)
 
 ```

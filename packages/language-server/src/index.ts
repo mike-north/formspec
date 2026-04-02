@@ -27,6 +27,7 @@
 export { createServer } from "./server.js";
 export type { CreateServerOptions } from "./server.js";
 export type {
+  CommentSourceSpan,
   CommentSpan,
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisDiagnosticCategory,
