@@ -1,5 +1,11 @@
 # @formspec/language-server
 
+## 0.1.0-alpha.25
+
+### Minor Changes
+
+- [#187](https://github.com/mike-north/formspec/pull/187) [`2e0517a`](https://github.com/mike-north/formspec/commit/2e0517a2e64678dc16853c1d7b4e043cd246d3f6) Thanks [@mike-north](https://github.com/mike-north)! - Promote server composition building blocks to public API — `getCompletionItemsAtOffset`, `getHoverAtOffset`, `fileUriToPathOrNull`, `getPluginCompletionContextForDocument`, and `getPluginHoverForDocument` are now exported as `@public` for consumers building custom language servers on top of these primitives.
+
 ## 0.1.0-alpha.23
 
 ### Minor Changes

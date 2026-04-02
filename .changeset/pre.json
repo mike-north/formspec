@@ -65,6 +65,7 @@
     "numeric-extension-surface",
     "p4-enum-options-dx",
     "predicate-when-api",
+    "promote-language-server-building-blocks",
     "quiet-mayflies-work",
     "recursive-references-support",
     "refactor-build-type-safety",
