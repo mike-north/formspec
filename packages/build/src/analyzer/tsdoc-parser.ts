@@ -57,6 +57,7 @@ import {
   TSDocConfiguration,
   TSDocTagDefinition,
   TSDocTagSyntaxKind,
+  DocExcerpt,
   DocPlainText,
   DocSoftBreak,
   TextRange,
@@ -1142,6 +1143,9 @@ function extractBlockText(block: DocBlock): string {
 
 function extractPlainText(node: DocNode): string {
   let result = "";
+  if (node instanceof DocExcerpt) {
+    return node.content.toString();
+  }
   if (node instanceof DocPlainText) {
     return node.text;
   }

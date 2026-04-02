@@ -1,15 +1,9 @@
 /**
- * Tests for inline code span preservation in free-form text tags.
+ * Tests for inline markdown preservation in free-form text tags.
  *
- * TSDoc parses backtick-wrapped text as `DocCodeSpan` AST nodes.
+ * TSDoc parses backtick-wrapped text as excerpt-backed nodes.
  * When formspec extracts text for description, remarks, and deprecated
- * annotations, it should include the code span content as plain text
- * rather than dropping it entirely.
- *
- * KNOWN BUG: formspec currently strips DocCodeSpan content, producing
- * empty strings where backtick-wrapped text should appear.
- *
- * @see https://github.com/mike-north/formspec/issues/TBD
+ * annotations, it should preserve that original markdown content.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
@@ -24,13 +18,7 @@ describe("Inline code spans in summary text", () => {
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-summary-"));
     const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli([
-      "generate",
-      fixturePath,
-      "MarkdownInSummaryForm",
-      "-o",
-      tempDir,
-    ]);
+    const result = runCli(["generate", fixturePath, "MarkdownInSummaryForm", "-o", tempDir]);
     if (result.exitCode !== 0) {
       // Generation may succeed even with the bug — the content is just wrong
       console.warn("CLI stderr:", result.stderr);
@@ -47,14 +35,9 @@ describe("Inline code spans in summary text", () => {
     }
   });
 
-  it.skip("preserves backtick-wrapped function name in summary → description", () => {
-    // KNOWN BUG: DocCodeSpan content is stripped from summary text.
-    // Expected: "Use calculateDiscount(amount) to compute the result."
-    // Actual:   "Use  to compute the result."
+  it("preserves backtick-wrapped function name in summary → description", () => {
     expect(schema).toBeDefined();
-    expect(schema["description"]).toBe(
-      "Use calculateDiscount(amount) to compute the result."
-    );
+    expect(schema["description"]).toBe("Use `calculateDiscount(amount)` to compute the result.");
   });
 });
 
@@ -65,13 +48,7 @@ describe("Inline code spans in @remarks", () => {
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-remarks-"));
     const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli([
-      "generate",
-      fixturePath,
-      "MarkdownInRemarksForm",
-      "-o",
-      tempDir,
-    ]);
+    const result = runCli(["generate", fixturePath, "MarkdownInRemarksForm", "-o", tempDir]);
     if (result.exitCode !== 0) {
       console.warn("CLI stderr:", result.stderr);
     }
@@ -87,17 +64,14 @@ describe("Inline code spans in @remarks", () => {
     }
   });
 
-  it.skip("preserves backtick-wrapped function name in @remarks → vendor extension", () => {
-    // KNOWN BUG: DocCodeSpan content is stripped from @remarks text.
-    // The remarks value should contain the inline code content as plain text.
+  it("preserves backtick-wrapped function name in @remarks → vendor extension", () => {
     expect(schema).toBeDefined();
-    // Remarks maps to a vendor-prefixed extension key (e.g., x-formspec-remarks).
-    // Find any key matching the pattern.
     const remarksKey = Object.keys(schema).find((k) => k.endsWith("-remarks"));
     expect(remarksKey).toBeDefined();
-    expect(schema[remarksKey!]).toBe(
-      "Use formatCurrency(value) for display purposes."
-    );
+    if (!remarksKey) {
+      throw new Error("Expected remarks vendor extension key to be present");
+    }
+    expect(schema[remarksKey]).toBe("Use `formatCurrency(value)` for display purposes.");
   });
 });
 
@@ -108,13 +82,7 @@ describe("Inline code spans in @deprecated message", () => {
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-deprecated-"));
     const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli([
-      "generate",
-      fixturePath,
-      "MarkdownInDeprecatedForm",
-      "-o",
-      tempDir,
-    ]);
+    const result = runCli(["generate", fixturePath, "MarkdownInDeprecatedForm", "-o", tempDir]);
     if (result.exitCode !== 0) {
       console.warn("CLI stderr:", result.stderr);
     }
@@ -130,17 +98,14 @@ describe("Inline code spans in @deprecated message", () => {
     }
   });
 
-  it.skip("preserves backtick-wrapped class name in @deprecated → deprecation description", () => {
-    // KNOWN BUG: DocCodeSpan content is stripped from @deprecated message.
-    // The deprecation description vendor extension should preserve inline code.
+  it("preserves backtick-wrapped class name in @deprecated → deprecation description", () => {
     expect(schema).toBeDefined();
     expect(schema["deprecated"]).toBe(true);
-    const deprecationKey = Object.keys(schema).find((k) =>
-      k.endsWith("-deprecation-description")
-    );
+    const deprecationKey = Object.keys(schema).find((k) => k.endsWith("-deprecation-description"));
     expect(deprecationKey).toBeDefined();
-    expect(schema[deprecationKey!]).toBe(
-      "Use NewDiscountConfig instead of this class."
-    );
+    if (!deprecationKey) {
+      throw new Error("Expected deprecation description vendor extension key to be present");
+    }
+    expect(schema[deprecationKey]).toBe("Use `NewDiscountConfig` instead of this class.");
   });
 });

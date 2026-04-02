@@ -488,6 +488,22 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("preserves inline markdown code spans in summary text descriptions", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** Use \`customer.email\` when composing the follow-up message. */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      annotationKind: "description",
+      value: "Use `customer.email` when composing the follow-up message.",
+    });
+  });
+
   it("extracts @remarks as a separate remarks annotation (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
