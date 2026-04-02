@@ -41,39 +41,69 @@ import type { ExtensionRegistry } from "../extensions/index.js";
  * @public
  */
 export interface JsonSchema2020 {
+  /** Declared JSON Schema dialect URI for the document root. */
   $schema?: string;
+  /** Reference to another schema location. */
   $ref?: string;
+  /** Named reusable schema definitions keyed by definition name. */
   $defs?: Record<string, JsonSchema2020>;
+  /** JSON Schema type keyword for the current node. */
   type?: string;
+  /** Object properties keyed by property name. */
   properties?: Record<string, JsonSchema2020>;
+  /** Property names that must be present on object values. */
   required?: string[];
+  /** Item schema applied to array elements. */
   items?: JsonSchema2020;
+  /** Whether, or how, additional object properties are allowed. */
   additionalProperties?: boolean | JsonSchema2020;
+  /** Closed set of allowed scalar values. */
   enum?: readonly (string | number)[];
+  /** Literal value the instance must equal. */
   const?: unknown;
+  /** Schemas that must all validate successfully. */
   allOf?: readonly JsonSchema2020[];
+  /** Schemas of which exactly one should validate successfully. */
   oneOf?: readonly JsonSchema2020[];
+  /** Schemas of which at least one may validate successfully. */
   anyOf?: readonly JsonSchema2020[];
   // Constraints
+  /** Inclusive numeric lower bound. */
   minimum?: number;
+  /** Inclusive numeric upper bound. */
   maximum?: number;
+  /** Exclusive numeric lower bound. */
   exclusiveMinimum?: number;
+  /** Exclusive numeric upper bound. */
   exclusiveMaximum?: number;
+  /** Required numeric step interval. */
   multipleOf?: number;
+  /** Inclusive minimum string length. */
   minLength?: number;
+  /** Inclusive maximum string length. */
   maxLength?: number;
+  /** Inclusive minimum array length. */
   minItems?: number;
+  /** Inclusive maximum array length. */
   maxItems?: number;
+  /** Regular expression pattern applied to string values. */
   pattern?: string;
+  /** Whether array elements must be unique. */
   uniqueItems?: boolean;
+  /** Format hint for downstream validators and tooling. */
   format?: string;
   // Annotations
+  /** Human-readable title for the schema node. */
   title?: string;
+  /** Human-readable description for the schema node. */
   description?: string;
+  /** Default value suggested for the schema node. */
   default?: unknown;
+  /** Whether the schema node is deprecated. */
   deprecated?: boolean;
   // Extensions (open for vendor-prefixed keywords, e.g., x-formspec-*, x-stripe-*)
   // The vendor prefix is configurable (white-labelable).
+  /** Additional vendor-prefixed extension keywords. */
   [key: `x-${string}`]: unknown;
 }
 

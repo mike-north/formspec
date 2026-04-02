@@ -1,3 +1,11 @@
+/**
+ * TypeScript language service plugin entrypoint for FormSpec.
+ *
+ * This package exposes the reference tsserver plugin and the reusable semantic
+ * service used by downstream TypeScript hosts.
+ *
+ * @packageDocumentation
+ */
 import type * as tsServer from "typescript/lib/tsserverlibrary.js";
 export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
@@ -5,20 +13,15 @@ export {
   type CommentHoverInfo,
   type CommentSourceSpan,
   type CommentSpan,
-  type ParsedCommentTargetSpecifier,
   type FormSpecAnalysisCommentSnapshot,
   type FormSpecAnalysisDiagnostic,
   type FormSpecAnalysisDiagnosticCategory,
   type FormSpecAnalysisDiagnosticDataValue,
   type FormSpecAnalysisDiagnosticLocation,
-  type FormSpecAnalysisManifest,
   type FormSpecAnalysisFileSnapshot,
   type FormSpecAnalysisTagSnapshot,
-  type FormSpecIpcEndpoint,
   type FormSpecPlacement,
   type FormSpecTargetKind,
-  type FormSpecSemanticQuery,
-  type FormSpecSemanticResponse,
   type FormSpecSerializedCommentTargetSpecifier,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,

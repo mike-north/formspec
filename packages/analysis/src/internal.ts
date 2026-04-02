@@ -141,3 +141,14 @@ export {
   serializeHoverInfo,
   serializeParsedCommentTag,
 } from "./semantic-protocol.js";
+export type {
+  FormSpecAnalysisManifest,
+  FormSpecIpcEndpoint,
+  FormSpecSemanticQuery,
+  FormSpecSemanticResponse,
+} from "./semantic-protocol.js";
+export {
+  isFormSpecAnalysisManifest,
+  isFormSpecSemanticQuery,
+  isFormSpecSemanticResponse,
+} from "./semantic-protocol.js";

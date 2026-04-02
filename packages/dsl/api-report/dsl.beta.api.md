@@ -76,9 +76,7 @@ export interface DynamicSchemaField<N extends string> {
 
 // @public
 export interface EnumOption {
-    // (undocumented)
     readonly id: string;
-    // (undocumented)
     readonly label: string;
 }
 

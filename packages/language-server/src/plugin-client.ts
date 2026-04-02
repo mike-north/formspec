@@ -5,16 +5,18 @@ import { fileURLToPath } from "node:url";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   computeFormSpecTextHash,
-  isFormSpecAnalysisManifest,
-  isFormSpecSemanticResponse,
   type FormSpecAnalysisDiagnostic,
-  type FormSpecAnalysisManifest,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,
+} from "@formspec/analysis/protocol";
+import {
+  getFormSpecManifestPath,
+  isFormSpecAnalysisManifest,
+  isFormSpecSemanticResponse,
+  type FormSpecAnalysisManifest,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis/protocol";
-import { getFormSpecManifestPath } from "@formspec/analysis/internal";
+} from "@formspec/analysis/internal";
 
 const DEFAULT_PLUGIN_QUERY_TIMEOUT_MS = 2_000;
 
@@ -166,7 +168,7 @@ async function sendFileQuery(
  *
  * Pass the result to {@link getCompletionItemsAtOffset} as `semanticContext`.
  *
- * @public
+ * @internal
  */
 export async function getPluginCompletionContextForDocument(
   workspaceRoots: readonly string[],
@@ -205,7 +207,7 @@ export async function getPluginCompletionContextForDocument(
  *
  * Pass the result to {@link getHoverAtOffset} as `semanticHover`.
  *
- * @public
+ * @internal
  */
 export async function getPluginHoverForDocument(
   workspaceRoots: readonly string[],

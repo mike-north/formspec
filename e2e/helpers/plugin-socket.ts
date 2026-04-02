@@ -2,7 +2,7 @@ import net from "node:net";
 import {
   isFormSpecSemanticResponse,
   type FormSpecSemanticResponse,
-} from "../../packages/analysis/src/protocol.js";
+} from "../../packages/analysis/src/internal.js";
 
 export const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 5_000;
 

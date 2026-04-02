@@ -82,9 +82,7 @@ export interface DynamicSchemaField<N extends string> {
 
 // @public
 export interface EnumOption {
-    // (undocumented)
     readonly id: string;
-    // (undocumented)
     readonly label: string;
 }
 
@@ -199,31 +197,22 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 
 // @public
 export interface ResolvedConstraintConfig {
-    // (undocumented)
     controlOptions: Required<ControlOptionConstraints>;
-    // (undocumented)
     fieldOptions: Required<FieldOptionConstraints>;
-    // (undocumented)
     fieldTypes: Required<FieldTypeConstraints>;
-    // (undocumented)
     layout: Required<LayoutConstraints>;
-    // (undocumented)
     uiSchema: ResolvedUISchemaConstraints;
 }
 
 // @public
 export interface ResolvedRuleConstraints {
-    // (undocumented)
     effects: Required<RuleEffectConstraints>;
-    // (undocumented)
     enabled: Severity;
 }
 
 // @public
 export interface ResolvedUISchemaConstraints {
-    // (undocumented)
     layouts: Required<LayoutTypeConstraints>;
-    // (undocumented)
     rules: ResolvedRuleConstraints;
 }
 

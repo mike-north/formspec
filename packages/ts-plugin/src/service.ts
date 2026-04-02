@@ -3,12 +3,14 @@ import net from "node:net";
 import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+} from "@formspec/analysis/protocol";
+import {
   isFormSpecSemanticQuery,
   type FormSpecAnalysisManifest,
+  type FormSpecPerformanceEvent,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis/protocol";
-import { type FormSpecPerformanceEvent } from "@formspec/analysis/internal";
+} from "@formspec/analysis/internal";
 import {
   createFormSpecAnalysisManifest,
   getFormSpecWorkspaceRuntimePaths,
@@ -63,6 +65,11 @@ export class FormSpecPluginService {
     );
   }
 
+  /**
+   * Returns the manifest written by the plugin service for workspace discovery.
+   *
+   * @internal
+   */
   public getManifest(): FormSpecAnalysisManifest {
     return this.manifest;
   }
@@ -76,6 +83,13 @@ export class FormSpecPluginService {
     return this.semanticService;
   }
 
+  /**
+   * Starts the IPC transport and writes the current workspace manifest.
+   *
+   * Calling this more than once is a no-op.
+   *
+   * @public
+   */
   public async start(): Promise<void> {
     if (this.server !== null) {
       return;
@@ -140,6 +154,11 @@ export class FormSpecPluginService {
     await this.writeManifest();
   }
 
+  /**
+   * Stops the IPC transport, clears semantic state, and removes runtime artifacts.
+   *
+   * @public
+   */
   public async stop(): Promise<void> {
     this.semanticService.dispose();
 
@@ -160,10 +179,20 @@ export class FormSpecPluginService {
     await this.cleanupRuntimeArtifacts();
   }
 
+  /**
+   * Schedules a background refresh for the cached semantic snapshot of a file.
+   *
+   * @public
+   */
   public scheduleSnapshotRefresh(filePath: string): void {
     this.semanticService.scheduleSnapshotRefresh(filePath);
   }
 
+  /**
+   * Handles a semantic query issued against the plugin transport.
+   *
+   * @internal
+   */
   public handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse {
     if (this.options.enablePerformanceLogging === true) {
       const startedAt = performance.now();

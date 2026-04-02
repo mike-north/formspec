@@ -5,11 +5,7 @@ export type {
   FormSpecAnalysisDiagnosticLocation,
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisFileSnapshot,
-  FormSpecAnalysisManifest,
   FormSpecAnalysisTagSnapshot,
-  FormSpecIpcEndpoint,
-  FormSpecSemanticQuery,
-  FormSpecSemanticResponse,
   FormSpecSerializedCommentTargetSpecifier,
   FormSpecSerializedCompletionContext,
   FormSpecSerializedHoverInfo,
@@ -20,7 +16,6 @@ export type {
 export type {
   CommentSourceSpan,
   CommentSpan,
-  ParsedCommentTargetSpecifier,
 } from "./comment-syntax.js";
 export type { CommentHoverInfo } from "./cursor-context.js";
 export type { FormSpecPlacement, FormSpecTargetKind } from "./tag-registry.js";
@@ -28,17 +23,4 @@ export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   FORMSPEC_ANALYSIS_SCHEMA_VERSION,
   computeFormSpecTextHash,
-  isFormSpecAnalysisManifest,
-  isFormSpecSemanticQuery,
-  isFormSpecSemanticResponse,
-  serializeCommentTagSemanticContext,
-  serializeCommentTargetSpecifier,
-  serializeCompletionContext,
-  serializeHoverInfo,
-  serializeParsedCommentTag,
 } from "./semantic-protocol.js";
-export {
-  getFormSpecManifestPath,
-  getFormSpecWorkspaceId,
-  getFormSpecWorkspaceRuntimeDirectory,
-} from "./workspace-runtime.js";

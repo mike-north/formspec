@@ -84,9 +84,15 @@ export type SemanticCommentCompletionContext =
       readonly kind: "none";
     };
 
-/** @public */
+/**
+ * Hover payload for a token inside a parsed FormSpec doc comment.
+ *
+ * @public
+ */
 export interface CommentHoverInfo {
+  /** Comment token kind currently being described. */
   readonly kind: "tag-name" | "target" | "argument";
+  /** Markdown rendered for the hovered token. */
   readonly markdown: string;
 }
 

@@ -6,23 +6,44 @@ import {
   type ExtensionTagSource,
 } from "./tag-registry.js";
 
-/** @public */
+/**
+ * Half-open character span within a source comment string.
+ *
+ * @public
+ */
 export interface CommentSourceSpan {
+  /** Zero-based start offset, inclusive. */
   readonly start: number;
+  /** Zero-based end offset, exclusive. */
   readonly end: number;
 }
 
-/** @public */
+/**
+ * Source span used by serialized comment-analysis payloads.
+ *
+ * @public
+ */
 export type CommentSpan = CommentSourceSpan;
 
-/** @public */
+/**
+ * Parsed `:target` suffix for a FormSpec comment tag.
+ *
+ * @internal
+ */
 export interface ParsedCommentTargetSpecifier {
+  /** Raw target text without the leading colon. */
   readonly rawText: string;
+  /** Whether the target text parsed into a valid path or selector. */
   readonly valid: boolean;
+  /** Normalized target syntax kind inferred for the specifier. */
   readonly kind: "path" | "member" | "variant" | "ambiguous";
+  /** Span covering the full target, including the leading colon. */
   readonly fullSpan: CommentSourceSpan;
+  /** Span covering only the leading colon token. */
   readonly colonSpan: CommentSourceSpan;
+  /** Span covering the target text without the colon. */
   readonly span: CommentSourceSpan;
+  /** Parsed path representation when the target resolves to a path. */
   readonly path: PathTarget | null;
 }
 
