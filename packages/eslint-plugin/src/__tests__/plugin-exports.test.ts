@@ -1,6 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { ESLint } from "eslint";
+import type { Linter } from "eslint";
+import tsParser from "@typescript-eslint/parser";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import os from "node:os";
 import packageJson from "../../package.json" with { type: "json" };
 import plugin, { configs, meta, rules } from "../index.js";
+
+function getConfigRuleIds(config: readonly Linter.Config[]): string[] {
+  return config.flatMap((entry) => Object.keys(entry.rules ?? {}));
+}
 
 describe("@formspec/eslint-plugin exports", () => {
   it("exposes the expected default export shape", () => {
@@ -25,13 +35,72 @@ describe("@formspec/eslint-plugin exports", () => {
 
     expect(configs.recommended).toBeInstanceOf(Array);
     expect(configs.strict).toBeInstanceOf(Array);
-    expect(configs.recommended[0]?.plugins?.["@formspec"]).toMatchObject({
+    expect(configs.recommended[0]?.plugins?.["formspec"]).toMatchObject({
       meta,
       rules,
     });
-    expect(configs.strict[0]?.plugins?.["@formspec"]).toMatchObject({
+    expect(configs.strict[0]?.plugins?.["formspec"]).toMatchObject({
       meta,
       rules,
+    });
+  });
+
+  it("uses the flat-config plugin namespace consistently", () => {
+    const configuredRuleIds = [
+      ...getConfigRuleIds(configs.recommended),
+      ...getConfigRuleIds(configs.strict),
+    ];
+
+    expect(configs.recommended[0]?.plugins).toHaveProperty("formspec");
+    expect(configs.strict[0]?.plugins).toHaveProperty("formspec");
+    expect(configs.recommended[0]?.plugins).not.toHaveProperty("@formspec");
+    expect(configs.strict[0]?.plugins).not.toHaveProperty("@formspec");
+
+    for (const ruleId of configuredRuleIds) {
+      expect(ruleId.startsWith("formspec/")).toBe(true);
+      expect(ruleId.startsWith("@formspec/")).toBe(false);
+      expect(ruleId.slice("formspec/".length)).toBeTruthy();
+      expect(rules).toHaveProperty(ruleId.slice("formspec/".length));
+    }
+  });
+
+  describe("ESLint 9 flat config integration", () => {
+    let tmpDir: string | undefined;
+
+    beforeAll(() => {
+      tmpDir = mkdtempSync(join(os.tmpdir(), "formspec-eslint-test-"));
+      writeFileSync(join(tmpDir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true } }));
+      writeFileSync(join(tmpDir, "test.ts"), "export const x = 1;\n");
+    });
+
+    afterAll(() => {
+      if (tmpDir) {
+        rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it("resolves and loads every rule against a real project", async () => {
+      const allRulesEnabled = Object.fromEntries(
+        Object.keys(rules).map((name) => [`formspec/${name}`, "warn"]),
+      );
+      const overrideConfig: Linter.Config = {
+        files: ["**/*.ts"],
+        languageOptions: {
+          parser: tsParser,
+          parserOptions: { projectService: true, tsconfigRootDir: tmpDir },
+        },
+        plugins: { formspec: { meta, rules } },
+        rules: allRulesEnabled,
+      };
+
+      const eslint = new ESLint({
+        cwd: tmpDir,
+        overrideConfigFile: true,
+        overrideConfig,
+      });
+
+      const [result] = await eslint.lintFiles(["test.ts"]);
+      expect(result.messages).toEqual([]);
     });
   });
 });
