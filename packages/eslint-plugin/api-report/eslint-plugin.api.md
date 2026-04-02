@@ -65,6 +65,13 @@ export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag", [], unknown
     name: string;
 };
 
+// Warning: (ae-forgotten-export) The symbol "Options_4" needs to be exported by the entry point index.d.ts
+//
+// @public
+export const noMarkdownFormatting: ESLintUtils.RuleModule<"markdownFormattingForbidden", Options_4, unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
 // @public
 export const noMemberTargetOnObject: ESLintUtils.RuleModule<"memberTargetOnNonUnion", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
@@ -94,6 +101,11 @@ const plugin: {
             name: string;
         };
         readonly "tag-recognition/no-disabled-tags": TSESLint.RuleModule<"disabledTag", [{
+            tags?: string[];
+        }], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
+        readonly "tag-recognition/no-markdown-formatting": TSESLint.RuleModule<"markdownFormattingForbidden", [{
             tags?: string[];
         }], unknown, TSESLint.RuleListener> & {
             name: string;
@@ -165,6 +177,11 @@ export const rules: {
         name: string;
     };
     readonly "tag-recognition/no-disabled-tags": TSESLint.RuleModule<"disabledTag", [{
+        tags?: string[];
+    }], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "tag-recognition/no-markdown-formatting": TSESLint.RuleModule<"markdownFormattingForbidden", [{
         tags?: string[];
     }], unknown, TSESLint.RuleListener> & {
         name: string;

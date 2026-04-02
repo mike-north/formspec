@@ -17,6 +17,7 @@ export interface ScannedTag {
   readonly normalizedName: string;
   readonly rawText: string;
   readonly rawArgument: string;
+  readonly rawArgumentRange: readonly [start: number, end: number] | null;
   readonly valueText: string;
   readonly target: ScannedTagTarget | null;
   readonly comment: TSESTree.Comment;
@@ -37,11 +38,21 @@ function getLeadingJSDocComments(node: TSESTree.Node, sourceCode: SourceCode): T
 }
 
 function scanComment(comment: TSESTree.Comment): ScannedTag[] {
-  const lines = comment.value.split(/\r?\n/);
   const results: ScannedTag[] = [];
+  const commentContentStart = comment.range[0] + 2;
+  const lineRegex = /.*(?:\r?\n|$)/g;
 
-  for (const line of lines) {
+  let lineMatch: RegExpExecArray | null;
+  while ((lineMatch = lineRegex.exec(comment.value)) !== null) {
+    const rawLineWithBreak = lineMatch[0];
+    if (rawLineWithBreak === "") {
+      break;
+    }
+
+    const line = rawLineWithBreak.replace(/\r?\n$/, "");
+    const lineStart = lineMatch.index;
     const cleaned = line.replace(/^\s*\*\s?/, "");
+    const cleanedPrefixLength = line.length - cleaned.length;
     const tagStartRegex = /(^|\s)@([A-Za-z][A-Za-z0-9]*)(?=\s|$)/g;
     const starts: { rawName: string; start: number; end: number }[] = [];
     let startMatch: RegExpExecArray | null;
@@ -65,7 +76,21 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
       const nextBoundary = next?.start ?? cleaned.length;
       const rawSegment = cleaned.slice(current.start, nextBoundary);
       const rawText = rawSegment.trimEnd();
-      const rawArgument = rawText.slice(current.end - current.start).trim();
+      const rawArgumentWithWhitespace = rawText.slice(current.end - current.start);
+      const rawArgument = rawArgumentWithWhitespace.trim();
+      const leadingWhitespaceLength =
+        rawArgumentWithWhitespace.length - rawArgumentWithWhitespace.trimStart().length;
+      const rawArgumentStart =
+        commentContentStart +
+        lineStart +
+        cleanedPrefixLength +
+        current.start +
+        (current.end - current.start) +
+        leadingWhitespaceLength;
+      const rawArgumentRange =
+        rawArgument === ""
+          ? null
+          : ([rawArgumentStart, rawArgumentStart + rawArgument.length] as const);
 
       const rawName = current.rawName;
       const normalizedName = normalizeFormSpecTagName(rawName);
@@ -101,6 +126,7 @@ function scanComment(comment: TSESTree.Comment): ScannedTag[] {
         normalizedName,
         rawText,
         rawArgument,
+        rawArgumentRange,
         valueText,
         target,
         comment,

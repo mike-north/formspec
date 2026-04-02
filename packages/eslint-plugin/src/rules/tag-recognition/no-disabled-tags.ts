@@ -42,7 +42,7 @@ export const noDisabledTags = createRule<Options, "disabledTag">({
   },
   defaultOptions: [{}],
   create(context) {
-    const options = context.options[0] as Options[0] | undefined;
+    const [options] = context.options as readonly ({ tags?: string[] } | undefined)[];
     const disabled = new Set((options?.tags ?? []).map((tagName) => normalizeDisabledTagName(tagName)));
     return createDeclarationVisitor((node) => {
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
