@@ -8,6 +8,10 @@ import os from "node:os";
 import packageJson from "../../package.json" with { type: "json" };
 import plugin, { configs, meta, rules } from "../index.js";
 
+function getConfigRuleIds(config: readonly Linter.Config[]): string[] {
+  return config.flatMap((entry) => Object.keys(entry.rules ?? {}));
+}
+
 describe("@formspec/eslint-plugin exports", () => {
   it("exposes the expected default export shape", () => {
     expect(plugin.meta).toBe(meta);
@@ -39,6 +43,25 @@ describe("@formspec/eslint-plugin exports", () => {
       meta,
       rules,
     });
+  });
+
+  it("uses the flat-config plugin namespace consistently", () => {
+    const configuredRuleIds = [
+      ...getConfigRuleIds(configs.recommended),
+      ...getConfigRuleIds(configs.strict),
+    ];
+
+    expect(configs.recommended[0]?.plugins).toHaveProperty("formspec");
+    expect(configs.strict[0]?.plugins).toHaveProperty("formspec");
+    expect(configs.recommended[0]?.plugins).not.toHaveProperty("@formspec");
+    expect(configs.strict[0]?.plugins).not.toHaveProperty("@formspec");
+
+    for (const ruleId of configuredRuleIds) {
+      expect(ruleId.startsWith("formspec/")).toBe(true);
+      expect(ruleId.startsWith("@formspec/")).toBe(false);
+      expect(ruleId.slice("formspec/".length)).toBeTruthy();
+      expect(rules).toHaveProperty(ruleId.slice("formspec/".length));
+    }
   });
 
   describe("ESLint 9 flat config integration", () => {
