@@ -64,7 +64,6 @@ describe("@formspec/eslint-plugin exports", () => {
       expect(rules).toHaveProperty(ruleId.slice("formspec/".length));
     }
   });
-
   describe("ESLint 9 flat config integration", () => {
     let tmpDir: string | undefined;
 
