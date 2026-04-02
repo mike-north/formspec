@@ -60,7 +60,7 @@ function filterTagNameCompletionItems(
     .filter((item) => item.label.slice(1).toLowerCase().startsWith(normalizedPrefix));
 }
 
-/** @internal */
+/** @public */
 export function getCompletionItemsAtOffset(
   documentText: string,
   offset: number,

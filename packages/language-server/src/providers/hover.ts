@@ -37,7 +37,7 @@ export function getHoverForTag(
   };
 }
 
-/** @internal */
+/** @public */
 export function getHoverAtOffset(
   documentText: string,
   offset: number,

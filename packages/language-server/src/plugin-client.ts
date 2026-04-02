@@ -118,6 +118,7 @@ async function sendSemanticQuery(
   });
 }
 
+/** @public */
 export function fileUriToPathOrNull(uri: string): string | null {
   try {
     return fileURLToPath(uri);
@@ -145,6 +146,7 @@ async function sendFileQuery(
   return sendSemanticQuery(manifest, query, timeoutMs);
 }
 
+/** @public */
 export async function getPluginCompletionContextForDocument(
   workspaceRoots: readonly string[],
   filePath: string,
@@ -170,6 +172,7 @@ export async function getPluginCompletionContextForDocument(
   return response.sourceHash === computeFormSpecTextHash(documentText) ? response.context : null;
 }
 
+/** @public */
 export async function getPluginHoverForDocument(
   workspaceRoots: readonly string[],
   filePath: string,
