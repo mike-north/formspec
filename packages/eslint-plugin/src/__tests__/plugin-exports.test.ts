@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { ESLint } from "eslint";
+import type { Linter } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -59,19 +60,20 @@ describe("@formspec/eslint-plugin exports", () => {
       const allRulesEnabled = Object.fromEntries(
         Object.keys(rules).map((name) => [`formspec/${name}`, "warn"]),
       );
+      const overrideConfig: Linter.Config = {
+        files: ["**/*.ts"],
+        languageOptions: {
+          parser: tsParser,
+          parserOptions: { projectService: true, tsconfigRootDir: tmpDir },
+        },
+        plugins: { formspec: { meta, rules } },
+        rules: allRulesEnabled,
+      };
 
       const eslint = new ESLint({
         cwd: tmpDir,
         overrideConfigFile: true,
-        overrideConfig: {
-          files: ["**/*.ts"],
-          languageOptions: {
-            parser: tsParser,
-            parserOptions: { projectService: true, tsconfigRootDir: tmpDir },
-          },
-          plugins: { formspec: { meta, rules } },
-          rules: allRulesEnabled,
-        } as any,
+        overrideConfig,
       });
 
       const [result] = await eslint.lintFiles(["test.ts"]);
