@@ -1,6 +1,6 @@
 {
   "name": "@formspec/language-server",
-  "version": "0.1.0-alpha.25",
+  "version": "0.1.0-alpha.26",
   "description": "Language server for FormSpec — completions, hover, and go-to-definition for JSDoc constraint tags",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -1,5 +1,20 @@
 # @formspec/language-server
 
+## 0.1.0-alpha.26
+
+### Patch Changes
+
+- [#189](https://github.com/mike-north/formspec/pull/189) [`b0b2a7c`](https://github.com/mike-north/formspec/commit/b0b2a7c6eba580a4320b5fd0870aff5fca5cda53) Thanks [@mike-north](https://github.com/mike-north)! - Document previously undocumented exported APIs and enforce API Extractor's
+  `ae-undocumented` validation for published package surfaces.
+  - Add contributor-facing docs for internal exports and external-facing docs for
+    alpha-or-better public APIs.
+  - Enable `ae-undocumented` so newly exported APIs must carry TSDoc before they
+    can be released.
+
+- Updated dependencies [[`b0b2a7c`](https://github.com/mike-north/formspec/commit/b0b2a7c6eba580a4320b5fd0870aff5fca5cda53)]:
+  - @formspec/analysis@0.1.0-alpha.26
+  - @formspec/core@0.1.0-alpha.26
+
 ## 0.1.0-alpha.25
 
 ### Minor Changes
