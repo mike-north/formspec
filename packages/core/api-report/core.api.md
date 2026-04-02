@@ -4,7 +4,7 @@
 
 ```ts
 
-// @beta
+// @public
 export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
 // @public
@@ -12,10 +12,15 @@ export type AnyField = TextField<string> | NumberField<string> | BooleanField<st
 
 // @beta
 export interface ArrayCardinalityConstraintNode {
+    // (undocumented)
     readonly constraintKind: "uniqueItems";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly path?: PathTarget;
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: true;
 }
 
@@ -33,7 +38,9 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 // @beta
 export interface ArrayTypeNode {
+    // (undocumented)
     readonly items: TypeNode;
+    // (undocumented)
     readonly kind: "array";
 }
 
@@ -46,18 +53,14 @@ export interface BooleanField<N extends string> {
     readonly _type: "field";
 }
 
-// Warning: (ae-internal-missing-underscore) The name "BuiltinConstraintBroadeningRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface BuiltinConstraintBroadeningRegistration {
     readonly constraintName: string;
     readonly parseValue: (raw: string) => ExtensionPayloadValue;
     readonly tagName: BuiltinConstraintName;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "BuiltinConstraintName" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
 
 // @public
@@ -72,35 +75,38 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
 export interface ConditionalLayoutNode {
     readonly elements: readonly FormIRElement[];
     readonly fieldName: string;
+    // (undocumented)
     readonly kind: "conditional";
+    // (undocumented)
     readonly provenance: Provenance;
     readonly value: JsonValue;
 }
 
 // @beta
 export interface ConstConstraintNode {
+    // (undocumented)
     readonly constraintKind: "const";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly path?: PathTarget;
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: JsonValue;
 }
 
 // @beta
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
 
-// Warning: (ae-internal-missing-underscore) The name "ConstraintSemanticRole" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface ConstraintSemanticRole {
     readonly bound: "lower" | "upper" | "exact";
     readonly family: string;
     readonly inclusive: boolean;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "ConstraintTagRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface ConstraintTagRegistration {
     readonly constraintName: string;
     readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
@@ -114,15 +120,17 @@ export function createInitialFieldState<T>(value: T): FieldState<T>;
 // @beta
 export interface CustomAnnotationNode {
     readonly annotationId: string;
+    // (undocumented)
     readonly annotationKind: "custom";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: JsonValue;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "CustomAnnotationRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
     readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
@@ -132,16 +140,18 @@ export interface CustomAnnotationRegistration {
 export interface CustomConstraintNode {
     readonly compositionRule: "intersect" | "override";
     readonly constraintId: string;
+    // (undocumented)
     readonly constraintKind: "custom";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly path?: PathTarget;
     readonly payload: JsonValue;
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "CustomConstraintRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface CustomConstraintRegistration {
     readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
     readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
@@ -154,14 +164,13 @@ export interface CustomConstraintRegistration {
 
 // @beta
 export interface CustomTypeNode {
+    // (undocumented)
     readonly kind: "custom";
     readonly payload: JsonValue;
     readonly typeId: string;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "CustomTypeRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface CustomTypeRegistration {
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
@@ -187,58 +196,62 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
 
 // @beta
 export interface DefaultValueAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "defaultValue";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
     readonly value: JsonValue;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "defineAnnotation" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
 
-// Warning: (ae-internal-missing-underscore) The name "defineConstraint" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
 
-// Warning: (ae-internal-missing-underscore) The name "defineConstraintTag" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
 
-// Warning: (ae-internal-missing-underscore) The name "defineCustomType" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
 
-// Warning: (ae-internal-missing-underscore) The name "defineExtension" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @beta
 export interface DeprecatedAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "deprecated";
+    // (undocumented)
     readonly kind: "annotation";
     readonly message?: string;
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
 // @beta
 export interface DescriptionAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "description";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: string;
 }
 
 // @beta
 export interface DisplayNameAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "displayName";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: string;
 }
 
@@ -266,7 +279,9 @@ export interface DynamicSchemaField<N extends string> {
 
 // @beta
 export interface DynamicTypeNode {
+    // (undocumented)
     readonly dynamicKind: "enum" | "schema";
+    // (undocumented)
     readonly kind: "dynamic";
     readonly parameterFields: readonly string[];
     readonly sourceKey: string;
@@ -280,16 +295,23 @@ export interface EnumMember {
 
 // @beta
 export interface EnumMemberConstraintNode {
+    // (undocumented)
     readonly constraintKind: "allowedMembers";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly members: readonly (string | number)[];
+    // (undocumented)
     readonly path?: PathTarget;
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
 // @public
 export interface EnumOption {
+    // (undocumented)
     readonly id: string;
+    // (undocumented)
     readonly label: string;
 }
 
@@ -298,7 +320,9 @@ export type EnumOptionValue = string | EnumOption;
 
 // @beta
 export interface EnumTypeNode {
+    // (undocumented)
     readonly kind: "enum";
+    // (undocumented)
     readonly members: readonly EnumMember[];
 }
 
@@ -309,9 +333,7 @@ export interface EqualsPredicate<K extends string, V> {
     readonly value: V;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionApplicableType" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export type ExtensionApplicableType = {
     readonly kind: "primitive";
     readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
@@ -323,9 +345,7 @@ export type ExtensionApplicableType = {
     readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
 };
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionDefinition" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface ExtensionDefinition {
     readonly annotations?: readonly CustomAnnotationRegistration[];
     readonly constraints?: readonly CustomConstraintRegistration[];
@@ -335,16 +355,12 @@ export interface ExtensionDefinition {
     readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
 }
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionPayloadValue" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
     readonly [key: string]: ExtensionPayloadValue;
 };
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionTypeKind" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
 
 // @public
@@ -358,6 +374,7 @@ export interface FetchOptionsResponse<T = unknown> {
 export interface FieldNode {
     readonly annotations: readonly AnnotationNode[];
     readonly constraints: readonly ConstraintNode[];
+    // (undocumented)
     readonly kind: "field";
     readonly mergeHistory?: readonly {
         readonly node: ConstraintNode | AnnotationNode;
@@ -380,17 +397,24 @@ export interface FieldState<T> {
 
 // @beta
 export interface FormatAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "format";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: string;
 }
 
 // @beta
 export interface FormatHintAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "formatHint";
     readonly format: string;
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
@@ -402,6 +426,7 @@ export interface FormIR {
     readonly annotations?: readonly AnnotationNode[];
     readonly elements: readonly FormIRElement[];
     readonly irVersion: string;
+    // (undocumented)
     readonly kind: "form-ir";
     readonly provenance: Provenance;
     readonly rootAnnotations?: readonly AnnotationNode[];
@@ -436,8 +461,11 @@ export interface Group<Elements extends readonly FormElement[]> {
 // @beta
 export interface GroupLayoutNode {
     readonly elements: readonly FormIRElement[];
+    // (undocumented)
     readonly kind: "group";
+    // (undocumented)
     readonly label: string;
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
@@ -487,10 +515,15 @@ export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 
 // @beta
 export interface LengthConstraintNode {
+    // (undocumented)
     readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly path?: PathTarget;
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: number;
 }
 
@@ -508,10 +541,14 @@ export interface NumberField<N extends string> {
 
 // @beta
 export interface NumericConstraintNode {
+    // (undocumented)
     readonly constraintKind: "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf";
+    // (undocumented)
     readonly kind: "constraint";
     readonly path?: PathTarget;
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: number;
 }
 
@@ -529,15 +566,20 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 export interface ObjectProperty {
     readonly annotations: readonly AnnotationNode[];
     readonly constraints: readonly ConstraintNode[];
+    // (undocumented)
     readonly name: string;
+    // (undocumented)
     readonly optional: boolean;
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly type: TypeNode;
 }
 
 // @beta
 export interface ObjectTypeNode {
     readonly additionalProperties: boolean;
+    // (undocumented)
     readonly kind: "object";
     readonly properties: readonly ObjectProperty[];
 }
@@ -549,18 +591,26 @@ export interface PathTarget {
 
 // @beta
 export interface PatternConstraintNode {
+    // (undocumented)
     readonly constraintKind: "pattern";
+    // (undocumented)
     readonly kind: "constraint";
+    // (undocumented)
     readonly path?: PathTarget;
     readonly pattern: string;
+    // (undocumented)
     readonly provenance: Provenance;
 }
 
 // @beta
 export interface PlaceholderAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "placeholder";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: string;
 }
 
@@ -569,7 +619,9 @@ export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<
 
 // @beta
 export interface PrimitiveTypeNode {
+    // (undocumented)
     readonly kind: "primitive";
+    // (undocumented)
     readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
 }
 
@@ -585,22 +637,28 @@ export interface Provenance {
 
 // @beta
 export interface RecordTypeNode {
+    // (undocumented)
     readonly kind: "record";
     readonly valueType: TypeNode;
 }
 
 // @beta
 export interface ReferenceTypeNode {
+    // (undocumented)
     readonly kind: "reference";
     readonly name: string;
     readonly typeArguments: readonly TypeNode[];
 }
 
-// @beta
+// @public
 export interface RemarksAnnotationNode {
+    // (undocumented)
     readonly annotationKind: "remarks";
+    // (undocumented)
     readonly kind: "annotation";
+    // (undocumented)
     readonly provenance: Provenance;
+    // (undocumented)
     readonly value: string;
 }
 
@@ -641,16 +699,16 @@ export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | Object
 
 // @beta
 export interface UnionTypeNode {
+    // (undocumented)
     readonly kind: "union";
+    // (undocumented)
     readonly members: readonly TypeNode[];
 }
 
 // @public
 export type Validity = "valid" | "invalid" | "unknown";
 
-// Warning: (ae-internal-missing-underscore) The name "VocabularyKeywordRegistration" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface VocabularyKeywordRegistration {
     readonly keyword: string;
     readonly schema: ExtensionPayloadValue;
