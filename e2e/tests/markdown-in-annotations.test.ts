@@ -11,22 +11,27 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
 
+function generateSchema(typeName: string, tempDir: string): Record<string, unknown> {
+  const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
+  const result = runCli(["generate", fixturePath, typeName, "-o", tempDir]);
+  expect(result.exitCode, result.stderr).toBe(0);
+
+  const schemaFile = findSchemaFile(tempDir, "schema.json");
+  expect(schemaFile).toBeDefined();
+  if (!schemaFile) {
+    throw new Error(`Schema file not found for ${typeName}`);
+  }
+
+  return JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
+}
+
 describe("Inline code spans in summary text", () => {
   let tempDir: string;
   let schema: Record<string, unknown>;
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-summary-"));
-    const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli(["generate", fixturePath, "MarkdownInSummaryForm", "-o", tempDir]);
-    if (result.exitCode !== 0) {
-      // Generation may succeed even with the bug — the content is just wrong
-      console.warn("CLI stderr:", result.stderr);
-    }
-    const schemaFile = findSchemaFile(tempDir, "schema.json");
-    if (schemaFile) {
-      schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
-    }
+    schema = generateSchema("MarkdownInSummaryForm", tempDir);
   });
 
   afterAll(() => {
@@ -47,15 +52,7 @@ describe("Inline code spans in @remarks", () => {
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-remarks-"));
-    const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli(["generate", fixturePath, "MarkdownInRemarksForm", "-o", tempDir]);
-    if (result.exitCode !== 0) {
-      console.warn("CLI stderr:", result.stderr);
-    }
-    const schemaFile = findSchemaFile(tempDir, "schema.json");
-    if (schemaFile) {
-      schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
-    }
+    schema = generateSchema("MarkdownInRemarksForm", tempDir);
   });
 
   afterAll(() => {
@@ -81,15 +78,7 @@ describe("Inline code spans in @deprecated message", () => {
 
   beforeAll(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-e2e-markdown-deprecated-"));
-    const fixturePath = resolveFixture("tsdoc-class", "markdown-in-annotations.ts");
-    const result = runCli(["generate", fixturePath, "MarkdownInDeprecatedForm", "-o", tempDir]);
-    if (result.exitCode !== 0) {
-      console.warn("CLI stderr:", result.stderr);
-    }
-    const schemaFile = findSchemaFile(tempDir, "schema.json");
-    if (schemaFile) {
-      schema = JSON.parse(fs.readFileSync(schemaFile, "utf-8")) as Record<string, unknown>;
-    }
+    schema = generateSchema("MarkdownInDeprecatedForm", tempDir);
   });
 
   afterAll(() => {

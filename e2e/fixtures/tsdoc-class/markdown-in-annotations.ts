@@ -2,8 +2,8 @@
  * Tests that inline code spans in free-form text tags are preserved.
  *
  * TSDoc parses backtick-wrapped text as `DocCodeSpan` nodes. The summary,
- * remarks, deprecated message, and displayName extractors should include
- * the code span content as plain text rather than stripping it.
+ * remarks, and deprecated message extractors should preserve that markdown
+ * content rather than stripping it.
  */
 
 /**
