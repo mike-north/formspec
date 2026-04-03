@@ -28,6 +28,31 @@ export interface ProgramContext {
 }
 
 /**
+ * Resolves a source file and checker from an existing TypeScript program.
+ *
+ * @param program - Existing TypeScript program supplied by the host
+ * @param filePath - Absolute or relative path to the TypeScript source file
+ * @returns Program context with checker and source file
+ */
+export function createProgramContextFromProgram(
+  program: ts.Program,
+  filePath: string
+): ProgramContext {
+  const absolutePath = path.resolve(filePath);
+  const sourceFile = program.getSourceFile(absolutePath) ?? program.getSourceFile(filePath);
+
+  if (!sourceFile) {
+    throw new Error(`Could not find source file in provided program: ${absolutePath}`);
+  }
+
+  return {
+    program,
+    checker: program.getTypeChecker(),
+    sourceFile,
+  };
+}
+
+/**
  * Creates a TypeScript program for analyzing a source file.
  *
  * Looks for tsconfig.json in the file's directory or parent directories.
@@ -186,20 +211,33 @@ export function analyzeNamedTypeToIR(
   extensionRegistry?: ExtensionRegistry
 ): IRClassAnalysis {
   const ctx = createProgramContext(filePath);
+  return analyzeNamedTypeToIRFromProgramContext(ctx, filePath, typeName, extensionRegistry);
+}
+
+/**
+ * Analyzes a named type from an existing program context and returns an `IRClassAnalysis`.
+ */
+export function analyzeNamedTypeToIRFromProgramContext(
+  ctx: ProgramContext,
+  filePath: string,
+  typeName: string,
+  extensionRegistry?: ExtensionRegistry
+): IRClassAnalysis {
+  const analysisFilePath = path.resolve(filePath);
 
   const classDecl = findClassByName(ctx.sourceFile, typeName);
   if (classDecl !== null) {
-    return analyzeClassToIR(classDecl, ctx.checker, filePath, extensionRegistry);
+    return analyzeClassToIR(classDecl, ctx.checker, analysisFilePath, extensionRegistry);
   }
 
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
   if (interfaceDecl !== null) {
-    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, filePath, extensionRegistry);
+    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, analysisFilePath, extensionRegistry);
   }
 
   const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
   if (typeAlias !== null) {
-    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, filePath, extensionRegistry);
+    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, analysisFilePath, extensionRegistry);
     if (result.ok) {
       return result.analysis;
     }
@@ -207,6 +245,6 @@ export function analyzeNamedTypeToIR(
   }
 
   throw new Error(
-    `Type "${typeName}" not found as a class, interface, or type alias in ${filePath}`
+    `Type "${typeName}" not found as a class, interface, or type alias in ${analysisFilePath}`
   );
 }

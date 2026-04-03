@@ -6,7 +6,6 @@
     "baseUrl": "..",
     "paths": {
       "@formspec/analysis": ["packages/analysis/dist/analysis.d.ts"],
-      "@formspec/analysis/protocol": ["packages/analysis/dist/protocol.d.ts"],
       "@formspec/build": ["packages/build/dist/build.d.ts"],
       "@formspec/build/internals": ["packages/build/dist/internals.d.ts"],
       "@formspec/cli": ["packages/cli/dist/index.d.ts"],

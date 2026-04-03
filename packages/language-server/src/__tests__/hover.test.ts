@@ -5,8 +5,8 @@ import {
 import {
   defineConstraintTag,
   defineExtension,
-} from "@formspec/core/internals";
-import type { FormSpecSerializedHoverInfo } from "@formspec/analysis/protocol";
+} from "@formspec/core";
+import type { FormSpecSerializedHoverInfo } from "@formspec/analysis";
 import type { MarkupContent } from "vscode-languageserver/node.js";
 import { getHoverAtOffset, getHoverForTag } from "../providers/hover.js";
 

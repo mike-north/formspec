@@ -87,6 +87,8 @@ export type {
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
+  GenerateSchemasFromProgramOptions,
+  StaticSchemaGenerationOptions,
 } from "./generators/class-schema.js";
 export type {
   BuildMixedAuthoringSchemasOptions,
@@ -106,7 +108,11 @@ export { uiSchema as uiSchemaSchema } from "./ui-schema/schema.js";
 
 export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
-export { generateSchemasFromClass, generateSchemas } from "./generators/class-schema.js";
+export {
+  generateSchemasFromClass,
+  generateSchemas,
+  generateSchemasFromProgram,
+} from "./generators/class-schema.js";
 export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
 
 /**

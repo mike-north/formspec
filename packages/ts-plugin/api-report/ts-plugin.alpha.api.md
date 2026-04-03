@@ -8,12 +8,6 @@ import * as ts from 'typescript';
 import type * as tsServer from 'typescript/lib/tsserverlibrary.js';
 
 // @public
-export interface CommentHoverInfo {
-    readonly kind: "tag-name" | "target" | "argument";
-    readonly markdown: string;
-}
-
-// @public
 export interface CommentSourceSpan {
     readonly end: number;
     readonly start: number;

@@ -517,15 +517,15 @@ export interface WriteSchemasResult {
 
 // Warnings were encountered during analysis:
 //
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:372:5 - (ae-forgotten-export) The symbol "TextField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:380:5 - (ae-forgotten-export) The symbol "NumberField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:388:5 - (ae-forgotten-export) The symbol "BooleanField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "EnumOptionValue_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "StaticEnumField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:435:5 - (ae-forgotten-export) The symbol "DynamicEnumField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:444:5 - (ae-forgotten-export) The symbol "DynamicSchemaField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "FormElement_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "ArrayField_2" needs to be exported by the entry point index.d.ts
-// /Users/mnorth/stripe/formspec-workspace/.worktrees/prune-public-api-surface/packages/dsl/dist/dsl.d.ts:503:5 - (ae-forgotten-export) The symbol "ObjectField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:372:5 - (ae-forgotten-export) The symbol "TextField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:380:5 - (ae-forgotten-export) The symbol "NumberField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:388:5 - (ae-forgotten-export) The symbol "BooleanField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "EnumOptionValue_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:415:5 - (ae-forgotten-export) The symbol "StaticEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:435:5 - (ae-forgotten-export) The symbol "DynamicEnumField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:444:5 - (ae-forgotten-export) The symbol "DynamicSchemaField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "FormElement_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:463:5 - (ae-forgotten-export) The symbol "ArrayField_2" needs to be exported by the entry point index.d.ts
+// /Users/mnorth/Development/formspec/packages/dsl/dist/dsl.d.ts:503:5 - (ae-forgotten-export) The symbol "ObjectField_2" needs to be exported by the entry point index.d.ts
 
 ```

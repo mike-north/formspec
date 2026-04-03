@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis";
 import { FormSpecPluginService } from "../service.js";
 import { createProgramContext, expectErrorResponse } from "./helpers.js";
 

@@ -1,6 +1,7 @@
 import * as path from "node:path";
+import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { generateSchemas } from "../generators/class-schema.js";
+import { generateSchemas, generateSchemasFromProgram } from "../generators/class-schema.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -139,5 +140,23 @@ describe("generateSchemas", () => {
 
     expect(message).toContain("CONSTRAINT_BROADENING");
     expect(message).toContain("[related:");
+  });
+
+  it("can analyze within an existing TypeScript program", () => {
+    const program = ts.createProgram([sampleFormsPath], {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      strict: true,
+      skipLibCheck: true,
+    });
+
+    const result = generateSchemasFromProgram({
+      program,
+      filePath: sampleFormsPath,
+      typeName: "VehicleRegistration",
+    });
+
+    expect(result.jsonSchema.title).toBe("Vehicle Registration");
   });
 });

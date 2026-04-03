@@ -1,7 +1,6 @@
 /**
- * Public entrypoint for FormSpec semantic-analysis protocol types, manifest
- * helpers, and serialization utilities.
- *
  * @packageDocumentation
+ *
+ * Public analysis protocol types and runtime helpers for FormSpec tooling.
  */
 export * from "./protocol.js";

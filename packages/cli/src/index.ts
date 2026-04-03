@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * FormSpec CLI - Generate JSON Schema and JSON Forms UI Schema from TypeScript
+ * CLI entrypoint for generating FormSpec JSON Schema, UI Schema, and IR output
+ * from source files.
  *
  * Usage:
  *   formspec generate <file> [className] [-o <outDir>]
@@ -14,6 +15,8 @@
  *
  *   # Generate schemas from both classes and FormSpec exports
  *   formspec generate ./src/forms.ts MyClass -o ./generated
+ *
+ * @packageDocumentation
  */
 
 import {

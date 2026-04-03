@@ -19,6 +19,7 @@ import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
 import { TextField } from '@formspec/core';
+import * as ts from 'typescript';
 import { z } from 'zod';
 
 export { AnyField }
@@ -38,7 +39,6 @@ export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 // @internal
 export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
 
-// Warning: (ae-forgotten-export) The symbol "StaticSchemaGenerationOptions" needs to be exported by the entry point index.d.ts
 // Warning: (ae-internal-missing-underscore) The name "BuildMixedAuthoringSchemasOptions" should be prefixed with an underscore because the declaration is marked as @internal
 //
 // @internal
@@ -87,9 +87,8 @@ export interface ControlElement {
 }
 
 // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
-// Warning: (ae-internal-missing-underscore) The name "createExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @internal
+// @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
 export { DynamicEnumField }
@@ -103,9 +102,7 @@ export { EnumOptionValue }
 // @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface ExtensionRegistry {
     readonly extensions: readonly ExtensionDefinition[];
     // Warning: (ae-forgotten-export) The symbol "CustomAnnotationRegistration" needs to be exported by the entry point index.d.ts
@@ -136,10 +133,9 @@ export { FormSpec }
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions {
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
     className: string;
     filePath: string;
-    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -163,10 +159,19 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions {
+export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions): GenerateFromClassResult;
+
+// @public
+export interface GenerateSchemasFromProgramOptions extends StaticSchemaGenerationOptions {
+    readonly filePath: string;
+    readonly program: ts.Program;
+    readonly typeName: string;
+}
+
+// @public
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
     filePath: string;
     typeName: string;
-    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -324,6 +329,12 @@ export interface SchemaBasedCondition {
 }
 
 export { StaticEnumField }
+
+// @public
+export interface StaticSchemaGenerationOptions {
+    readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly vendorPrefix?: string | undefined;
+}
 
 export { TextField }
 

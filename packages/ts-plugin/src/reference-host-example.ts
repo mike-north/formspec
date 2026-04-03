@@ -1,7 +1,7 @@
 import type {
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisDiagnosticDataValue,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import type { FormSpecSemanticService } from "./semantic-service.js";
 
 export interface DownstreamAuthoringFeedback {

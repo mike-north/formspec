@@ -10,7 +10,6 @@ import type * as tsServer from "typescript/lib/tsserverlibrary.js";
 export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   FORMSPEC_ANALYSIS_SCHEMA_VERSION,
-  type CommentHoverInfo,
   type CommentSourceSpan,
   type CommentSpan,
   type FormSpecAnalysisCommentSnapshot,
@@ -28,7 +27,7 @@ export {
   type FormSpecSerializedTagDefinition,
   type FormSpecSerializedTagSemanticContext,
   type FormSpecSerializedTagSignature,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
 export {
   createLanguageServiceProxy,

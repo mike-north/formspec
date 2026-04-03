@@ -33,7 +33,7 @@ export type {
   FormSpecAnalysisDiagnosticCategory,
   FormSpecAnalysisDiagnosticDataValue,
   FormSpecAnalysisDiagnosticLocation,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 export {
   getPluginDiagnosticsForDocument,
   toLspDiagnostics,

@@ -6,7 +6,7 @@ import {
   type FormSpecAnalysisFileSnapshot,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import {
   buildFormSpecAnalysisFileSnapshot,
   createFormSpecPerformanceRecorder,

@@ -22,9 +22,11 @@ export type { TSDocSource } from "./canonicalize/index.js";
 // Analyzer: program context and type lookup
 export {
   createProgramContext,
+  createProgramContextFromProgram,
   findClassByName,
   findInterfaceByName,
   findTypeAliasByName,
+  analyzeNamedTypeToIRFromProgramContext,
 } from "./analyzer/program.js";
 
 // Analyzer: IR analysis (class, interface, type alias)
