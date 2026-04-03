@@ -6,10 +6,12 @@
  * canonical FormIR pipeline.
  */
 
+import * as ts from "typescript";
 import type { UISchema } from "../ui-schema/types.js";
 import {
-  analyzeNamedTypeToIR,
+  analyzeNamedTypeToIRFromProgramContext,
   createProgramContext,
+  createProgramContextFromProgram,
   findClassByName,
 } from "../analyzer/program.js";
 import { analyzeClassToIR, type IRClassAnalysis } from "../analyzer/class-analyzer.js";
@@ -94,7 +96,7 @@ function formatLocation(location: ValidationDiagnostic["primaryLocation"]): stri
 /**
  * Shared options for schema generation flows that support custom extensions.
  *
- * @internal
+ * @public
  */
 export interface StaticSchemaGenerationOptions {
   /**
@@ -113,16 +115,11 @@ export interface StaticSchemaGenerationOptions {
  *
  * @public
  */
-export interface GenerateFromClassOptions {
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Class name to analyze */
   className: string;
-  /**
-   * Vendor prefix for emitted extension keywords.
-   * @defaultValue "x-formspec"
-   */
-  readonly vendorPrefix?: string | undefined;
 }
 
 /**
@@ -135,6 +132,20 @@ export interface GenerateFromClassResult {
   jsonSchema: JsonSchema2020;
   /** JSON Forms UI Schema for rendering */
   uiSchema: UISchema;
+}
+
+/**
+ * Options for generating schemas from a named type inside an existing TypeScript program.
+ *
+ * @public
+ */
+export interface GenerateSchemasFromProgramOptions extends StaticSchemaGenerationOptions {
+  /** Existing TypeScript program supplied by the caller. */
+  readonly program: ts.Program;
+  /** Path to the TypeScript source file */
+  readonly filePath: string;
+  /** Name of the exported class, interface, or type alias to analyze */
+  readonly typeName: string;
 }
 
 /**
@@ -168,19 +179,17 @@ export function generateSchemasFromClass(
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
   }
 
-  // extensionRegistry is available via the internal .d.ts rollup for extension authors
-  const internalOpts = options as GenerateFromClassOptions & StaticSchemaGenerationOptions;
   const analysis = analyzeClassToIR(
     classDecl,
     ctx.checker,
     options.filePath,
-    internalOpts.extensionRegistry
+    options.extensionRegistry
   );
   return generateClassSchemas(
     analysis,
     { file: options.filePath },
     {
-      extensionRegistry: internalOpts.extensionRegistry,
+      extensionRegistry: options.extensionRegistry,
       vendorPrefix: options.vendorPrefix,
     }
   );
@@ -191,16 +200,11 @@ export function generateSchemasFromClass(
  *
  * @public
  */
-export interface GenerateSchemasOptions {
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file */
   filePath: string;
   /** Name of the exported class, interface, or type alias to analyze */
   typeName: string;
-  /**
-   * Vendor prefix for emitted extension keywords.
-   * @defaultValue "x-formspec"
-   */
-  readonly vendorPrefix?: string | undefined;
 }
 
 /**
@@ -225,12 +229,25 @@ export interface GenerateSchemasOptions {
  * @public
  */
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
-  // extensionRegistry is available via the internal .d.ts rollup for extension authors
-  const internalOpts = options as GenerateSchemasOptions & StaticSchemaGenerationOptions;
-  const analysis = analyzeNamedTypeToIR(
+  const ctx = createProgramContext(options.filePath);
+  return generateSchemasFromProgram({
+    ...options,
+    program: ctx.program,
+  });
+}
+
+export function generateSchemasFromProgram(
+  options: GenerateSchemasFromProgramOptions
+): GenerateFromClassResult;
+export function generateSchemasFromProgram(
+  options: GenerateSchemasFromProgramOptions
+): GenerateFromClassResult {
+  const ctx = createProgramContextFromProgram(options.program, options.filePath);
+  const analysis = analyzeNamedTypeToIRFromProgramContext(
+    ctx,
     options.filePath,
     options.typeName,
-    internalOpts.extensionRegistry
+    options.extensionRegistry
   );
-  return generateClassSchemas(analysis, { file: options.filePath }, internalOpts);
+  return generateClassSchemas(analysis, { file: options.filePath }, options);
 }

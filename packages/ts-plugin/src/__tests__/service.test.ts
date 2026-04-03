@@ -3,7 +3,7 @@ import net from "node:net";
 import path from "node:path";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis/protocol";
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis";
 import { createLanguageServiceProxy, FormSpecPluginService } from "../service.js";
 import type { FormSpecSemanticService } from "../semantic-service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";

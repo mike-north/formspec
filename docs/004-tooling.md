@@ -44,6 +44,7 @@ Both ESLint and interactive editor tooling need the same core analysis: parse TS
 - `@formspec/ts-plugin` for TypeScript-project-aware semantic analysis inside `tsserver`
 - `@formspec/language-server` for LSP presentation features such as semantic hover, completions, and optional diagnostics publishing
 - downstream TypeScript hosts that want to reuse the same `Program` and surface diagnostics their own way
+
 The packaged FormSpec `tsserver` plugin and lightweight language server are
 reference implementations over those shared APIs, not the only supported
 integration path.

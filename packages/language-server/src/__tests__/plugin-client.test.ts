@@ -8,7 +8,7 @@ import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import {
   getPluginCompletionContextForDocument,
   getPluginDiagnosticsForDocument,

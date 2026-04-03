@@ -128,6 +128,7 @@ describe("toLspDiagnostics", () => {
     expect(diagnostic?.relatedInformation).toHaveLength(1);
     expect(diagnostic?.relatedInformation?.[0]?.message).toBe("Related FormSpec location");
   });
+
   it("keeps the canonical diagnostic category when data also contains a category key", () => {
     const document = {
       uri: "file:///workspace/example.ts",

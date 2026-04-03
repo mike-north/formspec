@@ -5,8 +5,8 @@ import {
 import {
   defineConstraintTag,
   defineExtension,
-} from "@formspec/core/internals";
-import type { FormSpecSerializedCompletionContext } from "@formspec/analysis/protocol";
+} from "@formspec/core";
+import type { FormSpecSerializedCompletionContext } from "@formspec/analysis";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems, getCompletionItemsAtOffset } from "../providers/completion.js";
 

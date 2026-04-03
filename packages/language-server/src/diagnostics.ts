@@ -1,7 +1,7 @@
 import type {
   FormSpecAnalysisDiagnostic,
   FormSpecAnalysisDiagnosticLocation,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import {
   DiagnosticRelatedInformation,
   DiagnosticSeverity,

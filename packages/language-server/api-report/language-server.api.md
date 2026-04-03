@@ -12,13 +12,14 @@ import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
-// @public (undocumented)
-export interface CommentSpan {
-    // (undocumented)
+// @public
+export interface CommentSourceSpan {
     readonly end: number;
-    // (undocumented)
     readonly start: number;
 }
+
+// @public
+export type CommentSpan = CommentSourceSpan;
 
 // @public
 export function createServer(options?: CreateServerOptions): Connection;
@@ -35,19 +36,12 @@ export interface CreateServerOptions {
 
 // @public
 export interface FormSpecAnalysisDiagnostic {
-    // (undocumented)
     readonly category: FormSpecAnalysisDiagnosticCategory;
-    // (undocumented)
     readonly code: string;
-    // (undocumented)
     readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
-    // (undocumented)
     readonly message: string;
-    // (undocumented)
     readonly range: CommentSpan;
-    // (undocumented)
     readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
-    // (undocumented)
     readonly severity: "error" | "warning" | "info";
 }
 
@@ -59,11 +53,8 @@ export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | re
 
 // @public
 export interface FormSpecAnalysisDiagnosticLocation {
-    // (undocumented)
     readonly filePath: string;
-    // (undocumented)
     readonly message?: string;
-    // (undocumented)
     readonly range: CommentSpan;
 }
 
