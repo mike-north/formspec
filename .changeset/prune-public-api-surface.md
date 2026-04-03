@@ -4,6 +4,12 @@
 "formspec": minor
 "@formspec/language-server": patch
 "@formspec/analysis": patch
+"@formspec/cli": patch
+"@formspec/constraints": patch
+"@formspec/dsl": patch
+"@formspec/eslint-plugin": patch
+"@formspec/runtime": patch
+"@formspec/ts-plugin": patch
 ---
 
 Prune public API surface and promote Zod validation schemas
