@@ -466,9 +466,6 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
 
 // @public
-export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
-
-// @public
 export function validateForm(elements: readonly FormElement_2[]): ValidationResult;
 
 // @public

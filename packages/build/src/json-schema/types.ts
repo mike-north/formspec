@@ -7,7 +7,7 @@
 /**
  * JSON Schema primitive types.
  *
- * @beta
+ * @public
  */
 export type JSONSchemaType =
   | "string"
@@ -21,7 +21,7 @@ export type JSONSchemaType =
 /**
  * A JSON Schema definition (legacy subset used by Zod validator and types.ts).
  *
- * @beta
+ * @public
  */
 export interface JSONSchema7 {
   /** Declared JSON Schema dialect URI for the document root. */
@@ -135,14 +135,14 @@ export interface JSONSchema7 {
 /**
  * Extension properties for custom FormSpec constraint tags.
  *
- * @beta
+ * @public
  */
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 /**
  * JSON Schema with FormSpec extension properties for arbitrary `x-formspec-*` keys.
  *
- * @beta
+ * @public
  */
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 

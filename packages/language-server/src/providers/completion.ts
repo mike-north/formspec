@@ -12,7 +12,7 @@ import {
   getSemanticCommentCompletionContextAtOffset,
   type TagDefinition,
 } from "@formspec/analysis/internal";
-import type { ExtensionDefinition } from "@formspec/core";
+import type { ExtensionDefinition } from "@formspec/core/internals";
 import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 
 /**

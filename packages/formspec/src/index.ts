@@ -175,7 +175,6 @@ export type {
   JsonSchema2020,
   UISchema,
   UISchemaElement,
-  UISchemaElementType,
   ControlElement,
   VerticalLayout,
   HorizontalLayout,

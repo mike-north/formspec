@@ -11,7 +11,7 @@ import {
   getTagDefinition,
   normalizeFormSpecTagName,
 } from "@formspec/analysis/internal";
-import type { ExtensionDefinition } from "@formspec/core";
+import type { ExtensionDefinition } from "@formspec/core/internals";
 import type { Hover } from "vscode-languageserver/node.js";
 
 /**

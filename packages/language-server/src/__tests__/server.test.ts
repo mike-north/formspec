@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineConstraintTag, defineExtension } from "@formspec/core";
+import { defineConstraintTag, defineExtension } from "@formspec/core/internals";
 
 const mocks = vi.hoisted(() => {
   const connection = {

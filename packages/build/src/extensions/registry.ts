@@ -15,7 +15,7 @@ import type {
   CustomAnnotationRegistration,
   ConstraintTagRegistration,
   BuiltinConstraintBroadeningRegistration,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 
 // =============================================================================
 // PUBLIC API
@@ -28,7 +28,7 @@ import type {
  * Constraint IDs follow the format: `<extensionId>/<constraintName>`
  * Annotation IDs follow the format: `<extensionId>/<annotationName>`
  *
- * @public
+ * @internal
  */
 export interface ExtensionRegistry {
   /** The extensions registered in this registry (in registration order). */
@@ -104,7 +104,7 @@ export interface ExtensionRegistry {
  * @returns An {@link ExtensionRegistry} instance.
  * @throws If duplicate type/constraint/annotation IDs are detected across extensions.
  *
- * @public
+ * @internal
  */
 export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]

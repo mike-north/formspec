@@ -46,14 +46,18 @@ export interface BooleanField<N extends string> {
     readonly _type: "field";
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "BuiltinConstraintBroadeningRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface BuiltinConstraintBroadeningRegistration {
     readonly constraintName: string;
     readonly parseValue: (raw: string) => ExtensionPayloadValue;
     readonly tagName: BuiltinConstraintName;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "BuiltinConstraintName" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
 
 // @public
@@ -85,14 +89,18 @@ export interface ConstConstraintNode {
 // @beta
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ConstraintSemanticRole" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface ConstraintSemanticRole {
     readonly bound: "lower" | "upper" | "exact";
     readonly family: string;
     readonly inclusive: boolean;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ConstraintTagRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface ConstraintTagRegistration {
     readonly constraintName: string;
     readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
@@ -112,7 +120,9 @@ export interface CustomAnnotationNode {
     readonly value: JsonValue;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "CustomAnnotationRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
     readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
@@ -129,7 +139,9 @@ export interface CustomConstraintNode {
     readonly provenance: Provenance;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "CustomConstraintRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface CustomConstraintRegistration {
     readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
     readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
@@ -147,7 +159,9 @@ export interface CustomTypeNode {
     readonly typeId: string;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "CustomTypeRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface CustomTypeRegistration {
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
@@ -179,19 +193,29 @@ export interface DefaultValueAnnotationNode {
     readonly value: JsonValue;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "defineAnnotation" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "defineConstraint" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "defineConstraintTag" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "defineCustomType" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "defineExtension" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @beta
@@ -285,7 +309,9 @@ export interface EqualsPredicate<K extends string, V> {
     readonly value: V;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ExtensionApplicableType" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type ExtensionApplicableType = {
     readonly kind: "primitive";
     readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
@@ -297,7 +323,9 @@ export type ExtensionApplicableType = {
     readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
 };
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ExtensionDefinition" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface ExtensionDefinition {
     readonly annotations?: readonly CustomAnnotationRegistration[];
     readonly constraints?: readonly CustomConstraintRegistration[];
@@ -307,12 +335,16 @@ export interface ExtensionDefinition {
     readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ExtensionPayloadValue" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
     readonly [key: string]: ExtensionPayloadValue;
 };
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ExtensionTypeKind" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
 
 // @public
@@ -616,7 +648,9 @@ export interface UnionTypeNode {
 // @public
 export type Validity = "valid" | "invalid" | "unknown";
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "VocabularyKeywordRegistration" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface VocabularyKeywordRegistration {
     readonly keyword: string;
     readonly schema: ExtensionPayloadValue;

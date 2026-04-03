@@ -47,16 +47,6 @@ export interface BooleanField<N extends string> {
 }
 
 // @public
-export interface BuiltinConstraintBroadeningRegistration {
-    readonly constraintName: string;
-    readonly parseValue: (raw: string) => ExtensionPayloadValue;
-    readonly tagName: BuiltinConstraintName;
-}
-
-// @public
-export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
-
-// @public
 export interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> {
     readonly elements: Elements;
     readonly field: FieldName;
@@ -86,21 +76,6 @@ export interface ConstConstraintNode {
 export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
 
 // @public
-export interface ConstraintSemanticRole {
-    readonly bound: "lower" | "upper" | "exact";
-    readonly family: string;
-    readonly inclusive: boolean;
-}
-
-// @public
-export interface ConstraintTagRegistration {
-    readonly constraintName: string;
-    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
-    readonly parseValue: (raw: string) => ExtensionPayloadValue;
-    readonly tagName: string;
-}
-
-// @public
 export function createInitialFieldState<T>(value: T): FieldState<T>;
 
 // @beta
@@ -110,12 +85,6 @@ export interface CustomAnnotationNode {
     readonly kind: "annotation";
     readonly provenance: Provenance;
     readonly value: JsonValue;
-}
-
-// @public
-export interface CustomAnnotationRegistration {
-    readonly annotationName: string;
-    readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
 }
 
 // @beta
@@ -129,30 +98,11 @@ export interface CustomConstraintNode {
     readonly provenance: Provenance;
 }
 
-// @public
-export interface CustomConstraintRegistration {
-    readonly applicableTypes: readonly ExtensionApplicableType["kind"][] | null;
-    readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
-    readonly compositionRule: "intersect" | "override";
-    readonly constraintName: string;
-    readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
-    readonly semanticRole?: ConstraintSemanticRole;
-    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
-}
-
 // @beta
 export interface CustomTypeNode {
     readonly kind: "custom";
     readonly payload: JsonValue;
     readonly typeId: string;
-}
-
-// @public
-export interface CustomTypeRegistration {
-    readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
-    readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
-    readonly tsTypeNames?: readonly string[];
-    readonly typeName: string;
 }
 
 // @public
@@ -178,21 +128,6 @@ export interface DefaultValueAnnotationNode {
     readonly provenance: Provenance;
     readonly value: JsonValue;
 }
-
-// @public
-export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
-
-// @public
-export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
-
-// @public
-export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
-
-// @public
-export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
-
-// @public
-export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @beta
 export interface DeprecatedAnnotationNode {
@@ -284,36 +219,6 @@ export interface EqualsPredicate<K extends string, V> {
     readonly _predicate: "equals";
     readonly value: V;
 }
-
-// @public
-export type ExtensionApplicableType = {
-    readonly kind: "primitive";
-    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
-} | {
-    readonly kind: "custom";
-    readonly typeId: string;
-    readonly payload: ExtensionPayloadValue;
-} | {
-    readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
-};
-
-// @public
-export interface ExtensionDefinition {
-    readonly annotations?: readonly CustomAnnotationRegistration[];
-    readonly constraints?: readonly CustomConstraintRegistration[];
-    readonly constraintTags?: readonly ConstraintTagRegistration[];
-    readonly extensionId: string;
-    readonly types?: readonly CustomTypeRegistration[];
-    readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
-}
-
-// @public
-export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
-    readonly [key: string]: ExtensionPayloadValue;
-};
-
-// @public
-export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
 
 // @public
 export interface FetchOptionsResponse<T = unknown> {
@@ -615,11 +520,5 @@ export interface UnionTypeNode {
 
 // @public
 export type Validity = "valid" | "invalid" | "unknown";
-
-// @public
-export interface VocabularyKeywordRegistration {
-    readonly keyword: string;
-    readonly schema: ExtensionPayloadValue;
-}
 
 ```

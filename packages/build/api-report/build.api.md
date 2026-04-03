@@ -7,22 +7,11 @@
 import { AnyField } from '@formspec/core';
 import { ArrayField } from '@formspec/core';
 import { BooleanField } from '@formspec/core';
-import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
-import { BuiltinConstraintName } from '@formspec/core';
 import { Conditional } from '@formspec/core';
-import { ConstraintSemanticRole } from '@formspec/core';
-import { ConstraintTagRegistration } from '@formspec/core';
-import { CustomAnnotationRegistration } from '@formspec/core';
-import { CustomConstraintRegistration } from '@formspec/core';
-import { CustomTypeRegistration } from '@formspec/core';
 import { DynamicEnumField } from '@formspec/core';
 import { DynamicSchemaField } from '@formspec/core';
 import { EnumOption } from '@formspec/core';
 import { EnumOptionValue } from '@formspec/core';
-import { ExtensionApplicableType } from '@formspec/core';
-import { ExtensionDefinition } from '@formspec/core';
-import { ExtensionPayloadValue } from '@formspec/core';
-import { ExtensionTypeKind } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
 import { Group } from '@formspec/core';
@@ -30,7 +19,7 @@ import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
 import { TextField } from '@formspec/core';
-import { VocabularyKeywordRegistration } from '@formspec/core';
+import { z } from 'zod';
 
 export { AnyField }
 
@@ -44,10 +33,15 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 // @public
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "buildMixedAuthoringSchemas" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
 
-// @public
+// Warning: (ae-forgotten-export) The symbol "StaticSchemaGenerationOptions" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "BuildMixedAuthoringSchemasOptions" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
     readonly filePath: string;
     readonly overlays: FormSpec<readonly FormElement[]>;
@@ -59,10 +53,6 @@ export interface BuildResult {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
 }
-
-export { BuiltinConstraintBroadeningRegistration }
-
-export { BuiltinConstraintName }
 
 // @public
 export interface Categorization {
@@ -86,10 +76,6 @@ export interface Category {
 
 export { Conditional }
 
-export { ConstraintSemanticRole }
-
-export { ConstraintTagRegistration }
-
 // @public
 export interface ControlElement {
     readonly [k: string]: unknown;
@@ -100,14 +86,11 @@ export interface ControlElement {
     readonly type: "Control";
 }
 
-// @public
+// Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
+// Warning: (ae-internal-missing-underscore) The name "createExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
-
-export { CustomAnnotationRegistration }
-
-export { CustomConstraintRegistration }
-
-export { CustomTypeRegistration }
 
 export { DynamicEnumField }
 
@@ -117,28 +100,27 @@ export { EnumOption }
 
 export { EnumOptionValue }
 
-// @beta
+// @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
-export { ExtensionApplicableType }
-
-export { ExtensionDefinition }
-
-export { ExtensionPayloadValue }
-
-// @public
+// Warning: (ae-internal-missing-underscore) The name "ExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface ExtensionRegistry {
     readonly extensions: readonly ExtensionDefinition[];
+    // Warning: (ae-forgotten-export) The symbol "CustomAnnotationRegistration" needs to be exported by the entry point index.d.ts
     findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
     findBuiltinConstraintBroadening(typeId: string, tagName: string): {
         readonly extensionId: string;
         readonly registration: BuiltinConstraintBroadeningRegistration;
     } | undefined;
+    // Warning: (ae-forgotten-export) The symbol "CustomConstraintRegistration" needs to be exported by the entry point index.d.ts
     findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
     findConstraintTag(tagName: string): {
         readonly extensionId: string;
         readonly registration: ConstraintTagRegistration;
     } | undefined;
+    // Warning: (ae-forgotten-export) The symbol "CustomTypeRegistration" needs to be exported by the entry point index.d.ts
     findType(typeId: string): CustomTypeRegistration | undefined;
     findTypeByName(typeName: string): {
         readonly extensionId: string;
@@ -146,19 +128,18 @@ export interface ExtensionRegistry {
     } | undefined;
 }
 
-export { ExtensionTypeKind }
-
 export { FormElement }
 
 export { FormSpec }
 
-// @beta
+// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
+export interface GenerateFromClassOptions {
     className: string;
     filePath: string;
+    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -182,9 +163,10 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
+export interface GenerateSchemasOptions {
     filePath: string;
     typeName: string;
+    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -245,7 +227,7 @@ export interface JsonSchema2020 {
     uniqueItems?: boolean;
 }
 
-// @beta
+// @public
 export interface JSONSchema7 {
     "x-formspec-params"?: readonly string[];
     "x-formspec-schemaSource"?: string;
@@ -283,7 +265,10 @@ export interface JSONSchema7 {
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
-// @beta
+// @public
+export const jsonSchema7Schema: z.ZodType<JSONSchema7>;
+
+// @public
 export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
 
 // @public
@@ -295,7 +280,9 @@ export interface LabelElement {
     readonly type: "Label";
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "MixedAuthoringSchemas" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface MixedAuthoringSchemas {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
@@ -338,12 +325,6 @@ export interface SchemaBasedCondition {
 
 export { StaticEnumField }
 
-// @public
-export interface StaticSchemaGenerationOptions {
-    readonly extensionRegistry?: ExtensionRegistry | undefined;
-    readonly vendorPrefix?: string | undefined;
-}
-
 export { TextField }
 
 // @public
@@ -352,15 +333,22 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 // @public
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "UISchemaElementBase" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export interface UISchemaElementBase {
     options?: Record<string, unknown>;
     rule?: Rule;
     type: UISchemaElementType;
 }
 
-// @public
+// Warning: (ae-internal-missing-underscore) The name "UISchemaElementType" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
 export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
+
+// @public
+export const uiSchemaSchema: z.ZodType<UISchema>;
 
 // @public
 export interface VerticalLayout {
@@ -370,8 +358,6 @@ export interface VerticalLayout {
     readonly rule?: Rule | undefined;
     readonly type: "VerticalLayout";
 }
-
-export { VocabularyKeywordRegistration }
 
 // @public
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
@@ -388,5 +374,10 @@ export interface WriteSchemasResult {
     readonly jsonSchemaPath: string;
     readonly uiSchemaPath: string;
 }
+
+// Warnings were encountered during analysis:
+//
+// src/extensions/registry.ts:67:9 - (ae-forgotten-export) The symbol "ConstraintTagRegistration" needs to be exported by the entry point index.d.ts
+// src/extensions/registry.ts:79:9 - (ae-forgotten-export) The symbol "BuiltinConstraintBroadeningRegistration" needs to be exported by the entry point index.d.ts
 
 ```

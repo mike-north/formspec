@@ -18,7 +18,7 @@ import type { BuiltinConstraintName } from "../types/constraint-definitions.js";
 /**
  * A JSON-serializable payload value used by extension registration hooks.
  *
- * @public
+ * @internal
  */
 export type ExtensionPayloadValue =
   | null
@@ -31,7 +31,7 @@ export type ExtensionPayloadValue =
 /**
  * Top-level type kinds that extension applicability hooks may inspect.
  *
- * @public
+ * @internal
  */
 export type ExtensionTypeKind =
   | "primitive"
@@ -50,7 +50,7 @@ export type ExtensionTypeKind =
  * This intentionally exposes only the fields needed to determine tag/type
  * applicability without committing the entire canonical IR as public API.
  *
- * @public
+ * @internal
  */
 export type ExtensionApplicableType =
   | {
@@ -70,7 +70,7 @@ export type ExtensionApplicableType =
  * Custom types are referenced by FormSpec's internal custom-type IR nodes and
  * resolved to JSON Schema via `toJsonSchema` during generation.
  *
- * @public
+ * @internal
  */
 export interface CustomTypeRegistration {
   /** The type name, unique within the extension. */
@@ -103,7 +103,7 @@ export interface CustomTypeRegistration {
  *
  * Custom constraints are referenced by FormSpec's internal custom-constraint nodes.
  *
- * @public
+ * @internal
  */
 export interface CustomConstraintRegistration {
   /** The constraint name, unique within the extension. */
@@ -154,7 +154,7 @@ export interface CustomConstraintRegistration {
  * Custom annotations are referenced by FormSpec's internal custom-annotation nodes.
  * They describe or present a field but do not affect which values are valid.
  *
- * @public
+ * @internal
  */
 export interface CustomAnnotationRegistration {
   /** The annotation name, unique within the extension. */
@@ -172,7 +172,7 @@ export interface CustomAnnotationRegistration {
 /**
  * Registration for a vocabulary keyword to include in a JSON Schema `$vocabulary` declaration.
  *
- * @public
+ * @internal
  */
 export interface VocabularyKeywordRegistration {
   /** The keyword name (without vendor prefix). */
@@ -184,7 +184,7 @@ export interface VocabularyKeywordRegistration {
 /**
  * Declarative authoring-side registration for a custom TSDoc constraint tag.
  *
- * @public
+ * @internal
  */
 export interface ConstraintTagRegistration {
   /** Tag name without the `@` prefix, e.g. `"maxSigFig"`. */
@@ -205,7 +205,7 @@ export interface ConstraintTagRegistration {
  * Registration for mapping a built-in TSDoc tag onto a custom constraint when
  * it is used on a particular custom type.
  *
- * @public
+ * @internal
  */
 export interface BuiltinConstraintBroadeningRegistration {
   /** The built-in tag being broadened, without the `@` prefix. */
@@ -220,7 +220,7 @@ export interface BuiltinConstraintBroadeningRegistration {
  * Semantic metadata for ordered custom constraints that should participate in
  * the generic contradiction/broadening logic.
  *
- * @public
+ * @internal
  */
 export interface ConstraintSemanticRole {
   /**
@@ -258,7 +258,7 @@ export interface ConstraintSemanticRole {
  * });
  * ```
  *
- * @public
+ * @internal
  */
 export interface ExtensionDefinition {
   /** Globally unique extension identifier, e.g., "x-stripe/monetary". */
@@ -286,7 +286,7 @@ export interface ExtensionDefinition {
  * @param def - The extension definition.
  * @returns The same definition, validated at the type level.
  *
- * @public
+ * @internal
  */
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
   return def;
@@ -299,7 +299,7 @@ export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
  * @param reg - The custom type registration.
  * @returns The same registration, validated at the type level.
  *
- * @public
+ * @internal
  */
 export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration {
   return reg;
@@ -312,7 +312,7 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
  * @param reg - The custom constraint registration.
  * @returns The same registration, validated at the type level.
  *
- * @public
+ * @internal
  */
 export function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration {
   return reg;
@@ -324,7 +324,7 @@ export function defineConstraint(reg: CustomConstraintRegistration): CustomConst
  * @param reg - The custom tag registration.
  * @returns The same registration, validated at the type level.
  *
- * @public
+ * @internal
  */
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration {
   return reg;
@@ -337,7 +337,7 @@ export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintT
  * @param reg - The custom annotation registration.
  * @returns The same registration, validated at the type level.
  *
- * @public
+ * @internal
  */
 export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration {
   return reg;
