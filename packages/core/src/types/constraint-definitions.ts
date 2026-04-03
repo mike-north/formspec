@@ -34,7 +34,7 @@ export const _BUILTIN_CONSTRAINT_DEFINITIONS = {
 /**
  * Type of a built-in constraint name.
  *
- * @internal
+ * @public
  */
 export type BuiltinConstraintName =
   | "minimum"

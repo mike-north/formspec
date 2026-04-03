@@ -87,9 +87,8 @@ export interface ControlElement {
 }
 
 // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
-// Warning: (ae-internal-missing-underscore) The name "createExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
 //
-// @internal
+// @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
 export { DynamicEnumField }
@@ -103,9 +102,7 @@ export { EnumOptionValue }
 // @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
-// Warning: (ae-internal-missing-underscore) The name "ExtensionRegistry" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface ExtensionRegistry {
     readonly extensions: readonly ExtensionDefinition[];
     // Warning: (ae-forgotten-export) The symbol "CustomAnnotationRegistration" needs to be exported by the entry point index.d.ts
@@ -335,7 +332,6 @@ export { StaticEnumField }
 
 // @public
 export interface StaticSchemaGenerationOptions {
-    // Warning: (ae-incompatible-release-tags) The symbol "extensionRegistry" is marked as @public, but its signature references "ExtensionRegistry" which is marked as @internal
     readonly extensionRegistry?: ExtensionRegistry | undefined;
     readonly vendorPrefix?: string | undefined;
 }

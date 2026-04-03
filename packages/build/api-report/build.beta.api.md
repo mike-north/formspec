@@ -72,6 +72,9 @@ export interface ControlElement {
     readonly type: "Control";
 }
 
+// @public
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
+
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
@@ -82,6 +85,26 @@ export { EnumOptionValue }
 
 // @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+// @public
+export interface ExtensionRegistry {
+    readonly extensions: readonly ExtensionDefinition[];
+    findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
+    findBuiltinConstraintBroadening(typeId: string, tagName: string): {
+        readonly extensionId: string;
+        readonly registration: BuiltinConstraintBroadeningRegistration;
+    } | undefined;
+    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
+    findConstraintTag(tagName: string): {
+        readonly extensionId: string;
+        readonly registration: ConstraintTagRegistration;
+    } | undefined;
+    findType(typeId: string): CustomTypeRegistration | undefined;
+    findTypeByName(typeName: string): {
+        readonly extensionId: string;
+        readonly registration: CustomTypeRegistration;
+    } | undefined;
+}
 
 export { FormElement }
 
