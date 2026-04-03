@@ -3,7 +3,7 @@ import net from "node:net";
 import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-} from "@formspec/analysis/protocol";
+} from "@formspec/analysis";
 import {
   isFormSpecSemanticQuery,
   type FormSpecAnalysisManifest,

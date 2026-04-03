@@ -236,6 +236,18 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
   });
 }
 
+/**
+ * Generates JSON Schema and UI Schema from a named type within an existing
+ * TypeScript program supplied by the caller.
+ *
+ * This low-level entry point lets downstream tooling reuse a host-owned
+ * `Program` for both FormSpec extraction and other TypeScript analysis.
+ *
+ * @param options - Host program, file path, type name, and optional schema generation options
+ * @returns Generated JSON Schema and UI Schema
+ *
+ * @public
+ */
 export function generateSchemasFromProgram(
   options: GenerateSchemasFromProgramOptions
 ): GenerateFromClassResult;
@@ -249,5 +261,8 @@ export function generateSchemasFromProgram(
     options.typeName,
     options.extensionRegistry
   );
-  return generateClassSchemas(analysis, { file: options.filePath }, options);
+  return generateClassSchemas(analysis, { file: options.filePath }, {
+    extensionRegistry: options.extensionRegistry,
+    vendorPrefix: options.vendorPrefix,
+  });
 }

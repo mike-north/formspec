@@ -88,6 +88,7 @@ export type {
   GenerateFromClassResult,
   GenerateSchemasOptions,
   GenerateSchemasFromProgramOptions,
+  StaticSchemaGenerationOptions,
 } from "./generators/class-schema.js";
 export type {
   BuildMixedAuthoringSchemasOptions,

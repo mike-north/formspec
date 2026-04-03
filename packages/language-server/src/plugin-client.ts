@@ -118,6 +118,13 @@ async function sendSemanticQuery(
   });
 }
 
+/**
+ * Converts a `file://` URI to an absolute filesystem path.
+ *
+ * Returns `null` when `uri` is not a valid file URI.
+ *
+ * @public
+ */
 export function fileUriToPathOrNull(uri: string): string | null {
   try {
     return fileURLToPath(uri);

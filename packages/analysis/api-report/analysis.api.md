@@ -5,12 +5,6 @@
 ```ts
 
 // @public
-export interface CommentHoverInfo {
-    readonly kind: "tag-name" | "target" | "argument";
-    readonly markdown: string;
-}
-
-// @public
 export interface CommentSourceSpan {
     readonly end: number;
     readonly start: number;
@@ -72,6 +66,19 @@ export interface FormSpecAnalysisFileSnapshot {
 }
 
 // @public
+export interface FormSpecAnalysisManifest {
+    readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
+    readonly endpoint: FormSpecIpcEndpoint;
+    readonly extensionFingerprint: string;
+    readonly generation: number;
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly typescriptVersion: string;
+    readonly updatedAt: string;
+    readonly workspaceId: string;
+    readonly workspaceRoot: string;
+}
+
+// @public
 export interface FormSpecAnalysisTagSnapshot {
     readonly argumentSpan: CommentSpan | null;
     readonly argumentText: string;
@@ -86,7 +93,67 @@ export interface FormSpecAnalysisTagSnapshot {
 }
 
 // @public
+export interface FormSpecIpcEndpoint {
+    readonly address: string;
+    readonly kind: "unix-socket" | "windows-pipe";
+}
+
+// @public
 export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
+
+// @public
+export type FormSpecSemanticQuery = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly filePath: string;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly filePath: string;
+};
+
+// @public
+export type FormSpecSemanticResponse = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+    readonly manifest: FormSpecAnalysisManifest;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly sourceHash: string;
+    readonly context: FormSpecSerializedCompletionContext;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly sourceHash: string;
+    readonly hover: FormSpecSerializedHoverInfo | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly sourceHash: string;
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "error";
+    readonly error: string;
+};
 
 // @public
 export interface FormSpecSerializedCommentTargetSpecifier {
@@ -150,5 +217,14 @@ export interface FormSpecSerializedTagSignature {
 
 // @public
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
+
+// @public
+export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
+
+// @public
+export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemanticQuery;
+
+// @public
+export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
 ```
