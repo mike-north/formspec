@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import type { UISchema } from "./types.js";
 
 // =============================================================================
 // Primitive helpers
@@ -417,16 +418,9 @@ export type LabelElement = z.infer<typeof labelElementSchema>;
 // =============================================================================
 
 /**
- * Root UI Schema (always a layout — not a Control, Category, or Label).
- *
- * @internal
- */
-export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
-
-/**
  * Zod schema for the root UI Schema (layout types only).
  *
- * @internal
+ * @public
  */
 export const uiSchema: z.ZodType<UISchema> = z.lazy(() =>
   z.union([verticalLayoutSchema, horizontalLayoutSchema, groupLayoutSchema, categorizationSchema])

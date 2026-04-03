@@ -44,10 +44,6 @@ export type {
   Conditional,
   DynamicEnumField,
   DynamicSchemaField,
-  ExtensionApplicableType,
-  ExtensionDefinition,
-  ExtensionPayloadValue,
-  ExtensionTypeKind,
   EnumOption,
   EnumOptionValue,
   FormElement,
@@ -57,14 +53,6 @@ export type {
   ObjectField,
   StaticEnumField,
   TextField,
-  CustomAnnotationRegistration,
-  CustomConstraintRegistration,
-  CustomTypeRegistration,
-  ConstraintTagRegistration,
-  BuiltinConstraintBroadeningRegistration,
-  BuiltinConstraintName,
-  ConstraintSemanticRole,
-  VocabularyKeywordRegistration,
 } from "@formspec/core";
 
 export type {
@@ -96,7 +84,6 @@ export type {
 } from "./ui-schema/types.js";
 
 export type {
-  StaticSchemaGenerationOptions,
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
@@ -105,6 +92,13 @@ export type {
   BuildMixedAuthoringSchemasOptions,
   MixedAuthoringSchemas,
 } from "./generators/mixed-authoring.js";
+
+// =============================================================================
+// Zod Validation Schemas
+// =============================================================================
+
+export { jsonSchema7Schema } from "./json-schema/schema.js";
+export { uiSchema as uiSchemaSchema } from "./ui-schema/schema.js";
 
 // =============================================================================
 // Chain DSL Generators

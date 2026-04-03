@@ -7,22 +7,11 @@
 import { AnyField } from '@formspec/core';
 import { ArrayField } from '@formspec/core';
 import { BooleanField } from '@formspec/core';
-import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
-import { BuiltinConstraintName } from '@formspec/core';
 import { Conditional } from '@formspec/core';
-import { ConstraintSemanticRole } from '@formspec/core';
-import { ConstraintTagRegistration } from '@formspec/core';
-import { CustomAnnotationRegistration } from '@formspec/core';
-import { CustomConstraintRegistration } from '@formspec/core';
-import { CustomTypeRegistration } from '@formspec/core';
 import { DynamicEnumField } from '@formspec/core';
 import { DynamicSchemaField } from '@formspec/core';
 import { EnumOption } from '@formspec/core';
 import { EnumOptionValue } from '@formspec/core';
-import { ExtensionApplicableType } from '@formspec/core';
-import { ExtensionDefinition } from '@formspec/core';
-import { ExtensionPayloadValue } from '@formspec/core';
-import { ExtensionTypeKind } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
 import { Group } from '@formspec/core';
@@ -30,7 +19,7 @@ import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
 import { TextField } from '@formspec/core';
-import { VocabularyKeywordRegistration } from '@formspec/core';
+import { z } from 'zod';
 
 export { AnyField }
 
@@ -45,24 +34,10 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
 // @public
-export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
-
-// @public
-export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
-    readonly filePath: string;
-    readonly overlays: FormSpec<readonly FormElement[]>;
-    readonly typeName: string;
-}
-
-// @public
 export interface BuildResult {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
 }
-
-export { BuiltinConstraintBroadeningRegistration }
-
-export { BuiltinConstraintName }
 
 // @public
 export interface Categorization {
@@ -86,10 +61,6 @@ export interface Category {
 
 export { Conditional }
 
-export { ConstraintSemanticRole }
-
-export { ConstraintTagRegistration }
-
 // @public
 export interface ControlElement {
     readonly [k: string]: unknown;
@@ -100,15 +71,6 @@ export interface ControlElement {
     readonly type: "Control";
 }
 
-// @public
-export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
-
-export { CustomAnnotationRegistration }
-
-export { CustomConstraintRegistration }
-
-export { CustomTypeRegistration }
-
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
@@ -117,48 +79,21 @@ export { EnumOption }
 
 export { EnumOptionValue }
 
-// @beta
-export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
-
-export { ExtensionApplicableType }
-
-export { ExtensionDefinition }
-
-export { ExtensionPayloadValue }
-
 // @public
-export interface ExtensionRegistry {
-    readonly extensions: readonly ExtensionDefinition[];
-    findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
-    findBuiltinConstraintBroadening(typeId: string, tagName: string): {
-        readonly extensionId: string;
-        readonly registration: BuiltinConstraintBroadeningRegistration;
-    } | undefined;
-    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
-    findConstraintTag(tagName: string): {
-        readonly extensionId: string;
-        readonly registration: ConstraintTagRegistration;
-    } | undefined;
-    findType(typeId: string): CustomTypeRegistration | undefined;
-    findTypeByName(typeName: string): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
-}
-
-export { ExtensionTypeKind }
+export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 
 export { FormElement }
 
 export { FormSpec }
 
-// @beta
+// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
-export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
+export interface GenerateFromClassOptions {
     className: string;
     filePath: string;
+    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -182,9 +117,10 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
-export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
+export interface GenerateSchemasOptions {
     filePath: string;
     typeName: string;
+    readonly vendorPrefix?: string | undefined;
 }
 
 // @public
@@ -245,7 +181,7 @@ export interface JsonSchema2020 {
     uniqueItems?: boolean;
 }
 
-// @beta
+// @public
 export interface JSONSchema7 {
     "x-formspec-params"?: readonly string[];
     "x-formspec-schemaSource"?: string;
@@ -283,7 +219,10 @@ export interface JSONSchema7 {
     type?: JSONSchemaType | JSONSchemaType[];
 }
 
-// @beta
+// @public
+export const jsonSchema7Schema: z.ZodType<JSONSchema7>;
+
+// @public
 export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
 
 // @public
@@ -293,12 +232,6 @@ export interface LabelElement {
     readonly rule?: Rule | undefined;
     readonly text: string;
     readonly type: "Label";
-}
-
-// @public
-export interface MixedAuthoringSchemas {
-    readonly jsonSchema: JsonSchema2020;
-    readonly uiSchema: UISchema;
 }
 
 export { NumberField }
@@ -338,12 +271,6 @@ export interface SchemaBasedCondition {
 
 export { StaticEnumField }
 
-// @public
-export interface StaticSchemaGenerationOptions {
-    readonly extensionRegistry?: ExtensionRegistry | undefined;
-    readonly vendorPrefix?: string | undefined;
-}
-
 export { TextField }
 
 // @public
@@ -353,14 +280,7 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
 
 // @public
-export interface UISchemaElementBase {
-    options?: Record<string, unknown>;
-    rule?: Rule;
-    type: UISchemaElementType;
-}
-
-// @public
-export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
+export const uiSchemaSchema: z.ZodType<UISchema>;
 
 // @public
 export interface VerticalLayout {
@@ -370,8 +290,6 @@ export interface VerticalLayout {
     readonly rule?: Rule | undefined;
     readonly type: "VerticalLayout";
 }
-
-export { VocabularyKeywordRegistration }
 
 // @public
 export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;

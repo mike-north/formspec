@@ -29,7 +29,7 @@ import type { StaticSchemaGenerationOptions } from "./class-schema.js";
 /**
  * Result of generating schemas from a mixed-authoring composition.
  *
- * @public
+ * @internal
  */
 export interface MixedAuthoringSchemas {
   /** JSON Schema 2020-12 for validation. */
@@ -44,7 +44,7 @@ export interface MixedAuthoringSchemas {
  * The `typeName` can resolve to a class, interface, or object type alias, just
  * like `generateSchemas()`.
  *
- * @public
+ * @internal
  */
 export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file. */
@@ -64,7 +64,7 @@ export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGeneratio
  * field metadata such as dynamic enum or dynamic schema keywords, and may fill
  * in missing annotations.
  *
- * @public
+ * @internal
  */
 export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions

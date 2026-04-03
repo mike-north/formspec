@@ -19,7 +19,7 @@ import {
   type Connection,
   type InitializeResult,
 } from "vscode-languageserver/node.js";
-import type { ExtensionDefinition } from "@formspec/core";
+import type { ExtensionDefinition } from "@formspec/core/internals";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";

@@ -17,7 +17,7 @@ import type { JSONSchema7 } from "./types.js";
 /**
  * Zod schema for JSON Schema primitive type strings.
  *
- * @internal
+ * @public
  */
 export const jsonSchemaTypeSchema = z.enum([
   "string",
@@ -43,7 +43,7 @@ export const jsonSchemaTypeSchema = z.enum([
 /**
  * Zod schema for the legacy JSON Schema 7 subset used by `@formspec/build`.
  *
- * @internal
+ * @public
  */
 // @ts-expect-error -- exactOptionalPropertyTypes: Zod optional infers `T | undefined`
 // but JSONSchema7 uses exact optional `?:` which disallows explicit undefined.

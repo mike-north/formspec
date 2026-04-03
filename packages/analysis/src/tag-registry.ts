@@ -1,10 +1,8 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,
-} from "@formspec/core/internals";
-import {
   type BuiltinConstraintName,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 
 export type FormSpecValueKind =
   | "number"

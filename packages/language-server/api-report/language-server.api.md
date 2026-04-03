@@ -7,7 +7,6 @@
 import { CompletionItem } from 'vscode-languageserver/node.js';
 import { Connection } from 'vscode-languageserver/node.js';
 import { Diagnostic } from 'vscode-languageserver/node.js';
-import type { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -28,6 +27,7 @@ export function createServer(options?: CreateServerOptions): Connection;
 export interface CreateServerOptions {
     readonly diagnosticsMode?: "off" | "plugin";
     readonly diagnosticSource?: string;
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[];
     readonly pluginQueryTimeoutMs?: number;
     readonly usePluginTransport?: boolean;
