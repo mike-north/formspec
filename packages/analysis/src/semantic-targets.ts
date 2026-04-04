@@ -9,6 +9,7 @@ import type {
   TypeNode,
 } from "@formspec/core/internals";
 import { normalizeConstraintTagName } from "@formspec/core/internals";
+type ConstraintDiagnosticSeverity = "error" | "warning";
 
 export interface AnalysisTypeDefinition {
   readonly name: string;
@@ -53,7 +54,7 @@ export type ResolvedTargetState =
 export interface ConstraintSemanticDiagnostic {
   readonly code: string;
   readonly message: string;
-  readonly severity: "error" | "warning";
+  readonly severity: ConstraintDiagnosticSeverity;
   readonly primaryLocation: Provenance;
   readonly relatedLocations: readonly Provenance[];
 }

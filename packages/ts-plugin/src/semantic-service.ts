@@ -6,7 +6,7 @@ import {
   type FormSpecAnalysisFileSnapshot,
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedHoverInfo,
-} from "@formspec/analysis";
+} from "@formspec/analysis/protocol";
 import {
   buildFormSpecAnalysisFileSnapshot,
   createFormSpecPerformanceRecorder,
@@ -30,17 +30,17 @@ import {
 import { formatPerformanceEvent } from "./perf-utils.js";
 
 /**
- * Minimal logging surface used by the semantic service and plugin wrapper.
+ * Minimal logger contract used by the semantic service.
  *
  * @public
  */
 export interface LoggerLike {
-  /** Writes a human-readable diagnostic or profiling message. */
+  /** Writes an informational log line. */
   info(message: string): void;
 }
 
 /**
- * Configuration for the reusable in-process semantic service.
+ * Options used to construct a semantic service instance.
  *
  * @public
  */
@@ -64,63 +64,69 @@ export interface FormSpecSemanticServiceOptions {
 }
 
 /**
- * Serialized completion result returned by the semantic service.
+ * Serialized completion response returned by the semantic service.
  *
  * @public
  */
 export interface FormSpecSemanticCompletionResult {
-  /** Protocol version used by the serialized response. */
+  /** Protocol version of the serialized completion payload. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-  /** Hash of the source file used to compute the response. */
+  /** Source hash used to validate freshness. */
   readonly sourceHash: string;
-  /** Serialized completion payload for the active cursor context. */
+  /** Serialized completion context for the cursor position. */
   readonly context: FormSpecSerializedCompletionContext;
 }
 
 /**
- * Serialized hover result returned by the semantic service.
+ * Serialized hover response returned by the semantic service.
  *
  * @public
  */
 export interface FormSpecSemanticHoverResult {
-  /** Protocol version used by the serialized response. */
+  /** Protocol version of the serialized hover payload. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-  /** Hash of the source file used to compute the response. */
+  /** Source hash used to validate freshness. */
   readonly sourceHash: string;
-  /** Serialized hover payload, or `null` when nothing is available at the cursor. */
+  /** Serialized hover payload, if available. */
   readonly hover: FormSpecSerializedHoverInfo | null;
 }
 
 /**
- * Serialized diagnostics result returned by the semantic service.
+ * Serialized diagnostics response returned by the semantic service.
  *
  * @public
  */
 export interface FormSpecSemanticDiagnosticsResult {
-  /** Protocol version used by the serialized response. */
+  /** Protocol version of the serialized diagnostics payload. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-  /** Hash of the source file used to compute the response. */
+  /** Source hash used to validate freshness. */
   readonly sourceHash: string;
-  /** Canonical FormSpec diagnostics for the requested file. */
+  /** Diagnostics for the requested file. */
   readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
 }
 
 /**
- * Performance and cache counters exposed by the semantic service.
+ * Aggregate statistics collected by the semantic service.
  *
  * @public
  */
 export interface FormSpecSemanticServiceStats {
   /** Total number of calls by semantic query kind. */
   readonly queryTotals: {
+    /** Number of completion requests handled. */
     readonly completion: number;
+    /** Number of hover requests handled. */
     readonly hover: number;
+    /** Number of diagnostics requests handled. */
     readonly diagnostics: number;
+    /** Number of file snapshot requests handled. */
     readonly fileSnapshot: number;
   };
   /** Cold vs warm query path counts for snapshot-backed operations. */
   readonly queryPathTotals: {
+    /** Cold and warm counts for diagnostics queries. */
     readonly diagnostics: { readonly cold: number; readonly warm: number };
+    /** Cold and warm counts for file snapshot queries. */
     readonly fileSnapshot: { readonly cold: number; readonly warm: number };
   };
   /** Number of file snapshot cache hits. */

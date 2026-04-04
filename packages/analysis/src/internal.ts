@@ -80,6 +80,11 @@ export {
 export { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
 export { LruCache } from "./lru-cache.js";
 export {
+  getFormSpecManifestPath,
+  getFormSpecWorkspaceId,
+  getFormSpecWorkspaceRuntimeDirectory,
+} from "./workspace-runtime.js";
+export {
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,
 } from "./file-snapshots.js";
@@ -95,17 +100,19 @@ export {
   NOOP_FORMSPEC_PERFORMANCE_RECORDER,
 } from "./perf-tracing.js";
 export {
-  getFormSpecManifestPath,
-  getFormSpecWorkspaceId,
-  getFormSpecWorkspaceRuntimeDirectory,
-} from "./workspace-runtime.js";
-export {
   findDeclarationForCommentOffset,
   getHostType,
   getLastLeadingDocCommentRange,
   getSubjectType,
 } from "./source-bindings.js";
 export * from "./protocol.js";
+export {
+  serializeCommentTagSemanticContext,
+  serializeCommentTargetSpecifier,
+  serializeCompletionContext,
+  serializeHoverInfo,
+  serializeParsedCommentTag,
+} from "./semantic-protocol.js";
 export {
   collectCompatiblePathTargets,
   getTypeSemanticCapabilities,
@@ -134,21 +141,3 @@ export {
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
-export {
-  serializeCommentTagSemanticContext,
-  serializeCommentTargetSpecifier,
-  serializeCompletionContext,
-  serializeHoverInfo,
-  serializeParsedCommentTag,
-} from "./semantic-protocol.js";
-export type {
-  FormSpecAnalysisManifest,
-  FormSpecIpcEndpoint,
-  FormSpecSemanticQuery,
-  FormSpecSemanticResponse,
-} from "./semantic-protocol.js";
-export {
-  isFormSpecAnalysisManifest,
-  isFormSpecSemanticQuery,
-  isFormSpecSemanticResponse,
-} from "./semantic-protocol.js";

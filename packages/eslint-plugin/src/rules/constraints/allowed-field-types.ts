@@ -21,6 +21,12 @@ const createRule = ESLintUtils.RuleCreator(
 );
 
 /**
+ * Message identifiers emitted by `allowedFieldTypes`.
+ *
+ * @public
+ */
+export type MessageIds = "disallowedFieldType";
+/**
  * Maps DSL method names to constraint config keys.
  */
 const METHOD_TO_CONSTRAINT: Record<string, keyof FieldTypeConstraints> = {
@@ -53,11 +59,17 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
 };
 
 /**
+ * Rule options accepted by `allowedFieldTypes`.
+ *
+ * @public
+ */
+export type Options = [FieldTypeConstraints];
+/**
  * ESLint rule that validates allowed field types against project constraints.
  *
  * @public
  */
-export const allowedFieldTypes = createRule<[FieldTypeConstraints], "disallowedFieldType">({
+export const allowedFieldTypes = createRule<Options, MessageIds>({
   name: "constraints-allowed-field-types",
   meta: {
     type: "problem",

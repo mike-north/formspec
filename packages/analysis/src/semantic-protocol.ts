@@ -16,14 +16,13 @@ import {
 } from "./tag-registry.js";
 
 /**
- * Current semantic-query protocol version shared by FormSpec analysis clients
- * and servers.
+ * Version of the transport protocol shared by analysis producers and consumers.
  *
  * @public
  */
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
 /**
- * Current schema version for serialized analysis artifacts.
+ * Version of the serialized analysis payload schema.
  *
  * @public
  */
@@ -36,9 +35,9 @@ export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
  * @public
  */
 export interface FormSpecIpcEndpoint {
-  /** Transport kind used to connect to the workspace semantic service. */
+  /** Transport kind used to reach the semantic service. */
   readonly kind: "unix-socket" | "windows-pipe";
-  /** Absolute socket path or pipe name for the semantic service endpoint. */
+  /** Socket path or named-pipe address for the service. */
   readonly address: string;
 }
 
@@ -49,23 +48,23 @@ export interface FormSpecIpcEndpoint {
  * @public
  */
 export interface FormSpecAnalysisManifest {
-  /** Protocol version expected by both the client and semantic service. */
+  /** Protocol version expected by consumers of this manifest. */
   readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-  /** Schema version for serialized analysis artifacts. */
+  /** Schema version for the serialized analysis payload. */
   readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
-  /** Absolute workspace root the manifest was generated for. */
+  /** Absolute root of the workspace being analyzed. */
   readonly workspaceRoot: string;
-  /** Stable identifier derived from the workspace root. */
+  /** Stable workspace identifier used for runtime artifacts. */
   readonly workspaceId: string;
-  /** IPC endpoint clients should connect to for semantic queries. */
+  /** IPC endpoint for the active semantic service. */
   readonly endpoint: FormSpecIpcEndpoint;
-  /** TypeScript version reported by the host environment. */
+  /** TypeScript version reported by the host runtime. */
   readonly typescriptVersion: string;
-  /** Fingerprint representing the active extension-tag registry. */
+  /** Hash of the active extension set for the workspace. */
   readonly extensionFingerprint: string;
-  /** Monotonic generation number for manifest refreshes. */
+  /** Monotonic generation number for the manifest file. */
   readonly generation: number;
-  /** ISO timestamp for when the manifest was last written. */
+  /** ISO timestamp for the last manifest update. */
   readonly updatedAt: string;
 }
 
@@ -75,11 +74,11 @@ export interface FormSpecAnalysisManifest {
  * @public
  */
 export interface FormSpecSerializedTagDefinition {
-  /** Canonical tag name, including the `@` prefix. */
+  /** Canonical tag name, including the leading `@`. */
   readonly canonicalName: string;
-  /** Short completion label shown in completion menus. */
+  /** Short completion detail shown in UI pickers. */
   readonly completionDetail: string;
-  /** Markdown hover content describing the tag. */
+  /** Markdown hover text for the tag name. */
   readonly hoverMarkdown: string;
 }
 
@@ -89,9 +88,9 @@ export interface FormSpecSerializedTagDefinition {
  * @public
  */
 export interface FormSpecSerializedTagSignature {
-  /** Human-readable rendering of one supported tag signature. */
+  /** Human-readable label for the signature form. */
   readonly label: string;
-  /** Declaration placements where this signature is valid. */
+  /** Target kinds accepted by this signature. */
   readonly placements: readonly FormSpecPlacement[];
 }
 
@@ -103,15 +102,15 @@ export interface FormSpecSerializedTagSignature {
 export interface FormSpecSerializedCommentTargetSpecifier {
   /** Raw target text without the leading colon. */
   readonly rawText: string;
-  /** Whether the serialized target parsed successfully. */
+  /** Whether the target parsed cleanly. */
   readonly valid: boolean;
-  /** Target syntax kind inferred for the serialized specifier. */
+  /** Classified target kind used by completion and hover. */
   readonly kind: "path" | "member" | "variant" | "ambiguous";
-  /** Span covering the entire target, including the leading colon. */
+  /** Full span covering the colon and target text. */
   readonly fullSpan: CommentSpan;
-  /** Span covering only the colon token. */
+  /** Span covering only the leading colon. */
   readonly colonSpan: CommentSpan;
-  /** Span covering only the target text. */
+  /** Span covering the target text after the colon. */
   readonly span: CommentSpan;
 }
 
@@ -121,27 +120,27 @@ export interface FormSpecSerializedCommentTargetSpecifier {
  * @public
  */
 export interface FormSpecSerializedTagSemanticContext {
-  /** Canonical tag name, including the `@` prefix. */
+  /** Tag name in canonical `@tag` form. */
   readonly tagName: string;
-  /** Tag metadata when the tag is recognized by the registry. */
+  /** Resolved tag definition, if the tag is recognized. */
   readonly tagDefinition: FormSpecSerializedTagDefinition | null;
-  /** Declaration placement the tag was evaluated in, if known. */
+  /** Placement inferred for the tag in the current comment. */
   readonly placement: FormSpecPlacement | null;
-  /** Target syntaxes supported by the matching signatures. */
+  /** Target kinds supported by the tag. */
   readonly supportedTargets: readonly FormSpecTargetKind[];
-  /** Suggested targets for completion UIs. */
+  /** Completion candidates for tag targets. */
   readonly targetCompletions: readonly string[];
-  /** Compatible path targets computed from the subject type, if available. */
+  /** Path targets compatible with the current cursor context. */
   readonly compatiblePathTargets: readonly string[];
-  /** Suggested value labels derived from the matching signatures. */
+  /** Display labels for known argument values. */
   readonly valueLabels: readonly string[];
-  /** Signature summaries for the recognized tag in the current placement. */
+  /** Summaries of the tag's overloads or signatures. */
   readonly signatures: readonly FormSpecSerializedTagSignature[];
-  /** Markdown hover for the tag name token. */
+  /** Markdown hover content for the tag itself. */
   readonly tagHoverMarkdown: string | null;
-  /** Markdown hover for the target token, when available. */
+  /** Markdown hover content for the target, if applicable. */
   readonly targetHoverMarkdown: string | null;
-  /** Markdown hover for the argument token, when available. */
+  /** Markdown hover content for the argument, if applicable. */
   readonly argumentHoverMarkdown: string | null;
 }
 
@@ -153,20 +152,29 @@ export interface FormSpecSerializedTagSemanticContext {
  */
 export type FormSpecSerializedCompletionContext =
   | {
+      /** Completion mode indicating the cursor is on a tag name. */
       readonly kind: "tag-name";
+      /** Current partially typed tag prefix. */
       readonly prefix: string;
+      /** Tags available at the current cursor location. */
       readonly availableTags: readonly FormSpecSerializedTagDefinition[];
     }
   | {
+      /** Completion mode indicating the cursor is on a target specifier. */
       readonly kind: "target";
+      /** Semantic context for the active tag. */
       readonly semantic: FormSpecSerializedTagSemanticContext;
     }
   | {
+      /** Completion mode indicating the cursor is in an argument position. */
       readonly kind: "argument";
+      /** Semantic context for the active tag. */
       readonly semantic: FormSpecSerializedTagSemanticContext;
+      /** Suggested value labels for argument completion. */
       readonly valueLabels: readonly string[];
     }
   | {
+      /** Sentinel indicating that no FormSpec completion is available. */
       readonly kind: "none";
     };
 
@@ -176,9 +184,9 @@ export type FormSpecSerializedCompletionContext =
  * @public
  */
 export interface FormSpecSerializedHoverInfo {
-  /** Comment token kind being described. */
+  /** Token kind that produced this hover payload. */
   readonly kind: "tag-name" | "target" | "argument";
-  /** Markdown payload that should be rendered for the hover. */
+  /** Markdown content returned to the hover UI. */
   readonly markdown: string;
 }
 
@@ -215,11 +223,11 @@ export type FormSpecAnalysisDiagnosticDataValue =
  * @public
  */
 export interface FormSpecAnalysisDiagnosticLocation {
-  /** Absolute file path for the related diagnostic location. */
+  /** Absolute path to the related source file. */
   readonly filePath: string;
-  /** Source range for the related diagnostic location. */
+  /** Span associated with the related location. */
   readonly range: CommentSpan;
-  /** Optional explanatory text for the related location. */
+  /** Optional human-readable note for the location. */
   readonly message?: string;
 }
 
@@ -229,19 +237,19 @@ export interface FormSpecAnalysisDiagnosticLocation {
  * @public
  */
 export interface FormSpecAnalysisDiagnostic {
-  /** Stable diagnostic code for downstream rendering or filtering. */
+  /** Stable diagnostic code for programmatic handling. */
   readonly code: string;
-  /** High-level diagnostic category. */
+  /** Diagnostic family used by the analysis pipeline. */
   readonly category: FormSpecAnalysisDiagnosticCategory;
   /** Human-readable diagnostic message. */
   readonly message: string;
-  /** Source range where the diagnostic applies. */
+  /** Primary source span for the diagnostic. */
   readonly range: CommentSpan;
-  /** Severity to surface in editor or CLI UIs. */
+  /** Diagnostic severity reported to consumers. */
   readonly severity: "error" | "warning" | "info";
-  /** Additional source locations related to the diagnostic. */
+  /** Additional related source locations. */
   readonly relatedLocations: readonly FormSpecAnalysisDiagnosticLocation[];
-  /** Structured diagnostic facts for white-label downstream formatting. */
+  /** Structured diagnostic metadata. */
   readonly data: Record<string, FormSpecAnalysisDiagnosticDataValue>;
 }
 
@@ -251,25 +259,25 @@ export interface FormSpecAnalysisDiagnostic {
  * @public
  */
 export interface FormSpecAnalysisTagSnapshot {
-  /** Raw tag name as written in the source comment. */
+  /** Raw tag name as written in the comment. */
   readonly rawTagName: string;
-  /** Canonicalized tag name used for registry lookup. */
+  /** Normalized tag name used for lookup. */
   readonly normalizedTagName: string;
-  /** Whether the tag matched a known FormSpec tag definition. */
+  /** Whether the tag was recognized by the registry. */
   readonly recognized: boolean;
-  /** Span covering the full tag payload on the source line. */
+  /** Full span covering the parsed tag. */
   readonly fullSpan: CommentSpan;
-  /** Span covering only the tag-name token. */
+  /** Span of the tag name itself. */
   readonly tagNameSpan: CommentSpan;
-  /** Span covering the payload after the tag name, if present. */
+  /** Span of the payload after the tag name. */
   readonly payloadSpan: CommentSpan | null;
-  /** Parsed target specifier, if the tag includes one. */
+  /** Parsed target specifier, if one was present. */
   readonly target: FormSpecSerializedCommentTargetSpecifier | null;
-  /** Span covering the argument token or payload segment, if present. */
+  /** Span covering the argument text, if present. */
   readonly argumentSpan: CommentSpan | null;
-  /** Raw argument text after any target specifier. */
+  /** Raw argument text. */
   readonly argumentText: string;
-  /** Semantic context derived for the parsed tag. */
+  /** Serialized semantic data for the tag. */
   readonly semantic: FormSpecSerializedTagSemanticContext;
 }
 
@@ -279,17 +287,17 @@ export interface FormSpecAnalysisTagSnapshot {
  * @public
  */
 export interface FormSpecAnalysisCommentSnapshot {
-  /** Span covering the full doc comment block. */
+  /** Span covering the doc comment itself. */
   readonly commentSpan: CommentSpan;
-  /** Span covering the declaration that owns the comment. */
+  /** Span covering the associated declaration. */
   readonly declarationSpan: CommentSpan;
-  /** Normalized placement where the comment was found, if known. */
+  /** Where the comment was attached in relation to the declaration. */
   readonly placement: FormSpecPlacement | null;
-  /** String form of the subject type targeted by the comment, if known. */
+  /** Resolved type of the documented subject, if known. */
   readonly subjectType: string | null;
-  /** String form of the host declaration type, if known. */
+  /** Resolved host type that owns the comment, if known. */
   readonly hostType: string | null;
-  /** Parsed tag snapshots found inside the comment. */
+  /** Parsed tags contained in the doc comment. */
   readonly tags: readonly FormSpecAnalysisTagSnapshot[];
 }
 
@@ -299,15 +307,15 @@ export interface FormSpecAnalysisCommentSnapshot {
  * @public
  */
 export interface FormSpecAnalysisFileSnapshot {
-  /** Absolute path of the analyzed source file. */
+  /** Absolute path to the analyzed file. */
   readonly filePath: string;
-  /** Stable hash of the file text used to detect drift. */
+  /** Stable hash of the file contents. */
   readonly sourceHash: string;
-  /** ISO timestamp recording when the snapshot was generated. */
+  /** ISO timestamp when the snapshot was generated. */
   readonly generatedAt: string;
-  /** Parsed comment snapshots extracted from the file. */
+  /** Parsed doc comments found in the file. */
   readonly comments: readonly FormSpecAnalysisCommentSnapshot[];
-  /** Diagnostics produced for the file at snapshot time. */
+  /** Diagnostics emitted for the file. */
   readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
 }
 
@@ -318,29 +326,45 @@ export interface FormSpecAnalysisFileSnapshot {
  */
 export type FormSpecSemanticQuery =
   | {
+      /** Protocol version carried with every request. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Query variant requesting health/manifest information. */
       readonly kind: "health";
     }
   | {
+      /** Protocol version carried with every request. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Query variant requesting completion context. */
       readonly kind: "completion";
+      /** Absolute path of the source file. */
       readonly filePath: string;
+      /** Zero-based cursor offset in the file. */
       readonly offset: number;
     }
   | {
+      /** Protocol version carried with every request. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Query variant requesting hover information. */
       readonly kind: "hover";
+      /** Absolute path of the source file. */
       readonly filePath: string;
+      /** Zero-based cursor offset in the file. */
       readonly offset: number;
     }
   | {
+      /** Protocol version carried with every request. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Query variant requesting diagnostics only. */
       readonly kind: "diagnostics";
+      /** Absolute path of the source file. */
       readonly filePath: string;
     }
   | {
+      /** Protocol version carried with every request. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Query variant requesting a full serialized file snapshot. */
       readonly kind: "file-snapshot";
+      /** Absolute path of the source file. */
       readonly filePath: string;
     };
 
@@ -351,36 +375,57 @@ export type FormSpecSemanticQuery =
  */
 export type FormSpecSemanticResponse =
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Response variant carrying health information. */
       readonly kind: "health";
+      /** Manifest describing the active semantic service. */
       readonly manifest: FormSpecAnalysisManifest;
     }
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Response variant carrying completion context. */
       readonly kind: "completion";
+      /** Source hash used to validate cursor data freshness. */
       readonly sourceHash: string;
+      /** Completion context for the requested cursor position. */
       readonly context: FormSpecSerializedCompletionContext;
     }
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Response variant carrying hover information. */
       readonly kind: "hover";
+      /** Source hash used to validate hover freshness. */
       readonly sourceHash: string;
+      /** Hover payload, if one is available. */
       readonly hover: FormSpecSerializedHoverInfo | null;
     }
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Response variant carrying diagnostics. */
       readonly kind: "diagnostics";
+      /** Source hash used to validate diagnostic freshness. */
       readonly sourceHash: string;
+      /** Diagnostics for the requested file. */
       readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
     }
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Response variant carrying a serialized file snapshot. */
       readonly kind: "file-snapshot";
+      /** Snapshot of the requested file, if available. */
       readonly snapshot: FormSpecAnalysisFileSnapshot | null;
     }
   | {
+      /** Protocol version carried with every response. */
       readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      /** Error response variant. */
       readonly kind: "error";
+      /** Human-readable error message. */
       readonly error: string;
     };
 

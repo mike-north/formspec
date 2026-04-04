@@ -134,19 +134,17 @@ export {
 // DSL functions
 // =============================================================================
 
+export { logValidationIssues } from "@formspec/dsl";
 import {
   field as dslField,
-  validateForm as validateFormInternal,
-  logValidationIssues,
   group as dslGroup,
   when as dslWhen,
   is as dslIs,
   formspec as dslFormspec,
   formspecWithValidation as dslFormspecWithValidation,
+  validateForm as dslValidateForm,
   type FormSpecOptions,
-  type ValidationResult,
 } from "@formspec/dsl";
-export { logValidationIssues };
 export type {
   // Validation
   FormSpecOptions,
@@ -154,88 +152,77 @@ export type {
   ValidationIssue,
   ValidationResult,
 } from "@formspec/dsl";
+import type { ValidationResult } from "@formspec/dsl";
 
 /**
- * Field builder namespace containing functions to create each field type.
+ * Field builder helpers re-exported by the top-level `formspec` package.
  *
  * @public
  */
-export const field = {
+export interface FormSpecFieldBuilder {
+  /** Creates a text field. */
   text<const N extends string>(
     name: N,
     config?: Omit<TextField<N>, "_type" | "_field" | "name">
-  ): TextField<N> {
-    return dslField.text(name, config);
-  },
+  ): TextField<N>;
+  /** Creates a number field. */
   number<const N extends string>(
     name: N,
     config?: Omit<NumberField<N>, "_type" | "_field" | "name">
-  ): NumberField<N> {
-    return dslField.number(name, config);
-  },
+  ): NumberField<N>;
+  /** Creates a boolean field. */
   boolean<const N extends string>(
     name: N,
     config?: Omit<BooleanField<N>, "_type" | "_field" | "name">
-  ): BooleanField<N> {
-    return dslField.boolean(name, config);
-  },
+  ): BooleanField<N>;
+  /** Creates a static enum field from a fixed options list. */
   enum<const N extends string, const O extends readonly EnumOptionValue[]>(
     name: N,
     options: O,
     config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">
-  ): StaticEnumField<N, O> {
-    return dslField.enum(name, options, config);
-  },
+  ): StaticEnumField<N, O>;
+  /** Creates a dynamic enum field backed by an external option source. */
   dynamicEnum<const N extends string, const Source extends string>(
     name: N,
     source: Source,
     config?: Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">
-  ): DynamicEnumField<N, Source> {
-    return dslField.dynamicEnum(name, source, config);
-  },
+  ): DynamicEnumField<N, Source>;
+  /** Creates a field whose schema is resolved from an external source at runtime. */
   dynamicSchema<const N extends string>(
     name: N,
     schemaSource: string,
     config?: Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">
-  ): DynamicSchemaField<N> {
-    return dslField.dynamicSchema(name, schemaSource, config);
-  },
+  ): DynamicSchemaField<N>;
+  /** Creates an array field from a list of item elements. */
   array<const N extends string, const Items extends readonly FormElement[]>(
     name: N,
     ...items: Items
-  ): ArrayField<N, Items> {
-    return dslField.array(name, ...items);
-  },
+  ): ArrayField<N, Items>;
+  /** Creates an array field with explicit configuration and item elements. */
   arrayWithConfig<const N extends string, const Items extends readonly FormElement[]>(
     name: N,
     config: Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">,
     ...items: Items
-  ): ArrayField<N, Items> {
-    return dslField.arrayWithConfig(name, config, ...items);
-  },
+  ): ArrayField<N, Items>;
+  /** Creates an object field from a list of property elements. */
   object<const N extends string, const Properties extends readonly FormElement[]>(
     name: N,
     ...properties: Properties
-  ): ObjectField<N, Properties> {
-    return dslField.object(name, ...properties);
-  },
+  ): ObjectField<N, Properties>;
+  /** Creates an object field with explicit configuration and property elements. */
   objectWithConfig<const N extends string, const Properties extends readonly FormElement[]>(
     name: N,
     config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
     ...properties: Properties
-  ): ObjectField<N, Properties> {
-    return dslField.objectWithConfig(name, config, ...properties);
-  },
-};
+  ): ObjectField<N, Properties>;
+}
 
 /**
- * Validates a FormSpec element tree and returns any structural issues.
+ * Field builder helpers that preserve this package's exported type identities.
  *
  * @public
  */
-export function validateForm(elements: readonly FormElement[]): ValidationResult {
-  return validateFormInternal(elements);
-}
+export const field = dslField as unknown as FormSpecFieldBuilder;
 
 // =============================================================================
 // Build tools
@@ -554,4 +541,13 @@ export function defineResolvers<
   Sources extends string = ResolverSourcesForForm<E>,
 >(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources> {
   return defineResolversInternal(form, resolvers);
+}
+
+/**
+ * Validates a list of form elements for duplicate names and structural issues.
+ *
+ * @public
+ */
+export function validateForm(elements: readonly FormElement[]): ValidationResult {
+  return dslValidateForm(elements);
 }

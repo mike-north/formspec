@@ -7,12 +7,11 @@ const createRule = ESLintUtils.RuleCreator(
 );
 
 /**
- * ESLint rule that reports contradictory FormSpec constraint combinations.
+ * Message identifiers emitted by `noContradictions`.
  *
  * @public
  */
-export const noContradictions = createRule<
-  [],
+export type MessageIds =
   | "minimumGreaterThanMaximum"
   | "exclusiveMinGreaterOrEqualMax"
   | "minLengthGreaterThanMaxLength"
@@ -20,8 +19,14 @@ export const noContradictions = createRule<
   | "conflictingMinimumBounds"
   | "conflictingMaximumBounds"
   | "exclusiveMaxLessOrEqualMin"
-  | "maximumLessOrEqualExclusiveMin"
->({
+  | "maximumLessOrEqualExclusiveMin";
+
+/**
+ * ESLint rule that reports contradictory FormSpec constraint combinations.
+ *
+ * @public
+ */
+export const noContradictions = createRule<[], MessageIds>({
   name: "constraint-validation/no-contradictions",
   meta: {
     type: "problem",
@@ -79,19 +84,7 @@ export const noContradictions = createRule<
       }
 
       for (const [groupKey, values] of groups) {
-        const report = (
-          tagName: string,
-          messageId:
-            | "minimumGreaterThanMaximum"
-            | "exclusiveMinGreaterOrEqualMax"
-            | "minLengthGreaterThanMaxLength"
-            | "minItemsGreaterThanMaxItems"
-            | "conflictingMinimumBounds"
-            | "conflictingMaximumBounds"
-            | "exclusiveMaxLessOrEqualMin"
-            | "maximumLessOrEqualExclusiveMin",
-          data?: Record<string, string>
-        ) => {
+        const report = (tagName: string, messageId: MessageIds, data?: Record<string, string>) => {
           const location = locations.get(`${groupKey}|${tagName}`);
           if (!location) return;
           if (data) {

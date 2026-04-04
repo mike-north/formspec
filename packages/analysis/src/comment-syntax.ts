@@ -7,43 +7,43 @@ import {
 } from "./tag-registry.js";
 
 /**
- * Half-open character span within a source comment string.
+ * Zero-based half-open span in the source file.
  *
  * @public
  */
 export interface CommentSourceSpan {
-  /** Zero-based start offset, inclusive. */
+  /** Zero-based start offset in the source file. */
   readonly start: number;
-  /** Zero-based end offset, exclusive. */
+  /** One-past-the-end offset in the source file. */
   readonly end: number;
 }
 
 /**
- * Source span used by serialized comment-analysis payloads.
+ * Canonical span type used throughout serialized comment analysis.
  *
  * @public
  */
 export type CommentSpan = CommentSourceSpan;
 
 /**
- * Parsed `:target` suffix for a FormSpec comment tag.
+ * Parsed target specifier attached to a comment tag.
  *
- * @internal
+ * @public
  */
 export interface ParsedCommentTargetSpecifier {
   /** Raw target text without the leading colon. */
   readonly rawText: string;
-  /** Whether the target text parsed into a valid path or selector. */
+  /** Whether the target parsed cleanly. */
   readonly valid: boolean;
-  /** Normalized target syntax kind inferred for the specifier. */
+  /** Classified target kind used by completion and hover flows. */
   readonly kind: "path" | "member" | "variant" | "ambiguous";
-  /** Span covering the full target, including the leading colon. */
+  /** Full span covering the colon and target text. */
   readonly fullSpan: CommentSourceSpan;
-  /** Span covering only the leading colon token. */
+  /** Span covering only the colon prefix. */
   readonly colonSpan: CommentSourceSpan;
-  /** Span covering the target text without the colon. */
+  /** Span covering the target text after the colon. */
   readonly span: CommentSourceSpan;
-  /** Parsed path representation when the target resolves to a path. */
+  /** Parsed path target when one could be resolved. */
   readonly path: PathTarget | null;
 }
 
@@ -51,22 +51,45 @@ interface ParsedCommentTargetSpecifierWithLocalEnd extends ParsedCommentTargetSp
   readonly localEnd: number;
 }
 
+/**
+ * Parsed representation of a single FormSpec tag inside a comment block.
+ *
+ * @public
+ */
 export interface ParsedCommentTag {
+  /** Raw tag name exactly as written in the source. */
   readonly rawTagName: string;
+  /** Normalized tag name used for registry lookup. */
   readonly normalizedTagName: string;
+  /** Whether the tag was recognized by the registry. */
   readonly recognized: boolean;
+  /** Full span covering the parsed tag. */
   readonly fullSpan: CommentSourceSpan;
+  /** Span covering the tag name token. */
   readonly tagNameSpan: CommentSourceSpan;
+  /** Span covering the payload after the tag name, if present. */
   readonly payloadSpan: CommentSourceSpan | null;
+  /** Span covering the target colon, if present. */
   readonly colonSpan: CommentSourceSpan | null;
+  /** Parsed target specifier, if present. */
   readonly target: ParsedCommentTargetSpecifier | null;
+  /** Span covering the argument text, if present. */
   readonly argumentSpan: CommentSourceSpan | null;
+  /** Raw argument text following the tag or target. */
   readonly argumentText: string;
 }
 
+/**
+ * Parsed representation of one doc comment block.
+ *
+ * @public
+ */
 export interface ParsedCommentBlock {
+  /** Comment text with delimiters removed. */
   readonly commentText: string;
+  /** Absolute source offset where the comment block begins. */
   readonly offset: number;
+  /** Parsed tags discovered inside the comment. */
   readonly tags: readonly ParsedCommentTag[];
 }
 
@@ -255,10 +278,17 @@ function projectCommentLines(commentText: string): readonly CommentLineProjectio
 }
 
 export interface ParseCommentSyntaxOptions {
+  /** Absolute source offset for the parsed comment block. */
   readonly offset?: number;
+  /** Extension tag sources used to classify target specifiers. */
   readonly extensions?: readonly ExtensionTagSource[];
 }
 
+/**
+ * Parse a doc comment block into tags and target/argument spans.
+ *
+ * @public
+ */
 export function parseCommentBlock(
   commentText: string,
   options?: ParseCommentSyntaxOptions
@@ -355,6 +385,12 @@ export function parseCommentBlock(
     tags,
   };
 }
+
+/**
+ * Parse a single tag form by synthesizing a comment block around it.
+ *
+ * @public
+ */
 export function parseTagSyntax(
   rawTagName: string,
   payloadText: string,
@@ -369,6 +405,11 @@ export function parseTagSyntax(
   return tag;
 }
 
+/**
+ * Extract the raw text corresponding to a serialized comment span.
+ *
+ * @public
+ */
 export function sliceCommentSpan(
   commentText: string,
   span: CommentSpan,
