@@ -160,46 +160,56 @@ import type { ValidationResult } from "@formspec/dsl";
  * @public
  */
 export interface FormSpecFieldBuilder {
+  /** Creates a text field. */
   text<const N extends string>(
     name: N,
     config?: Omit<TextField<N>, "_type" | "_field" | "name">
   ): TextField<N>;
+  /** Creates a number field. */
   number<const N extends string>(
     name: N,
     config?: Omit<NumberField<N>, "_type" | "_field" | "name">
   ): NumberField<N>;
+  /** Creates a boolean field. */
   boolean<const N extends string>(
     name: N,
     config?: Omit<BooleanField<N>, "_type" | "_field" | "name">
   ): BooleanField<N>;
+  /** Creates a static enum field from a fixed options list. */
   enum<const N extends string, const O extends readonly EnumOptionValue[]>(
     name: N,
     options: O,
     config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">
   ): StaticEnumField<N, O>;
+  /** Creates a dynamic enum field backed by an external option source. */
   dynamicEnum<const N extends string, const Source extends string>(
     name: N,
     source: Source,
     config?: Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">
   ): DynamicEnumField<N, Source>;
+  /** Creates a field whose schema is resolved from an external source at runtime. */
   dynamicSchema<const N extends string>(
     name: N,
     schemaSource: string,
     config?: Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">
   ): DynamicSchemaField<N>;
+  /** Creates an array field from a list of item elements. */
   array<const N extends string, const Items extends readonly FormElement[]>(
     name: N,
     ...items: Items
   ): ArrayField<N, Items>;
+  /** Creates an array field with explicit configuration and item elements. */
   arrayWithConfig<const N extends string, const Items extends readonly FormElement[]>(
     name: N,
     config: Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">,
     ...items: Items
   ): ArrayField<N, Items>;
+  /** Creates an object field from a list of property elements. */
   object<const N extends string, const Properties extends readonly FormElement[]>(
     name: N,
     ...properties: Properties
   ): ObjectField<N, Properties>;
+  /** Creates an object field with explicit configuration and property elements. */
   objectWithConfig<const N extends string, const Properties extends readonly FormElement[]>(
     name: N,
     config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
