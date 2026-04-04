@@ -126,7 +126,7 @@ pnpm run test
 pnpm run lint
 ```
 
-This workspace targets Node.js `>=24`. The root build runs packages in dependency order, and package-local test scripts handle any required prebuild steps.
+The root build runs packages in dependency order, and package-local test scripts handle any required prebuild steps.
 
 ## License
 
