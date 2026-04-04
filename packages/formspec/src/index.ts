@@ -159,7 +159,7 @@ import type { ValidationResult } from "@formspec/dsl";
  *
  * @public
  */
-export type FormSpecFieldBuilder = {
+export interface FormSpecFieldBuilder {
   text<const N extends string>(
     name: N,
     config?: Omit<TextField<N>, "_type" | "_field" | "name">
@@ -205,7 +205,7 @@ export type FormSpecFieldBuilder = {
     config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
     ...properties: Properties
   ): ObjectField<N, Properties>;
-};
+}
 
 /**
  * Field builder helpers that preserve this package's exported type identities.
