@@ -80,6 +80,11 @@ export {
 export { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
 export { LruCache } from "./lru-cache.js";
 export {
+  getFormSpecManifestPath,
+  getFormSpecWorkspaceId,
+  getFormSpecWorkspaceRuntimeDirectory,
+} from "./workspace-runtime.js";
+export {
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,
 } from "./file-snapshots.js";
