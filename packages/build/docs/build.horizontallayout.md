@@ -9,7 +9,7 @@ A horizontal layout element.
 **Signature:**
 
 ```typescript
-export interface HorizontalLayout 
+export interface HorizontalLayout
 ```
 
 ## Properties
@@ -18,102 +18,81 @@ export interface HorizontalLayout
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./build.horizontallayout.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./build.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.horizontallayout.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.horizontallayout.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.horizontallayout.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "HorizontalLayout"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

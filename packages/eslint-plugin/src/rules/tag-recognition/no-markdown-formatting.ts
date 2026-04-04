@@ -7,9 +7,6 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
-type Options = [{ tags?: string[] }];
-type MessageIds = "markdownFormattingForbidden";
-
 function stripMarkdownFormatting(value: string): string {
   let result = value;
 
@@ -39,7 +36,10 @@ function stripMarkdownFormatting(value: string): string {
  *
  * @public
  */
-export const noMarkdownFormatting = createRule<Options, MessageIds>({
+export const noMarkdownFormatting = createRule<
+  [{ tags?: string[] }],
+  "markdownFormattingForbidden"
+>({
   name: "tag-recognition/no-markdown-formatting",
   meta: {
     type: "suggestion",

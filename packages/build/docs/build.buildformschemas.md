@@ -11,7 +11,10 @@ This is a convenience function that combines `generateJsonSchema` and `generateU
 **Signature:**
 
 ```typescript
-export declare function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
+export declare function buildFormSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: BuildFormSchemasOptions
+): BuildResult;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function buildFormSchemas<E extends readonly FormElement[]>(form:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./build.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
 
 The FormSpec to build schemas from
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [BuildFormSchemasOptions](./build.buildformschemasoptions.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 </tbody></table>
@@ -73,7 +67,6 @@ _(Optional)_
 Object containing both jsonSchema and uiSchema
 
 ## Example
-
 
 ```typescript
 const form = formspec(
@@ -91,4 +84,3 @@ const { jsonSchema, uiSchema } = buildFormSchemas(form);
   renderers={materialRenderers}
 />
 ```
-

@@ -5,14 +5,13 @@
 ## EnumTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Static enum type with members known at build time.
 
 **Signature:**
 
 ```typescript
-export interface EnumTypeNode 
+export interface EnumTypeNode
 ```
 
 ## Properties
@@ -21,64 +20,51 @@ export interface EnumTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./core.enumtypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "enum"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [members](./core.enumtypenode.members.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [EnumMember](./core.enummember.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

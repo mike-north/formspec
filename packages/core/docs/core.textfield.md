@@ -9,7 +9,7 @@ A text input field.
 **Signature:**
 
 ```typescript
-export interface TextField<N extends string> 
+export interface TextField<N extends string>
 ```
 
 ## Properties
@@ -18,211 +18,170 @@ export interface TextField<N extends string>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./core.textfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "text"
 
-
 </td><td>
 
 Field type discriminator - identifies this as a text field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./core.textfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./core.textfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [maxLength?](./core.textfield.maxlength.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Maximum string length
-
 
 </td></tr>
 <tr><td>
 
 [minLength?](./core.textfield.minlength.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Minimum string length
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.textfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [pattern?](./core.textfield.pattern.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Regular expression pattern the value must match
-
 
 </td></tr>
 <tr><td>
 
 [placeholder?](./core.textfield.placeholder.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Placeholder text shown when field is empty
-
 
 </td></tr>
 <tr><td>
 
 [required?](./core.textfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

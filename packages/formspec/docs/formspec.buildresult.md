@@ -9,7 +9,7 @@ Result of building form schemas.
 **Signature:**
 
 ```typescript
-export declare interface BuildResult 
+export declare interface BuildResult
 ```
 
 ## Properties
@@ -18,64 +18,51 @@ export declare interface BuildResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [jsonSchema](./formspec.buildresult.jsonschema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [JsonSchema2020](./formspec.jsonschema2020.md)
 
-
 </td><td>
 
 JSON Schema 2020-12 for validation
-
 
 </td></tr>
 <tr><td>
 
 [uiSchema](./formspec.buildresult.uischema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchema](./formspec.uischema.md)
 
-
 </td><td>
 
 JSON Forms UI Schema for rendering
 
-
 </td></tr>
 </tbody></table>
-

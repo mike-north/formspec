@@ -9,8 +9,9 @@ Options for generating schemas from a named type (class, interface, or type alia
 **Signature:**
 
 ```typescript
-export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions 
+export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions
 ```
+
 **Extends:** [StaticSchemaGenerationOptions](./build.staticschemagenerationoptions.md)
 
 ## Properties
@@ -19,60 +20,47 @@ export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [filePath](./build.generateschemasoptions.filepath.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Path to the TypeScript source file
-
 
 </td></tr>
 <tr><td>
 
 [typeName](./build.generateschemasoptions.typename.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Name of the exported class, interface, or type alias to analyze
 
-
 </td></tr>
 </tbody></table>
-

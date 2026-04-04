@@ -9,7 +9,7 @@ Result of writing schemas to disk.
 **Signature:**
 
 ```typescript
-export declare interface WriteSchemasResult 
+export declare interface WriteSchemasResult
 ```
 
 ## Properties
@@ -18,64 +18,51 @@ export declare interface WriteSchemasResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [jsonSchemaPath](./formspec.writeschemasresult.jsonschemapath.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Path to the generated JSON Schema file
-
 
 </td></tr>
 <tr><td>
 
 [uiSchemaPath](./formspec.writeschemasresult.uischemapath.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Path to the generated UI Schema file
 
-
 </td></tr>
 </tbody></table>
-

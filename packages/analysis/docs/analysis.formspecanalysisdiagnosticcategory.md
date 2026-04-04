@@ -9,5 +9,11 @@ Machine-readable diagnostic category used by FormSpec tooling surfaces.
 **Signature:**
 
 ```typescript
-export type FormSpecAnalysisDiagnosticCategory = "tag-recognition" | "value-parsing" | "type-compatibility" | "target-resolution" | "constraint-validation" | "infrastructure";
+export type FormSpecAnalysisDiagnosticCategory =
+  | "tag-recognition"
+  | "value-parsing"
+  | "type-compatibility"
+  | "target-resolution"
+  | "constraint-validation"
+  | "infrastructure";
 ```

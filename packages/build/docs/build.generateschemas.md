@@ -20,32 +20,26 @@ export declare function generateSchemas(options: GenerateSchemasOptions): Genera
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 options
 
-
 </td><td>
 
 [GenerateSchemasOptions](./build.generateschemasoptions.md)
 
-
 </td><td>
 
 File path and type name
-
 
 </td></tr>
 </tbody></table>
@@ -58,11 +52,9 @@ Generated JSON Schema and UI Schema
 
 ## Example
 
-
 ```typescript
 const result = generateSchemas({
   filePath: "./src/config.ts",
   typeName: "DiscountConfig",
 });
 ```
-

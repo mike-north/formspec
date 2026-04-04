@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/core](./core.md)
-
 
 </td><td>
 
@@ -28,7 +25,5 @@ Description
 
 This package provides the foundational types used throughout the FormSpec ecosystem: - Form element types (fields, groups, conditionals) - Field and form state types - Data source registry for dynamic enums - Canonical IR types (FormIR, FieldNode, TypeNode, ConstraintNode, AnnotationNode, etc.)
 
-
 </td></tr>
 </tbody></table>
-

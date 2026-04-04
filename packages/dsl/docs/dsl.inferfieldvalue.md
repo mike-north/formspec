@@ -11,12 +11,33 @@ Infers the value type from a single field.
 **Signature:**
 
 ```typescript
-export type InferFieldValue<F> = F extends TextField<string> ? string : F extends NumberField<string> ? number : F extends BooleanField<string> ? boolean : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]> ? O extends readonly EnumOption[] ? O[number]["id"] : O extends readonly string[] ? O[number] : never : F extends DynamicEnumField<string, infer Source> ? DataSourceValueType<Source> : F extends DynamicSchemaField<string> ? Record<string, unknown> : F extends ArrayField<string, infer Items extends readonly FormElement[]> ? InferSchema<Items>[] : F extends ObjectField<string, infer Properties extends readonly FormElement[]> ? InferSchema<Properties> : never;
+export type InferFieldValue<F> =
+  F extends TextField<string>
+    ? string
+    : F extends NumberField<string>
+      ? number
+      : F extends BooleanField<string>
+        ? boolean
+        : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]>
+          ? O extends readonly EnumOption[]
+            ? O[number]["id"]
+            : O extends readonly string[]
+              ? O[number]
+              : never
+          : F extends DynamicEnumField<string, infer Source>
+            ? DataSourceValueType<Source>
+            : F extends DynamicSchemaField<string>
+              ? Record<string, unknown>
+              : F extends ArrayField<string, infer Items extends readonly FormElement[]>
+                ? InferSchema<Items>[]
+                : F extends ObjectField<string, infer Properties extends readonly FormElement[]>
+                  ? InferSchema<Properties>
+                  : never;
 ```
+
 **References:** [TextField](./dsl.textfield.md)<!-- -->, [NumberField](./dsl.numberfield.md)<!-- -->, [BooleanField](./dsl.booleanfield.md)<!-- -->, [StaticEnumField](./dsl.staticenumfield.md)<!-- -->, [EnumOptionValue](./dsl.enumoptionvalue.md)<!-- -->, [EnumOption](./dsl.enumoption.md)<!-- -->, [DynamicEnumField](./dsl.dynamicenumfield.md)<!-- -->, [DataSourceValueType](./dsl.datasourcevaluetype.md)<!-- -->, [DynamicSchemaField](./dsl.dynamicschemafield.md)<!-- -->, [ArrayField](./dsl.arrayfield.md)<!-- -->, [FormElement](./dsl.formelement.md)<!-- -->, [InferSchema](./dsl.inferschema.md)<!-- -->, [ObjectField](./dsl.objectfield.md)
 
 ## Example
-
 
 ```typescript
 // Simple fields
@@ -30,4 +51,3 @@ type T3 = InferFieldValue<StaticEnumField<"status", ["draft", "sent"]>>; // "dra
 type T4 = InferFieldValue<ArrayField<"items", [TextField<"name">]>>; // { name: string }[]
 type T5 = InferFieldValue<ObjectField<"address", [TextField<"city">]>>; // { city: string }
 ```
-

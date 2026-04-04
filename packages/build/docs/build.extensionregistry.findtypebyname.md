@@ -23,30 +23,24 @@ findTypeByName(typeName: string): {
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 typeName
 
-
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -54,4 +48,3 @@ string
 **Returns:**
 
 { readonly extensionId: string; readonly registration: [CustomTypeRegistration](./build.customtyperegistration.md)<!-- -->; } \| undefined
-

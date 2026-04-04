@@ -4,9 +4,19 @@
 
 ## FormSpecPlacement type
 
-
 **Signature:**
 
 ```typescript
-export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
+export type FormSpecPlacement =
+  | "class"
+  | "class-field"
+  | "class-method"
+  | "interface"
+  | "interface-field"
+  | "type-alias"
+  | "type-alias-field"
+  | "variable"
+  | "function"
+  | "function-parameter"
+  | "method-parameter";
 ```

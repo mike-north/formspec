@@ -18,32 +18,26 @@ export declare function loadConfig(options?: LoadConfigOptions): Promise<LoadCon
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 options
 
-
 </td><td>
 
 [LoadConfigOptions](./constraints.loadconfigoptions.md)
 
-
 </td><td>
 
 _(Optional)_ Options for loading configuration
-
 
 </td></tr>
 </tbody></table>
@@ -56,15 +50,13 @@ The loaded configuration with defaults applied
 
 ## Example
 
-
 ```ts
 // Load from current directory (searches for .formspec.yml)
 const result = await loadConfig();
 
 // Load from specific directory
-const result = await loadConfig({ cwd: '/path/to/project' });
+const result = await loadConfig({ cwd: "/path/to/project" });
 
 // Load from specific file
-const result = await loadConfig({ configPath: '/path/to/config.yml' });
+const result = await loadConfig({ configPath: "/path/to/config.yml" });
 ```
-

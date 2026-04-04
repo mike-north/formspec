@@ -237,7 +237,12 @@ export function analyzeNamedTypeToIRFromProgramContext(
 
   const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
   if (typeAlias !== null) {
-    const result = analyzeTypeAliasToIR(typeAlias, ctx.checker, analysisFilePath, extensionRegistry);
+    const result = analyzeTypeAliasToIR(
+      typeAlias,
+      ctx.checker,
+      analysisFilePath,
+      extensionRegistry
+    );
     if (result.ok) {
       return result.analysis;
     }

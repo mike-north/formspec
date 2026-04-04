@@ -21,30 +21,24 @@ findConstraintTag(tagName: string): {
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 tagName
 
-
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -52,4 +46,3 @@ string
 **Returns:**
 
 { readonly extensionId: string; readonly registration: [ConstraintTagRegistration](./build.constrainttagregistration.md)<!-- -->; } \| undefined
-

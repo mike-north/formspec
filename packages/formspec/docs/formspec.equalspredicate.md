@@ -9,7 +9,7 @@ An equality predicate that checks if a field equals a specific value.
 **Signature:**
 
 ```typescript
-export declare interface EqualsPredicate<K extends string, V> 
+export declare interface EqualsPredicate<K extends string, V>
 ```
 
 ## Properties
@@ -18,85 +18,68 @@ export declare interface EqualsPredicate<K extends string, V>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_predicate](./formspec.equalspredicate._predicate.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "equals"
 
-
 </td><td>
 
 Predicate type discriminator
-
 
 </td></tr>
 <tr><td>
 
 [field](./formspec.equalspredicate.field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 K
 
-
 </td><td>
 
 Name of the field to check
-
 
 </td></tr>
 <tr><td>
 
 [value](./formspec.equalspredicate.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 V
 
-
 </td><td>
 
 Value that the field must equal
 
-
 </td></tr>
 </tbody></table>
-

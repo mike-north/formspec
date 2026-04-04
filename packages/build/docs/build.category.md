@@ -9,7 +9,7 @@ A Category element, used inside a Categorization layout.
 **Signature:**
 
 ```typescript
-export interface Category 
+export interface Category
 ```
 
 ## Properties
@@ -18,121 +18,96 @@ export interface Category
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./build.category.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./build.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label](./build.category.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.category.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.category.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.category.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Category"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

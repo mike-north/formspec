@@ -11,7 +11,10 @@ Use this with `when()` to create readable conditional expressions:
 **Signature:**
 
 ```typescript
-export declare function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
+export declare function is<const K extends string, const V>(
+  field: K,
+  value: V
+): EqualsPredicate<K, V>;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function is<const K extends string, const V>(field: K, value: V):
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 field
 
-
 </td><td>
 
 K
 
-
 </td><td>
 
 The name of the field to check
-
 
 </td></tr>
 <tr><td>
 
 value
 
-
 </td><td>
 
 V
 
-
 </td><td>
 
 The value the field must equal
-
 
 </td></tr>
 </tbody></table>
@@ -74,11 +68,7 @@ An EqualsPredicate for use with `when()`
 
 ## Example
 
-
 ```typescript
 // Show cardNumber field when paymentMethod is "card"
-when(is("paymentMethod", "card"),
-  field.text("cardNumber", { label: "Card Number" }),
-)
+when(is("paymentMethod", "card"), field.text("cardNumber", { label: "Card Number" }));
 ```
-

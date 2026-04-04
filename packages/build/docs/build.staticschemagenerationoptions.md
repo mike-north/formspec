@@ -9,7 +9,7 @@ Shared options for schema generation flows that support custom extensions.
 **Signature:**
 
 ```typescript
-export interface StaticSchemaGenerationOptions 
+export interface StaticSchemaGenerationOptions
 ```
 
 ## Properties
@@ -18,64 +18,51 @@ export interface StaticSchemaGenerationOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [extensionRegistry?](./build.staticschemagenerationoptions.extensionregistry.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [ExtensionRegistry](./build.extensionregistry.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_ Registry used to resolve custom types, constraints, and annotations.
-
 
 </td></tr>
 <tr><td>
 
 [vendorPrefix?](./build.staticschemagenerationoptions.vendorprefix.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| undefined
 
-
 </td><td>
 
 _(Optional)_ Vendor prefix for emitted extension keywords.
 
-
 </td></tr>
 </tbody></table>
-

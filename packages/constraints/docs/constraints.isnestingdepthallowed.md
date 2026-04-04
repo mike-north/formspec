@@ -5,14 +5,16 @@
 ## isNestingDepthAllowed() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Checks if a nesting depth is allowed.
 
 **Signature:**
 
 ```typescript
-export declare function isNestingDepthAllowed(depth: number, constraints: LayoutConstraints): boolean;
+export declare function isNestingDepthAllowed(
+  depth: number,
+  constraints: LayoutConstraints
+): boolean;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function isNestingDepthAllowed(depth: number, constraints: Layout
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 depth
 
-
 </td><td>
 
 number
 
-
 </td><td>
 
 Current nesting depth
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [LayoutConstraints](./constraints.layoutconstraints.md)
 
-
 </td><td>
 
 Layout constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Layout constraints
 boolean
 
 true if allowed, false if exceeds limit
-

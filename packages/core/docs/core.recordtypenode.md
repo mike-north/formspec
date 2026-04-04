@@ -5,7 +5,6 @@
 ## RecordTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Record (dictionary) type — an object with a string index signature and no named properties. Corresponds to `Record<string, T>` or `{ [k: string]: T }`<!-- -->.
 
@@ -14,7 +13,7 @@ Emitted as `{ "type": "object", "additionalProperties": <value schema> }` in JSO
 **Signature:**
 
 ```typescript
-export interface RecordTypeNode 
+export interface RecordTypeNode
 ```
 
 ## Properties
@@ -23,64 +22,51 @@ export interface RecordTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./core.recordtypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "record"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [valueType](./core.recordtypenode.valuetype.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [TypeNode](./core.typenode.md)
 
-
 </td><td>
 
 **_(BETA)_** The type of each value in the dictionary.
 
-
 </td></tr>
 </tbody></table>
-

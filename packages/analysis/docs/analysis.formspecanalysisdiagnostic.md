@@ -9,7 +9,7 @@ File-local diagnostic derived from comment parsing or semantic analysis.
 **Signature:**
 
 ```typescript
-export interface FormSpecAnalysisDiagnostic 
+export interface FormSpecAnalysisDiagnostic
 ```
 
 ## Properties
@@ -18,155 +18,122 @@ export interface FormSpecAnalysisDiagnostic
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [category](./analysis.formspecanalysisdiagnostic.category.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [FormSpecAnalysisDiagnosticCategory](./analysis.formspecanalysisdiagnosticcategory.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [code](./analysis.formspecanalysisdiagnostic.code.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [data](./analysis.formspecanalysisdiagnostic.data.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, [FormSpecAnalysisDiagnosticDataValue](./analysis.formspecanalysisdiagnosticdatavalue.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [message](./analysis.formspecanalysisdiagnostic.message.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [range](./analysis.formspecanalysisdiagnostic.range.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [relatedLocations](./analysis.formspecanalysisdiagnostic.relatedlocations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [FormSpecAnalysisDiagnosticLocation](./analysis.formspecanalysisdiagnosticlocation.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [severity](./analysis.formspecanalysisdiagnostic.severity.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "error" \| "warning" \| "info"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

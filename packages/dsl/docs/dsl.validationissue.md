@@ -9,7 +9,7 @@ A validation issue found in a form specification.
 **Signature:**
 
 ```typescript
-export interface ValidationIssue 
+export interface ValidationIssue
 ```
 
 ## Properties
@@ -18,79 +18,62 @@ export interface ValidationIssue
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [message](./dsl.validationissue.message.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Human-readable message describing the issue
-
 
 </td></tr>
 <tr><td>
 
 [path](./dsl.validationissue.path.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Path to the element with the issue (e.g., "group.fieldName")
-
 
 </td></tr>
 <tr><td>
 
 [severity](./dsl.validationissue.severity.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ValidationSeverity](./dsl.validationseverity.md)
 
-
 </td><td>
 
 Severity of the issue
 
-
 </td></tr>
 </tbody></table>
-

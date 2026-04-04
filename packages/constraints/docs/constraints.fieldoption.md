@@ -5,12 +5,18 @@
 ## FieldOption type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Known field options that can be validated.
 
 **Signature:**
 
 ```typescript
-export type FieldOption = "label" | "placeholder" | "required" | "minValue" | "maxValue" | "minItems" | "maxItems";
+export type FieldOption =
+  | "label"
+  | "placeholder"
+  | "required"
+  | "minValue"
+  | "maxValue"
+  | "minItems"
+  | "maxItems";
 ```

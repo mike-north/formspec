@@ -18,32 +18,26 @@ export declare function defineExtension(def: ExtensionDefinition): ExtensionDefi
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 def
 
-
 </td><td>
 
 [ExtensionDefinition](./core.extensiondefinition.md)
 
-
 </td><td>
 
 The extension definition.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The extension definition.
 [ExtensionDefinition](./core.extensiondefinition.md)
 
 The same definition, validated at the type level.
-

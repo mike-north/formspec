@@ -9,7 +9,9 @@ Validates an unknown manifest payload from disk before consumers trust it.
 **Signature:**
 
 ```typescript
-export declare function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
+export declare function isFormSpecAnalysisManifest(
+  value: unknown
+): value is FormSpecAnalysisManifest;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isFormSpecAnalysisManifest(value: unknown): value is For
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 value
 
-
 </td><td>
 
 unknown
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ unknown
 **Returns:**
 
 value is [FormSpecAnalysisManifest](./analysis.formspecanalysismanifest.md)
-

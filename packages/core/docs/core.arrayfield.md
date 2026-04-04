@@ -11,7 +11,7 @@ Use this for lists of values (e.g., multiple addresses, line items).
 **Signature:**
 
 ```typescript
-export interface ArrayField<N extends string, Items extends readonly FormElement[]> 
+export interface ArrayField<N extends string, Items extends readonly FormElement[]>
 ```
 
 ## Properties
@@ -20,190 +20,153 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./core.arrayfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "array"
 
-
 </td><td>
 
 Field type discriminator - identifies this as an array field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./core.arrayfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [items](./core.arrayfield.items.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Items
 
-
 </td><td>
 
 Form elements that define the schema for each array item
-
 
 </td></tr>
 <tr><td>
 
 [label?](./core.arrayfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [maxItems?](./core.arrayfield.maxitems.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Maximum number of items allowed
-
 
 </td></tr>
 <tr><td>
 
 [minItems?](./core.arrayfield.minitems.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Minimum number of items required
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.arrayfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [required?](./core.arrayfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

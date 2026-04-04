@@ -9,7 +9,11 @@ Builds a schema type from extracted fields.
 **Signature:**
 
 ```typescript
-export type BuildSchema<Fields> = { [N in Fields extends { name: infer K extends string } ? K : never]: InferFieldValue<Extract<Fields, { name: N } & AnyField>> };
+export type BuildSchema<Fields> = {
+  [N in Fields extends { name: infer K extends string } ? K : never]: InferFieldValue<
+    Extract<Fields, { name: N } & AnyField>
+  >;
+};
 ```
-**References:** [InferFieldValue](./formspec.inferfieldvalue.md)<!-- -->, [AnyField](./formspec.anyfield.md)
 
+**References:** [InferFieldValue](./formspec.inferfieldvalue.md)<!-- -->, [AnyField](./formspec.anyfield.md)

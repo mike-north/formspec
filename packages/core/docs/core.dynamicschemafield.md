@@ -9,7 +9,7 @@ A field that loads its schema dynamically (e.g., from an extension).
 **Signature:**
 
 ```typescript
-export interface DynamicSchemaField<N extends string> 
+export interface DynamicSchemaField<N extends string>
 ```
 
 ## Properties
@@ -18,169 +18,136 @@ export interface DynamicSchemaField<N extends string>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./core.dynamicschemafield._field.md)
 
-
 </td><td>
 
 `readonly`
 
-
 </td><td>
 
-"dynamic\_schema"
-
+"dynamic_schema"
 
 </td><td>
 
 Field type discriminator - identifies this as a dynamic schema field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./core.dynamicschemafield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./core.dynamicschemafield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.dynamicschemafield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [params?](./core.dynamicschemafield.params.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 _(Optional)_ Field names whose values are needed to configure the schema
-
 
 </td></tr>
 <tr><td>
 
 [required?](./core.dynamicschemafield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
-
 
 </td></tr>
 <tr><td>
 
 [schemaSource](./core.dynamicschemafield.schemasource.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Identifier for the schema source
 
-
 </td></tr>
 </tbody></table>
-

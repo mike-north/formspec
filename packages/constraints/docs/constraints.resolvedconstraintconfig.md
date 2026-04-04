@@ -9,7 +9,7 @@ Fully resolved constraint configuration with all properties required. This is th
 **Signature:**
 
 ```typescript
-export interface ResolvedConstraintConfig 
+export interface ResolvedConstraintConfig
 ```
 
 ## Properties
@@ -18,107 +18,82 @@ export interface ResolvedConstraintConfig
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [controlOptions](./constraints.resolvedconstraintconfig.controloptions.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[ControlOptionConstraints](./constraints.controloptionconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [fieldOptions](./constraints.resolvedconstraintconfig.fieldoptions.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[FieldOptionConstraints](./constraints.fieldoptionconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [fieldTypes](./constraints.resolvedconstraintconfig.fieldtypes.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[FieldTypeConstraints](./constraints.fieldtypeconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [layout](./constraints.resolvedconstraintconfig.layout.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[LayoutConstraints](./constraints.layoutconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [uiSchema](./constraints.resolvedconstraintconfig.uischema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ResolvedUISchemaConstraints](./constraints.resolveduischemaconstraints.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

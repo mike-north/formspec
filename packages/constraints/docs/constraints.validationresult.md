@@ -9,7 +9,7 @@ Result of validating a FormSpec or schema against constraints.
 **Signature:**
 
 ```typescript
-export interface ValidationResult 
+export interface ValidationResult
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface ValidationResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [issues](./constraints.validationresult.issues.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ValidationIssue](./constraints.validationissue.md)<!-- -->\[\]
 
-
 </td><td>
 
 List of all issues found
-
 
 </td></tr>
 <tr><td>
 
 [valid](./constraints.validationresult.valid.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether validation passed (no errors, warnings OK)
 
-
 </td></tr>
 </tbody></table>
-

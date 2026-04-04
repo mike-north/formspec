@@ -9,5 +9,18 @@ Type of a built-in constraint name.
 **Signature:**
 
 ```typescript
-export type BuiltinConstraintName = "minimum" | "maximum" | "exclusiveMinimum" | "exclusiveMaximum" | "multipleOf" | "minLength" | "maxLength" | "minItems" | "maxItems" | "uniqueItems" | "pattern" | "const" | "enumOptions";
+export type BuiltinConstraintName =
+  | "minimum"
+  | "maximum"
+  | "exclusiveMinimum"
+  | "exclusiveMaximum"
+  | "multipleOf"
+  | "minLength"
+  | "maxLength"
+  | "minItems"
+  | "maxItems"
+  | "uniqueItems"
+  | "pattern"
+  | "const"
+  | "enumOptions";
 ```

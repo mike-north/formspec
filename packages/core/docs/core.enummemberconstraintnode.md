@@ -5,14 +5,13 @@
 ## EnumMemberConstraintNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Enum member subset constraint that only narrows the allowed member set.
 
 **Signature:**
 
 ```typescript
-export interface EnumMemberConstraintNode 
+export interface EnumMemberConstraintNode
 ```
 
 ## Properties
@@ -21,127 +20,102 @@ export interface EnumMemberConstraintNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintKind](./core.enummemberconstraintnode.constraintkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "allowedMembers"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.enummemberconstraintnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "constraint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [members](./core.enummemberconstraintnode.members.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly (string \| number)\[\]
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [path?](./core.enummemberconstraintnode.path.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [PathTarget](./core.pathtarget.md)
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.enummemberconstraintnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

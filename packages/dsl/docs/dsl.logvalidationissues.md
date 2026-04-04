@@ -18,48 +18,39 @@ export declare function logValidationIssues(result: ValidationResult, formName?:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 result
 
-
 </td><td>
 
 [ValidationResult](./dsl.validationresult.md)
 
-
 </td><td>
 
 The validation result to log
-
 
 </td></tr>
 <tr><td>
 
 formName
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Optional name for the form (for better error messages)
-
 
 </td></tr>
 </tbody></table>
@@ -67,4 +58,3 @@ _(Optional)_ Optional name for the form (for better error messages)
 **Returns:**
 
 void
-

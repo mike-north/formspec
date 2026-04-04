@@ -9,7 +9,7 @@ JSONForms rule constraints.
 **Signature:**
 
 ```typescript
-export interface RuleConstraints 
+export interface RuleConstraints
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface RuleConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [effects?](./constraints.ruleconstraints.effects.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleEffectConstraints](./constraints.ruleeffectconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Fine-grained control over rule effects
-
 
 </td></tr>
 <tr><td>
 
 [enabled?](./constraints.ruleconstraints.enabled.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ Whether rules are enabled at all
 
-
 </td></tr>
 </tbody></table>
-

@@ -5,14 +5,13 @@
 ## CustomConstraintNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Extension-registered custom constraint.
 
 **Signature:**
 
 ```typescript
-export interface CustomConstraintNode 
+export interface CustomConstraintNode
 ```
 
 ## Properties
@@ -21,169 +20,136 @@ export interface CustomConstraintNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [compositionRule](./core.customconstraintnode.compositionrule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "intersect" \| "override"
 
-
 </td><td>
 
 **_(BETA)_** How this constraint composes with others of the same `constraintId`<!-- -->.
-
 
 </td></tr>
 <tr><td>
 
 [constraintId](./core.customconstraintnode.constraintid.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** Extension-qualified ID: `"<vendor-prefix>/<extension-name>/<constraint-name>"`
-
 
 </td></tr>
 <tr><td>
 
 [constraintKind](./core.customconstraintnode.constraintkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "custom"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.customconstraintnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "constraint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [path?](./core.customconstraintnode.path.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [PathTarget](./core.pathtarget.md)
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [payload](./core.customconstraintnode.payload.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [JsonValue](./core.jsonvalue.md)
 
-
 </td><td>
 
 **_(BETA)_** JSON-serializable payload defined by the extension.
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.customconstraintnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

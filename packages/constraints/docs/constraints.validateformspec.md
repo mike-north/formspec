@@ -9,7 +9,10 @@ Validates a complete FormSpec against constraints.
 **Signature:**
 
 ```typescript
-export declare function validateFormSpec(formSpec: FormSpec<readonly FormElement[]>, options?: FormSpecValidationOptions): ValidationResult;
+export declare function validateFormSpec(
+  formSpec: FormSpec<readonly FormElement[]>,
+  options?: FormSpecValidationOptions
+): ValidationResult;
 ```
 
 ## Parameters
@@ -18,48 +21,39 @@ export declare function validateFormSpec(formSpec: FormSpec<readonly FormElement
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 formSpec
 
-
 </td><td>
 
 [FormSpec](./constraints.formspec.md)<!-- -->&lt;readonly [FormElement](./constraints.formelement.md)<!-- -->\[\]&gt;
 
-
 </td><td>
 
 The FormSpec to validate
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [FormSpecValidationOptions](./constraints.formspecvalidationoptions.md)
 
-
 </td><td>
 
 _(Optional)_ Validation options including constraints
-
 
 </td></tr>
 </tbody></table>
@@ -69,4 +63,3 @@ _(Optional)_ Validation options including constraints
 [ValidationResult](./constraints.validationresult.md)
 
 Validation result with all issues found
-

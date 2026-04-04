@@ -11,7 +11,10 @@ All generation routes through the canonical IR. The chain DSL is first canonical
 **Signature:**
 
 ```typescript
-export declare function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
+export declare function generateJsonSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: GenerateJsonSchemaOptions
+): JsonSchema2020;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function generateJsonSchema<E extends readonly FormElement[]>(for
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./build.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
 
 The FormSpec to convert
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [GenerateJsonSchemaOptions](./build.generatejsonschemaoptions.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 </tbody></table>
@@ -74,11 +68,10 @@ A JSON Schema 2020-12 object
 
 ## Example
 
-
 ```typescript
 const form = formspec(
   field.text("name", { label: "Name", required: true }),
-  field.number("age", { min: 0 }),
+  field.number("age", { min: 0 })
 );
 
 const schema = generateJsonSchema(form);
@@ -92,4 +85,3 @@ const schema = generateJsonSchema(form);
 //   required: ["name"]
 // }
 ```
-

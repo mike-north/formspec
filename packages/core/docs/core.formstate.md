@@ -9,7 +9,7 @@ Represents the runtime state of an entire form.
 **Signature:**
 
 ```typescript
-export interface FormState<Schema extends Record<string, unknown>> 
+export interface FormState<Schema extends Record<string, unknown>>
 ```
 
 ## Properties
@@ -18,106 +18,85 @@ export interface FormState<Schema extends Record<string, unknown>>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [dirty](./core.formstate.dirty.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether any field has been modified
-
 
 </td></tr>
 <tr><td>
 
 [fields](./core.formstate.fields.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 { readonly \[K in keyof Schema\]: [FieldState](./core.fieldstate.md)<!-- -->&lt;Schema\[K\]&gt;; }
 
-
 </td><td>
 
 State for each field, keyed by field name
-
 
 </td></tr>
 <tr><td>
 
 [submitting](./core.formstate.submitting.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether the form is currently being submitted
-
 
 </td></tr>
 <tr><td>
 
 [validity](./core.formstate.validity.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Validity](./core.validity.md)
 
-
 </td><td>
 
 Overall form validity (derived from all field validities)
 
-
 </td></tr>
 </tbody></table>
-

@@ -5,14 +5,13 @@
 ## FieldNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A single form field after canonicalization.
 
 **Signature:**
 
 ```typescript
-export interface FieldNode 
+export interface FieldNode
 ```
 
 ## Properties
@@ -21,190 +20,153 @@ export interface FieldNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotations](./core.fieldnode.annotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [AnnotationNode](./core.annotationnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Value-influencing annotations, after merging.
-
 
 </td></tr>
 <tr><td>
 
 [constraints](./core.fieldnode.constraints.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ConstraintNode](./core.constraintnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Set-influencing constraints, after merging.
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.fieldnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [mergeHistory?](./core.fieldnode.mergehistory.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly { readonly node: [ConstraintNode](./core.constraintnode.md) \| [AnnotationNode](./core.annotationnode.md)<!-- -->; readonly dominated: boolean; }\[\]
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Debug only — ordered list of constraint/annotation nodes that participated in merging, including dominated ones.
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.fieldnode.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** The field's key in the data schema.
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.fieldnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_** Where this field was declared.
-
 
 </td></tr>
 <tr><td>
 
 [required](./core.fieldnode.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 **_(BETA)_** Whether this field is required in the data schema.
-
 
 </td></tr>
 <tr><td>
 
 [type](./core.fieldnode.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [TypeNode](./core.typenode.md)
 
-
 </td><td>
 
 **_(BETA)_** The resolved type of this field.
 
-
 </td></tr>
 </tbody></table>
-

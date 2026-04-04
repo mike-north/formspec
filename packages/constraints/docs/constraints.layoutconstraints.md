@@ -9,7 +9,7 @@ Layout and structure constraints - control grouping, conditionals, nesting.
 **Signature:**
 
 ```typescript
-export interface LayoutConstraints 
+export interface LayoutConstraints
 ```
 
 ## Properties
@@ -18,79 +18,62 @@ export interface LayoutConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [conditionals?](./constraints.layoutconstraints.conditionals.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ when() - conditional field visibility
-
 
 </td></tr>
 <tr><td>
 
 [group?](./constraints.layoutconstraints.group.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ group() - visual grouping of fields
-
 
 </td></tr>
 <tr><td>
 
 [maxNestingDepth?](./constraints.layoutconstraints.maxnestingdepth.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Maximum nesting depth for objects/arrays (0 = flat only)
 
-
 </td></tr>
 </tbody></table>
-

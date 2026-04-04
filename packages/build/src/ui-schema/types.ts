@@ -17,7 +17,7 @@ export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 /**
  * UI Schema element types.
  *
- * @internal
+ * @public
  */
 export type UISchemaElementType =
   | "Control"
@@ -247,7 +247,7 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
  * derived from Zod) because it is the base of a discriminated union, not
  * a union member itself.
  *
- * @internal
+ * @public
  */
 export interface UISchemaElementBase {
   /** Discriminator for the concrete JSON Forms element type. */

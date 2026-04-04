@@ -4,7 +4,6 @@
 
 ## FormSpecTargetKind type
 
-
 **Signature:**
 
 ```typescript

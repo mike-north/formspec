@@ -4,11 +4,10 @@
 
 ## CommentSpan interface
 
-
 **Signature:**
 
 ```typescript
-export interface CommentSpan 
+export interface CommentSpan
 ```
 
 ## Properties
@@ -17,60 +16,47 @@ export interface CommentSpan
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [end](./analysis.commentspan.end.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [start](./analysis.commentspan.start.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

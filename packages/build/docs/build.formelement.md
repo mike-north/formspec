@@ -9,7 +9,10 @@ Union of all form element types (fields and structural elements).
 **Signature:**
 
 ```typescript
-export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
+export type FormElement =
+  | AnyField
+  | Group<readonly FormElement[]>
+  | Conditional<string, unknown, readonly FormElement[]>;
 ```
-**References:** [AnyField](./build.anyfield.md)<!-- -->, [Group](./build.group.md)<!-- -->, [FormElement](./build.formelement.md)<!-- -->, [Conditional](./build.conditional.md)
 
+**References:** [AnyField](./build.anyfield.md)<!-- -->, [Group](./build.group.md)<!-- -->, [FormElement](./build.formelement.md)<!-- -->, [Conditional](./build.conditional.md)

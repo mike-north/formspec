@@ -9,7 +9,12 @@ Extracts fields from an array of elements.
 **Signature:**
 
 ```typescript
-export type ExtractFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractFields<First> | ExtractFieldsFromArray<Rest> : never;
+export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractFields<First> | ExtractFieldsFromArray<Rest>
+  : never;
 ```
-**References:** [ExtractFields](./formspec.extractfields.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)
 
+**References:** [ExtractFields](./formspec.extractfields.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)

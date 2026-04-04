@@ -5,14 +5,13 @@
 ## FormatAnnotationNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Schema format annotation, for example `email`<!-- -->, `date`<!-- -->, or `uri`<!-- -->.
 
 **Signature:**
 
 ```typescript
-export interface FormatAnnotationNode 
+export interface FormatAnnotationNode
 ```
 
 ## Properties
@@ -21,106 +20,85 @@ export interface FormatAnnotationNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationKind](./core.formatannotationnode.annotationkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "format"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.formatannotationnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "annotation"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.formatannotationnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.formatannotationnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

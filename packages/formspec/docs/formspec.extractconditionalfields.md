@@ -9,7 +9,13 @@ Extracts fields that are inside conditionals.
 **Signature:**
 
 ```typescript
-export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+export type ExtractConditionalFields<E> = E extends AnyField
+  ? never
+  : E extends Group<infer Elements>
+    ? ExtractConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
 ```
-**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)
 
+**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)

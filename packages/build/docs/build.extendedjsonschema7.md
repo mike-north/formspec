@@ -5,7 +5,6 @@
 ## ExtendedJSONSchema7 type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 JSON Schema with FormSpec extension properties for arbitrary `x-formspec-*` keys.
 
@@ -14,5 +13,5 @@ JSON Schema with FormSpec extension properties for arbitrary `x-formspec-*` keys
 ```typescript
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
 ```
-**References:** [JSONSchema7](./build.jsonschema7.md)<!-- -->, [FormSpecSchemaExtensions](./build.formspecschemaextensions.md)
 
+**References:** [JSONSchema7](./build.jsonschema7.md)<!-- -->, [FormSpecSchemaExtensions](./build.formspecschemaextensions.md)

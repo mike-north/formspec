@@ -9,7 +9,14 @@ Extracts dynamic data-source names referenced by a single FormSpec element.
 **Signature:**
 
 ```typescript
-export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
+export type ExtractDynamicSources<E> =
+  E extends DynamicEnumField<string, infer S>
+    ? S
+    : E extends Group<infer Elements>
+      ? ExtractDynamicSourcesFromArray<Elements>
+      : E extends Conditional<string, unknown, infer Elements>
+        ? ExtractDynamicSourcesFromArray<Elements>
+        : never;
 ```
-**References:** [DynamicEnumField](./formspec.dynamicenumfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractDynamicSourcesFromArray](./formspec.extractdynamicsourcesfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)
 
+**References:** [DynamicEnumField](./formspec.dynamicenumfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractDynamicSourcesFromArray](./formspec.extractdynamicsourcesfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)

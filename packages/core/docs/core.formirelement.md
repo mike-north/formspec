@@ -5,7 +5,6 @@
 ## FormIRElement type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Union of all IR element types.
 
@@ -14,5 +13,5 @@ Union of all IR element types.
 ```typescript
 export type FormIRElement = FieldNode | LayoutNode;
 ```
-**References:** [FieldNode](./core.fieldnode.md)<!-- -->, [LayoutNode](./core.layoutnode.md)
 
+**References:** [FieldNode](./core.fieldnode.md)<!-- -->, [LayoutNode](./core.layoutnode.md)

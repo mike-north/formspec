@@ -9,23 +9,29 @@ Extracts fields that are NOT inside conditionals. These fields are always visibl
 **Signature:**
 
 ```typescript
-export type ExtractNonConditionalFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractNonConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer _Elements> ? never : never;
+export type ExtractNonConditionalFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractNonConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer _Elements>
+      ? never
+      : never;
 ```
+
 **References:** [AnyField](./dsl.anyfield.md)<!-- -->, [Group](./dsl.group.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./dsl.extractnonconditionalfieldsfromarray.md)<!-- -->, [Conditional](./dsl.conditional.md)
 
 ## Example
 
-
 ```typescript
 // Given a form with conditional and non-conditional fields:
 const form = formspec(
-  field.text("name"),           // non-conditional
-  field.number("age"),          // non-conditional
-  when(is("type", "business"),
-    field.text("company"),      // conditional (skipped)
-  ),
+  field.text("name"), // non-conditional
+  field.number("age"), // non-conditional
+  when(
+    is("type", "business"),
+    field.text("company") // conditional (skipped)
+  )
 );
 
 // ExtractNonConditionalFields extracts: TextField<"name"> | NumberField<"age">
 ```
-

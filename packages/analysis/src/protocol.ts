@@ -17,10 +17,7 @@ export type {
   FormSpecSerializedTagSemanticContext,
   FormSpecSerializedTagSignature,
 } from "./semantic-protocol.js";
-export type {
-  CommentSourceSpan,
-  CommentSpan,
-} from "./comment-syntax.js";
+export type { CommentSourceSpan, CommentSpan } from "./comment-syntax.js";
 export type { FormSpecPlacement, FormSpecTargetKind } from "./tag-registry.js";
 export {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,

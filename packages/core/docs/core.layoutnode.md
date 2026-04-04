@@ -5,7 +5,6 @@
 ## LayoutNode type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Union of layout node types.
 
@@ -14,5 +13,5 @@ Union of layout node types.
 ```typescript
 export type LayoutNode = GroupLayoutNode | ConditionalLayoutNode;
 ```
-**References:** [GroupLayoutNode](./core.grouplayoutnode.md)<!-- -->, [ConditionalLayoutNode](./core.conditionallayoutnode.md)
 
+**References:** [GroupLayoutNode](./core.grouplayoutnode.md)<!-- -->, [ConditionalLayoutNode](./core.conditionallayoutnode.md)

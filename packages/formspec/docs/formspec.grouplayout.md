@@ -9,7 +9,7 @@ A group element with a label.
 **Signature:**
 
 ```typescript
-export declare interface GroupLayout 
+export declare interface GroupLayout
 ```
 
 ## Properties
@@ -18,121 +18,96 @@ export declare interface GroupLayout
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./formspec.grouplayout.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./formspec.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label](./formspec.grouplayout.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./formspec.grouplayout.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./formspec.grouplayout.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./formspec.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./formspec.grouplayout.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Group"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

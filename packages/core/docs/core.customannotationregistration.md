@@ -11,7 +11,7 @@ Custom annotations are referenced by FormSpec's internal custom-annotation nodes
 **Signature:**
 
 ```typescript
-export interface CustomAnnotationRegistration 
+export interface CustomAnnotationRegistration
 ```
 
 ## Properties
@@ -20,64 +20,51 @@ export interface CustomAnnotationRegistration
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationName](./core.customannotationregistration.annotationname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The annotation name, unique within the extension.
-
 
 </td></tr>
 <tr><td>
 
 [toJsonSchema?](./core.customannotationregistration.tojsonschema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 (value: [ExtensionPayloadValue](./core.extensionpayloadvalue.md)<!-- -->, vendorPrefix: string) =&gt; Record&lt;string, unknown&gt;
 
-
 </td><td>
 
 _(Optional)_ Optionally converts the annotation value into JSON Schema keywords. If omitted, the annotation has no JSON Schema representation (UI-only).
 
-
 </td></tr>
 </tbody></table>
-

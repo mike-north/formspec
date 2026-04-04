@@ -9,7 +9,7 @@ Response from a data source resolver function.
 **Signature:**
 
 ```typescript
-export declare interface FetchOptionsResponse<T = unknown> 
+export declare interface FetchOptionsResponse<T = unknown>
 ```
 
 ## Properties
@@ -18,85 +18,68 @@ export declare interface FetchOptionsResponse<T = unknown>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [message?](./formspec.fetchoptionsresponse.message.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Optional message (e.g., error description)
-
 
 </td></tr>
 <tr><td>
 
 [options](./formspec.fetchoptionsresponse.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [DataSourceOption](./formspec.datasourceoption.md)<!-- -->&lt;T&gt;\[\]
 
-
 </td><td>
 
 The available options
-
 
 </td></tr>
 <tr><td>
 
 [validity](./formspec.fetchoptionsresponse.validity.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "valid" \| "invalid" \| "unknown"
 
-
 </td><td>
 
 Validity state of the fetch operation
 
-
 </td></tr>
 </tbody></table>
-

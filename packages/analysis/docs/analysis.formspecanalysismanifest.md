@@ -9,7 +9,7 @@ Discovery record written by the tsserver plugin so other FormSpec tooling can lo
 **Signature:**
 
 ```typescript
-export interface FormSpecAnalysisManifest 
+export interface FormSpecAnalysisManifest
 ```
 
 ## Properties
@@ -18,193 +18,152 @@ export interface FormSpecAnalysisManifest
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [analysisSchemaVersion](./analysis.formspecanalysismanifest.analysisschemaversion.md)
 
-
 </td><td>
 
 `readonly`
 
-
 </td><td>
 
-typeof [FORMSPEC\_ANALYSIS\_SCHEMA\_VERSION](./analysis.formspec_analysis_schema_version.md)
-
+typeof [FORMSPEC_ANALYSIS_SCHEMA_VERSION](./analysis.formspec_analysis_schema_version.md)
 
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [endpoint](./analysis.formspecanalysismanifest.endpoint.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [FormSpecIpcEndpoint](./analysis.formspecipcendpoint.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [extensionFingerprint](./analysis.formspecanalysismanifest.extensionfingerprint.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [generation](./analysis.formspecanalysismanifest.generation.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [protocolVersion](./analysis.formspecanalysismanifest.protocolversion.md)
 
-
 </td><td>
 
 `readonly`
 
-
 </td><td>
 
-typeof [FORMSPEC\_ANALYSIS\_PROTOCOL\_VERSION](./analysis.formspec_analysis_protocol_version.md)
-
+typeof [FORMSPEC_ANALYSIS_PROTOCOL_VERSION](./analysis.formspec_analysis_protocol_version.md)
 
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [typescriptVersion](./analysis.formspecanalysismanifest.typescriptversion.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [updatedAt](./analysis.formspecanalysismanifest.updatedat.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [workspaceId](./analysis.formspecanalysismanifest.workspaceid.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [workspaceRoot](./analysis.formspecanalysismanifest.workspaceroot.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -11,11 +11,10 @@ Extend this interface via module augmentation to register your data sources:
 **Signature:**
 
 ```typescript
-export declare interface DataSourceRegistry 
+export declare interface DataSourceRegistry
 ```
 
 ## Example
-
 
 ```typescript
 declare module "@formspec/core" {
@@ -25,4 +24,3 @@ declare module "@formspec/core" {
   }
 }
 ```
-

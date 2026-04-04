@@ -9,8 +9,9 @@ Options for generating schemas from a decorated class.
 **Signature:**
 
 ```typescript
-export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions 
+export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions
 ```
+
 **Extends:** [StaticSchemaGenerationOptions](./build.staticschemagenerationoptions.md)
 
 ## Properties
@@ -19,60 +20,47 @@ export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [className](./build.generatefromclassoptions.classname.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Class name to analyze
-
 
 </td></tr>
 <tr><td>
 
 [filePath](./build.generatefromclassoptions.filepath.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Path to the TypeScript source file
 
-
 </td></tr>
 </tbody></table>
-

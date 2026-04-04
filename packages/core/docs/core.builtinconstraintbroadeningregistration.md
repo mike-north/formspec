@@ -9,7 +9,7 @@ Registration for mapping a built-in TSDoc tag onto a custom constraint when it i
 **Signature:**
 
 ```typescript
-export interface BuiltinConstraintBroadeningRegistration 
+export interface BuiltinConstraintBroadeningRegistration
 ```
 
 ## Properties
@@ -18,85 +18,68 @@ export interface BuiltinConstraintBroadeningRegistration
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintName](./core.builtinconstraintbroadeningregistration.constraintname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The custom constraint to emit for this built-in tag.
-
 
 </td></tr>
 <tr><td>
 
 [parseValue](./core.builtinconstraintbroadeningregistration.parsevalue.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 (raw: string) =&gt; [ExtensionPayloadValue](./core.extensionpayloadvalue.md)
 
-
 </td><td>
 
 Parser from raw TSDoc text to extension payload.
-
 
 </td></tr>
 <tr><td>
 
 [tagName](./core.builtinconstraintbroadeningregistration.tagname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [BuiltinConstraintName](./core.builtinconstraintname.md)
 
-
 </td><td>
 
 The built-in tag being broadened, without the `@` prefix.
 
-
 </td></tr>
 </tbody></table>
-

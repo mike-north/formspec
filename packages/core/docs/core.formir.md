@@ -5,7 +5,6 @@
 ## FormIR interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 The complete Canonical Intermediate Representation for a form.
 
@@ -16,7 +15,7 @@ Serializable to JSON — no live compiler objects.
 **Signature:**
 
 ```typescript
-export interface FormIR 
+export interface FormIR
 ```
 
 ## Properties
@@ -25,169 +24,136 @@ export interface FormIR
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotations?](./core.formir.annotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [AnnotationNode](./core.annotationnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Root-level metadata for the form itself.
-
 
 </td></tr>
 <tr><td>
 
 [elements](./core.formir.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [FormIRElement](./core.formirelement.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Top-level elements of the form: fields and layout nodes.
-
 
 </td></tr>
 <tr><td>
 
 [irVersion](./core.formir.irversion.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** Schema version for the IR format itself. Should equal `IR_VERSION`<!-- -->.
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.formir.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "form-ir"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.formir.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_** Provenance of the form definition itself.
-
 
 </td></tr>
 <tr><td>
 
 [rootAnnotations?](./core.formir.rootannotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [AnnotationNode](./core.annotationnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Root-level annotations derived from the source declaration itself.
-
 
 </td></tr>
 <tr><td>
 
 [typeRegistry](./core.formir.typeregistry.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Readonly&lt;Record&lt;string, [TypeDefinition](./core.typedefinition.md)<!-- -->&gt;&gt;
 
-
 </td><td>
 
 **_(BETA)_** Registry of named types referenced by fields in this form. Keys are fully-qualified type names matching `ReferenceTypeNode.name`<!-- -->.
 
-
 </td></tr>
 </tbody></table>
-

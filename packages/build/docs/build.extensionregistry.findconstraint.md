@@ -18,32 +18,26 @@ findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 constraintId
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The fully-qualified constraint ID.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The fully-qualified constraint ID.
 [CustomConstraintRegistration](./build.customconstraintregistration.md) \| undefined
 
 The registration if found, otherwise `undefined`<!-- -->.
-

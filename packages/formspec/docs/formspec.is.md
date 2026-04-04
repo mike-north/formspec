@@ -9,7 +9,10 @@ Creates an equality predicate that checks if a field equals a specific value.
 **Signature:**
 
 ```typescript
-export declare function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
+export declare function is<const K extends string, const V>(
+  field: K,
+  value: V
+): EqualsPredicate<K, V>;
 ```
 
 ## Parameters
@@ -18,44 +21,35 @@ export declare function is<const K extends string, const V>(field: K, value: V):
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 field
 
-
 </td><td>
 
 K
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 value
 
-
 </td><td>
 
 V
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -63,4 +57,3 @@ V
 **Returns:**
 
 [EqualsPredicate](./formspec.equalspredicate.md)<!-- -->&lt;K, V&gt;
-

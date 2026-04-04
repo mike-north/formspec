@@ -5,14 +5,13 @@
 ## PathTarget interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A path targeting a sub-field within a complex type. Used by constraints and annotations to target nested properties.
 
 **Signature:**
 
 ```typescript
-export interface PathTarget 
+export interface PathTarget
 ```
 
 ## Properties
@@ -21,43 +20,34 @@ export interface PathTarget
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [segments](./core.pathtarget.segments.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 **_(BETA)_** Sequence of property names forming a path from the annotated field's type to the target sub-field. e.g., `["value"]` or `["address", "zip"]`
 
-
 </td></tr>
 </tbody></table>
-

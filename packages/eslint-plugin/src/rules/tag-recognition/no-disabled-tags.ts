@@ -6,8 +6,6 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
-type Options = [{ tags?: string[] }];
-
 function normalizeDisabledTagName(tagName: string): string {
   return tagName.charAt(0).toLowerCase() + tagName.slice(1);
 }
@@ -17,7 +15,7 @@ function normalizeDisabledTagName(tagName: string): string {
  *
  * @public
  */
-export const noDisabledTags = createRule<Options, "disabledTag">({
+export const noDisabledTags = createRule<[{ tags?: string[] }], "disabledTag">({
   name: "tag-recognition/no-disabled-tags",
   meta: {
     type: "problem",
@@ -43,7 +41,9 @@ export const noDisabledTags = createRule<Options, "disabledTag">({
   defaultOptions: [{}],
   create(context) {
     const [options] = context.options as readonly ({ tags?: string[] } | undefined)[];
-    const disabled = new Set((options?.tags ?? []).map((tagName) => normalizeDisabledTagName(tagName)));
+    const disabled = new Set(
+      (options?.tags ?? []).map((tagName) => normalizeDisabledTagName(tagName))
+    );
     return createDeclarationVisitor((node) => {
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
         if (!disabled.has(tag.normalizedName)) continue;

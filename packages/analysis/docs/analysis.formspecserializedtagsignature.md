@@ -9,7 +9,7 @@ Serializable overload/signature summary for one comment tag form.
 **Signature:**
 
 ```typescript
-export interface FormSpecSerializedTagSignature 
+export interface FormSpecSerializedTagSignature
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface FormSpecSerializedTagSignature
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [label](./analysis.formspecserializedtagsignature.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [placements](./analysis.formspecserializedtagsignature.placements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [FormSpecPlacement](./analysis.formspecplacement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

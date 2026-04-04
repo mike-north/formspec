@@ -9,20 +9,24 @@ Cursor-scoped completion context serialized for transport between the semantic t
 **Signature:**
 
 ```typescript
-export type FormSpecSerializedCompletionContext = {
-    readonly kind: "tag-name";
-    readonly prefix: string;
-    readonly availableTags: readonly FormSpecSerializedTagDefinition[];
-} | {
-    readonly kind: "target";
-    readonly semantic: FormSpecSerializedTagSemanticContext;
-} | {
-    readonly kind: "argument";
-    readonly semantic: FormSpecSerializedTagSemanticContext;
-    readonly valueLabels: readonly string[];
-} | {
-    readonly kind: "none";
-};
+export type FormSpecSerializedCompletionContext =
+  | {
+      readonly kind: "tag-name";
+      readonly prefix: string;
+      readonly availableTags: readonly FormSpecSerializedTagDefinition[];
+    }
+  | {
+      readonly kind: "target";
+      readonly semantic: FormSpecSerializedTagSemanticContext;
+    }
+  | {
+      readonly kind: "argument";
+      readonly semantic: FormSpecSerializedTagSemanticContext;
+      readonly valueLabels: readonly string[];
+    }
+  | {
+      readonly kind: "none";
+    };
 ```
-**References:** [FormSpecSerializedTagDefinition](./analysis.formspecserializedtagdefinition.md)<!-- -->, [FormSpecSerializedTagSemanticContext](./analysis.formspecserializedtagsemanticcontext.md)
 
+**References:** [FormSpecSerializedTagDefinition](./analysis.formspecserializedtagdefinition.md)<!-- -->, [FormSpecSerializedTagSemanticContext](./analysis.formspecserializedtagsemanticcontext.md)

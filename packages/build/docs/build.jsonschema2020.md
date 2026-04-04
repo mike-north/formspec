@@ -11,7 +11,7 @@ This interface covers the subset of JSON Schema 2020-12 that this generator emit
 **Signature:**
 
 ```typescript
-export interface JsonSchema2020 
+export interface JsonSchema2020
 ```
 
 ## Properties
@@ -20,573 +20,452 @@ export interface JsonSchema2020
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [$defs?](./build.jsonschema2020._defs.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, [JsonSchema2020](./build.jsonschema2020.md)<!-- -->&gt;
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [$ref?](./build.jsonschema2020._ref.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [$schema?](./build.jsonschema2020._schema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [additionalProperties?](./build.jsonschema2020.additionalproperties.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean \| [JsonSchema2020](./build.jsonschema2020.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [allOf?](./build.jsonschema2020.allof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly [JsonSchema2020](./build.jsonschema2020.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [anyOf?](./build.jsonschema2020.anyof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly [JsonSchema2020](./build.jsonschema2020.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [const?](./build.jsonschema2020.const.md)
 
-
 </td><td>
-
 
 </td><td>
 
 unknown
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [default?](./build.jsonschema2020.default.md)
 
-
 </td><td>
-
 
 </td><td>
 
 unknown
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [deprecated?](./build.jsonschema2020.deprecated.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [description?](./build.jsonschema2020.description.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [enum?](./build.jsonschema2020.enum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly (string \| number)\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMaximum?](./build.jsonschema2020.exclusivemaximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMinimum?](./build.jsonschema2020.exclusiveminimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [format?](./build.jsonschema2020.format.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [items?](./build.jsonschema2020.items.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [JsonSchema2020](./build.jsonschema2020.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [maximum?](./build.jsonschema2020.maximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [maxItems?](./build.jsonschema2020.maxitems.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [maxLength?](./build.jsonschema2020.maxlength.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minimum?](./build.jsonschema2020.minimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minItems?](./build.jsonschema2020.minitems.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minLength?](./build.jsonschema2020.minlength.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [multipleOf?](./build.jsonschema2020.multipleof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [oneOf?](./build.jsonschema2020.oneof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly [JsonSchema2020](./build.jsonschema2020.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [pattern?](./build.jsonschema2020.pattern.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [properties?](./build.jsonschema2020.properties.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, [JsonSchema2020](./build.jsonschema2020.md)<!-- -->&gt;
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [required?](./build.jsonschema2020.required.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [title?](./build.jsonschema2020.title.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type?](./build.jsonschema2020.type.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [uniqueItems?](./build.jsonschema2020.uniqueitems.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_
 
-
 </td></tr>
 </tbody></table>
-

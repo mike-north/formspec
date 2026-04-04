@@ -18,32 +18,26 @@ export declare function createInitialFieldState<T>(value: T): FieldState<T>;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 value
 
-
 </td><td>
 
 T
 
-
 </td><td>
 
 The initial value for the field
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The initial value for the field
 [FieldState](./formspec.fieldstate.md)<!-- -->&lt;T&gt;
 
 Initial field state
-

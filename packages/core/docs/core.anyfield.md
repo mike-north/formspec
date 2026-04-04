@@ -9,7 +9,15 @@ Union of all field types.
 **Signature:**
 
 ```typescript
-export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
+export type AnyField =
+  | TextField<string>
+  | NumberField<string>
+  | BooleanField<string>
+  | StaticEnumField<string, readonly EnumOptionValue[]>
+  | DynamicEnumField<string, string>
+  | DynamicSchemaField<string>
+  | ArrayField<string, readonly FormElement[]>
+  | ObjectField<string, readonly FormElement[]>;
 ```
-**References:** [TextField](./core.textfield.md)<!-- -->, [NumberField](./core.numberfield.md)<!-- -->, [BooleanField](./core.booleanfield.md)<!-- -->, [StaticEnumField](./core.staticenumfield.md)<!-- -->, [EnumOptionValue](./core.enumoptionvalue.md)<!-- -->, [DynamicEnumField](./core.dynamicenumfield.md)<!-- -->, [DynamicSchemaField](./core.dynamicschemafield.md)<!-- -->, [ArrayField](./core.arrayfield.md)<!-- -->, [FormElement](./core.formelement.md)<!-- -->, [ObjectField](./core.objectfield.md)
 
+**References:** [TextField](./core.textfield.md)<!-- -->, [NumberField](./core.numberfield.md)<!-- -->, [BooleanField](./core.booleanfield.md)<!-- -->, [StaticEnumField](./core.staticenumfield.md)<!-- -->, [EnumOptionValue](./core.enumoptionvalue.md)<!-- -->, [DynamicEnumField](./core.dynamicenumfield.md)<!-- -->, [DynamicSchemaField](./core.dynamicschemafield.md)<!-- -->, [ArrayField](./core.arrayfield.md)<!-- -->, [FormElement](./core.formelement.md)<!-- -->, [ObjectField](./core.objectfield.md)

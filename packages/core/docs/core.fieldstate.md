@@ -9,7 +9,7 @@ Represents the runtime state of a single form field.
 **Signature:**
 
 ```typescript
-export interface FieldState<T> 
+export interface FieldState<T>
 ```
 
 ## Properties
@@ -18,127 +18,102 @@ export interface FieldState<T>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [dirty](./core.fieldstate.dirty.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether the field has been modified by the user
-
 
 </td></tr>
 <tr><td>
 
 [errors](./core.fieldstate.errors.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 Validation error messages, if any
-
 
 </td></tr>
 <tr><td>
 
 [touched](./core.fieldstate.touched.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether the field has been focused and blurred
-
 
 </td></tr>
 <tr><td>
 
 [validity](./core.fieldstate.validity.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Validity](./core.validity.md)
 
-
 </td><td>
 
 Current validity state
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.fieldstate.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 T
 
-
 </td><td>
 
 Current value of the field
 
-
 </td></tr>
 </tbody></table>
-

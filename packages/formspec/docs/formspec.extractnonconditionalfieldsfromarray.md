@@ -9,7 +9,12 @@ Extracts non-conditional fields from an array of elements.
 **Signature:**
 
 ```typescript
-export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
+export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
+  : never;
 ```
-**References:** [ExtractNonConditionalFields](./formspec.extractnonconditionalfields.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)
 
+**References:** [ExtractNonConditionalFields](./formspec.extractnonconditionalfields.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)

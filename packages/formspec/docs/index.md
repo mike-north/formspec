@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [formspec](./formspec.md)
-
 
 </td><td>
 
@@ -28,7 +25,5 @@ FormSpec - Type-safe form specifications
 
 This package re-exports everything from the FormSpec library for convenience. You can import everything you need from a single package:
 
-
 </td></tr>
 </tbody></table>
-

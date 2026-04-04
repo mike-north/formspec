@@ -5,14 +5,16 @@
 ## validateFieldOptions() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Validates field options against constraints.
 
 **Signature:**
 
 ```typescript
-export declare function validateFieldOptions(context: FieldOptionsContext, constraints: FieldOptionConstraints): ValidationIssue[];
+export declare function validateFieldOptions(
+  context: FieldOptionsContext,
+  constraints: FieldOptionConstraints
+): ValidationIssue[];
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function validateFieldOptions(context: FieldOptionsContext, const
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 context
 
-
 </td><td>
 
 [FieldOptionsContext](./constraints.fieldoptionscontext.md)
 
-
 </td><td>
 
 Information about the field and its options
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldOptionConstraints](./constraints.fieldoptionconstraints.md)
 
-
 </td><td>
 
 Field option constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field option constraints
 [ValidationIssue](./constraints.validationissue.md)<!-- -->\[\]
 
 Array of validation issues (empty if valid)
-

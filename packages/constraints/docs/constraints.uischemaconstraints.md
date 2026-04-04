@@ -9,7 +9,7 @@ UI Schema feature constraints - control JSONForms-specific features.
 **Signature:**
 
 ```typescript
-export interface UISchemaConstraints 
+export interface UISchemaConstraints
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface UISchemaConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [layouts?](./constraints.uischemaconstraints.layouts.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [LayoutTypeConstraints](./constraints.layouttypeconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Layout type constraints
-
 
 </td></tr>
 <tr><td>
 
 [rules?](./constraints.uischemaconstraints.rules.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleConstraints](./constraints.ruleconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Rule (conditional) constraints
 
-
 </td></tr>
 </tbody></table>
-

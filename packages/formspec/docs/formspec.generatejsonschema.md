@@ -9,7 +9,10 @@ Generates a JSON Schema 2020-12 from a FormSpec.
 **Signature:**
 
 ```typescript
-export declare function generateJsonSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateJsonSchemaOptions): JsonSchema2020;
+export declare function generateJsonSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: GenerateJsonSchemaOptions
+): JsonSchema2020;
 ```
 
 ## Parameters
@@ -18,46 +21,37 @@ export declare function generateJsonSchema<E extends readonly FormElement[]>(for
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./formspec.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [GenerateJsonSchemaOptions](./formspec.generatejsonschemaoptions.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 </tbody></table>
@@ -65,4 +59,3 @@ _(Optional)_
 **Returns:**
 
 [JsonSchema2020](./formspec.jsonschema2020.md)
-

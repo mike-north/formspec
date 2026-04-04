@@ -9,7 +9,7 @@ Additional source location associated with a diagnostic.
 **Signature:**
 
 ```typescript
-export interface FormSpecAnalysisDiagnosticLocation 
+export interface FormSpecAnalysisDiagnosticLocation
 ```
 
 ## Properties
@@ -18,81 +18,64 @@ export interface FormSpecAnalysisDiagnosticLocation
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [filePath](./analysis.formspecanalysisdiagnosticlocation.filepath.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [message?](./analysis.formspecanalysisdiagnosticlocation.message.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [range](./analysis.formspecanalysisdiagnosticlocation.range.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

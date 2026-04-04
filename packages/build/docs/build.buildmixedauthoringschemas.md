@@ -11,7 +11,9 @@ Overlays are matched by field name. The static model wins for structure, orderin
 **Signature:**
 
 ```typescript
-export declare function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
+export declare function buildMixedAuthoringSchemas(
+  options: BuildMixedAuthoringSchemasOptions
+): MixedAuthoringSchemas;
 ```
 
 ## Parameters
@@ -20,30 +22,24 @@ export declare function buildMixedAuthoringSchemas(options: BuildMixedAuthoringS
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 options
 
-
 </td><td>
 
 [BuildMixedAuthoringSchemasOptions](./build.buildmixedauthoringschemasoptions.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -51,4 +47,3 @@ options
 **Returns:**
 
 [MixedAuthoringSchemas](./build.mixedauthoringschemas.md)
-

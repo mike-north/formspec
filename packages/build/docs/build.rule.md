@@ -9,7 +9,7 @@ Rule for conditional element visibility/enablement.
 **Signature:**
 
 ```typescript
-export interface Rule 
+export interface Rule
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface Rule
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [condition](./build.rule.condition.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [SchemaBasedCondition](./build.schemabasedcondition.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [effect](./build.rule.effect.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [RuleEffect](./build.ruleeffect.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -18,30 +18,24 @@ export declare function isField(element: FormElement): element is AnyField;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ element
 **Returns:**
 
 element is [AnyField](./core.anyfield.md)
-

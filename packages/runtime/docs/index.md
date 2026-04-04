@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/runtime](./runtime.md)
-
 
 </td><td>
 
@@ -28,7 +25,5 @@ Description
 
 This package provides utilities for working with FormSpec forms at runtime: - `defineResolvers()` - Type-safe resolver definitions for dynamic enum fields
 
-
 </td></tr>
 </tbody></table>
-

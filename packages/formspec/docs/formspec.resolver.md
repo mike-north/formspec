@@ -9,7 +9,9 @@ A resolver function that fetches options for a data source.
 **Signature:**
 
 ```typescript
-export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (params?: Record<string, unknown>) => Promise<FetchOptionsResponse<T>>;
+export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (
+  params?: Record<string, unknown>
+) => Promise<FetchOptionsResponse<T>>;
 ```
-**References:** [DataSourceRegistry](./formspec.datasourceregistry.md)<!-- -->, [FetchOptionsResponse](./formspec.fetchoptionsresponse.md)
 
+**References:** [DataSourceRegistry](./formspec.datasourceregistry.md)<!-- -->, [FetchOptionsResponse](./formspec.fetchoptionsresponse.md)

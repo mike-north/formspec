@@ -9,7 +9,7 @@ Complete constraint configuration for a FormSpec project.
 **Signature:**
 
 ```typescript
-export interface ConstraintConfig 
+export interface ConstraintConfig
 ```
 
 ## Properties
@@ -18,117 +18,92 @@ export interface ConstraintConfig
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [controlOptions?](./constraints.constraintconfig.controloptions.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ControlOptionConstraints](./constraints.controloptionconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Control options constraints
-
 
 </td></tr>
 <tr><td>
 
 [fieldOptions?](./constraints.constraintconfig.fieldoptions.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [FieldOptionConstraints](./constraints.fieldoptionconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Field configuration option constraints
-
 
 </td></tr>
 <tr><td>
 
 [fieldTypes?](./constraints.constraintconfig.fieldtypes.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [FieldTypeConstraints](./constraints.fieldtypeconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Field type constraints
-
 
 </td></tr>
 <tr><td>
 
 [layout?](./constraints.constraintconfig.layout.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [LayoutConstraints](./constraints.layoutconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ Layout and structure constraints
-
 
 </td></tr>
 <tr><td>
 
 [uiSchema?](./constraints.constraintconfig.uischema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [UISchemaConstraints](./constraints.uischemaconstraints.md)
 
-
 </td><td>
 
 _(Optional)_ UI Schema feature constraints
 
-
 </td></tr>
 </tbody></table>
-

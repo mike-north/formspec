@@ -9,7 +9,7 @@ A group element with a label.
 **Signature:**
 
 ```typescript
-export interface GroupLayout 
+export interface GroupLayout
 ```
 
 ## Properties
@@ -18,121 +18,96 @@ export interface GroupLayout
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./build.grouplayout.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./build.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label](./build.grouplayout.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.grouplayout.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.grouplayout.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.grouplayout.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Group"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

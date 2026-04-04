@@ -12,10 +12,12 @@ Maps field names to their inferred value types.
 
 ```typescript
 export type BuildSchema<Fields> = {
-    [F in Fields as F extends {
-        name: infer N extends string;
-    } ? N : never]: F extends AnyField ? InferFieldValue<F> : never;
+  [F in Fields as F extends {
+    name: infer N extends string;
+  }
+    ? N
+    : never]: F extends AnyField ? InferFieldValue<F> : never;
 };
 ```
-**References:** [AnyField](./dsl.anyfield.md)<!-- -->, [InferFieldValue](./dsl.inferfieldvalue.md)
 
+**References:** [AnyField](./dsl.anyfield.md)<!-- -->, [InferFieldValue](./dsl.inferfieldvalue.md)

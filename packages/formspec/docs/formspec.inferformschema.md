@@ -9,7 +9,8 @@ Infers the schema type from a FormSpec.
 **Signature:**
 
 ```typescript
-export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
+export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> =
+  F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 ```
-**References:** [FormSpec](./formspec.formspec.md)<!-- -->, [FormElement](./formspec.formelement.md)<!-- -->, [InferSchema](./formspec.inferschema.md)
 
+**References:** [FormSpec](./formspec.formspec.md)<!-- -->, [FormElement](./formspec.formelement.md)<!-- -->, [InferSchema](./formspec.inferschema.md)

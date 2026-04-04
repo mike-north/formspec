@@ -5,7 +5,6 @@
 ## ObjectTypeNode.additionalProperties property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Whether additional properties beyond those listed are permitted. Ordinary static object types default to true under the current spec. Explicitly closed-object modes may still set this to false.
 

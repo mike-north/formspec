@@ -5,14 +5,13 @@
 ## ObjectTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Object type with named properties.
 
 **Signature:**
 
 ```typescript
-export interface ObjectTypeNode 
+export interface ObjectTypeNode
 ```
 
 ## Properties
@@ -21,85 +20,68 @@ export interface ObjectTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [additionalProperties](./core.objecttypenode.additionalproperties.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 **_(BETA)_** Whether additional properties beyond those listed are permitted. Ordinary static object types default to true under the current spec. Explicitly closed-object modes may still set this to false.
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.objecttypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "object"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [properties](./core.objecttypenode.properties.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ObjectProperty](./core.objectproperty.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Named properties of this object. Order is preserved from the source declaration for deterministic output.
 
-
 </td></tr>
 </tbody></table>
-

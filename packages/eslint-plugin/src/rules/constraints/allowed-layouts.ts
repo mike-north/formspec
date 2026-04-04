@@ -15,16 +15,15 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
-type MessageIds = "disallowedGroup" | "disallowedConditional";
-
-export type Options = [LayoutConstraints];
-
 /**
  * ESLint rule that validates allowed layout constructs against project constraints.
  *
  * @public
  */
-export const allowedLayouts = createRule<Options, MessageIds>({
+export const allowedLayouts = createRule<
+  [LayoutConstraints],
+  "disallowedGroup" | "disallowedConditional"
+>({
   name: "constraints-allowed-layouts",
   meta: {
     type: "problem",

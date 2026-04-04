@@ -9,7 +9,7 @@ A Category element, used inside a Categorization layout.
 **Signature:**
 
 ```typescript
-export declare interface Category 
+export declare interface Category
 ```
 
 ## Properties
@@ -18,121 +18,96 @@ export declare interface Category
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./formspec.category.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./formspec.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label](./formspec.category.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./formspec.category.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./formspec.category.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./formspec.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./formspec.category.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Category"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -9,7 +9,7 @@ Options for creating a form specification.
 **Signature:**
 
 ```typescript
-export declare interface FormSpecOptions 
+export declare interface FormSpecOptions
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export declare interface FormSpecOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [name?](./formspec.formspecoptions.name.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Optional name for the form (used in validation messages).
-
 
 </td></tr>
 <tr><td>
 
 [validate?](./formspec.formspecoptions.validate.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean \| "warn" \| "throw"
 
-
 </td><td>
 
 _(Optional)_ Whether to validate the form structure. - `true` or `"warn"`<!-- -->: Validate and log warnings/errors to console - `"throw"`<!-- -->: Validate and throw an error if validation fails - `false`<!-- -->: Skip validation (default in production for performance)
 
-
 </td></tr>
 </tbody></table>
-

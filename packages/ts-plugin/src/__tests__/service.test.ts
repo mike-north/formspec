@@ -153,7 +153,9 @@ describe("FormSpecPluginService", () => {
 
     const runtimePaths = getFormSpecWorkspaceRuntimePaths(context.workspaceRoot);
     const manifestText = await fs.readFile(runtimePaths.manifestPath, "utf8");
-    expect(manifestText).toContain(`"protocolVersion": ${String(FORMSPEC_ANALYSIS_PROTOCOL_VERSION)}`);
+    expect(manifestText).toContain(
+      `"protocolVersion": ${String(FORMSPEC_ANALYSIS_PROTOCOL_VERSION)}`
+    );
 
     const response = await querySocket(runtimePaths.endpoint.address, {
       protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,

@@ -9,5 +9,12 @@ UI Schema element types.
 **Signature:**
 
 ```typescript
-export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
+export type UISchemaElementType =
+  | "Control"
+  | "VerticalLayout"
+  | "HorizontalLayout"
+  | "Group"
+  | "Categorization"
+  | "Category"
+  | "Label";
 ```

@@ -5,7 +5,6 @@
 ## ObjectProperty.constraints property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Use-site constraints on this property. Distinct from constraints on the property's type — these are use-site constraints (e.g., `@minimum :amount 0` targets the `amount` property of a `MonetaryAmount` field).
 

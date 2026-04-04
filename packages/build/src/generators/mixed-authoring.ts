@@ -7,16 +7,8 @@
  * dynamic enum or dynamic schema metadata.
  */
 
-import type {
-  FormElement,
-  FormSpec,
-} from "@formspec/core";
-import type {
-  AnnotationNode,
-  FieldNode,
-  FormIRElement,
-  TypeNode,
-} from "@formspec/core/internals";
+import type { FormElement, FormSpec } from "@formspec/core";
+import type { AnnotationNode, FieldNode, FormIRElement, TypeNode } from "@formspec/core/internals";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
@@ -29,7 +21,7 @@ import type { StaticSchemaGenerationOptions } from "./class-schema.js";
 /**
  * Result of generating schemas from a mixed-authoring composition.
  *
- * @internal
+ * @public
  */
 export interface MixedAuthoringSchemas {
   /** JSON Schema 2020-12 for validation. */
@@ -44,7 +36,7 @@ export interface MixedAuthoringSchemas {
  * The `typeName` can resolve to a class, interface, or object type alias, just
  * like `generateSchemas()`.
  *
- * @internal
+ * @public
  */
 export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file. */
@@ -64,7 +56,7 @@ export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGeneratio
  * field metadata such as dynamic enum or dynamic schema keywords, and may fill
  * in missing annotations.
  *
- * @internal
+ * @public
  */
 export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions

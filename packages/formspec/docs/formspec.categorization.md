@@ -9,7 +9,7 @@ A Categorization element (tab-based layout).
 **Signature:**
 
 ```typescript
-export declare interface Categorization 
+export declare interface Categorization
 ```
 
 ## Properties
@@ -18,123 +18,98 @@ export declare interface Categorization
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./formspec.categorization.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Category](./formspec.category.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label?](./formspec.categorization.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [options?](./formspec.categorization.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./formspec.categorization.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./formspec.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./formspec.categorization.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Categorization"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

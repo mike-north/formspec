@@ -134,15 +134,19 @@ export {
 // DSL functions
 // =============================================================================
 
-export { field, validateForm, logValidationIssues } from "@formspec/dsl";
 import {
+  field as dslField,
+  validateForm as validateFormInternal,
+  logValidationIssues,
   group as dslGroup,
   when as dslWhen,
   is as dslIs,
   formspec as dslFormspec,
   formspecWithValidation as dslFormspecWithValidation,
   type FormSpecOptions,
+  type ValidationResult,
 } from "@formspec/dsl";
+export { logValidationIssues };
 export type {
   // Validation
   FormSpecOptions,
@@ -150,6 +154,88 @@ export type {
   ValidationIssue,
   ValidationResult,
 } from "@formspec/dsl";
+
+/**
+ * Field builder namespace containing functions to create each field type.
+ *
+ * @public
+ */
+export const field = {
+  text<const N extends string>(
+    name: N,
+    config?: Omit<TextField<N>, "_type" | "_field" | "name">
+  ): TextField<N> {
+    return dslField.text(name, config);
+  },
+  number<const N extends string>(
+    name: N,
+    config?: Omit<NumberField<N>, "_type" | "_field" | "name">
+  ): NumberField<N> {
+    return dslField.number(name, config);
+  },
+  boolean<const N extends string>(
+    name: N,
+    config?: Omit<BooleanField<N>, "_type" | "_field" | "name">
+  ): BooleanField<N> {
+    return dslField.boolean(name, config);
+  },
+  enum<const N extends string, const O extends readonly EnumOptionValue[]>(
+    name: N,
+    options: O,
+    config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">
+  ): StaticEnumField<N, O> {
+    return dslField.enum(name, options, config);
+  },
+  dynamicEnum<const N extends string, const Source extends string>(
+    name: N,
+    source: Source,
+    config?: Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">
+  ): DynamicEnumField<N, Source> {
+    return dslField.dynamicEnum(name, source, config);
+  },
+  dynamicSchema<const N extends string>(
+    name: N,
+    schemaSource: string,
+    config?: Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">
+  ): DynamicSchemaField<N> {
+    return dslField.dynamicSchema(name, schemaSource, config);
+  },
+  array<const N extends string, const Items extends readonly FormElement[]>(
+    name: N,
+    ...items: Items
+  ): ArrayField<N, Items> {
+    return dslField.array(name, ...items);
+  },
+  arrayWithConfig<const N extends string, const Items extends readonly FormElement[]>(
+    name: N,
+    config: Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">,
+    ...items: Items
+  ): ArrayField<N, Items> {
+    return dslField.arrayWithConfig(name, config, ...items);
+  },
+  object<const N extends string, const Properties extends readonly FormElement[]>(
+    name: N,
+    ...properties: Properties
+  ): ObjectField<N, Properties> {
+    return dslField.object(name, ...properties);
+  },
+  objectWithConfig<const N extends string, const Properties extends readonly FormElement[]>(
+    name: N,
+    config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
+    ...properties: Properties
+  ): ObjectField<N, Properties> {
+    return dslField.objectWithConfig(name, config, ...properties);
+  },
+};
+
+/**
+ * Validates a FormSpec element tree and returns any structural issues.
+ *
+ * @public
+ */
+export function validateForm(elements: readonly FormElement[]): ValidationResult {
+  return validateFormInternal(elements);
+}
 
 // =============================================================================
 // Build tools

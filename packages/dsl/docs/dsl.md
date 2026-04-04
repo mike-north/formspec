@@ -10,22 +10,21 @@ This package provides the builder functions for creating form specifications: - 
 
 ## Example
 
-
 ```typescript
 import { formspec, field, group, when, is } from "@formspec/dsl";
 
 const InvoiceForm = formspec(
-  group("Customer",
+  group(
+    "Customer",
     field.text("customerName", { label: "Customer Name" }),
-    field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
+    field.dynamicEnum("country", "fetch_countries", { label: "Country" })
   ),
-  group("Invoice Details",
+  group(
+    "Invoice Details",
     field.number("amount", { label: "Amount", min: 0 }),
     field.enum("status", ["draft", "sent", "paid"] as const),
-    when(is("status", "draft"),
-      field.text("internalNotes", { label: "Internal Notes" }),
-    ),
-  ),
+    when(is("status", "draft"), field.text("internalNotes", { label: "Internal Notes" }))
+  )
 );
 ```
 
@@ -35,17 +34,14 @@ const InvoiceForm = formspec(
 
 Function
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [formspec(elements)](./dsl.formspec.md)
-
 
 </td><td>
 
@@ -55,23 +51,19 @@ The structure IS the definition: - Nesting with `group()` defines visual layout 
 
 Schema is automatically inferred from all fields in the structure.
 
-
 </td></tr>
 <tr><td>
 
 [formspecWithValidation(options, elements)](./dsl.formspecwithvalidation.md)
 
-
 </td><td>
 
 Creates a complete form specification with validation options.
-
 
 </td></tr>
 <tr><td>
 
 [group(label, elements)](./dsl.group.md)
-
 
 </td><td>
 
@@ -79,12 +71,10 @@ Creates a visual group of form elements.
 
 Groups provide visual organization and can be rendered as fieldsets or sections. The nesting of groups defines the visual hierarchy of the form.
 
-
 </td></tr>
 <tr><td>
 
 [is(field, value)](./dsl.is.md)
-
 
 </td><td>
 
@@ -92,23 +82,19 @@ Creates an equality predicate that checks if a field equals a specific value.
 
 Use this with `when()` to create readable conditional expressions:
 
-
 </td></tr>
 <tr><td>
 
 [logValidationIssues(result, formName)](./dsl.logvalidationissues.md)
 
-
 </td><td>
 
 Logs validation issues to the console.
-
 
 </td></tr>
 <tr><td>
 
 [validateForm(elements)](./dsl.validateform.md)
-
 
 </td><td>
 
@@ -116,19 +102,16 @@ Validates a form specification for common issues.
 
 Checks for: - Duplicate field names at the root level (warning) - References to non-existent fields in conditionals (error)
 
-
 </td></tr>
 <tr><td>
 
 [when(predicate, elements)](./dsl.when.md)
-
 
 </td><td>
 
 Creates a conditional wrapper that shows elements based on a predicate.
 
 When the predicate evaluates to true, the contained elements are shown. Otherwise, they are hidden (but still part of the schema).
-
 
 </td></tr>
 </tbody></table>
@@ -139,17 +122,14 @@ When the predicate evaluates to true, the contained elements are shown. Otherwis
 
 Interface
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [ArrayField](./dsl.arrayfield.md)
-
 
 </td><td>
 
@@ -157,34 +137,28 @@ An array field containing repeating items.
 
 Use this for lists of values (e.g., multiple addresses, line items).
 
-
 </td></tr>
 <tr><td>
 
 [BooleanField](./dsl.booleanfield.md)
 
-
 </td><td>
 
 A boolean checkbox field.
-
 
 </td></tr>
 <tr><td>
 
 [Conditional](./dsl.conditional.md)
 
-
 </td><td>
 
 A conditional wrapper that shows/hides elements based on another field's value.
-
 
 </td></tr>
 <tr><td>
 
 [DataSourceRegistry](./dsl.datasourceregistry.md)
-
 
 </td><td>
 
@@ -192,34 +166,28 @@ Registry for dynamic data sources.
 
 Extend this interface via module augmentation to register your data sources:
 
-
 </td></tr>
 <tr><td>
 
 [DynamicEnumField](./dsl.dynamicenumfield.md)
 
-
 </td><td>
 
 A field with dynamic enum options (fetched from a data source at runtime).
-
 
 </td></tr>
 <tr><td>
 
 [DynamicSchemaField](./dsl.dynamicschemafield.md)
 
-
 </td><td>
 
 A field that loads its schema dynamically (e.g., from an extension).
-
 
 </td></tr>
 <tr><td>
 
 [EnumOption](./dsl.enumoption.md)
-
 
 </td><td>
 
@@ -227,45 +195,37 @@ An enum option with a separate ID and display label.
 
 Use this when the stored value (id) should differ from the display text (label).
 
-
 </td></tr>
 <tr><td>
 
 [EqualsPredicate](./dsl.equalspredicate.md)
 
-
 </td><td>
 
 An equality predicate that checks if a field equals a specific value.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpec](./dsl.formspec.md)
 
-
 </td><td>
 
 A complete form specification.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecOptions](./dsl.formspecoptions.md)
 
-
 </td><td>
 
 Options for creating a form specification.
-
 
 </td></tr>
 <tr><td>
 
 [Group](./dsl.group.md)
-
 
 </td><td>
 
@@ -273,23 +233,19 @@ A visual grouping of form elements.
 
 Groups provide visual organization and can be rendered as fieldsets or sections.
 
-
 </td></tr>
 <tr><td>
 
 [NumberField](./dsl.numberfield.md)
 
-
 </td><td>
 
 A numeric input field.
-
 
 </td></tr>
 <tr><td>
 
 [ObjectField](./dsl.objectfield.md)
-
 
 </td><td>
 
@@ -297,12 +253,10 @@ An object field containing nested properties.
 
 Use this for grouping related fields under a single key in the schema.
 
-
 </td></tr>
 <tr><td>
 
 [StaticEnumField](./dsl.staticenumfield.md)
-
 
 </td><td>
 
@@ -310,39 +264,32 @@ A field with static enum options (known at compile time).
 
 Options can be plain strings or objects with `id` and `label` properties.
 
-
 </td></tr>
 <tr><td>
 
 [TextField](./dsl.textfield.md)
 
-
 </td><td>
 
 A text input field.
-
 
 </td></tr>
 <tr><td>
 
 [ValidationIssue](./dsl.validationissue.md)
 
-
 </td><td>
 
 A validation issue found in a form specification.
-
 
 </td></tr>
 <tr><td>
 
 [ValidationResult](./dsl.validationresult.md)
 
-
 </td><td>
 
 Result of validating a form specification.
-
 
 </td></tr>
 </tbody></table>
@@ -353,22 +300,18 @@ Result of validating a form specification.
 
 Variable
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [field](./dsl.field.md)
 
-
 </td><td>
 
 Field builder namespace containing functions to create each field type.
-
 
 </td></tr>
 </tbody></table>
@@ -379,28 +322,23 @@ Field builder namespace containing functions to create each field type.
 
 Type Alias
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [AnyField](./dsl.anyfield.md)
 
-
 </td><td>
 
 Union of all field types.
-
 
 </td></tr>
 <tr><td>
 
 [BuildSchema](./dsl.buildschema.md)
-
 
 </td><td>
 
@@ -408,12 +346,10 @@ Builds a schema type from extracted fields.
 
 Maps field names to their inferred value types.
 
-
 </td></tr>
 <tr><td>
 
 [DataSourceValueType](./dsl.datasourcevaluetype.md)
-
 
 </td><td>
 
@@ -421,45 +357,37 @@ Gets the value type for a registered data source.
 
 If the source has an `id` property, that becomes the value type. Otherwise, defaults to `string`<!-- -->.
 
-
 </td></tr>
 <tr><td>
 
 [EnumOptionValue](./dsl.enumoptionvalue.md)
 
-
 </td><td>
 
 Valid enum option types: either plain strings or objects with id/label.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractConditionalFields](./dsl.extractconditionalfields.md)
 
-
 </td><td>
 
 Extracts fields that ARE inside conditionals. These fields may or may not be visible and should be optional in the inferred schema.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractConditionalFieldsFromArray](./dsl.extractconditionalfieldsfromarray.md)
 
-
 </td><td>
 
 Extracts conditional fields from an array of elements.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractFields](./dsl.extractfields.md)
-
 
 </td><td>
 
@@ -467,12 +395,10 @@ Extracts all fields from a single element (recursively).
 
 - Field elements return themselves - Groups extract fields from all child elements - Conditionals extract fields from all child elements
 
-
 </td></tr>
 <tr><td>
 
 [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)
-
 
 </td><td>
 
@@ -480,34 +406,28 @@ Extracts fields from an array of elements.
 
 Recursively processes each element and unions the results.
 
-
 </td></tr>
 <tr><td>
 
 [ExtractNonConditionalFields](./dsl.extractnonconditionalfields.md)
 
-
 </td><td>
 
 Extracts fields that are NOT inside conditionals. These fields are always visible and should be required in the inferred schema.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractNonConditionalFieldsFromArray](./dsl.extractnonconditionalfieldsfromarray.md)
 
-
 </td><td>
 
 Extracts non-conditional fields from an array of elements.
-
 
 </td></tr>
 <tr><td>
 
 [FlattenIntersection](./dsl.flattenintersection.md)
-
 
 </td><td>
 
@@ -515,23 +435,19 @@ Utility type that flattens intersection types into a single object type.
 
 This improves TypeScript's display of inferred types and ensures structural equality checks work correctly.
 
-
 </td></tr>
 <tr><td>
 
 [FormElement](./dsl.formelement.md)
 
-
 </td><td>
 
 Union of all form element types (fields and structural elements).
-
 
 </td></tr>
 <tr><td>
 
 [InferFieldValue](./dsl.inferfieldvalue.md)
-
 
 </td><td>
 
@@ -539,12 +455,10 @@ Infers the value type from a single field.
 
 - TextField returns string - NumberField returns number - BooleanField returns boolean - StaticEnumField returns union of option literals - DynamicEnumField returns DataSourceValueType (usually string) - DynamicSchemaField returns Record of string to unknown - ArrayField returns array of inferred item schema - ObjectField returns object of inferred property schema
 
-
 </td></tr>
 <tr><td>
 
 [InferFormSchema](./dsl.inferformschema.md)
-
 
 </td><td>
 
@@ -552,12 +466,10 @@ Infers the schema type from a FormSpec.
 
 Convenience type that extracts elements and infers the schema.
 
-
 </td></tr>
 <tr><td>
 
 [InferSchema](./dsl.inferschema.md)
-
 
 </td><td>
 
@@ -567,12 +479,10 @@ This is the main inference type that converts a form structure into its correspo
 
 Non-conditional fields are required, conditional fields are optional.
 
-
 </td></tr>
 <tr><td>
 
 [Predicate](./dsl.predicate.md)
-
 
 </td><td>
 
@@ -580,18 +490,14 @@ Union of all predicate types.
 
 Currently only supports equality, but can be extended with: - `OneOfPredicate` - field value is one of several options - `NotPredicate` - negation of another predicate - `AndPredicate` / `OrPredicate` - logical combinations
 
-
 </td></tr>
 <tr><td>
 
 [ValidationSeverity](./dsl.validationseverity.md)
 
-
 </td><td>
 
 Validation issue severity levels.
 
-
 </td></tr>
 </tbody></table>
-

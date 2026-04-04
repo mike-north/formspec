@@ -9,7 +9,7 @@ A Control element that binds to a JSON Schema property.
 **Signature:**
 
 ```typescript
-export interface ControlElement 
+export interface ControlElement
 ```
 
 ## Properties
@@ -18,123 +18,98 @@ export interface ControlElement
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [label?](./build.controlelement.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| false \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.controlelement.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.controlelement.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [scope](./build.controlelement.scope.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.controlelement.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Control"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

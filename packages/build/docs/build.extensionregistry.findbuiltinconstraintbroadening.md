@@ -21,44 +21,35 @@ findBuiltinConstraintBroadening(typeId: string, tagName: string): {
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 typeId
 
-
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 tagName
 
-
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -66,4 +57,3 @@ string
 **Returns:**
 
 { readonly extensionId: string; readonly registration: [BuiltinConstraintBroadeningRegistration](./build.builtinconstraintbroadeningregistration.md)<!-- -->; } \| undefined
-

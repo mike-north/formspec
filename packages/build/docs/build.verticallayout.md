@@ -9,7 +9,7 @@ A vertical layout element.
 **Signature:**
 
 ```typescript
-export interface VerticalLayout 
+export interface VerticalLayout
 ```
 
 ## Properties
@@ -18,102 +18,81 @@ export interface VerticalLayout
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./build.verticallayout.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [UISchemaElement](./build.uischemaelement.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.verticallayout.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.verticallayout.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.verticallayout.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "VerticalLayout"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

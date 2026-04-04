@@ -9,7 +9,7 @@ Serialized representation of a parsed target specifier with exact spans.
 **Signature:**
 
 ```typescript
-export interface FormSpecSerializedCommentTargetSpecifier 
+export interface FormSpecSerializedCommentTargetSpecifier
 ```
 
 ## Properties
@@ -18,136 +18,107 @@ export interface FormSpecSerializedCommentTargetSpecifier
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [colonSpan](./analysis.formspecserializedcommenttargetspecifier.colonspan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [fullSpan](./analysis.formspecserializedcommenttargetspecifier.fullspan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [kind](./analysis.formspecserializedcommenttargetspecifier.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "path" \| "member" \| "variant" \| "ambiguous"
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [rawText](./analysis.formspecserializedcommenttargetspecifier.rawtext.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [span](./analysis.formspecserializedcommenttargetspecifier.span.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [valid](./analysis.formspecserializedcommenttargetspecifier.valid.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

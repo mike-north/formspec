@@ -11,7 +11,7 @@ Custom types are referenced by FormSpec's internal custom-type IR nodes and reso
 **Signature:**
 
 ```typescript
-export interface CustomTypeRegistration 
+export interface CustomTypeRegistration
 ```
 
 ## Properties
@@ -20,106 +20,85 @@ export interface CustomTypeRegistration
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [builtinConstraintBroadenings?](./core.customtyperegistration.builtinconstraintbroadenings.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [BuiltinConstraintBroadeningRegistration](./core.builtinconstraintbroadeningregistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Optional broadening of built-in constraint tags so they can apply to this custom type without modifying the core built-in constraint tables.
-
 
 </td></tr>
 <tr><td>
 
 [toJsonSchema](./core.customtyperegistration.tojsonschema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 (payload: [ExtensionPayloadValue](./core.extensionpayloadvalue.md)<!-- -->, vendorPrefix: string) =&gt; Record&lt;string, unknown&gt;
 
-
 </td><td>
 
 Converts the custom type's payload into a JSON Schema fragment.
-
 
 </td></tr>
 <tr><td>
 
 [tsTypeNames?](./core.customtyperegistration.tstypenames.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 _(Optional)_ Optional TypeScript surface names that should resolve to this custom type during TSDoc/class analysis. Defaults to `typeName` when omitted.
-
 
 </td></tr>
 <tr><td>
 
 [typeName](./core.customtyperegistration.typename.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The type name, unique within the extension.
 
-
 </td></tr>
 </tbody></table>
-

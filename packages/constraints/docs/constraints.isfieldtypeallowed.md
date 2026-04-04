@@ -5,14 +5,16 @@
 ## isFieldTypeAllowed() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Checks if a field type is allowed by the constraints. Useful for quick checks without generating issues.
 
 **Signature:**
 
 ```typescript
-export declare function isFieldTypeAllowed(fieldType: string, constraints: FieldTypeConstraints): boolean;
+export declare function isFieldTypeAllowed(
+  fieldType: string,
+  constraints: FieldTypeConstraints
+): boolean;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function isFieldTypeAllowed(fieldType: string, constraints: Field
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 fieldType
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The \_field discriminator value
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldTypeConstraints](./constraints.fieldtypeconstraints.md)
 
-
 </td><td>
 
 Field type constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field type constraints
 boolean
 
 true if allowed, false if disallowed
-

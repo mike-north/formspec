@@ -9,7 +9,9 @@ Defines a custom TSDoc constraint tag registration.
 **Signature:**
 
 ```typescript
-export declare function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
+export declare function defineConstraintTag(
+  reg: ConstraintTagRegistration
+): ConstraintTagRegistration;
 ```
 
 ## Parameters
@@ -18,32 +20,26 @@ export declare function defineConstraintTag(reg: ConstraintTagRegistration): Con
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 reg
 
-
 </td><td>
 
 [ConstraintTagRegistration](./core.constrainttagregistration.md)
 
-
 </td><td>
 
 The custom tag registration.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +49,3 @@ The custom tag registration.
 [ConstraintTagRegistration](./core.constrainttagregistration.md)
 
 The same registration, validated at the type level.
-

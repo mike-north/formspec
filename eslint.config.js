@@ -72,6 +72,8 @@ export default [
       "**/coverage/**",
       "scratch/**",
       ".worktrees/**",
+      ".Codex/**",
+      ".claude/**",
       "packages/ts-plugin/index.cjs",
       // CI scripts are plain JS, not part of the TypeScript project.
       ".github/**",

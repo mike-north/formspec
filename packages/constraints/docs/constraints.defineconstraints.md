@@ -18,32 +18,26 @@ export declare function defineConstraints(config: ConstraintConfig): ResolvedCon
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 config
 
-
 </td><td>
 
 [ConstraintConfig](./constraints.constraintconfig.md)
 
-
 </td><td>
 
 Partial constraint configuration
-
 
 </td></tr>
 </tbody></table>
@@ -56,16 +50,14 @@ Complete configuration with defaults applied
 
 ## Example
 
-
 ```ts
 const config = defineConstraints({
   fieldTypes: {
-    dynamicEnum: 'error',
-    dynamicSchema: 'error',
+    dynamicEnum: "error",
+    dynamicSchema: "error",
   },
   layout: {
-    group: 'error',
+    group: "error",
   },
 });
 ```
-

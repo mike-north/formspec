@@ -9,5 +9,11 @@ Primitive structured values carried in diagnostic facts for white-label downstre
 **Signature:**
 
 ```typescript
-export type FormSpecAnalysisDiagnosticDataValue = string | number | boolean | readonly string[] | readonly number[] | readonly boolean[];
+export type FormSpecAnalysisDiagnosticDataValue =
+  | string
+  | number
+  | boolean
+  | readonly string[]
+  | readonly number[]
+  | readonly boolean[];
 ```

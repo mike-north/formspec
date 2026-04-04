@@ -16,7 +16,7 @@ export const noDescriptionTag = createRule<[], "descriptionTagForbidden">({
   meta: {
     type: "problem",
     docs: {
-      description: 'Bans @description, which is not a standard TSDoc tag',
+      description: "Bans @description, which is not a standard TSDoc tag",
     },
     schema: [],
     messages: {

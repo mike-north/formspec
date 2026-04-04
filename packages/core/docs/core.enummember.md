@@ -5,14 +5,13 @@
 ## EnumMember interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A member of a static enum type.
 
 **Signature:**
 
 ```typescript
-export interface EnumMember 
+export interface EnumMember
 ```
 
 ## Properties
@@ -21,64 +20,51 @@ export interface EnumMember
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [displayName?](./core.enummember.displayname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Optional per-member display name.
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.enummember.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| number
 
-
 </td><td>
 
 **_(BETA)_** The serialized value stored in data.
 
-
 </td></tr>
 </tbody></table>
-

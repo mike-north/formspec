@@ -11,7 +11,10 @@ This is the main entry point for validating a form specification against a const
 **Signature:**
 
 ```typescript
-export declare function validateFormSpecElements(elements: readonly FormElement[], options?: FormSpecValidationOptions): ValidationResult;
+export declare function validateFormSpecElements(
+  elements: readonly FormElement[],
+  options?: FormSpecValidationOptions
+): ValidationResult;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function validateFormSpecElements(elements: readonly FormElement[
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 elements
 
-
 </td><td>
 
 readonly [FormElement](./constraints.formelement.md)<!-- -->\[\]
 
-
 </td><td>
 
 FormSpec elements to validate
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [FormSpecValidationOptions](./constraints.formspecvalidationoptions.md)
 
-
 </td><td>
 
 _(Optional)_ Validation options including constraints
-
 
 </td></tr>
 </tbody></table>
@@ -74,27 +68,22 @@ Validation result with all issues found
 
 ## Example
 
-
 ```ts
-import { formspec, field, group } from '@formspec/dsl';
-import { validateFormSpecElements, defineConstraints } from '@formspec/constraints';
+import { formspec, field, group } from "@formspec/dsl";
+import { validateFormSpecElements, defineConstraints } from "@formspec/constraints";
 
 const form = formspec(
-  group("Contact",
-    field.text("name"),
-    field.dynamicEnum("country", "countries"),
-  ),
+  group("Contact", field.text("name"), field.dynamicEnum("country", "countries"))
 );
 
 const result = validateFormSpecElements(form.elements, {
   constraints: {
-    fieldTypes: { dynamicEnum: 'error' },
-    layout: { group: 'error' },
+    fieldTypes: { dynamicEnum: "error" },
+    layout: { group: "error" },
   },
 });
 
 if (!result.valid) {
-  console.error('Validation failed:', result.issues);
+  console.error("Validation failed:", result.issues);
 }
 ```
-

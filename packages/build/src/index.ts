@@ -38,6 +38,12 @@ import * as path from "node:path";
 export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 export type { GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 export type {
+  BuiltinConstraintBroadeningRegistration,
+  ConstraintTagRegistration,
+  CustomAnnotationRegistration,
+  CustomConstraintRegistration,
+  CustomTypeRegistration,
+  ExtensionDefinition,
   AnyField,
   ArrayField,
   BooleanField,

@@ -18,32 +18,26 @@ export declare function defineCustomType(reg: CustomTypeRegistration): CustomTyp
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 reg
 
-
 </td><td>
 
 [CustomTypeRegistration](./core.customtyperegistration.md)
 
-
 </td><td>
 
 The custom type registration.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The custom type registration.
 [CustomTypeRegistration](./core.customtyperegistration.md)
 
 The same registration, validated at the type level.
-

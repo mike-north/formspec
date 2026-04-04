@@ -9,7 +9,7 @@ JSON Schema subset used in rule conditions.
 **Signature:**
 
 ```typescript
-export interface RuleConditionSchema 
+export interface RuleConditionSchema
 ```
 
 ## Properties
@@ -18,250 +18,197 @@ export interface RuleConditionSchema
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [allOf?](./build.ruleconditionschema.allof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleConditionSchema](./build.ruleconditionschema.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [const?](./build.ruleconditionschema.const.md)
 
-
 </td><td>
-
 
 </td><td>
 
 unknown
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [enum?](./build.ruleconditionschema.enum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly unknown\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMaximum?](./build.ruleconditionschema.exclusivemaximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMinimum?](./build.ruleconditionschema.exclusiveminimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [maximum?](./build.ruleconditionschema.maximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minimum?](./build.ruleconditionschema.minimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minLength?](./build.ruleconditionschema.minlength.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [not?](./build.ruleconditionschema.not.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleConditionSchema](./build.ruleconditionschema.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [properties?](./build.ruleconditionschema.properties.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, [RuleConditionSchema](./build.ruleconditionschema.md)<!-- -->&gt;
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [required?](./build.ruleconditionschema.required.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type?](./build.ruleconditionschema.type.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
 
-
 </td></tr>
 </tbody></table>
-

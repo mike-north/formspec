@@ -20,8 +20,6 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
-type MessageIds = "disallowedFieldType";
-
 /**
  * Maps DSL method names to constraint config keys.
  */
@@ -54,14 +52,12 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
   objectWithConfig: "object field",
 };
 
-export type Options = [FieldTypeConstraints];
-
 /**
  * ESLint rule that validates allowed field types against project constraints.
  *
  * @public
  */
-export const allowedFieldTypes = createRule<Options, MessageIds>({
+export const allowedFieldTypes = createRule<[FieldTypeConstraints], "disallowedFieldType">({
   name: "constraints-allowed-field-types",
   meta: {
     type: "problem",

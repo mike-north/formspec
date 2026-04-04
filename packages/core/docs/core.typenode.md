@@ -5,14 +5,22 @@
 ## TypeNode type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Discriminated union of all type representations in the IR.
 
 **Signature:**
 
 ```typescript
-export type TypeNode = PrimitiveTypeNode | EnumTypeNode | ArrayTypeNode | ObjectTypeNode | RecordTypeNode | UnionTypeNode | ReferenceTypeNode | DynamicTypeNode | CustomTypeNode;
+export type TypeNode =
+  | PrimitiveTypeNode
+  | EnumTypeNode
+  | ArrayTypeNode
+  | ObjectTypeNode
+  | RecordTypeNode
+  | UnionTypeNode
+  | ReferenceTypeNode
+  | DynamicTypeNode
+  | CustomTypeNode;
 ```
-**References:** [PrimitiveTypeNode](./core.primitivetypenode.md)<!-- -->, [EnumTypeNode](./core.enumtypenode.md)<!-- -->, [ArrayTypeNode](./core.arraytypenode.md)<!-- -->, [ObjectTypeNode](./core.objecttypenode.md)<!-- -->, [RecordTypeNode](./core.recordtypenode.md)<!-- -->, [UnionTypeNode](./core.uniontypenode.md)<!-- -->, [ReferenceTypeNode](./core.referencetypenode.md)<!-- -->, [DynamicTypeNode](./core.dynamictypenode.md)<!-- -->, [CustomTypeNode](./core.customtypenode.md)
 
+**References:** [PrimitiveTypeNode](./core.primitivetypenode.md)<!-- -->, [EnumTypeNode](./core.enumtypenode.md)<!-- -->, [ArrayTypeNode](./core.arraytypenode.md)<!-- -->, [ObjectTypeNode](./core.objecttypenode.md)<!-- -->, [RecordTypeNode](./core.recordtypenode.md)<!-- -->, [UnionTypeNode](./core.uniontypenode.md)<!-- -->, [ReferenceTypeNode](./core.referencetypenode.md)<!-- -->, [DynamicTypeNode](./core.dynamictypenode.md)<!-- -->, [CustomTypeNode](./core.customtypenode.md)

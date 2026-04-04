@@ -18,32 +18,26 @@ export declare function loadConfigFromString(yamlContent: string): ResolvedConst
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 yamlContent
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The YAML content to parse
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The YAML content to parse
 [ResolvedConstraintConfig](./constraints.resolvedconstraintconfig.md)
 
 The parsed and merged configuration
-

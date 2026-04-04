@@ -9,7 +9,7 @@ Rule for conditional element visibility/enablement.
 **Signature:**
 
 ```typescript
-export declare interface Rule 
+export declare interface Rule
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export declare interface Rule
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [condition](./formspec.rule.condition.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [SchemaBasedCondition](./formspec.schemabasedcondition.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [effect](./formspec.rule.effect.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [RuleEffect](./formspec.ruleeffect.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

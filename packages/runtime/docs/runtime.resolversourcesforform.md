@@ -9,7 +9,8 @@ Derives the resolver source-key union for a FormSpec element array.
 **Signature:**
 
 ```typescript
-export type ResolverSourcesForForm<E extends readonly FormElement[]> = ExtractDynamicSourcesFromArray<E> & string;
+export type ResolverSourcesForForm<E extends readonly FormElement[]> =
+  ExtractDynamicSourcesFromArray<E> & string;
 ```
-**References:** [ExtractDynamicSourcesFromArray](./runtime.extractdynamicsourcesfromarray.md)
 
+**References:** [ExtractDynamicSourcesFromArray](./runtime.extractdynamicsourcesfromarray.md)

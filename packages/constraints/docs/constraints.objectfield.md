@@ -11,7 +11,7 @@ Use this for grouping related fields under a single key in the schema.
 **Signature:**
 
 ```typescript
-export declare interface ObjectField<N extends string, Properties extends readonly FormElement[]> 
+export declare interface ObjectField<N extends string, Properties extends readonly FormElement[]>
 ```
 
 ## Properties
@@ -20,148 +20,119 @@ export declare interface ObjectField<N extends string, Properties extends readon
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./constraints.objectfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "object"
 
-
 </td><td>
 
 Field type discriminator - identifies this as an object field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./constraints.objectfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./constraints.objectfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [name](./constraints.objectfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [properties](./constraints.objectfield.properties.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Properties
 
-
 </td><td>
 
 Form elements that define the properties of this object
-
 
 </td></tr>
 <tr><td>
 
 [required?](./constraints.objectfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

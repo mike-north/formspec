@@ -5,7 +5,6 @@
 ## NumericConstraintNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Numeric constraints: bounds and multipleOf.
 
@@ -16,7 +15,7 @@ Type applicability: may only attach to fields with `PrimitiveTypeNode("number")`
 **Signature:**
 
 ```typescript
-export interface NumericConstraintNode 
+export interface NumericConstraintNode
 ```
 
 ## Properties
@@ -25,127 +24,102 @@ export interface NumericConstraintNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintKind](./core.numericconstraintnode.constraintkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "minimum" \| "maximum" \| "exclusiveMinimum" \| "exclusiveMaximum" \| "multipleOf"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.numericconstraintnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "constraint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [path?](./core.numericconstraintnode.path.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [PathTarget](./core.pathtarget.md)
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ If present, targets a nested sub-field rather than the field itself.
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.numericconstraintnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.numericconstraintnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

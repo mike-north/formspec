@@ -18,30 +18,24 @@ get<S extends Sources>(source: S): S extends keyof DataSourceRegistry ? Resolver
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 source
 
-
 </td><td>
 
 S
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ S
 **Returns:**
 
 S extends keyof DataSourceRegistry ? [Resolver](./runtime.resolver.md)<!-- -->&lt;S&gt; : (params?: Record&lt;string, unknown&gt;) =&gt; Promise&lt;FetchOptionsResponse&gt;
-

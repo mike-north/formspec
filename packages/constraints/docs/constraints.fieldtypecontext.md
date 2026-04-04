@@ -5,14 +5,13 @@
 ## FieldTypeContext interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Context for field type validation.
 
 **Signature:**
 
 ```typescript
-export interface FieldTypeContext 
+export interface FieldTypeContext
 ```
 
 ## Properties
@@ -21,79 +20,62 @@ export interface FieldTypeContext
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [fieldName](./constraints.fieldtypecontext.fieldname.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** The field name
-
 
 </td></tr>
 <tr><td>
 
 [fieldType](./constraints.fieldtypecontext.fieldtype.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** The \_field discriminator value (e.g., "text", "number", "enum")
-
 
 </td></tr>
 <tr><td>
 
 [path?](./constraints.fieldtypecontext.path.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Optional path for nested fields
 
-
 </td></tr>
 </tbody></table>
-

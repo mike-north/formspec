@@ -35,7 +35,9 @@ async function normalizeFile(filePath) {
 const targets = process.argv.slice(2);
 
 if (targets.length === 0) {
-  globalThis.console.error("Usage: node ../../scripts/normalize-generated-markdown.mjs <path> [...paths]");
+  globalThis.console.error(
+    "Usage: node ../../scripts/normalize-generated-markdown.mjs <path> [...paths]"
+  );
   process.exit(1);
 }
 

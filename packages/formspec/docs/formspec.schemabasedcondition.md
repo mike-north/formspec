@@ -9,7 +9,7 @@ Condition for a rule.
 **Signature:**
 
 ```typescript
-export declare interface SchemaBasedCondition 
+export declare interface SchemaBasedCondition
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export declare interface SchemaBasedCondition
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [schema](./formspec.schemabasedcondition.schema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [RuleConditionSchema](./formspec.ruleconditionschema.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [scope](./formspec.schemabasedcondition.scope.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

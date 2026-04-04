@@ -18,32 +18,26 @@ findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 annotationId
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The fully-qualified annotation ID.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The fully-qualified annotation ID.
 [CustomAnnotationRegistration](./build.customannotationregistration.md) \| undefined
 
 The registration if found, otherwise `undefined`<!-- -->.
-

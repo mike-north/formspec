@@ -9,7 +9,7 @@ A field with dynamic enum options (fetched from a data source at runtime).
 **Signature:**
 
 ```typescript
-export interface DynamicEnumField<N extends string, Source extends string> 
+export interface DynamicEnumField<N extends string, Source extends string>
 ```
 
 ## Properties
@@ -18,169 +18,136 @@ export interface DynamicEnumField<N extends string, Source extends string>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./build.dynamicenumfield._field.md)
 
-
 </td><td>
 
 `readonly`
 
-
 </td><td>
 
-"dynamic\_enum"
-
+"dynamic_enum"
 
 </td><td>
 
 Field type discriminator - identifies this as a dynamic enum field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./build.dynamicenumfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./build.dynamicenumfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [name](./build.dynamicenumfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [params?](./build.dynamicenumfield.params.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 _(Optional)_ Field names whose values are needed to fetch options
-
 
 </td></tr>
 <tr><td>
 
 [required?](./build.dynamicenumfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
-
 
 </td></tr>
 <tr><td>
 
 [source](./build.dynamicenumfield.source.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Source
 
-
 </td><td>
 
 Data source key for fetching options at runtime
 
-
 </td></tr>
 </tbody></table>
-

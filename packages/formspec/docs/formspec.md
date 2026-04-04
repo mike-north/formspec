@@ -10,11 +10,14 @@ This package re-exports everything from the FormSpec library for convenience. Yo
 
 ## Example
 
-
 ```typescript
 import {
   // DSL functions
-  formspec, field, group, when, is,
+  formspec,
+  field,
+  group,
+  when,
+  is,
   // Type inference
   type InferSchema,
   // Schema generation
@@ -22,22 +25,23 @@ import {
   // Resolvers
   defineResolvers,
   // Core types
-  type FormSpec, type FormElement,
+  type FormSpec,
+  type FormElement,
 } from "formspec";
 
 // Define a form
 const InvoiceForm = formspec(
-  group("Customer",
+  group(
+    "Customer",
     field.text("name", { label: "Name", required: true }),
-    field.dynamicEnum("country", "fetch_countries", { label: "Country" }),
+    field.dynamicEnum("country", "fetch_countries", { label: "Country" })
   ),
-  group("Details",
+  group(
+    "Details",
     field.number("amount", { label: "Amount", min: 0 }),
     field.enum("status", ["draft", "sent", "paid"]),
-    when(is("status", "draft"),
-      field.text("notes", { label: "Internal Notes" }),
-    ),
-  ),
+    when(is("status", "draft"), field.text("notes", { label: "Internal Notes" }))
+  )
 );
 
 // Infer the schema type
@@ -61,248 +65,203 @@ const resolvers = defineResolvers(InvoiceForm, {
 
 Function
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [buildFormSchemas(form, options)](./formspec.buildformschemas.md)
 
-
 </td><td>
 
 Builds both JSON Schema and UI Schema from a FormSpec.
-
 
 </td></tr>
 <tr><td>
 
 [createInitialFieldState(value)](./formspec.createinitialfieldstate.md)
 
-
 </td><td>
 
 Creates initial field state with default values.
-
 
 </td></tr>
 <tr><td>
 
 [defineResolvers(form, resolvers)](./formspec.defineresolvers.md)
 
-
 </td><td>
 
 Defines resolvers for a form's dynamic data sources.
-
 
 </td></tr>
 <tr><td>
 
 [formspec(elements)](./formspec.formspec.md)
 
-
 </td><td>
 
 Creates a complete form specification.
-
 
 </td></tr>
 <tr><td>
 
 [formspecWithValidation(options, elements)](./formspec.formspecwithvalidation.md)
 
-
 </td><td>
 
 Creates a complete form specification with validation options.
-
 
 </td></tr>
 <tr><td>
 
 [generateJsonSchema(form, options)](./formspec.generatejsonschema.md)
 
-
 </td><td>
 
 Generates a JSON Schema 2020-12 from a FormSpec.
-
 
 </td></tr>
 <tr><td>
 
 [generateUiSchema(form)](./formspec.generateuischema.md)
 
-
 </td><td>
 
 Generates a UI schema from a FormSpec.
-
 
 </td></tr>
 <tr><td>
 
 [group(label, elements)](./formspec.group.md)
 
-
 </td><td>
 
 Creates a visual group of form elements.
-
 
 </td></tr>
 <tr><td>
 
 [is(field, value)](./formspec.is.md)
 
-
 </td><td>
 
 Creates an equality predicate that checks if a field equals a specific value.
-
 
 </td></tr>
 <tr><td>
 
 [isArrayField(element)](./formspec.isarrayfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to an array field.
-
 
 </td></tr>
 <tr><td>
 
 [isBooleanField(element)](./formspec.isbooleanfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a boolean checkbox field.
-
 
 </td></tr>
 <tr><td>
 
 [isConditional(element)](./formspec.isconditional.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a conditional wrapper.
-
 
 </td></tr>
 <tr><td>
 
 [isDynamicEnumField(element)](./formspec.isdynamicenumfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a dynamic enum field.
-
 
 </td></tr>
 <tr><td>
 
 [isDynamicSchemaField(element)](./formspec.isdynamicschemafield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a dynamic schema field.
-
 
 </td></tr>
 <tr><td>
 
 [isField(element)](./formspec.isfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to any field type.
-
 
 </td></tr>
 <tr><td>
 
 [isGroup(element)](./formspec.isgroup.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a visual group.
-
 
 </td></tr>
 <tr><td>
 
 [isNumberField(element)](./formspec.isnumberfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a numeric input field.
-
 
 </td></tr>
 <tr><td>
 
 [isObjectField(element)](./formspec.isobjectfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to an object field.
-
 
 </td></tr>
 <tr><td>
 
 [isStaticEnumField(element)](./formspec.isstaticenumfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a static enum field.
-
 
 </td></tr>
 <tr><td>
 
 [isTextField(element)](./formspec.istextfield.md)
 
-
 </td><td>
 
 Narrows a `FormElement` to a text input field.
-
 
 </td></tr>
 <tr><td>
 
 [logValidationIssues(result, formName)](./formspec.logvalidationissues.md)
 
-
 </td><td>
 
 Logs validation issues to the console.
-
 
 </td></tr>
 <tr><td>
 
 [validateForm(elements)](./formspec.validateform.md)
-
 
 </td><td>
 
@@ -310,28 +269,23 @@ Validates a form specification for common issues.
 
 Checks for: - Duplicate field names at the root level (warning) - References to non-existent fields in conditionals (error)
 
-
 </td></tr>
 <tr><td>
 
 [when(predicate, elements)](./formspec.when.md)
 
-
 </td><td>
 
 Creates a conditional wrapper that shows elements based on a predicate.
-
 
 </td></tr>
 <tr><td>
 
 [writeSchemas(form, options)](./formspec.writeschemas.md)
 
-
 </td><td>
 
 Builds and writes both JSON Schema and UI Schema files to disk.
-
 
 </td></tr>
 </tbody></table>
@@ -342,17 +296,14 @@ Builds and writes both JSON Schema and UI Schema files to disk.
 
 Interface
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [ArrayField](./formspec.arrayfield.md)
-
 
 </td><td>
 
@@ -360,89 +311,73 @@ An array field containing repeating items.
 
 Use this for lists of values (e.g., multiple addresses, line items).
 
-
 </td></tr>
 <tr><td>
 
 [BooleanField](./formspec.booleanfield.md)
 
-
 </td><td>
 
 A boolean checkbox field.
-
 
 </td></tr>
 <tr><td>
 
 [BuildResult](./formspec.buildresult.md)
 
-
 </td><td>
 
 Result of building form schemas.
-
 
 </td></tr>
 <tr><td>
 
 [Categorization](./formspec.categorization.md)
 
-
 </td><td>
 
 A Categorization element (tab-based layout).
-
 
 </td></tr>
 <tr><td>
 
 [Category](./formspec.category.md)
 
-
 </td><td>
 
 A Category element, used inside a Categorization layout.
-
 
 </td></tr>
 <tr><td>
 
 [Conditional](./formspec.conditional.md)
 
-
 </td><td>
 
 A conditional wrapper that shows/hides elements based on another field's value.
-
 
 </td></tr>
 <tr><td>
 
 [ControlElement](./formspec.controlelement.md)
 
-
 </td><td>
 
 A Control element that binds to a JSON Schema property.
-
 
 </td></tr>
 <tr><td>
 
 [DataSourceOption](./formspec.datasourceoption.md)
 
-
 </td><td>
 
 A single option returned by a data source resolver.
-
 
 </td></tr>
 <tr><td>
 
 [DataSourceRegistry](./formspec.datasourceregistry.md)
-
 
 </td><td>
 
@@ -450,34 +385,28 @@ Registry for dynamic data sources.
 
 Extend this interface via module augmentation to register your data sources:
 
-
 </td></tr>
 <tr><td>
 
 [DynamicEnumField](./formspec.dynamicenumfield.md)
 
-
 </td><td>
 
 A field with dynamic enum options (fetched from a data source at runtime).
-
 
 </td></tr>
 <tr><td>
 
 [DynamicSchemaField](./formspec.dynamicschemafield.md)
 
-
 </td><td>
 
 A field that loads its schema dynamically (e.g., from an extension).
-
 
 </td></tr>
 <tr><td>
 
 [EnumOption](./formspec.enumoption.md)
-
 
 </td><td>
 
@@ -485,89 +414,73 @@ An enum option with a separate ID and display label.
 
 Use this when the stored value (id) should differ from the display text (label).
 
-
 </td></tr>
 <tr><td>
 
 [EqualsPredicate](./formspec.equalspredicate.md)
 
-
 </td><td>
 
 An equality predicate that checks if a field equals a specific value.
-
 
 </td></tr>
 <tr><td>
 
 [FetchOptionsResponse](./formspec.fetchoptionsresponse.md)
 
-
 </td><td>
 
 Response from a data source resolver function.
-
 
 </td></tr>
 <tr><td>
 
 [FieldState](./formspec.fieldstate.md)
 
-
 </td><td>
 
 Represents the runtime state of a single form field.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpec](./formspec.formspec.md)
 
-
 </td><td>
 
 A complete form specification.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecOptions](./formspec.formspecoptions.md)
 
-
 </td><td>
 
 Options for creating a form specification.
-
 
 </td></tr>
 <tr><td>
 
 [FormState](./formspec.formstate.md)
 
-
 </td><td>
 
 Represents the runtime state of an entire form.
-
 
 </td></tr>
 <tr><td>
 
 [GenerateJsonSchemaOptions](./formspec.generatejsonschemaoptions.md)
 
-
 </td><td>
 
 Options for generating JSON Schema from a Chain DSL form.
-
 
 </td></tr>
 <tr><td>
 
 [Group](./formspec.group.md)
-
 
 </td><td>
 
@@ -575,34 +488,28 @@ A visual grouping of form elements.
 
 Groups provide visual organization and can be rendered as fieldsets or sections.
 
-
 </td></tr>
 <tr><td>
 
 [GroupLayout](./formspec.grouplayout.md)
 
-
 </td><td>
 
 A group element with a label.
-
 
 </td></tr>
 <tr><td>
 
 [HorizontalLayout](./formspec.horizontallayout.md)
 
-
 </td><td>
 
 A horizontal layout element.
-
 
 </td></tr>
 <tr><td>
 
 [JsonSchema2020](./formspec.jsonschema2020.md)
-
 
 </td><td>
 
@@ -610,34 +517,28 @@ A JSON Schema 2020-12 document, sub-schema, or keyword collection.
 
 This interface covers the subset of JSON Schema 2020-12 that this generator emits, plus an index signature for custom `x-formspec-*` extension keywords.
 
-
 </td></tr>
 <tr><td>
 
 [LabelElement](./formspec.labelelement.md)
 
-
 </td><td>
 
 A Label element for displaying static text.
-
 
 </td></tr>
 <tr><td>
 
 [NumberField](./formspec.numberfield.md)
 
-
 </td><td>
 
 A numeric input field.
-
 
 </td></tr>
 <tr><td>
 
 [ObjectField](./formspec.objectfield.md)
-
 
 </td><td>
 
@@ -645,56 +546,46 @@ An object field containing nested properties.
 
 Use this for grouping related fields under a single key in the schema.
 
-
 </td></tr>
 <tr><td>
 
 [ResolverRegistry](./formspec.resolverregistry.md)
 
-
 </td><td>
 
 A resolver registry that provides type-safe access to resolvers.
-
 
 </td></tr>
 <tr><td>
 
 [Rule](./formspec.rule.md)
 
-
 </td><td>
 
 Rule for conditional element visibility/enablement.
-
 
 </td></tr>
 <tr><td>
 
 [RuleConditionSchema](./formspec.ruleconditionschema.md)
 
-
 </td><td>
 
 JSON Schema subset used in rule conditions.
-
 
 </td></tr>
 <tr><td>
 
 [SchemaBasedCondition](./formspec.schemabasedcondition.md)
 
-
 </td><td>
 
 Condition for a rule.
-
 
 </td></tr>
 <tr><td>
 
 [StaticEnumField](./formspec.staticenumfield.md)
-
 
 </td><td>
 
@@ -702,72 +593,59 @@ A field with static enum options (known at compile time).
 
 Options can be plain strings or objects with `id` and `label` properties.
 
-
 </td></tr>
 <tr><td>
 
 [TextField](./formspec.textfield.md)
 
-
 </td><td>
 
 A text input field.
-
 
 </td></tr>
 <tr><td>
 
 [ValidationIssue](./formspec.validationissue.md)
 
-
 </td><td>
 
 A validation issue found in a form specification.
-
 
 </td></tr>
 <tr><td>
 
 [ValidationResult](./formspec.validationresult.md)
 
-
 </td><td>
 
 Result of validating a form specification.
-
 
 </td></tr>
 <tr><td>
 
 [VerticalLayout](./formspec.verticallayout.md)
 
-
 </td><td>
 
 A vertical layout element.
-
 
 </td></tr>
 <tr><td>
 
 [WriteSchemasOptions](./formspec.writeschemasoptions.md)
 
-
 </td><td>
 
 Options for writing schemas to disk.
-
 
 </td></tr>
 <tr><td>
 
 [WriteSchemasResult](./formspec.writeschemasresult.md)
 
-
 </td><td>
 
 Result of writing schemas to disk.
-
 
 </td></tr>
 </tbody></table>
@@ -778,22 +656,18 @@ Result of writing schemas to disk.
 
 Variable
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [field](./formspec.field.md)
 
-
 </td><td>
 
 Field builder namespace containing functions to create each field type.
-
 
 </td></tr>
 </tbody></table>
@@ -804,28 +678,23 @@ Field builder namespace containing functions to create each field type.
 
 Type Alias
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [AnyField](./formspec.anyfield.md)
 
-
 </td><td>
 
 Union of all field types.
-
 
 </td></tr>
 <tr><td>
 
 [BuildFormSchemasOptions](./formspec.buildformschemasoptions.md)
-
 
 </td><td>
 
@@ -833,23 +702,19 @@ Options for building schemas from a FormSpec.
 
 Currently identical to `GenerateJsonSchemaOptions`<!-- -->. Defined separately so the Chain DSL surface can grow independently in the future if needed.
 
-
 </td></tr>
 <tr><td>
 
 [BuildSchema](./formspec.buildschema.md)
 
-
 </td><td>
 
 Builds a schema type from extracted fields.
-
 
 </td></tr>
 <tr><td>
 
 [DataSourceValueType](./formspec.datasourcevaluetype.md)
-
 
 </td><td>
 
@@ -857,166 +722,136 @@ Gets the value type for a registered data source.
 
 If the source has an `id` property, that becomes the value type. Otherwise, defaults to `string`<!-- -->.
 
-
 </td></tr>
 <tr><td>
 
 [EnumOptionValue](./formspec.enumoptionvalue.md)
 
-
 </td><td>
 
 Valid enum option types: either plain strings or objects with id/label.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractConditionalFields](./formspec.extractconditionalfields.md)
 
-
 </td><td>
 
 Extracts fields that are inside conditionals.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)
 
-
 </td><td>
 
 Extracts conditional fields from an array of elements.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractDynamicSources](./formspec.extractdynamicsources.md)
 
-
 </td><td>
 
 Extracts dynamic data-source names referenced by a single FormSpec element.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractDynamicSourcesFromArray](./formspec.extractdynamicsourcesfromarray.md)
 
-
 </td><td>
 
 Extracts dynamic data-source names referenced anywhere in an element array.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractFields](./formspec.extractfields.md)
 
-
 </td><td>
 
 Extracts all fields from a single element.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)
 
-
 </td><td>
 
 Extracts fields from an array of elements.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractNonConditionalFields](./formspec.extractnonconditionalfields.md)
 
-
 </td><td>
 
 Extracts fields that are not inside conditionals.
-
 
 </td></tr>
 <tr><td>
 
 [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)
 
-
 </td><td>
 
 Extracts non-conditional fields from an array of elements.
-
 
 </td></tr>
 <tr><td>
 
 [FlattenIntersection](./formspec.flattenintersection.md)
 
-
 </td><td>
 
 Utility type that flattens intersection types.
-
 
 </td></tr>
 <tr><td>
 
 [FormElement](./formspec.formelement.md)
 
-
 </td><td>
 
 Union of all form element types (fields and structural elements).
-
 
 </td></tr>
 <tr><td>
 
 [InferFieldValue](./formspec.inferfieldvalue.md)
 
-
 </td><td>
 
 Infers the value type from a single field.
-
 
 </td></tr>
 <tr><td>
 
 [InferFormSchema](./formspec.inferformschema.md)
 
-
 </td><td>
 
 Infers the schema type from a FormSpec.
-
 
 </td></tr>
 <tr><td>
 
 [InferSchema](./formspec.inferschema.md)
 
-
 </td><td>
 
 Infers the schema type from an array of form elements.
-
 
 </td></tr>
 <tr><td>
 
 [Predicate](./formspec.predicate.md)
-
 
 </td><td>
 
@@ -1024,100 +859,82 @@ Union of all predicate types.
 
 Currently only supports equality, but can be extended with: - `OneOfPredicate` - field value is one of several options - `NotPredicate` - negation of another predicate - `AndPredicate` / `OrPredicate` - logical combinations
 
-
 </td></tr>
 <tr><td>
 
 [Resolver](./formspec.resolver.md)
 
-
 </td><td>
 
 A resolver function that fetches options for a data source.
-
 
 </td></tr>
 <tr><td>
 
 [ResolverMap](./formspec.resolvermap.md)
 
-
 </td><td>
 
 Map of resolver functions for a form's dynamic data sources.
-
 
 </td></tr>
 <tr><td>
 
 [ResolverSourcesForForm](./formspec.resolversourcesforform.md)
 
-
 </td><td>
 
 Derives the resolver source-key union for a FormSpec element array.
-
 
 </td></tr>
 <tr><td>
 
 [RuleEffect](./formspec.ruleeffect.md)
 
-
 </td><td>
 
 Rule effect types for conditional visibility.
-
 
 </td></tr>
 <tr><td>
 
 [UISchema](./formspec.uischema.md)
 
-
 </td><td>
 
 Root UI Schema (always a layout — not a Control, Category, or Label).
-
 
 </td></tr>
 <tr><td>
 
 [UISchemaElement](./formspec.uischemaelement.md)
 
-
 </td><td>
 
 Union of all UI Schema element types.
-
 
 </td></tr>
 <tr><td>
 
 [UISchemaElementType](./formspec.uischemaelementtype.md)
 
-
 </td><td>
 
 UI Schema element types.
-
 
 </td></tr>
 <tr><td>
 
 [ValidationSeverity](./formspec.validationseverity.md)
 
-
 </td><td>
 
 Validation issue severity levels.
-
 
 </td></tr>
 <tr><td>
 
 [Validity](./formspec.validity.md)
-
 
 </td><td>
 
@@ -1125,7 +942,5 @@ Represents the validity state of a field or form.
 
 - `"valid"` - All validations pass - `"invalid"` - One or more validations failed - `"unknown"` - Validation state not yet determined (e.g., async validation pending)
 
-
 </td></tr>
 </tbody></table>
-

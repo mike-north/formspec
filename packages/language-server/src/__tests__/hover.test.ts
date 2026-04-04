@@ -1,11 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  BUILTIN_CONSTRAINT_DEFINITIONS,
-} from "@formspec/core/internals";
-import {
-  defineConstraintTag,
-  defineExtension,
-} from "@formspec/core";
+import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
+import { defineConstraintTag, defineExtension } from "@formspec/core";
 import type { FormSpecSerializedHoverInfo } from "@formspec/analysis";
 import type { MarkupContent } from "vscode-languageserver/node.js";
 import { getHoverAtOffset, getHoverForTag } from "../providers/hover.js";

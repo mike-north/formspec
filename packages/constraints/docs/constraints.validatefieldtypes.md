@@ -5,14 +5,16 @@
 ## validateFieldTypes() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Validates a field type against constraints.
 
 **Signature:**
 
 ```typescript
-export declare function validateFieldTypes(context: FieldTypeContext, constraints: FieldTypeConstraints): ValidationIssue[];
+export declare function validateFieldTypes(
+  context: FieldTypeContext,
+  constraints: FieldTypeConstraints
+): ValidationIssue[];
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function validateFieldTypes(context: FieldTypeContext, constraint
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 context
 
-
 </td><td>
 
 [FieldTypeContext](./constraints.fieldtypecontext.md)
 
-
 </td><td>
 
 Information about the field being validated
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldTypeConstraints](./constraints.fieldtypeconstraints.md)
 
-
 </td><td>
 
 Field type constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field type constraints
 [ValidationIssue](./constraints.validationissue.md)<!-- -->\[\]
 
 Array of validation issues (empty if valid)
-

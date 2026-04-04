@@ -9,7 +9,7 @@ Serializable subset of tag metadata needed by hover and completion UIs.
 **Signature:**
 
 ```typescript
-export interface FormSpecSerializedTagDefinition 
+export interface FormSpecSerializedTagDefinition
 ```
 
 ## Properties
@@ -18,79 +18,62 @@ export interface FormSpecSerializedTagDefinition
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [canonicalName](./analysis.formspecserializedtagdefinition.canonicalname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [completionDetail](./analysis.formspecserializedtagdefinition.completiondetail.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [hoverMarkdown](./analysis.formspecserializedtagdefinition.hovermarkdown.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

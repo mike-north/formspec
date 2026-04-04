@@ -9,7 +9,7 @@ Result of validating a form specification.
 **Signature:**
 
 ```typescript
-export interface ValidationResult 
+export interface ValidationResult
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface ValidationResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [issues](./dsl.validationresult.issues.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ValidationIssue](./dsl.validationissue.md)<!-- -->\[\]
 
-
 </td><td>
 
 List of validation issues found
-
 
 </td></tr>
 <tr><td>
 
 [valid](./dsl.validationresult.valid.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether the form is valid (no errors, warnings are ok)
 
-
 </td></tr>
 </tbody></table>
-

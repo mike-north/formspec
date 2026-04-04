@@ -10,16 +10,16 @@ This package provides generators to compile FormSpec forms into: - JSON Schema 2
 
 ## Example
 
-
 ```typescript
 import { buildFormSchemas } from "@formspec/build";
 import { formspec, field, group } from "@formspec/dsl";
 
 const form = formspec(
-  group("Customer",
+  group(
+    "Customer",
     field.text("name", { label: "Name", required: true }),
-    field.text("email", { label: "Email" }),
-  ),
+    field.text("email", { label: "Email" })
+  )
 );
 
 const { jsonSchema, uiSchema } = buildFormSchemas(form);
@@ -31,17 +31,14 @@ const { jsonSchema, uiSchema } = buildFormSchemas(form);
 
 Function
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [buildFormSchemas(form, options)](./build.buildformschemas.md)
-
 
 </td><td>
 
@@ -49,12 +46,10 @@ Builds both JSON Schema and UI Schema from a FormSpec.
 
 This is a convenience function that combines `generateJsonSchema` and `generateUiSchema`<!-- -->.
 
-
 </td></tr>
 <tr><td>
 
 [buildMixedAuthoringSchemas(options)](./build.buildmixedauthoringschemas.md)
-
 
 </td><td>
 
@@ -62,12 +57,10 @@ Builds JSON Schema and UI Schema from a TSDoc-derived model with ChainDSL field 
 
 Overlays are matched by field name. The static model wins for structure, ordering, and constraints; ChainDSL overlays may contribute dynamic runtime field metadata such as dynamic enum or dynamic schema keywords, and may fill in missing annotations.
 
-
 </td></tr>
 <tr><td>
 
 [createExtensionRegistry(extensions)](./build.createextensionregistry.md)
-
 
 </td><td>
 
@@ -75,12 +68,10 @@ Creates an extension registry from a list of extension definitions.
 
 The registry indexes all types, constraints, and annotations by their fully-qualified IDs (`<extensionId>/<name>`<!-- -->) for O(1) lookup during generation and validation.
 
-
 </td></tr>
 <tr><td>
 
 [generateJsonSchema(form, options)](./build.generatejsonschema.md)
-
 
 </td><td>
 
@@ -88,12 +79,10 @@ Generates a JSON Schema 2020-12 from a FormSpec.
 
 All generation routes through the canonical IR. The chain DSL is first canonicalized to a FormIR, then the IR-based generator produces the schema.
 
-
 </td></tr>
 <tr><td>
 
 [generateSchemas(options)](./build.generateschemas.md)
-
 
 </td><td>
 
@@ -101,12 +90,10 @@ Generates JSON Schema and UI Schema from a named TypeScript type — a decorated
 
 This is the recommended entry point. It automatically detects whether the name resolves to a class, interface, or type alias and uses the appropriate IR analysis pipeline.
 
-
 </td></tr>
 <tr><td>
 
 [generateSchemasFromClass(options)](./build.generateschemasfromclass.md)
-
 
 </td><td>
 
@@ -114,12 +101,10 @@ Generates JSON Schema and UI Schema from a decorated TypeScript class.
 
 This is a high-level entry point that handles the entire pipeline: creating a TypeScript program, finding the class, analyzing it to IR, and generating schemas — all in one call.
 
-
 </td></tr>
 <tr><td>
 
 [generateUiSchema(form)](./build.generateuischema.md)
-
 
 </td><td>
 
@@ -127,19 +112,16 @@ Generates a JSON Forms UI Schema from a FormSpec.
 
 All generation routes through the canonical IR. The chain DSL is first canonicalized to a FormIR, then the IR-based generator produces the schema.
 
-
 </td></tr>
 <tr><td>
 
 [writeSchemas(form, options)](./build.writeschemas.md)
-
 
 </td><td>
 
 Builds and writes both JSON Schema and UI Schema files to disk.
 
 This is a convenience function for build-time schema generation. It creates the output directory if it doesn't exist.
-
 
 </td></tr>
 </tbody></table>
@@ -150,17 +132,14 @@ This is a convenience function for build-time schema generation. It creates the 
 
 Interface
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [ArrayField](./build.arrayfield.md)
-
 
 </td><td>
 
@@ -168,23 +147,19 @@ An array field containing repeating items.
 
 Use this for lists of values (e.g., multiple addresses, line items).
 
-
 </td></tr>
 <tr><td>
 
 [BooleanField](./build.booleanfield.md)
 
-
 </td><td>
 
 A boolean checkbox field.
-
 
 </td></tr>
 <tr><td>
 
 [BuildMixedAuthoringSchemasOptions](./build.buildmixedauthoringschemasoptions.md)
-
 
 </td><td>
 
@@ -192,100 +167,82 @@ Options for generating mixed-authoring schemas.
 
 The `typeName` can resolve to a class, interface, or object type alias, just like `generateSchemas()`<!-- -->.
 
-
 </td></tr>
 <tr><td>
 
 [BuildResult](./build.buildresult.md)
 
-
 </td><td>
 
 Result of building form schemas.
-
 
 </td></tr>
 <tr><td>
 
 [BuiltinConstraintBroadeningRegistration](./build.builtinconstraintbroadeningregistration.md)
 
-
 </td><td>
 
 Registration for mapping a built-in TSDoc tag onto a custom constraint when it is used on a particular custom type.
-
 
 </td></tr>
 <tr><td>
 
 [Categorization](./build.categorization.md)
 
-
 </td><td>
 
 A Categorization element (tab-based layout).
-
 
 </td></tr>
 <tr><td>
 
 [Category](./build.category.md)
 
-
 </td><td>
 
 A Category element, used inside a Categorization layout.
-
 
 </td></tr>
 <tr><td>
 
 [Conditional](./build.conditional.md)
 
-
 </td><td>
 
 A conditional wrapper that shows/hides elements based on another field's value.
-
 
 </td></tr>
 <tr><td>
 
 [ConstraintSemanticRole](./build.constraintsemanticrole.md)
 
-
 </td><td>
 
 Semantic metadata for ordered custom constraints that should participate in the generic contradiction/broadening logic.
-
 
 </td></tr>
 <tr><td>
 
 [ConstraintTagRegistration](./build.constrainttagregistration.md)
 
-
 </td><td>
 
 Declarative authoring-side registration for a custom TSDoc constraint tag.
-
 
 </td></tr>
 <tr><td>
 
 [ControlElement](./build.controlelement.md)
 
-
 </td><td>
 
 A Control element that binds to a JSON Schema property.
-
 
 </td></tr>
 <tr><td>
 
 [CustomAnnotationRegistration](./build.customannotationregistration.md)
-
 
 </td><td>
 
@@ -293,12 +250,10 @@ Registration for a custom annotation that may produce JSON Schema keywords.
 
 Custom annotations are referenced by FormSpec's internal custom-annotation nodes. They describe or present a field but do not affect which values are valid.
 
-
 </td></tr>
 <tr><td>
 
 [CustomConstraintRegistration](./build.customconstraintregistration.md)
-
 
 </td><td>
 
@@ -306,12 +261,10 @@ Registration for a custom constraint that maps to JSON Schema keywords.
 
 Custom constraints are referenced by FormSpec's internal custom-constraint nodes.
 
-
 </td></tr>
 <tr><td>
 
 [CustomTypeRegistration](./build.customtyperegistration.md)
-
 
 </td><td>
 
@@ -319,34 +272,28 @@ Registration for a custom type that maps to a JSON Schema representation.
 
 Custom types are referenced by FormSpec's internal custom-type IR nodes and resolved to JSON Schema via `toJsonSchema` during generation.
 
-
 </td></tr>
 <tr><td>
 
 [DynamicEnumField](./build.dynamicenumfield.md)
 
-
 </td><td>
 
 A field with dynamic enum options (fetched from a data source at runtime).
-
 
 </td></tr>
 <tr><td>
 
 [DynamicSchemaField](./build.dynamicschemafield.md)
 
-
 </td><td>
 
 A field that loads its schema dynamically (e.g., from an extension).
-
 
 </td></tr>
 <tr><td>
 
 [EnumOption](./build.enumoption.md)
-
 
 </td><td>
 
@@ -354,23 +301,19 @@ An enum option with a separate ID and display label.
 
 Use this when the stored value (id) should differ from the display text (label).
 
-
 </td></tr>
 <tr><td>
 
 [ExtensionDefinition](./build.extensiondefinition.md)
 
-
 </td><td>
 
 A complete extension definition bundling types, constraints, annotations, and vocabulary keywords.
-
 
 </td></tr>
 <tr><td>
 
 [ExtensionRegistry](./build.extensionregistry.md)
-
 
 </td><td>
 
@@ -378,67 +321,55 @@ A registry of extensions that provides lookup by fully-qualified ID.
 
 Type IDs follow the format: `<extensionId>/<typeName>` Constraint IDs follow the format: `<extensionId>/<constraintName>` Annotation IDs follow the format: `<extensionId>/<annotationName>`
 
-
 </td></tr>
 <tr><td>
 
 [FormSpec](./build.formspec.md)
 
-
 </td><td>
 
 A complete form specification.
-
 
 </td></tr>
 <tr><td>
 
 [GenerateFromClassOptions](./build.generatefromclassoptions.md)
 
-
 </td><td>
 
 Options for generating schemas from a decorated class.
-
 
 </td></tr>
 <tr><td>
 
 [GenerateFromClassResult](./build.generatefromclassresult.md)
 
-
 </td><td>
 
 Result of generating schemas from a decorated class.
-
 
 </td></tr>
 <tr><td>
 
 [GenerateJsonSchemaOptions](./build.generatejsonschemaoptions.md)
 
-
 </td><td>
 
 Options for generating JSON Schema from a Chain DSL form.
-
 
 </td></tr>
 <tr><td>
 
 [GenerateSchemasOptions](./build.generateschemasoptions.md)
 
-
 </td><td>
 
 Options for generating schemas from a named type (class, interface, or type alias).
-
 
 </td></tr>
 <tr><td>
 
 [Group](./build.group.md)
-
 
 </td><td>
 
@@ -446,34 +377,28 @@ A visual grouping of form elements.
 
 Groups provide visual organization and can be rendered as fieldsets or sections.
 
-
 </td></tr>
 <tr><td>
 
 [GroupLayout](./build.grouplayout.md)
 
-
 </td><td>
 
 A group element with a label.
-
 
 </td></tr>
 <tr><td>
 
 [HorizontalLayout](./build.horizontallayout.md)
 
-
 </td><td>
 
 A horizontal layout element.
-
 
 </td></tr>
 <tr><td>
 
 [JsonSchema2020](./build.jsonschema2020.md)
-
 
 </td><td>
 
@@ -481,56 +406,46 @@ A JSON Schema 2020-12 document, sub-schema, or keyword collection.
 
 This interface covers the subset of JSON Schema 2020-12 that this generator emits, plus an index signature for custom `x-formspec-*` extension keywords.
 
-
 </td></tr>
 <tr><td>
 
 [JSONSchema7](./build.jsonschema7.md)
 
-
 </td><td>
 
 **_(BETA)_** A JSON Schema definition (legacy subset used by Zod validator and types.ts).
-
 
 </td></tr>
 <tr><td>
 
 [LabelElement](./build.labelelement.md)
 
-
 </td><td>
 
 A Label element for displaying static text.
-
 
 </td></tr>
 <tr><td>
 
 [MixedAuthoringSchemas](./build.mixedauthoringschemas.md)
 
-
 </td><td>
 
 Result of generating schemas from a mixed-authoring composition.
-
 
 </td></tr>
 <tr><td>
 
 [NumberField](./build.numberfield.md)
 
-
 </td><td>
 
 A numeric input field.
-
 
 </td></tr>
 <tr><td>
 
 [ObjectField](./build.objectfield.md)
-
 
 </td><td>
 
@@ -538,45 +453,37 @@ An object field containing nested properties.
 
 Use this for grouping related fields under a single key in the schema.
 
-
 </td></tr>
 <tr><td>
 
 [Rule](./build.rule.md)
 
-
 </td><td>
 
 Rule for conditional element visibility/enablement.
-
 
 </td></tr>
 <tr><td>
 
 [RuleConditionSchema](./build.ruleconditionschema.md)
 
-
 </td><td>
 
 JSON Schema subset used in rule conditions.
-
 
 </td></tr>
 <tr><td>
 
 [SchemaBasedCondition](./build.schemabasedcondition.md)
 
-
 </td><td>
 
 Condition for a rule.
-
 
 </td></tr>
 <tr><td>
 
 [StaticEnumField](./build.staticenumfield.md)
-
 
 </td><td>
 
@@ -584,34 +491,28 @@ A field with static enum options (known at compile time).
 
 Options can be plain strings or objects with `id` and `label` properties.
 
-
 </td></tr>
 <tr><td>
 
 [StaticSchemaGenerationOptions](./build.staticschemagenerationoptions.md)
 
-
 </td><td>
 
 Shared options for schema generation flows that support custom extensions.
-
 
 </td></tr>
 <tr><td>
 
 [TextField](./build.textfield.md)
 
-
 </td><td>
 
 A text input field.
-
 
 </td></tr>
 <tr><td>
 
 [UISchemaElementBase](./build.uischemaelementbase.md)
-
 
 </td><td>
 
@@ -619,50 +520,41 @@ Base interface for all UI Schema elements.
 
 This is a manually maintained interface representing the common shape shared by all element types. It is kept as an interface (rather than derived from Zod) because it is the base of a discriminated union, not a union member itself.
 
-
 </td></tr>
 <tr><td>
 
 [VerticalLayout](./build.verticallayout.md)
 
-
 </td><td>
 
 A vertical layout element.
-
 
 </td></tr>
 <tr><td>
 
 [VocabularyKeywordRegistration](./build.vocabularykeywordregistration.md)
 
-
 </td><td>
 
 Registration for a vocabulary keyword to include in a JSON Schema `$vocabulary` declaration.
-
 
 </td></tr>
 <tr><td>
 
 [WriteSchemasOptions](./build.writeschemasoptions.md)
 
-
 </td><td>
 
 Options for writing schemas to disk.
-
 
 </td></tr>
 <tr><td>
 
 [WriteSchemasResult](./build.writeschemasresult.md)
 
-
 </td><td>
 
 Result of writing schemas to disk.
-
 
 </td></tr>
 </tbody></table>
@@ -673,28 +565,23 @@ Result of writing schemas to disk.
 
 Type Alias
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [AnyField](./build.anyfield.md)
 
-
 </td><td>
 
 Union of all field types.
-
 
 </td></tr>
 <tr><td>
 
 [BuildFormSchemasOptions](./build.buildformschemasoptions.md)
-
 
 </td><td>
 
@@ -702,45 +589,37 @@ Options for building schemas from a FormSpec.
 
 Currently identical to `GenerateJsonSchemaOptions`<!-- -->. Defined separately so the Chain DSL surface can grow independently in the future if needed.
 
-
 </td></tr>
 <tr><td>
 
 [BuiltinConstraintName](./build.builtinconstraintname.md)
 
-
 </td><td>
 
 Type of a built-in constraint name.
-
 
 </td></tr>
 <tr><td>
 
 [EnumOptionValue](./build.enumoptionvalue.md)
 
-
 </td><td>
 
 Valid enum option types: either plain strings or objects with id/label.
-
 
 </td></tr>
 <tr><td>
 
 [ExtendedJSONSchema7](./build.extendedjsonschema7.md)
 
-
 </td><td>
 
 **_(BETA)_** JSON Schema with FormSpec extension properties for arbitrary `x-formspec-*` keys.
-
 
 </td></tr>
 <tr><td>
 
 [ExtensionApplicableType](./build.extensionapplicabletype.md)
-
 
 </td><td>
 
@@ -748,106 +627,86 @@ A curated type shape exposed to extension applicability hooks.
 
 This intentionally exposes only the fields needed to determine tag/type applicability without committing the entire canonical IR as public API.
 
-
 </td></tr>
 <tr><td>
 
 [ExtensionPayloadValue](./build.extensionpayloadvalue.md)
 
-
 </td><td>
 
 A JSON-serializable payload value used by extension registration hooks.
-
 
 </td></tr>
 <tr><td>
 
 [ExtensionTypeKind](./build.extensiontypekind.md)
 
-
 </td><td>
 
 Top-level type kinds that extension applicability hooks may inspect.
-
 
 </td></tr>
 <tr><td>
 
 [FormElement](./build.formelement.md)
 
-
 </td><td>
 
 Union of all form element types (fields and structural elements).
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSchemaExtensions](./build.formspecschemaextensions.md)
 
-
 </td><td>
 
 **_(BETA)_** Extension properties for custom FormSpec constraint tags.
-
 
 </td></tr>
 <tr><td>
 
 [JSONSchemaType](./build.jsonschematype.md)
 
-
 </td><td>
 
 **_(BETA)_** JSON Schema primitive types.
-
 
 </td></tr>
 <tr><td>
 
 [RuleEffect](./build.ruleeffect.md)
 
-
 </td><td>
 
 Rule effect types for conditional visibility.
-
 
 </td></tr>
 <tr><td>
 
 [UISchema](./build.uischema.md)
 
-
 </td><td>
 
 Root UI Schema (always a layout — not a Control, Category, or Label).
-
 
 </td></tr>
 <tr><td>
 
 [UISchemaElement](./build.uischemaelement.md)
 
-
 </td><td>
 
 Union of all UI Schema element types.
-
 
 </td></tr>
 <tr><td>
 
 [UISchemaElementType](./build.uischemaelementtype.md)
 
-
 </td><td>
 
 UI Schema element types.
 
-
 </td></tr>
 </tbody></table>
-

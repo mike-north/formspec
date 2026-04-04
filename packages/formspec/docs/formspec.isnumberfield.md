@@ -18,30 +18,24 @@ export declare function isNumberField(element: FormElement): element is NumberFi
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./formspec.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ element
 **Returns:**
 
 element is [NumberField](./formspec.numberfield.md)<!-- -->&lt;string&gt;
-

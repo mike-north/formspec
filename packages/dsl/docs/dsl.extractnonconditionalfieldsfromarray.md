@@ -10,18 +10,19 @@ Extracts non-conditional fields from an array of elements.
 
 ```typescript
 export type ExtractNonConditionalFieldsFromArray<Elements> = Elements extends readonly [
-    infer First,
-    ...infer Rest
-] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest>
+  : never;
 ```
+
 **References:** [ExtractNonConditionalFields](./dsl.extractnonconditionalfields.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./dsl.extractnonconditionalfieldsfromarray.md)
 
 ## Example
-
 
 ```typescript
 type Elements = readonly [TextField<"name">, NumberField<"age">];
 type Fields = ExtractNonConditionalFieldsFromArray<Elements>;
 // TextField<"name"> | NumberField<"age">
 ```
-

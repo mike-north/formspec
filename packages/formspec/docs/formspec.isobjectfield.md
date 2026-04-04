@@ -9,7 +9,9 @@ Narrows a `FormElement` to an object field.
 **Signature:**
 
 ```typescript
-export declare function isObjectField(element: FormElement): element is ObjectField<string, readonly FormElement[]>;
+export declare function isObjectField(
+  element: FormElement
+): element is ObjectField<string, readonly FormElement[]>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isObjectField(element: FormElement): element is ObjectFi
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./formspec.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [ObjectField](./formspec.objectfield.md)<!-- -->&lt;string, readonly [FormElement](./formspec.formelement.md)<!-- -->\[\]&gt;
-

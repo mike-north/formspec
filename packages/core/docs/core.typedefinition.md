@@ -5,14 +5,13 @@
 ## TypeDefinition interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A named type definition stored in the type registry.
 
 **Signature:**
 
 ```typescript
-export interface TypeDefinition 
+export interface TypeDefinition
 ```
 
 ## Properties
@@ -21,127 +20,102 @@ export interface TypeDefinition
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotations?](./core.typedefinition.annotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [AnnotationNode](./core.annotationnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Root-level value metadata for a named type definition.
-
 
 </td></tr>
 <tr><td>
 
 [constraints?](./core.typedefinition.constraints.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ConstraintNode](./core.constraintnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Constraints declared on the named type itself.
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.typedefinition.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** The fully-qualified reference name (key in the registry).
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.typedefinition.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_** Where this type was declared.
-
 
 </td></tr>
 <tr><td>
 
 [type](./core.typedefinition.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [TypeNode](./core.typenode.md)
 
-
 </td><td>
 
 **_(BETA)_** The resolved type node.
 
-
 </td></tr>
 </tbody></table>
-

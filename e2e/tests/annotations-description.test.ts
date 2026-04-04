@@ -35,9 +35,7 @@ describe("Annotation: summary text and @remarks", () => {
 
   // @see 002-tsdoc-grammar.md §2.3: summary text → root JSON Schema description
   it("class-level summary text produces root schema description", () => {
-    expect(schema["description"]).toBe(
-      "Form for collecting user feedback."
-    );
+    expect(schema["description"]).toBe("Form for collecting user feedback.");
   });
 
   // @see 002-tsdoc-grammar.md §2.3: summary text → property description
@@ -49,9 +47,7 @@ describe("Annotation: summary text and @remarks", () => {
 
   // @see 002-tsdoc-grammar.md §2.3: summary → description, @remarks → x-formspec-remarks
   it("comments: summary → description, @remarks → x-formspec-remarks", () => {
-    expect(properties["comments"]["description"]).toBe(
-      "Free-form comments about the experience."
-    );
+    expect(properties["comments"]["description"]).toBe("Free-form comments about the experience.");
     expect(properties["comments"]["x-formspec-remarks"]).toBe(
       "This field accepts markdown-formatted text."
     );
@@ -60,9 +56,7 @@ describe("Annotation: summary text and @remarks", () => {
   // @see 002-tsdoc-grammar.md §2.3: @remarks alone does NOT populate description
   it("notes: @remarks alone produces x-formspec-remarks but no description", () => {
     expect(properties["notes"]["description"]).toBeUndefined();
-    expect(properties["notes"]["x-formspec-remarks"]).toBe(
-      "Remarks only, no summary text."
-    );
+    expect(properties["notes"]["x-formspec-remarks"]).toBe("Remarks only, no summary text.");
   });
 
   // @see 002-tsdoc-grammar.md §2.2: absence of annotation → keyword not emitted

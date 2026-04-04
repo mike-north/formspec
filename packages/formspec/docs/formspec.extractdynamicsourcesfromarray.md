@@ -10,9 +10,11 @@ Extracts dynamic data-source names referenced anywhere in an element array.
 
 ```typescript
 export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [
-    infer First,
-    ...infer Rest
-] ? ExtractDynamicSources<First> | ExtractDynamicSourcesFromArray<Rest> : never;
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractDynamicSources<First> | ExtractDynamicSourcesFromArray<Rest>
+  : never;
 ```
-**References:** [ExtractDynamicSources](./formspec.extractdynamicsources.md)<!-- -->, [ExtractDynamicSourcesFromArray](./formspec.extractdynamicsourcesfromarray.md)
 
+**References:** [ExtractDynamicSources](./formspec.extractdynamicsources.md)<!-- -->, [ExtractDynamicSourcesFromArray](./formspec.extractdynamicsourcesfromarray.md)
