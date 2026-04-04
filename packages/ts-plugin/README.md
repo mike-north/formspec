@@ -12,6 +12,22 @@ already own their own TypeScript plugin/runtime can use
 `FormSpecSemanticService` and `createLanguageServiceProxy(...)` directly while
 reusing the same host `Program`.
 
+## Install
+
+```bash
+pnpm add -D @formspec/ts-plugin
+```
+
+## `tsconfig.json` Setup
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [{ "name": "@formspec/ts-plugin" }]
+  }
+}
+```
+
 ## Public Composition APIs
 
 ```ts
@@ -65,3 +81,7 @@ Set `FORMSPEC_PLUGIN_PROFILE=1` to enable semantic query hotspot logging.
 Set `FORMSPEC_PLUGIN_PROFILE_THRESHOLD_MS=<number>` to raise or lower the
 minimum total query duration required before a profiling summary is logged.
 Empty or non-finite values are ignored.
+
+## License
+
+UNLICENSED

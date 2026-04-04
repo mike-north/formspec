@@ -30,6 +30,7 @@ call directly.
 ```ts
 import {
   createServer,
+  getDefinition,
   getCompletionItems,
   getHoverForTag,
   getPluginDiagnosticsForDocument,
@@ -54,6 +55,7 @@ For full white-label control, bypass `createServer()` and use:
 
 - `getPluginDiagnosticsForDocument(...)`
 - `toLspDiagnostics(...)`
+- `getDefinition(...)`
 
 or map canonical FormSpec diagnostics to your own editor/UI model directly.
 

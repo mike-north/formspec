@@ -108,9 +108,11 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/dsl`             | Chain DSL authoring surface                                                         |
 | `@formspec/build`           | JSON Schema / UI Schema generation and static TypeScript analysis                   |
 | `@formspec/runtime`         | Resolver helpers for dynamic data                                                   |
+| `@formspec/analysis`        | Shared semantic-analysis protocol types and comment-tag utilities                    |
 | `@formspec/constraints`     | `.formspec.yml` configuration and DSL capability validation                         |
 | `@formspec/validator`       | Runtime JSON Schema validation for secure environments                              |
 | `@formspec/eslint-plugin`   | ESLint rules for FormSpec tags and DSL usage                                        |
+| `@formspec/ts-plugin`       | TypeScript language-service plugin and reusable semantic service                    |
 | `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags                         |
 | `@formspec/cli`             | Build-time CLI for schema and IR generation                                         |
 | `@formspec/playground`      | Private monorepo playground app                                                     |
@@ -124,7 +126,7 @@ pnpm run test
 pnpm run lint
 ```
 
-The root build runs packages in dependency order. `@formspec/build` must be built before its tests.
+This workspace targets Node.js `>=24`. The root build runs packages in dependency order, and package-local test scripts handle any required prebuild steps.
 
 ## License
 

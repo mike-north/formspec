@@ -65,7 +65,6 @@ const resolvers = defineResolvers(OrderForm, {});
 - `generateJsonSchema`
 - `generateUiSchema`
 - `writeSchemas`
-- `buildMixedAuthoringSchemas`
 
 ### Runtime
 
@@ -76,10 +75,17 @@ const resolvers = defineResolvers(OrderForm, {});
 - `InferSchema`
 - `InferFormSchema`
 - core field, layout, and state types
+- resolver and validation helper types
+
+### Utilities
+
+- `createInitialFieldState`
+- `validateForm`
+- `logValidationIssues`
 
 ## When To Use Individual Packages
 
-- Use `@formspec/build` directly for `generateSchemas()` and static TypeScript analysis.
+- Use `@formspec/build` directly for `generateSchemas()`, `generateSchemasFromClass()`, `generateSchemasFromProgram()`, `buildMixedAuthoringSchemas()`, and static TypeScript analysis.
 - Use `@formspec/eslint-plugin` for lint rules.
 - Use `@formspec/cli` for build-time artifact generation from files.
 - Use `@formspec/validator` for runtime JSON Schema validation.

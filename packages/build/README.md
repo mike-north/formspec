@@ -22,7 +22,7 @@ Most app code can use `formspec`, but use `@formspec/build` directly when you ne
 | Entry point                 | Purpose                                |
 | --------------------------- | -------------------------------------- |
 | `@formspec/build`           | Public build APIs                      |
-| `@formspec/build/browser`   | Browser-safe schema generation surface |
+| `@formspec/build/browser`   | Browser-safe chain-DSL and IR surface  |
 | `@formspec/build/internals` | Unstable low-level IR/analyzer APIs    |
 
 ## Chain DSL Generation
@@ -115,6 +115,7 @@ Low-level canonical IR generators, analyzer primitives, and validation helpers a
 - `writeSchemas(form, options)`
 - `generateSchemas(options)`
 - `generateSchemasFromClass(options)`
+- `generateSchemasFromProgram(options)`
 - `buildMixedAuthoringSchemas(options)`
 - `createExtensionRegistry(extensions)`
 

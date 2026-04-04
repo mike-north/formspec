@@ -42,6 +42,7 @@ const { jsonSchema, uiSchema } = buildFormSchemas(ProfileForm);
 - `field.boolean(name, config?)`
 - `field.enum(name, options, config?)`
 - `field.dynamicEnum(name, source, config?)`
+- `field.dynamicSchema(name, schemaSource, config?)`
 - `field.array(name, ...elements)`
 - `field.arrayWithConfig(name, config, ...elements)`
 - `field.object(name, ...elements)`
@@ -49,6 +50,8 @@ const { jsonSchema, uiSchema } = buildFormSchemas(ProfileForm);
 - `group(label, ...elements)`
 - `when(predicate, ...elements)`
 - `is(fieldName, value)`
+- `validateForm(elements)`
+- `logValidationIssues(result)`
 
 ## Notes
 
