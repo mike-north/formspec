@@ -16,7 +16,7 @@ pnpm add formspec
 
 ## Main API
 
-`defineResolvers(form, resolvers)` creates a typed resolver registry for the dynamic enum sources used by a form.
+`defineResolvers(form, resolvers)` creates a typed resolver registry for the dynamic enum and dynamic schema sources used by a form.
 
 ```ts
 import { field, formspec } from "@formspec/dsl";
@@ -43,6 +43,14 @@ const resolvers = defineResolvers(Form, {
 
 const countries = await resolvers.get("countries")();
 ```
+
+## Main Exports
+
+- `defineResolvers(form, resolvers)`
+- `Resolver`
+- `ResolverMap`
+- `ResolverRegistry`
+- `ResolverSourcesForForm`
 
 ## License
 

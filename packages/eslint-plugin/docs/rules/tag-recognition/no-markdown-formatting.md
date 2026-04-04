@@ -2,7 +2,7 @@
 
 📝 Forbids Markdown formatting in configured FormSpec tag values.
 
-> Note: In ESLint flat config, when this plugin is registered under the key `formspec`, this rule is referenced as `formspec/tag-recognition/no-markdown-formatting`.
+🔧 This rule is automatically fixable by the [`--fix` CLI option](https://eslint.org/docs/latest/user-guide/command-line-interface#--fix).
 
 <!-- end auto-generated rule header -->
 

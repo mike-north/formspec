@@ -78,7 +78,16 @@ const extension = defineExtension({
 ### Utilities
 
 - `normalizeConstraintTagName`
+- `createInitialFieldState`
+- `IR_VERSION`
 - field and layout type guards
+
+## Entry Points
+
+| Entry point               | Purpose                                |
+| ------------------------- | -------------------------------------- |
+| `@formspec/core`          | Stable public types and extension APIs |
+| `@formspec/core/internals` | Unstable low-level internal types      |
 
 ## License
 

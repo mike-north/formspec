@@ -32,6 +32,7 @@ Unknown `x-formspec-*` keywords are ignored by the underlying validator, so gene
 ## Main Exports
 
 - `createFormSpecValidator(schema, options?)`
+- `CreateValidatorOptions`
 - `Validator`
 - `ValidationResult`
 - `OutputUnit`

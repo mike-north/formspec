@@ -45,6 +45,14 @@ const form = formspec(field.text("name"), field.dynamicEnum("country", "countrie
 const result = validateFormSpecElements(form.elements, { constraints: resolved });
 ```
 
+## Browser Entry Point
+
+Use `@formspec/constraints/browser` when you need validation in browser code and do not want the file-based config loader:
+
+```ts
+import { loadConfigFromString, validateFormSpec } from "@formspec/constraints/browser";
+```
+
 ## Main Exports
 
 - `loadConfig`
