@@ -62,28 +62,28 @@ Constraint tags narrow the set of valid values for a field. Per S1, constraints 
 
 Annotation tags carry a single scalar value. Per C1, they compose via override — the most-specific declaration wins. Annotations do not affect the valid value set.
 
-| Tag            | IR node kind            | Primary schema/UI target                 | Notes                                                                                                          |
-| -------------- | ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `@displayName` | `DisplayNameAnnotation` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields |
-| `@apiName`     | `ApiNameAnnotation`     | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields            |
-| ~~`@description`~~ | ~~`DescriptionAnnotation`~~ | ~~JSON Schema `description`~~        | **Removed.** Not a standard TSDoc tag; invisible to API Documenter; requires `tsdoc.json` registration. Use summary text instead. See §2.3 for the replacement precedence rule. |
-| `@placeholder` | `PlaceholderAnnotation` | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                      |
-| `@format`      | `FormatAnnotation`      | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                                |
-| `@order`       | `FieldOrderAnnotation`  | UI Schema element order                  | Integer; lower values appear first                                                                             |
+| Tag                | IR node kind                | Primary schema/UI target                 | Notes                                                                                                                                                                           |
+| ------------------ | --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@displayName`     | `DisplayNameAnnotation`     | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields                                                                  |
+| `@apiName`         | `ApiNameAnnotation`         | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields                                                                             |
+| ~~`@description`~~ | ~~`DescriptionAnnotation`~~ | ~~JSON Schema `description`~~            | **Removed.** Not a standard TSDoc tag; invisible to API Documenter; requires `tsdoc.json` registration. Use summary text instead. See §2.3 for the replacement precedence rule. |
+| `@placeholder`     | `PlaceholderAnnotation`     | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                                                                                       |
+| `@format`          | `FormatAnnotation`          | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                                                                                                 |
+| `@order`           | `FieldOrderAnnotation`      | UI Schema element order                  | Integer; lower values appear first                                                                                                                                              |
 
 ### 2.3 Ecosystem Tags (Reused Without Modification)
 
 These are standard TSDoc or JSDoc tags with well-defined semantics. FormSpec extracts and records them but does not invent FormSpec-specific equivalents (per S6).
 
-| Tag             | Source standard | IR treatment                                                                                      | Output                                                |
-| --------------- | --------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `@defaultValue` | TSDoc           | `DefaultValueAnnotation`                                                                          | JSON Schema `default`                                 |
-| `@deprecated`   | TSDoc / JSDoc   | `DeprecatedAnnotation`                                                                            | JSON Schema `deprecated: true`, diagnostic hint in UI |
-| `@example`      | TSDoc           | `ExampleAnnotation`                                                                               | JSON Schema `examples` array                          |
-| `@remarks`      | TSDoc           | `RemarksAnnotation` — programmatic-persona documentation carried via JSON Schema extension keyword | `x-<vendor>-remarks` (see 003 §3.2)                  |
-| `@see`          | TSDoc / JSDoc   | Recorded in provenance, not emitted to schemas                                                    | Tooling use only                                      |
-| `@param`        | TSDoc           | Not extracted for form fields (applies to methods)                                                | N/A                                                   |
-| `@returns`      | TSDoc           | Not extracted for form fields                                                                     | N/A                                                   |
+| Tag             | Source standard | IR treatment                                                                                       | Output                                                |
+| --------------- | --------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `@defaultValue` | TSDoc           | `DefaultValueAnnotation`                                                                           | JSON Schema `default`                                 |
+| `@deprecated`   | TSDoc / JSDoc   | `DeprecatedAnnotation`                                                                             | JSON Schema `deprecated: true`, diagnostic hint in UI |
+| `@example`      | TSDoc           | `ExampleAnnotation`                                                                                | JSON Schema `examples` array                          |
+| `@remarks`      | TSDoc           | `RemarksAnnotation` — programmatic-persona documentation carried via JSON Schema extension keyword | `x-<vendor>-remarks` (see 003 §3.2)                   |
+| `@see`          | TSDoc / JSDoc   | Recorded in provenance, not emitted to schemas                                                     | Tooling use only                                      |
+| `@param`        | TSDoc           | Not extracted for form fields (applies to methods)                                                 | N/A                                                   |
+| `@returns`      | TSDoc           | Not extracted for form fields                                                                      | N/A                                                   |
 
 **Description and remarks:** FormSpec uses two distinct channels from TSDoc comments, each serving a different audience:
 
@@ -1261,34 +1261,34 @@ tags: Tag[];
 
 ## Appendix A: Tag Quick Reference
 
-| Tag                                  | Category   | Argument        | Path? | Member? |
-| ------------------------------------ | ---------- | --------------- | ----- | ------- |
-| `@minimum`                           | constraint | numeric literal | yes   | no      |
-| `@maximum`                           | constraint | numeric literal | yes   | no      |
-| `@exclusiveMinimum`                  | constraint | numeric literal | yes   | no      |
-| `@exclusiveMaximum`                  | constraint | numeric literal | yes   | no      |
-| `@multipleOf`                        | constraint | numeric literal | yes   | no      |
-| `@minLength`                         | constraint | non-neg int     | yes   | no      |
-| `@maxLength`                         | constraint | non-neg int     | yes   | no      |
-| `@pattern`                           | constraint | regex string    | yes   | no      |
-| `@minItems`                          | constraint | non-neg int     | yes   | no      |
-| `@maxItems`                          | constraint | non-neg int     | yes   | no      |
-| `@uniqueItems`                       | constraint | none (marker)   | yes   | no      |
-| `@maxSigFig` (example extension tag) | constraint | pos int         | yes   | no      |
-| `@const`                             | constraint | JSON value      | no    | no      |
-| `@displayName`                       | annotation | text            | no    | yes     |
-| `@apiName`                           | annotation | identifier      | no    | yes     |
-| ~~`@description`~~                   | ~~annotation~~ | ~~text~~        | ~~no~~| ~~yes~~ |
-| `@placeholder`                       | annotation | text            | no    | no      |
-| `@format`                            | annotation | identifier      | yes   | no      |
-| `@order`                             | annotation | integer         | no    | no      |
-| `@defaultValue`                      | ecosystem  | JSON/text       | yes   | no      |
-| `@deprecated`                        | ecosystem  | text?           | no    | yes     |
-| `@example`                           | ecosystem  | JSON/text       | no    | no      |
-| `@remarks`                           | ecosystem  | text            | no    | no      |
-| `@see`                               | ecosystem  | text            | no    | no      |
-| `@group`                             | structure  | text            | no    | no      |
-| `@showWhen`                          | structure  | field=value     | no    | no      |
-| `@hideWhen`                          | structure  | field=value     | no    | no      |
-| `@enableWhen`                        | structure  | field=value     | no    | no      |
-| `@disableWhen`                       | structure  | field=value     | no    | no      |
+| Tag                                  | Category       | Argument        | Path?  | Member? |
+| ------------------------------------ | -------------- | --------------- | ------ | ------- |
+| `@minimum`                           | constraint     | numeric literal | yes    | no      |
+| `@maximum`                           | constraint     | numeric literal | yes    | no      |
+| `@exclusiveMinimum`                  | constraint     | numeric literal | yes    | no      |
+| `@exclusiveMaximum`                  | constraint     | numeric literal | yes    | no      |
+| `@multipleOf`                        | constraint     | numeric literal | yes    | no      |
+| `@minLength`                         | constraint     | non-neg int     | yes    | no      |
+| `@maxLength`                         | constraint     | non-neg int     | yes    | no      |
+| `@pattern`                           | constraint     | regex string    | yes    | no      |
+| `@minItems`                          | constraint     | non-neg int     | yes    | no      |
+| `@maxItems`                          | constraint     | non-neg int     | yes    | no      |
+| `@uniqueItems`                       | constraint     | none (marker)   | yes    | no      |
+| `@maxSigFig` (example extension tag) | constraint     | pos int         | yes    | no      |
+| `@const`                             | constraint     | JSON value      | no     | no      |
+| `@displayName`                       | annotation     | text            | no     | yes     |
+| `@apiName`                           | annotation     | identifier      | no     | yes     |
+| ~~`@description`~~                   | ~~annotation~~ | ~~text~~        | ~~no~~ | ~~yes~~ |
+| `@placeholder`                       | annotation     | text            | no     | no      |
+| `@format`                            | annotation     | identifier      | yes    | no      |
+| `@order`                             | annotation     | integer         | no     | no      |
+| `@defaultValue`                      | ecosystem      | JSON/text       | yes    | no      |
+| `@deprecated`                        | ecosystem      | text?           | no     | yes     |
+| `@example`                           | ecosystem      | JSON/text       | no     | no      |
+| `@remarks`                           | ecosystem      | text            | no     | no      |
+| `@see`                               | ecosystem      | text            | no     | no      |
+| `@group`                             | structure      | text            | no     | no      |
+| `@showWhen`                          | structure      | field=value     | no     | no      |
+| `@hideWhen`                          | structure      | field=value     | no     | no      |
+| `@enableWhen`                        | structure      | field=value     | no     | no      |
+| `@disableWhen`                       | structure      | field=value     | no     | no      |

@@ -5,7 +5,6 @@
 ## JSONSchema7."x-formspec-params" property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Field names whose values are needed to fetch dynamic enum options. Used for dependent/cascading dropdowns.
 

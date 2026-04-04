@@ -4,11 +4,10 @@
 
 ## CommentSourceSpan type
 
-
 **Signature:**
 
 ```typescript
 export type CommentSourceSpan = CommentSpan;
 ```
-**References:** [CommentSpan](./analysis.commentspan.md)
 
+**References:** [CommentSpan](./analysis.commentspan.md)

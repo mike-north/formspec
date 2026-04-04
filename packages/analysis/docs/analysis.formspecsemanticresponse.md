@@ -9,34 +9,40 @@ Response variants returned by the semantic tsserver plugin.
 **Signature:**
 
 ```typescript
-export type FormSpecSemanticResponse = {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "health";
-    readonly manifest: FormSpecAnalysisManifest;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "completion";
-    readonly sourceHash: string;
-    readonly context: FormSpecSerializedCompletionContext;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "hover";
-    readonly sourceHash: string;
-    readonly hover: FormSpecSerializedHoverInfo | null;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "diagnostics";
-    readonly sourceHash: string;
-    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "file-snapshot";
-    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "error";
-    readonly error: string;
-};
+export type FormSpecSemanticResponse =
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "health";
+      readonly manifest: FormSpecAnalysisManifest;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "completion";
+      readonly sourceHash: string;
+      readonly context: FormSpecSerializedCompletionContext;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "hover";
+      readonly sourceHash: string;
+      readonly hover: FormSpecSerializedHoverInfo | null;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "diagnostics";
+      readonly sourceHash: string;
+      readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "file-snapshot";
+      readonly snapshot: FormSpecAnalysisFileSnapshot | null;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "error";
+      readonly error: string;
+    };
 ```
-**References:** [FORMSPEC\_ANALYSIS\_PROTOCOL\_VERSION](./analysis.formspec_analysis_protocol_version.md)<!-- -->, [FormSpecAnalysisManifest](./analysis.formspecanalysismanifest.md)<!-- -->, [FormSpecSerializedCompletionContext](./analysis.formspecserializedcompletioncontext.md)<!-- -->, [FormSpecSerializedHoverInfo](./analysis.formspecserializedhoverinfo.md)<!-- -->, [FormSpecAnalysisDiagnostic](./analysis.formspecanalysisdiagnostic.md)<!-- -->, [FormSpecAnalysisFileSnapshot](./analysis.formspecanalysisfilesnapshot.md)
 
+**References:** [FORMSPEC_ANALYSIS_PROTOCOL_VERSION](./analysis.formspec_analysis_protocol_version.md)<!-- -->, [FormSpecAnalysisManifest](./analysis.formspecanalysismanifest.md)<!-- -->, [FormSpecSerializedCompletionContext](./analysis.formspecserializedcompletioncontext.md)<!-- -->, [FormSpecSerializedHoverInfo](./analysis.formspecserializedhoverinfo.md)<!-- -->, [FormSpecAnalysisDiagnostic](./analysis.formspecanalysisdiagnostic.md)<!-- -->, [FormSpecAnalysisFileSnapshot](./analysis.formspecanalysisfilesnapshot.md)

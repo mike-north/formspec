@@ -12,9 +12,11 @@ Recursively processes each element and unions the results.
 
 ```typescript
 export type ExtractFieldsFromArray<Elements> = Elements extends readonly [
-    infer First,
-    ...infer Rest
-] ? ExtractFields<First> | ExtractFieldsFromArray<Rest> : never;
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractFields<First> | ExtractFieldsFromArray<Rest>
+  : never;
 ```
-**References:** [ExtractFields](./dsl.extractfields.md)<!-- -->, [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)
 
+**References:** [ExtractFields](./dsl.extractfields.md)<!-- -->, [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)

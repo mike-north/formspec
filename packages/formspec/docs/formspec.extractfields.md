@@ -9,7 +9,13 @@ Extracts all fields from a single element.
 **Signature:**
 
 ```typescript
-export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+export type ExtractFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
 ```
-**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)
 
+**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractFieldsFromArray](./formspec.extractfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)

@@ -9,7 +9,7 @@ JSONForms rule effect constraints.
 **Signature:**
 
 ```typescript
-export interface RuleEffectConstraints 
+export interface RuleEffectConstraints
 ```
 
 ## Properties
@@ -18,98 +18,77 @@ export interface RuleEffectConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [DISABLE?](./constraints.ruleeffectconstraints.disable.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ DISABLE - disable element when condition is true
-
 
 </td></tr>
 <tr><td>
 
 [ENABLE?](./constraints.ruleeffectconstraints.enable.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ ENABLE - enable element when condition is true
-
 
 </td></tr>
 <tr><td>
 
 [HIDE?](./constraints.ruleeffectconstraints.hide.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ HIDE - hide element when condition is true
-
 
 </td></tr>
 <tr><td>
 
 [SHOW?](./constraints.ruleeffectconstraints.show.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ SHOW - show element when condition is true
 
-
 </td></tr>
 </tbody></table>
-

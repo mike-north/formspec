@@ -13,5 +13,5 @@ Currently only supports equality, but can be extended with: - `OneOfPredicate` -
 ```typescript
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
 ```
-**References:** [EqualsPredicate](./core.equalspredicate.md)
 
+**References:** [EqualsPredicate](./core.equalspredicate.md)

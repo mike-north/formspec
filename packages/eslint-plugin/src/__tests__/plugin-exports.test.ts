@@ -69,7 +69,10 @@ describe("@formspec/eslint-plugin exports", () => {
 
     beforeAll(() => {
       tmpDir = mkdtempSync(join(os.tmpdir(), "formspec-eslint-test-"));
-      writeFileSync(join(tmpDir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true } }));
+      writeFileSync(
+        join(tmpDir, "tsconfig.json"),
+        JSON.stringify({ compilerOptions: { strict: true } })
+      );
       writeFileSync(join(tmpDir, "test.ts"), "export const x = 1;\n");
     });
 
@@ -81,7 +84,7 @@ describe("@formspec/eslint-plugin exports", () => {
 
     it("resolves and loads every rule against a real project", async () => {
       const allRulesEnabled = Object.fromEntries(
-        Object.keys(rules).map((name) => [`formspec/${name}`, "warn"]),
+        Object.keys(rules).map((name) => [`formspec/${name}`, "warn"])
       );
       const overrideConfig: Linter.Config = {
         files: ["**/*.ts"],

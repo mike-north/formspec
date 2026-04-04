@@ -9,7 +9,9 @@ Generates a UI schema from a FormSpec.
 **Signature:**
 
 ```typescript
-export declare function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+export declare function generateUiSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>
+): UISchema;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function generateUiSchema<E extends readonly FormElement[]>(form:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./formspec.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ form
 **Returns:**
 
 [UISchema](./formspec.uischema.md)
-

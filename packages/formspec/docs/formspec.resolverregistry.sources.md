@@ -11,7 +11,7 @@ Gets all registered data source names.
 ```typescript
 sources(): Sources[];
 ```
+
 **Returns:**
 
 Sources\[\]
-

@@ -5,14 +5,13 @@
 ## LayoutContext interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Context for layout validation.
 
 **Signature:**
 
 ```typescript
-export interface LayoutContext 
+export interface LayoutContext
 ```
 
 ## Properties
@@ -21,98 +20,77 @@ export interface LayoutContext
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [depth](./constraints.layoutcontext.depth.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_** Current nesting depth
-
 
 </td></tr>
 <tr><td>
 
 [label?](./constraints.layoutcontext.label.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Optional label for the element (for groups)
-
 
 </td></tr>
 <tr><td>
 
 [layoutType](./constraints.layoutcontext.layouttype.md)
 
-
 </td><td>
-
 
 </td><td>
 
 "group" \| "conditional"
 
-
 </td><td>
 
 **_(BETA)_** The type of layout element ("group" \| "conditional")
-
 
 </td></tr>
 <tr><td>
 
 [path?](./constraints.layoutcontext.path.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Path to this element
 
-
 </td></tr>
 </tbody></table>
-

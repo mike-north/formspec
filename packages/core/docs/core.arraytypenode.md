@@ -5,14 +5,13 @@
 ## ArrayTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Array type with a single items type.
 
 **Signature:**
 
 ```typescript
-export interface ArrayTypeNode 
+export interface ArrayTypeNode
 ```
 
 ## Properties
@@ -21,64 +20,51 @@ export interface ArrayTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [items](./core.arraytypenode.items.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [TypeNode](./core.typenode.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.arraytypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "array"
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

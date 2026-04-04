@@ -9,7 +9,7 @@ Serializable analysis artifact for a single source file.
 **Signature:**
 
 ```typescript
-export interface FormSpecAnalysisFileSnapshot 
+export interface FormSpecAnalysisFileSnapshot
 ```
 
 ## Properties
@@ -18,117 +18,92 @@ export interface FormSpecAnalysisFileSnapshot
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [comments](./analysis.formspecanalysisfilesnapshot.comments.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [FormSpecAnalysisCommentSnapshot](./analysis.formspecanalysiscommentsnapshot.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [diagnostics](./analysis.formspecanalysisfilesnapshot.diagnostics.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [FormSpecAnalysisDiagnostic](./analysis.formspecanalysisdiagnostic.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [filePath](./analysis.formspecanalysisfilesnapshot.filepath.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [generatedAt](./analysis.formspecanalysisfilesnapshot.generatedat.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [sourceHash](./analysis.formspecanalysisfilesnapshot.sourcehash.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

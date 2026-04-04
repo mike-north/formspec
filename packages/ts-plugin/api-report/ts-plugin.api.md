@@ -69,6 +69,19 @@ export interface FormSpecAnalysisFileSnapshot {
 }
 
 // @public
+export interface FormSpecAnalysisManifest {
+    readonly analysisSchemaVersion: typeof FORMSPEC_ANALYSIS_SCHEMA_VERSION;
+    readonly endpoint: FormSpecIpcEndpoint;
+    readonly extensionFingerprint: string;
+    readonly generation: number;
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly typescriptVersion: string;
+    readonly updatedAt: string;
+    readonly workspaceId: string;
+    readonly workspaceRoot: string;
+}
+
+// @public
 export interface FormSpecAnalysisTagSnapshot {
     readonly argumentSpan: CommentSpan | null;
     readonly argumentText: string;
@@ -83,19 +96,20 @@ export interface FormSpecAnalysisTagSnapshot {
 }
 
 // @public
+export interface FormSpecIpcEndpoint {
+    readonly address: string;
+    readonly kind: "unix-socket" | "windows-pipe";
+}
+
+// @public
 export type FormSpecPlacement = "class" | "class-field" | "class-method" | "interface" | "interface-field" | "type-alias" | "type-alias-field" | "variable" | "function" | "function-parameter" | "method-parameter";
 
 // @public
 export class FormSpecPluginService {
     constructor(options: FormSpecPluginServiceOptions);
-    // Warning: (ae-forgotten-export) The symbol "FormSpecAnalysisManifest" needs to be exported by the entry point index.d.ts
-    //
     // @internal
     getManifest(): FormSpecAnalysisManifest;
     getSemanticService(): FormSpecSemanticService;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecSemanticQuery" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "FormSpecSemanticResponse" needs to be exported by the entry point index.d.ts
-    //
     // @internal
     handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse;
     scheduleSnapshotRefresh(filePath: string): void;
@@ -126,6 +140,60 @@ export interface FormSpecSemanticHoverResult {
     readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
     readonly sourceHash: string;
 }
+
+// @public
+export type FormSpecSemanticQuery = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly filePath: string;
+    readonly offset: number;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly filePath: string;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly filePath: string;
+};
+
+// @public
+export type FormSpecSemanticResponse = {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "health";
+    readonly manifest: FormSpecAnalysisManifest;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "completion";
+    readonly sourceHash: string;
+    readonly context: FormSpecSerializedCompletionContext;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "hover";
+    readonly sourceHash: string;
+    readonly hover: FormSpecSerializedHoverInfo | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "diagnostics";
+    readonly sourceHash: string;
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "file-snapshot";
+    readonly snapshot: FormSpecAnalysisFileSnapshot | null;
+} | {
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly kind: "error";
+    readonly error: string;
+};
 
 // @public
 export class FormSpecSemanticService {

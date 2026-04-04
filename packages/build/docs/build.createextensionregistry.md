@@ -11,7 +11,9 @@ The registry indexes all types, constraints, and annotations by their fully-qual
 **Signature:**
 
 ```typescript
-export declare function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
+export declare function createExtensionRegistry(
+  extensions: readonly ExtensionDefinition[]
+): ExtensionRegistry;
 ```
 
 ## Parameters
@@ -20,32 +22,26 @@ export declare function createExtensionRegistry(extensions: readonly ExtensionDe
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 extensions
 
-
 </td><td>
 
 readonly [ExtensionDefinition](./build.extensiondefinition.md)<!-- -->\[\]
 
-
 </td><td>
 
 The extension definitions to register.
-
 
 </td></tr>
 </tbody></table>
@@ -59,4 +55,3 @@ An [ExtensionRegistry](./build.extensionregistry.md) instance.
 ## Exceptions
 
 If duplicate type/constraint/annotation IDs are detected across extensions.
-

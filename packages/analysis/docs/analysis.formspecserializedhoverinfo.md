@@ -9,7 +9,7 @@ Hover payload for a single comment token under the cursor.
 **Signature:**
 
 ```typescript
-export interface FormSpecSerializedHoverInfo 
+export interface FormSpecSerializedHoverInfo
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface FormSpecSerializedHoverInfo
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./analysis.formspecserializedhoverinfo.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "tag-name" \| "target" \| "argument"
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [markdown](./analysis.formspecserializedhoverinfo.markdown.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -9,5 +9,14 @@ Top-level type kinds that extension applicability hooks may inspect.
 **Signature:**
 
 ```typescript
-export type ExtensionTypeKind = "primitive" | "enum" | "array" | "object" | "record" | "union" | "reference" | "dynamic" | "custom";
+export type ExtensionTypeKind =
+  | "primitive"
+  | "enum"
+  | "array"
+  | "object"
+  | "record"
+  | "union"
+  | "reference"
+  | "dynamic"
+  | "custom";
 ```

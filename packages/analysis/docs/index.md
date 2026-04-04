@@ -10,21 +10,16 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/analysis](./analysis.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

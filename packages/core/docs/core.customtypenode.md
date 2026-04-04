@@ -5,14 +5,13 @@
 ## CustomTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Custom type registered by an extension.
 
 **Signature:**
 
 ```typescript
-export interface CustomTypeNode 
+export interface CustomTypeNode
 ```
 
 ## Properties
@@ -21,85 +20,68 @@ export interface CustomTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./core.customtypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "custom"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [payload](./core.customtypenode.payload.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [JsonValue](./core.jsonvalue.md)
 
-
 </td><td>
 
 **_(BETA)_** Opaque payload serialized by the extension that registered this type. Must be JSON-serializable.
-
 
 </td></tr>
 <tr><td>
 
 [typeId](./core.customtypenode.typeid.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** The extension-qualified type identifier. Format: `"<vendor-prefix>/<extension-name>/<type-name>"` e.g., `"x-stripe/monetary/MonetaryAmount"`
 
-
 </td></tr>
 </tbody></table>
-

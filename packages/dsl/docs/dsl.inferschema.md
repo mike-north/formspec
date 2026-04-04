@@ -13,18 +13,21 @@ Non-conditional fields are required, conditional fields are optional.
 **Signature:**
 
 ```typescript
-export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<
+  BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> &
+    Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>
+>;
 ```
+
 **References:** [FormElement](./dsl.formelement.md)<!-- -->, [FlattenIntersection](./dsl.flattenintersection.md)<!-- -->, [BuildSchema](./dsl.buildschema.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./dsl.extractnonconditionalfieldsfromarray.md)<!-- -->, [ExtractConditionalFieldsFromArray](./dsl.extractconditionalfieldsfromarray.md)
 
 ## Example
-
 
 ```typescript
 const form = formspec(
   field.text("name"),
   field.number("age"),
-  field.enum("status", ["active", "inactive"] as const),
+  field.enum("status", ["active", "inactive"] as const)
 );
 
 type Schema = InferSchema<typeof form.elements>;
@@ -33,9 +36,8 @@ type Schema = InferSchema<typeof form.elements>;
 // Conditional fields become optional:
 const formWithConditional = formspec(
   field.enum("type", ["a", "b"] as const),
-  when(is("type", "a"), field.text("aField")),
+  when(is("type", "a"), field.text("aField"))
 );
 type ConditionalSchema = InferSchema<typeof formWithConditional.elements>;
 // { type: "a" | "b"; aField?: string }
 ```
-

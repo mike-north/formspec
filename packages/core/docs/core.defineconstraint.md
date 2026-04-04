@@ -9,7 +9,9 @@ Defines a custom constraint registration. Currently an identity function that pr
 **Signature:**
 
 ```typescript
-export declare function defineConstraint(reg: CustomConstraintRegistration): CustomConstraintRegistration;
+export declare function defineConstraint(
+  reg: CustomConstraintRegistration
+): CustomConstraintRegistration;
 ```
 
 ## Parameters
@@ -18,32 +20,26 @@ export declare function defineConstraint(reg: CustomConstraintRegistration): Cus
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 reg
 
-
 </td><td>
 
 [CustomConstraintRegistration](./core.customconstraintregistration.md)
 
-
 </td><td>
 
 The custom constraint registration.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +49,3 @@ The custom constraint registration.
 [CustomConstraintRegistration](./core.customconstraintregistration.md)
 
 The same registration, validated at the type level.
-

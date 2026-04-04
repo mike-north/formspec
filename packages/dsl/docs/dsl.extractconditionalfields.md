@@ -9,23 +9,29 @@ Extracts fields that ARE inside conditionals. These fields may or may not be vis
 **Signature:**
 
 ```typescript
-export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends Group<infer Elements> ? ExtractConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+export type ExtractConditionalFields<E> = E extends AnyField
+  ? never
+  : E extends Group<infer Elements>
+    ? ExtractConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
 ```
+
 **References:** [AnyField](./dsl.anyfield.md)<!-- -->, [Group](./dsl.group.md)<!-- -->, [ExtractConditionalFieldsFromArray](./dsl.extractconditionalfieldsfromarray.md)<!-- -->, [Conditional](./dsl.conditional.md)<!-- -->, [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)
 
 ## Example
 
-
 ```typescript
 // Given a form with conditional fields:
 const form = formspec(
-  field.text("name"),           // non-conditional (skipped)
-  when(is("type", "business"),
-    field.text("company"),      // conditional (extracted)
-    field.text("taxId"),        // conditional (extracted)
-  ),
+  field.text("name"), // non-conditional (skipped)
+  when(
+    is("type", "business"),
+    field.text("company"), // conditional (extracted)
+    field.text("taxId") // conditional (extracted)
+  )
 );
 
 // ExtractConditionalFields extracts: TextField<"company"> | TextField<"taxId">
 ```
-

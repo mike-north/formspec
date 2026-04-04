@@ -5,14 +5,13 @@
 ## DescriptionAnnotationNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Description annotation.
 
 **Signature:**
 
 ```typescript
-export interface DescriptionAnnotationNode 
+export interface DescriptionAnnotationNode
 ```
 
 ## Properties
@@ -21,106 +20,85 @@ export interface DescriptionAnnotationNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationKind](./core.descriptionannotationnode.annotationkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "description"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.descriptionannotationnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "annotation"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.descriptionannotationnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.descriptionannotationnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

@@ -10,55 +10,45 @@
 
 Function
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [computeFormSpecTextHash(text)](./analysis.computeformspectexthash.md)
 
-
 </td><td>
 
 Computes a stable, non-cryptographic hash for document staleness checks across the plugin/LSP boundary.
-
 
 </td></tr>
 <tr><td>
 
 [isFormSpecAnalysisManifest(value)](./analysis.isformspecanalysismanifest.md)
 
-
 </td><td>
 
 Validates an unknown manifest payload from disk before consumers trust it.
-
 
 </td></tr>
 <tr><td>
 
 [isFormSpecSemanticQuery(value)](./analysis.isformspecsemanticquery.md)
 
-
 </td><td>
 
 Validates an unknown inbound IPC request before dispatching it.
-
 
 </td></tr>
 <tr><td>
 
 [isFormSpecSemanticResponse(value)](./analysis.isformspecsemanticresponse.md)
 
-
 </td><td>
 
 Validates an unknown IPC response before the language server consumes it.
-
 
 </td></tr>
 </tbody></table>
@@ -69,153 +59,124 @@ Validates an unknown IPC response before the language server consumes it.
 
 Interface
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisCommentSnapshot](./analysis.formspecanalysiscommentsnapshot.md)
 
-
 </td><td>
 
 Serializable view of one declaration-attached doc comment in a source file.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisDiagnostic](./analysis.formspecanalysisdiagnostic.md)
 
-
 </td><td>
 
 File-local diagnostic derived from comment parsing or semantic analysis.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisDiagnosticLocation](./analysis.formspecanalysisdiagnosticlocation.md)
 
-
 </td><td>
 
 Additional source location associated with a diagnostic.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisFileSnapshot](./analysis.formspecanalysisfilesnapshot.md)
 
-
 </td><td>
 
 Serializable analysis artifact for a single source file.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisManifest](./analysis.formspecanalysismanifest.md)
 
-
 </td><td>
 
 Discovery record written by the tsserver plugin so other FormSpec tooling can locate and validate the matching semantic service for a workspace.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisTagSnapshot](./analysis.formspecanalysistagsnapshot.md)
 
-
 </td><td>
 
 Serializable view of a single parsed FormSpec tag within a doc comment.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecIpcEndpoint](./analysis.formspecipcendpoint.md)
 
-
 </td><td>
 
 Cross-process endpoint used by the language server to reach the semantic tsserver plugin on the current workspace host.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedCommentTargetSpecifier](./analysis.formspecserializedcommenttargetspecifier.md)
 
-
 </td><td>
 
 Serialized representation of a parsed target specifier with exact spans.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedHoverInfo](./analysis.formspecserializedhoverinfo.md)
 
-
 </td><td>
 
 Hover payload for a single comment token under the cursor.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedTagDefinition](./analysis.formspecserializedtagdefinition.md)
 
-
 </td><td>
 
 Serializable subset of tag metadata needed by hover and completion UIs.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedTagSemanticContext](./analysis.formspecserializedtagsemanticcontext.md)
 
-
 </td><td>
 
 Semantic facts about one parsed tag, reduced to JSON-safe data for IPC.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedTagSignature](./analysis.formspecserializedtagsignature.md)
 
-
 </td><td>
 
 Serializable overload/signature summary for one comment tag form.
-
 
 </td></tr>
 </tbody></table>
@@ -226,31 +187,23 @@ Serializable overload/signature summary for one comment tag form.
 
 Variable
 
-
 </th><th>
 
 Description
 
-
 </th></tr></thead>
 <tbody><tr><td>
 
-[FORMSPEC\_ANALYSIS\_PROTOCOL\_VERSION](./analysis.formspec_analysis_protocol_version.md)
-
+[FORMSPEC_ANALYSIS_PROTOCOL_VERSION](./analysis.formspec_analysis_protocol_version.md)
 
 </td><td>
-
-
 
 </td></tr>
 <tr><td>
 
-[FORMSPEC\_ANALYSIS\_SCHEMA\_VERSION](./analysis.formspec_analysis_schema_version.md)
-
+[FORMSPEC_ANALYSIS_SCHEMA_VERSION](./analysis.formspec_analysis_schema_version.md)
 
 </td><td>
-
-
 
 </td></tr>
 </tbody></table>
@@ -261,97 +214,75 @@ Description
 
 Type Alias
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [CommentSourceSpan](./analysis.commentsourcespan.md)
 
-
 </td><td>
-
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisDiagnosticCategory](./analysis.formspecanalysisdiagnosticcategory.md)
 
-
 </td><td>
 
 Machine-readable diagnostic category used by FormSpec tooling surfaces.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecAnalysisDiagnosticDataValue](./analysis.formspecanalysisdiagnosticdatavalue.md)
 
-
 </td><td>
 
 Primitive structured values carried in diagnostic facts for white-label downstream rendering.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecPlacement](./analysis.formspecplacement.md)
 
-
 </td><td>
-
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSemanticQuery](./analysis.formspecsemanticquery.md)
 
-
 </td><td>
 
 Query variants supported by the semantic tsserver plugin.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSemanticResponse](./analysis.formspecsemanticresponse.md)
 
-
 </td><td>
 
 Response variants returned by the semantic tsserver plugin.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecSerializedCompletionContext](./analysis.formspecserializedcompletioncontext.md)
 
-
 </td><td>
 
 Cursor-scoped completion context serialized for transport between the semantic tsserver plugin and the lightweight LSP.
-
 
 </td></tr>
 <tr><td>
 
 [FormSpecTargetKind](./analysis.formspectargetkind.md)
 
-
 </td><td>
-
-
 
 </td></tr>
 </tbody></table>
-

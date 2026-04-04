@@ -18,32 +18,26 @@ findType(typeId: string): CustomTypeRegistration | undefined;
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 typeId
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The fully-qualified type ID (e.g., "x-stripe/monetary/Decimal").
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +47,3 @@ The fully-qualified type ID (e.g., "x-stripe/monetary/Decimal").
 [CustomTypeRegistration](./build.customtyperegistration.md) \| undefined
 
 The registration if found, otherwise `undefined`<!-- -->.
-

@@ -5,14 +5,13 @@
 ## Provenance interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Describes the origin of an IR node. Enables diagnostics that point to the source of a contradiction or error.
 
 **Signature:**
 
 ```typescript
-export interface Provenance 
+export interface Provenance
 ```
 
 ## Properties
@@ -21,148 +20,119 @@ export interface Provenance
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [column](./core.provenance.column.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_** 0-based column number in the source file.
-
 
 </td></tr>
 <tr><td>
 
 [file](./core.provenance.file.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** Absolute path to the source file.
-
 
 </td></tr>
 <tr><td>
 
 [length?](./core.provenance.length.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ Length of the source span in characters (for IDE underline ranges).
-
 
 </td></tr>
 <tr><td>
 
 [line](./core.provenance.line.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_** 1-based line number in the source file.
-
 
 </td></tr>
 <tr><td>
 
 [surface](./core.provenance.surface.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "tsdoc" \| "chain-dsl" \| "extension" \| "inferred"
 
-
 </td><td>
 
 **_(BETA)_** The authoring surface that produced this node.
-
 
 </td></tr>
 <tr><td>
 
 [tagName?](./core.provenance.tagname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_ The specific tag, call, or construct that produced this node. Examples: `@minimum`<!-- -->, `field.number({ min: 0 })`<!-- -->, `optional`
 
-
 </td></tr>
 </tbody></table>
-

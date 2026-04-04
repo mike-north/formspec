@@ -9,7 +9,7 @@ A Categorization element (tab-based layout).
 **Signature:**
 
 ```typescript
-export interface Categorization 
+export interface Categorization
 ```
 
 ## Properties
@@ -18,123 +18,98 @@ export interface Categorization
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./build.categorization.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Category](./build.category.md)<!-- -->\[\]
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label?](./build.categorization.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [options?](./build.categorization.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.categorization.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./build.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.categorization.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Categorization"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

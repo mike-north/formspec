@@ -9,7 +9,7 @@ Fully resolved UI schema constraints with all properties required.
 **Signature:**
 
 ```typescript
-export interface ResolvedUISchemaConstraints 
+export interface ResolvedUISchemaConstraints
 ```
 
 ## Properties
@@ -18,56 +18,43 @@ export interface ResolvedUISchemaConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [layouts](./constraints.resolveduischemaconstraints.layouts.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[LayoutTypeConstraints](./constraints.layouttypeconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [rules](./constraints.resolveduischemaconstraints.rules.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ResolvedRuleConstraints](./constraints.resolvedruleconstraints.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

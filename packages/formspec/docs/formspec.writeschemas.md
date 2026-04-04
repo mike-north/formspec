@@ -9,7 +9,10 @@ Builds and writes both JSON Schema and UI Schema files to disk.
 **Signature:**
 
 ```typescript
-export declare function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
+export declare function writeSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options: WriteSchemasOptions
+): WriteSchemasResult;
 ```
 
 ## Parameters
@@ -18,44 +21,35 @@ export declare function writeSchemas<E extends readonly FormElement[]>(form: For
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./formspec.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [WriteSchemasOptions](./formspec.writeschemasoptions.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -63,4 +57,3 @@ options
 **Returns:**
 
 [WriteSchemasResult](./formspec.writeschemasresult.md)
-

@@ -9,28 +9,33 @@ Query variants supported by the semantic tsserver plugin.
 **Signature:**
 
 ```typescript
-export type FormSpecSemanticQuery = {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "health";
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "completion";
-    readonly filePath: string;
-    readonly offset: number;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "hover";
-    readonly filePath: string;
-    readonly offset: number;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "diagnostics";
-    readonly filePath: string;
-} | {
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
-    readonly kind: "file-snapshot";
-    readonly filePath: string;
-};
+export type FormSpecSemanticQuery =
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "health";
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "completion";
+      readonly filePath: string;
+      readonly offset: number;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "hover";
+      readonly filePath: string;
+      readonly offset: number;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "diagnostics";
+      readonly filePath: string;
+    }
+  | {
+      readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+      readonly kind: "file-snapshot";
+      readonly filePath: string;
+    };
 ```
-**References:** [FORMSPEC\_ANALYSIS\_PROTOCOL\_VERSION](./analysis.formspec_analysis_protocol_version.md)
 
+**References:** [FORMSPEC_ANALYSIS_PROTOCOL_VERSION](./analysis.formspec_analysis_protocol_version.md)

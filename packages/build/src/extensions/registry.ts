@@ -15,7 +15,7 @@ import type {
   CustomAnnotationRegistration,
   ConstraintTagRegistration,
   BuiltinConstraintBroadeningRegistration,
-} from "@formspec/core/internals";
+} from "@formspec/core";
 
 // =============================================================================
 // PUBLIC API

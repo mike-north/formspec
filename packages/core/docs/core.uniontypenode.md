@@ -5,14 +5,13 @@
 ## UnionTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Union type for non-enum unions. Nullable types are represented as `T | null`<!-- -->.
 
 **Signature:**
 
 ```typescript
-export interface UnionTypeNode 
+export interface UnionTypeNode
 ```
 
 ## Properties
@@ -21,64 +20,51 @@ export interface UnionTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./core.uniontypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "union"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [members](./core.uniontypenode.members.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [TypeNode](./core.typenode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

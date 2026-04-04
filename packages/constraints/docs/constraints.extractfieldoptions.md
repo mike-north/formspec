@@ -5,7 +5,6 @@
 ## extractFieldOptions() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Extracts which options are present on a field object. Works with FormSpec field types.
 
@@ -21,32 +20,26 @@ export declare function extractFieldOptions(field: Record<string, unknown>): Fie
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 field
 
-
 </td><td>
 
 Record&lt;string, unknown&gt;
 
-
 </td><td>
 
 A field object with potential options
-
 
 </td></tr>
 </tbody></table>
@@ -56,4 +49,3 @@ A field object with potential options
 [FieldOption](./constraints.fieldoption.md)<!-- -->\[\]
 
 Array of present option names
-

@@ -12,12 +12,11 @@ This improves TypeScript's display of inferred types and ensures structural equa
 
 ```typescript
 export type FlattenIntersection<T> = {
-    [K in keyof T]: T[K];
+  [K in keyof T]: T[K];
 } & {};
 ```
 
 ## Example
-
 
 ```typescript
 // Without FlattenIntersection:
@@ -28,4 +27,3 @@ type Messy = { a: string } & { b: number };
 type Clean = FlattenIntersection<{ a: string } & { b: number }>;
 // Displays as: { a: string; b: number }
 ```
-

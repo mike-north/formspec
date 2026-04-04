@@ -9,7 +9,7 @@ Registration for a vocabulary keyword to include in a JSON Schema `$vocabulary` 
 **Signature:**
 
 ```typescript
-export interface VocabularyKeywordRegistration 
+export interface VocabularyKeywordRegistration
 ```
 
 ## Properties
@@ -18,64 +18,51 @@ export interface VocabularyKeywordRegistration
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [keyword](./core.vocabularykeywordregistration.keyword.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The keyword name (without vendor prefix).
-
 
 </td></tr>
 <tr><td>
 
 [schema](./core.vocabularykeywordregistration.schema.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [ExtensionPayloadValue](./core.extensionpayloadvalue.md)
 
-
 </td><td>
 
 JSON Schema that describes the valid values for this keyword.
 
-
 </td></tr>
 </tbody></table>
-

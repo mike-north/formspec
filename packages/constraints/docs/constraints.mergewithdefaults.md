@@ -5,14 +5,15 @@
 ## mergeWithDefaults() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Merges user constraints with defaults, filling in any missing values.
 
 **Signature:**
 
 ```typescript
-export declare function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig;
+export declare function mergeWithDefaults(
+  config: ConstraintConfig | undefined
+): ResolvedConstraintConfig;
 ```
 
 ## Parameters
@@ -21,30 +22,24 @@ export declare function mergeWithDefaults(config: ConstraintConfig | undefined):
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 config
 
-
 </td><td>
 
 [ConstraintConfig](./constraints.constraintconfig.md) \| undefined
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -52,4 +47,3 @@ config
 **Returns:**
 
 [ResolvedConstraintConfig](./constraints.resolvedconstraintconfig.md)
-

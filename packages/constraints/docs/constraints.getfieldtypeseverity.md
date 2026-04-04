@@ -5,14 +5,16 @@
 ## getFieldTypeSeverity() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Gets the severity level for a field type.
 
 **Signature:**
 
 ```typescript
-export declare function getFieldTypeSeverity(fieldType: string, constraints: FieldTypeConstraints): Severity;
+export declare function getFieldTypeSeverity(
+  fieldType: string,
+  constraints: FieldTypeConstraints
+): Severity;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function getFieldTypeSeverity(fieldType: string, constraints: Fie
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 fieldType
 
-
 </td><td>
 
 string
 
-
 </td><td>
 
 The \_field discriminator value
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldTypeConstraints](./constraints.fieldtypeconstraints.md)
 
-
 </td><td>
 
 Field type constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field type constraints
 [Severity](./constraints.severity.md)
 
 Severity level, or "off" if not constrained
-

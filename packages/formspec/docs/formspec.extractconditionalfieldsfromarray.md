@@ -9,7 +9,12 @@ Extracts conditional fields from an array of elements.
 **Signature:**
 
 ```typescript
-export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
+export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
+  : never;
 ```
-**References:** [ExtractConditionalFields](./formspec.extractconditionalfields.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)
 
+**References:** [ExtractConditionalFields](./formspec.extractconditionalfields.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)

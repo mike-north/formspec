@@ -11,7 +11,9 @@ This is a high-level entry point that handles the entire pipeline: creating a Ty
 **Signature:**
 
 ```typescript
-export declare function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
+export declare function generateSchemasFromClass(
+  options: GenerateFromClassOptions
+): GenerateFromClassResult;
 ```
 
 ## Parameters
@@ -20,32 +22,26 @@ export declare function generateSchemasFromClass(options: GenerateFromClassOptio
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 options
 
-
 </td><td>
 
 [GenerateFromClassOptions](./build.generatefromclassoptions.md)
 
-
 </td><td>
 
 File path, class name, and optional compiler options
-
 
 </td></tr>
 </tbody></table>
@@ -58,7 +54,6 @@ Generated JSON Schema and UI Schema
 
 ## Example
 
-
 ```typescript
 const result = generateSchemasFromClass({
   filePath: "./src/forms.ts",
@@ -66,4 +61,3 @@ const result = generateSchemasFromClass({
 });
 console.log(result.jsonSchema);
 ```
-

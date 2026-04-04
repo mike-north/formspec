@@ -5,7 +5,6 @@
 ## ReferenceTypeNode.typeArguments property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Type arguments if this is a generic instantiation. e.g., `Array<string>` → `{ name: "Array", typeArguments: [PrimitiveTypeNode("string")] }`
 

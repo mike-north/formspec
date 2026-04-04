@@ -9,7 +9,10 @@ Infers the schema type from an array of form elements.
 **Signature:**
 
 ```typescript
-export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> & Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>>;
+export type InferSchema<Elements extends readonly FormElement[]> = FlattenIntersection<
+  BuildSchema<ExtractNonConditionalFieldsFromArray<Elements>> &
+    Partial<BuildSchema<ExtractConditionalFieldsFromArray<Elements>>>
+>;
 ```
-**References:** [FormElement](./formspec.formelement.md)<!-- -->, [FlattenIntersection](./formspec.flattenintersection.md)<!-- -->, [BuildSchema](./formspec.buildschema.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)
 
+**References:** [FormElement](./formspec.formelement.md)<!-- -->, [FlattenIntersection](./formspec.flattenintersection.md)<!-- -->, [BuildSchema](./formspec.buildschema.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)<!-- -->, [ExtractConditionalFieldsFromArray](./formspec.extractconditionalfieldsfromarray.md)

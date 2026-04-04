@@ -9,7 +9,7 @@ Declarative authoring-side registration for a custom TSDoc constraint tag.
 **Signature:**
 
 ```typescript
-export interface ConstraintTagRegistration 
+export interface ConstraintTagRegistration
 ```
 
 ## Properties
@@ -18,106 +18,85 @@ export interface ConstraintTagRegistration
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintName](./core.constrainttagregistration.constraintname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The custom constraint that this tag should produce.
-
 
 </td></tr>
 <tr><td>
 
 [isApplicableToType?](./core.constrainttagregistration.isapplicabletotype.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 (type: [ExtensionApplicableType](./core.extensionapplicabletype.md)<!-- -->) =&gt; boolean
 
-
 </td><td>
 
 _(Optional)_ Optional precise applicability predicate for the field type being parsed. When omitted, the target custom constraint registration controls type applicability during validation.
-
 
 </td></tr>
 <tr><td>
 
 [parseValue](./core.constrainttagregistration.parsevalue.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 (raw: string) =&gt; [ExtensionPayloadValue](./core.extensionpayloadvalue.md)
 
-
 </td><td>
 
 Parser from raw TSDoc text to JSON-serializable payload.
-
 
 </td></tr>
 <tr><td>
 
 [tagName](./core.constrainttagregistration.tagname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Tag name without the `@` prefix, e.g. `"maxSigFig"`<!-- -->.
 
-
 </td></tr>
 </tbody></table>
-

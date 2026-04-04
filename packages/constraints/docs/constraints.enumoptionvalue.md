@@ -11,5 +11,5 @@ Valid enum option types: either plain strings or objects with id/label.
 ```typescript
 export declare type EnumOptionValue = string | EnumOption;
 ```
-**References:** [EnumOption](./constraints.enumoption.md)
 
+**References:** [EnumOption](./constraints.enumoption.md)

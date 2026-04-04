@@ -10,21 +10,22 @@ Extracts conditional fields from an array of elements.
 
 ```typescript
 export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [
-    infer First,
-    ...infer Rest
-] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
+  infer First,
+  ...infer Rest,
+]
+  ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest>
+  : never;
 ```
+
 **References:** [ExtractConditionalFields](./dsl.extractconditionalfields.md)<!-- -->, [ExtractConditionalFieldsFromArray](./dsl.extractconditionalfieldsfromarray.md)
 
 ## Example
 
-
 ```typescript
 type Elements = readonly [
   TextField<"name">,
-  Conditional<"type", "business", readonly [TextField<"company">]>
+  Conditional<"type", "business", readonly [TextField<"company">]>,
 ];
 type Fields = ExtractConditionalFieldsFromArray<Elements>;
 // TextField<"company">
 ```
-

@@ -5,7 +5,6 @@
 ## LengthConstraintNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 String length and array item count constraints.
 
@@ -16,7 +15,7 @@ Type applicability: `minLength`<!-- -->/`maxLength` require `PrimitiveTypeNode("
 **Signature:**
 
 ```typescript
-export interface LengthConstraintNode 
+export interface LengthConstraintNode
 ```
 
 ## Properties
@@ -25,127 +24,102 @@ export interface LengthConstraintNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintKind](./core.lengthconstraintnode.constraintkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "minLength" \| "maxLength" \| "minItems" \| "maxItems"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.lengthconstraintnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "constraint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [path?](./core.lengthconstraintnode.path.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [PathTarget](./core.pathtarget.md)
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.lengthconstraintnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.lengthconstraintnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

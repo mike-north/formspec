@@ -10,12 +10,12 @@ import { LayoutConstraints } from '@formspec/constraints/browser';
 import type { TSESLint } from '@typescript-eslint/utils';
 
 // @public
-export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", Options, unknown, ESLintUtils.RuleListener> & {
+export const allowedFieldTypes: ESLintUtils.RuleModule<"disallowedFieldType", [FieldTypeConstraints], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
 // @public
-export const allowedLayouts: ESLintUtils.RuleModule<MessageIds_2, Options_2, unknown, ESLintUtils.RuleListener> & {
+export const allowedLayouts: ESLintUtils.RuleModule<"disallowedGroup" | "disallowedConditional", [LayoutConstraints], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -32,7 +32,7 @@ export const meta: {
 };
 
 // @public
-export const noContradictions: ESLintUtils.RuleModule<MessageIds, [], unknown, ESLintUtils.RuleListener> & {
+export const noContradictions: ESLintUtils.RuleModule<"minimumGreaterThanMaximum" | "exclusiveMinGreaterOrEqualMax" | "minLengthGreaterThanMaxLength" | "minItemsGreaterThanMaxItems" | "conflictingMinimumBounds" | "conflictingMaximumBounds" | "exclusiveMaxLessOrEqualMin" | "maximumLessOrEqualExclusiveMin", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -47,7 +47,9 @@ export const noDescriptionTag: ESLintUtils.RuleModule<"descriptionTagForbidden",
 };
 
 // @public
-export const noDisabledTags: ESLintUtils.RuleModule<"disabledTag", Options_3, unknown, ESLintUtils.RuleListener> & {
+export const noDisabledTags: ESLintUtils.RuleModule<"disabledTag", [{
+    tags?: string[];
+}], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -57,7 +59,9 @@ export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag", [], unknown
 };
 
 // @public
-export const noMarkdownFormatting: ESLintUtils.RuleModule<"markdownFormattingForbidden", Options_4, unknown, ESLintUtils.RuleListener> & {
+export const noMarkdownFormatting: ESLintUtils.RuleModule<"markdownFormattingForbidden", [{
+    tags?: string[];
+}], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -138,10 +142,10 @@ const plugin: {
         readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {
+        readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", [FieldTypeConstraints], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", Options_2, unknown, TSESLint.RuleListener> & {
+        readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", [LayoutConstraints], unknown, TSESLint.RuleListener> & {
             name: string;
         };
     };
@@ -214,10 +218,10 @@ export const rules: {
     readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
-    readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", Options, unknown, TSESLint.RuleListener> & {
+    readonly "constraints-allowed-field-types": TSESLint.RuleModule<"disallowedFieldType", [FieldTypeConstraints], unknown, TSESLint.RuleListener> & {
         name: string;
     };
-    readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", Options_2, unknown, TSESLint.RuleListener> & {
+    readonly "constraints-allowed-layouts": TSESLint.RuleModule<"disallowedGroup" | "disallowedConditional", [LayoutConstraints], unknown, TSESLint.RuleListener> & {
         name: string;
     };
 };

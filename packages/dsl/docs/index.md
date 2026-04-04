@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/dsl](./dsl.md)
-
 
 </td><td>
 
@@ -28,7 +25,5 @@ Description
 
 This package provides the builder functions for creating form specifications: - `field.*` - Field builders (text, number, boolean, enum, dynamicEnum) - `group()` - Visual grouping - `when()` + `is()` - Conditional visibility - `formspec()` - Top-level form definition
 
-
 </td></tr>
 </tbody></table>
-

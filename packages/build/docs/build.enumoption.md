@@ -11,7 +11,7 @@ Use this when the stored value (id) should differ from the display text (label).
 **Signature:**
 
 ```typescript
-export interface EnumOption 
+export interface EnumOption
 ```
 
 ## Properties
@@ -20,60 +20,47 @@ export interface EnumOption
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [id](./build.enumoption.id.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [label](./build.enumoption.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -11,16 +11,19 @@ This intentionally exposes only the fields needed to determine tag/type applicab
 **Signature:**
 
 ```typescript
-export type ExtensionApplicableType = {
-    readonly kind: "primitive";
-    readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
-} | {
-    readonly kind: "custom";
-    readonly typeId: string;
-    readonly payload: ExtensionPayloadValue;
-} | {
-    readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
-};
+export type ExtensionApplicableType =
+  | {
+      readonly kind: "primitive";
+      readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
+    }
+  | {
+      readonly kind: "custom";
+      readonly typeId: string;
+      readonly payload: ExtensionPayloadValue;
+    }
+  | {
+      readonly kind: Exclude<ExtensionTypeKind, "primitive" | "custom">;
+    };
 ```
-**References:** [ExtensionPayloadValue](./build.extensionpayloadvalue.md)<!-- -->, [ExtensionTypeKind](./build.extensiontypekind.md)
 
+**References:** [ExtensionPayloadValue](./build.extensionpayloadvalue.md)<!-- -->, [ExtensionTypeKind](./build.extensiontypekind.md)

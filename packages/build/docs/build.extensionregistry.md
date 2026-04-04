@@ -11,7 +11,7 @@ Type IDs follow the format: `<extensionId>/<typeName>` Constraint IDs follow the
 **Signature:**
 
 ```typescript
-export interface ExtensionRegistry 
+export interface ExtensionRegistry
 ```
 
 ## Properties
@@ -20,42 +20,34 @@ export interface ExtensionRegistry
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [extensions](./build.extensionregistry.extensions.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ExtensionDefinition](./build.extensiondefinition.md)<!-- -->\[\]
 
-
 </td><td>
 
 The extensions registered in this registry (in registration order).
-
 
 </td></tr>
 </tbody></table>
@@ -66,72 +58,59 @@ The extensions registered in this registry (in registration order).
 
 Method
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [findAnnotation(annotationId)](./build.extensionregistry.findannotation.md)
 
-
 </td><td>
 
 Look up a custom annotation registration by its fully-qualified annotation ID.
-
 
 </td></tr>
 <tr><td>
 
 [findBuiltinConstraintBroadening(typeId, tagName)](./build.extensionregistry.findbuiltinconstraintbroadening.md)
 
-
 </td><td>
 
 Look up built-in tag broadening for a given custom type ID.
-
 
 </td></tr>
 <tr><td>
 
 [findConstraint(constraintId)](./build.extensionregistry.findconstraint.md)
 
-
 </td><td>
 
 Look up a custom constraint registration by its fully-qualified constraint ID.
-
 
 </td></tr>
 <tr><td>
 
 [findConstraintTag(tagName)](./build.extensionregistry.findconstrainttag.md)
 
-
 </td><td>
 
 Look up a TSDoc custom constraint-tag registration by tag name.
-
 
 </td></tr>
 <tr><td>
 
 [findType(typeId)](./build.extensionregistry.findtype.md)
 
-
 </td><td>
 
 Look up a custom type registration by its fully-qualified type ID.
-
 
 </td></tr>
 <tr><td>
 
 [findTypeByName(typeName)](./build.extensionregistry.findtypebyname.md)
-
 
 </td><td>
 
@@ -139,7 +118,5 @@ Look up a custom type registration by a TypeScript-facing type name.
 
 This is used during TSDoc/class analysis to resolve extension-defined custom types from source-level declarations.
 
-
 </td></tr>
 </tbody></table>
-

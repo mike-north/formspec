@@ -9,7 +9,7 @@ A Label element for displaying static text.
 **Signature:**
 
 ```typescript
-export declare interface LabelElement 
+export declare interface LabelElement
 ```
 
 ## Properties
@@ -18,102 +18,81 @@ export declare interface LabelElement
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [options?](./formspec.labelelement.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Record&lt;string, unknown&gt; \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./formspec.labelelement.rule.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Rule](./formspec.rule.md) \| undefined
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [text](./formspec.labelelement.text.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [type](./formspec.labelelement.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "Label"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

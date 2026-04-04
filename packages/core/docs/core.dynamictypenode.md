@@ -5,14 +5,13 @@
 ## DynamicTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Dynamic type whose schema is resolved at runtime from a named data source.
 
 **Signature:**
 
 ```typescript
-export interface DynamicTypeNode 
+export interface DynamicTypeNode
 ```
 
 ## Properties
@@ -21,106 +20,85 @@ export interface DynamicTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [dynamicKind](./core.dynamictypenode.dynamickind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "enum" \| "schema"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.dynamictypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "dynamic"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [parameterFields](./core.dynamictypenode.parameterfields.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly string\[\]
 
-
 </td><td>
 
 **_(BETA)_** For dynamic enums: field names whose current values are passed as parameters to the data source resolver.
-
 
 </td></tr>
 <tr><td>
 
 [sourceKey](./core.dynamictypenode.sourcekey.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** Key identifying the runtime data source or schema provider.
 
-
 </td></tr>
 </tbody></table>
-

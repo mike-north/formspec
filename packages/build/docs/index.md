@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/build](./build.md)
-
 
 </td><td>
 
@@ -28,7 +25,5 @@ Description
 
 This package provides generators to compile FormSpec forms into: - JSON Schema 2020-12 (for validation) - JSON Forms UI Schema (for rendering)
 
-
 </td></tr>
 </tbody></table>
-

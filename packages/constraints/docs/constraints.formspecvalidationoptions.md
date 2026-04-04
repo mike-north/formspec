@@ -9,7 +9,7 @@ Options for validating FormSpec elements.
 **Signature:**
 
 ```typescript
-export interface FormSpecValidationOptions 
+export interface FormSpecValidationOptions
 ```
 
 ## Properties
@@ -18,41 +18,32 @@ export interface FormSpecValidationOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraints?](./constraints.formspecvalidationoptions.constraints.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ConstraintConfig](./constraints.constraintconfig.md)
 
-
 </td><td>
 
 _(Optional)_ Constraint configuration (will be merged with defaults)
 
-
 </td></tr>
 </tbody></table>
-

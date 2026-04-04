@@ -11,7 +11,10 @@ This is a convenience function for build-time schema generation. It creates the 
 **Signature:**
 
 ```typescript
-export declare function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options: WriteSchemasOptions): WriteSchemasResult;
+export declare function writeSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options: WriteSchemasOptions
+): WriteSchemasResult;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function writeSchemas<E extends readonly FormElement[]>(form: For
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./build.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
 
 The FormSpec to build schemas from
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [WriteSchemasOptions](./build.writeschemasoptions.md)
 
-
 </td><td>
 
 Output options (directory, file name, indentation)
-
 
 </td></tr>
 </tbody></table>
@@ -74,14 +68,13 @@ Object containing paths to the generated files
 
 ## Example
 
-
 ```typescript
 import { formspec, field } from "formspec";
 import { writeSchemas } from "@formspec/build";
 
 const ProductForm = formspec(
   field.text("name", { required: true }),
-  field.enum("status", ["draft", "active"]),
+  field.enum("status", ["draft", "active"])
 );
 
 // Write schemas to ./generated/product-schema.json and ./generated/product-uischema.json
@@ -92,4 +85,3 @@ const { jsonSchemaPath, uiSchemaPath } = writeSchemas(ProductForm, {
 
 console.log(`Generated: ${jsonSchemaPath}, ${uiSchemaPath}`);
 ```
-

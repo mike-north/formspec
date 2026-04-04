@@ -9,7 +9,7 @@ Field type constraints - control which field types are allowed. Fine-grained con
 **Signature:**
 
 ```typescript
-export interface FieldTypeConstraints 
+export interface FieldTypeConstraints
 ```
 
 ## Properties
@@ -18,174 +18,137 @@ export interface FieldTypeConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [array?](./constraints.fieldtypeconstraints.array.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.array() / field.arrayWithConfig()
-
 
 </td></tr>
 <tr><td>
 
 [boolean?](./constraints.fieldtypeconstraints.boolean.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.boolean() - checkbox/toggle
-
 
 </td></tr>
 <tr><td>
 
 [dynamicEnum?](./constraints.fieldtypeconstraints.dynamicenum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.dynamicEnum() - runtime-fetched options
-
 
 </td></tr>
 <tr><td>
 
 [dynamicSchema?](./constraints.fieldtypeconstraints.dynamicschema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.dynamicSchema() - runtime-fetched schema
-
 
 </td></tr>
 <tr><td>
 
 [number?](./constraints.fieldtypeconstraints.number.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.number() - numeric input
-
 
 </td></tr>
 <tr><td>
 
 [object?](./constraints.fieldtypeconstraints.object.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.object() / field.objectWithConfig()
-
 
 </td></tr>
 <tr><td>
 
 [staticEnum?](./constraints.fieldtypeconstraints.staticenum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.enum() with literal options
-
 
 </td></tr>
 <tr><td>
 
 [text?](./constraints.fieldtypeconstraints.text.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ field.text() - basic text input
 
-
 </td></tr>
 </tbody></table>
-

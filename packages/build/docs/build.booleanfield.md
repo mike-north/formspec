@@ -9,7 +9,7 @@ A boolean checkbox field.
 **Signature:**
 
 ```typescript
-export interface BooleanField<N extends string> 
+export interface BooleanField<N extends string>
 ```
 
 ## Properties
@@ -18,127 +18,102 @@ export interface BooleanField<N extends string>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./build.booleanfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "boolean"
 
-
 </td><td>
 
 Field type discriminator - identifies this as a boolean field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./build.booleanfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./build.booleanfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [name](./build.booleanfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [required?](./build.booleanfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

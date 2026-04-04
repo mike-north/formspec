@@ -9,7 +9,7 @@ Serializable view of a single parsed FormSpec tag within a doc comment.
 **Signature:**
 
 ```typescript
-export interface FormSpecAnalysisTagSnapshot 
+export interface FormSpecAnalysisTagSnapshot
 ```
 
 ## Properties
@@ -18,212 +18,167 @@ export interface FormSpecAnalysisTagSnapshot
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [argumentSpan](./analysis.formspecanalysistagsnapshot.argumentspan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md) \| null
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [argumentText](./analysis.formspecanalysistagsnapshot.argumenttext.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [fullSpan](./analysis.formspecanalysistagsnapshot.fullspan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [normalizedTagName](./analysis.formspecanalysistagsnapshot.normalizedtagname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [payloadSpan](./analysis.formspecanalysistagsnapshot.payloadspan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md) \| null
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [rawTagName](./analysis.formspecanalysistagsnapshot.rawtagname.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [recognized](./analysis.formspecanalysistagsnapshot.recognized.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [semantic](./analysis.formspecanalysistagsnapshot.semantic.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [FormSpecSerializedTagSemanticContext](./analysis.formspecserializedtagsemanticcontext.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [tagNameSpan](./analysis.formspecanalysistagsnapshot.tagnamespan.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [CommentSpan](./analysis.commentspan.md)
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [target](./analysis.formspecanalysistagsnapshot.target.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [FormSpecSerializedCommentTargetSpecifier](./analysis.formspecserializedcommenttargetspecifier.md) \| null
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

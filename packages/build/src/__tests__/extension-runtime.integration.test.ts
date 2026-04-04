@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildFormSchemas, writeSchemas } from "../index.js";
-import {
-  createExtensionRegistry,
-  generateJsonSchemaFromIR,
-} from "../internals.js";
+import { createExtensionRegistry, generateJsonSchemaFromIR } from "../internals.js";
 import {
   defineAnnotation,
   defineConstraint,

@@ -9,11 +9,10 @@ A complete extension definition bundling types, constraints, annotations, and vo
 **Signature:**
 
 ```typescript
-export interface ExtensionDefinition 
+export interface ExtensionDefinition
 ```
 
 ## Example
-
 
 ```typescript
 const monetaryExtension = defineExtension({
@@ -36,148 +35,119 @@ const monetaryExtension = defineExtension({
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotations?](./build.extensiondefinition.annotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [CustomAnnotationRegistration](./build.customannotationregistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Custom annotation registrations provided by this extension.
-
 
 </td></tr>
 <tr><td>
 
 [constraints?](./build.extensiondefinition.constraints.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [CustomConstraintRegistration](./build.customconstraintregistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Custom constraint registrations provided by this extension.
-
 
 </td></tr>
 <tr><td>
 
 [constraintTags?](./build.extensiondefinition.constrainttags.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ConstraintTagRegistration](./build.constrainttagregistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Authoring-side TSDoc tag registrations provided by this extension.
-
 
 </td></tr>
 <tr><td>
 
 [extensionId](./build.extensiondefinition.extensionid.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Globally unique extension identifier, e.g., "x-stripe/monetary".
-
 
 </td></tr>
 <tr><td>
 
 [types?](./build.extensiondefinition.types.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [CustomTypeRegistration](./build.customtyperegistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Custom type registrations provided by this extension.
-
 
 </td></tr>
 <tr><td>
 
 [vocabularyKeywords?](./build.extensiondefinition.vocabularykeywords.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [VocabularyKeywordRegistration](./build.vocabularykeywordregistration.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_ Vocabulary keyword registrations provided by this extension.
 
-
 </td></tr>
 </tbody></table>
-

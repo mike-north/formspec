@@ -3,14 +3,12 @@ import net from "node:net";
 import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-} from "@formspec/analysis";
-import {
   isFormSpecSemanticQuery,
   type FormSpecAnalysisManifest,
-  type FormSpecPerformanceEvent,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis/internal";
+} from "@formspec/analysis";
+import { type FormSpecPerformanceEvent } from "@formspec/analysis/internal";
 import {
   createFormSpecAnalysisManifest,
   getFormSpecWorkspaceRuntimePaths,

@@ -5,7 +5,6 @@
 ## PrimitiveTypeNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Primitive types mapping directly to JSON Schema primitives.
 
@@ -14,7 +13,7 @@ Note: integer is NOT a primitive kind — integer semantics are expressed via a 
 **Signature:**
 
 ```typescript
-export interface PrimitiveTypeNode 
+export interface PrimitiveTypeNode
 ```
 
 ## Properties
@@ -23,64 +22,51 @@ export interface PrimitiveTypeNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [kind](./core.primitivetypenode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "primitive"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [primitiveKind](./core.primitivetypenode.primitivekind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "string" \| "number" \| "integer" \| "bigint" \| "boolean" \| "null"
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

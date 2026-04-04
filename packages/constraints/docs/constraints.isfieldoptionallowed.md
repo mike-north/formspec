@@ -5,14 +5,16 @@
 ## isFieldOptionAllowed() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Checks if a specific field option is allowed.
 
 **Signature:**
 
 ```typescript
-export declare function isFieldOptionAllowed(option: FieldOption, constraints: FieldOptionConstraints): boolean;
+export declare function isFieldOptionAllowed(
+  option: FieldOption,
+  constraints: FieldOptionConstraints
+): boolean;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function isFieldOptionAllowed(option: FieldOption, constraints: F
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 option
 
-
 </td><td>
 
 [FieldOption](./constraints.fieldoption.md)
 
-
 </td><td>
 
 The option to check
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldOptionConstraints](./constraints.fieldoptionconstraints.md)
 
-
 </td><td>
 
 Field option constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field option constraints
 boolean
 
 true if allowed, false if disallowed
-

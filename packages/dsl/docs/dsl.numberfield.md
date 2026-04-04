@@ -9,7 +9,7 @@ A numeric input field.
 **Signature:**
 
 ```typescript
-export declare interface NumberField<N extends string> 
+export declare interface NumberField<N extends string>
 ```
 
 ## Properties
@@ -18,190 +18,153 @@ export declare interface NumberField<N extends string>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./dsl.numberfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "number"
 
-
 </td><td>
 
 Field type discriminator - identifies this as a number field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./dsl.numberfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./dsl.numberfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [max?](./dsl.numberfield.max.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Maximum allowed value
-
 
 </td></tr>
 <tr><td>
 
 [min?](./dsl.numberfield.min.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Minimum allowed value
-
 
 </td></tr>
 <tr><td>
 
 [multipleOf?](./dsl.numberfield.multipleof.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Value must be a multiple of this number (use 1 for integer semantics)
-
 
 </td></tr>
 <tr><td>
 
 [name](./dsl.numberfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [required?](./dsl.numberfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

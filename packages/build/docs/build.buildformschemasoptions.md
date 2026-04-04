@@ -13,5 +13,5 @@ Currently identical to `GenerateJsonSchemaOptions`<!-- -->. Defined separately s
 ```typescript
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 ```
-**References:** [GenerateJsonSchemaOptions](./build.generatejsonschemaoptions.md)
 
+**References:** [GenerateJsonSchemaOptions](./build.generatejsonschemaoptions.md)

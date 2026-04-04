@@ -9,7 +9,7 @@ JSONForms layout type constraints.
 **Signature:**
 
 ```typescript
-export interface LayoutTypeConstraints 
+export interface LayoutTypeConstraints
 ```
 
 ## Properties
@@ -18,117 +18,92 @@ export interface LayoutTypeConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [Categorization?](./constraints.layouttypeconstraints.categorization.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ Categorization - tabbed/wizard interface
-
 
 </td></tr>
 <tr><td>
 
 [Category?](./constraints.layouttypeconstraints.category.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ Category - individual tab/step in Categorization
-
 
 </td></tr>
 <tr><td>
 
 [Group?](./constraints.layouttypeconstraints.group.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ Group - visual grouping with label
-
 
 </td></tr>
 <tr><td>
 
 [HorizontalLayout?](./constraints.layouttypeconstraints.horizontallayout.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ HorizontalLayout - arrange elements horizontally
-
 
 </td></tr>
 <tr><td>
 
 [VerticalLayout?](./constraints.layouttypeconstraints.verticallayout.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ VerticalLayout - stack elements vertically
 
-
 </td></tr>
 </tbody></table>
-

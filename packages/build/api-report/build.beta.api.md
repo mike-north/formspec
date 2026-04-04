@@ -7,11 +7,17 @@
 import { AnyField } from '@formspec/core';
 import { ArrayField } from '@formspec/core';
 import { BooleanField } from '@formspec/core';
+import { BuiltinConstraintBroadeningRegistration } from '@formspec/core';
 import { Conditional } from '@formspec/core';
+import { ConstraintTagRegistration } from '@formspec/core';
+import { CustomAnnotationRegistration } from '@formspec/core';
+import { CustomConstraintRegistration } from '@formspec/core';
+import { CustomTypeRegistration } from '@formspec/core';
 import { DynamicEnumField } from '@formspec/core';
 import { DynamicSchemaField } from '@formspec/core';
 import { EnumOption } from '@formspec/core';
 import { EnumOptionValue } from '@formspec/core';
+import { ExtensionDefinition } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
 import { Group } from '@formspec/core';
@@ -35,10 +41,22 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
 
 // @public
+export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
+
+// @public
+export interface BuildMixedAuthoringSchemasOptions extends StaticSchemaGenerationOptions {
+    readonly filePath: string;
+    readonly overlays: FormSpec<readonly FormElement[]>;
+    readonly typeName: string;
+}
+
+// @public
 export interface BuildResult {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
 }
+
+export { BuiltinConstraintBroadeningRegistration }
 
 // @public
 export interface Categorization {
@@ -62,6 +80,8 @@ export interface Category {
 
 export { Conditional }
 
+export { ConstraintTagRegistration }
+
 // @public
 export interface ControlElement {
     readonly [k: string]: unknown;
@@ -75,6 +95,12 @@ export interface ControlElement {
 // @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
+export { CustomAnnotationRegistration }
+
+export { CustomConstraintRegistration }
+
+export { CustomTypeRegistration }
+
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
@@ -85,6 +111,8 @@ export { EnumOptionValue }
 
 // @public
 export type ExtendedJSONSchema7 = JSONSchema7 & FormSpecSchemaExtensions;
+
+export { ExtensionDefinition }
 
 // @public
 export interface ExtensionRegistry {
@@ -266,6 +294,12 @@ export interface LabelElement {
     readonly type: "Label";
 }
 
+// @public
+export interface MixedAuthoringSchemas {
+    readonly jsonSchema: JsonSchema2020;
+    readonly uiSchema: UISchema;
+}
+
 export { NumberField }
 
 export { ObjectField }
@@ -316,6 +350,16 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 
 // @public
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
+
+// @public
+export interface UISchemaElementBase {
+    options?: Record<string, unknown>;
+    rule?: Rule;
+    type: UISchemaElementType;
+}
+
+// @public
+export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
 
 // @public
 export const uiSchemaSchema: z.ZodType<UISchema>;

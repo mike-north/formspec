@@ -9,7 +9,7 @@ Control options constraints - control which JSONForms Control.options are allowe
 **Signature:**
 
 ```typescript
-export interface ControlOptionConstraints 
+export interface ControlOptionConstraints
 ```
 
 ## Properties
@@ -18,136 +18,107 @@ export interface ControlOptionConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [custom?](./constraints.controloptionconstraints.custom.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, [Severity](./constraints.severity.md)<!-- -->&gt;
 
-
 </td><td>
 
 _(Optional)_ Custom control options (extensible dictionary)
-
 
 </td></tr>
 <tr><td>
 
 [format?](./constraints.controloptionconstraints.format.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ format - renderer format hint (e.g., "radio", "textarea")
-
 
 </td></tr>
 <tr><td>
 
 [hideRequiredAsterisk?](./constraints.controloptionconstraints.hiderequiredasterisk.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ hideRequiredAsterisk - hide required indicator
-
 
 </td></tr>
 <tr><td>
 
 [multi?](./constraints.controloptionconstraints.multi.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ multi - multi-select for enums
-
 
 </td></tr>
 <tr><td>
 
 [readonly?](./constraints.controloptionconstraints.readonly.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ readonly - read-only mode
-
 
 </td></tr>
 <tr><td>
 
 [showUnfocusedDescription?](./constraints.controloptionconstraints.showunfocuseddescription.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
 
 _(Optional)_ showUnfocusedDescription - show description when unfocused
 
-
 </td></tr>
 </tbody></table>
-

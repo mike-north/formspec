@@ -5,14 +5,13 @@
 ## FormatHintAnnotationNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 UI rendering hint — does not affect schema validation. Unlike FormatAnnotationNode, this never emits a JSON Schema `format`<!-- -->.
 
 **Signature:**
 
 ```typescript
-export interface FormatHintAnnotationNode 
+export interface FormatHintAnnotationNode
 ```
 
 ## Properties
@@ -21,106 +20,85 @@ export interface FormatHintAnnotationNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationKind](./core.formathintannotationnode.annotationkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "formatHint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [format](./core.formathintannotationnode.format.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** Renderer-specific format identifier: "textarea", "radio", "date", "color", etc.
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.formathintannotationnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "annotation"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.formathintannotationnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

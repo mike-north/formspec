@@ -11,7 +11,9 @@ All generation routes through the canonical IR. The chain DSL is first canonical
 **Signature:**
 
 ```typescript
-export declare function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+export declare function generateUiSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>
+): UISchema;
 ```
 
 ## Parameters
@@ -20,32 +22,26 @@ export declare function generateUiSchema<E extends readonly FormElement[]>(form:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./build.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
 
 The FormSpec to convert
-
 
 </td></tr>
 </tbody></table>
@@ -58,15 +54,10 @@ A JSON Forms UI Schema
 
 ## Example
 
-
 ```typescript
 const form = formspec(
-  group("Customer",
-    field.text("name", { label: "Name" }),
-  ),
-  when("status", "draft",
-    field.text("notes", { label: "Notes" }),
-  ),
+  group("Customer", field.text("name", { label: "Name" })),
+  when("status", "draft", field.text("notes", { label: "Notes" }))
 );
 
 const uiSchema = generateUiSchema(form);
@@ -92,4 +83,3 @@ const uiSchema = generateUiSchema(form);
 //   ]
 // }
 ```
-

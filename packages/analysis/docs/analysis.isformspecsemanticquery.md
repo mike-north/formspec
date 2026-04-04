@@ -18,30 +18,24 @@ export declare function isFormSpecSemanticQuery(value: unknown): value is FormSp
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 value
 
-
 </td><td>
 
 unknown
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ unknown
 **Returns:**
 
 value is [FormSpecSemanticQuery](./analysis.formspecsemanticquery.md)
-

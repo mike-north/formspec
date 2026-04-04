@@ -5,14 +5,16 @@
 ## isLayoutTypeAllowed() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Checks if a layout type is allowed by the constraints.
 
 **Signature:**
 
 ```typescript
-export declare function isLayoutTypeAllowed(layoutType: "group" | "conditional", constraints: LayoutConstraints): boolean;
+export declare function isLayoutTypeAllowed(
+  layoutType: "group" | "conditional",
+  constraints: LayoutConstraints
+): boolean;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function isLayoutTypeAllowed(layoutType: "group" | "conditional",
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 layoutType
 
-
 </td><td>
 
 "group" \| "conditional"
 
-
 </td><td>
 
 The type of layout element
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [LayoutConstraints](./constraints.layoutconstraints.md)
 
-
 </td><td>
 
 Layout constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Layout constraints
 boolean
 
 true if allowed, false if disallowed
-

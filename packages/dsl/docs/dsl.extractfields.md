@@ -11,7 +11,13 @@ Extracts all fields from a single element (recursively).
 **Signature:**
 
 ```typescript
-export type ExtractFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractFieldsFromArray<Elements> : never;
+export type ExtractFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer Elements>
+      ? ExtractFieldsFromArray<Elements>
+      : never;
 ```
-**References:** [AnyField](./dsl.anyfield.md)<!-- -->, [Group](./dsl.group.md)<!-- -->, [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)<!-- -->, [Conditional](./dsl.conditional.md)
 
+**References:** [AnyField](./dsl.anyfield.md)<!-- -->, [Group](./dsl.group.md)<!-- -->, [ExtractFieldsFromArray](./dsl.extractfieldsfromarray.md)<!-- -->, [Conditional](./dsl.conditional.md)

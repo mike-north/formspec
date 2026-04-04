@@ -9,9 +9,15 @@ A JSON-serializable payload value used by extension registration hooks.
 **Signature:**
 
 ```typescript
-export type ExtensionPayloadValue = null | boolean | number | string | readonly ExtensionPayloadValue[] | {
-    readonly [key: string]: ExtensionPayloadValue;
-};
+export type ExtensionPayloadValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly ExtensionPayloadValue[]
+  | {
+      readonly [key: string]: ExtensionPayloadValue;
+    };
 ```
-**References:** [ExtensionPayloadValue](./build.extensionpayloadvalue.md)
 
+**References:** [ExtensionPayloadValue](./build.extensionpayloadvalue.md)

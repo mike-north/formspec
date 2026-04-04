@@ -18,30 +18,24 @@ export declare function isBooleanField(element: FormElement): element is Boolean
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./formspec.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ element
 **Returns:**
 
 element is [BooleanField](./formspec.booleanfield.md)<!-- -->&lt;string&gt;
-

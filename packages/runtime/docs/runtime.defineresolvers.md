@@ -11,7 +11,10 @@ This function provides type-safe resolver definitions that match the form's dyna
 **Signature:**
 
 ```typescript
-export declare function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
+export declare function defineResolvers<
+  E extends readonly FormElement[],
+  Sources extends string = ResolverSourcesForForm<E>,
+>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
 ```
 
 ## Parameters
@@ -20,48 +23,39 @@ export declare function defineResolvers<E extends readonly FormElement[], Source
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 FormSpec&lt;E&gt;
 
-
 </td><td>
 
 The FormSpec containing dynamic enum fields
-
 
 </td></tr>
 <tr><td>
 
 resolvers
 
-
 </td><td>
 
 [ResolverMap](./runtime.resolvermap.md)<!-- -->&lt;Sources&gt;
 
-
 </td><td>
 
 Map of resolver functions for each data source
-
 
 </td></tr>
 </tbody></table>
@@ -74,7 +68,6 @@ A ResolverRegistry for type-safe access to resolvers
 
 ## Example
 
-
 ```typescript
 declare module "@formspec/core" {
   interface DataSourceRegistry {
@@ -82,14 +75,16 @@ declare module "@formspec/core" {
   }
 }
 
-const form = formspec(
-  field.dynamicEnum("country", "countries", { label: "Country" }),
-);
+const form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
 const resolvers = defineResolvers(form, {
   countries: async () => ({
     options: [
-      { value: "us", label: "United States", data: { id: "us", code: "US", name: "United States" } },
+      {
+        value: "us",
+        label: "United States",
+        data: { id: "us", code: "US", name: "United States" },
+      },
       { value: "ca", label: "Canada", data: { id: "ca", code: "CA", name: "Canada" } },
     ],
     validity: "valid",
@@ -99,4 +94,3 @@ const resolvers = defineResolvers(form, {
 // Use the resolver
 const result = await resolvers.get("countries")();
 ```
-

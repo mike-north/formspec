@@ -5,14 +5,13 @@
 ## DefaultValueAnnotationNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Default-value annotation.
 
 **Signature:**
 
 ```typescript
-export interface DefaultValueAnnotationNode 
+export interface DefaultValueAnnotationNode
 ```
 
 ## Properties
@@ -21,106 +20,85 @@ export interface DefaultValueAnnotationNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationKind](./core.defaultvalueannotationnode.annotationkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "defaultValue"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.defaultvalueannotationnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "annotation"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.defaultvalueannotationnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.defaultvalueannotationnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [JsonValue](./core.jsonvalue.md)
 
-
 </td><td>
 
 **_(BETA)_** Must be JSON-serializable and type-compatible (verified during Validate phase).
 
-
 </td></tr>
 </tbody></table>
-

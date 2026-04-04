@@ -5,14 +5,16 @@
 ## validateLayout() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Validates a layout element against constraints.
 
 **Signature:**
 
 ```typescript
-export declare function validateLayout(context: LayoutContext, constraints: LayoutConstraints): ValidationIssue[];
+export declare function validateLayout(
+  context: LayoutContext,
+  constraints: LayoutConstraints
+): ValidationIssue[];
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function validateLayout(context: LayoutContext, constraints: Layo
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 context
 
-
 </td><td>
 
 [LayoutContext](./constraints.layoutcontext.md)
 
-
 </td><td>
 
 Information about the layout element
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [LayoutConstraints](./constraints.layoutconstraints.md)
 
-
 </td><td>
 
 Layout constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Layout constraints
 [ValidationIssue](./constraints.validationissue.md)<!-- -->\[\]
 
 Array of validation issues (empty if valid)
-

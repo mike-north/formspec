@@ -20,32 +20,26 @@ export declare function validateForm(elements: readonly FormElement[]): Validati
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 elements
 
-
 </td><td>
 
 readonly FormElement\[\]
 
-
 </td><td>
 
 The form elements to validate
-
 
 </td></tr>
 </tbody></table>
@@ -58,18 +52,18 @@ Validation result with any issues found
 
 ## Example
 
-
 ```typescript
 const form = formspec(
   field.text("name"),
   field.text("name"), // Duplicate!
-  when("nonExistent", "value", // Reference to non-existent field!
-    field.text("extra"),
-  ),
+  when(
+    "nonExistent",
+    "value", // Reference to non-existent field!
+    field.text("extra")
+  )
 );
 
 const result = validateForm(form.elements);
 // result.valid === false
 // result.issues contains duplicate and reference errors
 ```
-

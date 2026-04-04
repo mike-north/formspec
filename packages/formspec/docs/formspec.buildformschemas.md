@@ -9,7 +9,10 @@ Builds both JSON Schema and UI Schema from a FormSpec.
 **Signature:**
 
 ```typescript
-export declare function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
+export declare function buildFormSchemas<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: BuildFormSchemasOptions
+): BuildResult;
 ```
 
 ## Parameters
@@ -18,46 +21,37 @@ export declare function buildFormSchemas<E extends readonly FormElement[]>(form:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./formspec.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 options
 
-
 </td><td>
 
 [BuildFormSchemasOptions](./formspec.buildformschemasoptions.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 </tbody></table>
@@ -65,4 +59,3 @@ _(Optional)_
 **Returns:**
 
 [BuildResult](./formspec.buildresult.md)
-

@@ -9,7 +9,7 @@ Semantic metadata for ordered custom constraints that should participate in the 
 **Signature:**
 
 ```typescript
-export interface ConstraintSemanticRole 
+export interface ConstraintSemanticRole
 ```
 
 ## Properties
@@ -18,85 +18,68 @@ export interface ConstraintSemanticRole
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [bound](./core.constraintsemanticrole.bound.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "lower" \| "upper" \| "exact"
 
-
 </td><td>
 
 Whether this constraint acts as a lower or upper bound.
-
 
 </td></tr>
 <tr><td>
 
 [family](./core.constraintsemanticrole.family.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Logical family identifier shared by related constraints, for example `"decimal-bound"` or `"date-bound"`<!-- -->.
-
 
 </td></tr>
 <tr><td>
 
 [inclusive](./core.constraintsemanticrole.inclusive.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether equality is allowed when comparing against the bound.
 
-
 </td></tr>
 </tbody></table>
-

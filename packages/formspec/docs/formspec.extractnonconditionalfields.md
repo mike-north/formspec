@@ -9,7 +9,13 @@ Extracts fields that are not inside conditionals.
 **Signature:**
 
 ```typescript
-export type ExtractNonConditionalFields<E> = E extends AnyField ? E : E extends Group<infer Elements> ? ExtractNonConditionalFieldsFromArray<Elements> : E extends Conditional<string, unknown, infer _Elements> ? never : never;
+export type ExtractNonConditionalFields<E> = E extends AnyField
+  ? E
+  : E extends Group<infer Elements>
+    ? ExtractNonConditionalFieldsFromArray<Elements>
+    : E extends Conditional<string, unknown, infer _Elements>
+      ? never
+      : never;
 ```
-**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)
 
+**References:** [AnyField](./formspec.anyfield.md)<!-- -->, [Group](./formspec.group.md)<!-- -->, [ExtractNonConditionalFieldsFromArray](./formspec.extractnonconditionalfieldsfromarray.md)<!-- -->, [Conditional](./formspec.conditional.md)

@@ -10,8 +10,10 @@ Map of resolver functions for a form's dynamic data sources.
 
 ```typescript
 export type ResolverMap<Sources extends string> = {
-    [S in Sources]: S extends keyof DataSourceRegistry ? Resolver<S> : (params?: Record<string, unknown>) => Promise<FetchOptionsResponse>;
+  [S in Sources]: S extends keyof DataSourceRegistry
+    ? Resolver<S>
+    : (params?: Record<string, unknown>) => Promise<FetchOptionsResponse>;
 };
 ```
-**References:** [Resolver](./runtime.resolver.md)
 
+**References:** [Resolver](./runtime.resolver.md)

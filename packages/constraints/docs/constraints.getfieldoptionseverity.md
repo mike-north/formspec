@@ -5,14 +5,16 @@
 ## getFieldOptionSeverity() function
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Gets the severity level for a field option.
 
 **Signature:**
 
 ```typescript
-export declare function getFieldOptionSeverity(option: FieldOption, constraints: FieldOptionConstraints): Severity;
+export declare function getFieldOptionSeverity(
+  option: FieldOption,
+  constraints: FieldOptionConstraints
+): Severity;
 ```
 
 ## Parameters
@@ -21,48 +23,39 @@ export declare function getFieldOptionSeverity(option: FieldOption, constraints:
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 option
 
-
 </td><td>
 
 [FieldOption](./constraints.fieldoption.md)
 
-
 </td><td>
 
 The option to check
-
 
 </td></tr>
 <tr><td>
 
 constraints
 
-
 </td><td>
 
 [FieldOptionConstraints](./constraints.fieldoptionconstraints.md)
 
-
 </td><td>
 
 Field option constraints
-
 
 </td></tr>
 </tbody></table>
@@ -72,4 +65,3 @@ Field option constraints
 [Severity](./constraints.severity.md)
 
 Severity level, or "off" if not constrained
-

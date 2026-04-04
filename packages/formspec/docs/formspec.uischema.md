@@ -11,5 +11,5 @@ Root UI Schema (always a layout — not a Control, Category, or Label).
 ```typescript
 export declare type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
 ```
-**References:** [VerticalLayout](./formspec.verticallayout.md)<!-- -->, [HorizontalLayout](./formspec.horizontallayout.md)<!-- -->, [GroupLayout](./formspec.grouplayout.md)<!-- -->, [Categorization](./formspec.categorization.md)
 
+**References:** [VerticalLayout](./formspec.verticallayout.md)<!-- -->, [HorizontalLayout](./formspec.horizontallayout.md)<!-- -->, [GroupLayout](./formspec.grouplayout.md)<!-- -->, [Categorization](./formspec.categorization.md)

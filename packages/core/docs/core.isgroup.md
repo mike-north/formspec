@@ -18,30 +18,24 @@ export declare function isGroup(element: FormElement): element is Group<readonly
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +43,3 @@ element
 **Returns:**
 
 element is [Group](./core.group.md)<!-- -->&lt;readonly [FormElement](./core.formelement.md)<!-- -->\[\]&gt;
-

@@ -9,7 +9,9 @@ Narrows a `FormElement` to an array field.
 **Signature:**
 
 ```typescript
-export declare function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
+export declare function isArrayField(
+  element: FormElement
+): element is ArrayField<string, readonly FormElement[]>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isArrayField(element: FormElement): element is ArrayFiel
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./formspec.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [ArrayField](./formspec.arrayfield.md)<!-- -->&lt;string, readonly [FormElement](./formspec.formelement.md)<!-- -->\[\]&gt;
-

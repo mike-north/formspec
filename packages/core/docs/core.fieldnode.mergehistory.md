@@ -5,7 +5,6 @@
 ## FieldNode.mergeHistory property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Debug only — ordered list of constraint/annotation nodes that participated in merging, including dominated ones.
 

@@ -9,7 +9,7 @@ Fully resolved rule constraints with all properties required.
 **Signature:**
 
 ```typescript
-export interface ResolvedRuleConstraints 
+export interface ResolvedRuleConstraints
 ```
 
 ## Properties
@@ -18,56 +18,43 @@ export interface ResolvedRuleConstraints
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [effects](./constraints.resolvedruleconstraints.effects.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Required&lt;[RuleEffectConstraints](./constraints.ruleeffectconstraints.md)<!-- -->&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [enabled](./constraints.resolvedruleconstraints.enabled.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Severity](./constraints.severity.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

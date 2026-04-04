@@ -11,5 +11,5 @@ Valid enum option types: either plain strings or objects with id/label.
 ```typescript
 export declare type EnumOptionValue = string | EnumOption;
 ```
-**References:** [EnumOption](./formspec.enumoption.md)
 
+**References:** [EnumOption](./formspec.enumoption.md)

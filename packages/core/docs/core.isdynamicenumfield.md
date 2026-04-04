@@ -9,7 +9,9 @@ Narrows a `FormElement` to a dynamic enum field.
 **Signature:**
 
 ```typescript
-export declare function isDynamicEnumField(element: FormElement): element is DynamicEnumField<string, string>;
+export declare function isDynamicEnumField(
+  element: FormElement
+): element is DynamicEnumField<string, string>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isDynamicEnumField(element: FormElement): element is Dyn
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [DynamicEnumField](./core.dynamicenumfield.md)<!-- -->&lt;string, string&gt;
-

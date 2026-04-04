@@ -9,7 +9,7 @@ JSON Schema subset used in rule conditions.
 **Signature:**
 
 ```typescript
-export declare interface RuleConditionSchema 
+export declare interface RuleConditionSchema
 ```
 
 ## Properties
@@ -18,250 +18,197 @@ export declare interface RuleConditionSchema
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [allOf?](./formspec.ruleconditionschema.allof.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleConditionSchema](./formspec.ruleconditionschema.md)<!-- -->\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [const?](./formspec.ruleconditionschema.const.md)
 
-
 </td><td>
-
 
 </td><td>
 
 unknown
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [enum?](./formspec.ruleconditionschema.enum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 readonly unknown\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMaximum?](./formspec.ruleconditionschema.exclusivemaximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [exclusiveMinimum?](./formspec.ruleconditionschema.exclusiveminimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [maximum?](./formspec.ruleconditionschema.maximum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minimum?](./formspec.ruleconditionschema.minimum.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [minLength?](./formspec.ruleconditionschema.minlength.md)
 
-
 </td><td>
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [not?](./formspec.ruleconditionschema.not.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [RuleConditionSchema](./formspec.ruleconditionschema.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [properties?](./formspec.ruleconditionschema.properties.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, [RuleConditionSchema](./formspec.ruleconditionschema.md)<!-- -->&gt;
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [required?](./formspec.ruleconditionschema.required.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string\[\]
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type?](./formspec.ruleconditionschema.type.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_
 
-
 </td></tr>
 </tbody></table>
-

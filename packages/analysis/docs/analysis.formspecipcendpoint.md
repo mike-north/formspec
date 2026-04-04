@@ -9,7 +9,7 @@ Cross-process endpoint used by the language server to reach the semantic tsserve
 **Signature:**
 
 ```typescript
-export interface FormSpecIpcEndpoint 
+export interface FormSpecIpcEndpoint
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface FormSpecIpcEndpoint
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [address](./analysis.formspecipcendpoint.address.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 [kind](./analysis.formspecipcendpoint.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "unix-socket" \| "windows-pipe"
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

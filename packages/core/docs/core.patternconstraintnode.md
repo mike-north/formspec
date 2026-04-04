@@ -5,7 +5,6 @@
 ## PatternConstraintNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 String pattern constraint (ECMA-262 regex without delimiters).
 
@@ -16,7 +15,7 @@ Type applicability: requires `PrimitiveTypeNode("string")`<!-- -->.
 **Signature:**
 
 ```typescript
-export interface PatternConstraintNode 
+export interface PatternConstraintNode
 ```
 
 ## Properties
@@ -25,127 +24,102 @@ export interface PatternConstraintNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraintKind](./core.patternconstraintnode.constraintkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "pattern"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.patternconstraintnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "constraint"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [path?](./core.patternconstraintnode.path.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [PathTarget](./core.pathtarget.md)
 
-
 </td><td>
 
 **_(BETA)_** _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [pattern](./core.patternconstraintnode.pattern.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_** ECMA-262 regular expression, without delimiters.
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.patternconstraintnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

@@ -9,7 +9,9 @@ Validates an unknown IPC response before the language server consumes it.
 **Signature:**
 
 ```typescript
-export declare function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
+export declare function isFormSpecSemanticResponse(
+  value: unknown
+): value is FormSpecSemanticResponse;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isFormSpecSemanticResponse(value: unknown): value is For
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 value
 
-
 </td><td>
 
 unknown
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ unknown
 **Returns:**
 
 value is [FormSpecSemanticResponse](./analysis.formspecsemanticresponse.md)
-

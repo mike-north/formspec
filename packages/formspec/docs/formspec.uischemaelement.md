@@ -9,7 +9,14 @@ Union of all UI Schema element types.
 **Signature:**
 
 ```typescript
-export declare type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
+export declare type UISchemaElement =
+  | ControlElement
+  | VerticalLayout
+  | HorizontalLayout
+  | GroupLayout
+  | Categorization
+  | Category
+  | LabelElement;
 ```
-**References:** [ControlElement](./formspec.controlelement.md)<!-- -->, [VerticalLayout](./formspec.verticallayout.md)<!-- -->, [HorizontalLayout](./formspec.horizontallayout.md)<!-- -->, [GroupLayout](./formspec.grouplayout.md)<!-- -->, [Categorization](./formspec.categorization.md)<!-- -->, [Category](./formspec.category.md)<!-- -->, [LabelElement](./formspec.labelelement.md)
 
+**References:** [ControlElement](./formspec.controlelement.md)<!-- -->, [VerticalLayout](./formspec.verticallayout.md)<!-- -->, [HorizontalLayout](./formspec.horizontallayout.md)<!-- -->, [GroupLayout](./formspec.grouplayout.md)<!-- -->, [Categorization](./formspec.categorization.md)<!-- -->, [Category](./formspec.category.md)<!-- -->, [LabelElement](./formspec.labelelement.md)

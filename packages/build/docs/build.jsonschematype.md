@@ -5,12 +5,18 @@
 ## JSONSchemaType type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 JSON Schema primitive types.
 
 **Signature:**
 
 ```typescript
-export type JSONSchemaType = "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
+export type JSONSchemaType =
+  | "string"
+  | "number"
+  | "integer"
+  | "boolean"
+  | "object"
+  | "array"
+  | "null";
 ```

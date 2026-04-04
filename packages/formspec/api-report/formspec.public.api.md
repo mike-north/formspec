@@ -177,16 +177,16 @@ export interface FetchOptionsResponse<T = unknown> {
 
 // @public
 export const field: {
-    text: <const N extends string>(name: N, config?: Omit<TextField_2<N>, "_type" | "_field" | "name">) => TextField_2<N>;
-    number: <const N extends string>(name: N, config?: Omit<NumberField_2<N>, "_type" | "_field" | "name">) => NumberField_2<N>;
-    boolean: <const N extends string>(name: N, config?: Omit<BooleanField_2<N>, "_type" | "_field" | "name">) => BooleanField_2<N>;
-    enum: <const N extends string, const O extends readonly EnumOptionValue_2[]>(name: N, options: O, config?: Omit<StaticEnumField_2<N, O>, "_type" | "_field" | "name" | "options">) => StaticEnumField_2<N, O>;
-    dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField_2<N, Source>, "_type" | "_field" | "name" | "source">) => DynamicEnumField_2<N, Source>;
-    dynamicSchema: <const N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField_2<N>, "_type" | "_field" | "name" | "schemaSource">) => DynamicSchemaField_2<N>;
-    array: <const N extends string, const Items extends readonly FormElement_2[]>(name: N, ...items: Items) => ArrayField_2<N, Items>;
-    arrayWithConfig: <const N extends string, const Items extends readonly FormElement_2[]>(name: N, config: Omit<ArrayField_2<N, Items>, "_type" | "_field" | "name" | "items">, ...items: Items) => ArrayField_2<N, Items>;
-    object: <const N extends string, const Properties extends readonly FormElement_2[]>(name: N, ...properties: Properties) => ObjectField_2<N, Properties>;
-    objectWithConfig: <const N extends string, const Properties extends readonly FormElement_2[]>(name: N, config: Omit<ObjectField_2<N, Properties>, "_type" | "_field" | "name" | "properties">, ...properties: Properties) => ObjectField_2<N, Properties>;
+    array<N extends string, Items extends readonly FormElement[]>(name: N, ...items: Items): ArrayField<N, Items>;
+    arrayWithConfig<N extends string, Items extends readonly FormElement[]>(name: N, config: Omit<ArrayField<N, Items>, "_field" | "_type" | "items" | "name">, ...items: Items): ArrayField<N, Items>;
+    boolean<N extends string>(name: N, config?: Omit<BooleanField<N>, "_field" | "_type" | "name">): BooleanField<N>;
+    dynamicEnum<N extends string, Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField<N, Source>, "_field" | "_type" | "name" | "source">): DynamicEnumField<N, Source>;
+    dynamicSchema<N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField<N>, "_field" | "_type" | "name" | "schemaSource">): DynamicSchemaField<N>;
+    enum<N extends string, O extends readonly EnumOptionValue[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_field" | "_type" | "name" | "options">): StaticEnumField<N, O>;
+    number<N extends string>(name: N, config?: Omit<NumberField<N>, "_field" | "_type" | "name">): NumberField<N>;
+    object<N extends string, Properties extends readonly FormElement[]>(name: N, ...properties: Properties): ObjectField<N, Properties>;
+    objectWithConfig<N extends string, Properties extends readonly FormElement[]>(name: N, config: Omit<ObjectField<N, Properties>, "_field" | "_type" | "name" | "properties">, ...properties: Properties): ObjectField<N, Properties>;
+    text<N extends string>(name: N, config?: Omit<TextField<N>, "_field" | "_type" | "name">): TextField<N>;
 };
 
 // @public
@@ -466,7 +466,7 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
 
 // @public
-export function validateForm(elements: readonly FormElement_2[]): ValidationResult;
+export function validateForm(elements: readonly FormElement[]): ValidationResult;
 
 // @public
 export interface ValidationIssue {

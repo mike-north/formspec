@@ -9,7 +9,7 @@ Top-level FormSpec configuration file structure. The .formspec.yml file uses thi
 **Signature:**
 
 ```typescript
-export interface FormSpecConfig 
+export interface FormSpecConfig
 ```
 
 ## Properties
@@ -18,41 +18,32 @@ export interface FormSpecConfig
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [constraints?](./constraints.formspecconfig.constraints.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ConstraintConfig](./constraints.constraintconfig.md)
 
-
 </td><td>
 
 _(Optional)_ Constraint configuration
 
-
 </td></tr>
 </tbody></table>
-

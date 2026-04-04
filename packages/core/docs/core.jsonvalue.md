@@ -5,16 +5,21 @@
 ## JsonValue type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A JSON-serializable value. All IR nodes must be representable as JSON.
 
 **Signature:**
 
 ```typescript
-export type JsonValue = null | boolean | number | string | readonly JsonValue[] | {
-    readonly [key: string]: JsonValue;
-};
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly JsonValue[]
+  | {
+      readonly [key: string]: JsonValue;
+    };
 ```
-**References:** [JsonValue](./core.jsonvalue.md)
 
+**References:** [JsonValue](./core.jsonvalue.md)

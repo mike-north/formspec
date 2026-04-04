@@ -9,8 +9,9 @@ Options for writing schemas to disk.
 **Signature:**
 
 ```typescript
-export interface WriteSchemasOptions extends GenerateJsonSchemaOptions 
+export interface WriteSchemasOptions extends GenerateJsonSchemaOptions
 ```
+
 **Extends:** [GenerateJsonSchemaOptions](./build.generatejsonschemaoptions.md)
 
 ## Properties
@@ -19,85 +20,68 @@ export interface WriteSchemasOptions extends GenerateJsonSchemaOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [indent?](./build.writeschemasoptions.indent.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 number
 
-
 </td><td>
 
 _(Optional)_ Number of spaces for JSON indentation. Defaults to 2
-
 
 </td></tr>
 <tr><td>
 
 [name?](./build.writeschemasoptions.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Base name for the output files (without extension). Defaults to "schema"
-
 
 </td></tr>
 <tr><td>
 
 [outDir](./build.writeschemasoptions.outdir.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Output directory for the schema files
 
-
 </td></tr>
 </tbody></table>
-

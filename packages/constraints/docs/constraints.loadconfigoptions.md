@@ -9,7 +9,7 @@ Options for loading configuration.
 **Signature:**
 
 ```typescript
-export interface LoadConfigOptions 
+export interface LoadConfigOptions
 ```
 
 ## Properties
@@ -18,79 +18,62 @@ export interface LoadConfigOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [configPath?](./constraints.loadconfigoptions.configpath.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Explicit path to a config file. If provided, skips searching for default config file names.
-
 
 </td></tr>
 <tr><td>
 
 [cwd?](./constraints.loadconfigoptions.cwd.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ The directory to search for config files. Defaults to process.cwd().
-
 
 </td></tr>
 <tr><td>
 
 [searchParents?](./constraints.loadconfigoptions.searchparents.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether to search parent directories for config files. Defaults to true.
 
-
 </td></tr>
 </tbody></table>
-

@@ -9,7 +9,7 @@ Options for generating JSON Schema from a Chain DSL form.
 **Signature:**
 
 ```typescript
-export interface GenerateJsonSchemaOptions 
+export interface GenerateJsonSchemaOptions
 ```
 
 ## Properties
@@ -18,43 +18,34 @@ export interface GenerateJsonSchemaOptions
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [vendorPrefix?](./build.generatejsonschemaoptions.vendorprefix.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string \| undefined
 
-
 </td><td>
 
 _(Optional)_ Vendor prefix for emitted extension keywords.
 
-
 </td></tr>
 </tbody></table>
-

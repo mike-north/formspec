@@ -9,7 +9,7 @@ A complete form specification.
 **Signature:**
 
 ```typescript
-export declare interface FormSpec<Elements extends readonly FormElement[]> 
+export declare interface FormSpec<Elements extends readonly FormElement[]>
 ```
 
 ## Properties
@@ -18,43 +18,34 @@ export declare interface FormSpec<Elements extends readonly FormElement[]>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [elements](./constraints.formspec.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Elements
 
-
 </td><td>
 
 Top-level form elements
 
-
 </td></tr>
 </tbody></table>
-

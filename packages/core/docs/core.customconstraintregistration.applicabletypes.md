@@ -4,7 +4,7 @@
 
 ## CustomConstraintRegistration.applicableTypes property
 
-TypeNode kinds this constraint is applicable to, or `null` for any type. Used by the validator to emit TYPE\_MISMATCH diagnostics.
+TypeNode kinds this constraint is applicable to, or `null` for any type. Used by the validator to emit TYPE_MISMATCH diagnostics.
 
 **Signature:**
 

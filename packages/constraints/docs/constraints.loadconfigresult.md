@@ -9,7 +9,7 @@ Result of loading configuration.
 **Signature:**
 
 ```typescript
-export interface LoadConfigResult 
+export interface LoadConfigResult
 ```
 
 ## Properties
@@ -18,79 +18,62 @@ export interface LoadConfigResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [config](./constraints.loadconfigresult.config.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [ResolvedConstraintConfig](./constraints.resolvedconstraintconfig.md)
 
-
 </td><td>
 
 The loaded and merged configuration
-
 
 </td></tr>
 <tr><td>
 
 [configPath](./constraints.loadconfigresult.configpath.md)
 
-
 </td><td>
-
 
 </td><td>
 
 string \| null
 
-
 </td><td>
 
 The path to the config file that was loaded (if any)
-
 
 </td></tr>
 <tr><td>
 
 [found](./constraints.loadconfigresult.found.md)
 
-
 </td><td>
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 Whether a config file was found
 
-
 </td></tr>
 </tbody></table>
-

@@ -9,7 +9,10 @@ Defines resolvers for a form's dynamic data sources.
 **Signature:**
 
 ```typescript
-export declare function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
+export declare function defineResolvers<
+  E extends readonly FormElement[],
+  Sources extends string = ResolverSourcesForForm<E>,
+>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
 ```
 
 ## Parameters
@@ -18,44 +21,35 @@ export declare function defineResolvers<E extends readonly FormElement[], Source
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 form
 
-
 </td><td>
 
 [FormSpec](./formspec.formspec.md)<!-- -->&lt;E&gt;
 
-
 </td><td>
-
 
 </td></tr>
 <tr><td>
 
 resolvers
 
-
 </td><td>
 
 [ResolverMap](./formspec.resolvermap.md)<!-- -->&lt;Sources&gt;
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -63,4 +57,3 @@ resolvers
 **Returns:**
 
 [ResolverRegistry](./formspec.resolverregistry.md)<!-- -->&lt;Sources&gt;
-

@@ -11,7 +11,7 @@ Options can be plain strings or objects with `id` and `label` properties.
 **Signature:**
 
 ```typescript
-export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> 
+export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]>
 ```
 
 ## Properties
@@ -20,148 +20,119 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_field](./core.staticenumfield._field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "enum"
 
-
 </td><td>
 
 Field type discriminator - identifies this as an enum field
-
 
 </td></tr>
 <tr><td>
 
 [\_type](./core.staticenumfield._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "field"
 
-
 </td><td>
 
 Type discriminator for form elements
-
 
 </td></tr>
 <tr><td>
 
 [label?](./core.staticenumfield.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 _(Optional)_ Display label for the field
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.staticenumfield.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 N
 
-
 </td><td>
 
 Unique field identifier used as the schema key
-
 
 </td></tr>
 <tr><td>
 
 [options](./core.staticenumfield.options.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 O
 
-
 </td><td>
 
 Array of allowed option values
-
 
 </td></tr>
 <tr><td>
 
 [required?](./core.staticenumfield.required.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 _(Optional)_ Whether this field is required for form submission
 
-
 </td></tr>
 </tbody></table>
-

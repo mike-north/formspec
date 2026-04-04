@@ -261,8 +261,12 @@ export function generateSchemasFromProgram(
     options.typeName,
     options.extensionRegistry
   );
-  return generateClassSchemas(analysis, { file: options.filePath }, {
-    extensionRegistry: options.extensionRegistry,
-    vendorPrefix: options.vendorPrefix,
-  });
+  return generateClassSchemas(
+    analysis,
+    { file: options.filePath },
+    {
+      extensionRegistry: options.extensionRegistry,
+      vendorPrefix: options.vendorPrefix,
+    }
+  );
 }

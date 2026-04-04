@@ -9,7 +9,9 @@ Narrows a `FormElement` to a static enum field.
 **Signature:**
 
 ```typescript
-export declare function isStaticEnumField(element: FormElement): element is StaticEnumField<string, readonly EnumOptionValue[]>;
+export declare function isStaticEnumField(
+  element: FormElement
+): element is StaticEnumField<string, readonly EnumOptionValue[]>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isStaticEnumField(element: FormElement): element is Stat
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [StaticEnumField](./core.staticenumfield.md)<!-- -->&lt;string, readonly [EnumOptionValue](./core.enumoptionvalue.md)<!-- -->\[\]&gt;
-

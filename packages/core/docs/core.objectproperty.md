@@ -5,14 +5,13 @@
 ## ObjectProperty interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 A named property within an object type.
 
 **Signature:**
 
 ```typescript
-export interface ObjectProperty 
+export interface ObjectProperty
 ```
 
 ## Properties
@@ -21,148 +20,119 @@ export interface ObjectProperty
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotations](./core.objectproperty.annotations.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [AnnotationNode](./core.annotationnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Use-site annotations on this property.
-
 
 </td></tr>
 <tr><td>
 
 [constraints](./core.objectproperty.constraints.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 readonly [ConstraintNode](./core.constraintnode.md)<!-- -->\[\]
 
-
 </td><td>
 
 **_(BETA)_** Use-site constraints on this property. Distinct from constraints on the property's type — these are use-site constraints (e.g., `@minimum :amount 0` targets the `amount` property of a `MonetaryAmount` field).
-
 
 </td></tr>
 <tr><td>
 
 [name](./core.objectproperty.name.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [optional](./core.objectproperty.optional.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 boolean
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.objectproperty.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [type](./core.objectproperty.type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [TypeNode](./core.typenode.md)
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

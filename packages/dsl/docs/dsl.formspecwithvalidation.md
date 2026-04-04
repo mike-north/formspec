@@ -9,7 +9,10 @@ Creates a complete form specification with validation options.
 **Signature:**
 
 ```typescript
-export declare function formspecWithValidation<const Elements extends readonly FormElement[]>(options: FormSpecOptions, ...elements: Elements): FormSpec<Elements>;
+export declare function formspecWithValidation<const Elements extends readonly FormElement[]>(
+  options: FormSpecOptions,
+  ...elements: Elements
+): FormSpec<Elements>;
 ```
 
 ## Parameters
@@ -18,48 +21,39 @@ export declare function formspecWithValidation<const Elements extends readonly F
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 options
 
-
 </td><td>
 
 [FormSpecOptions](./dsl.formspecoptions.md)
 
-
 </td><td>
 
 Validation options
-
 
 </td></tr>
 <tr><td>
 
 elements
 
-
 </td><td>
 
 Elements
 
-
 </td><td>
 
 The top-level form elements
-
 
 </td></tr>
 </tbody></table>
@@ -72,15 +66,11 @@ A FormSpec descriptor
 
 ## Example
 
-
 ```typescript
 const form = formspecWithValidation(
   { validate: true, name: "MyForm" },
   field.text("name"),
   field.enum("status", ["draft", "sent"] as const),
-  when(is("status", "draft"),
-    field.text("notes"),
-  ),
+  when(is("status", "draft"), field.text("notes"))
 );
 ```
-

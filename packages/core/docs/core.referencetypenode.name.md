@@ -5,7 +5,6 @@
 ## ReferenceTypeNode.name property
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 The fully-qualified name of the referenced type. For TypeScript interfaces/type aliases: `"<module>#<TypeName>"`<!-- -->. For built-in types: the primitive kind string.
 

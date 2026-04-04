@@ -11,7 +11,7 @@ This is a manually maintained interface representing the common shape shared by 
 **Signature:**
 
 ```typescript
-export interface UISchemaElementBase 
+export interface UISchemaElementBase
 ```
 
 ## Properties
@@ -20,77 +20,60 @@ export interface UISchemaElementBase
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [options?](./build.uischemaelementbase.options.md)
 
-
 </td><td>
-
 
 </td><td>
 
 Record&lt;string, unknown&gt;
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [rule?](./build.uischemaelementbase.rule.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [Rule](./build.rule.md)
 
-
 </td><td>
 
 _(Optional)_
-
 
 </td></tr>
 <tr><td>
 
 [type](./build.uischemaelementbase.type.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [UISchemaElementType](./build.uischemaelementtype.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
-

@@ -9,7 +9,9 @@ Narrows a `FormElement` to a dynamic schema field.
 **Signature:**
 
 ```typescript
-export declare function isDynamicSchemaField(element: FormElement): element is DynamicSchemaField<string>;
+export declare function isDynamicSchemaField(
+  element: FormElement
+): element is DynamicSchemaField<string>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isDynamicSchemaField(element: FormElement): element is D
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [DynamicSchemaField](./core.dynamicschemafield.md)<!-- -->&lt;string&gt;
-

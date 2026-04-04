@@ -9,7 +9,9 @@ Narrows a `FormElement` to a conditional wrapper.
 **Signature:**
 
 ```typescript
-export declare function isConditional(element: FormElement): element is Conditional<string, unknown, readonly FormElement[]>;
+export declare function isConditional(
+  element: FormElement
+): element is Conditional<string, unknown, readonly FormElement[]>;
 ```
 
 ## Parameters
@@ -18,30 +20,24 @@ export declare function isConditional(element: FormElement): element is Conditio
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 element
 
-
 </td><td>
 
 [FormElement](./core.formelement.md)
 
-
 </td><td>
-
 
 </td></tr>
 </tbody></table>
@@ -49,4 +45,3 @@ element
 **Returns:**
 
 element is [Conditional](./core.conditional.md)<!-- -->&lt;string, unknown, readonly [FormElement](./core.formelement.md)<!-- -->\[\]&gt;
-

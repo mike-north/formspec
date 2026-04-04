@@ -9,7 +9,9 @@ Defines a custom annotation registration. Currently an identity function that pr
 **Signature:**
 
 ```typescript
-export declare function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
+export declare function defineAnnotation(
+  reg: CustomAnnotationRegistration
+): CustomAnnotationRegistration;
 ```
 
 ## Parameters
@@ -18,32 +20,26 @@ export declare function defineAnnotation(reg: CustomAnnotationRegistration): Cus
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 reg
 
-
 </td><td>
 
 [CustomAnnotationRegistration](./core.customannotationregistration.md)
 
-
 </td><td>
 
 The custom annotation registration.
-
 
 </td></tr>
 </tbody></table>
@@ -53,4 +49,3 @@ The custom annotation registration.
 [CustomAnnotationRegistration](./core.customannotationregistration.md)
 
 The same registration, validated at the type level.
-

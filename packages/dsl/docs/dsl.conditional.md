@@ -9,7 +9,7 @@ A conditional wrapper that shows/hides elements based on another field's value.
 **Signature:**
 
 ```typescript
-export declare interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]> 
+export declare interface Conditional<FieldName extends string, Value, Elements extends readonly FormElement[]>
 ```
 
 ## Properties
@@ -18,106 +18,85 @@ export declare interface Conditional<FieldName extends string, Value, Elements e
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_type](./dsl.conditional._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "conditional"
 
-
 </td><td>
 
 Type discriminator - identifies this as a conditional element
-
 
 </td></tr>
 <tr><td>
 
 [elements](./dsl.conditional.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Elements
 
-
 </td><td>
 
 Form elements shown when condition is met
-
 
 </td></tr>
 <tr><td>
 
 [field](./dsl.conditional.field.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 FieldName
 
-
 </td><td>
 
 Name of the field whose value determines visibility
-
 
 </td></tr>
 <tr><td>
 
 [value](./dsl.conditional.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Value
 
-
 </td><td>
 
 Value that triggers the condition (shows nested elements)
 
-
 </td></tr>
 </tbody></table>
-

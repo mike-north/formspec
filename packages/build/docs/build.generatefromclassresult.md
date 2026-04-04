@@ -9,7 +9,7 @@ Result of generating schemas from a decorated class.
 **Signature:**
 
 ```typescript
-export interface GenerateFromClassResult 
+export interface GenerateFromClassResult
 ```
 
 ## Properties
@@ -18,60 +18,47 @@ export interface GenerateFromClassResult
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [jsonSchema](./build.generatefromclassresult.jsonschema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [JsonSchema2020](./build.jsonschema2020.md)
 
-
 </td><td>
 
 JSON Schema 2020-12 for validation
-
 
 </td></tr>
 <tr><td>
 
 [uiSchema](./build.generatefromclassresult.uischema.md)
 
-
 </td><td>
-
 
 </td><td>
 
 [UISchema](./build.uischema.md)
 
-
 </td><td>
 
 JSON Forms UI Schema for rendering
 
-
 </td></tr>
 </tbody></table>
-

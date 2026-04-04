@@ -5,7 +5,6 @@
 ## RemarksAnnotationNode interface
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Remarks annotation — programmatic-persona documentation carried via the `x-<vendor>-remarks` JSON Schema extension keyword.
 
@@ -14,7 +13,7 @@ Populated from `@remarks` TSDoc tag content. SDK codegen can include this in doc
 **Signature:**
 
 ```typescript
-export interface RemarksAnnotationNode 
+export interface RemarksAnnotationNode
 ```
 
 ## Properties
@@ -23,106 +22,85 @@ export interface RemarksAnnotationNode
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [annotationKind](./core.remarksannotationnode.annotationkind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "remarks"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [kind](./core.remarksannotationnode.kind.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "annotation"
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [provenance](./core.remarksannotationnode.provenance.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 [Provenance](./core.provenance.md)
 
-
 </td><td>
 
 **_(BETA)_**
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.remarksannotationnode.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 **_(BETA)_**
 
-
 </td></tr>
 </tbody></table>
-

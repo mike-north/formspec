@@ -9,7 +9,7 @@ A resolver registry that provides type-safe access to resolvers.
 **Signature:**
 
 ```typescript
-export interface ResolverRegistry<Sources extends string> 
+export interface ResolverRegistry<Sources extends string>
 ```
 
 ## Methods
@@ -18,45 +18,36 @@ export interface ResolverRegistry<Sources extends string>
 
 Method
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [get(source)](./runtime.resolverregistry.get.md)
 
-
 </td><td>
 
 Gets a resolver by data source name.
-
 
 </td></tr>
 <tr><td>
 
 [has(source)](./runtime.resolverregistry.has.md)
 
-
 </td><td>
 
 Checks if a resolver exists for a data source.
-
 
 </td></tr>
 <tr><td>
 
 [sources()](./runtime.resolverregistry.sources.md)
 
-
 </td><td>
 
 Gets all registered data source names.
 
-
 </td></tr>
 </tbody></table>
-

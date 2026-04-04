@@ -5,14 +5,20 @@
 ## ConstraintNode type
 
 > This API is provided as a beta preview for developers and may change based on feedback that we receive. Do not use this API in a production environment.
-> 
 
 Discriminated union of all constraint types. Constraints are set-influencing: they narrow the set of valid values.
 
 **Signature:**
 
 ```typescript
-export type ConstraintNode = NumericConstraintNode | LengthConstraintNode | PatternConstraintNode | ArrayCardinalityConstraintNode | EnumMemberConstraintNode | ConstConstraintNode | CustomConstraintNode;
+export type ConstraintNode =
+  | NumericConstraintNode
+  | LengthConstraintNode
+  | PatternConstraintNode
+  | ArrayCardinalityConstraintNode
+  | EnumMemberConstraintNode
+  | ConstConstraintNode
+  | CustomConstraintNode;
 ```
-**References:** [NumericConstraintNode](./core.numericconstraintnode.md)<!-- -->, [LengthConstraintNode](./core.lengthconstraintnode.md)<!-- -->, [PatternConstraintNode](./core.patternconstraintnode.md)<!-- -->, [ArrayCardinalityConstraintNode](./core.arraycardinalityconstraintnode.md)<!-- -->, [EnumMemberConstraintNode](./core.enummemberconstraintnode.md)<!-- -->, [ConstConstraintNode](./core.constconstraintnode.md)<!-- -->, [CustomConstraintNode](./core.customconstraintnode.md)
 
+**References:** [NumericConstraintNode](./core.numericconstraintnode.md)<!-- -->, [LengthConstraintNode](./core.lengthconstraintnode.md)<!-- -->, [PatternConstraintNode](./core.patternconstraintnode.md)<!-- -->, [ArrayCardinalityConstraintNode](./core.arraycardinalityconstraintnode.md)<!-- -->, [EnumMemberConstraintNode](./core.enummemberconstraintnode.md)<!-- -->, [ConstConstraintNode](./core.constconstraintnode.md)<!-- -->, [CustomConstraintNode](./core.customconstraintnode.md)

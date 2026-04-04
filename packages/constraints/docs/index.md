@@ -10,17 +10,14 @@
 
 Package
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [@formspec/constraints](./constraints.md)
-
 
 </td><td>
 
@@ -30,7 +27,5 @@ Constraint validation for FormSpec - restrict features based on target environme
 
 This package provides: - Type definitions for constraint configuration - YAML/TypeScript config file loading - Core validation logic for FormSpec elements - JSON Schema for .formspec.yml validation
 
-
 </td></tr>
 </tbody></table>
-

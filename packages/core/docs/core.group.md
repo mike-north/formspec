@@ -11,7 +11,7 @@ Groups provide visual organization and can be rendered as fieldsets or sections.
 **Signature:**
 
 ```typescript
-export interface Group<Elements extends readonly FormElement[]> 
+export interface Group<Elements extends readonly FormElement[]>
 ```
 
 ## Properties
@@ -20,85 +20,68 @@ export interface Group<Elements extends readonly FormElement[]>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [\_type](./core.group._type.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 "group"
 
-
 </td><td>
 
 Type discriminator - identifies this as a group element
-
 
 </td></tr>
 <tr><td>
 
 [elements](./core.group.elements.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 Elements
 
-
 </td><td>
 
 Form elements contained within this group
-
 
 </td></tr>
 <tr><td>
 
 [label](./core.group.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 Display label for the group
 
-
 </td></tr>
 </tbody></table>
-

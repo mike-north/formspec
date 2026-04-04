@@ -11,15 +11,15 @@ Convenience type that extracts elements and infers the schema.
 **Signature:**
 
 ```typescript
-export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> = F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
+export type InferFormSchema<F extends FormSpec<readonly FormElement[]>> =
+  F extends FormSpec<infer Elements> ? InferSchema<Elements> : never;
 ```
+
 **References:** [FormSpec](./dsl.formspec.md)<!-- -->, [FormElement](./dsl.formelement.md)<!-- -->, [InferSchema](./dsl.inferschema.md)
 
 ## Example
-
 
 ```typescript
 const form = formspec(...);
 type Schema = InferFormSchema<typeof form>;
 ```
-

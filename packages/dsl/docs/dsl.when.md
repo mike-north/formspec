@@ -11,7 +11,11 @@ When the predicate evaluates to true, the contained elements are shown. Otherwis
 **Signature:**
 
 ```typescript
-export declare function when<const K extends string, const V, const Elements extends readonly FormElement[]>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements>;
+export declare function when<
+  const K extends string,
+  const V,
+  const Elements extends readonly FormElement[],
+>(predicate: Predicate<K, V>, ...elements: Elements): Conditional<K, V, Elements>;
 ```
 
 ## Parameters
@@ -20,48 +24,39 @@ export declare function when<const K extends string, const V, const Elements ext
 
 Parameter
 
-
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 predicate
 
-
 </td><td>
 
 [Predicate](./dsl.predicate.md)<!-- -->&lt;K, V&gt;
 
-
 </td><td>
 
 The condition to evaluate (use `is()` to create)
-
 
 </td></tr>
 <tr><td>
 
 elements
 
-
 </td><td>
 
 Elements
 
-
 </td><td>
 
 The form elements to show when condition is met
-
 
 </td></tr>
 </tbody></table>
@@ -74,13 +69,9 @@ A Conditional descriptor
 
 ## Example
 
-
 ```typescript
 import { is } from "@formspec/dsl";
 
-field.enum("status", ["draft", "sent", "paid"] as const),
-when(is("status", "draft"),
-  field.text("internalNotes", { label: "Internal Notes" }),
-)
+(field.enum("status", ["draft", "sent", "paid"] as const),
+  when(is("status", "draft"), field.text("internalNotes", { label: "Internal Notes" })));
 ```
-

@@ -9,7 +9,7 @@ A single option returned by a data source resolver.
 **Signature:**
 
 ```typescript
-export interface DataSourceOption<T = unknown> 
+export interface DataSourceOption<T = unknown>
 ```
 
 ## Properties
@@ -18,85 +18,68 @@ export interface DataSourceOption<T = unknown>
 
 Property
 
-
 </th><th>
 
 Modifiers
-
 
 </th><th>
 
 Type
 
-
 </th><th>
 
 Description
-
 
 </th></tr></thead>
 <tbody><tr><td>
 
 [data?](./core.datasourceoption.data.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 T
 
-
 </td><td>
 
 _(Optional)_ Optional additional data associated with this option
-
 
 </td></tr>
 <tr><td>
 
 [label](./core.datasourceoption.label.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The display label for this option
-
 
 </td></tr>
 <tr><td>
 
 [value](./core.datasourceoption.value.md)
 
-
 </td><td>
 
 `readonly`
-
 
 </td><td>
 
 string
 
-
 </td><td>
 
 The value stored when this option is selected
 
-
 </td></tr>
 </tbody></table>
-

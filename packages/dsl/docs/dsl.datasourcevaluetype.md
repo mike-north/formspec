@@ -11,9 +11,14 @@ If the source has an `id` property, that becomes the value type. Otherwise, defa
 **Signature:**
 
 ```typescript
-export declare type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry ? DataSourceRegistry[Source] extends {
-    id: infer ID;
-} ? ID : string : string;
+export declare type DataSourceValueType<Source extends string> =
+  Source extends keyof DataSourceRegistry
+    ? DataSourceRegistry[Source] extends {
+        id: infer ID;
+      }
+      ? ID
+      : string
+    : string;
 ```
-**References:** [DataSourceRegistry](./dsl.datasourceregistry.md)
 
+**References:** [DataSourceRegistry](./dsl.datasourceregistry.md)

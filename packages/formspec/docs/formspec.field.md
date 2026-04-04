@@ -25,7 +25,6 @@ field: {
 
 ## Example
 
-
 ```typescript
 import { field } from "@formspec/dsl";
 
@@ -34,4 +33,3 @@ field.number("age", { min: 0, max: 150 });
 field.enum("status", ["draft", "sent", "paid"]);
 field.dynamicEnum("country", "countries", { label: "Country" });
 ```
-

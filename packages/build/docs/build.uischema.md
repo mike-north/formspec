@@ -11,5 +11,5 @@ Root UI Schema (always a layout — not a Control, Category, or Label).
 ```typescript
 export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categorization;
 ```
-**References:** [VerticalLayout](./build.verticallayout.md)<!-- -->, [HorizontalLayout](./build.horizontallayout.md)<!-- -->, [GroupLayout](./build.grouplayout.md)<!-- -->, [Categorization](./build.categorization.md)
 
+**References:** [VerticalLayout](./build.verticallayout.md)<!-- -->, [HorizontalLayout](./build.horizontallayout.md)<!-- -->, [GroupLayout](./build.grouplayout.md)<!-- -->, [Categorization](./build.categorization.md)
