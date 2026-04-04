@@ -16,14 +16,24 @@ const createRule = ESLintUtils.RuleCreator(
 );
 
 /**
+ * Message identifiers emitted by `allowedLayouts`.
+ *
+ * @public
+ */
+export type MessageIds = "disallowedGroup" | "disallowedConditional";
+
+/**
+ * Rule options accepted by `allowedLayouts`.
+ *
+ * @public
+ */
+export type Options = [LayoutConstraints];
+/**
  * ESLint rule that validates allowed layout constructs against project constraints.
  *
  * @public
  */
-export const allowedLayouts = createRule<
-  [LayoutConstraints],
-  "disallowedGroup" | "disallowedConditional"
->({
+export const allowedLayouts = createRule<Options, MessageIds>({
   name: "constraints-allowed-layouts",
   meta: {
     type: "problem",

@@ -1,20 +1,17 @@
 /**
- * \@formspec/eslint-plugin
+ * ESLint plugin entrypoint for validating FormSpec authoring patterns across
+ * TSDoc-annotated types and the chain DSL.
  *
- * ESLint plugin for FormSpec constraint validation.
+ * Provides flat-config presets plus individually addressable rules for tag
+ * recognition, value parsing, target resolution, and constraint validation.
  *
- * Provides rules to:
- * - Validate JSDoc constraints on class/interface fields
- * - Validate Chain DSL usage against project constraints
- * - Ensure forms comply with target environment capabilities
+ * @packageDocumentation
  */
 import type { TSESLint } from "@typescript-eslint/utils";
 import packageJson from "../package.json" with { type: "json" };
 import {
   noUnknownTags,
   requireTagArguments,
-  noDisabledTags,
-  noMarkdownFormatting,
   validNumericValue,
   validIntegerValue,
   validRegexPattern,
@@ -24,14 +21,98 @@ import {
   validMemberTarget,
   noUnsupportedTargeting,
   noMemberTargetOnObject,
-  noContradictions,
   noDuplicateTags,
   noDescriptionTag,
   noContradictoryRules,
 } from "./rules/index.js";
+import {
+  noContradictions as noContradictionsRule,
+  type MessageIds as NoContradictionsMessageIds,
+} from "./rules/constraint-validation/no-contradictions.js";
+import {
+  allowedFieldTypes as allowedFieldTypesRule,
+  type MessageIds as AllowedFieldTypesMessageIds,
+  type Options as AllowedFieldTypesOptions,
+} from "./rules/constraints/allowed-field-types.js";
+import {
+  allowedLayouts as allowedLayoutsRule,
+  type MessageIds as AllowedLayoutsMessageIds,
+  type Options as AllowedLayoutsOptions,
+} from "./rules/constraints/allowed-layouts.js";
+import {
+  noDisabledTags as noDisabledTagsRule,
+  type MessageIds as NoDisabledTagsMessageIds,
+  type Options as NoDisabledTagsOptions,
+} from "./rules/tag-recognition/no-disabled-tags.js";
+import {
+  noMarkdownFormatting as noMarkdownFormattingRule,
+  type MessageIds as NoMarkdownFormattingMessageIds,
+  type Options as NoMarkdownFormattingOptions,
+} from "./rules/tag-recognition/no-markdown-formatting.js";
 
-// Constraint rules for Chain DSL
-import { allowedFieldTypes, allowedLayouts } from "./rules/constraints/index.js";
+/**
+ * Public rule-module shape used for individually exported FormSpec ESLint rules.
+ *
+ * @public
+ */
+export type NamedRuleModule<MessageIds extends string, Options extends readonly unknown[]> =
+  TSESLint.RuleModule<MessageIds, Options> & { name: string };
+
+export type {
+  AllowedFieldTypesMessageIds,
+  AllowedFieldTypesOptions,
+  AllowedLayoutsMessageIds,
+  AllowedLayoutsOptions,
+  NoContradictionsMessageIds,
+  NoDisabledTagsMessageIds,
+  NoDisabledTagsOptions,
+  NoMarkdownFormattingMessageIds,
+  NoMarkdownFormattingOptions,
+};
+
+/**
+ * Reports contradictory FormSpec constraint combinations.
+ *
+ * @public
+ */
+export const noContradictions: NamedRuleModule<NoContradictionsMessageIds, []> =
+  noContradictionsRule;
+
+/**
+ * Reports FormSpec tags disabled by project configuration.
+ *
+ * @public
+ */
+export const noDisabledTags: NamedRuleModule<NoDisabledTagsMessageIds, NoDisabledTagsOptions> =
+  noDisabledTagsRule;
+
+/**
+ * Forbids Markdown formatting in configured FormSpec tag values.
+ *
+ * @public
+ */
+export const noMarkdownFormatting: NamedRuleModule<
+  NoMarkdownFormattingMessageIds,
+  NoMarkdownFormattingOptions
+> = noMarkdownFormattingRule;
+
+/**
+ * Validates allowed field types against project constraints.
+ *
+ * @public
+ */
+export const allowedFieldTypes: NamedRuleModule<
+  AllowedFieldTypesMessageIds,
+  AllowedFieldTypesOptions
+> = allowedFieldTypesRule;
+
+/**
+ * Validates allowed layout constructs against project constraints.
+ *
+ * @public
+ */
+export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions> =
+  allowedLayoutsRule;
 
 /**
  * All rules provided by this plugin.
@@ -84,6 +165,8 @@ export const meta = {
  *   ...formspec.configs.recommended,
  * ];
  * ```
+ *
+ * @public
  */
 const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
   {
@@ -116,6 +199,8 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
 
 /**
  * Strict configuration - all rules as errors.
+ *
+ * @public
  */
 const strictConfig: TSESLint.FlatConfig.ConfigArray = [
   {
@@ -173,8 +258,6 @@ export default plugin;
 export {
   noUnknownTags,
   requireTagArguments,
-  noDisabledTags,
-  noMarkdownFormatting,
   validNumericValue,
   validIntegerValue,
   validRegexPattern,
@@ -184,11 +267,7 @@ export {
   validMemberTarget,
   noUnsupportedTargeting,
   noMemberTargetOnObject,
-  noContradictions,
   noDuplicateTags,
   noDescriptionTag,
   noContradictoryRules,
-  // Constraint rules for Chain DSL
-  allowedFieldTypes,
-  allowedLayouts,
 };

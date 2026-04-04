@@ -270,6 +270,7 @@ Interactive browser-based editor (React + Vite + Monaco Editor):
 
 - **Changesets** for version management — all `@formspec/*` packages are version-linked
 - **API Extractor** generates `.d.ts` rollups and API reports for library packages
+- API Extractor diagnostics that indicate an invalid published API surface, such as forgotten exports, are treated as CI-blocking errors rather than informational `api-report/` warnings
 - **Pre-release**: Currently on `0.1.0-alpha.*`
 - All publishable packages use `"publishConfig": { "access": "public" }`
 

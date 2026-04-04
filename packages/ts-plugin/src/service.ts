@@ -7,7 +7,7 @@ import {
   type FormSpecAnalysisManifest,
   type FormSpecSemanticQuery,
   type FormSpecSemanticResponse,
-} from "@formspec/analysis";
+} from "@formspec/analysis/protocol";
 import { type FormSpecPerformanceEvent } from "@formspec/analysis/internal";
 import {
   createFormSpecAnalysisManifest,
@@ -64,9 +64,9 @@ export class FormSpecPluginService {
   }
 
   /**
-   * Returns the manifest written by the plugin service for workspace discovery.
+   * Returns the manifest that advertises the active semantic service.
    *
-   * @internal
+   * @public
    */
   public getManifest(): FormSpecAnalysisManifest {
     return this.manifest;
@@ -82,9 +82,7 @@ export class FormSpecPluginService {
   }
 
   /**
-   * Starts the IPC transport and writes the current workspace manifest.
-   *
-   * Calling this more than once is a no-op.
+   * Starts the IPC server and writes the workspace manifest.
    *
    * @public
    */
@@ -153,7 +151,7 @@ export class FormSpecPluginService {
   }
 
   /**
-   * Stops the IPC transport, clears semantic state, and removes runtime artifacts.
+   * Stops the IPC server and removes runtime artifacts.
    *
    * @public
    */
@@ -178,7 +176,7 @@ export class FormSpecPluginService {
   }
 
   /**
-   * Schedules a background refresh for the cached semantic snapshot of a file.
+   * Schedules a semantic snapshot refresh for one source file.
    *
    * @public
    */
@@ -187,9 +185,9 @@ export class FormSpecPluginService {
   }
 
   /**
-   * Handles a semantic query issued against the plugin transport.
+   * Executes a semantic query against the wrapped service.
    *
-   * @internal
+   * @public
    */
   public handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse {
     if (this.options.enablePerformanceLogging === true) {
@@ -365,4 +363,10 @@ export function createLanguageServiceProxy(
   });
 }
 
+/**
+ * Minimal logger interface used by the plugin service for diagnostics and
+ * performance messages.
+ *
+ * @public
+ */
 export type { LoggerLike };

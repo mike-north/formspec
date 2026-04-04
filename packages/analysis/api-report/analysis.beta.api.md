@@ -4,6 +4,14 @@
 
 ```ts
 
+import type { PathTarget } from '@formspec/core';
+
+// @public
+export interface CommentHoverInfo {
+    readonly kind: "tag-name" | "target" | "argument";
+    readonly markdown: string;
+}
+
 // @public
 export interface CommentSourceSpan {
     readonly end: number;
@@ -226,5 +234,18 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
+
+// @public
+export interface ParsedCommentTargetSpecifier {
+    readonly colonSpan: CommentSourceSpan;
+    readonly fullSpan: CommentSourceSpan;
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
+    readonly path: PathTarget | null;
+    readonly rawText: string;
+    readonly span: CommentSourceSpan;
+    readonly valid: boolean;
+}
+
+// (No @packageDocumentation comment for this package)
 
 ```

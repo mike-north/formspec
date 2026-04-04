@@ -4,8 +4,15 @@
 
 ```ts
 
+import type { PathTarget } from '@formspec/core';
 import * as ts from 'typescript';
 import type * as tsServer from 'typescript/lib/tsserverlibrary.js';
+
+// @public
+export interface CommentHoverInfo {
+    readonly kind: "tag-name" | "target" | "argument";
+    readonly markdown: string;
+}
 
 // @public
 export interface CommentSourceSpan {
@@ -107,10 +114,8 @@ export type FormSpecPlacement = "class" | "class-field" | "class-method" | "inte
 // @public
 export class FormSpecPluginService {
     constructor(options: FormSpecPluginServiceOptions);
-    // @internal
     getManifest(): FormSpecAnalysisManifest;
     getSemanticService(): FormSpecSemanticService;
-    // @internal
     handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse;
     scheduleSnapshotRefresh(filePath: string): void;
     start(): Promise<void>;
@@ -316,6 +321,17 @@ export function init(modules: {
 // @public
 export interface LoggerLike {
     info(message: string): void;
+}
+
+// @public
+export interface ParsedCommentTargetSpecifier {
+    readonly colonSpan: CommentSourceSpan;
+    readonly fullSpan: CommentSourceSpan;
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
+    readonly path: PathTarget | null;
+    readonly rawText: string;
+    readonly span: CommentSourceSpan;
+    readonly valid: boolean;
 }
 
 ```

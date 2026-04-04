@@ -6,6 +6,19 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+/**
+ * Message identifiers emitted by `noDisabledTags`.
+ *
+ * @public
+ */
+export type MessageIds = "disabledTag";
+
+/**
+ * Rule options accepted by `noDisabledTags`.
+ *
+ * @public
+ */
+export type Options = [{ tags?: string[] }];
 function normalizeDisabledTagName(tagName: string): string {
   return tagName.charAt(0).toLowerCase() + tagName.slice(1);
 }
@@ -15,7 +28,7 @@ function normalizeDisabledTagName(tagName: string): string {
  *
  * @public
  */
-export const noDisabledTags = createRule<[{ tags?: string[] }], "disabledTag">({
+export const noDisabledTags = createRule<Options, MessageIds>({
   name: "tag-recognition/no-disabled-tags",
   meta: {
     type: "problem",

@@ -176,18 +176,7 @@ export interface FetchOptionsResponse<T = unknown> {
 }
 
 // @public
-export const field: {
-    array<N extends string, Items extends readonly FormElement[]>(name: N, ...items: Items): ArrayField<N, Items>;
-    arrayWithConfig<N extends string, Items extends readonly FormElement[]>(name: N, config: Omit<ArrayField<N, Items>, "_field" | "_type" | "items" | "name">, ...items: Items): ArrayField<N, Items>;
-    boolean<N extends string>(name: N, config?: Omit<BooleanField<N>, "_field" | "_type" | "name">): BooleanField<N>;
-    dynamicEnum<N extends string, Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField<N, Source>, "_field" | "_type" | "name" | "source">): DynamicEnumField<N, Source>;
-    dynamicSchema<N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField<N>, "_field" | "_type" | "name" | "schemaSource">): DynamicSchemaField<N>;
-    enum<N extends string, O extends readonly EnumOptionValue[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_field" | "_type" | "name" | "options">): StaticEnumField<N, O>;
-    number<N extends string>(name: N, config?: Omit<NumberField<N>, "_field" | "_type" | "name">): NumberField<N>;
-    object<N extends string, Properties extends readonly FormElement[]>(name: N, ...properties: Properties): ObjectField<N, Properties>;
-    objectWithConfig<N extends string, Properties extends readonly FormElement[]>(name: N, config: Omit<ObjectField<N, Properties>, "_field" | "_type" | "name" | "properties">, ...properties: Properties): ObjectField<N, Properties>;
-    text<N extends string>(name: N, config?: Omit<TextField<N>, "_field" | "_type" | "name">): TextField<N>;
-};
+export const field: FormSpecFieldBuilder;
 
 // @public
 export interface FieldState<T> {
@@ -211,6 +200,20 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 
 // @public
 export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
+
+// @public
+export type FormSpecFieldBuilder = {
+    array<N extends string, Items extends readonly FormElement[]>(name: N, ...items: Items): ArrayField<N, Items>;
+    arrayWithConfig<N extends string, Items extends readonly FormElement[]>(name: N, config: Omit<ArrayField<N, Items>, "_field" | "_type" | "items" | "name">, ...items: Items): ArrayField<N, Items>;
+    boolean<N extends string>(name: N, config?: Omit<BooleanField<N>, "_field" | "_type" | "name">): BooleanField<N>;
+    dynamicEnum<N extends string, Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField<N, Source>, "_field" | "_type" | "name" | "source">): DynamicEnumField<N, Source>;
+    dynamicSchema<N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField<N>, "_field" | "_type" | "name" | "schemaSource">): DynamicSchemaField<N>;
+    enum<N extends string, O extends readonly EnumOptionValue[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_field" | "_type" | "name" | "options">): StaticEnumField<N, O>;
+    number<N extends string>(name: N, config?: Omit<NumberField<N>, "_field" | "_type" | "name">): NumberField<N>;
+    object<N extends string, Properties extends readonly FormElement[]>(name: N, ...properties: Properties): ObjectField<N, Properties>;
+    objectWithConfig<N extends string, Properties extends readonly FormElement[]>(name: N, config: Omit<ObjectField<N, Properties>, "_field" | "_type" | "name" | "properties">, ...properties: Properties): ObjectField<N, Properties>;
+    text<N extends string>(name: N, config?: Omit<TextField<N>, "_field" | "_type" | "name">): TextField<N>;
+};
 
 // @public
 export interface FormSpecOptions {
@@ -464,6 +467,9 @@ export type UISchema = VerticalLayout | HorizontalLayout | GroupLayout | Categor
 
 // @public
 export type UISchemaElement = ControlElement | VerticalLayout | HorizontalLayout | GroupLayout | Categorization | Category | LabelElement;
+
+// @public
+export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayout" | "Group" | "Categorization" | "Category" | "Label";
 
 // @public
 export function validateForm(elements: readonly FormElement[]): ValidationResult;

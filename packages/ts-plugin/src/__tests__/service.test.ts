@@ -3,7 +3,10 @@ import net from "node:net";
 import path from "node:path";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "@formspec/analysis";
+import {
+  FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  isFormSpecSemanticResponse,
+} from "@formspec/analysis/protocol";
 import { createLanguageServiceProxy, FormSpecPluginService } from "../service.js";
 import type { FormSpecSemanticService } from "../semantic-service.js";
 import { getFormSpecWorkspaceRuntimePaths } from "../workspace.js";
@@ -168,6 +171,31 @@ describe("FormSpecPluginService", () => {
         workspaceRoot: context.workspaceRoot,
       },
     });
+  });
+
+  it("rejects IPC payloads with a mismatched protocol version", async () => {
+    const context = await createProgramContext("class Foo {}");
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    await service.start();
+
+    const runtimePaths = getFormSpecWorkspaceRuntimePaths(context.workspaceRoot);
+    const response = await querySocket(runtimePaths.endpoint.address, {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION + 1,
+      kind: "health",
+    });
+
+    expect(isFormSpecSemanticResponse(response)).toBe(true);
+    if (!isFormSpecSemanticResponse(response)) {
+      throw new Error("Expected a semantic error response");
+    }
+    expectErrorResponse(response, "Invalid FormSpec semantic query payload");
   });
 
   it("removes the manifest when the service stops", async () => {

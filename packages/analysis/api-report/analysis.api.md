@@ -4,6 +4,14 @@
 
 ```ts
 
+import type { PathTarget } from '@formspec/core';
+
+// @public
+export interface CommentHoverInfo {
+    readonly kind: "tag-name" | "target" | "argument";
+    readonly markdown: string;
+}
+
 // @public
 export interface CommentSourceSpan {
     readonly end: number;
@@ -218,6 +226,21 @@ export interface FormSpecSerializedTagSignature {
 // @public
 export type FormSpecTargetKind = "none" | "path" | "member" | "variant";
 
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecManifestPath" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export function getFormSpecManifestPath(workspaceRoot: string): string;
+
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecWorkspaceId" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export function getFormSpecWorkspaceId(workspaceRoot: string): string;
+
+// Warning: (ae-internal-missing-underscore) The name "getFormSpecWorkspaceRuntimeDirectory" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export function getFormSpecWorkspaceRuntimeDirectory(workspaceRoot: string): string;
+
 // @public
 export function isFormSpecAnalysisManifest(value: unknown): value is FormSpecAnalysisManifest;
 
@@ -226,5 +249,18 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
+
+// @public
+export interface ParsedCommentTargetSpecifier {
+    readonly colonSpan: CommentSourceSpan;
+    readonly fullSpan: CommentSourceSpan;
+    readonly kind: "path" | "member" | "variant" | "ambiguous";
+    readonly path: PathTarget | null;
+    readonly rawText: string;
+    readonly span: CommentSourceSpan;
+    readonly valid: boolean;
+}
+
+// (No @packageDocumentation comment for this package)
 
 ```
