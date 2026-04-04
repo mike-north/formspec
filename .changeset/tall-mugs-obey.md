@@ -1,9 +1,10 @@
 ---
 "@formspec/analysis": patch
-"@formspec/build": patch
+"@formspec/build": minor
+"@formspec/cli": patch
 "@formspec/eslint-plugin": patch
-"@formspec/language-server": patch
-"@formspec/ts-plugin": patch
+"@formspec/language-server": minor
+"@formspec/ts-plugin": minor
 "formspec": patch
 ---
 
