@@ -1,5 +1,14 @@
 # @formspec/runtime
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- [#199](https://github.com/mike-north/formspec/pull/199) [`c0f731b`](https://github.com/mike-north/formspec/commit/c0f731b9bc867a5ec372fc1ad4af65f944f80baf) Thanks [@mike-north](https://github.com/mike-north)! - Declare MIT licensing across package metadata and README documentation.
+
+- Updated dependencies [[`c0f731b`](https://github.com/mike-north/formspec/commit/c0f731b9bc867a5ec372fc1ad4af65f944f80baf)]:
+  - @formspec/core@0.1.0-alpha.28
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes

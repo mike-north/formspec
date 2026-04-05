@@ -1,5 +1,16 @@
 # @formspec/playground
 
+## 0.1.0-alpha.28
+
+### Patch Changes
+
+- Updated dependencies [[`c8b1358`](https://github.com/mike-north/formspec/commit/c8b1358976b24e30e0d6a588dbcd84a80a106094), [`c0f731b`](https://github.com/mike-north/formspec/commit/c0f731b9bc867a5ec372fc1ad4af65f944f80baf)]:
+  - @formspec/build@0.1.0-alpha.28
+  - @formspec/eslint-plugin@0.1.0-alpha.28
+  - @formspec/constraints@0.1.0-alpha.28
+  - @formspec/core@0.1.0-alpha.28
+  - @formspec/dsl@0.1.0-alpha.28
+
 ## 0.1.0-alpha.27
 
 ### Patch Changes
