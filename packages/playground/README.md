@@ -23,4 +23,4 @@ The default dev URL is `http://localhost:5173/formspec/`.
 
 ## License
 
-UNLICENSED
+This package is part of the FormSpec monorepo and is released under the MIT License. See [LICENSE](./LICENSE) for details.

@@ -130,4 +130,4 @@ The root build runs packages in dependency order, and package-local test scripts
 
 ## License
 
-UNLICENSED
+MIT. The FormSpec monorepo source is released under the MIT License. See the repository root [LICENSE](./LICENSE) for details.

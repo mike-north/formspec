@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && declaration-file-normalizer dist/index.d.ts && pnpm run api-extractor:local",
@@ -42,5 +43,5 @@
     "type-safe",
     "typescript"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

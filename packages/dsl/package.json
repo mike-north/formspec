@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
@@ -41,5 +42,5 @@
     "access": "public"
   },
   "keywords": [],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

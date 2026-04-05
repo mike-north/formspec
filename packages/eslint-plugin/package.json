@@ -19,7 +19,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
@@ -51,7 +53,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "eslint",
     "eslint-plugin",

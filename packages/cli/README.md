@@ -60,4 +60,4 @@ formspec generate ./src/forms.ts --compiled ./dist/forms.js -o ./generated
 
 ## License
 
-UNLICENSED
+This package is part of the FormSpec monorepo and is released under the MIT License. See [LICENSE](./LICENSE) for details.

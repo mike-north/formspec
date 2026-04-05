@@ -22,7 +22,8 @@
   "files": [
     "dist",
     "formspec.schema.json",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
@@ -56,5 +57,5 @@
     "jsonschema",
     "jsonforms"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }
