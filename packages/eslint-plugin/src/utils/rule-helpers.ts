@@ -2,14 +2,18 @@ import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type ts from "typescript";
 import {
-  getPropertyType,
   getStringLiteralUnionValues,
   getTypeChecker,
   typeToString,
 } from "./type-utils.js";
 import type { ScannedTag } from "./tag-scanner.js";
 
-export type SupportedDeclaration = TSESTree.PropertyDefinition | TSESTree.TSPropertySignature;
+export type SupportedDeclaration =
+  | TSESTree.PropertyDefinition
+  | TSESTree.TSPropertySignature
+  | TSESTree.ClassDeclaration
+  | TSESTree.TSInterfaceDeclaration
+  | TSESTree.TSTypeAliasDeclaration;
 
 export interface ResolvedTagTarget {
   readonly valid: boolean;
@@ -27,27 +31,58 @@ export function createDeclarationVisitor(
     TSPropertySignature(node) {
       callback(node as SupportedDeclaration);
     },
+    ClassDeclaration(node) {
+      callback(node as SupportedDeclaration);
+    },
+    TSInterfaceDeclaration(node) {
+      callback(node as SupportedDeclaration);
+    },
+    TSTypeAliasDeclaration(node) {
+      callback(node as SupportedDeclaration);
+    },
   };
 }
 
 export function getDeclarationName(node: SupportedDeclaration): string {
-  if (
-    node.key.type === AST_NODE_TYPES.Identifier ||
-    node.key.type === AST_NODE_TYPES.PrivateIdentifier
-  ) {
-    return node.key.name;
+  switch (node.type) {
+    case AST_NODE_TYPES.PropertyDefinition:
+    case AST_NODE_TYPES.TSPropertySignature:
+      if (
+        node.key.type === AST_NODE_TYPES.Identifier ||
+        node.key.type === AST_NODE_TYPES.PrivateIdentifier
+      ) {
+        return node.key.name;
+      }
+      if (node.key.type === AST_NODE_TYPES.Literal && typeof node.key.value === "string") {
+        return node.key.value;
+      }
+      return "<computed>";
+
+    case AST_NODE_TYPES.ClassDeclaration:
+    case AST_NODE_TYPES.TSInterfaceDeclaration:
+    case AST_NODE_TYPES.TSTypeAliasDeclaration:
+      return node.id?.name ?? "<anonymous>";
+
+    default:
+      return "<computed>";
   }
-  if (node.key.type === AST_NODE_TYPES.Literal && typeof node.key.value === "string") {
-    return node.key.value;
-  }
-  return "<computed>";
 }
 
 export function getDeclarationType(
   node: SupportedDeclaration,
   services: ParserServicesWithTypeInformation
 ): ts.Type | null {
-  return getPropertyType(node, services);
+  try {
+    const checker = services.program.getTypeChecker();
+    const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- map.get() can return undefined
+    if (!tsNode) return null;
+
+    return checker.getTypeAtLocation(tsNode);
+  } catch {
+    return null;
+  }
 }
 
 export function resolveTagTarget(

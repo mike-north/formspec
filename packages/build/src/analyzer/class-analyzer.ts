@@ -7,7 +7,11 @@
  */
 
 import * as ts from "typescript";
-import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
+import {
+  parseCommentBlock,
+  type ConstraintSemanticDiagnostic,
+  type ParsedCommentTag,
+} from "@formspec/analysis/internal";
 import type {
   FieldNode,
   TypeNode,
@@ -136,6 +140,12 @@ export type AnalyzeTypeAliasToIRResult =
   | { readonly ok: true; readonly analysis: IRClassAnalysis }
   | { readonly ok: false; readonly error: string };
 
+interface DiscriminatorDirective {
+  readonly fieldName: string;
+  readonly typeParameterName: string;
+  readonly provenance: Provenance;
+}
+
 // =============================================================================
 // IR ANALYSIS — PUBLIC API
 // =============================================================================
@@ -195,9 +205,18 @@ export function analyzeClassToIR(
     }
   }
 
+  const specializedFields = applyDeclarationDiscriminatorToFields(
+    fields,
+    classDecl,
+    classType,
+    checker,
+    file,
+    diagnostics
+  );
+
   return {
     name,
-    fields,
+    fields: specializedFields,
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
@@ -248,10 +267,18 @@ export function analyzeInterfaceToIR(
     }
   }
 
-  const fieldLayouts: FieldLayoutMetadata[] = fields.map(() => ({}));
+  const specializedFields = applyDeclarationDiscriminatorToFields(
+    fields,
+    interfaceDecl,
+    interfaceType,
+    checker,
+    file,
+    diagnostics
+  );
+  const fieldLayouts: FieldLayoutMetadata[] = specializedFields.map(() => ({}));
   return {
     name,
-    fields,
+    fields: specializedFields,
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
@@ -313,12 +340,21 @@ export function analyzeTypeAliasToIR(
     }
   }
 
+  const specializedFields = applyDeclarationDiscriminatorToFields(
+    fields,
+    typeAlias,
+    aliasType,
+    checker,
+    file,
+    diagnostics
+  );
+
   return {
     ok: true,
     analysis: {
       name,
-      fields,
-      fieldLayouts: fields.map(() => ({})),
+      fields: specializedFields,
+      fieldLayouts: specializedFields.map(() => ({})),
       typeRegistry,
       ...(annotations.length > 0 && { annotations }),
       ...(diagnostics.length > 0 && { diagnostics }),
@@ -326,6 +362,579 @@ export function analyzeTypeAliasToIR(
       staticMethods: [],
     },
   };
+}
+
+// =============================================================================
+// DISCRIMINATOR HELPERS
+// =============================================================================
+
+type DiscriminatorDeclarationNode =
+  | ts.ClassDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration;
+
+type DiscriminatorPropertyNode = ts.PropertyDeclaration | ts.PropertySignature;
+
+function makeAnalysisDiagnostic(
+  code: string,
+  message: string,
+  primaryLocation: Provenance,
+  relatedLocations: readonly Provenance[] = []
+): ConstraintSemanticDiagnostic {
+  return {
+    code,
+    message,
+    severity: "error",
+    primaryLocation,
+    relatedLocations,
+  };
+}
+
+function getLeadingParsedTags(node: ts.Node): readonly ParsedCommentTag[] {
+  const sourceFile = node.getSourceFile();
+  const sourceText = sourceFile.getFullText();
+  const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
+  if (commentRanges === undefined) {
+    return [];
+  }
+
+  const parsedTags: ParsedCommentTag[] = [];
+  for (const range of commentRanges) {
+    if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia) {
+      continue;
+    }
+    const commentText = sourceText.slice(range.pos, range.end);
+    if (!commentText.startsWith("/**")) {
+      continue;
+    }
+    parsedTags.push(...parseCommentBlock(commentText, { offset: range.pos }).tags);
+  }
+
+  return parsedTags;
+}
+
+function findDiscriminatorProperty(
+  node: DiscriminatorDeclarationNode,
+  fieldName: string
+): DiscriminatorPropertyNode | null {
+  if (ts.isClassDeclaration(node)) {
+    for (const member of node.members) {
+      if (
+        ts.isPropertyDeclaration(member) &&
+        ts.isIdentifier(member.name) &&
+        member.name.text === fieldName
+      ) {
+        return member;
+      }
+    }
+    return null;
+  }
+
+  if (ts.isInterfaceDeclaration(node)) {
+    for (const member of node.members) {
+      if (
+        ts.isPropertySignature(member) &&
+        ts.isIdentifier(member.name) &&
+        member.name.text === fieldName
+      ) {
+        return member;
+      }
+    }
+    return null;
+  }
+
+  if (ts.isTypeLiteralNode(node.type)) {
+    for (const member of node.type.members) {
+      if (
+        ts.isPropertySignature(member) &&
+        ts.isIdentifier(member.name) &&
+        member.name.text === fieldName
+      ) {
+        return member;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isLocalTypeParameterName(
+  node: DiscriminatorDeclarationNode,
+  typeParameterName: string
+): boolean {
+  return (
+    node.typeParameters?.some((typeParameter) => typeParameter.name.text === typeParameterName) ??
+    false
+  );
+}
+
+function isNullishSemanticType(type: ts.Type): boolean {
+  if (
+    type.flags &
+    (ts.TypeFlags.Null |
+      ts.TypeFlags.Undefined |
+      ts.TypeFlags.Void |
+      ts.TypeFlags.Unknown |
+      ts.TypeFlags.Any)
+  ) {
+    return true;
+  }
+
+  return type.isUnion() && type.types.some((member) => isNullishSemanticType(member));
+}
+
+function isStringLikeSemanticType(type: ts.Type): boolean {
+  if (type.flags & ts.TypeFlags.StringLike) {
+    return true;
+  }
+
+  if (type.isUnion()) {
+    return type.types.length > 0 && type.types.every((member) => isStringLikeSemanticType(member));
+  }
+
+  return false;
+}
+
+function extractDiscriminatorDirective(
+  node: DiscriminatorDeclarationNode,
+  file: string,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): DiscriminatorDirective | null {
+  const discriminatorTags = getLeadingParsedTags(node).filter(
+    (tag) => tag.normalizedTagName === "discriminator"
+  );
+  if (discriminatorTags.length === 0) {
+    return null;
+  }
+
+  const [firstTag, ...duplicateTags] = discriminatorTags;
+  for (const _duplicateTag of duplicateTags) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "DUPLICATE_TAG",
+        'Duplicate "@discriminator" tag. Only one discriminator declaration is allowed per declaration.',
+        provenanceForNode(node, file)
+      )
+    );
+  }
+
+  if (firstTag === undefined) {
+    return null;
+  }
+
+  const firstTarget = firstTag.target;
+  if (firstTarget?.path === null || firstTarget?.valid !== true) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        'Tag "@discriminator" requires a direct path target like ":kind".',
+        provenanceForNode(node, file)
+      )
+    );
+    return null;
+  }
+
+  if (firstTarget.path.segments.length !== 1) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        'Tag "@discriminator" only supports direct property targets in v1; nested paths are out of scope.',
+        provenanceForNode(node, file)
+      )
+    );
+    return null;
+  }
+
+  const typeParameterName = firstTag.argumentText.trim();
+  if (!/^[A-Za-z_$][\w$]*$/u.test(typeParameterName)) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        'Tag "@discriminator" requires a local type parameter name as its source operand.',
+        provenanceForNode(node, file)
+      )
+    );
+    return null;
+  }
+
+  return {
+    fieldName: firstTarget.path.segments[0] ?? firstTarget.rawText,
+    typeParameterName,
+    provenance: provenanceForNode(node, file),
+  };
+}
+
+function validateDiscriminatorDirective(
+  node: DiscriminatorDeclarationNode,
+  checker: ts.TypeChecker,
+  file: string,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): DiscriminatorDirective | null {
+  const directive = extractDiscriminatorDirective(node, file, diagnostics);
+  if (directive === null) {
+    return null;
+  }
+
+  if (!isLocalTypeParameterName(node, directive.typeParameterName)) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        `Tag "@discriminator" references "${directive.typeParameterName}", but the source operand must be a type parameter declared on the same declaration.`,
+        directive.provenance
+      )
+    );
+    return null;
+  }
+
+  const propertyDecl = findDiscriminatorProperty(node, directive.fieldName);
+  if (propertyDecl === null) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "UNKNOWN_PATH_TARGET",
+        `Tag "@discriminator" targets "${directive.fieldName}", but no direct property with that name exists on this declaration.`,
+        directive.provenance
+      )
+    );
+    return null;
+  }
+
+  if (propertyDecl.questionToken !== undefined) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "TYPE_MISMATCH",
+        `Discriminator field "${directive.fieldName}" must be required; optional discriminator fields are not supported.`,
+        directive.provenance,
+        [provenanceForNode(propertyDecl, file)]
+      )
+    );
+    return null;
+  }
+
+  const propertyType = checker.getTypeAtLocation(propertyDecl);
+  if (isNullishSemanticType(propertyType)) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "TYPE_MISMATCH",
+        `Discriminator field "${directive.fieldName}" must not be nullable.`,
+        directive.provenance,
+        [provenanceForNode(propertyDecl, file)]
+      )
+    );
+    return null;
+  }
+
+  if (!isStringLikeSemanticType(propertyType)) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "TYPE_MISMATCH",
+        `Discriminator field "${directive.fieldName}" must be string-like.`,
+        directive.provenance,
+        [provenanceForNode(propertyDecl, file)]
+      )
+    );
+    return null;
+  }
+
+  return directive;
+}
+
+function getConcreteTypeArgumentForDiscriminator(
+  node: DiscriminatorDeclarationNode,
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  typeParameterName: string
+): ts.Type | null {
+  const typeParameterIndex =
+    node.typeParameters?.findIndex(
+      (typeParameter) => typeParameter.name.text === typeParameterName
+    ) ?? -1;
+  if (typeParameterIndex < 0) {
+    return null;
+  }
+
+  const referenceTypeArguments =
+    (isTypeReference(subjectType) ? subjectType.typeArguments : undefined) ??
+    (subjectType as ts.Type & { aliasTypeArguments?: readonly ts.Type[] }).aliasTypeArguments;
+  if (referenceTypeArguments?.[typeParameterIndex] !== undefined) {
+    return referenceTypeArguments[typeParameterIndex] ?? null;
+  }
+
+  const localTypeParameter = node.typeParameters?.[typeParameterIndex];
+  return localTypeParameter === undefined ? null : checker.getTypeAtLocation(localTypeParameter);
+}
+
+function extractDeclarationApiName(node: ts.Declaration): string | null {
+  for (const tag of getLeadingParsedTags(node)) {
+    if (tag.normalizedTagName !== "apiName") {
+      continue;
+    }
+
+    if (tag.target === null && tag.argumentText.trim() !== "") {
+      return tag.argumentText.trim();
+    }
+
+    if (tag.target?.kind === "variant" && tag.target.rawText === "singular") {
+      const value = tag.argumentText.trim();
+      if (value !== "") {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function inferJsonFacingName(name: string): string {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/[-\s]+/g, "_")
+    .toLowerCase();
+}
+
+function resolveNamedDiscriminatorDeclaration(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  seen = new Set<ts.Type>()
+): ts.Declaration | null {
+  if (seen.has(type)) {
+    return null;
+  }
+  seen.add(type);
+
+  const symbol = type.aliasSymbol ?? type.getSymbol();
+  if (symbol !== undefined) {
+    const aliased =
+      symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : undefined;
+    const targetSymbol = aliased ?? symbol;
+    const declaration = targetSymbol.declarations?.find(
+      (candidate) =>
+        ts.isClassDeclaration(candidate) ||
+        ts.isInterfaceDeclaration(candidate) ||
+        ts.isTypeAliasDeclaration(candidate) ||
+        ts.isEnumDeclaration(candidate)
+    );
+    if (declaration !== undefined) {
+      if (
+        ts.isTypeAliasDeclaration(declaration) &&
+        ts.isTypeReferenceNode(declaration.type) &&
+        checker.getTypeFromTypeNode(declaration.type) !== type
+      ) {
+        return resolveNamedDiscriminatorDeclaration(
+          checker.getTypeFromTypeNode(declaration.type),
+          checker,
+          seen
+        );
+      }
+      return declaration;
+    }
+  }
+
+  return null;
+}
+
+function resolveDiscriminatorValue(
+  boundType: ts.Type | null,
+  checker: ts.TypeChecker,
+  provenance: Provenance,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): string | null {
+  if (boundType === null) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        "Discriminator resolution failed because no concrete type argument is available for the referenced type parameter.",
+        provenance
+      )
+    );
+    return null;
+  }
+
+  if (boundType.isStringLiteral()) {
+    return boundType.value;
+  }
+
+  if (boundType.isUnion()) {
+    const nonNullMembers = boundType.types.filter(
+      (member) => !(member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
+    );
+    if (nonNullMembers.every((member) => member.isStringLiteral())) {
+      diagnostics.push(
+        makeAnalysisDiagnostic(
+          "INVALID_TAG_ARGUMENT",
+          "Discriminator resolution for unions of string literals is out of scope for v1.",
+          provenance
+        )
+      );
+      return null;
+    }
+  }
+
+  const declaration = resolveNamedDiscriminatorDeclaration(boundType, checker);
+  if (declaration !== null) {
+    return (
+      extractDeclarationApiName(declaration) ?? inferJsonFacingName(getDeclarationName(declaration))
+    );
+  }
+
+  diagnostics.push(
+    makeAnalysisDiagnostic(
+      "INVALID_TAG_ARGUMENT",
+      "Discriminator resolution could not derive a JSON-facing discriminator value from the referenced type argument.",
+      provenance
+    )
+  );
+  return null;
+}
+
+function getDeclarationName(node: ts.Declaration): string {
+  if (
+    ts.isClassDeclaration(node) ||
+    ts.isInterfaceDeclaration(node) ||
+    ts.isTypeAliasDeclaration(node) ||
+    ts.isEnumDeclaration(node)
+  ) {
+    return node.name?.text ?? "anonymous";
+  }
+
+  return "anonymous";
+}
+
+function applyDeclarationDiscriminatorToFields(
+  fields: readonly FieldNode[],
+  node: DiscriminatorDeclarationNode,
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  file: string,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): FieldNode[] {
+  const directive = validateDiscriminatorDirective(node, checker, file, diagnostics);
+  if (directive === null) {
+    return [...fields];
+  }
+
+  const discriminatorValue = resolveDiscriminatorValue(
+    getConcreteTypeArgumentForDiscriminator(
+      node,
+      subjectType,
+      checker,
+      directive.typeParameterName
+    ),
+    checker,
+    directive.provenance,
+    diagnostics
+  );
+  if (discriminatorValue === null) {
+    return [...fields];
+  }
+
+  return fields.map((field) =>
+    field.name === directive.fieldName
+      ? {
+          ...field,
+          type: {
+            kind: "enum",
+            members: [{ value: discriminatorValue }],
+          },
+        }
+      : field
+  );
+}
+
+function buildInstantiatedReferenceName(
+  baseName: string,
+  typeArguments: readonly ts.Type[],
+  checker: ts.TypeChecker
+): string {
+  const renderedArguments = typeArguments
+    .map((typeArgument) =>
+      checker
+        .typeToString(typeArgument)
+        .replace(/[^A-Za-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+    )
+    .filter((value) => value !== "");
+
+  return renderedArguments.length === 0 ? baseName : `${baseName}__${renderedArguments.join("__")}`;
+}
+
+function extractReferenceTypeArguments(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  file: string,
+  typeRegistry: Record<string, TypeDefinition>,
+  visiting: Set<ts.Type>,
+  sourceNode: ts.Node | undefined,
+  extensionRegistry: ExtensionRegistry | undefined,
+  diagnostics: ConstraintSemanticDiagnostic[] | undefined
+): readonly { readonly tsType: ts.Type; readonly typeNode: TypeNode }[] {
+  const typeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+  if (typeNode === undefined) {
+    return [];
+  }
+
+  const resolvedTypeNode = resolveAliasedTypeNode(typeNode, checker);
+  if (!ts.isTypeReferenceNode(resolvedTypeNode) || resolvedTypeNode.typeArguments === undefined) {
+    return [];
+  }
+
+  return resolvedTypeNode.typeArguments.map((argumentNode) => {
+    const argumentType = checker.getTypeFromTypeNode(argumentNode);
+    return {
+      tsType: argumentType,
+      typeNode: resolveTypeNode(
+        argumentType,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        argumentNode,
+        extensionRegistry,
+        diagnostics
+      ),
+    };
+  });
+}
+
+function applyDiscriminatorToObjectProperties(
+  properties: readonly ObjectProperty[],
+  node: DiscriminatorDeclarationNode,
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  file: string,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): readonly ObjectProperty[] {
+  const directive = validateDiscriminatorDirective(node, checker, file, diagnostics);
+  if (directive === null) {
+    return properties;
+  }
+
+  const discriminatorValue = resolveDiscriminatorValue(
+    getConcreteTypeArgumentForDiscriminator(
+      node,
+      subjectType,
+      checker,
+      directive.typeParameterName
+    ),
+    checker,
+    directive.provenance,
+    diagnostics
+  );
+  if (discriminatorValue === null) {
+    return properties;
+  }
+
+  return properties.map((property) =>
+    property.name === directive.fieldName
+      ? {
+          ...property,
+          type: {
+            kind: "enum",
+            members: [{ value: discriminatorValue }],
+          },
+        }
+      : property
+  );
 }
 
 // =============================================================================
@@ -785,6 +1394,7 @@ export function resolveTypeNode(
       file,
       typeRegistry,
       visiting,
+      sourceNode,
       extensionRegistry,
       diagnostics
     );
@@ -1187,36 +1797,65 @@ function resolveObjectType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  sourceNode?: ts.Node,
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
+  const collectedDiagnostics = diagnostics ?? [];
   const typeName = getNamedTypeName(type);
   const namedTypeName = typeName ?? undefined;
   const namedDecl = getNamedTypeDeclaration(type);
+  const referenceTypeArguments = extractReferenceTypeArguments(
+    type,
+    checker,
+    file,
+    typeRegistry,
+    visiting,
+    sourceNode,
+    extensionRegistry,
+    collectedDiagnostics
+  );
+  const instantiatedTypeName =
+    namedTypeName !== undefined && referenceTypeArguments.length > 0
+      ? buildInstantiatedReferenceName(
+          namedTypeName,
+          referenceTypeArguments.map((argument) => argument.tsType),
+          checker
+        )
+      : undefined;
+  const registryTypeName = instantiatedTypeName ?? namedTypeName;
   const shouldRegisterNamedType =
-    namedTypeName !== undefined &&
-    !(namedTypeName === "Record" && namedDecl?.getSourceFile().fileName !== file);
+    registryTypeName !== undefined &&
+    !(registryTypeName === "Record" && namedDecl?.getSourceFile().fileName !== file);
   const clearNamedTypeRegistration = (): void => {
-    if (namedTypeName === undefined || !shouldRegisterNamedType) {
+    if (registryTypeName === undefined || !shouldRegisterNamedType) {
       return;
     }
-    Reflect.deleteProperty(typeRegistry, namedTypeName);
+    Reflect.deleteProperty(typeRegistry, registryTypeName);
   };
 
   if (visiting.has(type)) {
     // Recursive object expansion is deferred through the named-type registry.
     // Anonymous cycles still collapse to a closed empty object sentinel.
-    if (namedTypeName !== undefined && shouldRegisterNamedType) {
-      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+    if (registryTypeName !== undefined && shouldRegisterNamedType) {
+      return {
+        kind: "reference",
+        name: registryTypeName,
+        typeArguments: referenceTypeArguments.map((argument) => argument.typeNode),
+      };
     }
     return { kind: "object", properties: [], additionalProperties: false };
   }
 
   // Seed the registry with a placeholder before traversing children so any
   // recursive property reference can resolve to a stable `$ref`.
-  if (namedTypeName !== undefined && shouldRegisterNamedType && !typeRegistry[namedTypeName]) {
-    typeRegistry[namedTypeName] = {
-      name: namedTypeName,
+  if (
+    registryTypeName !== undefined &&
+    shouldRegisterNamedType &&
+    !typeRegistry[registryTypeName]
+  ) {
+    typeRegistry[registryTypeName] = {
+      name: registryTypeName,
       type: RESOLVING_TYPE_PLACEHOLDER,
       provenance: provenanceForDeclaration(namedDecl, file),
     };
@@ -1226,13 +1865,17 @@ function resolveObjectType(
 
   // Detect previously resolved named types before walking the object body.
   if (
-    namedTypeName !== undefined &&
+    registryTypeName !== undefined &&
     shouldRegisterNamedType &&
-    typeRegistry[namedTypeName]?.type !== undefined
+    typeRegistry[registryTypeName]?.type !== undefined
   ) {
-    if (typeRegistry[namedTypeName].type !== RESOLVING_TYPE_PLACEHOLDER) {
+    if (typeRegistry[registryTypeName].type !== RESOLVING_TYPE_PLACEHOLDER) {
       visiting.delete(type);
-      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+      return {
+        kind: "reference",
+        name: registryTypeName,
+        typeArguments: referenceTypeArguments.map((argument) => argument.typeNode),
+      };
     }
   }
 
@@ -1246,12 +1889,12 @@ function resolveObjectType(
     typeRegistry,
     visiting,
     extensionRegistry,
-    diagnostics
+    collectedDiagnostics
   );
   if (recordNode) {
     visiting.delete(type);
-    if (namedTypeName !== undefined && shouldRegisterNamedType) {
-      const isRecursiveRecord = typeNodeContainsReference(recordNode.valueType, namedTypeName);
+    if (registryTypeName !== undefined && shouldRegisterNamedType) {
+      const isRecursiveRecord = typeNodeContainsReference(recordNode.valueType, registryTypeName);
       if (!isRecursiveRecord) {
         clearNamedTypeRegistration();
         return recordNode;
@@ -1259,13 +1902,17 @@ function resolveObjectType(
       const annotations = namedDecl
         ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
         : undefined;
-      typeRegistry[namedTypeName] = {
-        name: namedTypeName,
+      typeRegistry[registryTypeName] = {
+        name: registryTypeName,
         type: recordNode,
         ...(annotations !== undefined && annotations.length > 0 && { annotations }),
         provenance: provenanceForDeclaration(namedDecl, file),
       };
-      return { kind: "reference", name: namedTypeName, typeArguments: [] };
+      return {
+        kind: "reference",
+        name: registryTypeName,
+        typeArguments: referenceTypeArguments.map((argument) => argument.typeNode),
+      };
     }
     return recordNode;
   }
@@ -1279,7 +1926,7 @@ function resolveObjectType(
     file,
     typeRegistry,
     visiting,
-    diagnostics ?? [],
+    collectedDiagnostics,
     extensionRegistry
   );
 
@@ -1297,7 +1944,7 @@ function resolveObjectType(
       visiting,
       declaration,
       extensionRegistry,
-      diagnostics
+      collectedDiagnostics
     );
 
     // Get constraints and annotations from the declaration if available
@@ -1317,22 +1964,39 @@ function resolveObjectType(
 
   const objectNode: TypeNode = {
     kind: "object",
-    properties,
+    properties:
+      namedDecl !== undefined &&
+      (ts.isClassDeclaration(namedDecl) ||
+        ts.isInterfaceDeclaration(namedDecl) ||
+        ts.isTypeAliasDeclaration(namedDecl))
+        ? applyDiscriminatorToObjectProperties(
+            properties,
+            namedDecl,
+            type,
+            checker,
+            file,
+            collectedDiagnostics
+          )
+        : properties,
     additionalProperties: true,
   };
 
   // Register named types
-  if (namedTypeName !== undefined && shouldRegisterNamedType) {
+  if (registryTypeName !== undefined && shouldRegisterNamedType) {
     const annotations = namedDecl
       ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
       : undefined;
-    typeRegistry[namedTypeName] = {
-      name: namedTypeName,
+    typeRegistry[registryTypeName] = {
+      name: registryTypeName,
       type: objectNode,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
       provenance: provenanceForDeclaration(namedDecl, file),
     };
-    return { kind: "reference", name: namedTypeName, typeArguments: [] };
+    return {
+      kind: "reference",
+      name: registryTypeName,
+      typeArguments: referenceTypeArguments.map((argument) => argument.typeNode),
+    };
   }
 
   return objectNode;

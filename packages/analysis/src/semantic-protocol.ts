@@ -20,7 +20,7 @@ import {
  *
  * @public
  */
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 3;
 /**
  * Version of the serialized analysis payload schema.
  *
@@ -134,6 +134,8 @@ export interface FormSpecSerializedTagSemanticContext {
   readonly compatiblePathTargets: readonly string[];
   /** Display labels for known argument values. */
   readonly valueLabels: readonly string[];
+  /** Completion candidates for the argument position. */
+  readonly argumentCompletions: readonly string[];
   /** Summaries of the tag's overloads or signatures. */
   readonly signatures: readonly FormSpecSerializedTagSignature[];
   /** Markdown hover content for the tag itself. */
@@ -570,6 +572,7 @@ function isSerializedTagSemanticContext(
     isStringArray(candidate.targetCompletions) &&
     isStringArray(candidate.compatiblePathTargets) &&
     isStringArray(candidate.valueLabels) &&
+    isStringArray(candidate.argumentCompletions) &&
     Array.isArray(candidate.signatures) &&
     candidate.signatures.every(isSerializedTagSignature) &&
     (candidate.tagHoverMarkdown === null || typeof candidate.tagHoverMarkdown === "string") &&
@@ -872,6 +875,7 @@ export function serializeCommentTagSemanticContext(
     targetCompletions: semantic.targetCompletions,
     compatiblePathTargets: semantic.compatiblePathTargets,
     valueLabels: semantic.valueLabels,
+    argumentCompletions: semantic.argumentCompletions,
     signatures: semantic.signatures.map((signature) => ({
       label: signature.label,
       placements: signature.placements,

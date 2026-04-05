@@ -244,6 +244,8 @@ Rules within each category are named `formspec/<category>/<specific-rule>`, for 
 - `formspec/type-compatibility/tag-type-check`
 - `formspec/target-resolution/valid-path-target`
 
+Declaration-level tags such as `@discriminator` are validated by the same pipeline and surfaced through the same rule categories: placement and target issues are reported through target-resolution/type-compatibility checks, while duplicate occurrences continue to use `constraint-validation/no-duplicate-tags`.
+
 ### 3.2 How Rules Consume the IR
 
 Every FormSpec ESLint rule follows the same pattern: it registers an AST visitor for TypeScript declaration nodes, calls `analyzeDeclaration` from the shared pipeline (§2), and reports diagnostics from the `AnalysisResult`.
@@ -316,6 +318,8 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 | `target-resolution/valid-member-target`         | `UNKNOWN_MEMBER_TARGET`        | error            |
 | `target-resolution/no-unsupported-targeting`    | `UNSUPPORTED_TARGETING_SYNTAX` | error            |
 | `target-resolution/no-member-target-on-object`  | `MEMBER_TARGET_ON_NON_UNION`   | error            |
+| `target-resolution/discriminator-target`        | `INVALID_DISCRIMINATOR_TARGET`, `UNKNOWN_DISCRIMINATOR_TARGET` | error |
+| `type-compatibility/discriminator-source`       | `DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`, `DISCRIMINATOR_VALUE_UNRESOLVABLE` | error |
 | `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`     | error            |
 | `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                | warn             |
 | `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT` | info             |
@@ -470,6 +474,8 @@ Completion items include:
 
 When the plugin has fresh semantic data for the current file version, the completion list can also be filtered by the field's TypeScript type at the cursor position. If the author is in the comment for a `string` field, `@minimum` is not offered (it is only applicable to `number` in core FormSpec). This filtering surfaces the right subset of tags for the current context (S4, PP2) without making basic tag-name completions depend on a heavyweight semantic round-trip.
 
+Declaration-level tags participate in the same completion flow. `@discriminator` appears in the tag list for object-like declarations, with a snippet that includes both the direct-property target and the local type-parameter source operand.
+
 ### 5.2 Path-Target Completions
 
 When the author types `@minimum :` (or any constraint tag followed by `:`) inside a comment on a complex-typed field, the language server asks the TypeScript plugin for type-compatible target candidates and offers completions for the field's property names.
@@ -484,6 +490,11 @@ For string literal union fields, the same `:` trigger offers member names for ta
 - On `'draft' | 'sent' | 'paid'`, `@displayName :` → offers `:draft`, `:sent`, `:paid`
 
 This completion is particularly valuable because path-target identifiers must exactly match property names — a typo produces `UNKNOWN_PATH_TARGET`. Completions eliminate the typo source (A7: completions are an authoring-experience concern, not a validation concern).
+
+For declaration-level discriminator tags, the same `:` trigger offers direct property names on the annotated object-like declaration:
+
+- On `interface TaggedValue<T> { kind: string; id: string; }`, `@discriminator :` → offers `:kind` and `:id`
+- After selecting `:kind`, the argument-position completion offers local type parameters such as `T`
 
 ### 5.3 Hover Information
 
@@ -502,6 +513,8 @@ When the author hovers over a FormSpec tag, the language server displays:
 3. **Current effective value:** When a field's type has multiple constraints on the same property (from the field itself and from type inheritance), hover shows the composed effective constraint, not just the locally-declared one.
 
 4. **Conflict warnings:** If plugin-backed semantic data includes contradiction context for the current target, hover can surface that context as advisory information. ESLint remains the authoritative validation surface.
+
+For `@discriminator`, hover should also explain the declaration-level contract: the target must be a direct property, the source operand must be a local type parameter, and the emitted schema only specializes the targeted property.
 
 ### 5.4 Go-to-Definition
 
@@ -535,6 +548,14 @@ A finite number. May be preceded by :subfield to target a property
 of a complex type (e.g., @minimum :value 0).
 ```
 
+For `@discriminator`, signature help should show the declaration-level form, for example:
+
+```text
+@discriminator [:fieldName] <type-parameter>
+```
+
+and should make clear that the path target must be a direct property and the source operand must be a local type parameter name.
+
 ### 5.6 Diagnostics and the Language Server
 
 The FormSpec language server does **not** become a second semantic authority. The canonical findings come from the shared analysis pipeline and, in editor contexts, from `@formspec/ts-plugin` reusing the host `Program`. ESLint remains the recommended validation surface, but the packaged language server may optionally publish those canonical plugin-derived findings as a reference implementation.
@@ -547,6 +568,8 @@ The FormSpec LS responsibilities are strictly:
 - **Signature help:** expected tag arguments, argument descriptions, path/member-target indicator (§5.5)
 
 Source-level diagnostics — tag recognition, value parsing, type compatibility, target resolution, constraint validation — are handled exclusively through ESLint. Post-generation output validation (e.g., JSON Schema + UI Schema consistency checks) may warrant a future CLI command, but that is distinct from source-level authoring feedback.
+
+For `@discriminator`, the same ESLint-backed diagnostics surface declaration placement, duplicate-tag, direct-property target, local type-parameter, and target-field-shape failures.
 
 ---
 
@@ -818,6 +841,8 @@ See 002 §6 for the individual diagnostic code definitions.
 | Auto-fix application           | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
 | Tag name completions           | No            | Yes                       | LS-only authoring experience (A7)                     |
 | Path/member-target completions | No            | Yes                       | LS-only authoring experience (A7)                     |
+| Direct-property discriminator completions | No            | Yes                       | LS-only authoring experience for `@discriminator`     |
+| Local type-parameter completions | No            | Yes                       | LS-only argument help for declaration-level tags      |
 | Hover (tag docs, provenance)   | No            | Yes                       | Requires cursor position                              |
 | Go-to-definition (`{@link}`)   | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
 | Signature help                 | No            | Yes                       | Requires cursor position and incremental state        |

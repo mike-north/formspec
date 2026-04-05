@@ -13,7 +13,7 @@ This document specifies the complete grammar for TSDoc tags that FormSpec recogn
 | **PP1** (TypeScript-native authoring)             | Tags are valid TSDoc — they pass `tsc` and are rendered by documentation generators without special tooling                                                                                                                       |
 | **PP2** (Inference over declaration)              | Tags are only required when the type system cannot infer the information. `@minimum` on a `number` field adds information TypeScript cannot represent; `@deprecated` on a field already deprecated via `@deprecated` is redundant |
 | **S4** (Type determines applicable constraints)   | The extractor validates that each tag is applied to a compatible type; applying `@minLength` to a `number` field is a static error (D-class diagnostic)                                                                           |
-| **S5** (Few tags, composable grammar)             | Path-target syntax (`:fieldName`) and member-target syntax work across all tags. No new tag is invented when grammar can extend an existing one                                                                                   |
+| **S5** (Few tags, composable grammar)             | Path-target syntax (`:fieldName`) and member-target syntax work across all tags. Declaration-level specialization is added only when the declaration itself carries semantics that cannot be expressed as a field tag |
 | **S6** (Reuse ecosystem tags)                     | `@defaultValue`, `@deprecated`, `@example`, `@remarks`, `@see` are standard TSDoc tags reused without modification. FormSpec-specific tags are reserved for concepts with no ecosystem equivalent                                 |
 | **S7** (Embrace TypeScript's full expressiveness) | All four enum patterns (`const enum`, `enum`, string-literal union, `as const` array) are recognized. Tags apply wherever the semantics make sense                                                                                |
 | **PP9** (Configurable surface area)               | Every FormSpec-specific tag can be disabled via `.formspec.yml`. Disabled tags are treated as unknown and produce D4-class warnings if present                                                                                    |
@@ -28,7 +28,7 @@ TSDoc extraction is the first phase of the pipeline for the type-annotation auth
 
 ## 2. Tag Name Inventory
 
-Tags are organized into four categories: **constraint tags** (set-influencing, per C1), **annotation tags** (value-influencing, per C1), **structure tags** (control presentation without affecting data schema), and **ecosystem tags** (standard TSDoc reused without modification).
+Tags are organized into four categories: **constraint tags** (set-influencing, per C1), **annotation tags** (value-influencing, per C1), **structure tags** (control presentation without affecting data schema), and **ecosystem tags** (standard TSDoc reused without modification). FormSpec also recognizes **declaration tags** that attach semantics to an object-like declaration itself rather than to a field.
 
 ### 2.1 Constraint Tags
 
@@ -108,7 +108,25 @@ Structure tags control UI presentation without affecting the data schema (per C2
 
 **Note on JSON Forms layout types:** JSON Forms supports several layout types (`VerticalLayout`, `HorizontalLayout`, `Categorization`, `Category`). These are deliberately **not** represented as TSDoc tags. Layout type selection is a generation-time configuration concern — for example, a consumer can configure FormSpec to wrap all top-level elements in a `VerticalLayout` at build time. This keeps the authoring surface focused on data semantics and constraints, and moves presentational framing to the build configuration where each consumer can make their own choices (per C2, PP9). Layout tags may be added in a future version if authoring-time layout control proves necessary.
 
-### 2.5 Boundary: Dynamic Runtime Capabilities
+### 2.5 Declaration Tags
+
+Declaration tags attach semantics to the object-like declaration itself. They are not field annotations, and they do not introduce a separate IR node kind in the canonical model. Instead, they carry declaration-level metadata that is applied during object lowering.
+
+| Tag              | Applicable declarations                                                   | Semantics                                                                                              | Notes                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `@discriminator` | class/interface/type alias declarations whose analyzed shape is object-like | Specializes one direct property of the declaration from a generic type parameter into a singleton enum | `:fieldName` is a path-target token; direct properties only in v1; source must be a local type parameter |
+
+**`@discriminator` rules:**
+
+- The declaration must analyze to an object-like shape.
+- At most one `@discriminator` tag is allowed per declaration.
+- The target must be a direct property of the declaration.
+- Nested path targets are out of scope for v1.
+- The referenced operand must be a single type parameter declared directly on the same declaration.
+- The targeted property must be required, non-nullable, and string-like.
+- No special discriminator keyword or provenance marker is emitted in the JSON Schema output.
+
+### 2.6 Boundary: Dynamic Runtime Capabilities
 
 Dynamic runtime capabilities are intentionally outside the TSDoc comment surface in this revision.
 
@@ -266,6 +284,37 @@ json-value ::= string-literal | number-literal | boolean-literal | "null" | json
 The entire remaining comment text is parsed as JSON. Parse failures are `INVALID_JSON_VALUE`.
 
 **Note on enum member display names:** There is no `@enumOptions` tag. String literal unions use `@displayName` with member-target syntax. `enum` and `const enum` declarations annotate members directly at the declaration site (see §9.4). This avoids introducing a bespoke tag with its own `key=value` or JSON syntax.
+
+#### `@discriminator`
+
+```
+@discriminator :fieldName T
+```
+
+`@discriminator` is a declaration-level tag used on object-like declarations to specialize one direct property from the instantiated type argument bound to `T`.
+
+```typescript
+/**
+ * @discriminator :kind T
+ */
+interface TaggedValue<T> {
+  kind: string;
+  id: string;
+  url: string;
+}
+```
+
+Rules:
+
+- `:fieldName` uses path-target syntax, but only direct properties are allowed in v1.
+- `T` must be a type parameter declared directly on the same declaration.
+- Arbitrary type expressions such as `Foo<T>` are out of scope for v1.
+- The targeted field must be required, non-nullable, and string-like.
+- If `T` resolves to a string literal, that literal is used directly.
+- If `T` resolves to a named declaration, its JSON-facing name is used (`@apiName` first, then the built-in naming transform FormSpec already uses for named declarations).
+- If `T` resolves to a union of string literals or any other unsupported shape, emit a diagnostic rather than partially succeeding.
+- The rest of the object schema remains unchanged.
+- No new JSON Schema keyword is introduced; the target field is emitted as a one-element `enum`.
 
 #### `@displayName`
 
@@ -752,11 +801,12 @@ Path-targeted constraints on a base type's field are inherited by derived types 
 
 ### 4.6 Tags That Accept Path-Target Syntax
 
-Path-target syntax is for **constraint tags only** — tags that narrow the valid value set of a subfield. Annotations (display names, descriptions, defaults, etc.) describe the field itself, not its subfields' values. If a subfield needs annotation, annotate it on the type definition where it's declared.
+Path-target syntax is for **constraint tags and declaration-level specialization tags**. Annotations (display names, descriptions, defaults, etc.) describe the field itself, not its subfields' values. If a subfield needs annotation, annotate it on the type definition where it's declared.
 
 The following tags accept path-target syntax:
 
 - All constraint tags: `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf`, `@minLength`, `@maxLength`, `@pattern`, `@minItems`, `@maxItems`, `@uniqueItems`, `@const`, plus extension-defined tags such as `@maxSigFig`
+- Declaration-level specialization tags: `@discriminator`
 
 The following tags do **not** accept path-target syntax:
 
@@ -764,6 +814,7 @@ The following tags do **not** accept path-target syntax:
 - `@deprecated`, `@example`, `@remarks`, `@see` (documentation tags on the field itself)
 - `@group` (structural assignment of the field, not its subfields)
 - `@showWhen`, `@hideWhen`, `@enableWhen`, `@disableWhen` (conditional logic applies to the field itself, not a subfield)
+- `@discriminator` does **not** accept member-target syntax; it is declaration-level only and uses a direct-property path target plus a local type-parameter source operand.
 
 ---
 
@@ -952,6 +1003,76 @@ The following categories group the symbolic codes conceptually:
 
 ---
 
+### Discriminator specialization
+
+**`INVALID_DISCRIMINATOR_DECLARATION`: Invalid declaration kind for `@discriminator`**
+**Severity:** error
+**Condition:** `@discriminator` is applied to a declaration that is not a class, interface, or object-like type alias.
+**Message:** `"@discriminator" can only be used on object-like class, interface, or type-alias declarations.`
+**Auto-fix:** None.
+
+**`DUPLICATE_DISCRIMINATOR_TAG`: Duplicate `@discriminator` tag**
+**Severity:** error
+**Condition:** More than one `@discriminator` tag appears on the same declaration.
+**Message:** `Duplicate "@discriminator" tag. Only one discriminator declaration is allowed per type.`
+**Auto-fix:** None.
+
+**`INVALID_DISCRIMINATOR_TARGET`: Invalid discriminator target**
+**Severity:** error
+**Condition:** The `:fieldName` target is malformed for the declaration surface, or it resolves to a nested path rather than a direct property.
+**Message:** `"@discriminator" requires a direct property target such as ":kind". Nested paths are not supported in this revision.`
+**Auto-fix:** None.
+
+**`UNKNOWN_DISCRIMINATOR_TARGET`: Unknown discriminator field**
+**Severity:** error
+**Condition:** The named target property does not exist on the declaration's object shape.
+**Message:** `":{fieldName}" is not a property of this declaration's object shape.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_TARGET_NOT_REQUIRED`: Optional discriminator field**
+**Severity:** error
+**Condition:** The targeted field is optional.
+**Message:** `":{fieldName}" must be required when used as a discriminator field.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_TARGET_NULLABLE`: Nullable discriminator field**
+**Severity:** error
+**Condition:** The targeted field can be `null` (or otherwise includes a nullable union).
+**Message:** `":{fieldName}" must not be nullable when used as a discriminator field.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_TARGET_NOT_STRING_LIKE`: Non-string-like discriminator field**
+**Severity:** error
+**Condition:** The targeted field is not string-like.
+**Message:** `":{fieldName}" must be string-like when used as a discriminator field.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`: Non-type-parameter discriminator source**
+**Severity:** error
+**Condition:** The source operand after `@discriminator` is not a type parameter identifier.
+**Message:** `"@discriminator" expects a local type-parameter name after the direct-property target.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`: Non-local discriminator source**
+**Severity:** error
+**Condition:** The referenced type parameter is not declared directly on the same declaration.
+**Message:** `"@discriminator" can only reference a type parameter declared on the same declaration.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`: Unsupported discriminator source shape**
+**Severity:** error
+**Condition:** The resolved type argument is a union or another shape that cannot produce a single discriminator value in v1.
+**Message:** `"@discriminator" does not support this instantiation shape in v1. Use a single string literal or a named declaration that resolves to one value.`
+**Auto-fix:** None.
+
+**`DISCRIMINATOR_VALUE_UNRESOLVABLE`: Unresolvable discriminator value**
+**Severity:** error
+**Condition:** The type argument satisfies the syntactic rules but no discriminator value can be derived.
+**Message:** `"@discriminator" could not derive a discriminator value from the instantiated type argument.`
+**Auto-fix:** None.
+
+---
+
 ### Constraint validation
 
 **`CONSTRAINT_CONTRADICTION`: Constraint contradiction**
@@ -1057,7 +1178,13 @@ interface AnnotationNode {
 - `@defaultValue` → `DefaultValueAnnotation` (parsed value; type must be assignable to field type — type mismatch otherwise)
 - `@example` → appended to `ExampleAnnotation[]`
 
-### 7.4 Composition in the IR (per C1)
+### 7.4 Declaration tag → object specialization
+
+`@discriminator` does not produce a standalone IR node kind. The declaration-level metadata is applied during object lowering: when the declaration is instantiated, the targeted direct property is specialized to a singleton enum derived from the bound type argument.
+
+If the declaration is not object-like, or if the target/source rules in §2.5 are violated, the analyzer emits a diagnostic instead of inventing a separate IR representation.
+
+### 7.5 Composition in the IR (per C1)
 
 **Constraints compose by intersection.** When the canonicalization phase encounters multiple `ConstraintNode`s of the same kind on the same field/subfield/member, it:
 

@@ -89,6 +89,7 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 - `constraint-validation/no-duplicate-tags`
 - `constraint-validation/no-description-tag`
 - `constraint-validation/no-contradictory-rules`
+- `constraint-validation/valid-discriminator`
 
 ### `.formspec.yml` Capability Rules
 
@@ -111,6 +112,7 @@ Extension authors can use `@formspec/eslint-plugin/base` for `createConstraintRu
 | [constraint-validation/no-contradictory-rules](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraint-validation/no-contradictory-rules.md) | Reports contradictory FormSpec conditional rules on the same behavioral axis                    |    |
 | [constraint-validation/no-description-tag](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraint-validation/no-description-tag.md)         | Bans @description, which is not a standard TSDoc tag                                            |    |
 | [constraint-validation/no-duplicate-tags](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraint-validation/no-duplicate-tags.md)           | Reports duplicate FormSpec tags on the same field target                                        |    |
+| [constraint-validation/valid-discriminator](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraint-validation/valid-discriminator.md)       | Validates declaration placement, targeting, and source operands for @discriminator              |    |
 | [constraints-allowed-field-types](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraints-allowed-field-types.md)                           | Validates that field types are allowed by the project's constraints                             |    |
 | [constraints-allowed-layouts](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraints-allowed-layouts.md)                                   | Validates that layout constructs (group, conditionals) are allowed by the project's constraints |    |
 | [tag-recognition/no-disabled-tags](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/no-disabled-tags.md)                         | Reports FormSpec tags disabled by project configuration                                         |    |

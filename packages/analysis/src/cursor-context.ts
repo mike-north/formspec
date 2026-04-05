@@ -6,6 +6,10 @@ import {
 import type * as ts from "typescript";
 import { collectCompatiblePathTargets } from "./ts-binding.js";
 import {
+  getDeclarationTypeParameterNames,
+  getDirectPropertyTargets,
+} from "./source-bindings.js";
+import {
   getAllTagDefinitions,
   getTagDefinition,
   type ExtensionTagSource,
@@ -49,6 +53,7 @@ export interface CommentSemanticContextOptions {
   readonly placement?: FormSpecPlacement | null;
   readonly checker?: ts.TypeChecker;
   readonly subjectType?: ts.Type;
+  readonly declaration?: ts.Node;
 }
 
 export interface CommentTagSemanticContext {
@@ -60,6 +65,7 @@ export interface CommentTagSemanticContext {
   readonly targetCompletions: readonly string[];
   readonly compatiblePathTargets: readonly string[];
   readonly valueLabels: readonly string[];
+  readonly argumentCompletions: readonly string[];
   readonly tagHoverMarkdown: string | null;
   readonly targetHoverMarkdown: string | null;
   readonly argumentHoverMarkdown: string | null;
@@ -200,6 +206,26 @@ function getTargetCompletions(
   return [...completions];
 }
 
+function getDiscriminatorTargetCompletions(
+  options?: CommentSemanticContextOptions
+): readonly string[] {
+  if (options?.checker === undefined || options.declaration === undefined) {
+    return [];
+  }
+
+  return getDirectPropertyTargets(options.declaration, options.checker).map((target) => target.name);
+}
+
+function getDiscriminatorArgumentCompletions(
+  options?: CommentSemanticContextOptions
+): readonly string[] {
+  if (options?.declaration === undefined) {
+    return [];
+  }
+
+  return getDeclarationTypeParameterNames(options.declaration);
+}
+
 export function getCommentTagSemanticContext(
   tag: ParsedCommentTag,
   options?: CommentSemanticContextOptions
@@ -209,11 +235,14 @@ export function getCommentTagSemanticContext(
     tagDefinition?.signatures ?? [],
     options?.placement
   );
-  const compatiblePathTargets = getCompatiblePathTargetsForSignatures(
-    signatures,
-    options?.checker,
-    options?.subjectType
-  );
+  const compatiblePathTargets =
+    tagDefinition?.canonicalName === "discriminator"
+      ? getDiscriminatorTargetCompletions(options)
+      : getCompatiblePathTargetsForSignatures(signatures, options?.checker, options?.subjectType);
+  const targetCompletions =
+    tagDefinition?.canonicalName === "discriminator"
+      ? compatiblePathTargets
+      : getTargetCompletions(signatures, compatiblePathTargets);
 
   const semantic: CommentTagSemanticContext = {
     tag,
@@ -221,9 +250,13 @@ export function getCommentTagSemanticContext(
     placement: options?.placement ?? null,
     signatures,
     supportedTargets: getSupportedTargets(signatures),
-    targetCompletions: getTargetCompletions(signatures, compatiblePathTargets),
+    targetCompletions,
     compatiblePathTargets,
     valueLabels: getValueLabels(signatures),
+    argumentCompletions:
+      tagDefinition?.canonicalName === "discriminator"
+        ? getDiscriminatorArgumentCompletions(options)
+        : [],
     tagHoverMarkdown: tagDefinition?.hoverMarkdown ?? null,
     targetHoverMarkdown: null,
     argumentHoverMarkdown: null,
@@ -296,6 +329,7 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
 
   const valueLabels = getValueLabels(semantic.signatures);
   const formattedValueLabels = valueLabels.map((label) => `\`${label}\``);
+  const formattedArgumentCompletions = semantic.argumentCompletions.map((label) => `\`${label}\``);
   const soleSignature = semantic.signatures.length === 1 ? semantic.signatures[0] : undefined;
   const signatureLines =
     semantic.signatures.length === 0
@@ -311,6 +345,9 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
     `**Argument for @${semantic.tagDefinition.canonicalName}**`,
     "",
     `Expected value: ${formattedValueLabels.join(" or ") || "`<value>`"}`,
+    ...(formattedArgumentCompletions.length > 0
+      ? ["", `Local type parameters: ${formattedArgumentCompletions.join(" or ")}`]
+      : []),
     "",
     ...signatureLines,
   ].join("\n");

@@ -115,6 +115,50 @@ describe("cursor-context", () => {
     }
   });
 
+  it("surfaces discriminator target and type-parameter completions when semantic binding is provided", () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+        id: string;
+      }
+    `;
+    const targetOffset = source.indexOf("kind") + 2;
+    const argumentOffset = source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length;
+    const { checker, sourceFile } = createProgram(source);
+    const interfaceDeclaration = sourceFile.statements.find(ts.isInterfaceDeclaration);
+    if (interfaceDeclaration === undefined) {
+      throw new Error("Expected interface declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(interfaceDeclaration);
+    const targetContext = getSemanticCommentCompletionContextAtOffset(source, targetOffset, {
+      checker,
+      declaration: interfaceDeclaration,
+      subjectType,
+      placement: "interface",
+    });
+
+    expect(targetContext.kind).toBe("target");
+    if (targetContext.kind === "target") {
+      expect(targetContext.semantic.targetCompletions).toEqual(["kind", "id"]);
+    }
+
+    const argumentContext = getSemanticCommentCompletionContextAtOffset(source, argumentOffset, {
+      checker,
+      declaration: interfaceDeclaration,
+      subjectType,
+      placement: "interface",
+    });
+
+    expect(argumentContext.kind).toBe("argument");
+    if (argumentContext.kind === "argument") {
+      expect(argumentContext.semantic.argumentCompletions).toEqual(["T"]);
+    }
+  });
+
   it("provides target hover details for variant-target tags", () => {
     const source = "/** @apiName :plural homes */";
     const offset = source.indexOf("plural") + 2;
@@ -134,6 +178,37 @@ describe("cursor-context", () => {
     expect(hover?.kind).toBe("argument");
     expect(hover?.markdown).toContain("Argument for @minimum");
     expect(hover?.markdown).toContain("<number>");
+  });
+
+  it("provides discriminator argument hover details for a local type parameter", () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+      }
+    `;
+    const offset = source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length;
+    const { checker, sourceFile } = createProgram(source);
+    const interfaceDeclaration = sourceFile.statements.find(ts.isInterfaceDeclaration);
+    if (interfaceDeclaration === undefined) {
+      throw new Error("Expected interface declaration");
+    }
+
+    const hover = getCommentHoverInfoAtOffset(source, offset, {
+      checker,
+      declaration: interfaceDeclaration,
+      subjectType: checker.getTypeAtLocation(interfaceDeclaration),
+      placement: "interface",
+    });
+
+    expect(hover?.kind).toBe("argument");
+    if (hover !== null) {
+      expect(hover.markdown).toContain("Argument for @discriminator");
+      expect(hover.markdown).toContain("Local type parameters");
+      expect(hover.markdown).toContain("`T`");
+    }
   });
 
   it("returns null hover info for unrecognized tags", () => {

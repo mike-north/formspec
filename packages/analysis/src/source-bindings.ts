@@ -56,6 +56,107 @@ export function getHostType(node: ts.Node, checker: ts.TypeChecker): ts.Type | u
 }
 
 /**
+ * Returns the type parameter names declared directly on the given node.
+ */
+export function getDeclarationTypeParameterNames(node: ts.Node): readonly string[] {
+  if (
+    !(
+      ts.isClassDeclaration(node) ||
+      ts.isInterfaceDeclaration(node) ||
+      ts.isTypeAliasDeclaration(node) ||
+      ts.isFunctionDeclaration(node) ||
+      ts.isMethodDeclaration(node) ||
+      ts.isConstructorDeclaration(node)
+    )
+  ) {
+    return [];
+  }
+
+  return (
+    node.typeParameters?.flatMap((parameter) =>
+      ts.isIdentifier(parameter.name) ? [parameter.name.text] : []
+    ) ?? []
+  );
+}
+
+/**
+ * Returns the type parameter names visible in the current lexical scope.
+ */
+export function getVisibleTypeParameterNames(node: ts.Node): readonly string[] {
+  const names = new Set<string>();
+  let current: ts.Node = node;
+  for (;;) {
+    for (const name of getDeclarationTypeParameterNames(current)) {
+      names.add(name);
+    }
+    if (ts.isSourceFile(current)) {
+      break;
+    }
+    current = current.parent;
+  }
+
+  return [...names];
+}
+
+export interface DirectPropertyTarget {
+  readonly name: string;
+  readonly declaration: ts.PropertyDeclaration | ts.PropertySignature;
+  readonly type: ts.Type;
+  readonly optional: boolean;
+}
+
+/**
+ * Returns the direct object properties declared on a supported declaration.
+ */
+export function getDirectPropertyTargets(
+  node: ts.Node,
+  checker: ts.TypeChecker
+): readonly DirectPropertyTarget[] {
+  const targets: DirectPropertyTarget[] = [];
+  const pushTarget = (member: ts.PropertyDeclaration | ts.PropertySignature): void => {
+    if (!ts.isIdentifier(member.name)) {
+      return;
+    }
+
+    const declaration = member;
+    targets.push({
+      name: member.name.text,
+      declaration,
+      type: checker.getTypeAtLocation(member),
+      optional: member.questionToken !== undefined,
+    });
+  };
+
+  if (ts.isClassDeclaration(node)) {
+    for (const member of node.members) {
+      if (ts.isPropertyDeclaration(member)) {
+        pushTarget(member);
+      }
+    }
+    return targets;
+  }
+
+  if (ts.isInterfaceDeclaration(node)) {
+    for (const member of node.members) {
+      if (ts.isPropertySignature(member)) {
+        pushTarget(member);
+      }
+    }
+    return targets;
+  }
+
+  if (ts.isTypeAliasDeclaration(node) && ts.isTypeLiteralNode(node.type)) {
+    for (const member of node.type.members) {
+      if (ts.isPropertySignature(member)) {
+        pushTarget(member);
+      }
+    }
+  }
+
+  return targets;
+}
+
+/**
  * Finds the smallest declaration whose leading doc comment contains the given
  * source offset.
  */

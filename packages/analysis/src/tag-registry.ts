@@ -685,6 +685,16 @@ const EXTRA_TAG_SPECS = {
     completionDetail: "Example serialized value.",
     hoverSummary: "Provides an example value for documentation and tooling.",
   },
+  discriminator: {
+    requiresArgument: true,
+    supportedTargets: ["path"],
+    allowDuplicates: false,
+    category: "annotation",
+    placements: TYPE_PLACEMENTS,
+    completionDetail: "Declare a discriminator field for a generic object type.",
+    hoverSummary: "Declares the field used as the discriminator for a generic object type.",
+    valueLabel: "<typeParam>",
+  },
   remarks: {
     requiresArgument: true,
     supportedTargets: ["none"],

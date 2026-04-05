@@ -4,15 +4,16 @@
 
 ```ts
 
-import type { PathTarget } from '@formspec/core';
+import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION as FORMSPEC_ANALYSIS_PROTOCOL_VERSION_2 } from '@formspec/analysis/protocol';
+import { FormSpecAnalysisDiagnostic as FormSpecAnalysisDiagnostic_2 } from '@formspec/analysis/protocol';
+import { FormSpecAnalysisFileSnapshot as FormSpecAnalysisFileSnapshot_2 } from '@formspec/analysis/protocol';
+import { FormSpecAnalysisManifest as FormSpecAnalysisManifest_2 } from '@formspec/analysis/protocol';
+import { FormSpecSemanticQuery as FormSpecSemanticQuery_2 } from '@formspec/analysis/protocol';
+import { FormSpecSemanticResponse as FormSpecSemanticResponse_2 } from '@formspec/analysis/protocol';
+import { FormSpecSerializedCompletionContext as FormSpecSerializedCompletionContext_2 } from '@formspec/analysis/protocol';
+import { FormSpecSerializedHoverInfo as FormSpecSerializedHoverInfo_2 } from '@formspec/analysis/protocol';
 import * as ts from 'typescript';
 import type * as tsServer from 'typescript/lib/tsserverlibrary.js';
-
-// @public
-export interface CommentHoverInfo {
-    readonly kind: "tag-name" | "target" | "argument";
-    readonly markdown: string;
-}
 
 // @public
 export interface CommentSourceSpan {
@@ -27,7 +28,7 @@ export type CommentSpan = CommentSourceSpan;
 export function createLanguageServiceProxy(languageService: ts.LanguageService, semanticService: FormSpecSemanticService): ts.LanguageService;
 
 // @public
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 2;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 3;
 
 // @public
 export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
@@ -114,9 +115,9 @@ export type FormSpecPlacement = "class" | "class-field" | "class-method" | "inte
 // @public
 export class FormSpecPluginService {
     constructor(options: FormSpecPluginServiceOptions);
-    getManifest(): FormSpecAnalysisManifest;
+    getManifest(): FormSpecAnalysisManifest_2;
     getSemanticService(): FormSpecSemanticService;
-    handleQuery(query: FormSpecSemanticQuery): FormSpecSemanticResponse;
+    handleQuery(query: FormSpecSemanticQuery_2): FormSpecSemanticResponse_2;
     scheduleSnapshotRefresh(filePath: string): void;
     start(): Promise<void>;
     stop(): Promise<void>;
@@ -127,22 +128,22 @@ export type FormSpecPluginServiceOptions = FormSpecSemanticServiceOptions;
 
 // @public
 export interface FormSpecSemanticCompletionResult {
-    readonly context: FormSpecSerializedCompletionContext;
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly context: FormSpecSerializedCompletionContext_2;
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION_2;
     readonly sourceHash: string;
 }
 
 // @public
 export interface FormSpecSemanticDiagnosticsResult {
-    readonly diagnostics: readonly FormSpecAnalysisDiagnostic[];
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly diagnostics: readonly FormSpecAnalysisDiagnostic_2[];
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION_2;
     readonly sourceHash: string;
 }
 
 // @public
 export interface FormSpecSemanticHoverResult {
-    readonly hover: FormSpecSerializedHoverInfo | null;
-    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION;
+    readonly hover: FormSpecSerializedHoverInfo_2 | null;
+    readonly protocolVersion: typeof FORMSPEC_ANALYSIS_PROTOCOL_VERSION_2;
     readonly sourceHash: string;
 }
 
@@ -206,7 +207,7 @@ export class FormSpecSemanticService {
     dispose(): void;
     getCompletionContext(filePath: string, offset: number): FormSpecSemanticCompletionResult | null;
     getDiagnostics(filePath: string): FormSpecSemanticDiagnosticsResult;
-    getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot;
+    getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot_2;
     getHover(filePath: string, offset: number): FormSpecSemanticHoverResult | null;
     getStats(): FormSpecSemanticServiceStats;
     scheduleSnapshotRefresh(filePath: string): void;
@@ -291,6 +292,7 @@ export interface FormSpecSerializedTagDefinition {
 
 // @public
 export interface FormSpecSerializedTagSemanticContext {
+    readonly argumentCompletions: readonly string[];
     readonly argumentHoverMarkdown: string | null;
     readonly compatiblePathTargets: readonly string[];
     readonly placement: FormSpecPlacement | null;
@@ -321,17 +323,6 @@ export function init(modules: {
 // @public
 export interface LoggerLike {
     info(message: string): void;
-}
-
-// @public
-export interface ParsedCommentTargetSpecifier {
-    readonly colonSpan: CommentSourceSpan;
-    readonly fullSpan: CommentSourceSpan;
-    readonly kind: "path" | "member" | "variant" | "ambiguous";
-    readonly path: PathTarget | null;
-    readonly rawText: string;
-    readonly span: CommentSourceSpan;
-    readonly valid: boolean;
 }
 
 ```

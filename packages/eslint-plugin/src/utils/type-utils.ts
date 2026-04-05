@@ -123,6 +123,20 @@ export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
 }
 
 /**
+ * Checks whether a type includes `null` or `undefined`.
+ */
+export function isNullableType(type: ts.Type): boolean {
+  if (!type.isUnion()) {
+    return (
+      (type.flags & 65536 /* ts.TypeFlags.Null */) !== 0 ||
+      (type.flags & 32768 /* ts.TypeFlags.Undefined */) !== 0
+    );
+  }
+
+  return type.types.some((t) => isNullableType(t));
+}
+
+/**
  * Checks if a TypeScript type is an array type.
  *
  * Handles Array<T>, T[], and readonly arrays.
