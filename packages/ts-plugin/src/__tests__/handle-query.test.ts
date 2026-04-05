@@ -66,6 +66,54 @@ describe("FormSpecPluginService.handleQuery", () => {
     }
   });
 
+  it("surfaces discriminator completions from the host program", async () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+        label: string;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: "test",
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const targetCompletion = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "completion",
+      filePath: context.filePath,
+      offset: source.indexOf("kind") + 2,
+    });
+    expect(targetCompletion.kind).toBe("completion");
+    if (targetCompletion.kind === "completion") {
+      expect(targetCompletion.context.kind).toBe("target");
+      if (targetCompletion.context.kind === "target") {
+        expect(targetCompletion.context.semantic.targetCompletions).toEqual(["kind", "label"]);
+      }
+    }
+
+    const argumentCompletion = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "completion",
+      filePath: context.filePath,
+      offset: source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length,
+    });
+    expect(argumentCompletion.kind).toBe("completion");
+    if (argumentCompletion.kind === "completion") {
+      expect(argumentCompletion.context.kind).toBe("argument");
+      if (argumentCompletion.context.kind === "argument") {
+        expect(argumentCompletion.context.semantic.argumentCompletions).toEqual(["T"]);
+      }
+    }
+  });
+
   it("serves diagnostics and file snapshots for invalid tagged comments", async () => {
     const source = `
       class Foo {

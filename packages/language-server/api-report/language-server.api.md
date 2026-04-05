@@ -7,7 +7,7 @@
 import { CompletionItem } from 'vscode-languageserver/node.js';
 import { Connection } from 'vscode-languageserver/node.js';
 import { Diagnostic } from 'vscode-languageserver/node.js';
-import type { ExtensionDefinition } from '@formspec/core';
+import { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
 import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -33,6 +33,11 @@ export interface CreateServerOptions {
     readonly usePluginTransport?: boolean;
     readonly workspaceRoots?: readonly string[];
 }
+
+export { ExtensionDefinition }
+
+// @public
+export function fileUriToPathOrNull(uri: string): string | null;
 
 // @public
 export interface FormSpecAnalysisDiagnostic {

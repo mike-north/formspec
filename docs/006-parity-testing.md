@@ -39,8 +39,11 @@ Parity is **not** about bit-for-bit identical IR objects. The IR records surface
 - dynamic option retrieval against a statically known field
 - runtime-discovered JSON Schema
 - runtime-discovered UI schema
+- declaration-level `@discriminator` specialization on object-like TSDoc declarations
 
-These are ChainDSL-owned capabilities in this revision. They are excluded from strict TSDoc ↔ ChainDSL parity.
+The first three are ChainDSL-owned capabilities in this revision. They are excluded from strict TSDoc ↔ ChainDSL parity.
+
+`@discriminator` is a deliberate TSDoc-only exception for v1. It is covered by the TSDoc extraction, schema-generation, and tooling tests, but it does not require a matching ChainDSL surface until the spec explicitly adds one.
 
 **Mixed-authoring note:** Some near-term product scenarios are not pure parity cases. In particular, a form may be authored primarily as a TSDoc-annotated class while using ChainDSL-only constructs for a small number of dynamic option fields. Those cases should be covered by dedicated mixed-authoring composition tests, not by strict TSDoc ↔ ChainDSL parity tests. The assertion target for such tests is correct generated JSON Schema and UI Schema for the composed form, not identical IR from two independently authored surfaces. The composition mechanism must remain explicit; decorators are not a substitute authoring surface.
 

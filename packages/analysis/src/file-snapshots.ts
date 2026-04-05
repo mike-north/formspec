@@ -11,6 +11,11 @@ import {
 import { extractPathTarget } from "./path-target.js";
 import { getHostType, getLastLeadingDocCommentRange, getSubjectType } from "./source-bindings.js";
 import {
+  getDeclarationTypeParameterNames,
+  getDirectPropertyTargets,
+  getVisibleTypeParameterNames,
+} from "./source-bindings.js";
+import {
   computeFormSpecTextHash,
   serializeParsedCommentTag,
   type FormSpecAnalysisCommentSnapshot,
@@ -22,7 +27,11 @@ import {
   optionalMeasure,
   type FormSpecPerformanceRecorder,
 } from "./perf-tracing.js";
-import { resolveDeclarationPlacement, resolvePathTargetType } from "./ts-binding.js";
+import {
+  hasTypeSemanticCapability,
+  resolveDeclarationPlacement,
+  resolvePathTargetType,
+} from "./ts-binding.js";
 import type { ExtensionTagSource, FormSpecPlacement } from "./tag-registry.js";
 
 /**
@@ -215,12 +224,37 @@ function getArgumentExpression(
   return JSON.stringify(trimmed);
 }
 
+function isNullableType(type: ts.Type): boolean {
+  if (type.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) {
+    return true;
+  }
+
+  if (type.isUnion()) {
+    return type.types.some(isNullableType);
+  }
+
+  return false;
+}
+
+function isIdentifierLikeTagOperand(argumentText: string): boolean {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(argumentText.trim());
+}
+
 function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"] {
   switch (code) {
     case "INVALID_TAG_ARGUMENT":
     case "INVALID_TAG_PLACEMENT":
     case "TYPE_MISMATCH":
     case "UNKNOWN_PATH_TARGET":
+    case "INVALID_PATH_TARGET":
+    case "NESTED_PATH_TARGET":
+    case "MISSING_TARGET_FIELD":
+    case "OPTIONAL_TARGET_FIELD":
+    case "NULLABLE_TARGET_FIELD":
+    case "NON_STRINGLIKE_TARGET_FIELD":
+    case "INVALID_TYPE_PARAMETER_REFERENCE":
+    case "NON_LOCAL_TYPE_PARAMETER":
+    case "DUPLICATE_TAG":
       return "error";
     default:
       return "warning";
@@ -237,6 +271,18 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
       return "type-compatibility";
     case "UNKNOWN_PATH_TARGET":
       return "target-resolution";
+    case "INVALID_PATH_TARGET":
+    case "NESTED_PATH_TARGET":
+    case "MISSING_TARGET_FIELD":
+    case "OPTIONAL_TARGET_FIELD":
+    case "NULLABLE_TARGET_FIELD":
+    case "NON_STRINGLIKE_TARGET_FIELD":
+      return "target-resolution";
+    case "INVALID_TYPE_PARAMETER_REFERENCE":
+    case "NON_LOCAL_TYPE_PARAMETER":
+      return "tag-recognition";
+    case "DUPLICATE_TAG":
+      return "constraint-validation";
     case "MISSING_SOURCE_FILE":
       return "infrastructure";
     default:
@@ -265,6 +311,208 @@ function createAnalysisDiagnostic(
   };
 }
 
+function buildDiscriminatorDiagnostics(
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  checker: ts.TypeChecker,
+  tag: ReturnType<typeof parseCommentBlock>["tags"][number],
+  range: CommentSpan
+): FormSpecAnalysisDiagnostic[] {
+  const diagnostics: FormSpecAnalysisDiagnostic[] = [];
+  const directTargets = new Map(
+    getDirectPropertyTargets(node, checker).map((target) => [target.name, target] as const)
+  );
+  const localTypeParameters = new Set(getDeclarationTypeParameterNames(node));
+  const visibleTypeParameters = new Set(getVisibleTypeParameterNames(node));
+  const targetText = tag.target?.rawText ?? "";
+  const target = tag.target;
+
+  if (target?.kind !== "path") {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "INVALID_PATH_TARGET",
+        'Tag "@discriminator" requires a direct property path target.',
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  if (!target.valid || target.path === null) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "INVALID_PATH_TARGET",
+        'Tag "@discriminator" has an invalid path target.',
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  if (target.path.segments.length !== 1) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "NESTED_PATH_TARGET",
+        'Tag "@discriminator" only supports a single direct property target in v1.',
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  const propertyName = target.path.segments[0];
+  if (propertyName === undefined) {
+    return diagnostics;
+  }
+
+  const property = directTargets.get(propertyName);
+  if (property === undefined) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "MISSING_TARGET_FIELD",
+        `Tag "@discriminator" references unknown target field "${propertyName}".`,
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  const propertySpan = spanFromPos(
+    property.declaration.getStart(sourceFile),
+    property.declaration.getEnd()
+  );
+  if (property.optional) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "OPTIONAL_TARGET_FIELD",
+        `Tag "@discriminator" target field "${propertyName}" must be required.`,
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        },
+        [
+          {
+            filePath: sourceFile.fileName,
+            range: propertySpan,
+            message: "Target field declaration",
+          },
+        ]
+      )
+    );
+  }
+
+  if (isNullableType(property.type)) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "NULLABLE_TARGET_FIELD",
+        `Tag "@discriminator" target field "${propertyName}" must not be nullable.`,
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+        },
+        [
+          {
+            filePath: sourceFile.fileName,
+            range: propertySpan,
+            message: "Target field declaration",
+          },
+        ]
+      )
+    );
+  }
+
+  if (!hasTypeSemanticCapability(property.type, checker, "string-like")) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "NON_STRINGLIKE_TARGET_FIELD",
+        `Tag "@discriminator" target field "${propertyName}" must be string-like.`,
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+          targetKind: property.optional ? "optional" : "required",
+        },
+        [
+          {
+            filePath: sourceFile.fileName,
+            range: propertySpan,
+            message: "Target field declaration",
+          },
+        ]
+      )
+    );
+  }
+
+  const operand = tag.argumentText.trim();
+  if (!isIdentifierLikeTagOperand(operand)) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "INVALID_TYPE_PARAMETER_REFERENCE",
+        'Tag "@discriminator" requires a single local type parameter name.',
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+          argumentText: tag.argumentText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  if (localTypeParameters.has(operand)) {
+    return diagnostics;
+  }
+
+  if (visibleTypeParameters.has(operand)) {
+    diagnostics.push(
+      createAnalysisDiagnostic(
+        "NON_LOCAL_TYPE_PARAMETER",
+        `Tag "@discriminator" type parameter "${operand}" must be declared on the same declaration.`,
+        range,
+        {
+          tagName: tag.normalizedTagName,
+          targetText,
+          argumentText: tag.argumentText,
+        }
+      )
+    );
+    return diagnostics;
+  }
+
+  diagnostics.push(
+    createAnalysisDiagnostic(
+      "INVALID_TYPE_PARAMETER_REFERENCE",
+      `Tag "@discriminator" references unknown type parameter "${operand}".`,
+      range,
+      {
+        tagName: tag.normalizedTagName,
+        targetText,
+        argumentText: tag.argumentText,
+      }
+    )
+  );
+  return diagnostics;
+}
+
 function buildTagDiagnostics(
   node: ts.Node,
   sourceFile: ts.SourceFile,
@@ -282,6 +530,7 @@ function buildTagDiagnostics(
 
   const declaredSubjectType = getDeclaredSubjectType(node, checker, subjectType);
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
+  let discriminatorTagCount = 0;
   const standaloneHostTypeText = optionalMeasure(
     performance,
     "analysis.renderStandaloneHostType",
@@ -324,6 +573,28 @@ function buildTagDiagnostics(
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
     if (semantic.tagDefinition === null) {
+      continue;
+    }
+
+    if (tag.normalizedTagName === "discriminator") {
+      discriminatorTagCount += 1;
+      if (discriminatorTagCount > 1) {
+        diagnostics.push(
+          createAnalysisDiagnostic(
+            "DUPLICATE_TAG",
+            'Duplicate "@discriminator" tag. Only one discriminator declaration is allowed.',
+            tag.fullSpan,
+            {
+              tagName: tag.normalizedTagName,
+            }
+          )
+        );
+        continue;
+      }
+
+      diagnostics.push(
+        ...buildDiscriminatorDiagnostics(node, sourceFile, checker, tag, tag.fullSpan)
+      );
       continue;
     }
 

@@ -3,6 +3,7 @@ import * as vitest from "vitest";
 import { noDuplicateTags } from "../../rules/constraint-validation/no-duplicate-tags.js";
 import { noDescriptionTag } from "../../rules/constraint-validation/no-description-tag.js";
 import { noContradictoryRules } from "../../rules/constraint-validation/no-contradictory-rules.js";
+import { validDiscriminator } from "../../rules/constraint-validation/valid-discriminator.js";
 
 RuleTester.afterAll = vitest.afterAll;
 RuleTester.it = vitest.it;
@@ -29,6 +30,14 @@ ruleTester.run("no-duplicate-tags", noDuplicateTags, {
         }
       `,
     },
+    {
+      code: `
+        /** @discriminator :kind T */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+    },
   ],
   invalid: [
     {
@@ -39,6 +48,18 @@ ruleTester.run("no-duplicate-tags", noDuplicateTags, {
         }
       `,
       errors: [{ messageId: "duplicateTag" }],
+    },
+    {
+      code: `
+        /**
+         * @discriminator :kind T
+         * @discriminator :kind T
+         */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+      errors: [{ messageId: "duplicateDiscriminatorTag" }],
     },
   ],
 });
@@ -69,6 +90,139 @@ ruleTester.run("no-contradictory-rules", noContradictoryRules, {
     {
       code: `class Form { /** @enableWhen status=draft @disableWhen status=archived */ name!: string; }`,
       errors: [{ messageId: "contradictoryRuleEffects" }],
+    },
+  ],
+});
+
+ruleTester.run("valid-discriminator", validDiscriminator, {
+  valid: [
+    {
+      code: `
+        /** @discriminator :kind T */
+        interface TaggedValue<T> {
+          kind: string;
+          id: string;
+        }
+      `,
+    },
+    {
+      code: `
+        /** @discriminator :kind T */
+        class TaggedValue<T> {
+          kind!: string;
+          id!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        /** @discriminator :kind T */
+        type TaggedValue<T> = {
+          kind: string;
+          id: string;
+        };
+      `,
+    },
+    {
+      code: `
+        /** @discriminator :kind $Tag */
+        interface TaggedValue<$Tag> {
+          kind: string;
+          id: string;
+        }
+      `,
+    },
+  ],
+  invalid: [
+    {
+      code: `
+        /** @discriminator :kind T */
+        interface TaggedValue<T> {
+          kind?: string;
+        }
+      `,
+      errors: [{ messageId: "optionalTargetField" }],
+    },
+    {
+      code: `
+        /** @discriminator :kind T */
+        interface TaggedValue<T> {
+          kind: string | null;
+        }
+      `,
+      errors: [{ messageId: "nullableTargetField" }],
+    },
+    {
+      code: `
+        /** @discriminator :kind T */
+        interface TaggedValue<T> {
+          kind: number;
+        }
+      `,
+      errors: [{ messageId: "nonStringLikeTargetField" }],
+    },
+    {
+      code: `
+        /** @discriminator :meta.kind T */
+        class TaggedValue<T> {
+          kind!: string;
+          meta!: { kind: string };
+        }
+      `,
+      errors: [{ messageId: "nestedTarget" }],
+    },
+    {
+      code: `
+        /** @discriminator :missing T */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+      errors: [{ messageId: "missingTargetField" }],
+    },
+    {
+      code: `
+        /** @discriminator kind T */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+      errors: [{ messageId: "missingTarget" }],
+    },
+    {
+      code: `
+        /** @discriminator :kind Foo<T> */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+      errors: [{ messageId: "invalidSourceOperand" }],
+    },
+    {
+      code: `
+        /** @discriminator :kind U */
+        interface TaggedValue<T> {
+          kind: string;
+        }
+      `,
+      errors: [{ messageId: "nonLocalTypeParameter" }],
+    },
+    {
+      code: `
+        class TaggedValue<T> {
+          /** @discriminator :kind T */
+          kind!: string;
+        }
+      `,
+      errors: [{ messageId: "invalidPlacement" }],
+    },
+    {
+      code: `
+        type TaggedValue<T> = string;
+        /** @discriminator :kind T */
+        type Invalid = TaggedValue<string>;
+      `,
+      errors: [{ messageId: "invalidPlacement" }],
     },
   ],
 });

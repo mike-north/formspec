@@ -122,6 +122,7 @@ describe("plugin-client", () => {
                 targetCompletions: ["amount"],
                 compatiblePathTargets: ["amount"],
                 valueLabels: ["<number>"],
+                argumentCompletions: [],
                 signatures: [],
                 tagHoverMarkdown: null,
                 targetHoverMarkdown: null,

@@ -81,6 +81,11 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Clarified extension-example status for `@maxSigFig`.
   - Section 2.1 now treats `@maxSigFig` as a canonical example of an extension-defined constraint tag.
   - The file no longer implies that decimal precision tags are required built-ins of core FormSpec.
+- Added a built-in declaration-level discriminator tag.
+  - `@discriminator :fieldName T` is declared as a built-in tag on object-like classes, interfaces, and type aliases.
+  - The target path is direct-property-only in v1.
+  - The source operand must be a local type parameter identifier.
+  - The tag specializes the targeted property's emitted schema to a singleton `enum` without introducing a new IR node kind.
 
 ## 003-json-schema-vocabulary.md
 
@@ -96,10 +101,15 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - The normative JSON Schema annotation keys for dynamic option retrieval remain `x-<vendor>-option-source` and `x-<vendor>-option-source-params`.
   - These keys are emitted by ChainDSL-authored dynamic fields, including mixed-authoring composition output, not by built-in TSDoc tags in this revision.
   - The spec states explicitly that option providers may be local or remote; the schema carries only the declarative provider key and parameter-field list.
+- Added discriminator specialization to object lowering.
+  - Declaration-level `@discriminator` rewrites only the targeted direct property to a singleton `enum`.
+  - No custom vocabulary keyword, provenance marker, or special object schema kind was introduced.
 
 ## 004-tooling.md
 
-- No entries yet.
+- Added declaration-level tooling coverage for `@discriminator`.
+  - ESLint validation now includes declaration placement, duplicate detection, target-field validation, and local type-parameter validation for the discriminator surface.
+  - The language server now needs tag completion, direct-property target completion, local type-parameter completion, and hover/signature help for the new tag.
 
 ## 005-numeric-types.md
 
@@ -118,6 +128,9 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - Mixed-authoring composition tests are separate from strict TSDoc ↔ ChainDSL parity tests.
   - Snapshot tests are no longer part of the normative parity strategy.
   - Diagnostic parity compares code and severity; message text is verified separately.
+- Recorded `@discriminator` as a TSDoc-only exception for this revision.
+  - There is no ChainDSL parity requirement for declaration-level discriminator specialization in v1.
+  - If this changes later, the parity document should add an explicit shared-surface fixture track rather than implying equivalence by default.
 
 ## Matrix
 

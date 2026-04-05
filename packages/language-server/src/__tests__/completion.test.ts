@@ -1,15 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import { defineConstraintTag, defineExtension } from "@formspec/core";
-import type { FormSpecSerializedCompletionContext } from "@formspec/analysis";
+import {
+  type FormSpecSerializedCompletionContext,
+} from "@formspec/analysis";
+import { getAllTagDefinitions } from "@formspec/analysis/internal";
 import { CompletionItemKind } from "vscode-languageserver/node.js";
 import { getCompletionItems, getCompletionItemsAtOffset } from "../providers/completion.js";
 
 describe("getCompletionItems", () => {
-  it("returns one item per built-in constraint", () => {
+  it("returns one item per built-in tag", () => {
     const items = getCompletionItems();
-    const builtinCount = Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS).length;
-    expect(items).toHaveLength(builtinCount);
+    expect(items).toHaveLength(getAllTagDefinitions().length);
   });
 
   it("prefixes each label with @", () => {
@@ -26,10 +27,10 @@ describe("getCompletionItems", () => {
     }
   });
 
-  it("includes an item for every key in BUILTIN_CONSTRAINT_DEFINITIONS", () => {
+  it("includes an item for every built-in tag", () => {
     const items = getCompletionItems();
     const labels = items.map((item) => item.label);
-    for (const name of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
+    for (const name of getAllTagDefinitions().map((tag) => tag.canonicalName)) {
       expect(labels).toContain(`@${name}`);
     }
   });
@@ -60,6 +61,13 @@ describe("getCompletionItems", () => {
     const items = getCompletionItems();
     const enumOptions = items.find((item) => item.label === "@enumOptions");
     expect(enumOptions).toBeDefined();
+  });
+
+  it("includes @discriminator completion", () => {
+    const items = getCompletionItems();
+    const discriminator = items.find((item) => item.label === "@discriminator");
+    expect(discriminator).toBeDefined();
+    expect(discriminator?.kind).toBe(CompletionItemKind.Keyword);
   });
 
   it("includes extension-defined tags when extensions are provided", () => {
@@ -136,6 +144,41 @@ describe("getCompletionItems", () => {
     expect(items.map((item) => item.label)).toContain("plural");
   });
 
+  it("returns local type parameter completions for discriminator argument positions", () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+        id: string;
+      }
+    `;
+    const offset = source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length;
+    const semanticContext: FormSpecSerializedCompletionContext = {
+      kind: "argument",
+      semantic: {
+        tagName: "discriminator",
+        tagDefinition: null,
+        placement: "interface",
+        supportedTargets: ["none", "path"],
+        targetCompletions: ["kind", "id"],
+        compatiblePathTargets: ["kind", "id"],
+        valueLabels: ["<typeParam>"],
+        argumentCompletions: ["T"],
+        signatures: [],
+        tagHoverMarkdown: null,
+        targetHoverMarkdown: null,
+        argumentHoverMarkdown: null,
+      },
+      valueLabels: ["<typeParam>"],
+    };
+
+    const items = getCompletionItemsAtOffset(source, offset, undefined, semanticContext);
+    expect(items.map((item) => item.label)).toEqual(["T"]);
+    expect(items[0]?.kind).toBe(CompletionItemKind.TypeParameter);
+  });
+
   it("prefers plugin-provided semantic target completions when available", () => {
     const source = "/** @minimum : */";
     const offset = source.indexOf(":") + 1;
@@ -149,6 +192,7 @@ describe("getCompletionItems", () => {
         targetCompletions: ["amount", "discount.percent"],
         compatiblePathTargets: ["amount", "discount.percent"],
         valueLabels: ["<number>"],
+        argumentCompletions: [],
         signatures: [],
         tagHoverMarkdown: null,
         targetHoverMarkdown: null,

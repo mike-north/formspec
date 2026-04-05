@@ -6,6 +6,7 @@
  */
 
 import type * as ts from "typescript";
+import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
 import type { MethodInfo, ParameterInfo } from "../analyzer/class-analyzer.js";
 import { resolveTypeNode } from "../analyzer/class-analyzer.js";
 import type { TypeDefinition } from "@formspec/core/internals";
@@ -54,7 +55,25 @@ export interface MethodParamsSchemas {
 function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema2020 {
   const typeRegistry: Record<string, TypeDefinition> = {};
   const visiting = new Set<ts.Type>();
-  const typeNode = resolveTypeNode(type, checker, "", typeRegistry, visiting);
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
+  const typeNode = resolveTypeNode(
+    type,
+    checker,
+    "",
+    typeRegistry,
+    visiting,
+    undefined,
+    undefined,
+    diagnostics
+  );
+  if (diagnostics.length > 0) {
+    const diagnosticDetails = diagnostics
+      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+      .join("; ");
+    throw new Error(
+      `FormSpec validation failed while resolving method schema types. ${diagnosticDetails}`
+    );
+  }
 
   const fieldProvenance = { surface: "tsdoc" as const, file: "", line: 0, column: 0 };
 

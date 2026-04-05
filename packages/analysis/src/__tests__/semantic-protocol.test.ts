@@ -14,6 +14,8 @@ import {
   type FormSpecSerializedCompletionContext,
   type FormSpecSemanticResponse,
 } from "../internal.js";
+import { createProgram } from "./helpers.js";
+import * as ts from "typescript";
 
 describe("semantic protocol", () => {
   it("computes a deterministic text hash", () => {
@@ -105,6 +107,7 @@ describe("semantic protocol", () => {
           targetCompletions: ["amount"],
           compatiblePathTargets: ["amount"],
           valueLabels: ["<number>"],
+          argumentCompletions: [],
           signatures: [
             {
               label: "@minimum :path <number>",
@@ -179,6 +182,36 @@ describe("semantic protocol", () => {
 
     expect(tagNameContext.kind).toBe("tag-name");
     expect(targetContext.kind).toBe("target");
+  });
+
+  it("serializes argument contexts with local type-parameter completions", () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(source);
+    const interfaceDeclaration = sourceFile.statements.find(ts.isInterfaceDeclaration);
+    if (interfaceDeclaration === undefined) {
+      throw new Error("Expected interface declaration");
+    }
+    const argumentOffset = source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length;
+    const context = serializeCompletionContext(
+      getSemanticCommentCompletionContextAtOffset(source, argumentOffset, {
+        placement: "interface",
+        checker,
+        subjectType: checker.getTypeAtLocation(interfaceDeclaration),
+        declaration: interfaceDeclaration,
+      })
+    );
+
+    expect(context.kind).toBe("argument");
+    if (context.kind === "argument") {
+      expect(context.semantic.argumentCompletions).toEqual(["T"]);
+    }
   });
 
   it("serializes hover info and preserves null when nothing is hoverable", () => {

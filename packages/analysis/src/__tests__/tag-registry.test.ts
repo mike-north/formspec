@@ -6,6 +6,7 @@ describe("tag-registry", () => {
     expect(getTagDefinition("apiName")).not.toBeNull();
     expect(getTagDefinition("order")).not.toBeNull();
     expect(getTagDefinition("showWhen")).not.toBeNull();
+    expect(getTagDefinition("discriminator")).not.toBeNull();
     expect(getTagDefinition("defaultValue")).not.toBeNull();
     expect(getTagDefinition("deprecated")).not.toBeNull();
     expect(getTagDefinition("remarks")).not.toBeNull();
@@ -31,6 +32,14 @@ describe("tag-registry", () => {
       valueKind: "condition",
       category: "structure",
       allowDuplicates: true,
+    });
+
+    expect(getTagDefinition("discriminator")).toMatchObject({
+      canonicalName: "discriminator",
+      valueKind: null,
+      category: "annotation",
+      supportedTargets: ["path"],
+      placements: ["class", "interface", "type-alias"],
     });
 
     expect(getTagDefinition("defaultValue")).toMatchObject({

@@ -40,6 +40,15 @@ describe("getHoverForTag", () => {
     }
   });
 
+  it("returns hover content for @discriminator", () => {
+    const hover = getHoverForTag("discriminator");
+    expect(hover).not.toBeNull();
+    if (hover !== null && isMarkupContent(hover.contents)) {
+      expect(hover.contents.kind).toBe("markdown");
+      expect(hover.contents.value).toContain("discriminator");
+    }
+  });
+
   it("accepts @ prefix and returns the same result as without prefix", () => {
     for (const name of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
       const withPrefix = getHoverForTag(`@${name}`);

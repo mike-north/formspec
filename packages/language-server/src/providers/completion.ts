@@ -1,5 +1,5 @@
 /**
- * Completion provider for FormSpec JSDoc constraint tags.
+ * Completion provider for FormSpec JSDoc tags.
  *
  * Uses the shared tag registry from `@formspec/analysis` so completions stay
  * aligned with the same metadata that powers linting and build-time analysis.
@@ -8,7 +8,7 @@
 import {
   type FormSpecSerializedCompletionContext,
   type FormSpecSerializedTagDefinition,
-  getConstraintTagDefinitions,
+  getAllTagDefinitions,
   getSemanticCommentCompletionContextAtOffset,
   type TagDefinition,
 } from "@formspec/analysis/internal";
@@ -21,7 +21,7 @@ import { CompletionItem, CompletionItemKind } from "vscode-languageserver/node.j
  * @public
  */
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[] {
-  return getConstraintTagDefinitions(extensions).map((tag) => ({
+  return getAllTagDefinitions(extensions).map((tag) => ({
     label: `@${tag.canonicalName}`,
     kind: CompletionItemKind.Keyword,
     detail: tag.completionDetail,
@@ -47,6 +47,17 @@ function toTargetCompletionItems(
         ? CompletionItemKind.EnumMember
         : CompletionItemKind.Field,
     detail: `Target for @${tagName}`,
+  }));
+}
+
+function toArgumentCompletionItems(
+  tagName: string,
+  argumentCompletions: readonly string[]
+): CompletionItem[] {
+  return argumentCompletions.map((argument: string) => ({
+    label: argument,
+    kind: CompletionItemKind.TypeParameter,
+    detail: `Argument for @${tagName}`,
   }));
 }
 
@@ -83,6 +94,13 @@ export function getCompletionItemsAtOffset(
       );
     }
 
+    if (semanticContext.kind === "argument") {
+      return toArgumentCompletionItems(
+        semanticContext.semantic.tagName,
+        semanticContext.semantic.argumentCompletions
+      );
+    }
+
     if (semanticContext.kind !== "tag-name") {
       return [];
     }
@@ -100,6 +118,13 @@ export function getCompletionItemsAtOffset(
     return toTargetCompletionItems(
       resolvedContext.semantic.tag.normalizedTagName,
       resolvedContext.semantic.targetCompletions
+    );
+  }
+
+  if (resolvedContext.kind === "argument") {
+    return toArgumentCompletionItems(
+      resolvedContext.semantic.tag.normalizedTagName,
+      resolvedContext.semantic.argumentCompletions
     );
   }
 

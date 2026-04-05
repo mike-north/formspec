@@ -72,7 +72,7 @@ export type NoDisabledTagsOptions = [{
 }];
 
 // @public
-export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag", [], unknown, ESLintUtils.RuleListener> & {
+export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 
@@ -145,13 +145,16 @@ const plugin: {
             name: string;
         };
         readonly "constraint-validation/no-contradictions": NamedRuleModule<NoContradictionsMessageIds, []>;
-        readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag", [], unknown, TSESLint.RuleListener> & {
+        readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
+        readonly "constraint-validation/valid-discriminator": TSESLint.RuleModule<"invalidPlacement" | "missingTarget" | "nestedTarget" | "invalidSourceOperand" | "nonLocalTypeParameter" | "missingTargetField" | "optionalTargetField" | "nullableTargetField" | "nonStringLikeTargetField", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
@@ -207,13 +210,16 @@ export const rules: {
         name: string;
     };
     readonly "constraint-validation/no-contradictions": NamedRuleModule<NoContradictionsMessageIds, []>;
-    readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag", [], unknown, TSESLint.RuleListener> & {
+    readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/valid-discriminator": TSESLint.RuleModule<"invalidPlacement" | "missingTarget" | "nestedTarget" | "invalidSourceOperand" | "nonLocalTypeParameter" | "missingTargetField" | "optionalTargetField" | "nullableTargetField" | "nonStringLikeTargetField", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;

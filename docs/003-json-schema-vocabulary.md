@@ -150,6 +150,37 @@ FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-reg
 | `WriteOnlyAnnotation`    | `"writeOnly"`                                                                              |
 | `ConstConstraint`        | `"const"`                                                                                  |
 
+### 2.9 Declaration-Level Discriminator Specialization
+
+`@discriminator` is not represented as a custom JSON Schema keyword. It is declaration-level metadata that influences lowering of an object-like schema only at the targeted direct property.
+
+For a declaration like:
+
+```typescript
+/** @discriminator :kind T */
+interface TaggedValue<T> {
+  kind: string;
+  id: string;
+  url: string;
+}
+```
+
+if `T` resolves to the discriminator value `"customer"`, the generated schema is the ordinary object schema with only `kind` specialized to a one-element enum:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": { "enum": ["customer"] },
+    "id": { "type": "string" },
+    "url": { "type": "string" }
+  },
+  "required": ["kind", "id", "url"]
+}
+```
+
+The rest of the object schema remains unchanged. No special object kind, discriminator annotation key, or provenance marker is emitted. Nested path targets are out of scope for v1; the target must be a direct property, and the source operand must resolve to a single local type parameter.
+
 ---
 
 ## 3. Custom Vocabulary Keywords
@@ -318,6 +349,7 @@ FormSpec custom annotation keywords:
 - Extension-specific keywords (unless the extension registers a validator)
 
 The first three may be absent from purely TSDoc-authored forms because their built-in authoring surface is ChainDSL or mixed-authoring composition rather than TSDoc comments.
+The declaration-level discriminator specialization in §2.9 does not use a custom keyword and therefore does not appear in this list.
 
 Standard annotation keywords used by FormSpec:
 

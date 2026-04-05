@@ -136,6 +136,52 @@ describe("FormSpecPluginService", () => {
     }
   });
 
+  it("surfaces discriminator completions and hover through the plugin service", async () => {
+    const source = `
+      /**
+       * @discriminator :kind T
+       */
+      interface TaggedValue<T> {
+        kind: string;
+        label: string;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const completion = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "completion",
+      filePath: context.filePath,
+      offset: source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length,
+    });
+    expect(completion.kind).toBe("completion");
+    if (completion.kind === "completion") {
+      expect(completion.context.kind).toBe("argument");
+      if (completion.context.kind === "argument") {
+        expect(completion.context.semantic.argumentCompletions).toEqual(["T"]);
+      }
+    }
+
+    const hover = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "hover",
+      filePath: context.filePath,
+      offset: source.indexOf("@discriminator :kind ") + "@discriminator :kind ".length,
+    });
+    expect(hover.kind).toBe("hover");
+    if (hover.kind === "hover") {
+      expect(hover.hover?.markdown).toContain("@discriminator");
+      expect(hover.hover?.markdown).toContain("Local type parameters");
+    }
+  });
+
   it("writes a manifest and responds over IPC", async () => {
     const source = `
       class Foo {

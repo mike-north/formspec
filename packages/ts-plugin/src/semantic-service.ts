@@ -268,6 +268,7 @@ export class FormSpecSemanticService {
             checker: context.checker,
             ...(context.placement === null ? {} : { placement: context.placement }),
             ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
+            ...(context.declaration === null ? {} : { declaration: context.declaration }),
           })
         ),
       }))
@@ -286,6 +287,7 @@ export class FormSpecSemanticService {
             checker: context.checker,
             ...(context.placement === null ? {} : { placement: context.placement }),
             ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
+            ...(context.declaration === null ? {} : { declaration: context.declaration }),
           })
         ),
       }))
