@@ -17,14 +17,14 @@ pnpm run clean
 # Run all tests across packages
 pnpm run test
 
-# Run e2e coverage
+# Run e2e tests
 pnpm run test:e2e
 
 # Run tests in a specific package
 pnpm --filter @formspec/dsl run test
 
 # Run tests in watch mode (in a package directory)
-cd packages/dsl && pnpm run test -- --watch
+cd packages/dsl && pnpm exec vitest
 
 # Type checking
 pnpm run typecheck

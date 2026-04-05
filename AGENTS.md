@@ -21,7 +21,7 @@ Primary packages:
 - `@formspec/cli` — CLI for schema and IR generation
 - `@formspec/validator` — runtime JSON Schema validation
 - `@formspec/playground` — private browser playground app
-- `e2e` — end-to-end and benchmark workspace
+- `@formspec/e2e` — end-to-end and benchmark workspace (`/e2e`)
 
 ## Repo Commands
 
@@ -83,7 +83,7 @@ pnpm --filter @formspec/playground run dev
 
 ## Useful Files
 
-- [ARCHITECTURE.md](/Users/mnorth/Development/formspec/ARCHITECTURE.md)
-- [README.md](/Users/mnorth/Development/formspec/README.md)
-- [docs/002-tsdoc-grammar.md](/Users/mnorth/Development/formspec/docs/002-tsdoc-grammar.md)
-- [docs/004-tooling.md](/Users/mnorth/Development/formspec/docs/004-tooling.md)
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [README.md](./README.md)
+- [docs/002-tsdoc-grammar.md](./docs/002-tsdoc-grammar.md)
+- [docs/004-tooling.md](./docs/004-tooling.md)
