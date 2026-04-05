@@ -1,5 +1,5 @@
 /**
- * Completion provider for FormSpec JSDoc constraint tags.
+ * Completion provider for FormSpec JSDoc tags.
  *
  * Uses the shared tag registry from `@formspec/analysis` so completions stay
  * aligned with the same metadata that powers linting and build-time analysis.

@@ -67,7 +67,12 @@ function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema202
     diagnostics
   );
   if (diagnostics.length > 0) {
-    throw new Error("FormSpec validation failed while resolving method schema types.");
+    const diagnosticDetails = diagnostics
+      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+      .join("; ");
+    throw new Error(
+      `FormSpec validation failed while resolving method schema types. ${diagnosticDetails}`
+    );
   }
 
   const fieldProvenance = { surface: "tsdoc" as const, file: "", line: 0, column: 0 };

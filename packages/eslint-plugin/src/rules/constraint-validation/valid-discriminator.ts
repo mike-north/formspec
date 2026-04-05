@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
-import ts from "typescript";
+import * as ts from "typescript";
 import {
   createDeclarationVisitor,
   getDeclarationName,

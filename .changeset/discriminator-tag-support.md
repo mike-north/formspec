@@ -1,6 +1,7 @@
 ---
 "@formspec/analysis": minor
 "@formspec/build": minor
+"@formspec/cli": minor
 "@formspec/eslint-plugin": minor
 "formspec": minor
 "@formspec/language-server": minor

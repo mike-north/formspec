@@ -123,6 +123,15 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
         };
       `,
     },
+    {
+      code: `
+        /** @discriminator :kind $Tag */
+        interface TaggedValue<$Tag> {
+          kind: string;
+          id: string;
+        }
+      `,
+    },
   ],
   invalid: [
     {

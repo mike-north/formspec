@@ -237,7 +237,7 @@ function isNullableType(type: ts.Type): boolean {
 }
 
 function isIdentifierLikeTagOperand(argumentText: string): boolean {
-  return /^[A-Za-z_][A-Za-z0-9_$]*$/u.test(argumentText.trim());
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(argumentText.trim());
 }
 
 function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"] {
@@ -327,7 +327,7 @@ function buildDiscriminatorDiagnostics(
   const targetText = tag.target?.rawText ?? "";
   const target = tag.target;
 
-  if (target === null || target.kind !== "path") {
+  if (target?.kind !== "path") {
     diagnostics.push(
       createAnalysisDiagnostic(
         "INVALID_PATH_TARGET",

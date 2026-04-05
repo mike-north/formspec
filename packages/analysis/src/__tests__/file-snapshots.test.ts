@@ -147,6 +147,30 @@ describe("file-snapshots", () => {
     );
   });
 
+  it("accepts discriminator operands that start with $ when they reference local type parameters", () => {
+    const source = `
+      /** @discriminator :kind $Tag */
+      interface TaggedValue<$Tag> {
+        kind: string;
+        id: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-discriminator-dollar-type-parameter.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    expect(snapshot.diagnostics).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "INVALID_TYPE_PARAMETER_REFERENCE",
+        }),
+      ])
+    );
+  });
+
   it("uses one synthetic compiler pass for a mixed-tag canary comment and reuses the synthetic batch cache on repeated analysis", () => {
     const { checker, sourceFile } = createProgram(
       MIXED_TAG_CANARY_SOURCE,
