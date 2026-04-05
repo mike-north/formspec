@@ -145,4 +145,4 @@ The plugin validates tag names, argument syntax, target paths, and type compatib
 
 ## License
 
-UNLICENSED
+This package is part of the FormSpec monorepo and is released under the MIT License. See the repository root `LICENSE` file for details.

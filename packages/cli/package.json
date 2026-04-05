@@ -40,7 +40,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "formspec",
     "cli",

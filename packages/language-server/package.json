@@ -45,5 +45,5 @@
     "typescript",
     "json-schema"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

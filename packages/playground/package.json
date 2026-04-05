@@ -49,5 +49,5 @@
     "jsonschema",
     "jsonforms"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

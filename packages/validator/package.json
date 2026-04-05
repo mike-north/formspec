@@ -41,5 +41,5 @@
     "jsonschema",
     "cloudflare-workers"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

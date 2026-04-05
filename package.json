@@ -23,7 +23,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "packageManager": "pnpm@10.28.2",
   "devDependencies": {
     "@api-extractor-tools/declaration-file-normalizer": "^0.1.0-alpha.6",
