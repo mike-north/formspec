@@ -16,7 +16,8 @@
   "files": [
     "dist",
     "index.cjs",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",

@@ -18,4 +18,4 @@ pnpm --filter @formspec/e2e run benchmark:hybrid-tooling
 
 ## License
 
-This workspace is part of the FormSpec monorepo and is released under the MIT License. See the repository root `LICENSE` file for details.
+This workspace is part of the FormSpec monorepo and is released under the MIT License. See [LICENSE](./LICENSE) for details.

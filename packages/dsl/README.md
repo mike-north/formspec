@@ -61,4 +61,4 @@ const { jsonSchema, uiSchema } = buildFormSchemas(ProfileForm);
 
 ## License
 
-This package is part of the FormSpec monorepo and is released under the MIT License. See the repository root `LICENSE` file for details.
+This package is part of the FormSpec monorepo and is released under the MIT License. See [LICENSE](./LICENSE) for details.
