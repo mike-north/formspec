@@ -1,5 +1,14 @@
 # @formspec/build
 
+## 0.1.0-alpha.32
+
+### Minor Changes
+
+- [#218](https://github.com/mike-north/formspec/pull/218) [`d22aa48`](https://github.com/mike-north/formspec/commit/d22aa483d33735d20d793430d920c0503f56c1a6) Thanks [@mike-north](https://github.com/mike-north)! - Add a supported static build context API for compiler-backed export discovery,
+  and support generating schemas from resolved declarations, method parameters,
+  method return types, and other discovered TypeScript types without importing
+  `@formspec/build/internals`.
+
 ## 0.1.0-alpha.31
 
 ### Patch Changes
