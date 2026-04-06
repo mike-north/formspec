@@ -192,6 +192,7 @@ describe("method-signature schema generation", () => {
       $schema: "https://json-schema.org/draft/2020-12/schema",
       enum: ["ok", "error"],
     });
+    expect(schemas.jsonSchema.type).toBeUndefined();
     expect(schemas.uiSchema).toBeNull();
   });
 

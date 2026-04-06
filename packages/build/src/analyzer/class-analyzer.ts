@@ -154,6 +154,7 @@ export type AnalyzeTypeAliasToIRResult =
 export interface DeclarationRootInfo {
   readonly metadata?: ResolvedMetadata;
   readonly annotations: readonly AnnotationNode[];
+  readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
 }
 
 interface DiscriminatorDirective {
@@ -273,6 +274,7 @@ export function analyzeDeclarationRootInfo(
   return {
     ...(metadata !== undefined && { metadata }),
     annotations: docResult.annotations,
+    diagnostics: docResult.diagnostics,
   };
 }
 

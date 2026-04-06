@@ -22,9 +22,28 @@ export interface Envelope<T> {
 }
 
 /**
+ * @apiName payment_status
+ */
+export type PaymentStatus = "ok" | "error";
+
+/**
  * @displayName Aliased Submit Input
  */
 export type AliasedSubmitInput = SubmitInput;
+
+/**
+ * @minimum 1
+ */
+export type InvalidTaggedStatus = "ok" | "error";
+
+// eslint-disable-next-line @typescript-eslint/no-namespace -- merged export fixture for resolution tests
+export namespace MergedConfig {
+  export const version = 1;
+}
+
+export interface MergedConfig {
+  enabled: boolean;
+}
 
 export class PaymentService {
   submit(input: SubmitInput): SubmitResult {
@@ -47,7 +66,7 @@ export class PaymentService {
     };
   }
 
-  status(): "ok" | "error" {
+  status(): PaymentStatus {
     return "ok";
   }
 

@@ -213,6 +213,15 @@ interface RootTypeOverride {
   readonly annotations?: readonly AnnotationNode[];
 }
 
+function omitApiName(metadata: ResolvedMetadata | undefined): ResolvedMetadata | undefined {
+  if (metadata?.apiName === undefined) {
+    return metadata;
+  }
+
+  const { apiName: _apiName, ...rest } = metadata;
+  return Object.keys(rest).length > 0 ? rest : undefined;
+}
+
 function describeRootType(
   rootType: TypeNode,
   typeRegistry: Readonly<Record<string, TypeDefinition>>,
@@ -247,10 +256,11 @@ function toStandaloneJsonSchema(
   typeRegistry: Record<string, TypeDefinition>,
   options: StaticSchemaGenerationOptions | undefined
 ): JsonSchema2020 {
+  const syntheticFieldMetadata = omitApiName(root.metadata);
   const syntheticField: FieldNode = {
     kind: "field",
     name: "__result",
-    ...(root.metadata !== undefined && { metadata: root.metadata }),
+    ...(syntheticFieldMetadata !== undefined && { metadata: syntheticFieldMetadata }),
     type: root.type,
     required: true,
     constraints: [],
@@ -281,7 +291,11 @@ function toStandaloneJsonSchema(
     }
   );
 
-  const result = schema.properties?.["__result"] ?? { type: "object" };
+  const result = schema.properties?.["__result"];
+  if (result === undefined) {
+    throw new Error("FormSpec failed to extract the standalone schema root from the synthetic IR.");
+  }
+
   if (schema.$defs === undefined || Object.keys(schema.$defs).length === 0) {
     return {
       ...(schema.$schema !== undefined && { $schema: schema.$schema }),
@@ -449,6 +463,14 @@ export function generateSchemasFromDeclaration(
       options.extensionRegistry,
       options.metadata
     );
+    if (aliasRootInfo.diagnostics.length > 0) {
+      const diagnosticDetails = aliasRootInfo.diagnostics
+        .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+        .join("; ");
+      throw new Error(
+        `FormSpec validation failed while generating discovered type schemas. ${diagnosticDetails}`
+      );
+    }
 
     return generateSchemasFromResolvedType(
       {

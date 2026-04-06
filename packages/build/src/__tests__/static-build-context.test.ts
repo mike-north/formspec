@@ -68,6 +68,17 @@ describe("static build context", () => {
     expect(resolveModuleExportDeclaration(context, "submitPayment")).toBeNull();
   });
 
+  it("finds schema-source declarations on merged export symbols", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+
+    const declaration = resolveModuleExportDeclaration(context, "MergedConfig");
+    if (declaration === null) {
+      throw new Error("MergedConfig export not found");
+    }
+
+    expect(ts.isInterfaceDeclaration(declaration)).toBe(true);
+  });
+
   it("reuses one context for multiple declaration-driven generation operations", () => {
     const context = createStaticBuildContext(entryFixturePath);
     const inputDeclaration = resolveModuleExportDeclaration(context, "PaymentSubmitInput");
@@ -118,5 +129,20 @@ describe("static build context", () => {
     });
 
     expect(schemas.jsonSchema.title).toBe("Aliased Submit Input");
+  });
+
+  it("surfaces declaration diagnostics for fallback alias generation", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "InvalidTaggedStatus");
+    if (declaration === null) {
+      throw new Error("InvalidTaggedStatus export not found");
+    }
+
+    expect(() =>
+      generateSchemasFromDeclaration({
+        context,
+        declaration,
+      })
+    ).toThrow(/INVALID_TAG_PLACEMENT/);
   });
 });

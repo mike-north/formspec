@@ -117,6 +117,7 @@ export function resolveModuleExportDeclaration(
   context: StaticBuildContext,
   exportName = "default"
 ): ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | null {
-  const declaration = resolveModuleExport(context, exportName)?.declarations?.[0] ?? null;
-  return declaration !== null && isSchemaSourceDeclaration(declaration) ? declaration : null;
+  return (
+    resolveModuleExport(context, exportName)?.declarations?.find(isSchemaSourceDeclaration) ?? null
+  );
 }
