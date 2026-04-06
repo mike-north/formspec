@@ -24,6 +24,7 @@ import type {
   ObjectField,
   StaticEnumField,
   TextField,
+  MetadataPolicyInput,
 } from "@formspec/core";
 import type {
   // IR types
@@ -48,9 +49,16 @@ import type {
   PlaceholderAnnotationNode,
   PrimitiveTypeNode,
   Provenance,
+  ResolvedMetadata,
   TypeNode,
 } from "@formspec/core/internals";
-import { IR_VERSION } from "@formspec/core/internals";
+import { IR_VERSION, _getFormSpecMetadataPolicy } from "@formspec/core/internals";
+import {
+  getDeclarationMetadataPolicy,
+  makeMetadataContext,
+  normalizeMetadataPolicy,
+  resolveMetadata,
+} from "../metadata/index.js";
 
 // =============================================================================
 // CONSTANTS
@@ -92,11 +100,21 @@ function isField(el: FormElement): el is AnyField {
  * @param form - A form specification created via `formspec(...)` from `@formspec/dsl`
  * @returns The canonical intermediate representation
  */
-export function canonicalizeChainDSL(form: FormSpec<readonly FormElement[]>): FormIR {
+export interface CanonicalizeChainDSLOptions {
+  readonly metadata?: MetadataPolicyInput;
+}
+
+export function canonicalizeChainDSL(
+  form: FormSpec<readonly FormElement[]>,
+  options?: CanonicalizeChainDSLOptions
+): FormIR {
+  const metadataPolicy = normalizeMetadataPolicy(
+    options?.metadata ?? _getFormSpecMetadataPolicy(form)
+  );
   return {
     kind: "form-ir",
     irVersion: IR_VERSION,
-    elements: canonicalizeElements(form.elements),
+    elements: canonicalizeElements(form.elements, metadataPolicy),
     rootAnnotations: [],
     typeRegistry: {},
     provenance: CHAIN_DSL_PROVENANCE,
@@ -110,22 +128,28 @@ export function canonicalizeChainDSL(form: FormSpec<readonly FormElement[]>): Fo
 /**
  * Canonicalizes an array of chain DSL form elements into IR elements.
  */
-function canonicalizeElements(elements: readonly FormElement[]): FormIRElement[] {
-  return elements.map(canonicalizeElement);
+function canonicalizeElements(
+  elements: readonly FormElement[],
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FormIRElement[] {
+  return elements.map((element) => canonicalizeElement(element, metadataPolicy));
 }
 
 /**
  * Dispatches a single form element to its specific canonicalization function.
  */
-function canonicalizeElement(element: FormElement): FormIRElement {
+function canonicalizeElement(
+  element: FormElement,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FormIRElement {
   if (isField(element)) {
-    return canonicalizeField(element);
+    return canonicalizeField(element, metadataPolicy);
   }
   if (isGroup(element)) {
-    return canonicalizeGroup(element);
+    return canonicalizeGroup(element, metadataPolicy);
   }
   if (isConditional(element)) {
-    return canonicalizeConditional(element);
+    return canonicalizeConditional(element, metadataPolicy);
   }
   const _exhaustive: never = element;
   throw new Error(`Unknown element type: ${JSON.stringify(_exhaustive)}`);
@@ -138,24 +162,27 @@ function canonicalizeElement(element: FormElement): FormIRElement {
 /**
  * Dispatches a field element to its type-specific canonicalization function.
  */
-function canonicalizeField(field: AnyField): FieldNode {
+function canonicalizeField(
+  field: AnyField,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   switch (field._field) {
     case "text":
-      return canonicalizeTextField(field);
+      return canonicalizeTextField(field, metadataPolicy);
     case "number":
-      return canonicalizeNumberField(field);
+      return canonicalizeNumberField(field, metadataPolicy);
     case "boolean":
-      return canonicalizeBooleanField(field);
+      return canonicalizeBooleanField(field, metadataPolicy);
     case "enum":
-      return canonicalizeStaticEnumField(field);
+      return canonicalizeStaticEnumField(field, metadataPolicy);
     case "dynamic_enum":
-      return canonicalizeDynamicEnumField(field);
+      return canonicalizeDynamicEnumField(field, metadataPolicy);
     case "dynamic_schema":
-      return canonicalizeDynamicSchemaField(field);
+      return canonicalizeDynamicSchemaField(field, metadataPolicy);
     case "array":
-      return canonicalizeArrayField(field);
+      return canonicalizeArrayField(field, metadataPolicy);
     case "object":
-      return canonicalizeObjectField(field);
+      return canonicalizeObjectField(field, metadataPolicy);
     default: {
       const _exhaustive: never = field;
       throw new Error(`Unknown field type: ${JSON.stringify(_exhaustive)}`);
@@ -167,7 +194,10 @@ function canonicalizeField(field: AnyField): FieldNode {
 // SPECIFIC FIELD TYPE CANONICALIZERS
 // =============================================================================
 
-function canonicalizeTextField(field: TextField<string>): FieldNode {
+function canonicalizeTextField(
+  field: TextField<string>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   const type: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "string" };
   const constraints: ConstraintNode[] = [];
 
@@ -203,14 +233,18 @@ function canonicalizeTextField(field: TextField<string>): FieldNode {
 
   return buildFieldNode(
     field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
     type,
     field.required,
-    buildAnnotations(field.label, field.placeholder),
+    buildAnnotations(getExplicitDisplayName(field), field.placeholder),
     constraints
   );
 }
 
-function canonicalizeNumberField(field: NumberField<string>): FieldNode {
+function canonicalizeNumberField(
+  field: NumberField<string>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   const type: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "number" };
   const constraints: ConstraintNode[] = [];
 
@@ -246,20 +280,31 @@ function canonicalizeNumberField(field: NumberField<string>): FieldNode {
 
   return buildFieldNode(
     field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
     type,
     field.required,
-    buildAnnotations(field.label),
+    buildAnnotations(getExplicitDisplayName(field)),
     constraints
   );
 }
 
-function canonicalizeBooleanField(field: BooleanField<string>): FieldNode {
+function canonicalizeBooleanField(
+  field: BooleanField<string>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   const type: PrimitiveTypeNode = { kind: "primitive", primitiveKind: "boolean" };
-  return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
+  return buildFieldNode(
+    field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
+    type,
+    field.required,
+    buildAnnotations(getExplicitDisplayName(field))
+  );
 }
 
 function canonicalizeStaticEnumField(
-  field: StaticEnumField<string, readonly EnumOptionValue[]>
+  field: StaticEnumField<string, readonly EnumOptionValue[]>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
 ): FieldNode {
   const members: EnumMember[] = field.options.map((opt) => {
     if (typeof opt === "string") {
@@ -270,32 +315,59 @@ function canonicalizeStaticEnumField(
   });
 
   const type: EnumTypeNode = { kind: "enum", members };
-  return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
+  return buildFieldNode(
+    field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
+    type,
+    field.required,
+    buildAnnotations(getExplicitDisplayName(field))
+  );
 }
 
-function canonicalizeDynamicEnumField(field: DynamicEnumField<string, string>): FieldNode {
+function canonicalizeDynamicEnumField(
+  field: DynamicEnumField<string, string>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   const type: DynamicTypeNode = {
     kind: "dynamic",
     dynamicKind: "enum",
     sourceKey: field.source,
     parameterFields: field.params ? [...field.params] : [],
   };
-  return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
+  return buildFieldNode(
+    field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
+    type,
+    field.required,
+    buildAnnotations(getExplicitDisplayName(field))
+  );
 }
 
-function canonicalizeDynamicSchemaField(field: DynamicSchemaField<string>): FieldNode {
+function canonicalizeDynamicSchemaField(
+  field: DynamicSchemaField<string>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   const type: DynamicTypeNode = {
     kind: "dynamic",
     dynamicKind: "schema",
     sourceKey: field.schemaSource,
     parameterFields: [],
   };
-  return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
+  return buildFieldNode(
+    field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
+    type,
+    field.required,
+    buildAnnotations(getExplicitDisplayName(field))
+  );
 }
 
-function canonicalizeArrayField(field: ArrayField<string, readonly FormElement[]>): FieldNode {
+function canonicalizeArrayField(
+  field: ArrayField<string, readonly FormElement[]>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
   // Array items form an object type from the sub-elements
-  const itemProperties = buildObjectProperties(field.items);
+  const itemProperties = buildObjectProperties(field.items, metadataPolicy);
   const itemsType: ObjectTypeNode = {
     kind: "object",
     properties: itemProperties,
@@ -325,38 +397,52 @@ function canonicalizeArrayField(field: ArrayField<string, readonly FormElement[]
 
   return buildFieldNode(
     field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
     type,
     field.required,
-    buildAnnotations(field.label),
+    buildAnnotations(getExplicitDisplayName(field)),
     constraints
   );
 }
 
-function canonicalizeObjectField(field: ObjectField<string, readonly FormElement[]>): FieldNode {
-  const properties = buildObjectProperties(field.properties);
+function canonicalizeObjectField(
+  field: ObjectField<string, readonly FormElement[]>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): FieldNode {
+  const properties = buildObjectProperties(field.properties, metadataPolicy);
   const type: ObjectTypeNode = {
     kind: "object",
     properties,
     additionalProperties: true,
   };
-  return buildFieldNode(field.name, type, field.required, buildAnnotations(field.label));
+  return buildFieldNode(
+    field.name,
+    resolveFieldMetadata(field.name, field, metadataPolicy),
+    type,
+    field.required,
+    buildAnnotations(getExplicitDisplayName(field))
+  );
 }
 
 // =============================================================================
 // LAYOUT CANONICALIZATION
 // =============================================================================
 
-function canonicalizeGroup(g: Group<readonly FormElement[]>): GroupLayoutNode {
+function canonicalizeGroup(
+  g: Group<readonly FormElement[]>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): GroupLayoutNode {
   return {
     kind: "group",
     label: g.label,
-    elements: canonicalizeElements(g.elements),
+    elements: canonicalizeElements(g.elements, metadataPolicy),
     provenance: CHAIN_DSL_PROVENANCE,
   };
 }
 
 function canonicalizeConditional(
-  c: Conditional<string, unknown, readonly FormElement[]>
+  c: Conditional<string, unknown, readonly FormElement[]>,
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
 ): ConditionalLayoutNode {
   return {
     kind: "conditional",
@@ -364,7 +450,7 @@ function canonicalizeConditional(
     // Conditional values from the chain DSL are JSON-serializable primitives
     // (strings, numbers, booleans) produced by the `is()` predicate helper.
     value: assertJsonValue(c.value),
-    elements: canonicalizeElements(c.elements),
+    elements: canonicalizeElements(c.elements, metadataPolicy),
     provenance: CHAIN_DSL_PROVENANCE,
   };
 }
@@ -402,6 +488,7 @@ function assertJsonValue(v: unknown): JsonValue {
  */
 function buildFieldNode(
   name: string,
+  metadata: ResolvedMetadata | undefined,
   type: TypeNode,
   required: boolean | undefined,
   annotations: AnnotationNode[],
@@ -410,6 +497,7 @@ function buildFieldNode(
   return {
     kind: "field",
     name,
+    ...(metadata !== undefined && { metadata }),
     type,
     required: required === true,
     constraints,
@@ -464,15 +552,17 @@ function buildAnnotations(label?: string, placeholder?: string): AnnotationNode[
  */
 function buildObjectProperties(
   elements: readonly FormElement[],
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>,
   insideConditional = false
 ): ObjectProperty[] {
   const properties: ObjectProperty[] = [];
 
   for (const el of elements) {
     if (isField(el)) {
-      const fieldNode = canonicalizeField(el);
+      const fieldNode = canonicalizeField(el, metadataPolicy);
       properties.push({
         name: fieldNode.name,
+        ...(fieldNode.metadata !== undefined && { metadata: fieldNode.metadata }),
         type: fieldNode.type,
         // Fields inside a conditional branch are always optional in the
         // data schema, regardless of their `required` flag — the condition
@@ -485,13 +575,43 @@ function buildObjectProperties(
     } else if (isGroup(el)) {
       // Groups inside object/array items contribute their fields by flattening.
       // Groups do not affect optionality — pass through the current state.
-      properties.push(...buildObjectProperties(el.elements, insideConditional));
+      properties.push(...buildObjectProperties(el.elements, metadataPolicy, insideConditional));
     } else if (isConditional(el)) {
       // Conditionals inside object/array items contribute their fields by
       // flattening, but all fields inside are forced optional.
-      properties.push(...buildObjectProperties(el.elements, true));
+      properties.push(...buildObjectProperties(el.elements, metadataPolicy, true));
     }
   }
 
   return properties;
+}
+
+function getExplicitDisplayName(field: {
+  readonly label?: string;
+  readonly displayName?: string;
+}): string | undefined {
+  if (field.label !== undefined && field.displayName !== undefined) {
+    throw new Error('Chain DSL fields cannot specify both "label" and "displayName".');
+  }
+  return field.displayName ?? field.label;
+}
+
+function resolveFieldMetadata(
+  logicalName: string,
+  field: {
+    readonly apiName?: string;
+    readonly label?: string;
+    readonly displayName?: string;
+  },
+  metadataPolicy: ReturnType<typeof normalizeMetadataPolicy>
+): ResolvedMetadata | undefined {
+  const displayName = getExplicitDisplayName(field);
+  return resolveMetadata(
+    {
+      ...(field.apiName !== undefined && { apiName: field.apiName }),
+      ...(displayName !== undefined && { displayName }),
+    },
+    getDeclarationMetadataPolicy(metadataPolicy, "field"),
+    makeMetadataContext("chain-dsl", "field", logicalName)
+  );
 }

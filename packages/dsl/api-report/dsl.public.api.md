@@ -9,6 +9,8 @@ export type AnyField = TextField<string> | NumberField<string> | BooleanField<st
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "array";
     readonly items: Items;
     readonly label?: string;
@@ -21,6 +23,8 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 // @public
 export interface BooleanField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "boolean";
     readonly label?: string;
     readonly name: N;
@@ -44,6 +48,14 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
 }
 
 // @public
+export function createFieldBuilders<const Policy extends MetadataPolicyInput | undefined = undefined>(): FieldBuilderNamespace<Policy>;
+
+// @public
+export function createFormSpecFactory<const Policy extends MetadataPolicyInput | undefined = undefined>(options?: {
+    readonly metadata?: Policy;
+}): FormSpecFactory<Policy>;
+
+// @public
 export interface DataSourceRegistry {
 }
 
@@ -54,6 +66,8 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_enum";
     readonly label?: string;
     readonly name: N;
@@ -65,6 +79,8 @@ export interface DynamicEnumField<N extends string, Source extends string> {
 
 // @public
 export interface DynamicSchemaField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
@@ -118,18 +134,21 @@ infer First,
 ] ? ExtractNonConditionalFields<First> | ExtractNonConditionalFieldsFromArray<Rest> : never;
 
 // @public
-export const field: {
-    text: <const N extends string>(name: N, config?: Omit<TextField<N>, "_type" | "_field" | "name">) => TextField<N>;
-    number: <const N extends string>(name: N, config?: Omit<NumberField<N>, "_type" | "_field" | "name">) => NumberField<N>;
-    boolean: <const N extends string>(name: N, config?: Omit<BooleanField<N>, "_type" | "_field" | "name">) => BooleanField<N>;
-    enum: <const N extends string, const O extends readonly EnumOptionValue[]>(name: N, options: O, config?: Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">) => StaticEnumField<N, O>;
-    dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, config?: Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">) => DynamicEnumField<N, Source>;
-    dynamicSchema: <const N extends string>(name: N, schemaSource: string, config?: Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">) => DynamicSchemaField<N>;
-    array: <const N extends string, const Items extends readonly FormElement[]>(name: N, ...items: Items) => ArrayField<N, Items>;
-    arrayWithConfig: <const N extends string, const Items extends readonly FormElement[]>(name: N, config: Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">, ...items: Items) => ArrayField<N, Items>;
-    object: <const N extends string, const Properties extends readonly FormElement[]>(name: N, ...properties: Properties) => ObjectField<N, Properties>;
-    objectWithConfig: <const N extends string, const Properties extends readonly FormElement[]>(name: N, config: Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">, ...properties: Properties) => ObjectField<N, Properties>;
-};
+export const field: FieldBuilderNamespace<undefined>;
+
+// @public
+export interface FieldBuilderNamespace<Policy extends MetadataPolicyInput | undefined = undefined> {
+    readonly array: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(name: N, ...args: ArrayBuilderArgs<N, Items, Policy>) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
+    readonly arrayWithConfig: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(name: N, config: ArrayFieldConfig<N, Items, Policy>, ...items: Items) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
+    readonly boolean: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<BooleanFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, BooleanField<N>>;
+    readonly dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, ...args: MaybeRequiredConfigArg<DynamicEnumFieldConfig<N, Source, Policy>, Policy>) => FieldBuilderElement<Policy, DynamicEnumField<N, Source>>;
+    readonly dynamicSchema: <const N extends string>(name: N, schemaSource: string, ...args: MaybeRequiredConfigArg<DynamicSchemaFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, DynamicSchemaField<N>>;
+    readonly enum: <const N extends string, const O extends readonly EnumOptionValue[]>(name: N, options: O, ...args: MaybeRequiredConfigArg<StaticEnumFieldConfig<N, O, Policy>, Policy>) => FieldBuilderElement<Policy, StaticEnumField<N, O>>;
+    readonly number: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<NumberFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, NumberField<N>>;
+    readonly object: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(name: N, ...args: ObjectBuilderArgs<N, Properties, Policy>) => FieldBuilderElement<Policy, ObjectField<N, Properties>>;
+    readonly objectWithConfig: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(name: N, config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties) => FieldBuilderElement<Policy, ObjectField<N, Properties>>;
+    readonly text: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<TextFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, TextField<N>>;
+}
 
 // @public
 export type FlattenIntersection<T> = {
@@ -146,6 +165,16 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 
 // @public
 export function formspec<const Elements extends readonly FormElement[]>(...elements: Elements): FormSpec<Elements>;
+
+// @public
+export interface FormSpecFactory<Policy extends MetadataPolicyInput | undefined = undefined> {
+    readonly field: FieldBuilderNamespace<Policy>;
+    readonly formspec: <const Elements extends readonly FieldBuilderElement<Policy>[]>(...elements: Elements) => FormSpec<Elements>;
+    readonly formspecWithValidation: <const Elements extends readonly FieldBuilderElement<Policy>[]>(options: FormSpecOptions, ...elements: Elements) => FormSpec<Elements>;
+    readonly group: <const Elements extends readonly FieldBuilderElement<Policy>[]>(label: string, ...elements: Elements) => FieldBuilderElement<Policy, Group<Elements>>;
+    readonly is: typeof is;
+    readonly when: <const K extends string, const V, const Elements extends readonly FieldBuilderElement<Policy>[]>(predicate: Predicate<K, V>, ...elements: Elements) => FieldBuilderElement<Policy, Conditional<K, V, Elements>>;
+}
 
 // @public
 export interface FormSpecOptions {
@@ -183,6 +212,8 @@ export function logValidationIssues(result: ValidationResult, formName?: string)
 
 // @public
 export interface NumberField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "number";
     readonly label?: string;
     readonly max?: number;
@@ -195,6 +226,8 @@ export interface NumberField<N extends string> {
 
 // @public
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "object";
     readonly label?: string;
     readonly name: N;
@@ -208,6 +241,8 @@ export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "enum";
     readonly label?: string;
     readonly name: N;
@@ -218,6 +253,8 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 
 // @public
 export interface TextField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "text";
     readonly label?: string;
     readonly maxLength?: number;

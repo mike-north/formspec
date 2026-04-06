@@ -15,6 +15,33 @@ export type {
 } from "./data-source.js";
 
 export type {
+  MetadataSource,
+  MetadataDeclarationKind,
+  MetadataAuthoringSurface,
+  MetadataInferenceContext,
+  MetadataInferenceFn,
+  MetadataPluralizationContext,
+  MetadataPluralizationFn,
+  ResolvedScalarMetadata,
+  ResolvedMetadata,
+  MetadataResolutionMode,
+  MetadataPluralizationDisabledPolicyInput,
+  MetadataPluralizationRequireExplicitPolicyInput,
+  MetadataPluralizationInferIfMissingPolicyInput,
+  MetadataPluralizationPolicyInput,
+  MetadataValueDisabledPolicyInput,
+  MetadataValueRequireExplicitPolicyInput,
+  MetadataValueInferIfMissingPolicyInput,
+  MetadataValuePolicyInput,
+  DeclarationMetadataPolicyInput,
+  MetadataPolicyInput,
+  NormalizedMetadataPluralizationPolicy,
+  NormalizedMetadataValuePolicy,
+  NormalizedDeclarationMetadataPolicy,
+  NormalizedMetadataPolicy,
+} from "./metadata.js";
+
+export type {
   TextField,
   NumberField,
   BooleanField,
@@ -33,6 +60,11 @@ export type {
 } from "./elements.js";
 
 export type { EqualsPredicate, Predicate } from "./predicate.js";
+export {
+  _FORMSPEC_METADATA_POLICY,
+  _attachFormSpecMetadataPolicy,
+  _getFormSpecMetadataPolicy,
+} from "./form-spec-internals.js";
 
 export type { BuiltinConstraintName } from "./constraint-definitions.js";
 export {

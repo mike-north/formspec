@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { formspec } from "@formspec/dsl";
+import { field, formspec } from "@formspec/dsl";
 import { buildMixedAuthoringSchemas } from "../generators/mixed-authoring.js";
 import { createNumericExtensionRegistry } from "./fixtures/example-numeric-extension.js";
 import {
@@ -168,6 +168,73 @@ describe("buildMixedAuthoringSchemas", () => {
         title: "Invoice Amount",
         "x-formspec-decimal": true,
         "x-formspec-max-decimal-places": 2,
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("keeps explicit static display names over inferred overlay metadata", () => {
+    const filePath = writeTempSource(`
+      export interface AddressModel {
+        /** @displayName Postal Code */
+        postalCode: string;
+      }
+    `);
+    try {
+      const result = buildMixedAuthoringSchemas({
+        filePath,
+        typeName: "AddressModel",
+        overlays: formspec(field.text("postalCode")),
+        metadata: {
+          field: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Overlay ${logicalName}`,
+            },
+          },
+        },
+      });
+
+      expect(result.uiSchema.elements[0]).toEqual({
+        type: "Control",
+        scope: "#/properties/postalCode",
+        label: "Postal Code",
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("lets explicit overlay metadata rename fields without breaking logical matching", () => {
+    const filePath = writeTempSource(`
+      export interface AddressModel {
+        postalCode: string;
+      }
+    `);
+
+    try {
+      const result = buildMixedAuthoringSchemas({
+        filePath,
+        typeName: "AddressModel",
+        overlays: formspec(
+          field.text("postalCode", {
+            apiName: "postal_code",
+            displayName: "Postal Code",
+          })
+        ),
+      });
+
+      expect(result.jsonSchema.properties).toEqual({
+        postal_code: {
+          type: "string",
+          title: "Postal Code",
+        },
+      });
+      expect(result.uiSchema.elements[0]).toEqual({
+        type: "Control",
+        scope: "#/properties/postal_code",
+        label: "Postal Code",
       });
     } finally {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });

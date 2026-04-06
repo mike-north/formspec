@@ -38,6 +38,41 @@ describe("@discriminator schema generation", () => {
         "}",
         "",
         "export interface Organization {",
+        '  kind: "organization";',
+        "  id: string;",
+        "}",
+        "",
+        "/** @apiName api_named_account */",
+        "export interface ApiNamedAccount {",
+        "  id: string;",
+        "}",
+        "",
+        "export interface InferredAccountCarrier {",
+        "  id: string;",
+        "}",
+        "",
+        "export type ObjectAliasCarrier = {",
+        '  kind: "object_alias_carrier";',
+        "  id: string;",
+        "};",
+        "",
+        "export type IntersectionAliasCarrier = {",
+        '  kind: "intersection_alias_carrier";',
+        "  id: string;",
+        "} & {",
+        "  extra?: string;",
+        "}",
+        "",
+        "export interface UnionIdentityCarrier {",
+        '  kind: "customer" | "organization";',
+        "  id: string;",
+        "}",
+        "",
+        "export interface GenericCarrier<T> {",
+        "  id: T;",
+        "}",
+        "",
+        "export interface MissingCarrier {",
         "  id: string;",
         "}",
       ].join("\n")
@@ -55,7 +90,7 @@ describe("@discriminator schema generation", () => {
     fs.writeFileSync(
       fixturePath,
       [
-        'import type { Customer, Organization } from "./names.js";',
+        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier } from "./names.js";',
         'import type { ReExportedCustomer, ReExportedOrganization } from "./aliases.js";',
         "",
         "/** @discriminator :kind T */",
@@ -82,6 +117,12 @@ describe("@discriminator schema generation", () => {
         "  fromAlias: TaggedAlias<ReExportedCustomer>;",
         '  literal: TaggedValue<"manual_literal">;',
         "  fromReExport: TaggedValue<ReExportedOrganization>;",
+        "  fromApiName: TaggedValue<ApiNamedAccount>;",
+        "  fromInferred: TaggedValue<InferredAccountCarrier>;",
+        "  fromObjectAlias: TaggedValue<ObjectAliasCarrier>;",
+        "  fromIntersectionAlias: TaggedValue<IntersectionAliasCarrier>;",
+        "  fromGenericString: TaggedValue<GenericCarrier<string>>;",
+        "  fromGenericNumber: TaggedValue<GenericCarrier<number>>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -108,6 +149,10 @@ describe("@discriminator schema generation", () => {
         '  bad: TaggedValue<"customer" | "organization">;',
         "}",
         "",
+        "export interface UnionIdentityWrapper {",
+        "  bad: TaggedValue<UnionIdentityCarrier>;",
+        "}",
+        "",
         "/** @discriminator :kind T */",
         "export interface NumberKindTaggedValue<T> {",
         "  kind: number;",
@@ -126,6 +171,10 @@ describe("@discriminator schema generation", () => {
         "",
         "export interface UnknownTypeParameterWrapper {",
         "  bad: UnknownTypeParameterTaggedValue<Customer>;",
+        "}",
+        "",
+        "export interface MissingCarrierWrapper {",
+        "  bad: TaggedValue<MissingCarrier>;",
         "}",
       ].join("\n")
     );
@@ -152,10 +201,19 @@ describe("@discriminator schema generation", () => {
     }
   });
 
-  it("specializes discriminator fields to singleton enums for interface, class, alias, literal, and re-export sources", () => {
+  it("specializes discriminator fields to singleton enums for explicit, literal-property, inferred, object-alias, re-export, and generic-instantiation sources", () => {
     const result = generateSchemas({
       filePath: fixturePath,
       typeName: "ValidWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
     });
 
     const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
@@ -196,6 +254,12 @@ describe("@discriminator schema generation", () => {
     expectResolvedKindEnum("fromAlias", "customer_record");
     expectResolvedKindEnum("literal", "manual_literal");
     expectResolvedKindEnum("fromReExport", "organization");
+    expectResolvedKindEnum("fromApiName", "api_named_account");
+    expectResolvedKindEnum("fromInferred", "inferred_account_carrier");
+    expectResolvedKindEnum("fromObjectAlias", "object_alias_carrier");
+    expectResolvedKindEnum("fromIntersectionAlias", "intersection_alias_carrier");
+    expectResolvedKindEnum("fromGenericString", "generic_carrier__string");
+    expectResolvedKindEnum("fromGenericNumber", "generic_carrier__number");
   });
 
   it("rejects optional discriminator fields", () => {
@@ -225,6 +289,15 @@ describe("@discriminator schema generation", () => {
     ).toThrow(/INVALID_TAG_ARGUMENT/);
   });
 
+  it("rejects union-valued identity properties in v1", () => {
+    expect(() =>
+      generateSchemas({
+        filePath: fixturePath,
+        typeName: "UnionIdentityWrapper",
+      })
+    ).toThrow(/INVALID_TAG_ARGUMENT/);
+  });
+
   it("rejects discriminator targets that are not string-like", () => {
     expect(() =>
       generateSchemas({
@@ -241,5 +314,14 @@ describe("@discriminator schema generation", () => {
         typeName: "UnknownTypeParameterWrapper",
       })
     ).toThrow(/INVALID_TAG_ARGUMENT[\s\S]*U/);
+  });
+
+  it("rejects discriminator sources when no JSON-facing value can be derived", () => {
+    expect(() =>
+      generateSchemas({
+        filePath: fixturePath,
+        typeName: "MissingCarrierWrapper",
+      })
+    ).toThrow(/INVALID_TAG_ARGUMENT/);
   });
 });

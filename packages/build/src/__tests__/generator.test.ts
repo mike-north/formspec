@@ -153,6 +153,29 @@ describe("generateJsonSchema", () => {
       "x-formspec-schemaSource": "stripe-payment-form",
     });
   });
+
+  it("throws when two fields resolve to the same serialized name", () => {
+    const form = formspec(
+      field.text("firstName", { apiName: "name" }),
+      field.text("lastName", { apiName: "name" })
+    );
+
+    expect(() => generateJsonSchema(form)).toThrow(/Serialized name collision/);
+  });
+
+  it("throws when metadata policy requires explicit names that are missing", () => {
+    const form = formspec(field.text("name"));
+
+    expect(() =>
+      buildFormSchemas(form, {
+        metadata: {
+          field: {
+            apiName: { mode: "require-explicit" },
+          },
+        },
+      })
+    ).toThrow(/requires explicit apiName/);
+  });
 });
 
 describe("generateUiSchema", () => {
@@ -209,6 +232,15 @@ describe("generateUiSchema", () => {
         },
       },
     });
+  });
+
+  it("throws when UI scopes would collide after apiName resolution", () => {
+    const form = formspec(
+      field.text("firstName", { apiName: "name", label: "First Name" }),
+      field.text("lastName", { apiName: "name", label: "Last Name" })
+    );
+
+    expect(() => generateUiSchema(form)).toThrow(/Serialized name collision/);
   });
 });
 

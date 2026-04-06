@@ -30,7 +30,10 @@
  */
 
 // Field builders
-export { field } from "./field.js";
+export { field, createFieldBuilders } from "./field.js";
+export type { FieldBuilderNamespace } from "./field.js";
+export { createFormSpecFactory } from "./factory.js";
+export type { FormSpecFactory } from "./factory.js";
 
 // Predicate builders
 export { is } from "./predicate.js";

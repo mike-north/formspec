@@ -24,6 +24,8 @@ import type {
   RecordTypeNode,
   TypeDefinition,
   JsonValue,
+  ResolvedMetadata,
+  ResolvedScalarMetadata,
 } from "@formspec/core/internals";
 import {
   extractJSDocConstraintNodes,
@@ -33,6 +35,13 @@ import {
 } from "./jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import type { MetadataPolicyInput } from "@formspec/core";
+import {
+  getDeclarationMetadataPolicy,
+  makeMetadataContext,
+  normalizeMetadataPolicy,
+  resolveMetadata,
+} from "../metadata/index.js";
 
 // =============================================================================
 // TYPE GUARDS
@@ -117,6 +126,8 @@ export interface FieldLayoutMetadata {
 export interface IRClassAnalysis {
   /** Type name */
   readonly name: string;
+  /** Root-level metadata for the analyzed declaration. */
+  readonly metadata?: ResolvedMetadata;
   /** Analyzed fields as canonical IR FieldNodes */
   readonly fields: readonly FieldNode[];
   /** Layout metadata per field (same order/length as `fields`). */
@@ -146,6 +157,92 @@ interface DiscriminatorDirective {
   readonly provenance: Provenance;
 }
 
+type AnalyzerMetadataPolicy = ReturnType<typeof normalizeMetadataPolicy>;
+
+function makeExplicitScalarMetadata(value: string | undefined): ResolvedScalarMetadata | undefined {
+  return value === undefined || value === ""
+    ? undefined
+    : { value, source: "explicit" as const };
+}
+
+function extractExplicitMetadata(node: ts.Node): ResolvedMetadata | undefined {
+  let apiName: string | undefined;
+  let displayName: string | undefined;
+  let apiNamePlural: string | undefined;
+  let displayNamePlural: string | undefined;
+
+  for (const tag of getLeadingParsedTags(node)) {
+    const value = tag.argumentText.trim();
+    if (value === "") {
+      continue;
+    }
+
+    if (tag.normalizedTagName === "apiName") {
+      if (tag.target === null) {
+        apiName ??= value;
+      } else if (tag.target.kind === "variant") {
+        if (tag.target.rawText === "singular") {
+          apiName ??= value;
+        } else if (tag.target.rawText === "plural") {
+          apiNamePlural ??= value;
+        }
+      }
+      continue;
+    }
+
+    if (tag.normalizedTagName === "displayName") {
+      if (tag.target === null) {
+        displayName ??= value;
+      } else if (tag.target.kind === "variant") {
+        if (tag.target.rawText === "singular") {
+          displayName ??= value;
+        } else if (tag.target.rawText === "plural") {
+          displayNamePlural ??= value;
+        }
+      }
+    }
+  }
+
+  const resolvedApiName = makeExplicitScalarMetadata(apiName);
+  const resolvedDisplayName = makeExplicitScalarMetadata(displayName);
+  const resolvedApiNamePlural = makeExplicitScalarMetadata(apiNamePlural);
+  const resolvedDisplayNamePlural = makeExplicitScalarMetadata(displayNamePlural);
+  const metadata: ResolvedMetadata = {
+    ...(resolvedApiName !== undefined && { apiName: resolvedApiName }),
+    ...(resolvedDisplayName !== undefined && { displayName: resolvedDisplayName }),
+    ...(resolvedApiNamePlural !== undefined && { apiNamePlural: resolvedApiNamePlural }),
+    ...(resolvedDisplayNamePlural !== undefined && {
+      displayNamePlural: resolvedDisplayNamePlural,
+    }),
+  };
+
+  return Object.keys(metadata).length === 0 ? undefined : metadata;
+}
+
+function resolveNodeMetadata(
+  metadataPolicy: AnalyzerMetadataPolicy,
+  declarationKind: "type" | "field" | "method",
+  logicalName: string,
+  node: ts.Node,
+  buildContext?: unknown
+): ResolvedMetadata | undefined {
+  const explicit = extractExplicitMetadata(node);
+  return resolveMetadata(
+    {
+      ...(explicit?.apiName !== undefined && { apiName: explicit.apiName.value }),
+      ...(explicit?.displayName !== undefined && { displayName: explicit.displayName.value }),
+      ...(explicit?.apiNamePlural !== undefined && {
+        apiNamePlural: explicit.apiNamePlural.value,
+      }),
+      ...(explicit?.displayNamePlural !== undefined && {
+        displayNamePlural: explicit.displayNamePlural.value,
+      }),
+    },
+    getDeclarationMetadataPolicy(metadataPolicy, declarationKind),
+    makeMetadataContext("tsdoc", declarationKind, logicalName, buildContext)
+  );
+}
+
 // =============================================================================
 // IR ANALYSIS — PUBLIC API
 // =============================================================================
@@ -157,8 +254,10 @@ export function analyzeClassToIR(
   classDecl: ts.ClassDeclaration,
   checker: ts.TypeChecker,
   file = "",
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
+  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
   const name = classDecl.name?.text ?? "AnonymousClass";
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
@@ -186,6 +285,7 @@ export function analyzeClassToIR(
         visiting,
         diagnostics,
         classType,
+        normalizedMetadataPolicy,
         extensionRegistry
       );
       if (fieldNode) {
@@ -211,11 +311,19 @@ export function analyzeClassToIR(
     classType,
     checker,
     file,
-    diagnostics
+    diagnostics,
+    normalizedMetadataPolicy
   );
+  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, classDecl, {
+    checker,
+    declaration: classDecl,
+    subjectType: classType,
+    hostType: classType,
+  });
 
   return {
     name,
+    ...(metadata !== undefined && { metadata }),
     fields: specializedFields,
     fieldLayouts,
     typeRegistry,
@@ -233,8 +341,10 @@ export function analyzeInterfaceToIR(
   interfaceDecl: ts.InterfaceDeclaration,
   checker: ts.TypeChecker,
   file = "",
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
+  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -259,6 +369,7 @@ export function analyzeInterfaceToIR(
         visiting,
         diagnostics,
         interfaceType,
+        normalizedMetadataPolicy,
         extensionRegistry
       );
       if (fieldNode) {
@@ -273,11 +384,20 @@ export function analyzeInterfaceToIR(
     interfaceType,
     checker,
     file,
-    diagnostics
+    diagnostics,
+    normalizedMetadataPolicy
   );
   const fieldLayouts: FieldLayoutMetadata[] = specializedFields.map(() => ({}));
+  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, interfaceDecl, {
+    checker,
+    declaration: interfaceDecl,
+    subjectType: interfaceType,
+    hostType: interfaceType,
+  });
+
   return {
     name,
+    ...(metadata !== undefined && { metadata }),
     fields: specializedFields,
     fieldLayouts,
     typeRegistry,
@@ -295,7 +415,8 @@ export function analyzeTypeAliasToIR(
   typeAlias: ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
   file = "",
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
 ): AnalyzeTypeAliasToIRResult {
   if (!ts.isTypeLiteralNode(typeAlias.type)) {
     const sourceFile = typeAlias.getSourceFile();
@@ -308,6 +429,8 @@ export function analyzeTypeAliasToIR(
     };
   }
 
+  const typeLiteral = typeAlias.type;
+  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -322,7 +445,7 @@ export function analyzeTypeAliasToIR(
   diagnostics.push(...typeAliasDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
-  for (const member of typeAlias.type.members) {
+  for (const member of typeLiteral.members) {
     if (ts.isPropertySignature(member)) {
       const fieldNode = analyzeInterfacePropertyToIR(
         member,
@@ -332,6 +455,7 @@ export function analyzeTypeAliasToIR(
         visiting,
         diagnostics,
         aliasType,
+        normalizedMetadataPolicy,
         extensionRegistry
       );
       if (fieldNode) {
@@ -346,13 +470,21 @@ export function analyzeTypeAliasToIR(
     aliasType,
     checker,
     file,
-    diagnostics
+    diagnostics,
+    normalizedMetadataPolicy
   );
+  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, typeAlias, {
+    checker,
+    declaration: typeAlias,
+    subjectType: aliasType,
+    hostType: aliasType,
+  });
 
   return {
     ok: true,
     analysis: {
       name,
+      ...(metadata !== undefined && { metadata }),
       fields: specializedFields,
       fieldLayouts: specializedFields.map(() => ({})),
       typeRegistry,
@@ -373,7 +505,11 @@ type DiscriminatorDeclarationNode =
   | ts.InterfaceDeclaration
   | ts.TypeAliasDeclaration;
 
-type DiscriminatorPropertyNode = ts.PropertyDeclaration | ts.PropertySignature;
+interface ResolvedDiscriminatorProperty {
+  readonly declaration: ts.Declaration | undefined;
+  readonly type: ts.Type;
+  readonly optional: boolean;
+}
 
 function makeAnalysisDiagnostic(
   code: string,
@@ -413,49 +549,33 @@ function getLeadingParsedTags(node: ts.Node): readonly ParsedCommentTag[] {
   return parsedTags;
 }
 
-function findDiscriminatorProperty(
+function resolveDiscriminatorProperty(
   node: DiscriminatorDeclarationNode,
+  checker: ts.TypeChecker,
   fieldName: string
-): DiscriminatorPropertyNode | null {
-  if (ts.isClassDeclaration(node)) {
-    for (const member of node.members) {
-      if (
-        ts.isPropertyDeclaration(member) &&
-        ts.isIdentifier(member.name) &&
-        member.name.text === fieldName
-      ) {
-        return member;
-      }
-    }
+): ResolvedDiscriminatorProperty | null {
+  const subjectType = checker.getTypeAtLocation(node);
+  const propertySymbol = subjectType.getProperty(fieldName);
+  if (propertySymbol === undefined) {
     return null;
   }
 
-  if (ts.isInterfaceDeclaration(node)) {
-    for (const member of node.members) {
-      if (
-        ts.isPropertySignature(member) &&
-        ts.isIdentifier(member.name) &&
-        member.name.text === fieldName
-      ) {
-        return member;
-      }
-    }
-    return null;
-  }
+  const declaration =
+    propertySymbol.valueDeclaration ??
+    propertySymbol.declarations?.find(
+      (candidate) => ts.isPropertyDeclaration(candidate) || ts.isPropertySignature(candidate)
+    ) ??
+    propertySymbol.declarations?.[0];
 
-  if (ts.isTypeLiteralNode(node.type)) {
-    for (const member of node.type.members) {
-      if (
-        ts.isPropertySignature(member) &&
-        ts.isIdentifier(member.name) &&
-        member.name.text === fieldName
-      ) {
-        return member;
-      }
-    }
-  }
-
-  return null;
+  return {
+    declaration,
+    type: checker.getTypeOfSymbolAtLocation(propertySymbol, declaration ?? node),
+    optional:
+      !!(propertySymbol.flags & ts.SymbolFlags.Optional) ||
+      (declaration !== undefined &&
+        "questionToken" in declaration &&
+        declaration.questionToken !== undefined),
+  };
 }
 
 function isLocalTypeParameterName(
@@ -586,8 +706,8 @@ function validateDiscriminatorDirective(
     return null;
   }
 
-  const propertyDecl = findDiscriminatorProperty(node, directive.fieldName);
-  if (propertyDecl === null) {
+  const property = resolveDiscriminatorProperty(node, checker, directive.fieldName);
+  if (property === null) {
     diagnostics.push(
       makeAnalysisDiagnostic(
         "UNKNOWN_PATH_TARGET",
@@ -598,38 +718,37 @@ function validateDiscriminatorDirective(
     return null;
   }
 
-  if (propertyDecl.questionToken !== undefined) {
+  if (property.optional) {
     diagnostics.push(
       makeAnalysisDiagnostic(
         "TYPE_MISMATCH",
         `Discriminator field "${directive.fieldName}" must be required; optional discriminator fields are not supported.`,
         directive.provenance,
-        [provenanceForNode(propertyDecl, file)]
+        property.declaration !== undefined ? [provenanceForNode(property.declaration, file)] : []
       )
     );
     return null;
   }
 
-  const propertyType = checker.getTypeAtLocation(propertyDecl);
-  if (isNullishSemanticType(propertyType)) {
+  if (isNullishSemanticType(property.type)) {
     diagnostics.push(
       makeAnalysisDiagnostic(
         "TYPE_MISMATCH",
         `Discriminator field "${directive.fieldName}" must not be nullable.`,
         directive.provenance,
-        [provenanceForNode(propertyDecl, file)]
+        property.declaration !== undefined ? [provenanceForNode(property.declaration, file)] : []
       )
     );
     return null;
   }
 
-  if (!isStringLikeSemanticType(propertyType)) {
+  if (!isStringLikeSemanticType(property.type)) {
     diagnostics.push(
       makeAnalysisDiagnostic(
         "TYPE_MISMATCH",
         `Discriminator field "${directive.fieldName}" must be string-like.`,
         directive.provenance,
-        [provenanceForNode(propertyDecl, file)]
+        property.declaration !== undefined ? [provenanceForNode(property.declaration, file)] : []
       )
     );
     return null;
@@ -663,33 +782,75 @@ function getConcreteTypeArgumentForDiscriminator(
   return localTypeParameter === undefined ? null : checker.getTypeAtLocation(localTypeParameter);
 }
 
-function extractDeclarationApiName(node: ts.Declaration): string | null {
-  for (const tag of getLeadingParsedTags(node)) {
-    if (tag.normalizedTagName !== "apiName") {
-      continue;
-    }
+function resolveLiteralDiscriminatorPropertyValue(
+  boundType: ts.Type,
+  fieldName: string,
+  checker: ts.TypeChecker,
+  provenance: Provenance,
+  diagnostics: ConstraintSemanticDiagnostic[]
+): string | null | undefined {
+  const propertySymbol = boundType.getProperty(fieldName);
+  if (propertySymbol === undefined) {
+    return undefined;
+  }
 
-    if (tag.target === null && tag.argumentText.trim() !== "") {
-      return tag.argumentText.trim();
-    }
+  const declaration = propertySymbol.valueDeclaration ?? propertySymbol.declarations?.[0];
+  const anchorNode =
+    declaration ??
+    boundType.symbol?.declarations?.[0] ??
+    resolveNamedDiscriminatorDeclaration(boundType, checker);
+  if (anchorNode === undefined || anchorNode === null) {
+    return undefined;
+  }
+  const propertyType = checker.getTypeOfSymbolAtLocation(
+    propertySymbol,
+    anchorNode
+  );
 
-    if (tag.target?.kind === "variant" && tag.target.rawText === "singular") {
-      const value = tag.argumentText.trim();
-      if (value !== "") {
-        return value;
-      }
+  if (propertyType.isStringLiteral()) {
+    return propertyType.value;
+  }
+
+  if (propertyType.isUnion()) {
+    const nonNullMembers = propertyType.types.filter(
+      (member) => !(member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
+    );
+    if (nonNullMembers.length > 0 && nonNullMembers.every((member) => member.isStringLiteral())) {
+      diagnostics.push(
+        makeAnalysisDiagnostic(
+          "INVALID_TAG_ARGUMENT",
+          "Discriminator resolution for union-valued identity properties is out of scope for v1.",
+          provenance
+        )
+      );
+      return null;
     }
   }
 
-  return null;
+  return undefined;
 }
 
-function inferJsonFacingName(name: string): string {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
-    .replace(/[-\s]+/g, "_")
-    .toLowerCase();
+function resolveDiscriminatorApiName(
+  boundType: ts.Type,
+  checker: ts.TypeChecker,
+  metadataPolicy: AnalyzerMetadataPolicy
+): ResolvedScalarMetadata | undefined {
+  const declaration = resolveNamedDiscriminatorDeclaration(boundType, checker);
+  if (declaration === null) {
+    return undefined;
+  }
+
+  const metadata = resolveNodeMetadata(
+    metadataPolicy,
+    "type",
+    getDiscriminatorLogicalName(boundType, declaration, checker),
+    declaration,
+    {
+    checker,
+    declaration,
+    subjectType: boundType,
+  });
+  return metadata?.apiName;
 }
 
 function resolveNamedDiscriminatorDeclaration(
@@ -735,9 +896,11 @@ function resolveNamedDiscriminatorDeclaration(
 
 function resolveDiscriminatorValue(
   boundType: ts.Type | null,
+  fieldName: string,
   checker: ts.TypeChecker,
   provenance: Provenance,
-  diagnostics: ConstraintSemanticDiagnostic[]
+  diagnostics: ConstraintSemanticDiagnostic[],
+  metadataPolicy: AnalyzerMetadataPolicy
 ): string | null {
   if (boundType === null) {
     diagnostics.push(
@@ -770,11 +933,23 @@ function resolveDiscriminatorValue(
     }
   }
 
-  const declaration = resolveNamedDiscriminatorDeclaration(boundType, checker);
-  if (declaration !== null) {
-    return (
-      extractDeclarationApiName(declaration) ?? inferJsonFacingName(getDeclarationName(declaration))
-    );
+  const literalIdentityValue = resolveLiteralDiscriminatorPropertyValue(
+    boundType,
+    fieldName,
+    checker,
+    provenance,
+    diagnostics
+  );
+  if (literalIdentityValue !== undefined) {
+    return literalIdentityValue;
+  }
+
+  const apiName = resolveDiscriminatorApiName(boundType, checker, metadataPolicy);
+  if (apiName?.source === "explicit") {
+    return apiName.value;
+  }
+  if (apiName?.source === "inferred") {
+    return apiName.value;
   }
 
   diagnostics.push(
@@ -800,13 +975,34 @@ function getDeclarationName(node: ts.Declaration): string {
   return "anonymous";
 }
 
+function getResolvedTypeArguments(type: ts.Type): readonly ts.Type[] {
+  return (
+    (isTypeReference(type) ? type.typeArguments : undefined) ??
+    (type as ts.Type & { aliasTypeArguments?: readonly ts.Type[] }).aliasTypeArguments ??
+    []
+  );
+}
+
+function getDiscriminatorLogicalName(
+  type: ts.Type,
+  declaration: ts.Declaration,
+  checker: ts.TypeChecker
+): string {
+  const baseName = getDeclarationName(declaration);
+  const typeArguments = getResolvedTypeArguments(type);
+  return typeArguments.length === 0
+    ? baseName
+    : buildInstantiatedReferenceName(baseName, typeArguments, checker);
+}
+
 function applyDeclarationDiscriminatorToFields(
   fields: readonly FieldNode[],
   node: DiscriminatorDeclarationNode,
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   file: string,
-  diagnostics: ConstraintSemanticDiagnostic[]
+  diagnostics: ConstraintSemanticDiagnostic[],
+  metadataPolicy: AnalyzerMetadataPolicy
 ): FieldNode[] {
   const directive = validateDiscriminatorDirective(node, checker, file, diagnostics);
   if (directive === null) {
@@ -820,9 +1016,11 @@ function applyDeclarationDiscriminatorToFields(
       checker,
       directive.typeParameterName
     ),
+    directive.fieldName,
     checker,
     directive.provenance,
-    diagnostics
+    diagnostics,
+    metadataPolicy
   );
   if (discriminatorValue === null) {
     return [...fields];
@@ -865,6 +1063,7 @@ function extractReferenceTypeArguments(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode: ts.Node | undefined,
+  metadataPolicy: AnalyzerMetadataPolicy,
   extensionRegistry: ExtensionRegistry | undefined,
   diagnostics: ConstraintSemanticDiagnostic[] | undefined
 ): readonly { readonly tsType: ts.Type; readonly typeNode: TypeNode }[] {
@@ -889,6 +1088,7 @@ function extractReferenceTypeArguments(
         typeRegistry,
         visiting,
         argumentNode,
+        metadataPolicy,
         extensionRegistry,
         diagnostics
       ),
@@ -902,7 +1102,8 @@ function applyDiscriminatorToObjectProperties(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   file: string,
-  diagnostics: ConstraintSemanticDiagnostic[]
+  diagnostics: ConstraintSemanticDiagnostic[],
+  metadataPolicy: AnalyzerMetadataPolicy
 ): readonly ObjectProperty[] {
   const directive = validateDiscriminatorDirective(node, checker, file, diagnostics);
   if (directive === null) {
@@ -916,9 +1117,11 @@ function applyDiscriminatorToObjectProperties(
       checker,
       directive.typeParameterName
     ),
+    directive.fieldName,
     checker,
     directive.provenance,
-    diagnostics
+    diagnostics,
+    metadataPolicy
   );
   if (discriminatorValue === null) {
     return properties;
@@ -952,6 +1155,7 @@ function analyzeFieldToIR(
   visiting: Set<ts.Type>,
   diagnostics: ConstraintSemanticDiagnostic[],
   hostType: ts.Type,
+  metadataPolicy: AnalyzerMetadataPolicy,
   extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
@@ -971,6 +1175,7 @@ function analyzeFieldToIR(
     typeRegistry,
     visiting,
     prop,
+    metadataPolicy,
     extensionRegistry,
     diagnostics
   );
@@ -1007,10 +1212,17 @@ function analyzeFieldToIR(
   }
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
+  const metadata = resolveNodeMetadata(metadataPolicy, "field", name, prop, {
+    checker,
+    declaration: prop,
+    subjectType: tsType,
+    hostType,
+  });
 
   return {
     kind: "field",
     name,
+    ...(metadata !== undefined && { metadata }),
     type,
     required: !optional,
     constraints,
@@ -1030,6 +1242,7 @@ function analyzeInterfacePropertyToIR(
   visiting: Set<ts.Type>,
   diagnostics: ConstraintSemanticDiagnostic[],
   hostType: ts.Type,
+  metadataPolicy: AnalyzerMetadataPolicy,
   extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
   if (!ts.isIdentifier(prop.name)) {
@@ -1049,6 +1262,7 @@ function analyzeInterfacePropertyToIR(
     typeRegistry,
     visiting,
     prop,
+    metadataPolicy,
     extensionRegistry,
     diagnostics
   );
@@ -1079,10 +1293,17 @@ function analyzeInterfacePropertyToIR(
   annotations.push(...docResult.annotations);
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
+  const metadata = resolveNodeMetadata(metadataPolicy, "field", name, prop, {
+    checker,
+    declaration: prop,
+    subjectType: tsType,
+    hostType,
+  });
 
   return {
     kind: "field",
     name,
+    ...(metadata !== undefined && { metadata }),
     type,
     required: !optional,
     constraints,
@@ -1300,6 +1521,7 @@ export function resolveTypeNode(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1314,6 +1536,7 @@ export function resolveTypeNode(
     typeRegistry,
     visiting,
     sourceNode,
+    metadataPolicy,
     extensionRegistry,
     diagnostics
   );
@@ -1367,6 +1590,7 @@ export function resolveTypeNode(
       typeRegistry,
       visiting,
       sourceNode,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     );
@@ -1381,6 +1605,7 @@ export function resolveTypeNode(
       typeRegistry,
       visiting,
       sourceNode,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     );
@@ -1395,6 +1620,7 @@ export function resolveTypeNode(
       typeRegistry,
       visiting,
       sourceNode,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     );
@@ -1411,6 +1637,7 @@ function tryResolveNamedPrimitiveAlias(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode | null {
@@ -1447,14 +1674,21 @@ function tryResolveNamedPrimitiveAlias(
       file,
       makeParseOptions(extensionRegistry)
     );
+    const metadata = resolveNodeMetadata(metadataPolicy, "type", aliasName, aliasDecl, {
+      checker,
+      declaration: aliasDecl,
+      subjectType: aliasType,
+    });
     typeRegistry[aliasName] = {
       name: aliasName,
+      ...(metadata !== undefined && { metadata }),
       type: resolveAliasedPrimitiveTarget(
         aliasType,
         checker,
         file,
         typeRegistry,
         visiting,
+        metadataPolicy,
         extensionRegistry,
         diagnostics
       ),
@@ -1520,6 +1754,7 @@ function resolveAliasedPrimitiveTarget(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1531,6 +1766,7 @@ function resolveAliasedPrimitiveTarget(
       file,
       typeRegistry,
       visiting,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     );
@@ -1543,6 +1779,7 @@ function resolveAliasedPrimitiveTarget(
     typeRegistry,
     visiting,
     undefined,
+    metadataPolicy,
     extensionRegistry,
     diagnostics
   );
@@ -1555,6 +1792,7 @@ function resolveUnionType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1598,8 +1836,17 @@ function resolveUnionType(
     const annotations = namedDecl
       ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
       : undefined;
+    const metadata =
+      namedDecl !== undefined
+        ? resolveNodeMetadata(metadataPolicy, "type", typeName, namedDecl, {
+            checker,
+            declaration: namedDecl,
+            subjectType: type,
+          })
+        : undefined;
     typeRegistry[typeName] = {
       name: typeName,
+      ...(metadata !== undefined && { metadata }),
       type: result,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
       provenance: provenanceForDeclaration(namedDecl ?? sourceNode, file),
@@ -1667,6 +1914,7 @@ function resolveUnionType(
       typeRegistry,
       visiting,
       nonNullMembers[0].sourceNode ?? sourceNode,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     );
@@ -1687,6 +1935,7 @@ function resolveUnionType(
       typeRegistry,
       visiting,
       memberSourceNode ?? sourceNode,
+      metadataPolicy,
       extensionRegistry,
       diagnostics
     )
@@ -1704,6 +1953,7 @@ function resolveArrayType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1719,6 +1969,7 @@ function resolveArrayType(
         typeRegistry,
         visiting,
         elementSourceNode,
+        metadataPolicy,
         extensionRegistry,
         diagnostics
       )
@@ -1740,6 +1991,7 @@ function tryResolveRecordType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): RecordTypeNode | null {
@@ -1759,6 +2011,7 @@ function tryResolveRecordType(
     typeRegistry,
     visiting,
     undefined,
+    metadataPolicy,
     extensionRegistry,
     diagnostics
   );
@@ -1791,6 +2044,36 @@ function typeNodeContainsReference(type: TypeNode, targetName: string): boolean 
   }
 }
 
+function shouldEmitResolvedObjectProperty(
+  property: ts.Symbol,
+  declaration: ts.Declaration | undefined
+): boolean {
+  if (property.name.startsWith("__@")) {
+    return false;
+  }
+
+  if (
+    declaration !== undefined &&
+    "name" in declaration &&
+    declaration.name !== undefined
+  ) {
+    const name = declaration.name as ts.PropertyName;
+    if (ts.isComputedPropertyName(name) || ts.isPrivateIdentifier(name)) {
+      return false;
+    }
+
+    if (
+      !ts.isIdentifier(name) &&
+      !ts.isStringLiteral(name) &&
+      !ts.isNumericLiteral(name)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function resolveObjectType(
   type: ts.ObjectType,
   checker: ts.TypeChecker,
@@ -1798,6 +2081,7 @@ function resolveObjectType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
+  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1812,6 +2096,7 @@ function resolveObjectType(
     typeRegistry,
     visiting,
     sourceNode,
+    metadataPolicy,
     extensionRegistry,
     collectedDiagnostics
   );
@@ -1888,6 +2173,7 @@ function resolveObjectType(
     file,
     typeRegistry,
     visiting,
+    metadataPolicy,
     extensionRegistry,
     collectedDiagnostics
   );
@@ -1902,8 +2188,17 @@ function resolveObjectType(
       const annotations = namedDecl
         ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
         : undefined;
+      const metadata =
+        namedDecl !== undefined
+          ? resolveNodeMetadata(metadataPolicy, "type", registryTypeName, namedDecl, {
+              checker,
+              declaration: namedDecl,
+              subjectType: type,
+            })
+          : undefined;
       typeRegistry[registryTypeName] = {
         name: registryTypeName,
+        ...(metadata !== undefined && { metadata }),
         type: recordNode,
         ...(annotations !== undefined && annotations.length > 0 && { annotations }),
         provenance: provenanceForDeclaration(namedDecl, file),
@@ -1926,6 +2221,7 @@ function resolveObjectType(
     file,
     typeRegistry,
     visiting,
+    metadataPolicy,
     collectedDiagnostics,
     extensionRegistry
   );
@@ -1933,6 +2229,7 @@ function resolveObjectType(
   for (const prop of type.getProperties()) {
     const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
     if (!declaration) continue;
+    if (!shouldEmitResolvedObjectProperty(prop, declaration)) continue;
 
     const propType = checker.getTypeOfSymbolAtLocation(prop, declaration);
     const optional = !!(prop.flags & ts.SymbolFlags.Optional);
@@ -1943,6 +2240,7 @@ function resolveObjectType(
       typeRegistry,
       visiting,
       declaration,
+      metadataPolicy,
       extensionRegistry,
       collectedDiagnostics
     );
@@ -1952,6 +2250,7 @@ function resolveObjectType(
 
     properties.push({
       name: prop.name,
+      ...(fieldNodeInfo?.metadata !== undefined && { metadata: fieldNodeInfo.metadata }),
       type: propTypeNode,
       optional,
       constraints: fieldNodeInfo?.constraints ?? [],
@@ -1975,7 +2274,8 @@ function resolveObjectType(
             type,
             checker,
             file,
-            collectedDiagnostics
+            collectedDiagnostics,
+            metadataPolicy
           )
         : properties,
     additionalProperties: true,
@@ -1986,8 +2286,17 @@ function resolveObjectType(
     const annotations = namedDecl
       ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
       : undefined;
+    const metadata =
+      namedDecl !== undefined
+        ? resolveNodeMetadata(metadataPolicy, "type", registryTypeName, namedDecl, {
+            checker,
+            declaration: namedDecl,
+            subjectType: type,
+          })
+        : undefined;
     typeRegistry[registryTypeName] = {
       name: registryTypeName,
+      ...(metadata !== undefined && { metadata }),
       type: objectNode,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
       provenance: provenanceForDeclaration(namedDecl, file),
@@ -2007,6 +2316,7 @@ function resolveObjectType(
 // =============================================================================
 
 interface FieldNodeInfo {
+  readonly metadata?: ResolvedMetadata;
   readonly constraints: readonly ConstraintNode[];
   readonly annotations: readonly AnnotationNode[];
   readonly provenance: Provenance;
@@ -2022,6 +2332,7 @@ function getNamedTypeFieldNodeInfoMap(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  metadataPolicy: AnalyzerMetadataPolicy,
   diagnostics: ConstraintSemanticDiagnostic[],
   extensionRegistry?: ExtensionRegistry
 ): Map<string, FieldNodeInfo> | null {
@@ -2048,10 +2359,12 @@ function getNamedTypeFieldNodeInfoMap(
             visiting,
             diagnostics,
             hostType,
+            metadataPolicy,
             extensionRegistry
           );
           if (fieldNode) {
             map.set(fieldNode.name, {
+              ...(fieldNode.metadata !== undefined && { metadata: fieldNode.metadata }),
               constraints: [...fieldNode.constraints],
               annotations: [...fieldNode.annotations],
               provenance: fieldNode.provenance,
@@ -2071,6 +2384,7 @@ function getNamedTypeFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
+        metadataPolicy,
         checker.getTypeAtLocation(interfaceDecl),
         diagnostics,
         extensionRegistry
@@ -2086,6 +2400,7 @@ function getNamedTypeFieldNodeInfoMap(
         file,
         typeRegistry,
         visiting,
+        metadataPolicy,
         checker.getTypeAtLocation(typeAliasDecl),
         diagnostics,
         extensionRegistry
@@ -2175,6 +2490,7 @@ function buildFieldNodeInfoMap(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
+  metadataPolicy: AnalyzerMetadataPolicy,
   hostType: ts.Type,
   diagnostics: ConstraintSemanticDiagnostic[],
   extensionRegistry?: ExtensionRegistry
@@ -2190,10 +2506,12 @@ function buildFieldNodeInfoMap(
         visiting,
         diagnostics,
         hostType,
+        metadataPolicy,
         extensionRegistry
       );
       if (fieldNode) {
         map.set(fieldNode.name, {
+          ...(fieldNode.metadata !== undefined && { metadata: fieldNode.metadata }),
           constraints: [...fieldNode.constraints],
           annotations: [...fieldNode.annotations],
           provenance: fieldNode.provenance,
@@ -2255,6 +2573,7 @@ function extractTypeAliasConstraintNodes(
     {},
     new Set<ts.Type>(),
     aliasDecl.type,
+    undefined,
     extensionRegistry
   );
   const constraints = extractJSDocConstraintNodes(

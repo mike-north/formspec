@@ -14,6 +14,7 @@ import {
   type IRClassAnalysis,
 } from "./class-analyzer.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import type { MetadataPolicyInput } from "@formspec/core";
 
 /**
  * Result of creating a TypeScript program for analysis.
@@ -208,10 +209,17 @@ export function findTypeAliasByName(
 export function analyzeNamedTypeToIR(
   filePath: string,
   typeName: string,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
   const ctx = createProgramContext(filePath);
-  return analyzeNamedTypeToIRFromProgramContext(ctx, filePath, typeName, extensionRegistry);
+  return analyzeNamedTypeToIRFromProgramContext(
+    ctx,
+    filePath,
+    typeName,
+    extensionRegistry,
+    metadataPolicy
+  );
 }
 
 /**
@@ -221,18 +229,31 @@ export function analyzeNamedTypeToIRFromProgramContext(
   ctx: ProgramContext,
   filePath: string,
   typeName: string,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
   const analysisFilePath = path.resolve(filePath);
 
   const classDecl = findClassByName(ctx.sourceFile, typeName);
   if (classDecl !== null) {
-    return analyzeClassToIR(classDecl, ctx.checker, analysisFilePath, extensionRegistry);
+    return analyzeClassToIR(
+      classDecl,
+      ctx.checker,
+      analysisFilePath,
+      extensionRegistry,
+      metadataPolicy
+    );
   }
 
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
   if (interfaceDecl !== null) {
-    return analyzeInterfaceToIR(interfaceDecl, ctx.checker, analysisFilePath, extensionRegistry);
+    return analyzeInterfaceToIR(
+      interfaceDecl,
+      ctx.checker,
+      analysisFilePath,
+      extensionRegistry,
+      metadataPolicy
+    );
   }
 
   const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
@@ -241,7 +262,8 @@ export function analyzeNamedTypeToIRFromProgramContext(
       typeAlias,
       ctx.checker,
       analysisFilePath,
-      extensionRegistry
+      extensionRegistry,
+      metadataPolicy
     );
     if (result.ok) {
       return result.analysis;

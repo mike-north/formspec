@@ -21,6 +21,7 @@ import { ExtensionDefinition } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
 import { Group } from '@formspec/core';
+import type { MetadataPolicyInput } from '@formspec/core';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
@@ -38,7 +39,8 @@ export { BooleanField }
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
 
 // @public
-export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+}
 
 // @public
 export function buildMixedAuthoringSchemas(options: BuildMixedAuthoringSchemasOptions): MixedAuthoringSchemas;
@@ -158,6 +160,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
+    readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
 
@@ -184,7 +187,12 @@ export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
 }
 
 // @public
-export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateUiSchemaOptions): UISchema;
+
+// @public
+export interface GenerateUiSchemaOptions {
+    readonly metadata?: MetadataPolicyInput | undefined;
+}
 
 export { Group }
 
@@ -340,6 +348,7 @@ export { StaticEnumField }
 // @public
 export interface StaticSchemaGenerationOptions {
     readonly extensionRegistry?: ExtensionRegistry | undefined;
+    readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
 

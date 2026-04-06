@@ -25,6 +25,10 @@ export interface TextField<N extends string> {
   readonly name: N;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Placeholder text shown when field is empty */
   readonly placeholder?: string;
   /** Whether this field is required for form submission */
@@ -53,6 +57,10 @@ export interface NumberField<N extends string> {
   readonly name: N;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Minimum allowed value */
   readonly min?: number;
   /** Maximum allowed value */
@@ -79,6 +87,10 @@ export interface BooleanField<N extends string> {
   readonly name: N;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
 }
@@ -125,6 +137,10 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
   readonly options: O;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
 }
@@ -148,6 +164,10 @@ export interface DynamicEnumField<N extends string, Source extends string> {
   readonly source: Source;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
   /** Field names whose values are needed to fetch options */
@@ -172,6 +192,10 @@ export interface DynamicSchemaField<N extends string> {
   readonly schemaSource: string;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
   /** Field names whose values are needed to configure the schema */
@@ -199,6 +223,10 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
   readonly items: Items;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
   /** Minimum number of items required */
@@ -228,6 +256,10 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
   readonly properties: Properties;
   /** Display label for the field */
   readonly label?: string;
+  /** Canonical display name for the field. Alias of `label` in the chain DSL. */
+  readonly displayName?: string;
+  /** JSON-facing serialized name for the field. */
+  readonly apiName?: string;
   /** Whether this field is required for form submission */
   readonly required?: boolean;
 }
