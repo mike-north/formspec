@@ -89,6 +89,138 @@ export interface UserRegistration {
 }
 ```
 
+## Metadata Configuration
+
+FormSpec treats logical names, JSON-facing names, and human-facing labels as separate concepts:
+
+- logical identity: the field or type name in TypeScript and IR
+- `apiName`: the serialized JSON-facing name
+- `displayName`: the human-facing label or title
+
+By default, inference is disabled. Existing field and type names are preserved unless you provide explicit metadata or opt into inference with a metadata policy.
+
+In the Chain DSL, `label` is a backward-compatible alias for `displayName`. They mean the same thing, and a field config should use one or the other, not both.
+
+### Build-Time Metadata Policy
+
+Static generation APIs in `@formspec/build` accept a `metadata` option. Use it to require explicit names, infer missing names, and configure pluralization/inflection for type-level names.
+
+```ts
+import { generateSchemas, type MetadataPolicyInput } from "@formspec/build";
+
+const startCase = (value: string) =>
+  value.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
+
+const toSnakeCase = (value: string) =>
+  value
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase();
+
+const pluralize = (value: string) => (value.endsWith("s") ? value : `${value}s`);
+
+const metadata: MetadataPolicyInput = {
+  field: {
+    apiName: { mode: "require-explicit" },
+    displayName: {
+      mode: "infer-if-missing",
+      infer: ({ logicalName }) => startCase(logicalName),
+    },
+  },
+  type: {
+    apiName: {
+      mode: "infer-if-missing",
+      infer: ({ logicalName }) => toSnakeCase(logicalName),
+      pluralization: {
+        mode: "infer-if-missing",
+        inflect: ({ singular }) => pluralize(singular),
+      },
+    },
+    displayName: {
+      mode: "infer-if-missing",
+      infer: ({ logicalName }) => startCase(logicalName),
+      pluralization: {
+        mode: "infer-if-missing",
+        inflect: ({ singular }) => pluralize(singular),
+      },
+    },
+  },
+};
+
+const { jsonSchema, uiSchema } = generateSchemas({
+  filePath: "./src/forms.ts",
+  typeName: "UserRegistration",
+  metadata,
+});
+```
+
+Inference callbacks receive contextual information such as:
+
+- `surface`: `"tsdoc"` or `"chain-dsl"`
+- `declarationKind`: `"type"`, `"field"`, or `"method"`
+- `logicalName`: the pre-serialization identifier
+
+Pluralization callbacks additionally receive the resolved singular value as `singular`.
+
+### Configured Chain DSL Factories
+
+Use `createFormSpecFactory()` from `@formspec/dsl` when you want one metadata policy to drive both authoring-time types and schema generation for DSL-authored forms.
+
+```ts
+import { createFormSpecFactory } from "@formspec/dsl";
+
+const toSnakeCase = (value: string) =>
+  value
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase();
+
+const startCase = (value: string) =>
+  value.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
+
+const { field, formspec } = createFormSpecFactory({
+  metadata: {
+    field: {
+      apiName: { mode: "require-explicit" },
+      displayName: {
+        mode: "infer-if-missing",
+        infer: ({ logicalName }) => startCase(logicalName),
+      },
+    },
+    type: {
+      apiName: {
+        mode: "infer-if-missing",
+        infer: ({ logicalName }) => toSnakeCase(logicalName),
+      },
+    },
+  },
+});
+
+const ContactForm = formspec(
+  field.text("firstName", {
+    apiName: "first_name",
+    required: true,
+  }),
+  field.text("lastName", {
+    apiName: "last_name",
+    displayName: "Surname",
+  })
+);
+```
+
+When a policy uses `mode: "require-explicit"`, the configured field builders reflect that at compile time. In the example above, omitting `apiName` from a field config is a type error.
+
+Equivalent metadata can also be expressed on the TSDoc surface:
+
+```ts
+interface ContactForm {
+  /** @apiName first_name @displayName First Name */
+  firstName: string;
+}
+```
+
+The intended model is the same across both surfaces. The difference is authoring syntax, not naming semantics.
+
 ## Generated Schema Extensions
 
 Generated schemas may include vendor keywords such as:
