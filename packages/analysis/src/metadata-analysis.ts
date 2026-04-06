@@ -1,4 +1,5 @@
 import type {
+  ExplicitMetadataSource,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataDeclarationKind,
@@ -10,7 +11,7 @@ import type {
   ExtensionDefinition,
 } from "@formspec/core";
 import * as ts from "typescript";
-import { parseCommentBlock } from "./comment-syntax.js";
+import { parseCommentBlock, type ParsedCommentTag } from "./comment-syntax.js";
 import { resolveDeclarationPlacement } from "./ts-binding.js";
 
 /**
@@ -88,6 +89,7 @@ interface NormalizedMetadataSlot {
 interface ExplicitEntryCandidate {
   readonly value: string;
   readonly qualifier?: string;
+  readonly explicitSource: ExplicitMetadataSource;
 }
 
 function getLogicalName(node: ts.Node): string | null {
@@ -294,6 +296,26 @@ function toApplicableSlot(slot: NormalizedMetadataSlot): MetadataApplicableSlot 
   };
 }
 
+function buildExplicitSource(tag: ParsedCommentTag): ExplicitMetadataSource {
+  if (tag.argumentSpan === null) {
+    throw new Error(
+      `Expected explicit metadata tag @${tag.normalizedTagName} to have a value span.`
+    );
+  }
+
+  return {
+    tagName: tag.normalizedTagName,
+    form: tag.target === null ? "bare" : "qualified",
+    fullRange: { ...tag.fullSpan },
+    tagNameRange: { ...tag.tagNameSpan },
+    ...(tag.target !== null && {
+      qualifier: tag.target.rawText,
+      qualifierRange: { ...tag.target.span },
+    }),
+    valueRange: { ...tag.argumentSpan },
+  };
+}
+
 function collectExplicitCandidates(
   node: ts.Node,
   slots: readonly NormalizedMetadataSlot[],
@@ -348,6 +370,7 @@ function collectExplicitCandidates(
         if (slot.allowBare && !primaryEntries.has(slot.slotId)) {
           primaryEntries.set(slot.slotId, {
             value,
+            explicitSource: buildExplicitSource(tag),
           });
         }
         continue;
@@ -358,6 +381,7 @@ function collectExplicitCandidates(
           primaryEntries.set(slot.slotId, {
             value,
             qualifier,
+            explicitSource: buildExplicitSource(tag),
           });
         }
         continue;
@@ -372,6 +396,7 @@ function collectExplicitCandidates(
         qualifiedEntries.set(key, {
           value,
           qualifier,
+          explicitSource: buildExplicitSource(tag),
         });
       }
     }
@@ -434,6 +459,7 @@ function resolveSlotEntries(
           tagName: slot.tagName,
           value: primaryExplicit.value,
           source: "explicit",
+          explicitSource: primaryExplicit.explicitSource,
         } satisfies MetadataResolvedEntry)
       : inferEntry(
           slot,
@@ -463,6 +489,7 @@ function resolveSlotEntries(
         qualifier: qualifier.qualifier,
         value: explicitQualified.value,
         source: "explicit",
+        explicitSource: explicitQualified.explicitSource,
       });
       continue;
     }

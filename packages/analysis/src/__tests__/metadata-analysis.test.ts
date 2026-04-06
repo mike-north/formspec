@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { defineExtension, defineMetadataSlot } from "@formspec/core";
 import * as ts from "typescript";
-import { analyzeMetadataForNode, analyzeMetadataForSourceFile } from "../internal.js";
+import {
+  analyzeMetadataForNode,
+  analyzeMetadataForSourceFile,
+  sliceCommentSpan,
+} from "../internal.js";
 import { createProgram } from "./helpers.js";
 
 function findInterface(sourceFile: ts.SourceFile, name: string): ts.InterfaceDeclaration {
@@ -95,13 +99,14 @@ describe("metadata analysis", () => {
     });
   });
 
-  it("resolves qualified metadata values explicitly", () => {
-    const { program, sourceFile } = createProgram(`
+  it("surfaces explicit source ranges for qualified metadata values", () => {
+    const source = `
       export interface OrderItem {
         /** @displayName :plural Order Items */
         items: string[];
       }
-    `);
+    `;
+    const { program, sourceFile } = createProgram(source);
     const declaration = findInterface(sourceFile, "OrderItem");
     const property = findInterfaceProperty(declaration, "items");
 
@@ -114,7 +119,37 @@ describe("metadata analysis", () => {
     );
 
     expect(plural?.source).toBe("explicit");
-    expect(plural?.value).toBe("Order Items");
+    expect(plural?.explicitSource?.form).toBe("qualified");
+    expect(plural?.explicitSource?.qualifier).toBe("plural");
+    expect(plural?.explicitSource?.fullRange).toBeDefined();
+    expect(plural?.explicitSource?.tagNameRange).toBeDefined();
+    expect(plural?.explicitSource?.valueRange).toBeDefined();
+    expect(plural?.explicitSource?.qualifierRange).toBeDefined();
+
+    const commentText = sourceFile.text.slice(
+      property.getFullStart(),
+      property.getStart(sourceFile)
+    );
+    expect(
+      sliceCommentSpan(commentText, plural!.explicitSource!.fullRange!, {
+        offset: property.getFullStart(),
+      })
+    ).toContain("@displayName :plural Order Items");
+    expect(
+      sliceCommentSpan(commentText, plural!.explicitSource!.tagNameRange!, {
+        offset: property.getFullStart(),
+      })
+    ).toBe("@displayName");
+    expect(
+      sliceCommentSpan(commentText, plural!.explicitSource!.valueRange!, {
+        offset: property.getFullStart(),
+      })
+    ).toBe("Order Items");
+    expect(
+      sliceCommentSpan(commentText, plural!.explicitSource!.qualifierRange!, {
+        offset: property.getFullStart(),
+      })
+    ).toBe("plural");
   });
 
   it("supports extension-defined metadata slots during node and file analysis", () => {
