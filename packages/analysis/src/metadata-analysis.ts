@@ -12,6 +12,7 @@ import type {
 } from "@formspec/core";
 import * as ts from "typescript";
 import { parseCommentBlock, type ParsedCommentTag } from "./comment-syntax.js";
+import { getTagDefinition, normalizeFormSpecTagName } from "./tag-registry.js";
 import { resolveDeclarationPlacement } from "./ts-binding.js";
 
 /**
@@ -91,6 +92,56 @@ interface ExplicitEntryCandidate {
   readonly value: string;
   readonly qualifier?: string;
   readonly explicitSource: ExplicitMetadataSource;
+}
+
+const BUILTIN_METADATA_TAG_NAMES = new Set(["apiName", "displayName"]);
+
+function validateExtensionMetadataSlots(
+  extensions: readonly ExtensionDefinition[] | undefined
+): void {
+  const slotIds = new Set<string>();
+  const tagNames = new Set(BUILTIN_METADATA_TAG_NAMES);
+  const metadataFreeExtensions =
+    extensions?.map((extension) => ({
+      extensionId: extension.extensionId,
+      ...(extension.constraintTags !== undefined
+        ? {
+            constraintTags: extension.constraintTags.map((tag) => ({
+              tagName: normalizeFormSpecTagName(tag.tagName),
+            })),
+          }
+        : {}),
+    })) ?? [];
+
+  for (const extension of extensions ?? []) {
+    for (const slot of extension.metadataSlots ?? []) {
+      if (slotIds.has(slot.slotId)) {
+        throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
+      }
+      slotIds.add(slot.slotId);
+
+      const canonicalTagName = normalizeFormSpecTagName(slot.tagName);
+
+      if (tagNames.has(canonicalTagName)) {
+        throw BUILTIN_METADATA_TAG_NAMES.has(canonicalTagName)
+          ? new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+            )
+          : new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
+      }
+      const existingTag = getTagDefinition(canonicalTagName, metadataFreeExtensions);
+      if (existingTag !== null) {
+        throw BUILTIN_METADATA_TAG_NAMES.has(existingTag.canonicalName)
+          ? new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+            )
+          : new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
+            );
+      }
+      tagNames.add(canonicalTagName);
+    }
+  }
 }
 
 function getLogicalName(node: ts.Node): string | null {
@@ -241,25 +292,41 @@ function normalizeBuiltInSlots(
 function normalizeExtensionSlots(
   extensions: readonly ExtensionDefinition[] | undefined
 ): readonly NormalizedMetadataSlot[] {
+  const seenSlotIds = new Set<string>();
+  const seenTagNames = new Set<string>();
+
   return (
     extensions?.flatMap((extension) =>
-      (extension.metadataSlots ?? []).map((slot) => ({
-        slotId: slot.slotId,
-        tagName: slot.tagName,
-        declarationKinds: slot.declarationKinds,
-        allowBare: slot.allowBare !== false,
-        primaryQualifierAliases: slot.allowBare === false ? [] : ["singular"],
-        ...(slot.inferValue !== undefined && { inferValue: slot.inferValue }),
-        ...(slot.isApplicable !== undefined && { isApplicable: slot.isApplicable }),
-        qualifiers:
-          slot.qualifiers?.map((qualifier) => ({
-            qualifier: qualifier.qualifier,
-            ...(qualifier.sourceQualifier !== undefined && {
-              sourceQualifier: qualifier.sourceQualifier,
-            }),
-            ...(qualifier.inferValue !== undefined && { inferValue: qualifier.inferValue }),
-          })) ?? [],
-      }))
+      (extension.metadataSlots ?? []).map((slot) => {
+        if (seenSlotIds.has(slot.slotId)) {
+          throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
+        }
+        seenSlotIds.add(slot.slotId);
+
+        const canonicalTagName = normalizeFormSpecTagName(slot.tagName);
+        if (seenTagNames.has(canonicalTagName)) {
+          throw new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
+        }
+        seenTagNames.add(canonicalTagName);
+
+        return {
+          slotId: slot.slotId,
+          tagName: canonicalTagName,
+          declarationKinds: slot.declarationKinds,
+          allowBare: slot.allowBare !== false,
+          primaryQualifierAliases: slot.allowBare === false ? [] : ["singular"],
+          ...(slot.inferValue !== undefined && { inferValue: slot.inferValue }),
+          ...(slot.isApplicable !== undefined && { isApplicable: slot.isApplicable }),
+          qualifiers:
+            slot.qualifiers?.map((qualifier) => ({
+              qualifier: qualifier.qualifier,
+              ...(qualifier.sourceQualifier !== undefined && {
+                sourceQualifier: qualifier.sourceQualifier,
+              }),
+              ...(qualifier.inferValue !== undefined && { inferValue: qualifier.inferValue }),
+            })) ?? [],
+        };
+      })
     ) ?? []
   );
 }
@@ -272,6 +339,7 @@ function getApplicableSlots(
   extensions: readonly ExtensionDefinition[] | undefined,
   buildContext: unknown
 ): readonly NormalizedMetadataSlot[] {
+  validateExtensionMetadataSlots(extensions);
   return [...normalizeBuiltInSlots(metadata), ...normalizeExtensionSlots(extensions)].filter(
     (slot) =>
       slot.declarationKinds.includes(declarationKind) &&

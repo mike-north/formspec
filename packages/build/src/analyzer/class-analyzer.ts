@@ -37,10 +37,7 @@ import {
 import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
 import type { MetadataPolicyInput } from "@formspec/core";
-import {
-  getDeclarationMetadataPolicy,
-  normalizeMetadataPolicy,
-} from "../metadata/index.js";
+import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
 
 // =============================================================================
 // TYPE GUARDS
@@ -180,7 +177,8 @@ function resolveNodeMetadata(
   logicalName: string,
   node: ts.Node,
   checker: ts.TypeChecker,
-  extensionRegistry?: ExtensionRegistry
+  extensionRegistry?: ExtensionRegistry,
+  buildContext?: unknown
 ): ResolvedMetadata | undefined {
   const analysis = analyzeMetadataForNodeWithChecker({
     checker,
@@ -188,11 +186,18 @@ function resolveNodeMetadata(
     logicalName,
     metadata: metadataPolicy.raw,
     extensions: extensionRegistry?.extensions,
+    ...(buildContext !== undefined && { buildContext }),
   });
   const resolvedMetadata = analysis?.resolvedMetadata;
-  const declarationPolicy = getDeclarationMetadataPolicy(metadataPolicy.normalized, declarationKind);
+  const declarationPolicy = getDeclarationMetadataPolicy(
+    metadataPolicy.normalized,
+    declarationKind
+  );
 
-  if (resolvedMetadata?.apiName === undefined && declarationPolicy.apiName.mode === "require-explicit") {
+  if (
+    resolvedMetadata?.apiName === undefined &&
+    declarationPolicy.apiName.mode === "require-explicit"
+  ) {
     throw new Error(
       `Metadata policy requires explicit apiName for ${declarationKind} "${logicalName}" on the tsdoc surface.`
     );
@@ -248,7 +253,13 @@ export function analyzeDeclarationRootInfo(
     logicalName,
     declaration,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration,
+      subjectType: declarationType,
+      hostType: declarationType,
+    }
   );
 
   return {
@@ -335,7 +346,13 @@ export function analyzeClassToIR(
     name,
     classDecl,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration: classDecl,
+      subjectType: classType,
+      hostType: classType,
+    }
   );
 
   return {
@@ -411,7 +428,13 @@ export function analyzeInterfaceToIR(
     name,
     interfaceDecl,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration: interfaceDecl,
+      subjectType: interfaceType,
+      hostType: interfaceType,
+    }
   );
 
   return {
@@ -498,7 +521,13 @@ export function analyzeTypeAliasToIR(
     name,
     typeAlias,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration: typeAlias,
+      subjectType: aliasType,
+      hostType: aliasType,
+    }
   );
 
   return {
@@ -861,7 +890,13 @@ function resolveDiscriminatorApiName(
     "type",
     getDiscriminatorLogicalName(boundType, declaration, checker),
     declaration,
-    checker
+    checker,
+    undefined,
+    {
+      checker,
+      declaration,
+      subjectType: boundType,
+    }
   );
   return metadata?.apiName;
 }
@@ -1231,7 +1266,13 @@ function analyzeFieldToIR(
     name,
     prop,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration: prop,
+      subjectType: tsType,
+      hostType,
+    }
   );
 
   return {
@@ -1314,7 +1355,13 @@ function analyzeInterfacePropertyToIR(
     name,
     prop,
     checker,
-    extensionRegistry
+    extensionRegistry,
+    {
+      checker,
+      declaration: prop,
+      subjectType: tsType,
+      hostType,
+    }
   );
 
   return {
@@ -1697,7 +1744,12 @@ function tryResolveNamedPrimitiveAlias(
       aliasName,
       aliasDecl,
       checker,
-      extensionRegistry
+      extensionRegistry,
+      {
+        checker,
+        declaration: aliasDecl,
+        subjectType: aliasType,
+      }
     );
     typeRegistry[aliasName] = {
       name: aliasName,
@@ -1864,7 +1916,12 @@ function resolveUnionType(
             typeName,
             namedDecl,
             checker,
-            extensionRegistry
+            extensionRegistry,
+            {
+              checker,
+              declaration: namedDecl,
+              subjectType: type,
+            }
           )
         : undefined;
     typeRegistry[typeName] = {
@@ -2211,7 +2268,12 @@ function resolveObjectType(
               registryTypeName,
               namedDecl,
               checker,
-              extensionRegistry
+              extensionRegistry,
+              {
+                checker,
+                declaration: namedDecl,
+                subjectType: type,
+              }
             )
           : undefined;
       typeRegistry[registryTypeName] = {
@@ -2344,7 +2406,12 @@ function resolveObjectType(
             registryTypeName,
             namedDecl,
             checker,
-            extensionRegistry
+            extensionRegistry,
+            {
+              checker,
+              declaration: namedDecl,
+              subjectType: type,
+            }
           )
         : undefined;
     typeRegistry[registryTypeName] = {

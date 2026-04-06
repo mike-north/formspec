@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineExtension, defineMetadataSlot } from "@formspec/core";
+import { defineConstraintTag, defineExtension, defineMetadataSlot } from "@formspec/core";
 import * as ts from "typescript";
 import {
   analyzeMetadataForNode,
@@ -212,5 +212,216 @@ describe("metadata analysis", () => {
     expect(fileAnalysis.map((analysis) => analysis.logicalName)).toEqual(
       expect.arrayContaining(["ProductRecord", "products"])
     );
+  });
+
+  it("normalizes extension metadata tag names during validation and parsing", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "ExternalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface ProductRecord {
+        /** @externalName Product */
+        product: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "ProductRecord");
+    const property = findInterfaceProperty(declaration, "product");
+
+    const analysis = analyzeMetadataForNode({
+      program,
+      node: property,
+      extensions: [extension],
+    });
+
+    expect(analysis?.applicableSlots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "externalName",
+          tagName: "externalName",
+        }),
+      ])
+    );
+    expect(analysis?.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "externalName",
+          tagName: "externalName",
+          value: "Product",
+          source: "explicit",
+        }),
+      ])
+    );
+  });
+
+  it("rejects duplicate metadata slot IDs across extensions", () => {
+    const extensions = [
+      defineExtension({
+        extensionId: "x-example/metadata-a",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "externalName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+      defineExtension({
+        extensionId: "x-example/metadata-b",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "billingLabel",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+    ] as const;
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions,
+      })
+    ).toThrow('Duplicate metadata slot ID: "externalName"');
+  });
+
+  it("rejects duplicate metadata tags that differ only by leading case", () => {
+    const extensions = [
+      defineExtension({
+        extensionId: "x-example/metadata-a",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "externalName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+      defineExtension({
+        extensionId: "x-example/metadata-b",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "billingLabel",
+            tagName: "ExternalName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+    ] as const;
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions,
+      })
+    ).toThrow('Duplicate metadata tag: "@externalName"');
+  });
+
+  it("rejects extension metadata tags that shadow built-in metadata tags", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "customApiName",
+          tagName: "apiName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions: [extension],
+      })
+    ).toThrow('Metadata tag "@apiName" conflicts with built-in metadata tags.');
+  });
+
+  it("rejects extension metadata tags that shadow built-in constraint tags", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "customMinimum",
+          tagName: "minimum",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions: [extension],
+      })
+    ).toThrow('Metadata tag "@minimum" conflicts with existing FormSpec tag "@minimum".');
+  });
+
+  it("rejects extension metadata tags that shadow extension constraint tags", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      constraintTags: [defineConstraintTag({ tagName: "currency", constraintName: "currency" })],
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "currencyLabel",
+          tagName: "currency",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions: [extension],
+      })
+    ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
   });
 });
