@@ -171,6 +171,37 @@ describe("file-snapshots", () => {
     );
   });
 
+  it("captures discriminator diagnostics with related target-field locations", () => {
+    const source = `
+      /** @discriminator :kind T */
+      interface TaggedValue<T> {
+        kind?: string;
+        id: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-discriminator-diagnostics.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    const diagnostic = snapshot.diagnostics.find((entry) => entry.code === "OPTIONAL_TARGET_FIELD");
+    const targetStart = source.indexOf("kind?: string;");
+    const targetEnd = targetStart + "kind?: string;".length;
+    expect(diagnostic).toBeDefined();
+    expect(diagnostic?.category).toBe("target-resolution");
+    expect(diagnostic?.severity).toBe("error");
+    expect(diagnostic?.data["tagName"]).toBe("discriminator");
+    expect(diagnostic?.relatedLocations).toEqual([
+      {
+        filePath: sourceFile.fileName,
+        range: { start: targetStart, end: targetEnd },
+        message: "Target field declaration",
+      },
+    ]);
+  });
+
   it("uses one synthetic compiler pass for a mixed-tag canary comment and reuses the synthetic batch cache on repeated analysis", () => {
     const { checker, sourceFile } = createProgram(
       MIXED_TAG_CANARY_SOURCE,

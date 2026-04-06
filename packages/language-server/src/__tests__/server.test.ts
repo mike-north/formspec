@@ -202,22 +202,29 @@ describe("createServer", () => {
   it("publishes plugin diagnostics through the exported diagnostics helpers when enabled", async () => {
     const lspDiagnostics = [
       {
-        message: "bad target",
+        message: 'Tag "@discriminator" target field "kind" must be required.',
       },
     ];
-    mocks.getPluginDiagnosticsForDocument.mockResolvedValue([
+    const canonicalDiagnostics = [
       {
-        code: "TYPE_MISMATCH",
-        category: "type-compatibility",
-        message: "bad target",
+        code: "OPTIONAL_TARGET_FIELD",
+        category: "target-resolution",
+        message: 'Tag "@discriminator" target field "kind" must be required.',
         range: { start: 4, end: 12 },
         severity: "error",
-        relatedLocations: [],
+        relatedLocations: [
+          {
+            filePath: "/workspace/project/example.ts",
+            range: { start: 24, end: 37 },
+            message: "Target field declaration",
+          },
+        ],
         data: {
-          tagName: "minimum",
+          tagName: "discriminator",
         },
       },
-    ] as never);
+    ] as const;
+    mocks.getPluginDiagnosticsForDocument.mockResolvedValue(canonicalDiagnostics as never);
     mocks.toLspDiagnostics.mockReturnValue(lspDiagnostics as never);
 
     const { createServer } = await import("../server.js");
@@ -233,7 +240,7 @@ describe("createServer", () => {
 
     const document = {
       uri: "file:///workspace/project/example.ts",
-      getText: () => "/** @minimum 0 */",
+      getText: () => "/** @discriminator :kind T */ interface TaggedValue<T> { kind?: string; }",
     };
     openHandler?.({ document });
     await Promise.resolve();
@@ -241,10 +248,10 @@ describe("createServer", () => {
     expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
       [],
       "/workspace/project/example.ts",
-      "/** @minimum 0 */",
+      "/** @discriminator :kind T */ interface TaggedValue<T> { kind?: string; }",
       750
     );
-    expect(mocks.toLspDiagnostics).toHaveBeenCalledWith(document, expect.any(Array), {
+    expect(mocks.toLspDiagnostics).toHaveBeenCalledWith(document, canonicalDiagnostics, {
       source: "downstream-brand",
     });
     expect(mocks.connection.sendDiagnostics).toHaveBeenCalledWith({
