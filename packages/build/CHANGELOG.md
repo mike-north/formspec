@@ -1,5 +1,17 @@
 # @formspec/build
 
+## 0.1.0-alpha.29
+
+### Minor Changes
+
+- [#206](https://github.com/mike-north/formspec/pull/206) [`c26d886`](https://github.com/mike-north/formspec/commit/c26d886cf61cfdbe3ec6ac590d481cc6a3962f20) Thanks [@mike-north](https://github.com/mike-north)! - Add metadata policy and resolved metadata support across core, the DSL factory surface, and build generation. JSON Schema and UI Schema now honor resolved `apiName` and `displayName`, mixed-authoring merges metadata by explicit-vs-inferred precedence, and discriminator resolution supports literal identity properties plus metadata-driven names for object-like generic sources.
+
+### Patch Changes
+
+- Updated dependencies [[`c26d886`](https://github.com/mike-north/formspec/commit/c26d886cf61cfdbe3ec6ac590d481cc6a3962f20)]:
+  - @formspec/core@0.1.0-alpha.29
+  - @formspec/analysis@0.1.0-alpha.29
+
 ## 0.1.0-alpha.28
 
 ### Minor Changes
