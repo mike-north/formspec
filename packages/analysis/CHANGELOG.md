@@ -1,5 +1,11 @@
 # @formspec/analysis
 
+## 0.1.0-alpha.30
+
+### Patch Changes
+
+- [#209](https://github.com/mike-north/formspec/pull/209) [`10b1207`](https://github.com/mike-north/formspec/commit/10b120714b5e820222fd0b5f0f6f40010977faaa) Thanks [@mike-north](https://github.com/mike-north)! - Document and harden discriminator tooling coverage across analysis and editor integrations.
+
 ## 0.1.0-alpha.29
 
 ### Patch Changes
