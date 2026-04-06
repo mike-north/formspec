@@ -124,6 +124,8 @@ export function createExtensionRegistry(
     { readonly extensionId: string; readonly registration: BuiltinConstraintBroadeningRegistration }
   >();
   const annotationMap = new Map<string, CustomAnnotationRegistration>();
+  const metadataSlotMap = new Map<string, true>();
+  const metadataTagMap = new Map<string, true>();
 
   for (const ext of extensions) {
     if (ext.types !== undefined) {
@@ -188,6 +190,21 @@ export function createExtensionRegistry(
           throw new Error(`Duplicate custom annotation ID: "${qualifiedId}"`);
         }
         annotationMap.set(qualifiedId, annotation);
+      }
+    }
+
+    if (ext.metadataSlots !== undefined) {
+      for (const slot of ext.metadataSlots) {
+        const qualifiedId = `${ext.extensionId}/${slot.slotId}`;
+        if (metadataSlotMap.has(qualifiedId)) {
+          throw new Error(`Duplicate metadata slot ID: "${qualifiedId}"`);
+        }
+        metadataSlotMap.set(qualifiedId, true);
+
+        if (metadataTagMap.has(slot.tagName)) {
+          throw new Error(`Duplicate metadata tag: "@${slot.tagName}"`);
+        }
+        metadataTagMap.set(slot.tagName, true);
       }
     }
   }

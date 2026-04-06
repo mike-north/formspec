@@ -593,6 +593,11 @@ function buildCompilerBackedConstraintDiagnostics(
                   constraintTags: extension.constraintTags.map((tag) => ({ tagName: tag.tagName })),
                 }
               : {}),
+            ...(extension.metadataSlots !== undefined
+              ? {
+                  metadataSlots: extension.metadataSlots,
+                }
+              : {}),
           })),
         }
       : {}),
@@ -624,6 +629,9 @@ function getParser(options?: ParseTSDocOptions): TSDocParser {
   const extensionTagNames = [
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
       (extension.constraintTags ?? []).map((tag) => tag.tagName)
+    ) ?? []),
+    ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
+      (extension.metadataSlots ?? []).map((slot) => slot.tagName)
     ) ?? []),
   ].sort();
   const cacheKey = extensionTagNames.join("|");
@@ -698,6 +706,7 @@ function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): 
         extensionId: extension.extensionId,
         typeNames: extension.types?.map((type) => type.typeName) ?? [],
         constraintTags: extension.constraintTags?.map((tag) => tag.tagName) ?? [],
+        metadataSlots: extension.metadataSlots?.map((slot) => slot.tagName) ?? [],
       })
     )
     .join("|");

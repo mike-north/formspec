@@ -10,6 +10,7 @@
  */
 
 import type { BuiltinConstraintName } from "../types/constraint-definitions.js";
+import type { MetadataSlotRegistration } from "../types/metadata.js";
 
 // =============================================================================
 // REGISTRATION TYPES
@@ -269,6 +270,8 @@ export interface ExtensionDefinition {
   readonly constraints?: readonly CustomConstraintRegistration[];
   /** Authoring-side TSDoc tag registrations provided by this extension. */
   readonly constraintTags?: readonly ConstraintTagRegistration[];
+  /** Metadata-slot registrations shared by build- and lint-time analysis. */
+  readonly metadataSlots?: readonly MetadataSlotRegistration[];
   /** Custom annotation registrations provided by this extension. */
   readonly annotations?: readonly CustomAnnotationRegistration[];
   /** Vocabulary keyword registrations provided by this extension. */
@@ -327,6 +330,18 @@ export function defineConstraint(reg: CustomConstraintRegistration): CustomConst
  * @public
  */
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration {
+  return reg;
+}
+
+/**
+ * Defines a metadata slot registration.
+ *
+ * @param reg - The metadata slot registration.
+ * @returns The same registration, validated at the type level.
+ *
+ * @public
+ */
+export function defineMetadataSlot(reg: MetadataSlotRegistration): MetadataSlotRegistration {
   return reg;
 }
 
