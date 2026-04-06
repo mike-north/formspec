@@ -314,7 +314,8 @@ function normalizeExtensionSlots(
           tagName: canonicalTagName,
           declarationKinds: slot.declarationKinds,
           allowBare: slot.allowBare !== false,
-          primaryQualifierAliases: slot.allowBare === false ? [] : ["singular"],
+          // Extension slots only accept the qualifiers they explicitly register.
+          primaryQualifierAliases: [],
           ...(slot.inferValue !== undefined && { inferValue: slot.inferValue }),
           ...(slot.isApplicable !== undefined && { isApplicable: slot.isApplicable }),
           qualifiers:
@@ -658,15 +659,22 @@ export function analyzeMetadataForSourceFile(
   const checker = options.program.getTypeChecker();
 
   const visit = (node: ts.Node): void => {
-    const analyzed = analyzeMetadataForNodeWithChecker({
-      program: options.program,
-      checker,
-      node,
-      ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
-      ...(options.extensions !== undefined ? { extensions: options.extensions } : {}),
-    });
-    if (analyzed !== null) {
-      results.push(analyzed);
+    const declarationKind = getMetadataDeclarationKind(node);
+    if (
+      declarationKind !== null &&
+      !ts.isVariableDeclaration(node) &&
+      !ts.isParameter(node)
+    ) {
+      const analyzed = analyzeMetadataForNodeWithChecker({
+        program: options.program,
+        checker,
+        node,
+        ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
+        ...(options.extensions !== undefined ? { extensions: options.extensions } : {}),
+      });
+      if (analyzed !== null) {
+        results.push(analyzed);
+      }
     }
     ts.forEachChild(node, visit);
   };

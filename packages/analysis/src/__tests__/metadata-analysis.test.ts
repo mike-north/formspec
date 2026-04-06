@@ -4,6 +4,7 @@ import * as ts from "typescript";
 import {
   analyzeMetadataForNode,
   analyzeMetadataForSourceFile,
+  analyzeMetadataForNodeWithChecker,
   sliceCommentSpan,
 } from "../internal.js";
 import { createProgram } from "./helpers.js";
@@ -69,6 +70,37 @@ describe("metadata analysis", () => {
     expect(
       analysis?.entries.map((entry) => `${entry.slotId}:${entry.qualifier ?? "default"}`)
     ).toEqual(expect.arrayContaining(["apiName:default", "displayName:default"]));
+  });
+
+  it("honors an internal logical-name override for inferred metadata", () => {
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    const analysis = analyzeMetadataForNodeWithChecker({
+      program,
+      checker: program.getTypeChecker(),
+      node: property,
+      logicalName: "customerName<string>",
+      metadata: {
+        field: {
+          displayName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) => `Label ${logicalName}`,
+          },
+        },
+      },
+    });
+
+    expect(analysis?.logicalName).toBe("customerName<string>");
+    expect(analysis?.resolvedMetadata?.displayName).toEqual({
+      value: "Label customerName<string>",
+      source: "inferred",
+    });
   });
 
   it("treats :singular built-in metadata tags as the default resolved value", () => {
@@ -214,6 +246,36 @@ describe("metadata analysis", () => {
     );
   });
 
+  it("does not treat undeclared :singular qualifiers as extension metadata aliases", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "externalName",
+          declarationKinds: ["field"],
+          qualifiers: [{ qualifier: "plural" }],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface ProductRecord {
+        /** @externalName :singular PRODUCTS */
+        products: string[];
+      }
+    `);
+    const declaration = findInterface(sourceFile, "ProductRecord");
+    const property = findInterfaceProperty(declaration, "products");
+
+    const analysis = analyzeMetadataForNode({
+      program,
+      node: property,
+      extensions: [extension],
+    });
+
+    expect(analysis?.entries).toEqual([]);
+  });
+
   it("normalizes extension metadata tag names during validation and parsing", () => {
     const extension = defineExtension({
       extensionId: "x-example/metadata",
@@ -338,6 +400,23 @@ describe("metadata analysis", () => {
         extensions,
       })
     ).toThrow('Duplicate metadata tag: "@externalName"');
+  });
+
+  it("limits file analysis to declaration roots and members", () => {
+    const { program, sourceFile } = createProgram(`
+      export function demo(/** @apiName input_name */ input: string) {
+        /** @apiName local_name */
+        const localValue = 1;
+        return input + localValue;
+      }
+    `);
+
+    const analysis = analyzeMetadataForSourceFile({
+      program,
+      sourceFile,
+    });
+
+    expect(analysis.map((entry) => entry.logicalName)).toEqual(["demo"]);
   });
 
   it("rejects extension metadata tags that shadow built-in metadata tags", () => {
