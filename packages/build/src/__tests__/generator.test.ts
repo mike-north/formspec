@@ -176,6 +176,31 @@ describe("generateJsonSchema", () => {
       })
     ).toThrow(/requires explicit apiName/);
   });
+
+  it("uses resolved apiNames consistently for top-level and nested required names", () => {
+    const form = formspec(
+      field.text("firstName", { apiName: "first_name", required: true }),
+      field.object(
+        "address",
+        { apiName: "shipping_address", required: true },
+        field.text("postalCode", { apiName: "postal_code", required: true })
+      )
+    );
+
+    const schema = generateJsonSchema(form);
+
+    expect(schema.properties).toEqual({
+      first_name: { type: "string" },
+      shipping_address: {
+        type: "object",
+        properties: {
+          postal_code: { type: "string" },
+        },
+        required: ["postal_code"],
+      },
+    });
+    expect(schema.required).toEqual(["first_name", "shipping_address"]);
+  });
 });
 
 describe("generateUiSchema", () => {
