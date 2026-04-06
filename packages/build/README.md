@@ -19,11 +19,11 @@ Most app code can use `formspec`, but use `@formspec/build` directly when you ne
 
 ## Public Entry Points
 
-| Entry point                 | Purpose                                |
-| --------------------------- | -------------------------------------- |
-| `@formspec/build`           | Public build APIs                      |
-| `@formspec/build/browser`   | Browser-safe chain-DSL and IR surface  |
-| `@formspec/build/internals` | Unstable low-level IR/analyzer APIs    |
+| Entry point                 | Purpose                               |
+| --------------------------- | ------------------------------------- |
+| `@formspec/build`           | Public build APIs                     |
+| `@formspec/build/browser`   | Browser-safe chain-DSL and IR surface |
+| `@formspec/build/internals` | Unstable low-level IR/analyzer APIs   |
 
 ## Chain DSL Generation
 
@@ -62,6 +62,83 @@ const result = generateSchemasFromClass({
   className: "ProductConfig",
 });
 ```
+
+### Static Build Context
+
+Use the static build context APIs when you need to inspect exports, declarations,
+or method signatures before deciding what schemas to generate.
+
+Public helpers in this workflow:
+
+- `createStaticBuildContext(filePath)` - Create a reusable compiler-backed context from a file.
+- `createStaticBuildContextFromProgram(program, filePath)` - Reuse a host-owned `ts.Program`.
+- `resolveModuleExport(context, exportName?)` - Resolve any exported symbol, including functions and other non-schema declarations.
+- `resolveModuleExportDeclaration(context, exportName?)` - Resolve only schema-source declarations (`class`, `interface`, `type` alias).
+- `generateSchemasFromDeclaration(...)` - Generate from a resolved schema-source declaration.
+- `generateSchemasFromParameter(...)` - Generate from a method or function parameter declaration.
+- `generateSchemasFromReturnType(...)` - Generate from a method or function return type.
+- `generateSchemasFromType(...)` - Generate directly from a resolved `ts.Type`.
+
+Use `resolveModuleExportDeclaration(...)` when your tooling wants to hand a resolved
+declaration straight to `generateSchemasFromDeclaration(...)`. Use `resolveModuleExport(...)`
+when you need lower-level TypeScript access first, for example to inspect a function
+export and then generate schemas from one of its signature types.
+
+```ts
+import * as ts from "typescript";
+import {
+  createStaticBuildContext,
+  generateSchemasFromDeclaration,
+  generateSchemasFromParameter,
+  generateSchemasFromReturnType,
+  resolveModuleExport,
+  resolveModuleExportDeclaration,
+} from "@formspec/build";
+
+const context = createStaticBuildContext("./src/service.ts");
+const serviceDeclaration = resolveModuleExportDeclaration(context, "PaymentService");
+
+if (serviceDeclaration && ts.isClassDeclaration(serviceDeclaration)) {
+  const submitMethod = serviceDeclaration.members.find(
+    (member): member is ts.MethodDeclaration =>
+      ts.isMethodDeclaration(member) &&
+      ts.isIdentifier(member.name) &&
+      member.name.text === "submit"
+  );
+
+  if (submitMethod?.parameters[0]) {
+    const inputSchemas = generateSchemasFromParameter({
+      context,
+      parameter: submitMethod.parameters[0],
+    });
+  }
+}
+
+const inputDeclaration = resolveModuleExportDeclaration(context, "SubmitInput");
+if (inputDeclaration) {
+  const inputSchemas = generateSchemasFromDeclaration({
+    context,
+    declaration: inputDeclaration,
+  });
+}
+
+const paymentSymbol = resolveModuleExport(context, "submitPayment");
+const paymentDeclaration = paymentSymbol?.declarations?.find(ts.isFunctionDeclaration);
+if (paymentDeclaration) {
+  const outputSchemas = generateSchemasFromReturnType({
+    context,
+    declaration: paymentDeclaration,
+  });
+}
+```
+
+If you already own a `ts.Program`, use `createStaticBuildContextFromProgram(program, filePath)`
+instead of letting FormSpec create one. If your tool has already resolved a raw
+`ts.Type` or signature declaration, use `generateSchemasFromType(...)` or
+`generateSchemasFromReturnType(...)` directly.
+
+This is the supported public path for build-time analysis workflows that used to
+require `@formspec/build/internals`.
 
 ### Supported TSDoc Examples
 

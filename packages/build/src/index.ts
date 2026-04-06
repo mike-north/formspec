@@ -97,6 +97,15 @@ export type {
   GenerateSchemasFromProgramOptions,
   StaticSchemaGenerationOptions,
 } from "./generators/class-schema.js";
+export type { StaticBuildContext } from "./static-build.js";
+export type {
+  DiscoveredTypeSchemas,
+  GenerateSchemasFromDeclarationOptions,
+  GenerateSchemasFromParameterOptions,
+  GenerateSchemasFromReturnTypeOptions,
+  GenerateSchemasFromTypeOptions,
+  SchemaSourceDeclaration,
+} from "./generators/discovered-schema.js";
 export type {
   BuildMixedAuthoringSchemasOptions,
   MixedAuthoringSchemas,
@@ -120,6 +129,18 @@ export {
   generateSchemas,
   generateSchemasFromProgram,
 } from "./generators/class-schema.js";
+export {
+  createStaticBuildContext,
+  createStaticBuildContextFromProgram,
+  resolveModuleExport,
+  resolveModuleExportDeclaration,
+} from "./static-build.js";
+export {
+  generateSchemasFromDeclaration,
+  generateSchemasFromParameter,
+  generateSchemasFromReturnType,
+  generateSchemasFromType,
+} from "./generators/discovered-schema.js";
 export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
 
 /**
@@ -142,7 +163,8 @@ export interface BuildResult {
  *
  * @public
  */
-export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {}
+export interface BuildFormSchemasOptions
+  extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {}
 
 /**
  * Builds both JSON Schema and UI Schema from a FormSpec.

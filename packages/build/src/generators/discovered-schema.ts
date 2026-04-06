@@ -1,0 +1,529 @@
+import * as ts from "typescript";
+import type {
+  AnnotationNode,
+  ObjectProperty,
+  TypeDefinition,
+  TypeNode,
+} from "@formspec/core/internals";
+import type { ResolvedMetadata } from "@formspec/core";
+import type { UISchema } from "../ui-schema/types.js";
+import type { StaticBuildContext } from "../static-build.js";
+import {
+  analyzeDeclarationRootInfo,
+  analyzeClassToIR,
+  analyzeInterfaceToIR,
+  analyzeTypeAliasToIR,
+  resolveTypeNode,
+  type IRClassAnalysis,
+} from "../analyzer/class-analyzer.js";
+import {
+  generateClassSchemas,
+  type ClassSchemas,
+  type StaticSchemaGenerationOptions,
+} from "./class-schema.js";
+import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
+import { IR_VERSION, type FieldNode } from "@formspec/core/internals";
+import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
+import { mergeResolvedMetadata, normalizeMetadataPolicy } from "../metadata/index.js";
+
+/**
+ * Generated schemas for a discovered declaration or signature type.
+ *
+ * `uiSchema` is `null` when the discovered type does not have an object-shaped
+ * root that can be represented as a JSON Forms layout.
+ *
+ * @public
+ */
+export interface DiscoveredTypeSchemas {
+  /** JSON Schema 2020-12 for the resolved type. */
+  readonly jsonSchema: JsonSchema2020;
+  /** UI Schema for object-shaped roots, or `null` when not applicable. */
+  readonly uiSchema: UISchema | null;
+}
+
+/**
+ * Supported declaration kinds for declaration-driven schema generation.
+ *
+ * @public
+ */
+export type SchemaSourceDeclaration =
+  | ts.ClassDeclaration
+  | ts.InterfaceDeclaration
+  | ts.TypeAliasDeclaration;
+
+/**
+ * Options for generating schemas from a resolved declaration.
+ *
+ * @public
+ */
+export interface GenerateSchemasFromDeclarationOptions extends StaticSchemaGenerationOptions {
+  /** Supported build context used for checker access and related analysis. */
+  readonly context: StaticBuildContext;
+  /** Declaration to turn into schemas. */
+  readonly declaration: SchemaSourceDeclaration;
+}
+
+/**
+ * Options for generating schemas from a resolved TypeScript type.
+ *
+ * @public
+ */
+export interface GenerateSchemasFromTypeOptions extends StaticSchemaGenerationOptions {
+  /** Supported build context used for checker access and related analysis. */
+  readonly context: StaticBuildContext;
+  /** TypeScript type to turn into schemas. */
+  readonly type: ts.Type;
+  /**
+   * Optional source node associated with the type.
+   *
+   * When provided, FormSpec uses it as the source location for provenance and
+   * inline-type analysis.
+   */
+  readonly sourceNode?: ts.Node | undefined;
+  /** Optional logical name used for anonymous roots. */
+  readonly name?: string | undefined;
+}
+
+/**
+ * Options for generating schemas from a method or function parameter type.
+ *
+ * @public
+ */
+export interface GenerateSchemasFromParameterOptions extends StaticSchemaGenerationOptions {
+  /** Supported build context used for checker access and related analysis. */
+  readonly context: StaticBuildContext;
+  /** Parameter declaration whose type should be converted into schemas. */
+  readonly parameter: ts.ParameterDeclaration;
+}
+
+/**
+ * Options for generating schemas from a method or function return type.
+ *
+ * @public
+ */
+export interface GenerateSchemasFromReturnTypeOptions extends StaticSchemaGenerationOptions {
+  /** Supported build context used for checker access and related analysis. */
+  readonly context: StaticBuildContext;
+  /** Signature declaration whose return type should be converted into schemas. */
+  readonly declaration: ts.SignatureDeclaration;
+}
+
+function toDiscoveredTypeSchemas(result: ClassSchemas): DiscoveredTypeSchemas {
+  return result;
+}
+
+function isNamedTypeDeclaration(
+  declaration: ts.Declaration
+): declaration is ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration {
+  return (
+    ts.isClassDeclaration(declaration) ||
+    ts.isInterfaceDeclaration(declaration) ||
+    ts.isTypeAliasDeclaration(declaration)
+  );
+}
+
+function hasConcreteTypeArguments(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if (
+    "aliasTypeArguments" in type &&
+    Array.isArray(type.aliasTypeArguments) &&
+    type.aliasTypeArguments.length > 0
+  ) {
+    return true;
+  }
+
+  if ((type.flags & ts.TypeFlags.Object) === 0) {
+    return false;
+  }
+
+  const objectType = type as ts.ObjectType;
+  if ((objectType.objectFlags & ts.ObjectFlags.Reference) === 0) {
+    return false;
+  }
+
+  return checker.getTypeArguments(objectType as ts.TypeReference).length > 0;
+}
+
+function getNamedTypeDeclaration(
+  type: ts.Type
+): ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | undefined {
+  const symbol = type.getSymbol();
+  if (symbol?.declarations !== undefined) {
+    const declaration = symbol.declarations[0];
+    if (declaration !== undefined && isNamedTypeDeclaration(declaration)) {
+      return declaration;
+    }
+  }
+
+  const aliasDeclaration = type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration);
+  return aliasDeclaration;
+}
+
+function getFallbackName(sourceNode: ts.Node | undefined, fallback = "AnonymousType"): string {
+  if (sourceNode !== undefined && "name" in sourceNode) {
+    const namedNode = sourceNode as ts.Node & { name?: ts.PropertyName | ts.BindingName };
+    if (namedNode.name !== undefined && ts.isIdentifier(namedNode.name)) {
+      return namedNode.name.text;
+    }
+  }
+
+  return fallback;
+}
+
+function createObjectRootAnalysis(
+  name: string,
+  properties: readonly ObjectProperty[],
+  typeRegistry: Record<string, TypeDefinition>,
+  metadata?: ResolvedMetadata,
+  annotations?: readonly AnnotationNode[]
+): IRClassAnalysis {
+  const fields: FieldNode[] = properties.map((property) => ({
+    kind: "field",
+    name: property.name,
+    ...(property.metadata !== undefined && { metadata: property.metadata }),
+    type: property.type,
+    required: !property.optional,
+    constraints: property.constraints,
+    annotations: property.annotations,
+    provenance: property.provenance,
+  }));
+
+  return {
+    name,
+    ...(metadata !== undefined && { metadata }),
+    fields,
+    fieldLayouts: fields.map(() => ({})),
+    typeRegistry,
+    ...(annotations !== undefined && annotations.length > 0 && { annotations }),
+    instanceMethods: [],
+    staticMethods: [],
+    diagnostics: [],
+  };
+}
+
+interface RootTypeDescriptor {
+  readonly name: string;
+  readonly metadata?: ResolvedMetadata;
+  readonly annotations?: readonly AnnotationNode[];
+  readonly type: TypeNode;
+}
+
+interface RootTypeOverride {
+  readonly name?: string;
+  readonly metadata?: ResolvedMetadata;
+  readonly annotations?: readonly AnnotationNode[];
+}
+
+function describeRootType(
+  rootType: TypeNode,
+  typeRegistry: Readonly<Record<string, TypeDefinition>>,
+  fallbackName: string
+): RootTypeDescriptor {
+  if (rootType.kind !== "reference") {
+    return {
+      name: fallbackName,
+      type: rootType,
+    };
+  }
+
+  const definition = typeRegistry[rootType.name];
+  if (definition === undefined) {
+    return {
+      name: rootType.name,
+      type: rootType,
+    };
+  }
+
+  return {
+    name: definition.name,
+    ...(definition.metadata !== undefined && { metadata: definition.metadata }),
+    ...(definition.annotations !== undefined &&
+      definition.annotations.length > 0 && { annotations: definition.annotations }),
+    type: definition.type,
+  };
+}
+
+function toStandaloneJsonSchema(
+  root: RootTypeDescriptor,
+  typeRegistry: Record<string, TypeDefinition>,
+  options: StaticSchemaGenerationOptions | undefined
+): JsonSchema2020 {
+  const syntheticField: FieldNode = {
+    kind: "field",
+    name: "__result",
+    ...(root.metadata !== undefined && { metadata: root.metadata }),
+    type: root.type,
+    required: true,
+    constraints: [],
+    annotations: [...(root.annotations ?? [])],
+    provenance: {
+      surface: "tsdoc",
+      file: "",
+      line: 1,
+      column: 0,
+    },
+  };
+
+  const schema = generateJsonSchemaFromIR(
+    {
+      kind: "form-ir",
+      name: root.name,
+      irVersion: IR_VERSION,
+      elements: [syntheticField],
+      ...(root.metadata !== undefined && { metadata: root.metadata }),
+      ...(root.annotations !== undefined &&
+        root.annotations.length > 0 && { rootAnnotations: root.annotations }),
+      typeRegistry,
+      provenance: syntheticField.provenance,
+    },
+    {
+      extensionRegistry: options?.extensionRegistry,
+      vendorPrefix: options?.vendorPrefix,
+    }
+  );
+
+  const result = schema.properties?.["__result"] ?? { type: "object" };
+  if (schema.$defs === undefined || Object.keys(schema.$defs).length === 0) {
+    return {
+      ...(schema.$schema !== undefined && { $schema: schema.$schema }),
+      ...result,
+    };
+  }
+
+  return {
+    ...(schema.$schema !== undefined && { $schema: schema.$schema }),
+    ...result,
+    $defs: schema.$defs,
+  };
+}
+
+function generateSchemasFromAnalysis(
+  analysis: IRClassAnalysis,
+  filePath: string,
+  options: StaticSchemaGenerationOptions | undefined
+): DiscoveredTypeSchemas {
+  return toDiscoveredTypeSchemas(
+    generateClassSchemas(
+      analysis,
+      { file: filePath },
+      {
+        extensionRegistry: options?.extensionRegistry,
+        metadata: options?.metadata,
+        vendorPrefix: options?.vendorPrefix,
+      }
+    )
+  );
+}
+
+function generateSchemasFromResolvedType(
+  options: GenerateSchemasFromTypeOptions,
+  skipNamedDeclaration = false,
+  rootOverride?: RootTypeOverride
+): DiscoveredTypeSchemas {
+  const namedDeclaration =
+    skipNamedDeclaration || hasConcreteTypeArguments(options.type, options.context.checker)
+      ? undefined
+      : getNamedTypeDeclaration(options.type);
+  if (namedDeclaration !== undefined) {
+    return generateSchemasFromDeclaration({
+      ...options,
+      declaration: namedDeclaration,
+    });
+  }
+
+  const filePath =
+    options.sourceNode?.getSourceFile().fileName ?? options.context.sourceFile.fileName;
+  const typeRegistry: Record<string, TypeDefinition> = {};
+  const diagnostics: ConstraintSemanticDiagnostic[] = [];
+  const rootType = resolveTypeNode(
+    options.type,
+    options.context.checker,
+    filePath,
+    typeRegistry,
+    new Set<ts.Type>(),
+    options.sourceNode,
+    normalizeMetadataPolicy(options.metadata),
+    options.extensionRegistry,
+    diagnostics
+  );
+
+  if (diagnostics.length > 0) {
+    const diagnosticDetails = diagnostics
+      .map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`)
+      .join("; ");
+    throw new Error(
+      `FormSpec validation failed while generating discovered type schemas. ${diagnosticDetails}`
+    );
+  }
+
+  const describedRoot = describeRootType(
+    rootType,
+    typeRegistry,
+    options.name ?? getFallbackName(options.sourceNode)
+  );
+  const mergedMetadata = mergeResolvedMetadata(describedRoot.metadata, rootOverride?.metadata);
+  const root: RootTypeDescriptor = {
+    ...describedRoot,
+    ...(rootOverride?.name !== undefined && { name: rootOverride.name }),
+    ...(mergedMetadata !== undefined && { metadata: mergedMetadata }),
+    ...(rootOverride?.annotations !== undefined && { annotations: rootOverride.annotations }),
+  };
+
+  if (root.type.kind === "object") {
+    return generateSchemasFromAnalysis(
+      createObjectRootAnalysis(
+        options.name ?? root.name,
+        root.type.properties,
+        typeRegistry,
+        root.metadata,
+        root.annotations
+      ),
+      filePath,
+      options
+    );
+  }
+
+  return {
+    jsonSchema: toStandaloneJsonSchema(root, typeRegistry, options),
+    uiSchema: null,
+  };
+}
+
+/**
+ * Generates schemas from a resolved declaration using the supported public
+ * static-build workflow.
+ *
+ * Named declarations reuse the same analyzer semantics as FormSpec's existing
+ * top-level generation APIs. Non-object type aliases fall back to the generic
+ * resolved-type entry point.
+ *
+ * @public
+ */
+export function generateSchemasFromDeclaration(
+  options: GenerateSchemasFromDeclarationOptions
+): DiscoveredTypeSchemas {
+  const filePath = options.declaration.getSourceFile().fileName;
+
+  if (ts.isClassDeclaration(options.declaration)) {
+    return generateSchemasFromAnalysis(
+      analyzeClassToIR(
+        options.declaration,
+        options.context.checker,
+        filePath,
+        options.extensionRegistry,
+        options.metadata
+      ),
+      filePath,
+      options
+    );
+  }
+
+  if (ts.isInterfaceDeclaration(options.declaration)) {
+    return generateSchemasFromAnalysis(
+      analyzeInterfaceToIR(
+        options.declaration,
+        options.context.checker,
+        filePath,
+        options.extensionRegistry,
+        options.metadata
+      ),
+      filePath,
+      options
+    );
+  }
+
+  if (ts.isTypeAliasDeclaration(options.declaration)) {
+    const analyzedAlias = analyzeTypeAliasToIR(
+      options.declaration,
+      options.context.checker,
+      filePath,
+      options.extensionRegistry,
+      options.metadata
+    );
+    if (analyzedAlias.ok) {
+      return generateSchemasFromAnalysis(analyzedAlias.analysis, filePath, options);
+    }
+    const aliasRootInfo = analyzeDeclarationRootInfo(
+      options.declaration,
+      options.context.checker,
+      filePath,
+      options.extensionRegistry,
+      options.metadata
+    );
+
+    return generateSchemasFromResolvedType(
+      {
+        ...options,
+        type: options.context.checker.getTypeAtLocation(options.declaration),
+        sourceNode: options.declaration,
+        name: options.declaration.name.text,
+      },
+      true,
+      {
+        name: options.declaration.name.text,
+        ...(aliasRootInfo.metadata !== undefined && { metadata: aliasRootInfo.metadata }),
+        ...(aliasRootInfo.annotations.length > 0 && { annotations: aliasRootInfo.annotations }),
+      }
+    );
+  }
+
+  const _exhaustive: never = options.declaration;
+  return _exhaustive;
+}
+
+/**
+ * Generates schemas from a resolved TypeScript type.
+ *
+ * This is the advanced public entry point for build tooling that already uses
+ * the TypeScript compiler API to discover types before handing them to
+ * FormSpec.
+ *
+ * @public
+ */
+export function generateSchemasFromType(
+  options: GenerateSchemasFromTypeOptions
+): DiscoveredTypeSchemas {
+  return generateSchemasFromResolvedType(options);
+}
+
+/**
+ * Generates schemas for a method or function parameter type.
+ *
+ * @public
+ */
+export function generateSchemasFromParameter(
+  options: GenerateSchemasFromParameterOptions
+): DiscoveredTypeSchemas {
+  return generateSchemasFromResolvedType({
+    ...options,
+    type: options.context.checker.getTypeAtLocation(options.parameter),
+    sourceNode: options.parameter,
+    name: getFallbackName(options.parameter, "Parameter"),
+  });
+}
+
+/**
+ * Generates schemas for a method or function return type.
+ *
+ * @public
+ */
+export function generateSchemasFromReturnType(
+  options: GenerateSchemasFromReturnTypeOptions
+): DiscoveredTypeSchemas {
+  const signature = options.context.checker.getSignatureFromDeclaration(options.declaration);
+  const type =
+    signature !== undefined
+      ? options.context.checker.getReturnTypeOfSignature(signature)
+      : options.context.checker.getTypeAtLocation(options.declaration);
+
+  const fallbackName =
+    options.declaration.name !== undefined && ts.isIdentifier(options.declaration.name)
+      ? `${options.declaration.name.text}ReturnType`
+      : "ReturnType";
+
+  return generateSchemasFromResolvedType({
+    ...options,
+    type,
+    sourceNode: options.declaration.type ?? options.declaration,
+    name: fallbackName,
+  });
+}

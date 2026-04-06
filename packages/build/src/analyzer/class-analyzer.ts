@@ -151,6 +151,11 @@ export type AnalyzeTypeAliasToIRResult =
   | { readonly ok: true; readonly analysis: IRClassAnalysis }
   | { readonly ok: false; readonly error: string };
 
+export interface DeclarationRootInfo {
+  readonly metadata?: ResolvedMetadata;
+  readonly annotations: readonly AnnotationNode[];
+}
+
 interface DiscriminatorDirective {
   readonly fieldName: string;
   readonly typeParameterName: string;
@@ -160,9 +165,7 @@ interface DiscriminatorDirective {
 type AnalyzerMetadataPolicy = ReturnType<typeof normalizeMetadataPolicy>;
 
 function makeExplicitScalarMetadata(value: string | undefined): ResolvedScalarMetadata | undefined {
-  return value === undefined || value === ""
-    ? undefined
-    : { value, source: "explicit" as const };
+  return value === undefined || value === "" ? undefined : { value, source: "explicit" as const };
 }
 
 function extractExplicitMetadata(node: ts.Node): ResolvedMetadata | undefined {
@@ -241,6 +244,36 @@ function resolveNodeMetadata(
     getDeclarationMetadataPolicy(metadataPolicy, declarationKind),
     makeMetadataContext("tsdoc", declarationKind, logicalName, buildContext)
   );
+}
+
+export function analyzeDeclarationRootInfo(
+  declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker,
+  file = "",
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput
+): DeclarationRootInfo {
+  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
+  const declarationType = checker.getTypeAtLocation(declaration);
+  const logicalName = ts.isClassDeclaration(declaration)
+    ? (declaration.name?.text ?? "AnonymousClass")
+    : declaration.name.text;
+  const docResult = extractJSDocParseResult(
+    declaration,
+    file,
+    makeParseOptions(extensionRegistry, undefined, checker, declarationType, declarationType)
+  );
+  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", logicalName, declaration, {
+    checker,
+    declaration,
+    subjectType: declarationType,
+    hostType: declarationType,
+  });
+
+  return {
+    ...(metadata !== undefined && { metadata }),
+    annotations: docResult.annotations,
+  };
 }
 
 // =============================================================================
@@ -795,17 +828,12 @@ function resolveLiteralDiscriminatorPropertyValue(
   }
 
   const declaration = propertySymbol.valueDeclaration ?? propertySymbol.declarations?.[0];
-  const anchorNode =
-    declaration ?? boundType.symbol.declarations?.[0] ?? null;
-  const resolvedAnchorNode =
-    anchorNode ?? resolveNamedDiscriminatorDeclaration(boundType, checker);
+  const anchorNode = declaration ?? boundType.symbol.declarations?.[0] ?? null;
+  const resolvedAnchorNode = anchorNode ?? resolveNamedDiscriminatorDeclaration(boundType, checker);
   if (resolvedAnchorNode === null) {
     return undefined;
   }
-  const propertyType = checker.getTypeOfSymbolAtLocation(
-    propertySymbol,
-    resolvedAnchorNode
-  );
+  const propertyType = checker.getTypeOfSymbolAtLocation(propertySymbol, resolvedAnchorNode);
 
   if (propertyType.isStringLiteral()) {
     return propertyType.value;
@@ -846,10 +874,11 @@ function resolveDiscriminatorApiName(
     getDiscriminatorLogicalName(boundType, declaration, checker),
     declaration,
     {
-    checker,
-    declaration,
-    subjectType: boundType,
-  });
+      checker,
+      declaration,
+      subjectType: boundType,
+    }
+  );
   return metadata?.apiName;
 }
 
@@ -2052,21 +2081,13 @@ function shouldEmitResolvedObjectProperty(
     return false;
   }
 
-  if (
-    declaration !== undefined &&
-    "name" in declaration &&
-    declaration.name !== undefined
-  ) {
+  if (declaration !== undefined && "name" in declaration && declaration.name !== undefined) {
     const name = declaration.name as ts.PropertyName;
     if (ts.isComputedPropertyName(name) || ts.isPrivateIdentifier(name)) {
       return false;
     }
 
-    if (
-      !ts.isIdentifier(name) &&
-      !ts.isStringLiteral(name) &&
-      !ts.isNumericLiteral(name)
-    ) {
+    if (!ts.isIdentifier(name) && !ts.isStringLiteral(name) && !ts.isNumericLiteral(name)) {
       return false;
     }
   }
@@ -2247,15 +2268,47 @@ function resolveObjectType(
 
     // Get constraints and annotations from the declaration if available
     const fieldNodeInfo = fieldInfoMap?.get(prop.name);
+    const inlineFieldNodeInfo =
+      fieldNodeInfo === undefined
+        ? ts.isPropertySignature(declaration)
+          ? analyzeInterfacePropertyToIR(
+              declaration,
+              checker,
+              file,
+              typeRegistry,
+              visiting,
+              collectedDiagnostics,
+              type,
+              metadataPolicy,
+              extensionRegistry
+            )
+          : ts.isPropertyDeclaration(declaration)
+            ? analyzeFieldToIR(
+                declaration,
+                checker,
+                file,
+                typeRegistry,
+                visiting,
+                collectedDiagnostics,
+                type,
+                metadataPolicy,
+                extensionRegistry
+              )
+            : null
+        : null;
+    const resolvedFieldNodeInfo = fieldNodeInfo ?? inlineFieldNodeInfo;
+    const resolvedPropertyType = inlineFieldNodeInfo?.type ?? propTypeNode;
 
     properties.push({
       name: prop.name,
-      ...(fieldNodeInfo?.metadata !== undefined && { metadata: fieldNodeInfo.metadata }),
-      type: propTypeNode,
+      ...(resolvedFieldNodeInfo?.metadata !== undefined && {
+        metadata: resolvedFieldNodeInfo.metadata,
+      }),
+      type: resolvedPropertyType,
       optional,
-      constraints: fieldNodeInfo?.constraints ?? [],
-      annotations: fieldNodeInfo?.annotations ?? [],
-      provenance: fieldNodeInfo?.provenance ?? provenanceForFile(file),
+      constraints: resolvedFieldNodeInfo?.constraints ?? [],
+      annotations: resolvedFieldNodeInfo?.annotations ?? [],
+      provenance: resolvedFieldNodeInfo?.provenance ?? provenanceForFile(file),
     });
   }
 
