@@ -1,5 +1,12 @@
 # @formspec/playground
 
+## 0.1.0-alpha.32
+
+### Patch Changes
+
+- Updated dependencies [[`d22aa48`](https://github.com/mike-north/formspec/commit/d22aa483d33735d20d793430d920c0503f56c1a6)]:
+  - @formspec/build@0.1.0-alpha.32
+
 ## 0.1.0-alpha.31
 
 ### Patch Changes
