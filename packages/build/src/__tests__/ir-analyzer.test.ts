@@ -9,8 +9,16 @@
  */
 
 import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
-import type { FieldNode, ConstraintNode, AnnotationNode } from "@formspec/core/internals";
+import {
+  defineExtension,
+  defineMetadataSlot,
+  type FieldNode,
+  type ConstraintNode,
+  type AnnotationNode,
+} from "@formspec/core/internals";
 import {
   createProgramContext,
   findClassByName,
@@ -22,6 +30,7 @@ import {
   analyzeInterfaceToIR,
   analyzeTypeAliasToIR,
 } from "../analyzer/class-analyzer.js";
+import { createExtensionRegistry } from "../extensions/index.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -47,6 +56,13 @@ function findAnnotation(annotations: readonly AnnotationNode[], kind: string): A
   const a = annotations.find((n) => n.annotationKind === kind);
   if (!a) throw new Error(`Annotation "${kind}" not found`);
   return a;
+}
+
+function writeTempSource(source: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-ir-analyzer-"));
+  const filePath = path.join(dir, "model.ts");
+  fs.writeFileSync(filePath, source);
+  return filePath;
 }
 
 // =============================================================================
@@ -224,6 +240,48 @@ describe("analyzeInterfaceToIR", () => {
     expect(analysis.fields).toHaveLength(4);
     expect(analysis.instanceMethods).toHaveLength(0);
   }, 15_000);
+
+  it("accepts extension-defined metadata slots without changing built-in metadata resolution", () => {
+    const filePath = writeTempSource(`
+      export interface CustomerRecord {
+        /** @apiName customer_name @externalName CUSTOMER */
+        customerName: string;
+      }
+    `);
+    const extensionRegistry = createExtensionRegistry([
+      defineExtension({
+        extensionId: "x-example/metadata",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "externalName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+    ]);
+
+    try {
+      const ctx = createProgramContext(filePath);
+      const decl = findInterfaceByName(ctx.sourceFile, "CustomerRecord");
+      if (!decl) throw new Error("CustomerRecord not found");
+
+      const analysis = analyzeInterfaceToIR(
+        decl,
+        ctx.checker,
+        filePath,
+        extensionRegistry
+      );
+      const field = findField(analysis.fields, "customerName");
+
+      expect(field.metadata?.apiName).toEqual({
+        value: "customer_name",
+        source: "explicit",
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
 
   it("extracts constraint nodes from JSDoc tags", () => {
     const ctx = createProgramContext(interfaceFixturePath);

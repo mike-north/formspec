@@ -2,11 +2,18 @@ import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import { ESLint } from "eslint";
 import type { Linter } from "eslint";
 import tsParser from "@typescript-eslint/parser";
+import { ESLintUtils } from "@typescript-eslint/utils";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
 import packageJson from "../../package.json" with { type: "json" };
-import plugin, { configs, meta, rules } from "../index.js";
+import plugin, {
+  analyzeMetadataForNode,
+  analyzeMetadataForSourceFile,
+  configs,
+  meta,
+  rules,
+} from "../index.js";
 
 function getConfigRuleIds(config: readonly Linter.Config[]): string[] {
   return config.flatMap((entry) => Object.keys(entry.rules ?? {}));
@@ -64,6 +71,12 @@ describe("@formspec/eslint-plugin exports", () => {
       expect(rules).toHaveProperty(ruleId.slice("formspec/".length));
     }
   });
+
+  it("re-exports downstream metadata analysis helpers", () => {
+    expect(typeof analyzeMetadataForNode).toBe("function");
+    expect(typeof analyzeMetadataForSourceFile).toBe("function");
+  });
+
   describe("ESLint 9 flat config integration", () => {
     let tmpDir: string | undefined;
 
@@ -104,6 +117,105 @@ describe("@formspec/eslint-plugin exports", () => {
 
       const [result] = await eslint.lintFiles(["test.ts"]);
       expect(result.messages).toEqual([]);
+    });
+
+    it("supports downstream parser-services rules that reuse metadata analysis", async () => {
+      const seen: {
+        readonly program: object;
+        readonly apiName: string | undefined;
+        readonly fileLogicalNames: readonly string[];
+        readonly checkerCalls: number;
+      }[] = [];
+
+      const metadataProbeRule = ESLintUtils.RuleCreator((name) => name)({
+        name: "metadata-probe",
+        meta: {
+          type: "problem",
+          docs: { description: "Exercise downstream metadata analysis helpers" },
+          schema: [],
+          messages: {
+            unexpected: "Unexpected metadata analysis result",
+          },
+        },
+        defaultOptions: [],
+        create(context) {
+          const services = ESLintUtils.getParserServices(context);
+          const originalGetTypeChecker = services.program.getTypeChecker.bind(services.program);
+          let checkerCalls = 0;
+          services.program.getTypeChecker = (() => {
+            checkerCalls += 1;
+            return originalGetTypeChecker();
+          }) as typeof services.program.getTypeChecker;
+
+          return {
+            TSPropertySignature(node) {
+              const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+              const nodeAnalysis = analyzeMetadataForNode({
+                program: services.program,
+                node: tsNode,
+              });
+              const fileAnalysis = analyzeMetadataForSourceFile({
+                program: services.program,
+                sourceFile: tsNode.getSourceFile(),
+              });
+
+              seen.push({
+                program: services.program,
+                apiName: nodeAnalysis?.resolvedMetadata?.apiName?.value,
+                fileLogicalNames: fileAnalysis.map((analysis) => analysis.logicalName),
+                checkerCalls,
+              });
+
+              if (nodeAnalysis?.resolvedMetadata?.apiName?.value !== "customer_name") {
+                context.report({ node, messageId: "unexpected" });
+              }
+            },
+          };
+        },
+      });
+
+      writeFileSync(
+        join(tmpDir!, "metadata.ts"),
+        [
+          "export interface CustomerRecord {",
+          "  /** @apiName customer_name */",
+          "  customerName: string;",
+          "}",
+          "",
+        ].join("\n")
+      );
+
+      const overrideConfig: Linter.Config = {
+        files: ["**/*.ts"],
+        languageOptions: {
+          parser: tsParser,
+          parserOptions: { projectService: true, tsconfigRootDir: tmpDir },
+        },
+        plugins: {
+          formspec: { meta, rules },
+          probe: {
+            meta: { name: "probe", version: "0.0.0" },
+            rules: { "metadata-probe": metadataProbeRule },
+          },
+        },
+        rules: {
+          "probe/metadata-probe": "error",
+        },
+      };
+
+      const eslint = new ESLint({
+        cwd: tmpDir,
+        overrideConfigFile: true,
+        overrideConfig,
+      });
+
+      const [result] = await eslint.lintFiles(["metadata.ts"]);
+      expect(result.messages).toEqual([]);
+      expect(seen).toHaveLength(1);
+      expect(seen[0]?.apiName).toBe("customer_name");
+      expect(seen[0]?.fileLogicalNames).toContain("CustomerRecord");
+      expect(seen[0]?.fileLogicalNames).toContain("customerName");
+      expect(seen[0]?.checkerCalls).toBeGreaterThanOrEqual(2);
     });
   });
 });

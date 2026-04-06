@@ -98,7 +98,37 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 
 ## Base Entry Point
 
-Extension authors can use `@formspec/eslint-plugin/base` for `createConstraintRule(...)` and the shared JSDoc/type helpers used by the built-in rules.
+Extension authors can use `@formspec/eslint-plugin/base` for `createConstraintRule(...)`, the shared JSDoc/type helpers used by the built-in rules, and the shared metadata-analysis helpers re-exported from `@formspec/analysis`.
+
+Example with `typescript-eslint` parser services:
+
+```ts
+import { ESLintUtils } from "@typescript-eslint/utils";
+import { analyzeMetadataForNode } from "@formspec/eslint-plugin/base";
+
+export const rule = ESLintUtils.RuleCreator(() => "")({
+  name: "require-explicit-api-name",
+  meta: { type: "problem", docs: { description: "" }, schema: [], messages: { missing: "Missing explicit apiName" } },
+  defaultOptions: [],
+  create(context) {
+    const services = ESLintUtils.getParserServices(context);
+
+    return {
+      PropertyDefinition(node) {
+        const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+        const analysis = analyzeMetadataForNode({
+          program: services.program,
+          node: tsNode,
+        });
+
+        if (analysis?.resolvedMetadata?.apiName?.source !== "explicit") {
+          context.report({ node, messageId: "missing" });
+        }
+      },
+    };
+  },
+});
+```
 
 ## Rules
 

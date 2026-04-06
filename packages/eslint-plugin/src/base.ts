@@ -33,6 +33,25 @@ export {
 } from "./utils/jsdoc-utils.js";
 export type { JSDocConstraint, RawJSDocTag } from "./utils/jsdoc-utils.js";
 
+// Shared metadata-analysis helpers for downstream rule authors
+export {
+  analyzeMetadataForNode,
+  analyzeMetadataForSourceFile,
+} from "@formspec/analysis";
+export type {
+  AnalyzeMetadataOptions,
+  AnalyzeMetadataForNodeOptions,
+  AnalyzeMetadataForSourceFileOptions,
+} from "@formspec/analysis";
+export type {
+  ExplicitMetadataSource,
+  MetadataAnalysisResult,
+  MetadataApplicableSlot,
+  MetadataResolvedEntry,
+  MetadataSlotRegistration,
+  MetadataSourceSpan,
+} from "@formspec/core";
+
 // Type utilities — expose the helpers that power type-compatibility rules
 export {
   getFieldTypeCategory,
