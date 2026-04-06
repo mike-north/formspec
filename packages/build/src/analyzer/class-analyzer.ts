@@ -796,15 +796,15 @@ function resolveLiteralDiscriminatorPropertyValue(
 
   const declaration = propertySymbol.valueDeclaration ?? propertySymbol.declarations?.[0];
   const anchorNode =
-    declaration ??
-    boundType.symbol?.declarations?.[0] ??
-    resolveNamedDiscriminatorDeclaration(boundType, checker);
-  if (anchorNode === undefined || anchorNode === null) {
+    declaration ?? boundType.symbol.declarations?.[0] ?? null;
+  const resolvedAnchorNode =
+    anchorNode ?? resolveNamedDiscriminatorDeclaration(boundType, checker);
+  if (resolvedAnchorNode === null) {
     return undefined;
   }
   const propertyType = checker.getTypeOfSymbolAtLocation(
     propertySymbol,
-    anchorNode
+    resolvedAnchorNode
   );
 
   if (propertyType.isStringLiteral()) {

@@ -3,7 +3,6 @@ import type {
   FormIR,
   FormIRElement,
   MetadataAuthoringSurface,
-  MetadataDeclarationKind,
   ObjectProperty,
   ResolvedMetadata,
   ResolvedScalarMetadata,
@@ -71,12 +70,12 @@ function resolveScalar(
     );
   }
 
-  if (policy.mode !== "infer-if-missing" || policy.infer === undefined) {
+  if (policy.mode !== "infer-if-missing") {
     return undefined;
   }
 
   const inferredValue = policy.infer(context);
-  return inferredValue !== undefined && inferredValue.trim() !== ""
+  return inferredValue.trim() !== ""
     ? { value: inferredValue, source: "inferred" }
     : undefined;
 }
@@ -98,16 +97,12 @@ function resolvePlural(
     );
   }
 
-  if (
-    singular === undefined ||
-    policy.mode !== "infer-if-missing" ||
-    policy.inflect === undefined
-  ) {
+  if (singular === undefined || policy.mode !== "infer-if-missing") {
     return undefined;
   }
 
   const pluralValue = policy.inflect({ ...context, singular: singular.value });
-  return pluralValue !== undefined && pluralValue.trim() !== ""
+  return pluralValue.trim() !== ""
     ? { value: pluralValue, source: "inferred" }
     : undefined;
 }

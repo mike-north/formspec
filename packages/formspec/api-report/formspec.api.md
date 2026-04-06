@@ -9,6 +9,8 @@ export type AnyField = TextField<string> | NumberField<string> | BooleanField<st
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "array";
     readonly items: Items;
     readonly label?: string;
@@ -21,6 +23,8 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 // @public
 export interface BooleanField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "boolean";
     readonly label?: string;
     readonly name: N;
@@ -31,8 +35,11 @@ export interface BooleanField<N extends string> {
 // @public
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
 
+// Warning: (ae-forgotten-export) The symbol "GenerateUiSchemaOptions" needs to be exported by the entry point index.d.ts
+//
 // @public
-export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+}
 
 // @public
 export interface BuildResult {
@@ -105,6 +112,8 @@ export function defineResolvers<E extends readonly FormElement[], Sources extend
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_enum";
     readonly label?: string;
     readonly name: N;
@@ -116,6 +125,8 @@ export interface DynamicEnumField<N extends string, Source extends string> {
 
 // @public
 export interface DynamicSchemaField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
@@ -239,6 +250,8 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
 
@@ -367,6 +380,8 @@ export function logValidationIssues(result: ValidationResult, formName?: string)
 
 // @public
 export interface NumberField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "number";
     readonly label?: string;
     readonly max?: number;
@@ -379,6 +394,8 @@ export interface NumberField<N extends string> {
 
 // @public
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "object";
     readonly label?: string;
     readonly name: N;
@@ -441,6 +458,8 @@ export interface SchemaBasedCondition {
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "enum";
     readonly label?: string;
     readonly name: N;
@@ -451,6 +470,8 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 
 // @public
 export interface TextField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "text";
     readonly label?: string;
     readonly maxLength?: number;

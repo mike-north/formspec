@@ -2,7 +2,6 @@ import type {
   MetadataAuthoringSurface,
   MetadataDeclarationKind,
   MetadataInferenceContext,
-  MetadataInferenceFn,
   MetadataPluralizationFn,
   MetadataPluralizationPolicyInput,
   MetadataPolicyInput,
@@ -42,7 +41,7 @@ function normalizePluralization(
     return {
       mode: "infer-if-missing",
       infer: () => "",
-      inflect: input.inflect ?? NOOP_INFLECT,
+      inflect: input.inflect,
     };
   }
 
@@ -62,13 +61,12 @@ function normalizePluralization(
 }
 
 function normalizeScalarPolicy(
-  input: MetadataValuePolicyInput | undefined,
-  fallbackInfer: MetadataInferenceFn
+  input: MetadataValuePolicyInput | undefined
 ): NormalizedMetadataValuePolicy {
   if (input?.mode === "infer-if-missing") {
     return {
       mode: "infer-if-missing",
-      infer: input.infer ?? fallbackInfer,
+      infer: input.infer,
       pluralization: normalizePluralization(input.pluralization),
     };
   }
@@ -92,8 +90,8 @@ function normalizeDeclarationPolicy(
   input: MetadataPolicyInput[MetadataDeclarationKind] | undefined
 ): NormalizedDeclarationMetadataPolicy {
   return {
-    apiName: normalizeScalarPolicy(input?.apiName, defaultApiNameInference),
-    displayName: normalizeScalarPolicy(input?.displayName, defaultDisplayNameInference),
+    apiName: normalizeScalarPolicy(input?.apiName),
+    displayName: normalizeScalarPolicy(input?.displayName),
   };
 }
 

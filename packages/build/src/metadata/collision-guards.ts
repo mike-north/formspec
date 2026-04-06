@@ -89,7 +89,9 @@ function validateTypeNode(type: TypeNode, scope: string): void {
       validateTypeNode(type.valueType, `${scope}.*`);
       break;
     case "union":
-      type.members.forEach((member, index) => validateTypeNode(member, `${scope}|${String(index)}`));
+      type.members.forEach((member, index) => {
+        validateTypeNode(member, `${scope}|${String(index)}`);
+      });
       break;
     case "reference":
     case "primitive":

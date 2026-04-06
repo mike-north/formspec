@@ -95,9 +95,10 @@ export function getCompletionItemsAtOffset(
     }
 
     if (semanticContext.kind === "argument") {
+      const argumentCompletions = semanticContext.semantic.argumentCompletions as readonly string[];
       return toArgumentCompletionItems(
         semanticContext.semantic.tagName,
-        semanticContext.semantic.argumentCompletions
+        argumentCompletions
       );
     }
 
@@ -122,9 +123,10 @@ export function getCompletionItemsAtOffset(
   }
 
   if (resolvedContext.kind === "argument") {
+    const argumentCompletions = resolvedContext.semantic.argumentCompletions as readonly string[];
     return toArgumentCompletionItems(
       resolvedContext.semantic.tag.normalizedTagName,
-      resolvedContext.semantic.argumentCompletions
+      argumentCompletions
     );
   }
 

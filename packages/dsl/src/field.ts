@@ -21,7 +21,9 @@ import type {
 
 declare const FIELD_POLICY_BRAND: unique symbol;
 
-type DefaultFieldPolicyBrand = { readonly __formspecDefaultFieldPolicy: true };
+interface DefaultFieldPolicyBrand {
+  readonly __formspecDefaultFieldPolicy: true;
+}
 
 type FieldPolicyBrandValue<Policy> = Policy extends undefined ? DefaultFieldPolicyBrand : Policy;
 
@@ -305,10 +307,10 @@ export function createFieldBuilders<
 
       if (options.length > 0) {
         const first = options[0];
-        const firstIsObject = typeof first === "object" && first !== null;
+        const firstIsObject = typeof first === "object";
 
         for (const opt of options) {
-          const optIsObject = typeof opt === "object" && opt !== null;
+          const optIsObject = typeof opt === "object";
           if (optIsObject !== firstIsObject) {
             throw new Error(
               `field.enum("${name}"): options must be all strings or all objects with {id, label}, not mixed. ` +
