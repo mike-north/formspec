@@ -201,25 +201,20 @@ describe("FormSpecPluginService.handleQuery", () => {
     });
     expect(diagnostics.kind).toBe("diagnostics");
     if (diagnostics.kind === "diagnostics") {
-      expect(diagnostics.diagnostics).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: "OPTIONAL_TARGET_FIELD",
-            category: "target-resolution",
-            severity: "error",
-            data: expect.objectContaining({
-              tagName: "discriminator",
-            }),
-            relatedLocations: [
-              {
-                filePath: context.filePath,
-                range: { start: targetStart, end: targetEnd },
-                message: "Target field declaration",
-              },
-            ],
-          }),
-        ])
+      const diagnostic = diagnostics.diagnostics.find(
+        (entry) => entry.code === "OPTIONAL_TARGET_FIELD"
       );
+      expect(diagnostic).toBeDefined();
+      expect(diagnostic?.category).toBe("target-resolution");
+      expect(diagnostic?.severity).toBe("error");
+      expect(diagnostic?.data["tagName"]).toBe("discriminator");
+      expect(diagnostic?.relatedLocations).toEqual([
+        {
+          filePath: context.filePath,
+          range: { start: targetStart, end: targetEnd },
+          message: "Target field declaration",
+        },
+      ]);
     }
   });
 
