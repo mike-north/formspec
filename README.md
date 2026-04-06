@@ -89,6 +89,23 @@ export interface UserRegistration {
 }
 ```
 
+Static analysis also supports declaration-level discriminator specialization for generic object-like types:
+
+```ts
+/** @discriminator :kind T */
+export interface TaggedValue<T> {
+  kind: string;
+  id: string;
+}
+
+/** @apiName customer */
+export interface CustomerKind {
+  id: string;
+}
+```
+
+When `TaggedValue<CustomerKind>` is analyzed, the generated JSON Schema keeps the ordinary object shape and specializes only `kind` to `enum: ["customer"]`.
+
 ## Metadata Configuration
 
 FormSpec treats logical names, JSON-facing names, and human-facing labels as separate concepts:

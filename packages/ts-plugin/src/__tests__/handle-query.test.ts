@@ -175,6 +175,49 @@ describe("FormSpecPluginService.handleQuery", () => {
     }
   }, 10_000);
 
+  it("serves discriminator diagnostics for malformed declaration tags", async () => {
+    const source = `
+      /** @discriminator :kind T */
+      interface TaggedValue<T> {
+        kind?: string;
+        id: string;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+    const service = new FormSpecPluginService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: "test",
+      getProgram: () => context.program,
+    });
+    services.push(service);
+    const targetStart = source.indexOf("kind?: string;");
+    const targetEnd = targetStart + "kind?: string;".length;
+
+    const diagnostics = service.handleQuery({
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "diagnostics",
+      filePath: context.filePath,
+    });
+    expect(diagnostics.kind).toBe("diagnostics");
+    if (diagnostics.kind === "diagnostics") {
+      const diagnostic = diagnostics.diagnostics.find(
+        (entry) => entry.code === "OPTIONAL_TARGET_FIELD"
+      );
+      expect(diagnostic).toBeDefined();
+      expect(diagnostic?.category).toBe("target-resolution");
+      expect(diagnostic?.severity).toBe("error");
+      expect(diagnostic?.data["tagName"]).toBe("discriminator");
+      expect(diagnostic?.relatedLocations).toEqual([
+        {
+          filePath: context.filePath,
+          range: { start: targetStart, end: targetEnd },
+          message: "Target field declaration",
+        },
+      ]);
+    }
+  });
+
   it("returns error or missing-source results when the program cannot resolve the file", async () => {
     const serviceWithoutProgram = new FormSpecPluginService({
       workspaceRoot: "/workspace/formspec",

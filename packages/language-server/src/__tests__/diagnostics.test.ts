@@ -14,21 +14,20 @@ describe("toLspDiagnostics", () => {
       document,
       [
         {
-          code: "TYPE_MISMATCH",
-          category: "type-compatibility",
-          message: "Expected a numeric target",
+          code: "OPTIONAL_TARGET_FIELD",
+          category: "target-resolution",
+          message: 'Tag "@discriminator" target field "kind" must be required.',
           range: { start: 4, end: 12 },
           severity: "error",
           relatedLocations: [
             {
               filePath: "/workspace/example.ts",
               range: { start: 20, end: 28 },
-              message: "Constraint target",
+              message: "Target field declaration",
             },
           ],
           data: {
-            tagName: "minimum",
-            targetKind: "path",
+            tagName: "discriminator",
           },
         },
       ],
@@ -40,19 +39,18 @@ describe("toLspDiagnostics", () => {
     expect(diagnostic).toMatchObject({
       severity: DiagnosticSeverity.Error,
       source: "white-label",
-      code: "TYPE_MISMATCH",
-      message: "Expected a numeric target",
+      code: "OPTIONAL_TARGET_FIELD",
+      message: 'Tag "@discriminator" target field "kind" must be required.',
       data: {
-        category: "type-compatibility",
-        tagName: "minimum",
-        targetKind: "path",
+        category: "target-resolution",
+        tagName: "discriminator",
       },
     });
     expect(diagnostic?.range).toEqual({
       start: { line: 0, character: 4 },
       end: { line: 0, character: 12 },
     });
-    expect(diagnostic?.relatedInformation?.[0]?.message).toBe("Constraint target");
+    expect(diagnostic?.relatedInformation?.[0]?.message).toBe("Target field declaration");
     expect(diagnostic?.relatedInformation?.[0]?.location.uri).toBe("file:///workspace/example.ts");
   });
 
