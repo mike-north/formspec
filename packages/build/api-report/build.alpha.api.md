@@ -97,11 +97,23 @@ export interface ControlElement {
 // @public
 export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
 
+// @public
+export function createStaticBuildContext(filePath: string): StaticBuildContext;
+
+// @public
+export function createStaticBuildContextFromProgram(program: ts.Program, filePath: string): StaticBuildContext;
+
 export { CustomAnnotationRegistration }
 
 export { CustomConstraintRegistration }
 
 export { CustomTypeRegistration }
+
+// @public
+export interface DiscoveredTypeSchemas {
+    readonly jsonSchema: JsonSchema2020;
+    readonly uiSchema: UISchema | null;
+}
 
 export { DynamicEnumField }
 
@@ -171,6 +183,24 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
+export function generateSchemasFromDeclaration(options: GenerateSchemasFromDeclarationOptions): DiscoveredTypeSchemas;
+
+// @public
+export interface GenerateSchemasFromDeclarationOptions extends StaticSchemaGenerationOptions {
+    readonly context: StaticBuildContext;
+    readonly declaration: SchemaSourceDeclaration;
+}
+
+// @public
+export function generateSchemasFromParameter(options: GenerateSchemasFromParameterOptions): DiscoveredTypeSchemas;
+
+// @public
+export interface GenerateSchemasFromParameterOptions extends StaticSchemaGenerationOptions {
+    readonly context: StaticBuildContext;
+    readonly parameter: ts.ParameterDeclaration;
+}
+
+// @public
 export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions): GenerateFromClassResult;
 
 // @public
@@ -178,6 +208,26 @@ export interface GenerateSchemasFromProgramOptions extends StaticSchemaGeneratio
     readonly filePath: string;
     readonly program: ts.Program;
     readonly typeName: string;
+}
+
+// @public
+export function generateSchemasFromReturnType(options: GenerateSchemasFromReturnTypeOptions): DiscoveredTypeSchemas;
+
+// @public
+export interface GenerateSchemasFromReturnTypeOptions extends StaticSchemaGenerationOptions {
+    readonly context: StaticBuildContext;
+    readonly declaration: ts.SignatureDeclaration;
+}
+
+// @public
+export function generateSchemasFromType(options: GenerateSchemasFromTypeOptions): DiscoveredTypeSchemas;
+
+// @public
+export interface GenerateSchemasFromTypeOptions extends StaticSchemaGenerationOptions {
+    readonly context: StaticBuildContext;
+    readonly name?: string | undefined;
+    readonly sourceNode?: ts.Node | undefined;
+    readonly type: ts.Type;
 }
 
 // @public
@@ -313,6 +363,12 @@ export { NumberField }
 export { ObjectField }
 
 // @public
+export function resolveModuleExport(context: StaticBuildContext, exportName?: string): ts.Symbol | null;
+
+// @public
+export function resolveModuleExportDeclaration(context: StaticBuildContext, exportName?: string): ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | null;
+
+// @public
 export interface Rule {
     readonly condition: SchemaBasedCondition;
     readonly effect: RuleEffect;
@@ -341,6 +397,16 @@ export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 export interface SchemaBasedCondition {
     readonly schema: RuleConditionSchema;
     readonly scope: string;
+}
+
+// @public
+export type SchemaSourceDeclaration = ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration;
+
+// @public
+export interface StaticBuildContext {
+    readonly checker: ts.TypeChecker;
+    readonly program: ts.Program;
+    readonly sourceFile: ts.SourceFile;
 }
 
 export { StaticEnumField }
