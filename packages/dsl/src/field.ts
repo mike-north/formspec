@@ -21,28 +21,44 @@ import type {
 
 declare const FIELD_POLICY_BRAND: unique symbol;
 
-interface DefaultFieldPolicyBrand {
-  readonly __formspecDefaultFieldPolicy: true;
-}
-
-type FieldPolicyBrandValue<Policy> = Policy extends undefined ? DefaultFieldPolicyBrand : Policy;
-
+/**
+ * Branded field element produced by a policy-scoped builder namespace.
+ *
+ * @public
+ */
 export type FieldBuilderElement<
   Policy,
   Element extends FormElement = FormElement,
 > = Element & {
-  readonly [FIELD_POLICY_BRAND]: FieldPolicyBrandValue<Policy>;
+  readonly [FIELD_POLICY_BRAND]: Policy extends undefined
+    ? { readonly __formspecDefaultFieldPolicy: true }
+    : Policy;
 };
 
-type FieldBuilderInputElement<Policy> = Policy extends undefined
+/**
+ * Input element accepted by policy-scoped composite field builders.
+ *
+ * @public
+ */
+export type FieldBuilderInputElement<Policy> = Policy extends undefined
   ? FormElement
   : FieldBuilderElement<Policy>;
 
-type FieldMetadataPolicy<Policy> = Policy extends { readonly field?: infer FieldPolicy }
+/**
+ * Field-specific metadata policy extracted from a broader metadata policy input.
+ *
+ * @public
+ */
+export type FieldMetadataPolicy<Policy> = Policy extends { readonly field?: infer FieldPolicy }
   ? FieldPolicy
   : undefined;
 
-type IsRequiredMetadata<
+/**
+ * Whether a specific metadata key is required by the active policy.
+ *
+ * @public
+ */
+export type IsRequiredMetadata<
   Policy,
   Key extends "apiName" | "displayName",
 > = FieldMetadataPolicy<Policy> extends Record<string, unknown>
@@ -51,7 +67,12 @@ type IsRequiredMetadata<
     : false
   : false;
 
-type LabelDisplayNameConfig<Required extends boolean> = Required extends true
+/**
+ * Label/displayName config shape under a required-or-optional policy.
+ *
+ * @public
+ */
+export type LabelDisplayNameConfig<Required extends boolean> = Required extends true
   ?
       | { readonly label: string; readonly displayName?: never }
       | { readonly label?: never; readonly displayName: string }
@@ -60,28 +81,53 @@ type LabelDisplayNameConfig<Required extends boolean> = Required extends true
       | { readonly label?: never; readonly displayName?: string }
       | { readonly label?: undefined; readonly displayName?: undefined };
 
-type ApiNameConfig<Required extends boolean> = Required extends true
+/**
+ * apiName config shape under a required-or-optional policy.
+ *
+ * @public
+ */
+export type ApiNameConfig<Required extends boolean> = Required extends true
   ? { readonly apiName: string }
   : { readonly apiName?: string };
 
-type HasRequiredMetadata<Policy> = IsRequiredMetadata<Policy, "apiName"> extends true
+/**
+ * Whether the active policy requires any explicit field metadata.
+ *
+ * @public
+ */
+export type HasRequiredMetadata<Policy> = IsRequiredMetadata<Policy, "apiName"> extends true
   ? true
   : IsRequiredMetadata<Policy, "displayName"> extends true
     ? true
     : false;
 
-type MetadataAwareFieldConfig<
+/**
+ * Base field config augmented with metadata requirements from the active policy.
+ *
+ * @public
+ */
+export type MetadataAwareFieldConfig<
   BaseConfig,
   Policy,
 > = Omit<BaseConfig, "label" | "displayName" | "apiName"> &
   ApiNameConfig<IsRequiredMetadata<Policy, "apiName">> &
   LabelDisplayNameConfig<IsRequiredMetadata<Policy, "displayName">>;
 
-type MaybeRequiredConfigArg<Config, Policy> = HasRequiredMetadata<Policy> extends true
+/**
+ * Optional-or-required config tuple driven by the active metadata policy.
+ *
+ * @public
+ */
+export type MaybeRequiredConfigArg<Config, Policy> = HasRequiredMetadata<Policy> extends true
   ? readonly [config: Config]
   : readonly [config?: Config];
 
-type ArrayBuilderArgs<
+/**
+ * Argument tuple for policy-scoped array field builders.
+ *
+ * @public
+ */
+export type ArrayBuilderArgs<
   N extends string,
   Items extends readonly FieldBuilderInputElement<Policy>[],
   Policy,
@@ -91,7 +137,12 @@ type ArrayBuilderArgs<
       | readonly [...items: Items]
       | readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items];
 
-type ObjectBuilderArgs<
+/**
+ * Argument tuple for policy-scoped object field builders.
+ *
+ * @public
+ */
+export type ObjectBuilderArgs<
   N extends string,
   Properties extends readonly FieldBuilderInputElement<Policy>[],
   Policy,
@@ -101,41 +152,81 @@ type ObjectBuilderArgs<
       | readonly [...properties: Properties]
       | readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties];
 
-type TextFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
+/**
+ * Config accepted by policy-scoped text field builders.
+ *
+ * @public
+ */
+export type TextFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
   Omit<TextField<N>, "_type" | "_field" | "name">,
   Policy
 >;
 
-type NumberFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
+/**
+ * Config accepted by policy-scoped number field builders.
+ *
+ * @public
+ */
+export type NumberFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
   Omit<NumberField<N>, "_type" | "_field" | "name">,
   Policy
 >;
 
-type BooleanFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
+/**
+ * Config accepted by policy-scoped boolean field builders.
+ *
+ * @public
+ */
+export type BooleanFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
   Omit<BooleanField<N>, "_type" | "_field" | "name">,
   Policy
 >;
 
-type StaticEnumFieldConfig<
+/**
+ * Config accepted by policy-scoped static enum field builders.
+ *
+ * @public
+ */
+export type StaticEnumFieldConfig<
   N extends string,
   O extends readonly EnumOptionValue[],
   Policy,
 > = MetadataAwareFieldConfig<Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">, Policy>;
 
-type DynamicEnumFieldConfig<N extends string, Source extends string, Policy> = MetadataAwareFieldConfig<
+/**
+ * Config accepted by policy-scoped dynamic enum field builders.
+ *
+ * @public
+ */
+export type DynamicEnumFieldConfig<N extends string, Source extends string, Policy> = MetadataAwareFieldConfig<
   Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">,
   Policy
 >;
 
-type DynamicSchemaFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
+/**
+ * Config accepted by policy-scoped dynamic schema field builders.
+ *
+ * @public
+ */
+export type DynamicSchemaFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<
   Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">,
   Policy
 >;
 
-type ArrayFieldConfig<N extends string, Items extends readonly FormElement[], Policy> =
+/**
+ * Config accepted by policy-scoped array field builders.
+ *
+ * @public
+ */
+export type ArrayFieldConfig<N extends string, Items extends readonly FormElement[], Policy> =
   MetadataAwareFieldConfig<Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">, Policy>;
 
-type ObjectFieldConfig<N extends string, Properties extends readonly FormElement[], Policy> =
+/**
+ * Config accepted by policy-scoped object field builders.
+ *
+ * @public
+ */
+export type ObjectFieldConfig<N extends string, Properties extends readonly FormElement[], Policy> =
   MetadataAwareFieldConfig<
     Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
     Policy

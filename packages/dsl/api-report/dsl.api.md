@@ -8,6 +8,16 @@
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
 
 // @public
+export type ApiNameConfig<Required extends boolean> = Required extends true ? {
+    readonly apiName: string;
+} : {
+    readonly apiName?: string;
+};
+
+// @public
+export type ArrayBuilderArgs<N extends string, Items extends readonly FieldBuilderInputElement<Policy>[], Policy> = HasRequiredMetadata<Policy> extends true ? readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items] : readonly [...items: Items] | readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items];
+
+// @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -22,6 +32,9 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 }
 
 // @public
+export type ArrayFieldConfig<N extends string, Items extends readonly FormElement[], Policy> = MetadataAwareFieldConfig<Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">, Policy>;
+
+// @public
 export interface BooleanField<N extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -31,6 +44,9 @@ export interface BooleanField<N extends string> {
     readonly required?: boolean;
     readonly _type: "field";
 }
+
+// @public
+export type BooleanFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<Omit<BooleanField<N>, "_type" | "_field" | "name">, Policy>;
 
 // @public
 export type BuildSchema<Fields> = {
@@ -47,8 +63,6 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
     readonly value: Value;
 }
 
-// Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function createFieldBuilders<const Policy extends MetadataPolicyInput | undefined = undefined>(): FieldBuilderNamespace<Policy>;
 
@@ -67,6 +81,12 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
 } ? ID : string : string;
 
 // @public
+export interface DeclarationMetadataPolicyInput {
+    readonly apiName?: MetadataValuePolicyInput | undefined;
+    readonly displayName?: MetadataValuePolicyInput | undefined;
+}
+
+// @public
 export interface DynamicEnumField<N extends string, Source extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -80,6 +100,9 @@ export interface DynamicEnumField<N extends string, Source extends string> {
 }
 
 // @public
+export type DynamicEnumFieldConfig<N extends string, Source extends string, Policy> = MetadataAwareFieldConfig<Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">, Policy>;
+
+// @public
 export interface DynamicSchemaField<N extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -91,6 +114,9 @@ export interface DynamicSchemaField<N extends string> {
     readonly schemaSource: string;
     readonly _type: "field";
 }
+
+// @public
+export type DynamicSchemaFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<Omit<DynamicSchemaField<N>, "_type" | "_field" | "name" | "schemaSource">, Policy>;
 
 // @public
 export interface EnumOption {
@@ -139,31 +165,33 @@ infer First,
 export const field: FieldBuilderNamespace<undefined>;
 
 // @public
+export type FieldBuilderElement<Policy, Element extends FormElement = FormElement> = Element & {
+    readonly [FIELD_POLICY_BRAND]: Policy extends undefined ? {
+        readonly __formspecDefaultFieldPolicy: true;
+    } : Policy;
+};
+
+// @public
+export type FieldBuilderInputElement<Policy> = Policy extends undefined ? FormElement : FieldBuilderElement<Policy>;
+
+// @public
 export interface FieldBuilderNamespace<Policy extends MetadataPolicyInput | undefined = undefined> {
-    // Warning: (ae-forgotten-export) The symbol "FieldBuilderInputElement" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "ArrayBuilderArgs" needs to be exported by the entry point index.d.ts
     readonly array: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(name: N, ...args: ArrayBuilderArgs<N, Items, Policy>) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
-    // Warning: (ae-forgotten-export) The symbol "ArrayFieldConfig" needs to be exported by the entry point index.d.ts
     readonly arrayWithConfig: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(name: N, config: ArrayFieldConfig<N, Items, Policy>, ...items: Items) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
-    // Warning: (ae-forgotten-export) The symbol "BooleanFieldConfig" needs to be exported by the entry point index.d.ts
     readonly boolean: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<BooleanFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, BooleanField<N>>;
-    // Warning: (ae-forgotten-export) The symbol "DynamicEnumFieldConfig" needs to be exported by the entry point index.d.ts
     readonly dynamicEnum: <const N extends string, const Source extends string>(name: N, source: Source, ...args: MaybeRequiredConfigArg<DynamicEnumFieldConfig<N, Source, Policy>, Policy>) => FieldBuilderElement<Policy, DynamicEnumField<N, Source>>;
-    // Warning: (ae-forgotten-export) The symbol "DynamicSchemaFieldConfig" needs to be exported by the entry point index.d.ts
     readonly dynamicSchema: <const N extends string>(name: N, schemaSource: string, ...args: MaybeRequiredConfigArg<DynamicSchemaFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, DynamicSchemaField<N>>;
-    // Warning: (ae-forgotten-export) The symbol "StaticEnumFieldConfig" needs to be exported by the entry point index.d.ts
     readonly enum: <const N extends string, const O extends readonly EnumOptionValue[]>(name: N, options: O, ...args: MaybeRequiredConfigArg<StaticEnumFieldConfig<N, O, Policy>, Policy>) => FieldBuilderElement<Policy, StaticEnumField<N, O>>;
-    // Warning: (ae-forgotten-export) The symbol "NumberFieldConfig" needs to be exported by the entry point index.d.ts
     readonly number: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<NumberFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, NumberField<N>>;
-    // Warning: (ae-forgotten-export) The symbol "ObjectBuilderArgs" needs to be exported by the entry point index.d.ts
     readonly object: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(name: N, ...args: ObjectBuilderArgs<N, Properties, Policy>) => FieldBuilderElement<Policy, ObjectField<N, Properties>>;
-    // Warning: (ae-forgotten-export) The symbol "ObjectFieldConfig" needs to be exported by the entry point index.d.ts
     readonly objectWithConfig: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(name: N, config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties) => FieldBuilderElement<Policy, ObjectField<N, Properties>>;
-    // Warning: (ae-forgotten-export) The symbol "MaybeRequiredConfigArg" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "TextFieldConfig" needs to be exported by the entry point index.d.ts
-    // Warning: (ae-forgotten-export) The symbol "FieldBuilderElement" needs to be exported by the entry point index.d.ts
     readonly text: <const N extends string>(name: N, ...args: MaybeRequiredConfigArg<TextFieldConfig<N, Policy>, Policy>) => FieldBuilderElement<Policy, TextField<N>>;
 }
+
+// @public
+export type FieldMetadataPolicy<Policy> = Policy extends {
+    readonly field?: infer FieldPolicy;
+} ? FieldPolicy : undefined;
 
 // @public
 export type FlattenIntersection<T> = {
@@ -211,6 +239,9 @@ export interface Group<Elements extends readonly FormElement[]> {
 export function group<const Elements extends readonly FormElement[]>(label: string, ...elements: Elements): Group<Elements>;
 
 // @public
+export type HasRequiredMetadata<Policy> = IsRequiredMetadata<Policy, "apiName"> extends true ? true : IsRequiredMetadata<Policy, "displayName"> extends true ? true : false;
+
+// @public
 export type InferFieldValue<F> = F extends TextField<string> ? string : F extends NumberField<string> ? number : F extends BooleanField<string> ? boolean : F extends StaticEnumField<string, infer O extends readonly EnumOptionValue[]> ? O extends readonly EnumOption[] ? O[number]["id"] : O extends readonly string[] ? O[number] : never : F extends DynamicEnumField<string, infer Source> ? DataSourceValueType<Source> : F extends DynamicSchemaField<string> ? Record<string, unknown> : F extends ArrayField<string, infer Items extends readonly FormElement[]> ? InferSchema<Items>[] : F extends ObjectField<string, infer Properties extends readonly FormElement[]> ? InferSchema<Properties> : never;
 
 // @public
@@ -223,7 +254,115 @@ export type InferSchema<Elements extends readonly FormElement[]> = FlattenInters
 export function is<const K extends string, const V>(field: K, value: V): EqualsPredicate<K, V>;
 
 // @public
+export type IsRequiredMetadata<Policy, Key extends "apiName" | "displayName"> = FieldMetadataPolicy<Policy> extends Record<string, unknown> ? FieldMetadataPolicy<Policy>[Key] extends {
+    readonly mode: "require-explicit";
+} ? true : false : false;
+
+// @public
+export type LabelDisplayNameConfig<Required extends boolean> = Required extends true ? {
+    readonly label: string;
+    readonly displayName?: never;
+} | {
+    readonly label?: never;
+    readonly displayName: string;
+} : {
+    readonly label?: string;
+    readonly displayName?: never;
+} | {
+    readonly label?: never;
+    readonly displayName?: string;
+} | {
+    readonly label?: undefined;
+    readonly displayName?: undefined;
+};
+
+// @public
 export function logValidationIssues(result: ValidationResult, formName?: string): void;
+
+// @public
+export type MaybeRequiredConfigArg<Config, Policy> = HasRequiredMetadata<Policy> extends true ? readonly [config: Config] : readonly [config?: Config];
+
+// @public
+export type MetadataAuthoringSurface = "tsdoc" | "chain-dsl";
+
+// @public
+export type MetadataAwareFieldConfig<BaseConfig, Policy> = Omit<BaseConfig, "label" | "displayName" | "apiName"> & ApiNameConfig<IsRequiredMetadata<Policy, "apiName">> & LabelDisplayNameConfig<IsRequiredMetadata<Policy, "displayName">>;
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
+
+// @public
+export interface MetadataPluralizationContext extends MetadataInferenceContext {
+    readonly singular: string;
+}
+
+// @public
+export interface MetadataPluralizationDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+}
+
+// @public
+export type MetadataPluralizationFn = (context: MetadataPluralizationContext) => string;
+
+// @public
+export interface MetadataPluralizationInferIfMissingPolicyInput {
+    readonly inflect: MetadataPluralizationFn;
+    readonly mode: "infer-if-missing";
+}
+
+// @public
+export type MetadataPluralizationPolicyInput = MetadataPluralizationDisabledPolicyInput | MetadataPluralizationRequireExplicitPolicyInput | MetadataPluralizationInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataPluralizationRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+}
+
+// @public
+export interface MetadataPolicyInput {
+    readonly field?: DeclarationMetadataPolicyInput | undefined;
+    readonly method?: DeclarationMetadataPolicyInput | undefined;
+    readonly type?: DeclarationMetadataPolicyInput | undefined;
+}
+
+// @public
+export type MetadataResolutionMode = "disabled" | "require-explicit" | "infer-if-missing";
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
+
+// @public
+export interface MetadataValueDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export interface MetadataValueInferIfMissingPolicyInput {
+    readonly infer: MetadataInferenceFn;
+    readonly mode: "infer-if-missing";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export type MetadataValuePolicyInput = MetadataValueDisabledPolicyInput | MetadataValueRequireExplicitPolicyInput | MetadataValueInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataValueRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
 
 // @public
 export interface NumberField<N extends string> {
@@ -240,6 +379,12 @@ export interface NumberField<N extends string> {
 }
 
 // @public
+export type NumberFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<Omit<NumberField<N>, "_type" | "_field" | "name">, Policy>;
+
+// @public
+export type ObjectBuilderArgs<N extends string, Properties extends readonly FieldBuilderInputElement<Policy>[], Policy> = HasRequiredMetadata<Policy> extends true ? readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties] : readonly [...properties: Properties] | readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties];
+
+// @public
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -252,7 +397,24 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 }
 
 // @public
+export type ObjectFieldConfig<N extends string, Properties extends readonly FormElement[], Policy> = MetadataAwareFieldConfig<Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">, Policy>;
+
+// @public
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
+
+// @public
+export interface ResolvedMetadata {
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
+}
+
+// @public
+export interface ResolvedScalarMetadata {
+    readonly source: MetadataSource;
+    readonly value: string;
+}
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
@@ -265,6 +427,9 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
     readonly required?: boolean;
     readonly _type: "field";
 }
+
+// @public
+export type StaticEnumFieldConfig<N extends string, O extends readonly EnumOptionValue[], Policy> = MetadataAwareFieldConfig<Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">, Policy>;
 
 // @public
 export interface TextField<N extends string> {
@@ -280,6 +445,9 @@ export interface TextField<N extends string> {
     readonly required?: boolean;
     readonly _type: "field";
 }
+
+// @public
+export type TextFieldConfig<N extends string, Policy> = MetadataAwareFieldConfig<Omit<TextField<N>, "_type" | "_field" | "name">, Policy>;
 
 // @public
 export function validateForm(elements: readonly FormElement[]): ValidationResult;

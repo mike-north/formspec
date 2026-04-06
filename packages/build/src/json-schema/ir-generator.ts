@@ -903,7 +903,7 @@ function applyAnnotations(
   for (const annotation of annotations) {
     switch (annotation.annotationKind) {
       case "displayName":
-        schema.title = annotation.value;
+        schema.title ??= annotation.value;
         break;
 
       case "description":

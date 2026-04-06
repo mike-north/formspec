@@ -130,6 +130,34 @@ describe("generateJsonSchemaFromIR", () => {
       expect(schema.required).toEqual(["full_name"]);
     });
 
+    it("keeps resolved metadata titles ahead of displayName annotations on fields", () => {
+      const ir = makeIR([
+        makeField(
+          "fullName",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "displayName",
+              value: "Annotation Title",
+              provenance: PROVENANCE,
+            },
+          ],
+          {
+            displayName: { value: "Metadata Title", source: "explicit" },
+          }
+        ),
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.properties).toEqual({
+        fullName: { type: "string", title: "Metadata Title" },
+      });
+    });
+
     it("uses resolved apiName for $defs keys and $ref targets", () => {
       const ir: FormIR = {
         kind: "form-ir",
@@ -184,6 +212,61 @@ describe("generateJsonSchemaFromIR", () => {
           given_name: { type: "string", title: "Given Name" },
         },
         required: ["given_name"],
+      });
+    });
+
+    it("keeps resolved metadata titles ahead of displayName annotations on object properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField("customer", {
+            kind: "reference",
+            name: "CustomerProfile",
+            typeArguments: [],
+          }),
+        ],
+        typeRegistry: {
+          CustomerProfile: {
+            name: "CustomerProfile",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "givenName",
+                  metadata: {
+                    displayName: { value: "Metadata Title", source: "explicit" },
+                  },
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [
+                    {
+                      kind: "annotation",
+                      annotationKind: "displayName",
+                      value: "Annotation Title",
+                      provenance: PROVENANCE,
+                    },
+                  ],
+                  provenance: PROVENANCE,
+                } satisfies ObjectProperty,
+              ],
+              additionalProperties: true,
+            },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.$defs?.["CustomerProfile"]).toEqual({
+        type: "object",
+        properties: {
+          givenName: { type: "string", title: "Metadata Title" },
+        },
+        required: ["givenName"],
       });
     });
 

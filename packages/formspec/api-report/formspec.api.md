@@ -35,8 +35,6 @@ export interface BooleanField<N extends string> {
 // @public
 export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpec<E>, options?: BuildFormSchemasOptions): BuildResult;
 
-// Warning: (ae-forgotten-export) The symbol "GenerateUiSchemaOptions" needs to be exported by the entry point index.d.ts
-//
 // @public
 export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
 }
@@ -106,6 +104,12 @@ export interface DataSourceRegistry {
 export type DataSourceValueType<Source extends string> = Source extends keyof DataSourceRegistry ? DataSourceRegistry[Source] extends {
     id: infer ID;
 } ? ID : string : string;
+
+// @public
+export interface DeclarationMetadataPolicyInput {
+    readonly apiName?: MetadataValuePolicyInput | undefined;
+    readonly displayName?: MetadataValuePolicyInput | undefined;
+}
 
 // @public
 export function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources>;
@@ -250,13 +254,17 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
-    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
 
 // @public
-export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema;
+export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>, options?: GenerateUiSchemaOptions): UISchema;
+
+// @public
+export interface GenerateUiSchemaOptions {
+    readonly metadata?: MetadataPolicyInput | undefined;
+}
 
 // @public
 export interface Group<Elements extends readonly FormElement[]> {
@@ -379,6 +387,85 @@ export interface LabelElement {
 export function logValidationIssues(result: ValidationResult, formName?: string): void;
 
 // @public
+export type MetadataAuthoringSurface = "tsdoc" | "chain-dsl";
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
+
+// @public
+export interface MetadataPluralizationContext extends MetadataInferenceContext {
+    readonly singular: string;
+}
+
+// @public
+export interface MetadataPluralizationDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+}
+
+// @public
+export type MetadataPluralizationFn = (context: MetadataPluralizationContext) => string;
+
+// @public
+export interface MetadataPluralizationInferIfMissingPolicyInput {
+    readonly inflect: MetadataPluralizationFn;
+    readonly mode: "infer-if-missing";
+}
+
+// @public
+export type MetadataPluralizationPolicyInput = MetadataPluralizationDisabledPolicyInput | MetadataPluralizationRequireExplicitPolicyInput | MetadataPluralizationInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataPluralizationRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+}
+
+// @public
+export interface MetadataPolicyInput {
+    readonly field?: DeclarationMetadataPolicyInput | undefined;
+    readonly method?: DeclarationMetadataPolicyInput | undefined;
+    readonly type?: DeclarationMetadataPolicyInput | undefined;
+}
+
+// @public
+export type MetadataResolutionMode = "disabled" | "require-explicit" | "infer-if-missing";
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
+
+// @public
+export interface MetadataValueDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export interface MetadataValueInferIfMissingPolicyInput {
+    readonly infer: MetadataInferenceFn;
+    readonly mode: "infer-if-missing";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export type MetadataValuePolicyInput = MetadataValueDisabledPolicyInput | MetadataValueRequireExplicitPolicyInput | MetadataValueInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataValueRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
 export interface NumberField<N extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -406,6 +493,20 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 
 // @public
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
+
+// @public
+export interface ResolvedMetadata {
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
+}
+
+// @public
+export interface ResolvedScalarMetadata {
+    readonly source: MetadataSource;
+    readonly value: string;
+}
 
 // @public
 export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegistry[Source]> = (params?: Record<string, unknown>) => Promise<FetchOptionsResponse<T>>;
