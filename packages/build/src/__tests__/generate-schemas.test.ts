@@ -13,6 +13,11 @@ const serializedNameRegressionFixture = path.join(
   "fixtures",
   "serialized-name-regression.ts"
 );
+const metadataDescriptionRegressionFixture = path.join(
+  __dirname,
+  "fixtures",
+  "issue-220-metadata-description.ts"
+);
 
 describe("generateSchemas", () => {
   it("emits named primitive aliases into $defs for reused constrained aliases", () => {
@@ -108,6 +113,45 @@ describe("generateSchemas", () => {
           amount_value: { type: "number" },
         },
         required: ["amount_value"],
+      },
+    });
+  });
+
+  it("omits consumed metadata tags from descriptions for inline and nested properties", () => {
+    const result = generateSchemas({
+      filePath: metadataDescriptionRegressionFixture,
+      typeName: "MetadataDescriptionRegression",
+      metadata: {
+        field: {
+          apiName: { mode: "prefer-explicit" },
+          displayName: { mode: "prefer-explicit" },
+        },
+      },
+    });
+
+    expect(result.jsonSchema.properties).toMatchObject({
+      workflow_status: {
+        type: "string",
+        description: "Inline status shown in the dashboard",
+      },
+      workflowState: {
+        type: "string",
+        title: "Workflow Status",
+        description: "Inline summary for a labeled field",
+      },
+      nested: { $ref: "#/$defs/NestedApiMetadataDetails" },
+    });
+
+    expect(result.jsonSchema.$defs).toMatchObject({
+      NestedApiMetadataDetails: {
+        type: "object",
+        properties: {
+          nested_workflow_status: {
+            type: "string",
+            description: "Nested status shown in the dashboard",
+          },
+        },
+        required: ["nested_workflow_status"],
       },
     });
   });

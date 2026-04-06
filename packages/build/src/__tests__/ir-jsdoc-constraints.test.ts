@@ -595,6 +595,42 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("stops summary extraction at recognized @apiName tags", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Status shown in the dashboard
+         * @apiName workflow_status
+         */
+        workflowStatus: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result.find((n) => n.annotationKind === "description")).toMatchObject({
+      annotationKind: "description",
+      value: "Status shown in the dashboard",
+    });
+  });
+
+  it("preserves unknown tag-like text in the description path", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Status shown in the dashboard
+         * @unknownTag still authored prose
+         */
+        workflowStatus: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    expect(result.find((n) => n.annotationKind === "description")).toMatchObject({
+      annotationKind: "description",
+      value: "Status shown in the dashboard @unknownTag still authored prose",
+    });
+  });
+
   it("parses multiple displayName tags for enum member labels via display-name metadata", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {

@@ -14,9 +14,12 @@
  *    — Parsed via TSDocParser as custom block tags.
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
- * 2. **Annotation tags** (`@displayName`, `@format`, `@placeholder`):
- *    These are parsed as structured custom block tags and mapped directly
- *    onto annotation IR nodes.
+ * 2. **Metadata and annotation tags** (`@apiName`, `@displayName`,
+ *    `@format`, `@placeholder`):
+ *    These are parsed as structured custom block tags so summary extraction
+ *    stops at recognized FormSpec tags. `@displayName`, `@format`, and
+ *    `@placeholder` also map onto annotation IR nodes, while `@apiName`
+ *    remains metadata-only and is resolved separately by the class analyzer.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
@@ -112,8 +115,9 @@ function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): T
     );
   }
 
-  // Register annotation tags that participate in the canonical IR.
-  for (const tagName of ["displayName", "format", "placeholder"]) {
+  // Register FormSpec metadata and annotation tags so summary extraction
+  // stops at recognized tags without having to scrub emitted descriptions.
+  for (const tagName of ["apiName", "displayName", "format", "placeholder"]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
