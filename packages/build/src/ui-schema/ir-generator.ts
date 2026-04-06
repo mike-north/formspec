@@ -7,6 +7,8 @@
  */
 
 import type { FormIR, FormIRElement, FieldNode, GroupLayoutNode } from "@formspec/core/internals";
+import { getDisplayName, getSerializedName } from "../metadata/index.js";
+import { assertNoSerializedNameCollisions } from "../metadata/collision-guards.js";
 import type {
   UISchema,
   UISchemaElement,
@@ -101,6 +103,15 @@ function combineRules(parentRule: Rule, childRule: Rule): Rule {
   };
 }
 
+function getFieldDisplayName(field: FieldNode): string | undefined {
+  const resolvedDisplayName = getDisplayName(field.metadata);
+  if (resolvedDisplayName !== undefined) {
+    return resolvedDisplayName;
+  }
+
+  return field.annotations.find((annotation) => annotation.annotationKind === "displayName")?.value;
+}
+
 // =============================================================================
 // ELEMENT CONVERSION
 // =============================================================================
@@ -108,18 +119,18 @@ function combineRules(parentRule: Rule, childRule: Rule): Rule {
 /**
  * Converts a FieldNode from the IR to a ControlElement.
  *
- * The label is sourced from the first `displayName` annotation on the field,
- * matching how the chain DSL propagates the `label` option through the
- * canonicalization phase.
+ * The label prefers resolved metadata, with annotation fallback for callers
+ * that still construct IR without the metadata resolver pass.
  */
-function fieldNodeToControl(field: FieldNode, parentRule?: Rule): ControlElement {
-  const displayNameAnnotation = field.annotations.find((a) => a.annotationKind === "displayName");
+function fieldNodeToControl(field: FieldNode, fieldNameMap: ReadonlyMap<string, string>, parentRule?: Rule): ControlElement {
   const placeholderAnnotation = field.annotations.find((a) => a.annotationKind === "placeholder");
+  const serializedName = fieldNameMap.get(field.name) ?? getSerializedName(field.name, field.metadata);
+  const displayName = getFieldDisplayName(field);
 
   const control: ControlElement = {
     type: "Control",
-    scope: fieldToScope(field.name),
-    ...(displayNameAnnotation !== undefined && { label: displayNameAnnotation.value }),
+    scope: fieldToScope(serializedName),
+    ...(displayName !== undefined && { label: displayName }),
     ...(placeholderAnnotation !== undefined && {
       options: { placeholder: placeholderAnnotation.value },
     }),
@@ -136,11 +147,15 @@ function fieldNodeToControl(field: FieldNode, parentRule?: Rule): ControlElement
  * forwarded to nested elements so that a group inside a conditional inherits
  * the visibility rule.
  */
-function groupNodeToLayout(group: GroupLayoutNode, parentRule?: Rule): GroupLayout {
+function groupNodeToLayout(
+  group: GroupLayoutNode,
+  fieldNameMap: ReadonlyMap<string, string>,
+  parentRule?: Rule
+): GroupLayout {
   return {
     type: "Group",
     label: group.label,
-    elements: irElementsToUiSchema(group.elements, parentRule),
+    elements: irElementsToUiSchema(group.elements, fieldNameMap, parentRule),
     ...(parentRule !== undefined && { rule: parentRule }),
   };
 }
@@ -154,6 +169,7 @@ function groupNodeToLayout(group: GroupLayoutNode, parentRule?: Rule): GroupLayo
  */
 function irElementsToUiSchema(
   elements: readonly FormIRElement[],
+  fieldNameMap: ReadonlyMap<string, string>,
   parentRule?: Rule
 ): UISchemaElement[] {
   const result: UISchemaElement[] = [];
@@ -161,23 +177,23 @@ function irElementsToUiSchema(
   for (const element of elements) {
     switch (element.kind) {
       case "field": {
-        result.push(fieldNodeToControl(element, parentRule));
+        result.push(fieldNodeToControl(element, fieldNameMap, parentRule));
         break;
       }
 
       case "group": {
-        result.push(groupNodeToLayout(element, parentRule));
+        result.push(groupNodeToLayout(element, fieldNameMap, parentRule));
         break;
       }
 
       case "conditional": {
         // Build the rule for this conditional level.
-        const newRule = createShowRule(element.fieldName, element.value);
+        const newRule = createShowRule(fieldNameMap.get(element.fieldName) ?? element.fieldName, element.value);
         // Combine with the inherited parent rule for nested conditionals.
         const combinedRule = parentRule !== undefined ? combineRules(parentRule, newRule) : newRule;
         // Children are flattened into the parent container with the combined
         // rule attached.
-        const childElements = irElementsToUiSchema(element.elements, combinedRule);
+        const childElements = irElementsToUiSchema(element.elements, fieldNameMap, combinedRule);
         result.push(...childElements);
         break;
       }
@@ -202,7 +218,8 @@ function irElementsToUiSchema(
  *
  * Mapping rules:
  * - `FieldNode` → `ControlElement` with `scope: "#/properties/<name>"`
- * - `displayName` annotation → `label` on the `ControlElement`
+ * - resolved `displayName` metadata → `label` on the `ControlElement`
+ * - `displayName` annotation → fallback `label` when metadata is absent
  * - `GroupLayoutNode` → `GroupLayout` with recursively converted `elements`
  * - `ConditionalLayoutNode` → children flattened with a `SHOW` rule
  * - Nested conditionals → combined `allOf` rule
@@ -240,10 +257,36 @@ function irElementsToUiSchema(
  * @returns A validated JSON Forms UI Schema
  */
 export function generateUiSchemaFromIR(ir: FormIR): UISchema {
+  assertNoSerializedNameCollisions(ir);
+  const fieldNameMap = collectFieldNameMap(ir.elements);
   const result: UISchema = {
     type: "VerticalLayout",
-    elements: irElementsToUiSchema(ir.elements),
+    elements: irElementsToUiSchema(ir.elements, fieldNameMap),
   };
 
   return parseOrThrow(uiSchemaValidator, result, "UI Schema");
+}
+
+function collectFieldNameMap(elements: readonly FormIRElement[]): ReadonlyMap<string, string> {
+  const map = new Map<string, string>();
+
+  for (const element of elements) {
+    switch (element.kind) {
+      case "field":
+        map.set(element.name, getSerializedName(element.name, element.metadata));
+        break;
+      case "group":
+      case "conditional":
+        for (const [key, value] of collectFieldNameMap(element.elements)) {
+          map.set(key, value);
+        }
+        break;
+      default: {
+        const _exhaustive: never = element;
+        void _exhaustive;
+      }
+    }
+  }
+
+  return map;
 }

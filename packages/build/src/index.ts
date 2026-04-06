@@ -25,7 +25,7 @@
 
 import type { FormElement, FormSpec } from "@formspec/core";
 import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
-import { generateUiSchema } from "./ui-schema/generator.js";
+import { generateUiSchema, type GenerateUiSchemaOptions } from "./ui-schema/generator.js";
 import { type JsonSchema2020 } from "./json-schema/ir-generator.js";
 import type { UISchema } from "./ui-schema/types.js";
 import * as fs from "node:fs";
@@ -37,6 +37,7 @@ import * as path from "node:path";
 
 export type { JsonSchema2020 } from "./json-schema/ir-generator.js";
 export type { GenerateJsonSchemaOptions } from "./json-schema/generator.js";
+export type { GenerateUiSchemaOptions } from "./ui-schema/generator.js";
 export type {
   BuiltinConstraintBroadeningRegistration,
   ConstraintTagRegistration,
@@ -141,7 +142,7 @@ export interface BuildResult {
  *
  * @public
  */
-export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {}
 
 /**
  * Builds both JSON Schema and UI Schema from a FormSpec.
@@ -178,7 +179,7 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
 ): BuildResult {
   return {
     jsonSchema: generateJsonSchema(form, options),
-    uiSchema: generateUiSchema(form),
+    uiSchema: generateUiSchema(form, options),
   };
 }
 
@@ -243,10 +244,11 @@ export function writeSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options: WriteSchemasOptions
 ): WriteSchemasResult {
-  const { outDir, name = "schema", indent = 2, vendorPrefix } = options;
+  const { outDir, name = "schema", indent = 2, vendorPrefix, metadata } = options;
 
   // Build schemas
-  const buildOptions = vendorPrefix === undefined ? undefined : { vendorPrefix };
+  const buildOptions =
+    vendorPrefix === undefined && metadata === undefined ? undefined : { vendorPrefix, metadata };
 
   const { jsonSchema, uiSchema } = buildFormSchemas(form, buildOptions);
 

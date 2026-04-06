@@ -64,6 +64,7 @@ function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema202
     visiting,
     undefined,
     undefined,
+    undefined,
     diagnostics
   );
   if (diagnostics.length > 0) {

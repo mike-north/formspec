@@ -9,6 +9,8 @@ export type AnyField = TextField<string> | NumberField<string> | BooleanField<st
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "array";
     readonly items: Items;
     readonly label?: string;
@@ -21,6 +23,8 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 // @public
 export interface BooleanField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "boolean";
     readonly label?: string;
     readonly name: N;
@@ -60,6 +64,8 @@ export function defineConstraints(config: ConstraintConfig): ResolvedConstraintC
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_enum";
     readonly label?: string;
     readonly name: N;
@@ -71,6 +77,8 @@ export interface DynamicEnumField<N extends string, Source extends string> {
 
 // @public
 export interface DynamicSchemaField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
@@ -175,6 +183,8 @@ export interface LoadConfigResult {
 
 // @public
 export interface NumberField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "number";
     readonly label?: string;
     readonly max?: number;
@@ -187,6 +197,8 @@ export interface NumberField<N extends string> {
 
 // @public
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "object";
     readonly label?: string;
     readonly name: N;
@@ -235,6 +247,8 @@ export type Severity = "error" | "warn" | "off";
 
 // @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "enum";
     readonly label?: string;
     readonly name: N;
@@ -245,6 +259,8 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 
 // @public
 export interface TextField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "text";
     readonly label?: string;
     readonly maxLength?: number;

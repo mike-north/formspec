@@ -17,6 +17,7 @@ import type {
   AnnotationNode,
   Provenance,
   ObjectProperty,
+  ResolvedMetadata,
 } from "@formspec/core/internals";
 import { IR_VERSION } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
@@ -50,11 +51,13 @@ function makeField(
   type: TypeNode,
   required = false,
   constraints: readonly ConstraintNode[] = [],
-  annotations: readonly AnnotationNode[] = []
+  annotations: readonly AnnotationNode[] = [],
+  metadata?: ResolvedMetadata
 ): FieldNode {
   return {
     kind: "field",
     name,
+    ...(metadata !== undefined && { metadata }),
     type,
     required,
     constraints,
@@ -102,6 +105,198 @@ describe("generateJsonSchemaFromIR", () => {
       const schema = generateJsonSchemaFromIR(ir);
 
       expect(schema).not.toHaveProperty("$defs");
+    });
+
+    it("uses resolved metadata for property names and titles", () => {
+      const ir = makeIR([
+        makeField(
+          "fullName",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [],
+          {
+            apiName: { value: "full_name", source: "explicit" },
+            displayName: { value: "Full Name", source: "explicit" },
+          }
+        ),
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.properties).toEqual({
+        full_name: { type: "string", title: "Full Name" },
+      });
+      expect(schema.required).toEqual(["full_name"]);
+    });
+
+    it("keeps resolved metadata titles ahead of displayName annotations on fields", () => {
+      const ir = makeIR([
+        makeField(
+          "fullName",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [
+            {
+              kind: "annotation",
+              annotationKind: "displayName",
+              value: "Annotation Title",
+              provenance: PROVENANCE,
+            },
+          ],
+          {
+            displayName: { value: "Metadata Title", source: "explicit" },
+          }
+        ),
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.properties).toEqual({
+        fullName: { type: "string", title: "Metadata Title" },
+      });
+    });
+
+    it("uses resolved apiName for $defs keys and $ref targets", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField("customer", {
+            kind: "reference",
+            name: "CustomerProfile",
+            typeArguments: [],
+          }),
+        ],
+        typeRegistry: {
+          CustomerProfile: {
+            name: "CustomerProfile",
+            metadata: {
+              apiName: { value: "customer_profile", source: "explicit" },
+              displayName: { value: "Customer Profile", source: "explicit" },
+            },
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "givenName",
+                  metadata: {
+                    apiName: { value: "given_name", source: "explicit" },
+                    displayName: { value: "Given Name", source: "explicit" },
+                  },
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                } satisfies ObjectProperty,
+              ],
+              additionalProperties: true,
+            },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.properties?.["customer"]).toEqual({
+        $ref: "#/$defs/customer_profile",
+      });
+      expect(schema.$defs?.["customer_profile"]).toEqual({
+        type: "object",
+        title: "Customer Profile",
+        properties: {
+          given_name: { type: "string", title: "Given Name" },
+        },
+        required: ["given_name"],
+      });
+    });
+
+    it("keeps resolved metadata titles ahead of displayName annotations on object properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField("customer", {
+            kind: "reference",
+            name: "CustomerProfile",
+            typeArguments: [],
+          }),
+        ],
+        typeRegistry: {
+          CustomerProfile: {
+            name: "CustomerProfile",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "givenName",
+                  metadata: {
+                    displayName: { value: "Metadata Title", source: "explicit" },
+                  },
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [
+                    {
+                      kind: "annotation",
+                      annotationKind: "displayName",
+                      value: "Annotation Title",
+                      provenance: PROVENANCE,
+                    },
+                  ],
+                  provenance: PROVENANCE,
+                } satisfies ObjectProperty,
+              ],
+              additionalProperties: true,
+            },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.$defs?.["CustomerProfile"]).toEqual({
+        type: "object",
+        properties: {
+          givenName: { type: "string", title: "Metadata Title" },
+        },
+        required: ["givenName"],
+      });
+    });
+
+    it("throws when two named types resolve to the same $defs key", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [],
+        typeRegistry: {
+          FirstType: {
+            name: "FirstType",
+            metadata: {
+              apiName: { value: "shared_type", source: "explicit" },
+            },
+            type: { kind: "primitive", primitiveKind: "string" },
+            provenance: PROVENANCE,
+          },
+          SecondType: {
+            name: "SecondType",
+            metadata: {
+              apiName: { value: "shared_type", source: "explicit" },
+            },
+            type: { kind: "primitive", primitiveKind: "number" },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      expect(() => generateJsonSchemaFromIR(ir)).toThrow(/Serialized name collision in \$defs/);
     });
   });
 
@@ -1812,6 +2007,75 @@ describe("generateJsonSchemaFromIR", () => {
       });
       expect(lineItems["items"]).toEqual({
         allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+      });
+    });
+
+    it("remaps nested path-targeted constraints through resolved property apiNames", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "lineItems",
+            {
+              kind: "array",
+              items: { kind: "reference", name: "RenamedAmount", typeArguments: [] },
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@minimum",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {
+          RenamedAmount: {
+            name: "RenamedAmount",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "value",
+                  metadata: {
+                    apiName: { value: "amount_value", source: "explicit" },
+                  },
+                  type: { kind: "primitive", primitiveKind: "number" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: true,
+            },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const lineItems = (schema.properties as Record<string, unknown>)["lineItems"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(lineItems["items"]).toEqual({
+        allOf: [
+          { $ref: "#/$defs/RenamedAmount" },
+          { properties: { amount_value: { minimum: 0 } } },
+        ],
       });
     });
 

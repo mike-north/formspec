@@ -17,6 +17,7 @@ import { canonicalizeChainDSL, canonicalizeTSDoc } from "../canonicalize/index.j
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
 import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
 import type { StaticSchemaGenerationOptions } from "./class-schema.js";
+import { mergeResolvedMetadata } from "../metadata/index.js";
 
 /**
  * Result of generating schemas from a mixed-authoring composition.
@@ -62,9 +63,18 @@ export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions
 ): MixedAuthoringSchemas {
   const { filePath, typeName, overlays, ...schemaOptions } = options;
-  const analysis = analyzeNamedTypeToIR(filePath, typeName, schemaOptions.extensionRegistry);
-  const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays);
-  const ir = canonicalizeTSDoc(composedAnalysis, { file: filePath });
+  const analysis = analyzeNamedTypeToIR(
+    filePath,
+    typeName,
+    schemaOptions.extensionRegistry,
+    schemaOptions.metadata
+  );
+  const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays, schemaOptions.metadata);
+  const ir = canonicalizeTSDoc(
+    composedAnalysis,
+    { file: filePath },
+    schemaOptions.metadata !== undefined ? { metadata: schemaOptions.metadata } : undefined
+  );
 
   return {
     jsonSchema: generateJsonSchemaFromIR(ir, schemaOptions),
@@ -74,9 +84,13 @@ export function buildMixedAuthoringSchemas(
 
 function composeAnalysisWithOverlays(
   analysis: IRClassAnalysis,
-  overlays: FormSpec<readonly FormElement[]>
+  overlays: FormSpec<readonly FormElement[]>,
+  metadata: StaticSchemaGenerationOptions["metadata"]
 ): IRClassAnalysis {
-  const overlayIR = canonicalizeChainDSL(overlays);
+  const overlayIR = canonicalizeChainDSL(
+    overlays,
+    metadata !== undefined ? { metadata } : undefined
+  );
   const overlayFields = collectOverlayFields(overlayIR.elements);
 
   if (overlayFields.length === 0) {
@@ -147,8 +161,10 @@ function mergeFieldOverlay(
   typeRegistry: IRClassAnalysis["typeRegistry"]
 ): FieldNode {
   assertSupportedOverlayField(baseField, overlayField);
+  const metadata = mergeResolvedMetadata(baseField.metadata, overlayField.metadata);
   return {
     ...baseField,
+    ...(metadata !== undefined && { metadata }),
     type: mergeFieldType(baseField, overlayField, typeRegistry),
     annotations: mergeAnnotations(baseField.annotations, overlayField.annotations),
   };

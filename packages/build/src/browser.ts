@@ -142,6 +142,6 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
 ): BuildResult {
   return {
     jsonSchema: generateJsonSchema(form, options),
-    uiSchema: generateUiSchema(form),
+    uiSchema: generateUiSchema(form, options),
   };
 }

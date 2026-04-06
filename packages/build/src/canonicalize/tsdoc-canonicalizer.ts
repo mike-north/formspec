@@ -19,6 +19,8 @@ import type {
 } from "@formspec/core/internals";
 import { IR_VERSION } from "@formspec/core/internals";
 import type { IRClassAnalysis, FieldLayoutMetadata } from "../analyzer/class-analyzer.js";
+import { normalizeMetadataPolicy, resolveFormIRMetadata } from "../metadata/index.js";
+import type { MetadataPolicyInput } from "@formspec/core";
 
 /**
  * Source-level metadata for provenance tracking.
@@ -26,6 +28,10 @@ import type { IRClassAnalysis, FieldLayoutMetadata } from "../analyzer/class-ana
 export interface TSDocSource {
   /** Absolute path to the source file. */
   readonly file: string;
+}
+
+export interface CanonicalizeTSDocOptions {
+  readonly metadata?: MetadataPolicyInput;
 }
 
 /**
@@ -41,7 +47,11 @@ export interface TSDocSource {
  * @param source - Optional source file metadata for provenance
  * @returns The canonical FormIR
  */
-export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSource): FormIR {
+export function canonicalizeTSDoc(
+  analysis: IRClassAnalysis,
+  source?: TSDocSource,
+  options?: CanonicalizeTSDocOptions
+): FormIR {
   const file = source?.file ?? "";
 
   const provenance: Provenance = {
@@ -53,10 +63,12 @@ export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSourc
 
   const elements = assembleElements(analysis.fields, analysis.fieldLayouts, provenance);
 
-  return {
+  const ir: FormIR = {
     kind: "form-ir",
+    name: analysis.name,
     irVersion: IR_VERSION,
     elements,
+    ...(analysis.metadata !== undefined && { metadata: analysis.metadata }),
     typeRegistry: analysis.typeRegistry,
     ...(analysis.annotations !== undefined &&
       analysis.annotations.length > 0 && { rootAnnotations: analysis.annotations }),
@@ -64,6 +76,11 @@ export function canonicalizeTSDoc(analysis: IRClassAnalysis, source?: TSDocSourc
       analysis.annotations.length > 0 && { annotations: analysis.annotations }),
     provenance,
   };
+
+  return resolveFormIRMetadata(ir, {
+    policy: normalizeMetadataPolicy(options?.metadata),
+    surface: "tsdoc",
+  });
 }
 
 /**

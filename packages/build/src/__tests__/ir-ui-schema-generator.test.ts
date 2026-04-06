@@ -103,18 +103,16 @@ function simpleFieldNode(name: string): FieldNode {
   };
 }
 
-/** Build a FieldNode with a displayName annotation. */
+/** Build a FieldNode with resolved metadata. */
 function labelledFieldNode(name: string, label: string): FieldNode {
   return {
     ...simpleFieldNode(name),
-    annotations: [
-      {
-        kind: "annotation",
-        annotationKind: "displayName",
+    metadata: {
+      displayName: {
         value: label,
-        provenance: CHAIN_DSL_PROVENANCE,
+        source: "explicit",
       },
-    ],
+    },
   };
 }
 
@@ -231,13 +229,13 @@ describe("generateUiSchemaFromIR", () => {
     it("should use the first displayName annotation when multiple annotations are present", () => {
       const fieldNode: FieldNode = {
         ...simpleFieldNode("field"),
-        annotations: [
-          {
-            kind: "annotation",
-            annotationKind: "displayName",
+        metadata: {
+          displayName: {
             value: "First Label",
-            provenance: CHAIN_DSL_PROVENANCE,
+            source: "explicit",
           },
+        },
+        annotations: [
           {
             kind: "annotation",
             annotationKind: "placeholder",
@@ -272,6 +270,24 @@ describe("generateUiSchemaFromIR", () => {
       expect(control.label).toBeUndefined();
     });
 
+    it("falls back to displayName annotations when resolved metadata is absent", () => {
+      const fieldNode: FieldNode = {
+        ...simpleFieldNode("legacyField"),
+        annotations: [
+          {
+            kind: "annotation",
+            annotationKind: "displayName",
+            value: "Legacy Label",
+            provenance: CHAIN_DSL_PROVENANCE,
+          },
+        ],
+      };
+
+      const result = generateUiSchemaFromIR(formIRFromElements([fieldNode]));
+
+      expect(expectControl(result.elements, 0).label).toBe("Legacy Label");
+    });
+
     it("should map placeholder annotations to options.placeholder", () => {
       const fieldNode: FieldNode = {
         ...simpleFieldNode("email"),
@@ -289,6 +305,49 @@ describe("generateUiSchemaFromIR", () => {
 
       const control = expectControl(result.elements, 0);
       expect(control.options).toEqual({ placeholder: "Enter your email" });
+    });
+
+    it("should use serialized names in control scopes and conditional rules", () => {
+      const ir = formIRFromElements([
+        {
+          ...simpleFieldNode("status"),
+          metadata: {
+            apiName: { value: "status_code", source: "explicit" },
+            displayName: { value: "Status", source: "explicit" },
+          },
+          type: {
+            kind: "enum",
+            members: [{ value: "draft" }, { value: "sent" }],
+          },
+        },
+        conditionalNode("status", "draft", [
+          {
+            ...simpleFieldNode("notes"),
+            metadata: {
+              apiName: { value: "internal_notes", source: "explicit" },
+              displayName: { value: "Internal Notes", source: "explicit" },
+            },
+          },
+        ]),
+      ]);
+
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0)).toMatchObject({
+        scope: "#/properties/status_code",
+        label: "Status",
+      });
+      expect(expectControl(result.elements, 1)).toMatchObject({
+        scope: "#/properties/internal_notes",
+        label: "Internal Notes",
+        rule: {
+          effect: "SHOW",
+          condition: {
+            scope: "#/properties/status_code",
+            schema: { const: "draft" },
+          },
+        },
+      });
     });
   });
 

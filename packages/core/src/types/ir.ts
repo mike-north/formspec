@@ -11,6 +11,8 @@
  * @see {@link https://github.com/stripe/formspec-workspace/blob/main/scratch/design/001-canonical-ir.md}
  */
 
+import type { ResolvedMetadata } from "./metadata.js";
+
 // =============================================================================
 // IR VERSION
 // =============================================================================
@@ -166,6 +168,8 @@ export interface ArrayTypeNode {
 export interface ObjectProperty {
   /** Property name as it appears in the containing object type. */
   readonly name: string;
+  /** Resolved metadata associated with the logical property. */
+  readonly metadata?: ResolvedMetadata;
   /** Canonical IR type for this property. */
   readonly type: TypeNode;
   /** Whether the property may be omitted from object values. */
@@ -654,6 +658,8 @@ export interface FieldNode {
   readonly kind: "field";
   /** The field's key in the data schema. */
   readonly name: string;
+  /** Resolved metadata associated with the logical field. */
+  readonly metadata?: ResolvedMetadata;
   /** The resolved type of this field. */
   readonly type: TypeNode;
   /** Whether this field is required in the data schema. */
@@ -738,6 +744,8 @@ export type FormIRElement = FieldNode | LayoutNode;
 export interface TypeDefinition {
   /** The fully-qualified reference name (key in the registry). */
   readonly name: string;
+  /** Resolved metadata associated with the logical named type. */
+  readonly metadata?: ResolvedMetadata;
   /** The resolved type node. */
   readonly type: TypeNode;
   /** Constraints declared on the named type itself. */
@@ -765,6 +773,8 @@ export interface TypeDefinition {
 export interface FormIR {
   /** Discriminator identifying this document as a top-level FormIR payload. */
   readonly kind: "form-ir";
+  /** Logical name of the analyzed root declaration, when one exists. */
+  readonly name?: string;
   /**
    * Schema version for the IR format itself.
    * Should equal `IR_VERSION`.
@@ -772,6 +782,8 @@ export interface FormIR {
   readonly irVersion: string;
   /** Top-level elements of the form: fields and layout nodes. */
   readonly elements: readonly FormIRElement[];
+  /** Resolved metadata associated with the logical form/type root. */
+  readonly metadata?: ResolvedMetadata;
   /** Root-level annotations derived from the source declaration itself. */
   readonly rootAnnotations?: readonly AnnotationNode[];
   /**

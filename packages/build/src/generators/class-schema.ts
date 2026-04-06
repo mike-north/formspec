@@ -8,6 +8,7 @@
 
 import * as ts from "typescript";
 import type { UISchema } from "../ui-schema/types.js";
+import type { MetadataPolicyInput } from "@formspec/core";
 import {
   analyzeNamedTypeToIRFromProgramContext,
   createProgramContext,
@@ -50,7 +51,7 @@ export interface ClassSchemas {
 export function generateClassSchemas(
   analysis: IRClassAnalysis,
   source?: TSDocSource,
-  options?: GenerateJsonSchemaFromIROptions
+  options?: GenerateJsonSchemaFromIROptions & { metadata?: MetadataPolicyInput | undefined }
 ): ClassSchemas {
   const errorDiagnostics = analysis.diagnostics?.filter(
     (diagnostic) => diagnostic.severity === "error"
@@ -59,7 +60,11 @@ export function generateClassSchemas(
     throw new Error(formatValidationError(errorDiagnostics));
   }
 
-  const ir = canonicalizeTSDoc(analysis, source);
+  const ir = canonicalizeTSDoc(
+    analysis,
+    source,
+    options?.metadata !== undefined ? { metadata: options.metadata } : undefined
+  );
   const validationResult = validateIR(ir, {
     ...(options?.extensionRegistry !== undefined && {
       extensionRegistry: options.extensionRegistry,
@@ -108,6 +113,8 @@ export interface StaticSchemaGenerationOptions {
    * @defaultValue "x-formspec"
    */
   readonly vendorPrefix?: string | undefined;
+  /** Metadata resolution policy for static schema generation. */
+  readonly metadata?: MetadataPolicyInput | undefined;
 }
 
 /**
@@ -183,13 +190,15 @@ export function generateSchemasFromClass(
     classDecl,
     ctx.checker,
     options.filePath,
-    options.extensionRegistry
+    options.extensionRegistry,
+    options.metadata
   );
   return generateClassSchemas(
     analysis,
     { file: options.filePath },
     {
       extensionRegistry: options.extensionRegistry,
+      metadata: options.metadata,
       vendorPrefix: options.vendorPrefix,
     }
   );
@@ -259,13 +268,15 @@ export function generateSchemasFromProgram(
     ctx,
     options.filePath,
     options.typeName,
-    options.extensionRegistry
+    options.extensionRegistry,
+    options.metadata
   );
   return generateClassSchemas(
     analysis,
     { file: options.filePath },
     {
       extensionRegistry: options.extensionRegistry,
+      metadata: options.metadata,
       vendorPrefix: options.vendorPrefix,
     }
   );

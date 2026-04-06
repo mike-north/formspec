@@ -4,7 +4,7 @@
  * Routes through the canonical IR pipeline: Chain DSL → FormIR → JSON Schema 2020-12.
  */
 
-import type { FormElement, FormSpec } from "@formspec/core";
+import type { FormElement, FormSpec, MetadataPolicyInput } from "@formspec/core";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
 import {
   generateJsonSchemaFromIR,
@@ -23,6 +23,8 @@ export interface GenerateJsonSchemaOptions {
    * @defaultValue "x-formspec"
    */
   readonly vendorPrefix?: string | undefined;
+  /** Metadata resolution policy for chain DSL generation. */
+  readonly metadata?: MetadataPolicyInput | undefined;
 }
 
 /**
@@ -59,7 +61,10 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
-  const ir = canonicalizeChainDSL(form);
+  const ir = canonicalizeChainDSL(
+    form,
+    options?.metadata !== undefined ? { metadata: options.metadata } : undefined
+  );
   const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
     options?.vendorPrefix === undefined ? undefined : { vendorPrefix: options.vendorPrefix };
   return generateJsonSchemaFromIR(ir, internalOptions);

@@ -101,11 +101,31 @@ export type {
   StaticEnumField,
   DynamicEnumField,
   DynamicSchemaField,
+  MetadataPolicyInput,
+  MetadataAuthoringSurface,
+  MetadataDeclarationKind,
+  MetadataInferenceContext,
+  MetadataInferenceFn,
+  MetadataPluralizationContext,
+  MetadataPluralizationDisabledPolicyInput,
+  MetadataPluralizationFn,
+  MetadataPluralizationInferIfMissingPolicyInput,
+  MetadataPluralizationPolicyInput,
+  MetadataPluralizationRequireExplicitPolicyInput,
+  MetadataResolutionMode,
+  MetadataSource,
+  MetadataValueDisabledPolicyInput,
+  MetadataValueInferIfMissingPolicyInput,
+  MetadataValuePolicyInput,
+  MetadataValueRequireExplicitPolicyInput,
+  ResolvedMetadata,
+  ResolvedScalarMetadata,
   ArrayField,
   ObjectField,
   AnyField,
   Group,
   Conditional,
+  DeclarationMetadataPolicyInput,
   FormElement,
   FormSpec,
   // Predicates
@@ -236,6 +256,7 @@ import {
   type BuildFormSchemasOptions,
   type BuildResult,
   type GenerateJsonSchemaOptions,
+  type GenerateUiSchemaOptions,
   type JsonSchema2020,
   type UISchema,
   type WriteSchemasOptions,
@@ -245,6 +266,7 @@ import {
 export type {
   BuildFormSchemasOptions,
   GenerateJsonSchemaOptions,
+  GenerateUiSchemaOptions,
   JsonSchema2020,
   UISchema,
   UISchemaElement,
@@ -503,8 +525,11 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
  *
  * @public
  */
-export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema {
-  return generateUiSchemaInternal(form);
+export function generateUiSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: GenerateUiSchemaOptions
+): UISchema {
+  return generateUiSchemaInternal(form, options);
 }
 
 /**

@@ -4,10 +4,20 @@
  * Routes through the canonical IR pipeline: Chain DSL → FormIR → UI Schema.
  */
 
-import type { FormElement, FormSpec } from "@formspec/core";
+import type { FormElement, FormSpec, MetadataPolicyInput } from "@formspec/core";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
 import { generateUiSchemaFromIR } from "./ir-generator.js";
 import type { UISchema } from "./types.js";
+
+/**
+ * Options for generating a UI Schema from a Chain DSL form.
+ *
+ * @public
+ */
+export interface GenerateUiSchemaOptions {
+  /** Metadata resolution policy for chain DSL UI generation. */
+  readonly metadata?: MetadataPolicyInput | undefined;
+}
 
 /**
  * Generates a JSON Forms UI Schema from a FormSpec.
@@ -55,7 +65,13 @@ import type { UISchema } from "./types.js";
  *
  * @public
  */
-export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpec<E>): UISchema {
-  const ir = canonicalizeChainDSL(form);
+export function generateUiSchema<E extends readonly FormElement[]>(
+  form: FormSpec<E>,
+  options?: GenerateUiSchemaOptions
+): UISchema {
+  const ir = canonicalizeChainDSL(
+    form,
+    options?.metadata !== undefined ? { metadata: options.metadata } : undefined
+  );
   return generateUiSchemaFromIR(ir);
 }

@@ -30,7 +30,31 @@
  */
 
 // Field builders
-export { field } from "./field.js";
+export { field, createFieldBuilders } from "./field.js";
+export type {
+  ApiNameConfig,
+  ArrayBuilderArgs,
+  ArrayFieldConfig,
+  BooleanFieldConfig,
+  FieldMetadataPolicy,
+  DynamicEnumFieldConfig,
+  DynamicSchemaFieldConfig,
+  FieldBuilderElement,
+  FieldBuilderInputElement,
+  FieldBuilderNamespace,
+  HasRequiredMetadata,
+  IsRequiredMetadata,
+  LabelDisplayNameConfig,
+  MaybeRequiredConfigArg,
+  MetadataAwareFieldConfig,
+  NumberFieldConfig,
+  ObjectBuilderArgs,
+  ObjectFieldConfig,
+  StaticEnumFieldConfig,
+  TextFieldConfig,
+} from "./field.js";
+export { createFormSpecFactory } from "./factory.js";
+export type { FormSpecFactory } from "./factory.js";
 
 // Predicate builders
 export { is } from "./predicate.js";
@@ -64,6 +88,7 @@ export type {
   ArrayField,
   BooleanField,
   Conditional,
+  DeclarationMetadataPolicyInput,
   DataSourceRegistry,
   DataSourceValueType,
   DynamicEnumField,
@@ -74,9 +99,28 @@ export type {
   FormElement,
   FormSpec,
   Group,
+  MetadataAuthoringSurface,
+  MetadataDeclarationKind,
+  MetadataInferenceContext,
+  MetadataInferenceFn,
+  MetadataPluralizationContext,
+  MetadataPluralizationDisabledPolicyInput,
+  MetadataPluralizationFn,
+  MetadataPluralizationInferIfMissingPolicyInput,
+  MetadataPluralizationPolicyInput,
+  MetadataPluralizationRequireExplicitPolicyInput,
+  MetadataResolutionMode,
+  MetadataSource,
+  MetadataValueDisabledPolicyInput,
+  MetadataValueInferIfMissingPolicyInput,
+  MetadataValuePolicyInput,
+  MetadataValueRequireExplicitPolicyInput,
   NumberField,
   ObjectField,
   Predicate,
+  ResolvedMetadata,
+  ResolvedScalarMetadata,
   StaticEnumField,
   TextField,
+  MetadataPolicyInput,
 } from "@formspec/core";

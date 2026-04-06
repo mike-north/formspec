@@ -9,6 +9,8 @@ export type AnyField = TextField<string> | NumberField<string> | BooleanField<st
 
 // @public
 export interface ArrayField<N extends string, Items extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "array";
     readonly items: Items;
     readonly label?: string;
@@ -21,6 +23,8 @@ export interface ArrayField<N extends string, Items extends readonly FormElement
 
 // @public
 export interface BooleanField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "boolean";
     readonly label?: string;
     readonly name: N;
@@ -106,6 +110,12 @@ export type DataSourceValueType<Source extends string> = Source extends keyof Da
 } ? ID : string : string;
 
 // @public
+export interface DeclarationMetadataPolicyInput {
+    readonly apiName?: MetadataValuePolicyInput | undefined;
+    readonly displayName?: MetadataValuePolicyInput | undefined;
+}
+
+// @public
 export function defineAnnotation(reg: CustomAnnotationRegistration): CustomAnnotationRegistration;
 
 // @public
@@ -122,6 +132,8 @@ export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_enum";
     readonly label?: string;
     readonly name: N;
@@ -133,6 +145,8 @@ export interface DynamicEnumField<N extends string, Source extends string> {
 
 // @public
 export interface DynamicSchemaField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "dynamic_schema";
     readonly label?: string;
     readonly name: N;
@@ -263,7 +277,115 @@ export function isStaticEnumField(element: FormElement): element is StaticEnumFi
 export function isTextField(element: FormElement): element is TextField<string>;
 
 // @public
+export type MetadataAuthoringSurface = "tsdoc" | "chain-dsl";
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
+
+// @public
+export interface MetadataPluralizationContext extends MetadataInferenceContext {
+    readonly singular: string;
+}
+
+// @public
+export interface MetadataPluralizationDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+}
+
+// @public
+export type MetadataPluralizationFn = (context: MetadataPluralizationContext) => string;
+
+// @public
+export interface MetadataPluralizationInferIfMissingPolicyInput {
+    readonly inflect: MetadataPluralizationFn;
+    readonly mode: "infer-if-missing";
+}
+
+// @public
+export type MetadataPluralizationPolicyInput = MetadataPluralizationDisabledPolicyInput | MetadataPluralizationRequireExplicitPolicyInput | MetadataPluralizationInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataPluralizationRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+}
+
+// @public
+export interface MetadataPolicyInput {
+    readonly field?: DeclarationMetadataPolicyInput | undefined;
+    readonly method?: DeclarationMetadataPolicyInput | undefined;
+    readonly type?: DeclarationMetadataPolicyInput | undefined;
+}
+
+// @public
+export type MetadataResolutionMode = "disabled" | "require-explicit" | "infer-if-missing";
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
+
+// @public
+export interface MetadataValueDisabledPolicyInput {
+    readonly mode?: "disabled" | undefined;
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export interface MetadataValueInferIfMissingPolicyInput {
+    readonly infer: MetadataInferenceFn;
+    readonly mode: "infer-if-missing";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export type MetadataValuePolicyInput = MetadataValueDisabledPolicyInput | MetadataValueRequireExplicitPolicyInput | MetadataValueInferIfMissingPolicyInput;
+
+// @public
+export interface MetadataValueRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+    readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
+}
+
+// @public
+export interface NormalizedDeclarationMetadataPolicy {
+    readonly apiName: NormalizedMetadataValuePolicy;
+    readonly displayName: NormalizedMetadataValuePolicy;
+}
+
+// @public
+export interface NormalizedMetadataPluralizationPolicy {
+    readonly infer: MetadataInferenceFn;
+    readonly inflect: MetadataPluralizationFn;
+    readonly mode: "disabled" | "require-explicit" | "infer-if-missing";
+}
+
+// @public
+export interface NormalizedMetadataPolicy {
+    readonly field: NormalizedDeclarationMetadataPolicy;
+    readonly method: NormalizedDeclarationMetadataPolicy;
+    readonly type: NormalizedDeclarationMetadataPolicy;
+}
+
+// @public
+export interface NormalizedMetadataValuePolicy {
+    readonly infer: MetadataInferenceFn;
+    readonly mode: "disabled" | "require-explicit" | "infer-if-missing";
+    readonly pluralization: NormalizedMetadataPluralizationPolicy;
+}
+
+// @public
 export interface NumberField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "number";
     readonly label?: string;
     readonly max?: number;
@@ -276,6 +398,8 @@ export interface NumberField<N extends string> {
 
 // @public
 export interface ObjectField<N extends string, Properties extends readonly FormElement[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "object";
     readonly label?: string;
     readonly name: N;
@@ -288,7 +412,23 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 export type Predicate<K extends string = string, V = unknown> = EqualsPredicate<K, V>;
 
 // @public
+export interface ResolvedMetadata {
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
+}
+
+// @public
+export interface ResolvedScalarMetadata {
+    readonly source: MetadataSource;
+    readonly value: string;
+}
+
+// @public
 export interface StaticEnumField<N extends string, O extends readonly EnumOptionValue[]> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "enum";
     readonly label?: string;
     readonly name: N;
@@ -299,6 +439,8 @@ export interface StaticEnumField<N extends string, O extends readonly EnumOption
 
 // @public
 export interface TextField<N extends string> {
+    readonly apiName?: string;
+    readonly displayName?: string;
     readonly _field: "text";
     readonly label?: string;
     readonly maxLength?: number;

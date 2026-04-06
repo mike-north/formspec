@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { field, group, when, is, formspec } from "../index.js";
+import { _getFormSpecMetadataPolicy } from "@formspec/core/internals";
+import { createFormSpecFactory, field, group, when, is, formspec } from "../index.js";
 
 describe("field builders", () => {
   describe("field.text", () => {
@@ -21,6 +22,13 @@ describe("field builders", () => {
       expect(f.label).toBe("Full Name");
       expect(f.placeholder).toBe("Enter your name");
       expect(f.required).toBe(true);
+    });
+
+    it("should reject label and displayName together", () => {
+      expect(() =>
+        // @ts-expect-error - runtime validation should also reject alias duplication
+        field.text("name", { label: "Name", displayName: "Full Name" })
+      ).toThrow(/either "label" or "displayName"/);
     });
   });
 
@@ -190,6 +198,17 @@ describe("field builders", () => {
       expect(f.items[0]._field).toBe("text");
       expect(f.items[1]._field).toBe("text");
     });
+
+    it("should accept metadata config in the primary builder", () => {
+      const f = field.array(
+        "addresses",
+        { apiName: "shipping_addresses", displayName: "Shipping Addresses" },
+        field.text("street")
+      );
+
+      expect(f.apiName).toBe("shipping_addresses");
+      expect(f.displayName).toBe("Shipping Addresses");
+    });
   });
 
   describe("field.arrayWithConfig", () => {
@@ -219,6 +238,38 @@ describe("field builders", () => {
       expect(f._field).toBe("object");
       expect(f.name).toBe("address");
       expect(f.properties).toHaveLength(3);
+    });
+
+    it("should accept metadata config in the primary builder", () => {
+      const f = field.object(
+        "address",
+        { apiName: "shipping_address", displayName: "Shipping Address" },
+        field.text("street")
+      );
+
+      expect(f.apiName).toBe("shipping_address");
+      expect(f.displayName).toBe("Shipping Address");
+    });
+  });
+
+  describe("createFormSpecFactory", () => {
+    it("should attach metadata policy to generated forms", () => {
+      const factory = createFormSpecFactory({
+        metadata: {
+          field: {
+            apiName: { mode: "require-explicit" },
+          },
+        },
+      });
+
+      const form = factory.formspec(factory.field.text("name", { apiName: "full_name" }));
+
+      expect(_getFormSpecMetadataPolicy(form)).toEqual({
+        field: {
+          apiName: { mode: "require-explicit" },
+        },
+      });
+      expect("metadataPolicy" in form).toBe(false);
     });
   });
 

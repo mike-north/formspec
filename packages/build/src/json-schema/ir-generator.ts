@@ -26,7 +26,10 @@ import type {
   AnnotationNode,
   ObjectProperty,
 } from "@formspec/core/internals";
+import type { ResolvedMetadata } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import { getDisplayName, getSerializedName } from "../metadata/index.js";
+import { assertNoSerializedNameCollisions } from "../metadata/collision-guards.js";
 
 // =============================================================================
 // OUTPUT TYPE
@@ -120,6 +123,10 @@ export interface JsonSchema2020 {
 interface GeneratorContext {
   /** Named type schemas collected during traversal, keyed by reference name. */
   readonly defs: Record<string, JsonSchema2020>;
+  /** Logical type name to serialized `$defs` key. */
+  readonly typeNameMap: Readonly<Record<string, string>>;
+  /** Original type registry for reference lookups and property-name mapping. */
+  readonly typeRegistry: Readonly<FormIR["typeRegistry"]>;
   /** Optional extension registry for resolving custom IR nodes. */
   readonly extensionRegistry: ExtensionRegistry | undefined;
   /** Vendor prefix passed through to extension toJsonSchema handlers. */
@@ -156,6 +163,8 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
 
   return {
     defs: {},
+    typeNameMap: {},
+    typeRegistry: {},
     extensionRegistry: options?.extensionRegistry,
     vendorPrefix,
   };
@@ -211,18 +220,31 @@ export function generateJsonSchemaFromIR(
   ir: FormIR,
   options?: GenerateJsonSchemaFromIROptions
 ): JsonSchema2020 {
-  const ctx = makeContext(options);
+  assertNoSerializedNameCollisions(ir);
+
+  const ctx = {
+    ...makeContext(options),
+    typeRegistry: ir.typeRegistry,
+    typeNameMap: Object.fromEntries(
+      Object.entries(ir.typeRegistry).map(([name, typeDef]) => [
+        name,
+        getSerializedName(name, typeDef.metadata),
+      ])
+    ),
+  };
 
   // Seed $defs from the type registry so referenced types are available even if
   // the field tree traversal never visits them (e.g., unreferenced types added
   // by a TSDoc canonicalizer pass).
   for (const [name, typeDef] of Object.entries(ir.typeRegistry)) {
-    ctx.defs[name] = generateTypeNode(typeDef.type, ctx);
+    const schemaName = ctx.typeNameMap[name] ?? name;
+    ctx.defs[schemaName] = generateTypeNode(typeDef.type, ctx);
+    applyResolvedMetadata(ctx.defs[schemaName], typeDef.metadata);
     if (typeDef.constraints && typeDef.constraints.length > 0) {
-      applyConstraints(ctx.defs[name], typeDef.constraints, ctx);
+      applyConstraints(ctx.defs[schemaName], typeDef.constraints, ctx);
     }
     if (typeDef.annotations && typeDef.annotations.length > 0) {
-      applyAnnotations(ctx.defs[name], typeDef.annotations, ctx);
+      applyAnnotations(ctx.defs[schemaName], typeDef.annotations, ctx);
     }
   }
 
@@ -240,6 +262,7 @@ export function generateJsonSchemaFromIR(
     properties,
     ...(uniqueRequired.length > 0 && { required: uniqueRequired }),
   };
+  applyResolvedMetadata(result, ir.metadata);
 
   if (ir.annotations && ir.annotations.length > 0) {
     applyAnnotations(result, ir.annotations, ctx);
@@ -271,9 +294,9 @@ function collectFields(
   for (const element of elements) {
     switch (element.kind) {
       case "field":
-        properties[element.name] = generateFieldSchema(element, ctx);
+        properties[getSerializedName(element.name, element.metadata)] = generateFieldSchema(element, ctx);
         if (element.required) {
-          required.push(element.name);
+          required.push(getSerializedName(element.name, element.metadata));
         }
         break;
 
@@ -340,6 +363,7 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
     }
   }
 
+  applyResolvedMetadata(schema, field.metadata);
   applyAnnotations(schema, rootAnnotations, ctx);
   if (itemStringSchema !== undefined) {
     applyAnnotations(itemStringSchema, itemAnnotations, ctx);
@@ -350,7 +374,7 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
     return schema;
   }
 
-  return applyPathTargetedConstraints(schema, pathConstraints, ctx);
+  return applyPathTargetedConstraints(schema, pathConstraints, ctx, field.type);
 }
 
 /**
@@ -382,11 +406,20 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
   pathConstraints: readonly ConstraintNode[],
-  ctx: GeneratorContext
+  ctx: GeneratorContext,
+  typeNode?: TypeNode
 ): JsonSchema2020 {
   // Array transparency: path-targeted constraints target the item type.
   if (schema.type === "array" && schema.items) {
-    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints, ctx);
+    const referencedType = typeNode?.kind === "reference" ? resolveReferencedType(typeNode, ctx) : undefined;
+    const nestedType =
+      typeNode?.kind === "array"
+        ? typeNode.items
+        : referencedType?.kind === "array"
+          ? referencedType.items
+            : undefined
+        ;
+    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints, ctx, nestedType);
     return schema;
   }
 
@@ -406,7 +439,7 @@ function applyPathTargetedConstraints(
   for (const [target, constraints] of byTarget) {
     const subSchema: JsonSchema2020 = {};
     applyConstraints(subSchema, constraints, ctx);
-    propertyOverrides[target] = subSchema;
+    propertyOverrides[resolveSerializedPropertyName(target, typeNode, ctx)] = subSchema;
   }
 
   // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
@@ -487,7 +520,7 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
       return generateUnionType(type, ctx);
 
     case "reference":
-      return generateReferenceType(type);
+      return generateReferenceType(type, ctx);
 
     case "dynamic":
       return generateDynamicType(type);
@@ -568,9 +601,10 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
   const required: string[] = [];
 
   for (const prop of type.properties) {
-    properties[prop.name] = generatePropertySchema(prop, ctx);
+    const propertyName = getSerializedName(prop.name, prop.metadata);
+    properties[propertyName] = generatePropertySchema(prop, ctx);
     if (!prop.optional) {
-      required.push(prop.name);
+      required.push(propertyName);
     }
   }
 
@@ -609,6 +643,7 @@ function generateRecordType(type: RecordTypeNode, ctx: GeneratorContext): JsonSc
 function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): JsonSchema2020 {
   const schema = generateTypeNode(prop.type, ctx);
   applyConstraints(schema, prop.constraints, ctx);
+  applyResolvedMetadata(schema, prop.metadata);
   applyAnnotations(schema, prop.annotations, ctx);
   return schema;
 }
@@ -680,8 +715,45 @@ function isNullableUnion(type: UnionTypeNode): boolean {
  * The referenced type's schema is stored in `$defs` (seeded from the type
  * registry before traversal begins). The reference simply emits a `$ref`.
  */
-function generateReferenceType(type: ReferenceTypeNode): JsonSchema2020 {
-  return { $ref: `#/$defs/${type.name}` };
+function generateReferenceType(type: ReferenceTypeNode, ctx: GeneratorContext): JsonSchema2020 {
+  return { $ref: `#/$defs/${ctx.typeNameMap[type.name] ?? type.name}` };
+}
+
+function applyResolvedMetadata(
+  schema: JsonSchema2020,
+  metadata: ResolvedMetadata | undefined
+): void {
+  const displayName = getDisplayName(metadata);
+  if (displayName !== undefined) {
+    schema.title = displayName;
+  }
+}
+
+function resolveReferencedType(
+  type: ReferenceTypeNode,
+  ctx: GeneratorContext
+): TypeNode | undefined {
+  return ctx.typeRegistry[type.name]?.type;
+}
+
+function resolveSerializedPropertyName(
+  logicalName: string,
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): string {
+  if (typeNode?.kind === "object") {
+    const property = typeNode.properties.find((candidate) => candidate.name === logicalName);
+    return property === undefined ? logicalName : getSerializedName(property.name, property.metadata);
+  }
+
+  if (typeNode?.kind === "reference") {
+    const referencedType = resolveReferencedType(typeNode, ctx);
+    return referencedType === undefined
+      ? logicalName
+      : resolveSerializedPropertyName(logicalName, referencedType, ctx);
+  }
+
+  return logicalName;
 }
 
 /**
@@ -831,7 +903,7 @@ function applyAnnotations(
   for (const annotation of annotations) {
     switch (annotation.annotationKind) {
       case "displayName":
-        schema.title = annotation.value;
+        schema.title ??= annotation.value;
         break;
 
       case "description":
