@@ -1,5 +1,14 @@
 # formspec
 
+## 0.1.0-alpha.31
+
+### Patch Changes
+
+- [#214](https://github.com/mike-north/formspec/pull/214) [`9c6173c`](https://github.com/mike-north/formspec/commit/9c6173c342a5f912a1ccbc7f4431902e0463c35f) Thanks [@mike-north](https://github.com/mike-north)! - Honor resolved `apiName` metadata consistently throughout generated JSON Schema output.
+
+- Updated dependencies [[`9c6173c`](https://github.com/mike-north/formspec/commit/9c6173c342a5f912a1ccbc7f4431902e0463c35f)]:
+  - @formspec/build@0.1.0-alpha.31
+
 ## 0.1.0-alpha.30
 
 ### Patch Changes
