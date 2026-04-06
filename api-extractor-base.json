@@ -43,6 +43,24 @@
       },
       "ae-missing-release-tag": {
         "logLevel": "error"
+      },
+      "ae-different-release-tags": {
+        "logLevel": "error"
+      },
+      "ae-incompatible-release-tags": {
+        "logLevel": "error"
+      },
+      "ae-unresolved-inheritdoc-reference": {
+        "logLevel": "error"
+      },
+      "ae-unresolved-inheritdoc-base": {
+        "logLevel": "error"
+      },
+      "ae-cyclic-inherit-doc": {
+        "logLevel": "error"
+      },
+      "ae-unresolved-link": {
+        "logLevel": "error"
       }
     },
     "tsdocMessageReporting": {
