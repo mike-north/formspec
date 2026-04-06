@@ -427,12 +427,17 @@ function applyPathTargetedConstraints(
   const nullableValueBranch = getNullableUnionValueSchema(schema);
 
   if (nullableValueBranch !== undefined) {
-    applyPathTargetedConstraints(
+    const updatedNullableValueBranch = applyPathTargetedConstraints(
       nullableValueBranch,
       pathConstraints,
       ctx,
       resolveTraversableTypeNode(typeNode, ctx)
     );
+    if (schema.oneOf !== undefined) {
+      schema.oneOf = schema.oneOf.map((branch) =>
+        branch === nullableValueBranch ? updatedNullableValueBranch : branch
+      );
+    }
     return schema;
   }
 
