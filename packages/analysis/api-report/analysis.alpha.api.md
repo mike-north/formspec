@@ -4,6 +4,9 @@
 
 ```ts
 
+import type { ExtensionDefinition } from '@formspec/core';
+import type { MetadataAnalysisResult } from '@formspec/core';
+import type { MetadataPolicyInput } from '@formspec/core';
 import * as ts from 'typescript';
 
 // @public

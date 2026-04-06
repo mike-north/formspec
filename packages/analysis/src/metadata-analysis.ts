@@ -60,6 +60,7 @@ export interface AnalyzeMetadataWithCheckerOptions {
   readonly logicalName?: string;
   readonly metadata?: MetadataPolicyInput | undefined;
   readonly extensions?: readonly ExtensionDefinition[] | undefined;
+  readonly buildContext?: unknown;
 }
 
 interface NormalizedMetadataSlotQualifier {
@@ -530,6 +531,9 @@ export function analyzeMetadataForNodeWithChecker(
   }
 
   const buildContext = {
+    ...(options.buildContext !== undefined && typeof options.buildContext === "object"
+      ? options.buildContext
+      : {}),
     ...(options.program !== undefined && { program: options.program }),
     checker: options.checker,
     node: options.node,

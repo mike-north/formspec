@@ -4,10 +4,11 @@
 
 ```ts
 
+import type { ExtensionDefinition } from '@formspec/core';
+import type { MetadataAnalysisResult } from '@formspec/core';
+import type { MetadataPolicyInput } from '@formspec/core';
 import * as ts from 'typescript';
 
-// Warning: (ae-forgotten-export) The symbol "MetadataAnalysisResult" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function analyzeMetadataForNode(options: AnalyzeMetadataForNodeOptions): MetadataAnalysisResult | null;
 
@@ -26,9 +27,7 @@ export interface AnalyzeMetadataForSourceFileOptions extends AnalyzeMetadataOpti
 
 // @public
 export interface AnalyzeMetadataOptions {
-    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[] | undefined;
-    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly program: ts.Program;
 }
