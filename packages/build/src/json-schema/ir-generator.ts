@@ -930,7 +930,7 @@ function stripLeadingPathSegment(constraint: ConstraintNode): ConstraintNode {
 }
 
 function getNullableUnionValueSchema(schema: JsonSchema2020): JsonSchema2020 | undefined {
-  if (schema.oneOf === undefined || schema.oneOf.length !== 2) {
+  if (schema.oneOf?.length !== 2) {
     return undefined;
   }
 
