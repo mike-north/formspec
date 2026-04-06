@@ -242,8 +242,8 @@ The intended model is the same across both surfaces. The difference is authoring
 
 Generated schemas may include vendor keywords such as:
 
-- `x-formspec-source`
-- `x-formspec-params`
+- `x-formspec-option-source`
+- `x-formspec-option-source-params`
 - `x-formspec-deprecation-description`
 
 The default vendor prefix is `x-formspec`. `@formspec/build` also supports custom vendor prefixes for extension-generated JSON Schema keywords.

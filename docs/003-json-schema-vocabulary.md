@@ -24,6 +24,12 @@ This document specifies how FormSpec's canonical IR maps to JSON Schema 2020-12 
 
 JSON Schema generation is a pure function of the canonical IR (A3). This document specifies the mapping from each IR node kind to JSON Schema keywords. The generator never consults the TypeScript AST or surface syntax directly — only the IR.
 
+Naming-sensitive output is resolved from the IR's `ResolvedMetadata`, not from raw annotations or declaration identifiers alone. In particular:
+
+- object property keys use `ResolvedMetadata.apiName` when present, otherwise the logical property name
+- `$defs` keys and `$ref` targets use the resolved singular API name for the referenced type when present, otherwise the logical type name
+- root/object titles use resolved `displayName` when present; legacy or noncanonical title annotations are only a fallback when resolved metadata is absent, and otherwise titles are omitted unless a consumer-supplied policy resolves one
+
 ### JSON Schema Draft
 
 FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12/schema`). The `$schema` keyword in every generated root schema is set to the 2020-12 URI.
@@ -136,17 +142,17 @@ FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-reg
 | `PatternConstraint`                             | `"pattern"`                    |
 | `FormatAnnotation`                              | `"format"`                     |
 
-### 2.8 Annotation → Metadata Keywords
+### 2.8 Metadata and Annotation → JSON Schema Annotation Keywords
 
-| IR annotation            | JSON Schema annotation key                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `DisplayNameAnnotation`  | `"title"`                                                                                  |
-| `DescriptionAnnotation`  | `"description"` — populated from TSDoc summary text (bare text before first block tag)     |
-| `RemarksAnnotation`      | `"x-<vendor>-remarks"` — programmatic-persona documentation from `@remarks`                |
-| `DefaultValueAnnotation` | `"default"`                                                                                |
-| `ExampleAnnotation[]`    | `"examples"` (array)                                                                       |
-| `DeprecatedAnnotation`   | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
-| `ReadOnlyAnnotation`     | `"readOnly"`                                                                               |
+| IR metadata or annotation      | JSON Schema annotation key                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `ResolvedMetadata.displayName` | `"title"`                                                                                  |
+| `DescriptionAnnotation`        | `"description"` — populated from TSDoc summary text (bare text before first block tag)     |
+| `RemarksAnnotation`            | `"x-<vendor>-remarks"` — programmatic-persona documentation from `@remarks`                |
+| `DefaultValueAnnotation`       | `"default"`                                                                                |
+| `ExampleAnnotation[]`          | `"examples"` (array)                                                                       |
+| `DeprecatedAnnotation`         | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
+| `ReadOnlyAnnotation`           | `"readOnly"`                                                                               |
 | `WriteOnlyAnnotation`    | `"writeOnly"`                                                                              |
 | `ConstConstraint`        | `"const"`                                                                                  |
 
@@ -192,7 +198,7 @@ All FormSpec custom keywords use the shape `x-<vendor>-<local-name>`, where `<lo
 ```yaml
 # .formspec.yml
 schema:
-  vendorPrefix: "x-stripe-" # Current config form; yields keywords like "x-stripe-option-source"
+  vendorPrefix: "x-stripe" # yields keywords like "x-stripe-option-source"
 ```
 
 Throughout this document, the placeholder `<vendor>` represents the vendor segment that appears between `x-` and the next dash. For example, `x-formspec-option-source` uses `<vendor> = formspec`, and `x-stripe-option-source` uses `<vendor> = stripe`.
@@ -725,6 +731,7 @@ interface Address {
 }
 
 interface InvoiceFormData {
+  /** @displayName Invoice Form */
   /**
    * @displayName Customer Name
    * @minLength 1

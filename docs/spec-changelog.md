@@ -14,6 +14,9 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - FormSpec TSDoc tags should read as complete thoughts, even when they are not full sentences.
   - Generic names like `@data` are disfavored when they obscure the primary meaning being captured at the comment site.
   - `@displayName` and `@apiName` are the canonical positive examples because the semantic role is explicit in the tag name itself.
+- Clarified consumer control over inferred naming.
+  - PP11 now explicitly covers inferred serialized names and display labels.
+  - Name inference and plural inflection are consumer-configurable metadata-policy concerns rather than fixed global transforms.
 - Refined PP5 and related wording.
   - PP5 now allows only explicitly enumerated parity exceptions.
   - The shared static feature set remains parity-bound; runtime-capable exceptions must be named explicitly in the spec.
@@ -28,6 +31,10 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Migration material moved out of the normative spec.
   - Section 11 has been removed from `001-canonical-ir.md`.
   - Its implementation-bridge content now lives in [maintainer-migration-notes.md](/Users/mnorth/Development/formspec/scratch/maintainer-migration-notes.md) as non-normative maintainer guidance.
+- Added a normative resolved-metadata model.
+  - Logical identifiers now remain distinct from output-facing names in the canonical spec.
+  - `ResolvedMetadata` and metadata-policy resolution are specified for fields, object properties, named types, and the analyzed root declaration.
+  - Mixed-authoring precedence for explicit vs inferred metadata is now recorded normatively.
 
 ## 002-tsdoc-grammar.md
 
@@ -86,6 +93,10 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - The target path is direct-property-only in v1.
   - The source operand must be a local type parameter identifier.
   - The tag specializes the targeted property's emitted schema to a singleton `enum` without introducing a new IR node kind.
+- Aligned naming-tag semantics with metadata-policy resolution.
+  - `@apiName` and `@displayName` are now specified as explicit metadata inputs to the resolved-metadata model rather than as always-on default transforms.
+  - The default behavior is now explicit: no inferred serialized name or display label exists unless metadata policy opts into inference.
+  - `@discriminator` resolution for named declarations now refers to resolved serialized names before falling back to logical identifiers.
 
 ## 003-json-schema-vocabulary.md
 
@@ -104,6 +115,9 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Added discriminator specialization to object lowering.
   - Declaration-level `@discriminator` rewrites only the targeted direct property to a singleton `enum`.
   - No custom vocabulary keyword, provenance marker, or special object schema kind was introduced.
+- Aligned naming output with resolved metadata.
+  - Property keys, `$defs` keys, and `$ref` targets now normatively reference `ResolvedMetadata` before falling back to logical identifiers.
+  - Root/object titles now reference resolved `displayName` first, annotation-only data second, and are otherwise omitted unless policy resolves a title.
 
 ## 004-tooling.md
 
@@ -131,6 +145,9 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Recorded `@discriminator` as a TSDoc-only exception for this revision.
   - There is no ChainDSL parity requirement for declaration-level discriminator specialization in v1.
   - If this changes later, the parity document should add an explicit shared-surface fixture track rather than implying equivalence by default.
+- Clarified metadata-policy parity requirements.
+  - TSDoc and chain-DSL parity fixtures that rely on inferred naming must run under the same normalized metadata policy.
+  - Parity now explicitly covers resolved metadata, not only raw logical field/type identifiers.
 
 ## Matrix
 

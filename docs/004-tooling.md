@@ -322,7 +322,8 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 | `type-compatibility/discriminator-source`       | `DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`, `DISCRIMINATOR_VALUE_UNRESOLVABLE` | error |
 | `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`     | error            |
 | `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                | warn             |
-| `constraint-validation/no-description-conflict` | `DESCRIPTION_REMARKS_CONFLICT` | info             |
+| `documentation/remarks-without-summary`         | `REMARKS_WITHOUT_SUMMARY`      | info             |
+| `documentation/no-unsupported-description-tag`  | `UNSUPPORTED_DESCRIPTION_TAG`  | error            |
 | `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULE_EFFECTS`   | error            |
 
 ### 3.4 Rule Configuration Interface

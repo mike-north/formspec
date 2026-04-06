@@ -138,6 +138,8 @@ interface ObjectTypeNode {
 
 interface ObjectProperty {
   readonly name: string;
+  /** Resolved identity metadata for this nested property. */
+  readonly metadata?: ResolvedMetadata;
   readonly type: TypeNode;
   readonly optional: boolean;
   /**
@@ -398,13 +400,12 @@ Per C1, constraints are set-influencing and compose via intersection. The practi
 
 ## 4. Annotation Node Model
 
-Annotations are value-influencing metadata (C1): they carry a single scalar that describes or presents the field but does not affect which values are valid. Examples include display names, descriptions, placeholder text, default values, and UI hints.
+Annotations are value-influencing metadata (C1): they carry a single scalar that describes or presents the field but does not affect which values are valid. Examples include descriptions, placeholder text, remarks, default values, and UI hints. Identity-oriented naming metadata (`apiName`, resolved `displayName`, and plural forms) is carried separately in `ResolvedMetadata` because generators must preserve the distinction between a declaration's logical identity and its output-facing serialized name.
 
 ### 4.1 The `AnnotationNode` Union
 
 ```typescript
 type AnnotationNode =
-  | DisplayNameAnnotationNode
   | DescriptionAnnotationNode
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
@@ -416,13 +417,6 @@ type AnnotationNode =
 ### 4.2 Built-in Annotations
 
 ```typescript
-interface DisplayNameAnnotationNode {
-  readonly kind: "annotation";
-  readonly annotationKind: "displayName";
-  readonly value: string;
-  readonly provenance: Provenance;
-}
-
 interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
@@ -502,6 +496,121 @@ Annotations compose via override: the annotation closest to the point of use win
 This matches TypeScript developers' intuition: a field's own label overrides whatever the type definition suggests (PP3).
 
 The merge algorithm (section 7) implements this by tracking the `specificity` level in `Provenance` and selecting the highest-specificity annotation when multiple annotations of the same `annotationKind` are present.
+
+### 4.5 Resolved Identity Metadata
+
+Canonical IR nodes that participate in naming and labeling carry a resolved metadata record in addition to their raw annotations:
+
+```typescript
+interface ResolvedScalarMetadata {
+  readonly value: string;
+  readonly source: "explicit" | "inferred";
+}
+
+interface ResolvedMetadata {
+  readonly apiName?: ResolvedScalarMetadata;
+  readonly displayName?: ResolvedScalarMetadata;
+  readonly apiNamePlural?: ResolvedScalarMetadata;
+  readonly displayNamePlural?: ResolvedScalarMetadata;
+}
+```
+
+This metadata is attached to:
+
+- `ObjectProperty`
+- `FieldNode`
+- `TypeDefinition`
+- `FormIR` (for the analyzed root declaration)
+
+Normative rules:
+
+- `FieldNode.name`, `ObjectProperty.name`, `TypeDefinition.name`, `FormIR.name`, and `typeRegistry` keys are **logical identifiers**, not serialized names.
+- `ResolvedMetadata` carries the output-facing identity used by generators and downstream tooling.
+- When `ResolvedMetadata.apiName` is absent, generators fall back to the logical identifier.
+- When `ResolvedMetadata.displayName` is absent, generators may omit a human-facing label/title or apply separately configured output defaults; they must not silently mutate the logical identifier under the default disabled policy.
+- `apiNamePlural` and `displayNamePlural` are only meaningful in pluralized naming contexts and must not be treated as substitutes for the singular values.
+
+### 4.6 Metadata Policy Resolution
+
+Resolved identity metadata is produced by applying a single normalized metadata policy at the build boundary. The policy may target declaration kinds independently:
+
+```typescript
+interface MetadataPolicyInput {
+  readonly type?: DeclarationMetadataPolicyInput;
+  readonly field?: DeclarationMetadataPolicyInput;
+  readonly method?: DeclarationMetadataPolicyInput;
+}
+
+interface DeclarationMetadataPolicyInput {
+  readonly apiName?: MetadataValuePolicyInput;
+  readonly displayName?: MetadataValuePolicyInput;
+}
+```
+
+Each scalar metadata value (`apiName`, `displayName`) supports three modes:
+
+- `disabled` — no inference; only explicit authored metadata participates
+- `require-explicit` — canonicalization/build fails if the value is absent
+- `infer-if-missing` — a consumer-provided callback supplies the value when no explicit value exists
+
+Type-level scalar values may additionally define pluralization policy for `apiNamePlural` and `displayNamePlural`. Plural values resolve only after the corresponding singular value resolves.
+
+Normative rules:
+
+- Policy normalization happens exactly once at the build boundary, before canonicalization and generation.
+- The same normalized resolver is applied to both authoring surfaces after explicit metadata extraction.
+- Explicit metadata sources include:
+  - TSDoc `@apiName` and `@displayName`
+  - Chain DSL `apiName` and `displayName`
+- In the chain DSL, `label` is a backward-compatible alias of `displayName`. A single field config must not provide both.
+- Under `require-explicit`, missing metadata is a build-time error even if the source surface would otherwise type-check.
+- Under `infer-if-missing`, blank or whitespace-only inference results are treated as absent values, not as meaningful metadata.
+- The default policy is effectively `disabled` for all scalar values and pluralizations. Existing logical names remain unchanged unless explicit metadata or an opt-in policy says otherwise.
+
+`createFormSpecFactory({ metadata })` is the normative chain-DSL entry point for sharing one metadata policy across authoring-time builders and downstream schema generation. The factory may provide stricter compile-time ergonomics for `require-explicit`, but the build-time resolver remains the authoritative enforcement point.
+
+### 4.7 Metadata Merge and Mixed-Authoring Precedence
+
+When multiple metadata sources apply to the same logical declaration, explicit values always outrank inferred values.
+
+For mixed-authoring overlays, the precedence order is:
+
+1. explicit overlay value
+2. explicit static value
+3. inferred static value
+4. inferred overlay value
+
+Additional rules:
+
+- Mixed-authoring matching uses logical identifiers, not resolved serialized names.
+- Metadata precedence is evaluated independently for each scalar (`apiName`, `displayName`, `apiNamePlural`, `displayNamePlural`).
+- A winning explicit value is never replaced by an inferred value from another layer.
+
+### 4.8 Example: Equivalent Naming Across Surfaces
+
+These two authoring forms are equivalent when run under the same metadata policy:
+
+```typescript
+interface ContactForm {
+  /** @apiName first_name @displayName First Name */
+  firstName: string;
+}
+```
+
+```typescript
+field.text("firstName", {
+  apiName: "first_name",
+  displayName: "First Name",
+});
+```
+
+Both must canonicalize to the same logical/output split:
+
+- logical field identifier: `firstName`
+- `metadata.apiName.value`: `"first_name"` (`source: "explicit"`)
+- `metadata.displayName.value`: `"First Name"` (`source: "explicit"`)
+
+If a consumer instead supplies an `infer-if-missing` policy for `apiName`, the resolved metadata may carry an inferred serialized name, but the logical identifier remains `firstName`.
 
 ---
 
@@ -762,7 +871,7 @@ type DiagnosticCode =
   | string; // Extension-defined codes
 ```
 
-All codes are prefixed with a configurable vendor token at emit time (D1, PP10). The codes above are the undecorated forms; at output they become `FORMSPEC_CONTRADICTION` by default, or `STRIPE_CONTRADICTION` if the vendor token is configured to `STRIPE`.
+Diagnostic codes are emitted as the stable symbolic identifiers listed above (D1). Vendor-specific branding, if any, belongs in message text or surrounding presentation, not in the code itself.
 
 ### 8.4 Custom Constraint Contradiction Checking
 
@@ -895,8 +1004,8 @@ interface CustomConstraintRegistration {
 Per E3, all custom vocabulary keywords use a configurable vendor prefix. The prefix is configured in `.formspec.yml`:
 
 ```yaml
-vendor:
-  prefix: "x-stripe" # defaults to "x-formspec"
+schema:
+  vendorPrefix: "x-stripe" # defaults to "x-formspec"
 ```
 
 The extension registration system substitutes the configured prefix at emit time. Extensions never hard-code their keyword prefix — they register keyword names without the prefix, and the generation context provides the effective prefix:
@@ -927,8 +1036,10 @@ A `FieldNode` represents a single form field after canonicalization — its type
 ```typescript
 interface FieldNode {
   readonly kind: "field";
-  /** The field's key in the data schema. */
+  /** Logical field identifier before any output-facing renaming. */
   readonly name: string;
+  /** Resolved identity metadata used by generators and tooling. */
+  readonly metadata?: ResolvedMetadata;
   /** The resolved type of this field. */
   readonly type: TypeNode;
   /**
@@ -991,10 +1102,16 @@ Named types referenced via `ReferenceTypeNode` are stored in a flat registry on 
 
 ```typescript
 interface TypeDefinition {
-  /** The fully-qualified reference name (key in the registry). */
+  /** The fully-qualified logical reference name (key in the registry). */
   readonly name: string;
+  /** Resolved identity metadata for this named type. */
+  readonly metadata?: ResolvedMetadata;
   /** The resolved type node. */
   readonly type: TypeNode;
+  /** Constraints declared on the named type itself. */
+  readonly constraints?: readonly ConstraintNode[];
+  /** Root-level annotations declared on the named type itself. */
+  readonly annotations?: readonly AnnotationNode[];
   /** Where this type was declared. */
   readonly provenance: Provenance;
 }
@@ -1013,6 +1130,8 @@ interface TypeDefinition {
  */
 interface FormIR {
   readonly kind: "form-ir";
+  /** Logical name of the analyzed root declaration, when one exists. */
+  readonly name?: string;
   /**
    * Schema version for the IR format itself. Allows tooling to detect
    * incompatible IR versions when IR artifacts are persisted.
@@ -1022,12 +1141,18 @@ interface FormIR {
    * Top-level elements of the form: fields and layout nodes.
    */
   readonly elements: readonly FormIRElement[];
+  /** Resolved identity metadata for the analyzed root declaration. */
+  readonly metadata?: ResolvedMetadata;
+  /** Root-level annotations from the analyzed declaration. */
+  readonly rootAnnotations?: readonly AnnotationNode[];
   /**
    * Registry of named types referenced by fields in this form.
    * Keys are fully-qualified type names matching `ReferenceTypeNode.name`.
    * Generators use this to emit `$defs` in JSON Schema (PP7).
    */
   readonly typeRegistry: Record<string, TypeDefinition>;
+  /** Additional top-level annotations emitted alongside the form root. */
+  readonly annotations?: readonly AnnotationNode[];
   /**
    * Provenance of the form definition itself (the `formspec(...)` call
    * or the annotated type declaration).

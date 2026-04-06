@@ -58,18 +58,23 @@ Constraint tags narrow the set of valid values for a field. Per S1, constraints 
 
 **Note on `decimal`:** FormSpec does not ship a built-in `decimal` type. Decimal is a downstream concern — consumers define their own string-backed decimal type (e.g., `type Decimal = string`) with custom serialization logic. This is an intentional extensibility pressure test (E1, E5): a consumer adding decimal support must be able to (1) define a new type, (2) register a tag such as `@maxSigFig`, (3) make tooling understand that tag is valid on the custom type, and (4) provide custom serialization from the decimal representation to a JSON Schema string. All of these should be achievable through FormSpec's extension API without forking the core.
 
-### 2.2 Annotation Tags
+### 2.2 Metadata and Annotation Tags
 
-Annotation tags carry a single scalar value. Per C1, they compose via override — the most-specific declaration wins. Annotations do not affect the valid value set.
+FormSpec distinguishes between:
 
-| Tag                | IR node kind                | Primary schema/UI target                 | Notes                                                                                                                                                                           |
-| ------------------ | --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@displayName`     | `DisplayNameAnnotation`     | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields                                                                  |
-| `@apiName`         | `ApiNameAnnotation`         | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields                                                                             |
-| ~~`@description`~~ | ~~`DescriptionAnnotation`~~ | ~~JSON Schema `description`~~            | **Removed.** Not a standard TSDoc tag; invisible to API Documenter; requires `tsdoc.json` registration. Use summary text instead. See §2.3 for the replacement precedence rule. |
-| `@placeholder`     | `PlaceholderAnnotation`     | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                                                                                       |
-| `@format`          | `FormatAnnotation`          | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                                                                                                 |
-| `@order`           | `FieldOrderAnnotation`      | UI Schema element order                  | Integer; lower values appear first                                                                                                                                              |
+- **identity metadata tags** — `@apiName` and `@displayName`, which contribute explicit inputs to metadata-policy resolution and populate `ResolvedMetadata`
+- **annotation tags** — tags such as `@placeholder`, `@format`, and `@order`, which canonicalize directly to `AnnotationNode`s and compose by override per C1
+
+Identity metadata does not affect the valid value set, but it is not modeled as an ordinary `AnnotationNode` in the canonical IR.
+
+| Tag                | Canonical treatment                  | Primary schema/UI target                 | Notes                                                                                                                                                                           |
+| ------------------ | ------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@displayName`     | explicit input to `ResolvedMetadata` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields                                                                  |
+| `@apiName`         | explicit input to `ResolvedMetadata` | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields                                                                             |
+| ~~`@description`~~ | ~~`DescriptionAnnotation`~~          | ~~JSON Schema `description`~~            | **Removed.** Not a standard TSDoc tag; invisible to API Documenter; requires `tsdoc.json` registration. Use summary text instead. See §2.3 for the replacement precedence rule. |
+| `@placeholder`     | `PlaceholderAnnotation`              | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                                                                                       |
+| `@format`          | `FormatAnnotation`                   | JSON Schema `format`                     | Standard JSON Schema formats (`date`, `email`, `uri`, etc.) plus renderer hints                                                                                                 |
+| `@order`           | `FieldOrderAnnotation`               | UI Schema element order                  | Integer; lower values appear first                                                                                                                                              |
 
 ### 2.3 Ecosystem Tags (Reused Without Modification)
 
@@ -311,7 +316,7 @@ Rules:
 - Arbitrary type expressions such as `Foo<T>` are out of scope for v1.
 - The targeted field must be required, non-nullable, and string-like.
 - If `T` resolves to a string literal, that literal is used directly.
-- If `T` resolves to a named declaration, its JSON-facing name is used (`@apiName` first, then the built-in naming transform FormSpec already uses for named declarations).
+- If `T` resolves to a named declaration, its resolved JSON-facing singular name is used: explicit `@apiName` first, then any inferred `apiName` produced by the active metadata policy, and finally the logical declaration name if no resolved `apiName` exists.
 - If `T` resolves to a union of string literals or any other unsupported shape, emit a diagnostic rather than partially succeeding.
 - The rest of the object schema remains unchanged.
 - No new JSON Schema keyword is introduced; the target field is emitted as a one-element `enum`.
@@ -323,6 +328,8 @@ value ::= text-until-end-of-line
 ```
 
 The entire remaining comment text after the modifier (if any) is the display name. HTML tags are not stripped; the value is stored as-is. Maximum length is configurable (per PP9) — consumers set a project-level limit and values exceeding it produce a lint error.
+
+`@displayName` contributes **explicit** naming metadata. Final resolved singular/plural display labels are determined after metadata-policy resolution (see [001-canonical-ir.md](/Users/mnorth/Development/formspec/docs/001-canonical-ir.md) §4.5-§4.7). Under the default disabled policy, no display label is inferred unless the consumer opts into inference.
 
 ```typescript
 /** @displayName Payment Amount */
@@ -355,21 +362,23 @@ class VehicleRental { ... }
 items: LineItem[];
 ```
 
-**Inference cascade** (per PP2 — inference over declaration):
+**Resolution under metadata policy** (per PP2 and PP11):
 
-Display names follow different resolution rules depending on the declaration surface.
+Display names follow different resolution rules depending on the declaration surface and the active metadata policy.
 
 **Classes/interfaces:**
 
-1. **Fully implicit** — no `@displayName` tag. The consumer-provided inference function derives a singular display name from the identifier (e.g., `HouseLocation` → "House Location"). The inference function is configurable per PP11 (consumer-controlled messaging) — the default splits PascalCase/camelCase, but consumers can provide a custom function.
+1. **Fully implicit with default policy** — no `@displayName` tag and no inference policy. No resolved singular display name is produced.
 
-2. **Bare `@displayName`** — explicit singular. `@displayName Home` sets the singular display name to "Home". On classes/interfaces, this bare form is equivalent to `@displayName :singular Home`.
+2. **Fully implicit with `infer-if-missing`** — no `@displayName` tag, but the consumer enables type-level display-name inference. The configured inference function derives a singular display name from the identifier (for example, `HouseLocation` → `"House Location"`).
 
-3. **Explicit singular** — `@displayName :singular Home`. This is equivalent to the bare form and exists for explicitness and consistency with array-field variant syntax.
+3. **Bare `@displayName`** — explicit singular. `@displayName Home` sets the singular display name to `"Home"`. On classes/interfaces, this bare form is equivalent to `@displayName :singular Home`.
+
+4. **Explicit singular** — `@displayName :singular Home`. This is equivalent to the bare form and exists for explicitness and consistency with array-field variant syntax.
 
 ```typescript
 class HouseLocation {}
-// → inferred singular "House Location"
+// → no resolved display name unless a displayName inference policy is enabled
 
 /** @displayName Home */
 class HouseLocation {}
@@ -380,15 +389,19 @@ class HouseLocation {}
 // → explicit singular "Home"
 ```
 
+With type-level `displayName: { mode: "infer-if-missing", infer(...) }`, the first example instead resolves to an inferred singular display name.
+
 **Array fields:**
 
 Array fields retain the full singular/plural distinction because they can naturally represent both “one item” and “many items”.
 
-1. **Fully implicit** — no `@displayName` tag. The consumer-provided inference function derives both singular and plural forms from the identifier.
+1. **Fully implicit with default policy** — no `@displayName` tag and no inference policy. No resolved singular or plural display labels are produced.
 
-2. **Bare `@displayName`** — explicit singular, plural inferred via the consumer's inflector.
+2. **Fully implicit with `infer-if-missing`** — no `@displayName` tag, but the consumer enables field-level display-name inference and pluralization. The configured inference function derives the singular form and the configured inflector derives the plural form.
 
-3. **Explicit variants** — `@displayName :singular Home` + `@displayName :plural Properties`. No inference; both forms are author-specified.
+3. **Bare `@displayName`** — explicit singular. A plural form is only resolved if pluralization policy is also enabled for `displayName`.
+
+4. **Explicit variants** — `@displayName :singular Home` + `@displayName :plural Properties`. No inference is needed; both forms are author-specified.
 
 Using `:plural` on classes, interfaces, type aliases, primitive fields, or other non-array contexts is a static error. Using `:singular` outside classes/interfaces and array fields is also a static error.
 
@@ -408,7 +421,9 @@ value ::= api-identifier
 api-identifier ::= [a-z][a-z0-9_]*[a-z0-9]   // default validation; configurable
 ```
 
-Controls the JSON representation name — the property key used in generated JSON Schema and the key used in `$defs` for named types. The default inference function transforms identifiers to `snake_case` (e.g., `firstName` → `first_name`, `HouseLocation` → `house_location`), but consumers can provide a custom transformation per PP11.
+Controls the JSON representation name — the property key used in generated JSON Schema and the key used in `$defs` for named types. When `apiName` inference is enabled, consumers may choose any transformation function consistent with project policy (for example, `firstName` → `first_name`, `HouseLocation` → `house_location`) per PP11.
+
+`@apiName` contributes **explicit** serialized naming metadata. Final resolved serialized names are produced after metadata-policy resolution (see [001-canonical-ir.md](/Users/mnorth/Development/formspec/docs/001-canonical-ir.md) §4.5-§4.7). Under the default disabled policy, logical field/type names remain unchanged unless an explicit `@apiName` tag or an opt-in inference policy supplies a serialized name.
 
 **Validation rules** (configurable per PP9):
 
@@ -430,19 +445,19 @@ interface User {
   /** @apiName first_name */
   firstName: string; // JSON Schema property key: "first_name"
 
-  lastName: string; // inferred: "last_name"
+  lastName: string; // JSON Schema property key stays "lastName" unless apiName inference is enabled
 }
 ```
 
-**On classes/interfaces** — same three-tier inference cascade as `@displayName`, with `:singular` and `:plural` variants. The singular form controls the `$defs` key and single-object references; the plural form controls array/collection contexts:
+**On classes/interfaces** — same metadata-policy resolution model as `@displayName`, with `:singular` and `:plural` variants. The singular form controls the `$defs` key and single-object references; the plural form controls array/collection contexts when pluralization is in use:
 
 ```typescript
 class HouseLocation {}
-// → inferred: singular "house_location", plural "house_locations"
+// → "$defs" key remains "HouseLocation" unless apiName inference is enabled
 
 /** @apiName home */
 class HouseLocation {}
-// → explicit singular "home", inferred plural "homes"
+// → explicit singular "home"; plural only resolves if pluralization is enabled or authored explicitly
 
 /**
  * @apiName :singular home
@@ -451,6 +466,8 @@ class HouseLocation {}
 class HouseLocation {}
 // → fully explicit, no inference
 ```
+
+With type-level `apiName: { mode: "infer-if-missing", infer(...) }`, the first example resolves an inferred singular API name. With pluralization enabled, a corresponding inferred plural may also be resolved from the singular value.
 
 Using `:singular` or `:plural` on a field (as opposed to a class/interface or array field) is a static error.
 
@@ -858,17 +875,19 @@ This syntax is not used for `enum` or `const enum`. Those types annotate members
 
 ### 5.3 Semantics
 
-Member-target constraints and annotations are stored in the IR as an array on the enum/union member's entry:
+Member-target constraints and display labels are stored on the enum/union member entries themselves:
 
 ```typescript
 // IR sketch
 {
   kind: "field",
   name: "mode",
-  type: { kind: "union", members: ["sync", "async"] },
-  memberAnnotations: {
-    sync:  [{ kind: "DisplayNameAnnotation", value: "Synchronous Processing" }],
-    async: [{ kind: "DisplayNameAnnotation", value: "Asynchronous Processing" }],
+  type: {
+    kind: "enum",
+    members: [
+      { value: "sync", label: "Synchronous Processing" },
+      { value: "async", label: "Asynchronous Processing" }
+    ]
   }
 }
 ```
@@ -1158,9 +1177,9 @@ interface ProvenanceRecord {
 }
 ```
 
-### 7.2 Annotation tag → `AnnotationNode`
+### 7.2 Non-identity annotation tag → `AnnotationNode`
 
-Each annotation tag instance produces one `AnnotationNode`:
+Each non-identity annotation tag instance produces one `AnnotationNode`:
 
 ```typescript
 interface AnnotationNode {
@@ -1171,6 +1190,8 @@ interface AnnotationNode {
   provenance: ProvenanceRecord;
 }
 ```
+
+`@apiName` and `@displayName` are excluded from this rule. They are explicit metadata inputs that participate in metadata-policy resolution and populate `ResolvedMetadata` rather than canonicalizing as ordinary annotation nodes.
 
 ### 7.3 Ecosystem tag → specialized nodes
 
@@ -1192,7 +1213,7 @@ If the declaration is not object-like, or if the target/source rules in §2.5 ar
 2. Keeps all constraints (they all apply — the valid set is their intersection)
 3. Records both provenance entries in the combined node
 
-**Annotations compose by override.** When multiple `AnnotationNode`s of the same kind exist on the same field, the most-specific one wins. Specificity order (from most to least specific):
+**Non-identity annotations compose by override.** When multiple `AnnotationNode`s of the same kind exist on the same field, the most-specific one wins. Specificity order (from most to least specific):
 
 1. Tag on the field property declaration itself
 2. Tag on the field's type alias (if the field's type is a type alias)
@@ -1273,9 +1294,10 @@ IR produced (abbreviated):
 
 ```
 FieldIRNode "amount"
+  metadata:
+    displayName: { value: "Payment Amount", source: "explicit" }
   type: NamedTypeRef "MonetaryAmount"
   annotations:
-    DisplayNameAnnotation { value: "Payment Amount" }
     DescriptionAnnotation { value: "The total amount to charge, including tax." }
   subfieldConstraints:
     "value":
@@ -1403,8 +1425,8 @@ tags: Tag[];
 | `@uniqueItems`                       | constraint     | none (marker)   | yes    | no      |
 | `@maxSigFig` (example extension tag) | constraint     | pos int         | yes    | no      |
 | `@const`                             | constraint     | JSON value      | no     | no      |
-| `@displayName`                       | annotation     | text            | no     | yes     |
-| `@apiName`                           | annotation     | identifier      | no     | yes     |
+| `@displayName`                       | metadata       | text            | no     | yes     |
+| `@apiName`                           | metadata       | identifier      | no     | yes     |
 | ~~`@description`~~                   | ~~annotation~~ | ~~text~~        | ~~no~~ | ~~yes~~ |
 | `@placeholder`                       | annotation     | text            | no     | no      |
 | `@format`                            | annotation     | identifier      | yes    | no      |
