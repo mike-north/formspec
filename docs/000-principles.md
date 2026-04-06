@@ -28,6 +28,8 @@ This document establishes the invariants that all FormSpec design and implementa
 
 **PP11: Consumer-controlled messaging.** Downstream consumers of FormSpec must have control over user-facing output — diagnostic messages, error text, schema descriptions, and any other content that code authors or end users see. FormSpec provides reasonable defaults, but organizations can override message templates, severity descriptions, and instructional text to match their own terminology, style guides, and audience expectations.
 
+This principle also applies to inferred naming metadata. When FormSpec derives a serialized name or display label rather than taking an explicit author value, the inference and plural-inflection rules must be consumer-configurable build policy rather than a hard-coded global convention. Default transforms may exist, but downstream consumers control whether inference is enabled and what transformation/inflection functions are used.
+
 **PP12: Pre-1.0 freedom.** Breaking changes are acceptable. The system prioritizes getting the model right over backward compatibility with alpha-era APIs.
 
 **PP13: TSDoc tags should read as complete thoughts.** A FormSpec TSDoc tag does not need to be a grammatically complete sentence, but it should express the primary idea being captured without requiring the reader to infer a missing qualifier. Tag names should therefore be semantically specific enough that the comment reads naturally and unambiguously at the point of use.
@@ -109,10 +111,10 @@ Structural invariants for the system's internal design.
 
 How constraints and form elements interact when combined.
 
-**C1: Two composition rules, determined by kind.** Metadata in FormSpec is either _set-influencing_ (constraints that narrow the set of valid values) or _value-influencing_ (annotations that carry a single scalar: a name, a description, a default). The kind determines the composition rule:
+**C1: Two composition rules, determined by kind.** Metadata in FormSpec is either _set-influencing_ (constraints that narrow the set of valid values) or _value-influencing_ (resolved identity metadata plus annotations that carry a single scalar such as a description, a default, or a UI hint). The kind determines the composition rule:
 
 - **Set-influencing (constraints):** compose via intersection. `@minimum 0` + `@maximum 100` means values in [0, 100]. Each constraint further narrows; none can broaden.
-- **Value-influencing (annotations):** compose via override — closest to the point of use wins. A `@defaultValue` on a field overrides one from its type definition, which overrides one from a base type. The same applies to display names, descriptions, and UI hints.
+- **Value-influencing (identity metadata and annotations):** compose via override — closest to the point of use wins. A `@defaultValue` on a field overrides one from its type definition, which overrides one from a base type. The same applies to resolved naming metadata, descriptions, and UI hints.
 
 **C2: Schema shape is never altered for presentation.** The data model and the presentation of that data are separate concerns. Presentation decisions (visual grouping, field ordering, section labels) never affect the shape of the generated schema. A `group()` element affects UI layout only — it does not create a new scope, namespace, or nesting level in the data schema. Fields inside a group appear at the same schema level as if the group were absent.
 
@@ -158,7 +160,7 @@ Where enforcement and coercion happen.
 
 Error reporting invariants.
 
-**D1: Diagnostics are structured.** Every diagnostic carries: source location (file, line, column, span), severity (error, warning, info), a machine-readable code (e.g., `CONTRADICTION`, prefixed with a configurable vendor token per PP9), and a human-readable message.
+**D1: Diagnostics are structured.** Every diagnostic carries: source location (file, line, column, span), severity (error, warning, info), a stable machine-readable symbolic code (e.g., `CONTRADICTION`), and a human-readable message. Vendor-specific branding, if any, is presentation-layer text rather than part of the diagnostic code.
 
 **D2: Diagnostics are source-located.** Errors point to the author's source code, not to intermediate representations or generated output. When a contradiction involves two constraints, the diagnostic references both source locations.
 

@@ -47,6 +47,8 @@ The first three are ChainDSL-owned capabilities in this revision. They are exclu
 
 **Mixed-authoring note:** Some near-term product scenarios are not pure parity cases. In particular, a form may be authored primarily as a TSDoc-annotated class while using ChainDSL-only constructs for a small number of dynamic option fields. Those cases should be covered by dedicated mixed-authoring composition tests, not by strict TSDoc ↔ ChainDSL parity tests. The assertion target for such tests is correct generated JSON Schema and UI Schema for the composed form, not identical IR from two independently authored surfaces. The composition mechanism must remain explicit; decorators are not a substitute authoring surface.
 
+**Metadata-policy note:** Naming and label parity is evaluated after applying the same normalized metadata policy to both surfaces. A parity fixture that depends on inferred names, inferred display labels, or plural inflection must provide one shared policy object to the TSDoc path and the chain-DSL path. A test that relies on one surface's defaults without the same policy on the other is underspecified and invalid as a parity case.
+
 **User-authored testing note:** End-to-end coverage should also demonstrate how adopters test their own systems. Those tests split into three different categories:
 
 - data-model conformance tests: does example payload data validate against the generated JSON Schema?
@@ -57,7 +59,7 @@ These are confidence tests for user integrations, not parity tests.
 
 ### Relationship to Other Documents
 
-- **001 (Canonical IR):** Parity tests compare `FieldNode` and `ConstraintNode` instances by structural equality on semantic fields. This document relies on 001's IR type definitions.
+- **001 (Canonical IR):** Parity tests compare `FieldNode`, `ResolvedMetadata`, and `ConstraintNode` instances by structural equality on semantic fields. This document relies on 001's IR type definitions and metadata-resolution semantics.
 - **002 (TSDoc Grammar):** Each shared static TSDoc tag in the tag inventory (§2) has a corresponding chain DSL option. Runtime-capable ChainDSL-only constructs are excluded from parity and instead covered by mixed-authoring composition tests.
 - **003 (JSON Schema Vocabulary):** Parity at the JSON Schema output level verifies A3. The test fixtures from this document exercise the full mapping in 003 §2.
 - **005 (Numeric Types):** Extension stress-test fixtures (`Decimal`, `DateOnly`) validate that parity holds across the extension boundary — not just for built-in types.
@@ -73,6 +75,7 @@ The test fixtures are a small, carefully selected set of TypeScript types that c
 A good parity fixture:
 
 - Exercises at least one non-trivial IR property (constraint inheritance, subfield targeting, enum display names, alias chains)
+- Uses the same metadata policy on both surfaces whenever resolved naming/label inference participates in the expected output
 - Is compact enough to be readable as a test
 - Produces a non-trivial but fully predictable IR that can be written by hand as a test expectation
 - Has a clear, natural corresponding expression in both TSDoc and chain DSL
@@ -93,7 +96,11 @@ Under the current integer model, `Integer` is represented in the IR as `{ kind: 
 
 ```typescript
 {
+  kind: "field",
   name: "quantity",
+  metadata: {
+    displayName: { value: "Quantity", source: "explicit" }
+  },
   type: { kind: "reference", name: "module#USDCents", typeArguments: [] },
   required: true,
   constraints: [
@@ -102,9 +109,7 @@ Under the current integer model, `Integer` is represented in the IR as `{ kind: 
     { kind: "constraint", constraintKind: "multipleOf", value: 1,             /* from Integer — integer semantics */ },
     { kind: "constraint", constraintKind: "minimum",   value: 1,              /* use-site */ },
   ],
-  annotations: [
-    { kind: "annotation", annotationKind: "displayName", value: "Quantity" }
-  ]
+  annotations: []
 }
 ```
 
@@ -469,8 +474,9 @@ Fields that are _not_ excluded:
 - All constraint fields: `constraintKind`, `value`, `bound`
 - All annotation fields: `annotationKind`, `value`
 - All type node fields: `kind`, `primitiveKind`, `members`, `properties`, etc.
-- All field-level fields: `name`, `required`, `constraints`, `annotations`
-- All IR metadata: `formId`, `fields`, `defs`
+- All resolved metadata fields: `apiName`, `displayName`, `apiNamePlural`, `displayNamePlural`, and each scalar's `source`
+- All field-level fields: `name`, `metadata`, `required`, `constraints`, `annotations`
+- All form-root fields: `kind`, `name`, `irVersion`, `elements`, `metadata`, `rootAnnotations`, `typeRegistry`, `annotations`
 
 Rather than a generic recursive walk, provenance stripping is a **typed IR transformation** that operates at the known, fixed positions where provenance appears in the IR:
 
@@ -496,15 +502,17 @@ Structural assertions fail with specific field-path information that makes the c
 
 The parity test comparison covers these semantic fields:
 
-**FieldNode:** `name`, `required`, `constraints` (order-normalized), `annotations` (order-normalized), `type` (structural)
+**FieldNode:** `kind`, `name`, `metadata`, `required`, `constraints` (order-normalized), `annotations` (order-normalized), `type` (structural)
 
 **ConstraintNode:** `kind`, `constraintKind`, `value` (for numeric constraints, compared with tolerance-free exact equality — see §4.5), `pattern` (for pattern constraints), `bound`, `extensionId` (for custom constraints)
 
 **AnnotationNode:** `kind`, `annotationKind`, `value`
 
+**ResolvedMetadata:** `apiName`, `displayName`, `apiNamePlural`, `displayNamePlural`, with each scalar compared by `value` and `source`
+
 **TypeNode:** `kind`, `primitiveKind` (primitives), `members` (enum/union — order-sensitive), `properties` (objects — order-preserved per D3), `items` (arrays), `name` + `typeArguments` (references), `typeId` + `payload` (custom)
 
-**FormIR root:** `formId`, `fields` (order-sensitive), `defs` (key-sorted for determinism, per D3)
+**FormIR root:** `kind`, `name`, `irVersion`, `elements` (order-sensitive), `metadata`, `rootAnnotations`, `typeRegistry` (key-sorted for determinism, per D3), `annotations`
 
 ### 4.5 Numeric Precision in Comparisons
 
