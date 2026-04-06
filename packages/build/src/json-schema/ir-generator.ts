@@ -294,9 +294,9 @@ function collectFields(
   for (const element of elements) {
     switch (element.kind) {
       case "field":
-        properties[getSerializedName(element.name, element.metadata)] = generateFieldSchema(element, ctx);
+        properties[getSerializedFieldName(element)] = generateFieldSchema(element, ctx);
         if (element.required) {
-          required.push(getSerializedName(element.name, element.metadata));
+          required.push(getSerializedFieldName(element));
         }
         break;
 
@@ -423,23 +423,17 @@ function applyPathTargetedConstraints(
     return schema;
   }
 
-  // Group path constraints by target field name (first path segment).
-  // Callers guarantee all entries have a defined `path` (filtered upstream).
-  const byTarget = new Map<string, ConstraintNode[]>();
-  for (const c of pathConstraints) {
-    const target = c.path?.segments[0];
-    if (!target) continue;
-    const group = byTarget.get(target) ?? [];
-    group.push(c);
-    byTarget.set(target, group);
-  }
+  const propertyOverrides = buildPropertyOverrides(pathConstraints, typeNode, ctx);
+  const nullableValueBranch = getNullableUnionValueSchema(schema);
 
-  // Build the property overrides object.
-  const propertyOverrides: Record<string, JsonSchema2020> = {};
-  for (const [target, constraints] of byTarget) {
-    const subSchema: JsonSchema2020 = {};
-    applyConstraints(subSchema, constraints, ctx);
-    propertyOverrides[resolveSerializedPropertyName(target, typeNode, ctx)] = subSchema;
+  if (nullableValueBranch !== undefined) {
+    applyPathTargetedConstraints(
+      nullableValueBranch,
+      pathConstraints,
+      ctx,
+      resolveTraversableTypeNode(typeNode, ctx)
+    );
+    return schema;
   }
 
   // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
@@ -459,7 +453,7 @@ function applyPathTargetedConstraints(
 
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
       if (schema.properties[target]) {
-        Object.assign(schema.properties[target], overrideSchema);
+        mergeSchemaOverride(schema.properties[target], overrideSchema);
       } else {
         // Do not introduce new properties directly; compose via allOf instead
         // to preserve additionalProperties semantics on the base object.
@@ -601,7 +595,7 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
   const required: string[] = [];
 
   for (const prop of type.properties) {
-    const propertyName = getSerializedName(prop.name, prop.metadata);
+    const propertyName = getSerializedObjectPropertyName(prop);
     properties[propertyName] = generatePropertySchema(prop, ctx);
     if (!prop.optional) {
       required.push(propertyName);
@@ -716,7 +710,23 @@ function isNullableUnion(type: UnionTypeNode): boolean {
  * registry before traversal begins). The reference simply emits a `$ref`.
  */
 function generateReferenceType(type: ReferenceTypeNode, ctx: GeneratorContext): JsonSchema2020 {
-  return { $ref: `#/$defs/${ctx.typeNameMap[type.name] ?? type.name}` };
+  return { $ref: `#/$defs/${getSerializedTypeName(type.name, ctx)}` };
+}
+
+function getSerializedFieldName(
+  field: Pick<FieldNode, "name" | "metadata">
+): string {
+  return getSerializedName(field.name, field.metadata);
+}
+
+function getSerializedObjectPropertyName(
+  property: Pick<ObjectProperty, "name" | "metadata">
+): string {
+  return getSerializedName(property.name, property.metadata);
+}
+
+function getSerializedTypeName(logicalName: string, ctx: GeneratorContext): string {
+  return ctx.typeNameMap[logicalName] ?? logicalName;
 }
 
 function applyResolvedMetadata(
@@ -736,24 +746,197 @@ function resolveReferencedType(
   return ctx.typeRegistry[type.name]?.type;
 }
 
+function dereferenceTypeNode(typeNode: TypeNode | undefined, ctx: GeneratorContext): TypeNode | undefined {
+  if (typeNode?.kind !== "reference") {
+    return typeNode;
+  }
+
+  return resolveReferencedType(typeNode, ctx);
+}
+
+function unwrapNullableTypeNode(typeNode: TypeNode | undefined): TypeNode | undefined {
+  if (typeNode?.kind !== "union" || !isNullableUnion(typeNode)) {
+    return typeNode;
+  }
+
+  return typeNode.members.find(
+    (member) => !(member.kind === "primitive" && member.primitiveKind === "null")
+  );
+}
+
+function resolveTraversableTypeNode(
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): TypeNode | undefined {
+  const dereferenced = dereferenceTypeNode(typeNode, ctx);
+  const unwrapped = unwrapNullableTypeNode(dereferenced);
+
+  if (unwrapped !== dereferenced) {
+    return resolveTraversableTypeNode(unwrapped, ctx);
+  }
+
+  return dereferenced;
+}
+
 function resolveSerializedPropertyName(
   logicalName: string,
   typeNode: TypeNode | undefined,
   ctx: GeneratorContext
 ): string {
-  if (typeNode?.kind === "object") {
-    const property = typeNode.properties.find((candidate) => candidate.name === logicalName);
-    return property === undefined ? logicalName : getSerializedName(property.name, property.metadata);
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
+  if (effectiveType?.kind === "array") {
+    return resolveSerializedPropertyName(logicalName, effectiveType.items, ctx);
   }
 
-  if (typeNode?.kind === "reference") {
-    const referencedType = resolveReferencedType(typeNode, ctx);
-    return referencedType === undefined
-      ? logicalName
-      : resolveSerializedPropertyName(logicalName, referencedType, ctx);
+  if (effectiveType?.kind === "object") {
+    const property = effectiveType.properties.find((candidate) => candidate.name === logicalName);
+    return property === undefined ? logicalName : getSerializedObjectPropertyName(property);
   }
 
   return logicalName;
+}
+
+function resolveTargetTypeNode(
+  logicalName: string,
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): TypeNode | undefined {
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
+  if (effectiveType?.kind === "array") {
+    return resolveTargetTypeNode(logicalName, effectiveType.items, ctx);
+  }
+
+  if (effectiveType?.kind !== "object") {
+    return undefined;
+  }
+
+  return effectiveType.properties.find((candidate) => candidate.name === logicalName)?.type;
+}
+
+function buildPropertyOverrides(
+  pathConstraints: readonly ConstraintNode[],
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): Record<string, JsonSchema2020> {
+  const byTarget = new Map<string, ConstraintNode[]>();
+
+  for (const constraint of pathConstraints) {
+    const target = constraint.path?.segments[0];
+    if (!target) {
+      continue;
+    }
+    const grouped = byTarget.get(target) ?? [];
+    grouped.push(constraint);
+    byTarget.set(target, grouped);
+  }
+
+  const overrides: Record<string, JsonSchema2020> = {};
+  for (const [target, constraints] of byTarget) {
+    overrides[resolveSerializedPropertyName(target, typeNode, ctx)] = buildPathOverrideSchema(
+      constraints.map(stripLeadingPathSegment),
+      resolveTargetTypeNode(target, typeNode, ctx),
+      ctx
+    );
+  }
+
+  return overrides;
+}
+
+function buildPathOverrideSchema(
+  constraints: readonly ConstraintNode[],
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): JsonSchema2020 {
+  const schema: JsonSchema2020 = {};
+  const directConstraints: ConstraintNode[] = [];
+  const nestedConstraints: ConstraintNode[] = [];
+
+  for (const constraint of constraints) {
+    if (constraint.path === undefined || constraint.path.segments.length === 0) {
+      directConstraints.push(constraint);
+    } else {
+      nestedConstraints.push(constraint);
+    }
+  }
+
+  applyConstraints(schema, directConstraints, ctx);
+
+  if (nestedConstraints.length === 0) {
+    return schema;
+  }
+
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
+  if (effectiveType?.kind === "array") {
+    schema.items = buildPathOverrideSchema(nestedConstraints, effectiveType.items, ctx);
+    return schema;
+  }
+
+  schema.properties = buildPropertyOverrides(nestedConstraints, effectiveType, ctx);
+  return schema;
+}
+
+function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): void {
+  const nullableValueBranch = getNullableUnionValueSchema(target);
+  if (nullableValueBranch !== undefined) {
+    mergeSchemaOverride(nullableValueBranch, override);
+    return;
+  }
+
+  if (override.properties !== undefined) {
+    const mergedProperties = target.properties ?? {};
+    for (const [name, propertyOverride] of Object.entries(override.properties)) {
+      const existing = mergedProperties[name];
+      if (existing === undefined) {
+        mergedProperties[name] = propertyOverride;
+      } else {
+        mergeSchemaOverride(existing, propertyOverride);
+      }
+    }
+    target.properties = mergedProperties;
+  }
+
+  if (override.items !== undefined) {
+    if (target.items === undefined) {
+      target.items = override.items;
+    } else {
+      mergeSchemaOverride(target.items, override.items);
+    }
+  }
+
+  for (const [key, value] of Object.entries(override)) {
+    if (key === "properties" || key === "items") {
+      continue;
+    }
+    (target as Record<string, unknown>)[key] = value;
+  }
+}
+
+function stripLeadingPathSegment(constraint: ConstraintNode): ConstraintNode {
+  const segments = constraint.path?.segments;
+  if (segments === undefined || segments.length === 0) {
+    return constraint;
+  }
+
+  const [, ...rest] = segments;
+  if (rest.length === 0) {
+    const { path: _path, ...stripped } = constraint;
+    return stripped;
+  }
+
+  return {
+    ...constraint,
+    path: { segments: rest },
+  };
+}
+
+function getNullableUnionValueSchema(schema: JsonSchema2020): JsonSchema2020 | undefined {
+  if (schema.oneOf === undefined || schema.oneOf.length !== 2) {
+    return undefined;
+  }
+
+  const valueSchema = schema.oneOf.find((branch) => branch.type !== "null");
+  const nullSchema = schema.oneOf.find((branch) => branch.type === "null");
+  return valueSchema !== undefined && nullSchema !== undefined ? valueSchema : undefined;
 }
 
 /**

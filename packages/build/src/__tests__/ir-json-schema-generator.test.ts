@@ -2079,6 +2079,271 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
+    it("remaps multi-segment path-targeted constraints through resolved property apiNames", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "customer",
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "billingAddress",
+                  metadata: {
+                    apiName: { value: "billing_address", source: "explicit" },
+                  },
+                  type: {
+                    kind: "object",
+                    properties: [
+                      {
+                        name: "postalCode",
+                        metadata: {
+                          apiName: { value: "postal_code", source: "explicit" },
+                        },
+                        type: { kind: "primitive", primitiveKind: "string" },
+                        optional: false,
+                        constraints: [],
+                        annotations: [],
+                        provenance: PROVENANCE,
+                      },
+                    ],
+                    additionalProperties: true,
+                  },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: true,
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["billingAddress", "postalCode"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@pattern",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect((schema.properties as Record<string, unknown>)["customer"]).toMatchObject({
+        type: "object",
+        properties: {
+          billing_address: {
+            type: "object",
+            properties: {
+              postal_code: { type: "string", pattern: "^\\d{5}$" },
+            },
+            required: ["postal_code"],
+          },
+        },
+        required: ["billing_address"],
+      });
+    });
+
+    it("remaps nested path-targeted constraints through apiNames on nullable object properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "customer",
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "billingAddress",
+                  metadata: {
+                    apiName: { value: "billing_address", source: "explicit" },
+                  },
+                  type: {
+                    kind: "union",
+                    members: [
+                      {
+                        kind: "object",
+                        properties: [
+                          {
+                            name: "postalCode",
+                            metadata: {
+                              apiName: { value: "postal_code", source: "explicit" },
+                            },
+                            type: { kind: "primitive", primitiveKind: "string" },
+                            optional: false,
+                            constraints: [],
+                            annotations: [],
+                            provenance: PROVENANCE,
+                          },
+                        ],
+                        additionalProperties: true,
+                      },
+                      { kind: "primitive", primitiveKind: "null" },
+                    ],
+                  },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: true,
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["billingAddress", "postalCode"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@pattern",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect((schema.properties as Record<string, unknown>)["customer"]).toMatchObject({
+        type: "object",
+        properties: {
+          billing_address: {
+            oneOf: [
+              {
+                type: "object",
+                properties: {
+                  postal_code: { type: "string", pattern: "^\\d{5}$" },
+                },
+                required: ["postal_code"],
+              },
+              { type: "null" },
+            ],
+          },
+        },
+        required: ["billing_address"],
+      });
+    });
+
+    it("remaps nested path-targeted constraints through apiNames on nullable array properties", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "customer",
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "billingAddresses",
+                  metadata: {
+                    apiName: { value: "billing_addresses", source: "explicit" },
+                  },
+                  type: {
+                    kind: "union",
+                    members: [
+                      {
+                        kind: "array",
+                        items: {
+                          kind: "object",
+                          properties: [
+                            {
+                              name: "postalCode",
+                              metadata: {
+                                apiName: { value: "postal_code", source: "explicit" },
+                              },
+                              type: { kind: "primitive", primitiveKind: "string" },
+                              optional: false,
+                              constraints: [],
+                              annotations: [],
+                              provenance: PROVENANCE,
+                            },
+                          ],
+                          additionalProperties: true,
+                        },
+                      },
+                      { kind: "primitive", primitiveKind: "null" },
+                    ],
+                  },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: true,
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["billingAddresses", "postalCode"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@pattern",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect((schema.properties as Record<string, unknown>)["customer"]).toMatchObject({
+        type: "object",
+        properties: {
+          billing_addresses: {
+            oneOf: [
+              {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    postal_code: { type: "string", pattern: "^\\d{5}$" },
+                  },
+                  required: ["postal_code"],
+                },
+              },
+              { type: "null" },
+            ],
+          },
+        },
+        required: ["billing_addresses"],
+      });
+    });
+
     it("uses allOf for inline object path targets that don't exist in properties", () => {
       const ir: FormIR = {
         kind: "form-ir",

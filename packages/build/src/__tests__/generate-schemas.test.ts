@@ -8,6 +8,11 @@ const nestedArrayPathConstraintsFixture = path.join(
   "fixtures",
   "nested-array-path-constraints.ts"
 );
+const serializedNameRegressionFixture = path.join(
+  __dirname,
+  "fixtures",
+  "serialized-name-regression.ts"
+);
 
 describe("generateSchemas", () => {
   it("emits named primitive aliases into $defs for reused constrained aliases", () => {
@@ -70,4 +75,40 @@ describe("generateSchemas", () => {
       },
     });
   }, 15_000);
+
+  it("uses resolved apiNames consistently in generated JSON Schema output", () => {
+    const result = generateSchemas({
+      filePath: serializedNameRegressionFixture,
+      typeName: "SerializedNameForm",
+    });
+
+    expect(result.jsonSchema.properties).toMatchObject({
+      first_name: { type: "string" },
+      total: {
+        allOf: [
+          { $ref: "#/$defs/RenamedAmount" },
+          { properties: { amount_value: { minimum: 0 } } },
+        ],
+      },
+      address: { $ref: "#/$defs/PostalAddress" },
+    });
+    expect(Object.keys(result.jsonSchema.properties ?? {})).toEqual(["first_name", "total", "address"]);
+    expect(result.jsonSchema.required).toEqual(["first_name", "total", "address"]);
+    expect(result.jsonSchema.$defs).toMatchObject({
+      PostalAddress: {
+        type: "object",
+        properties: {
+          postal_code: { type: "string" },
+        },
+        required: ["postal_code"],
+      },
+      RenamedAmount: {
+        type: "object",
+        properties: {
+          amount_value: { type: "number" },
+        },
+        required: ["amount_value"],
+      },
+    });
+  });
 });

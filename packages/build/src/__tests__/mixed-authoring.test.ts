@@ -231,6 +231,7 @@ describe("buildMixedAuthoringSchemas", () => {
           title: "Postal Code",
         },
       });
+      expect(result.jsonSchema.required).toEqual(["postal_code"]);
       expect(result.uiSchema.elements[0]).toEqual({
         type: "Control",
         scope: "#/properties/postal_code",
