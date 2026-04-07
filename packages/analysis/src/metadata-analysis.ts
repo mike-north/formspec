@@ -56,6 +56,7 @@ export interface AnalyzeMetadataWithCheckerOptions {
   readonly program?: ts.Program;
   readonly checker: ts.TypeChecker;
   readonly node: ts.Node;
+  readonly logicalName?: string;
   readonly metadata?: MetadataPolicyInput | undefined;
   readonly extensions?: readonly ExtensionDefinition[] | undefined;
 }
@@ -496,7 +497,7 @@ export function analyzeMetadataForNodeWithChecker(
   options: AnalyzeMetadataWithCheckerOptions
 ): MetadataAnalysisResult | null {
   const declarationKind = getMetadataDeclarationKind(options.node);
-  const logicalName = getLogicalName(options.node);
+  const logicalName = options.logicalName ?? getLogicalName(options.node);
   if (declarationKind === null || logicalName === null) {
     return null;
   }

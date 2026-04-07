@@ -185,6 +185,7 @@ function resolveNodeMetadata(
   const analysis = analyzeMetadataForNodeWithChecker({
     checker,
     node,
+    logicalName,
     metadata: metadataPolicy.raw,
     extensions: extensionRegistry?.extensions,
   });
