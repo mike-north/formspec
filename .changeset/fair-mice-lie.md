@@ -1,6 +1,8 @@
 ---
 "@formspec/build": minor
+"@formspec/cli": patch
 "@formspec/eslint-plugin": patch
+"formspec": patch
 ---
 
 Finish `@discriminator` specialization for generic object aliases.
