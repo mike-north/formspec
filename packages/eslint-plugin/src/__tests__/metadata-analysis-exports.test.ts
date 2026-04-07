@@ -71,20 +71,24 @@ describe("@formspec/eslint-plugin metadata analysis exports", () => {
       tsconfigRootDir: tmpDir,
     });
     const services = parsed.services;
-    expect(services.program).toBeDefined();
+    const { program } = services;
+    expect(program).toBeDefined();
 
     const propertyNode = findPropertyDefinition(parsed.ast);
     const tsNode = services.esTreeNodeToTSNodeMap.get(propertyNode);
     expect(tsNode).toBeDefined();
-    const getTypeCheckerSpy = vi.spyOn(services.program, "getTypeChecker");
+    if (tsNode === undefined) {
+      throw new Error("Expected TypeScript node for property definition");
+    }
+    const getTypeCheckerSpy = vi.spyOn(program, "getTypeChecker");
 
     const rootResult = analyzeMetadataForNodeFromPlugin({
-      program: services.program,
-      node: tsNode!,
+      program,
+      node: tsNode,
     });
     const baseResult = analyzeMetadataForNodeFromBase({
-      program: services.program,
-      node: tsNode!,
+      program,
+      node: tsNode,
     });
 
     expect(rootResult).toEqual(baseResult);

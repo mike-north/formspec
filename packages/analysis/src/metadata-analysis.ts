@@ -5,7 +5,6 @@ import type {
   MetadataPolicyInput,
   MetadataResolvedEntry,
   MetadataSlotInferenceFn,
-  MetadataSlotRegistration,
   ResolvedMetadata,
   ResolvedScalarMetadata,
   ExtensionDefinition,
@@ -108,10 +107,7 @@ function getLogicalName(node: ts.Node): string | null {
     }
   }
 
-  if (
-    (ts.isPropertyDeclaration(node) || ts.isPropertySignature(node) || ts.isParameter(node)) &&
-    node.name !== undefined
-  ) {
+  if (ts.isPropertyDeclaration(node) || ts.isPropertySignature(node) || ts.isParameter(node)) {
     if (ts.isIdentifier(node.name)) {
       return node.name.text;
     }
@@ -448,7 +444,7 @@ function resolveSlotEntries(
           undefined
         );
 
-  if (primaryEntry !== null && primaryEntry !== undefined) {
+  if (primaryEntry !== null) {
     entries.push(primaryEntry);
   }
 

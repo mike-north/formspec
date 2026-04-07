@@ -120,6 +120,10 @@ describe("@formspec/eslint-plugin exports", () => {
     });
 
     it("supports downstream parser-services rules that reuse metadata analysis", async () => {
+      if (tmpDir === undefined) {
+        throw new Error("Expected temporary directory");
+      }
+
       const seen: {
         readonly program: object;
         readonly apiName: string | undefined;
@@ -175,7 +179,7 @@ describe("@formspec/eslint-plugin exports", () => {
       });
 
       writeFileSync(
-        join(tmpDir!, "metadata.ts"),
+        join(tmpDir, "metadata.ts"),
         [
           "export interface CustomerRecord {",
           "  /** @apiName customer_name */",
