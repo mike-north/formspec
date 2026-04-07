@@ -52,6 +52,29 @@ export interface MetadataInferenceContext {
 export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
 
 /**
+ * Context passed to extensible metadata inference hooks.
+ *
+ * @public
+ */
+export interface MetadataSlotInferenceContext extends MetadataInferenceContext {
+  /** Stable logical slot identifier. */
+  readonly slotId: MetadataSlotId;
+  /** Tag name associated with the slot, without the `@` prefix. */
+  readonly tagName: string;
+  /** Optional qualifier being inferred (for example `plural`). */
+  readonly qualifier?: string | undefined;
+  /** Resolved bare/default value used as the base input for derived qualifiers. */
+  readonly baseValue?: string | undefined;
+}
+
+/**
+ * Callback used to infer an extensible metadata slot value.
+ *
+ * @public
+ */
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext) => string;
+
+/**
  * Context passed to pluralization callbacks.
  *
  * @public
@@ -95,6 +118,153 @@ export interface ResolvedMetadata {
   readonly apiNamePlural?: ResolvedScalarMetadata;
   /** Effective human-facing plural label, where applicable. */
   readonly displayNamePlural?: ResolvedScalarMetadata;
+}
+
+/**
+ * Zero-based half-open source span used by metadata analysis results.
+ *
+ * This mirrors the conventions used by tooling-facing comment spans without
+ * introducing a dependency from core onto analysis package types.
+ *
+ * @public
+ */
+export interface MetadataSourceSpan {
+  /** Zero-based start offset in the source file. */
+  readonly start: number;
+  /** One-past-the-end offset in the source file. */
+  readonly end: number;
+}
+
+/**
+ * Whether an explicit metadata value came from a bare or qualified tag form.
+ *
+ * @public
+ */
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
+
+/**
+ * Fixer-oriented source details for an explicit metadata value.
+ *
+ * @public
+ */
+export interface ExplicitMetadataSource {
+  /** Tag name associated with the explicit value, without the `@` prefix. */
+  readonly tagName: string;
+  /** Whether the explicit value used a qualifier such as `:plural`. */
+  readonly form: ExplicitMetadataSourceForm;
+  /** Full range covering the explicit tag occurrence. */
+  readonly fullRange: MetadataSourceSpan;
+  /** Range covering only the tag name token. */
+  readonly tagNameRange: MetadataSourceSpan;
+  /** Range covering the qualifier text, when present. */
+  readonly qualifierRange?: MetadataSourceSpan | undefined;
+  /** Range covering only the explicit value text. */
+  readonly valueRange: MetadataSourceSpan;
+  /** Qualifier text without the leading colon, when present. */
+  readonly qualifier?: string | undefined;
+}
+
+/**
+ * Stable slot identifier for extensible metadata analysis.
+ *
+ * @public
+ */
+export type MetadataSlotId = string;
+
+/**
+ * Supported qualifier registration for an extensible metadata slot.
+ *
+ * @public
+ */
+export interface MetadataQualifierRegistration {
+  /** Qualifier text without the leading colon. */
+  readonly qualifier: string;
+  /**
+   * Optional source qualifier to use as the base input for this qualifier's
+   * inference hook. Defaults to the slot's bare/default value when omitted.
+   */
+  readonly sourceQualifier?: string | undefined;
+  /** Optional inference hook for this qualified value. */
+  readonly inferValue?: MetadataSlotInferenceFn | undefined;
+}
+
+/**
+ * Extensible metadata slot definition shared across build- and lint-time analysis.
+ *
+ * @public
+ */
+export interface MetadataSlotRegistration {
+  /** Stable logical slot identifier. */
+  readonly slotId: MetadataSlotId;
+  /** Tag name associated with this slot, without the `@` prefix. */
+  readonly tagName: string;
+  /** Declaration kinds where the slot is meaningful. */
+  readonly declarationKinds: readonly MetadataDeclarationKind[];
+  /** Whether a bare tag without a qualifier is supported. Defaults to true. */
+  readonly allowBare?: boolean | undefined;
+  /** Supported qualifiers for this slot. */
+  readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
+  /** Optional inference hook for the bare/default slot value. */
+  readonly inferValue?: MetadataSlotInferenceFn | undefined;
+  /**
+   * Optional applicability hook for declaration-specific rules beyond
+   * declaration kind. `buildContext` may carry compiler objects.
+   */
+  readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
+}
+
+/**
+ * One resolved metadata value from the shared analyzer.
+ *
+ * @public
+ */
+export interface MetadataResolvedEntry {
+  /** Stable logical slot identifier. */
+  readonly slotId: MetadataSlotId;
+  /** Tag name associated with the slot, without the `@` prefix. */
+  readonly tagName: string;
+  /** Optional qualifier text without the leading colon. */
+  readonly qualifier?: string | undefined;
+  /** Effective value after explicit/inferred resolution. */
+  readonly value: string;
+  /** Whether the value came from source text or inference. */
+  readonly source: MetadataSource;
+  /** Fixer-oriented source details when the winning value was explicit. */
+  readonly explicitSource?: ExplicitMetadataSource | undefined;
+}
+
+/**
+ * Applicable metadata slot descriptor surfaced by the shared analyzer.
+ *
+ * @public
+ */
+export interface MetadataApplicableSlot {
+  /** Stable logical slot identifier. */
+  readonly slotId: MetadataSlotId;
+  /** Tag name associated with the slot, without the `@` prefix. */
+  readonly tagName: string;
+  /** Whether the slot accepts a bare tag form. */
+  readonly allowBare: boolean;
+  /** Supported qualifier texts without their leading colons. */
+  readonly qualifiers: readonly string[];
+}
+
+/**
+ * Shared metadata-analysis result for one declaration.
+ *
+ * @public
+ */
+export interface MetadataAnalysisResult {
+  /** Declaration kind that was analyzed. */
+  readonly declarationKind: MetadataDeclarationKind;
+  /** Logical declaration name before metadata policy is applied. */
+  readonly logicalName: string;
+  /** Slots that are applicable for the declaration. */
+  readonly applicableSlots: readonly MetadataApplicableSlot[];
+  /** Resolved slot entries after explicit/inferred resolution. */
+  readonly entries: readonly MetadataResolvedEntry[];
+  /** Projection of built-in naming metadata used by generators. */
+  readonly resolvedMetadata?: ResolvedMetadata | undefined;
 }
 
 /**

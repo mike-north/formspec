@@ -2,6 +2,8 @@ import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,
   type BuiltinConstraintName,
+  type MetadataDeclarationKind,
+  type MetadataSlotRegistration,
 } from "@formspec/core/internals";
 
 export type FormSpecValueKind =
@@ -87,6 +89,7 @@ export interface ExtensionConstraintTagSource {
 export interface ExtensionTagSource {
   readonly extensionId: string;
   readonly constraintTags?: readonly ExtensionConstraintTagSource[];
+  readonly metadataSlots?: readonly MetadataSlotRegistration[];
 }
 
 export const FORM_SPEC_PLACEMENTS = [
@@ -773,6 +776,87 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
   };
 }
 
+function placementsForMetadataDeclarationKinds(
+  declarationKinds: readonly MetadataDeclarationKind[]
+): readonly FormSpecPlacement[] {
+  const placements = new Set<FormSpecPlacement>();
+
+  for (const declarationKind of declarationKinds) {
+    switch (declarationKind) {
+      case "type":
+        for (const placement of TYPE_PLACEMENTS) {
+          placements.add(placement);
+        }
+        break;
+      case "field":
+        for (const placement of FIELD_PLACEMENTS) {
+          placements.add(placement);
+        }
+        break;
+      case "method":
+        placements.add("class-method");
+        placements.add("function");
+        break;
+      default: {
+        const _exhaustive: never = declarationKind;
+        return _exhaustive;
+      }
+    }
+  }
+
+  return [...placements];
+}
+
+function buildExtensionMetadataTagDefinition(
+  extensionId: string,
+  slot: MetadataSlotRegistration
+): TagDefinition {
+  const canonicalName = normalizeFormSpecTagName(slot.tagName);
+  const supportsQualifiers = (slot.qualifiers?.length ?? 0) > 0;
+  if (slot.allowBare === false && !supportsQualifiers) {
+    throw new Error(
+      `Metadata tag "@${canonicalName}" must allow bare usage or declare at least one qualifier.`
+    );
+  }
+  const supportedTargets: readonly FormSpecTargetKind[] = supportsQualifiers
+    ? slot.allowBare === false
+      ? ["variant"]
+      : ["none", "variant"]
+    : slot.allowBare === false
+      ? []
+      : ["none"];
+  const placements = placementsForMetadataDeclarationKinds(slot.declarationKinds);
+  const signatures: TagSignature[] = [];
+  const valueKind = "string";
+
+  if (supportedTargets.includes("none")) {
+    signatures.push(createSignature(canonicalName, placements, null, valueKind, "<value>"));
+  }
+  if (supportedTargets.includes("variant")) {
+    signatures.push(createSignature(canonicalName, placements, "variant", valueKind, "<value>"));
+  }
+
+  return {
+    canonicalName,
+    valueKind,
+    requiresArgument: true,
+    supportedTargets,
+    allowDuplicates: false,
+    category: "annotation",
+    placements,
+    capabilities: capabilitiesForValueKind(valueKind),
+    completionDetail: `Extension metadata tag from ${extensionId}`,
+    hoverMarkdown: [
+      `**@${canonicalName}** \`<value>\``,
+      "",
+      `Extension-defined metadata tag from \`${extensionId}\`.`,
+      "",
+      signatures.map((signature) => `**Signature:** \`${signature.label}\``).join("\n"),
+    ].join("\n"),
+    signatures,
+  };
+}
+
 const EXTRA_TAG_DEFINITIONS: Record<string, TagDefinition> = Object.fromEntries(
   Object.entries(EXTRA_TAG_SPECS).map(([canonicalName, spec]) => [
     canonicalName,
@@ -803,35 +887,40 @@ export function getTagDefinition(
     (tag) => tag.tagName === normalized
   );
 
-  if (extensionRegistration === undefined) {
-    return null;
+  if (extensionRegistration !== undefined) {
+    return {
+      canonicalName: extensionRegistration.tagName,
+      valueKind: null,
+      requiresArgument: true,
+      supportedTargets: ["none"] as const,
+      allowDuplicates: true,
+      category: "constraint",
+      placements: FIELD_PLACEMENTS,
+      capabilities: [],
+      completionDetail: `Extension constraint tag from ${extensionRegistration.extensionId}`,
+      hoverMarkdown: [
+        `**@${extensionRegistration.tagName}** \`<value>\``,
+        "",
+        `Extension-defined constraint tag from \`${extensionRegistration.extensionId}\`.`,
+        "",
+        `**Signature:** \`@${extensionRegistration.tagName} <value>\``,
+      ].join("\n"),
+      signatures: [
+        {
+          label: `@${extensionRegistration.tagName} <value>`,
+          placements: FIELD_PLACEMENTS,
+          parameters: [{ kind: "value", label: "<value>" }],
+        },
+      ],
+    };
   }
 
-  return {
-    canonicalName: extensionRegistration.tagName,
-    valueKind: null,
-    requiresArgument: true,
-    supportedTargets: ["none"] as const,
-    allowDuplicates: true,
-    category: "constraint",
-    placements: FIELD_PLACEMENTS,
-    capabilities: [],
-    completionDetail: `Extension constraint tag from ${extensionRegistration.extensionId}`,
-    hoverMarkdown: [
-      `**@${extensionRegistration.tagName}** \`<value>\``,
-      "",
-      `Extension-defined constraint tag from \`${extensionRegistration.extensionId}\`.`,
-      "",
-      `**Signature:** \`@${extensionRegistration.tagName} <value>\``,
-    ].join("\n"),
-    signatures: [
-      {
-        label: `@${extensionRegistration.tagName} <value>`,
-        placements: FIELD_PLACEMENTS,
-        parameters: [{ kind: "value", label: "<value>" }],
-      },
-    ],
-  };
+  const extensionMetadata = getExtensionMetadataSlots(extensions).find(
+    (slot) => slot.tagName === normalized
+  );
+  return extensionMetadata === undefined
+    ? null
+    : buildExtensionMetadataTagDefinition(extensionMetadata.extensionId, extensionMetadata.slot);
 }
 
 export function getConstraintTagDefinitions(
@@ -852,7 +941,10 @@ export function getAllTagDefinitions(
   const custom = getExtensionConstraintTags(extensions)
     .map((tag) => getTagDefinition(tag.tagName, extensions))
     .filter((tag): tag is TagDefinition => tag !== null);
-  return [...builtins, ...extras, ...custom];
+  const customMetadata = getExtensionMetadataSlots(extensions)
+    .map((slot) => getTagDefinition(slot.tagName, extensions))
+    .filter((tag): tag is TagDefinition => tag !== null);
+  return [...builtins, ...extras, ...custom, ...customMetadata];
 }
 
 export function getTagHoverMarkdown(
@@ -870,8 +962,22 @@ function getExtensionConstraintTags(
       const tagRecords = extension.constraintTags ?? [];
       return tagRecords.map((tag) => ({
         extensionId: extension.extensionId,
-        tagName: tag.tagName,
+        tagName: normalizeFormSpecTagName(tag.tagName),
       }));
     }) ?? []
+  );
+}
+
+function getExtensionMetadataSlots(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly { extensionId: string; tagName: string; slot: MetadataSlotRegistration }[] {
+  return (
+    extensions?.flatMap((extension) =>
+      (extension.metadataSlots ?? []).map((slot) => ({
+        extensionId: extension.extensionId,
+        tagName: normalizeFormSpecTagName(slot.tagName),
+        slot,
+      }))
+    ) ?? []
   );
 }

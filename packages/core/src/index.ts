@@ -1,42 +1,38 @@
 /**
  * `@formspec/core` - Core type definitions for FormSpec
  *
- * This package provides the foundational types used throughout the FormSpec ecosystem:
- * - Form element types (fields, groups, conditionals)
- * - Field and form state types
- * - Data source registry for dynamic enums
- * - Canonical IR types (FormIR, FieldNode, TypeNode, ConstraintNode, AnnotationNode, etc.)
- *
  * @packageDocumentation
  */
 
 // Re-export all types
 export type {
-  // Validity
   Validity,
-
-  // Field state
   FieldState,
-
-  // Form state
   FormState,
-
-  // Data sources
   DataSourceRegistry,
   DataSourceOption,
   FetchOptionsResponse,
   DataSourceValueType,
-
-  // Metadata
   MetadataSource,
   MetadataDeclarationKind,
   MetadataAuthoringSurface,
   MetadataInferenceContext,
   MetadataInferenceFn,
+  MetadataSlotInferenceContext,
+  MetadataSlotInferenceFn,
   MetadataPluralizationContext,
   MetadataPluralizationFn,
   ResolvedScalarMetadata,
   ResolvedMetadata,
+  MetadataSourceSpan,
+  ExplicitMetadataSourceForm,
+  ExplicitMetadataSource,
+  MetadataSlotId,
+  MetadataQualifierRegistration,
+  MetadataSlotRegistration,
+  MetadataResolvedEntry,
+  MetadataApplicableSlot,
+  MetadataAnalysisResult,
   MetadataResolutionMode,
   MetadataPluralizationDisabledPolicyInput,
   MetadataPluralizationRequireExplicitPolicyInput,
@@ -52,8 +48,6 @@ export type {
   NormalizedMetadataValuePolicy,
   NormalizedDeclarationMetadataPolicy,
   NormalizedMetadataPolicy,
-
-  // Elements
   TextField,
   NumberField,
   BooleanField,
@@ -69,15 +63,9 @@ export type {
   Conditional,
   FormElement,
   FormSpec,
-
-  // Predicates
   EqualsPredicate,
   Predicate,
-
-  // Built-in constraints
   BuiltinConstraintName,
-
-  // Canonical IR
   JsonValue,
   Provenance,
   PathTarget,
@@ -143,6 +131,7 @@ export {
   defineCustomType,
   defineConstraint,
   defineConstraintTag,
+  defineMetadataSlot,
   defineAnnotation,
 } from "./extensions/index.js";
 

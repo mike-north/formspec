@@ -131,6 +131,9 @@ export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistr
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;
 
 // @public
+export function defineMetadataSlot(reg: MetadataSlotRegistration): MetadataSlotRegistration;
+
+// @public
 export interface DynamicEnumField<N extends string, Source extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -173,6 +176,20 @@ export interface EqualsPredicate<K extends string, V> {
 }
 
 // @public
+export interface ExplicitMetadataSource {
+    readonly form: ExplicitMetadataSourceForm;
+    readonly fullRange: MetadataSourceSpan;
+    readonly qualifier?: string | undefined;
+    readonly qualifierRange?: MetadataSourceSpan | undefined;
+    readonly tagName: string;
+    readonly tagNameRange: MetadataSourceSpan;
+    readonly valueRange: MetadataSourceSpan;
+}
+
+// @public
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
+
+// @public
 export type ExtensionApplicableType = {
     readonly kind: "primitive";
     readonly primitiveKind: "string" | "number" | "integer" | "bigint" | "boolean" | "null";
@@ -190,6 +207,7 @@ export interface ExtensionDefinition {
     readonly constraints?: readonly CustomConstraintRegistration[];
     readonly constraintTags?: readonly ConstraintTagRegistration[];
     readonly extensionId: string;
+    readonly metadataSlots?: readonly MetadataSlotRegistration[];
     readonly types?: readonly CustomTypeRegistration[];
     readonly vocabularyKeywords?: readonly VocabularyKeywordRegistration[];
 }
@@ -277,6 +295,23 @@ export function isStaticEnumField(element: FormElement): element is StaticEnumFi
 export function isTextField(element: FormElement): element is TextField<string>;
 
 // @public
+export interface MetadataAnalysisResult {
+    readonly applicableSlots: readonly MetadataApplicableSlot[];
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly entries: readonly MetadataResolvedEntry[];
+    readonly logicalName: string;
+    readonly resolvedMetadata?: ResolvedMetadata | undefined;
+}
+
+// @public
+export interface MetadataApplicableSlot {
+    readonly allowBare: boolean;
+    readonly qualifiers: readonly string[];
+    readonly slotId: MetadataSlotId;
+    readonly tagName: string;
+}
+
+// @public
 export type MetadataAuthoringSurface = "tsdoc" | "chain-dsl";
 
 // @public
@@ -328,10 +363,58 @@ export interface MetadataPolicyInput {
 }
 
 // @public
+export interface MetadataQualifierRegistration {
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly qualifier: string;
+    readonly sourceQualifier?: string | undefined;
+}
+
+// @public
 export type MetadataResolutionMode = "disabled" | "require-explicit" | "infer-if-missing";
 
 // @public
+export interface MetadataResolvedEntry {
+    readonly explicitSource?: ExplicitMetadataSource | undefined;
+    readonly qualifier?: string | undefined;
+    readonly slotId: MetadataSlotId;
+    readonly source: MetadataSource;
+    readonly tagName: string;
+    readonly value: string;
+}
+
+// @public
+export type MetadataSlotId = string;
+
+// @public
+export interface MetadataSlotInferenceContext extends MetadataInferenceContext {
+    readonly baseValue?: string | undefined;
+    readonly qualifier?: string | undefined;
+    readonly slotId: MetadataSlotId;
+    readonly tagName: string;
+}
+
+// @public
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext) => string;
+
+// @public
+export interface MetadataSlotRegistration {
+    readonly allowBare?: boolean | undefined;
+    readonly declarationKinds: readonly MetadataDeclarationKind[];
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
+    readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
+    readonly slotId: MetadataSlotId;
+    readonly tagName: string;
+}
+
+// @public
 export type MetadataSource = "explicit" | "inferred";
+
+// @public
+export interface MetadataSourceSpan {
+    readonly end: number;
+    readonly start: number;
+}
 
 // @public
 export interface MetadataValueDisabledPolicyInput {
