@@ -345,6 +345,17 @@ describe("compiler-signatures", () => {
     expect(prelude).not.toContain("type bigint = unknown;");
   });
 
+  it("throws when a custom type name is not a valid TypeScript identifier", () => {
+    expect(() =>
+      buildSyntheticHelperPrelude([
+        {
+          extensionId: "ext-a",
+          customTypes: [{ tsTypeNames: ["Not A Type"] }],
+        },
+      ])
+    ).toThrow('Invalid custom type name "Not A Type"');
+  });
+
   it("throws when the same custom type name is registered by two different extensions", () => {
     expect(() =>
       buildSyntheticHelperPrelude([

@@ -441,6 +441,14 @@ function collectExtensionCustomTypeNames(
         if (TS_PRIMITIVE_KEYWORDS.has(tsName)) {
           continue;
         }
+        // Guard against malformed names being interpolated into the synthetic
+        // source (e.g. names with spaces, punctuation, or operator characters).
+        if (!/^[$_a-zA-Z][$_a-zA-Z0-9]*$/.test(tsName)) {
+          throw new Error(
+            `Invalid custom type name "${tsName}" registered by extension "${ext.extensionId}": ` +
+              `must be a valid TypeScript identifier.`
+          );
+        }
         const existingExtensionId = seen.get(tsName);
         if (existingExtensionId !== undefined) {
           throw new Error(
