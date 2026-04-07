@@ -5,6 +5,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
 import { generateSchemas } from "../generators/class-schema.js";
 
+function expectRecord(value: unknown, label: string): Record<string, unknown> {
+  expect(value, label).toBeDefined();
+  expect(value, label).not.toBeNull();
+  expect(typeof value, label).toBe("object");
+
+  if (value === null || typeof value !== "object") {
+    throw new Error(label);
+  }
+
+  return value as Record<string, unknown>;
+}
+
 describe("@discriminator schema generation", () => {
   let tmpDir: string;
   let fixturePath: string;
@@ -429,15 +441,30 @@ describe("@discriminator schema generation", () => {
     const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
     const defs = result.jsonSchema.$defs ?? {};
     const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
-      const propertySchema = rootProperties[propertyName] as Record<string, unknown>;
-      const ref = typeof propertySchema["$ref"] === "string" ? propertySchema["$ref"] : undefined;
-      const resolvedSchema =
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+      const resolvedSchemaRecord = expectRecord(
         ref === undefined
-          ? propertySchema
-          : ((defs[ref.replace(/^#\/\$defs\//u, "")] ?? null) as Record<string, unknown> | null);
-      expect(resolvedSchema).not.toBeNull();
-      const properties = resolvedSchema?.properties as Record<string, unknown>;
-      return (properties["type"] as Record<string, unknown>).enum as readonly unknown[];
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+      const typePropertyRecord = expectRecord(
+        propertiesRecord["type"],
+        `Missing discriminator field schema for ${propertyName}`
+      );
+
+      return typePropertyRecord["enum"] as readonly unknown[];
     };
 
     expect(resolveTypeEnum("fromLiteralAlias")).toEqual(["customer"]);
@@ -468,15 +495,30 @@ describe("@discriminator schema generation", () => {
     const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
     const defs = result.jsonSchema.$defs ?? {};
     const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
-      const propertySchema = rootProperties[propertyName] as Record<string, unknown>;
-      const ref = typeof propertySchema["$ref"] === "string" ? propertySchema["$ref"] : undefined;
-      const resolvedSchema =
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+      const resolvedSchemaRecord = expectRecord(
         ref === undefined
-          ? propertySchema
-          : ((defs[ref.replace(/^#\/\$defs\//u, "")] ?? null) as Record<string, unknown> | null);
-      expect(resolvedSchema).not.toBeNull();
-      const properties = resolvedSchema?.properties as Record<string, unknown>;
-      return (properties["type"] as Record<string, unknown>).enum as readonly unknown[];
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+      const typePropertyRecord = expectRecord(
+        propertiesRecord["type"],
+        `Missing discriminator field schema for ${propertyName}`
+      );
+
+      return typePropertyRecord["enum"] as readonly unknown[];
     };
 
     expect(resolveTypeEnum("importedHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
