@@ -510,6 +510,16 @@ export function analyzeTypeAliasToIR(
     discriminatorOptions
   );
   const name = typeAlias.name.text;
+  const duplicatePropertyNames = findDuplicateObjectLikeTypeAliasPropertyNames(members);
+  if (duplicatePropertyNames.length > 0) {
+    const sourceFile = typeAlias.getSourceFile();
+    const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
+    return {
+      ok: false,
+      error: `Type alias "${name}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`,
+    };
+  }
+
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
   const diagnostics: ConstraintSemanticDiagnostic[] = [];
@@ -1406,11 +1416,10 @@ function analyzeInterfacePropertyToIR(
   metadataPolicy: AnalyzerMetadataPolicy,
   extensionRegistry?: ExtensionRegistry
 ): FieldNode | null {
-  if (!ts.isIdentifier(prop.name)) {
+  const name = getAnalyzableObjectLikePropertyName(prop.name);
+  if (name === null) {
     return null;
   }
-
-  const name = prop.name.text;
   const tsType = checker.getTypeAtLocation(prop);
   const optional = prop.questionToken !== undefined;
   const provenance = provenanceForNode(prop, file);
@@ -1479,6 +1488,41 @@ function analyzeInterfacePropertyToIR(
     annotations,
     provenance,
   };
+}
+
+function findDuplicateObjectLikeTypeAliasPropertyNames(
+  members: readonly ts.TypeElement[]
+): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const member of members) {
+    if (!ts.isPropertySignature(member)) {
+      continue;
+    }
+
+    const name = getAnalyzableObjectLikePropertyName(member.name);
+    if (name === null) {
+      continue;
+    }
+
+    if (seen.has(name)) {
+      duplicates.add(name);
+      continue;
+    }
+
+    seen.add(name);
+  }
+
+  return [...duplicates].sort();
+}
+
+function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): string | null {
+  if (!ts.isIdentifier(name)) {
+    return null;
+  }
+
+  return name.text;
 }
 
 /**

@@ -538,6 +538,21 @@ describe("analyzeTypeAliasToIR", () => {
       expect(result.error).toContain("not an object-like type alias");
     }
   });
+
+  it("returns error for duplicate property names across intersection members", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "DuplicateIntersectionTypeAlias");
+    if (!decl) throw new Error("DuplicateIntersectionTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("DuplicateIntersectionTypeAlias");
+      expect(result.error).toContain("duplicate property names");
+      expect(result.error).toContain("id");
+    }
+  });
 });
 
 // =============================================================================
