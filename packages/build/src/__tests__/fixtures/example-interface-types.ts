@@ -104,6 +104,7 @@ export type ParenthesizedIntersectionTypeAlias = ({
   count: number;
 });
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing referenced generic type alias rejection
 export type GenericReferencedTypeAlias<T> = {
   label: T;
 };
