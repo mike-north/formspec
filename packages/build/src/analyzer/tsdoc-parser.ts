@@ -714,14 +714,14 @@ function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): 
             declarationKinds: [...slot.declarationKinds].sort(),
             allowBare: slot.allowBare !== false,
             qualifiers:
-              slot.qualifiers
-                ?.map((qualifier) => ({
+              (slot.qualifiers ?? [])
+                .map((qualifier) => ({
                   qualifier: qualifier.qualifier,
                   ...(qualifier.sourceQualifier !== undefined
                     ? { sourceQualifier: qualifier.sourceQualifier }
                     : {}),
                 }))
-                .toSorted((left, right) => left.qualifier.localeCompare(right.qualifier)) ?? [],
+                .sort((left, right) => left.qualifier.localeCompare(right.qualifier)),
           })) ?? [],
       })
     )
