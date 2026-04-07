@@ -1,5 +1,11 @@
 # @formspec/core
 
+## 0.1.0-alpha.33
+
+### Minor Changes
+
+- [#226](https://github.com/mike-north/formspec/pull/226) [`87efbca`](https://github.com/mike-north/formspec/commit/87efbca3c8b98d601f247c84a037089e2b5856a3) Thanks [@mike-north](https://github.com/mike-north)! - Add metadata slot registration types and validation plumbing so extensions can define tooling-facing metadata tags and analysis slots across the core/build/analysis stack.
+
 ## 0.1.0-alpha.29
 
 ### Minor Changes
