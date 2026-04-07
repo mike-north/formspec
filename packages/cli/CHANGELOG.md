@@ -1,5 +1,21 @@
 # @formspec/cli
 
+## 0.1.0-alpha.36
+
+### Patch Changes
+
+- [#237](https://github.com/mike-north/formspec/pull/237) [`d0260e3`](https://github.com/mike-north/formspec/commit/d0260e3ff692a4e363f14d6c71a61992f31bbafd) Thanks [@mike-north](https://github.com/mike-north)! - Fix discriminator specialization for imported generic type aliases that carry
+  `@discriminator` across module boundaries.
+  - `@formspec/build` now resolves imported type aliases through TypeScript import
+    alias symbols before unwrapping object-like alias bodies, so imported
+    `Ref<T>`-style aliases specialize the same way as local aliases.
+  - Added regression coverage for local vs imported generic aliases with matching
+    discriminator behavior, including metadata-derived fallback and
+    `discriminator.apiNamePrefix`.
+
+- Updated dependencies [[`d0260e3`](https://github.com/mike-north/formspec/commit/d0260e3ff692a4e363f14d6c71a61992f31bbafd)]:
+  - @formspec/build@0.1.0-alpha.36
+
 ## 0.1.0-alpha.35
 
 ### Patch Changes
