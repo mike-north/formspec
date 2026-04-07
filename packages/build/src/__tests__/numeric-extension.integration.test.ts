@@ -34,6 +34,50 @@ describe("numeric extension integration", () => {
     }
   });
 
+  it("generates correct schemas when a custom type is imported and other fields have constraint tags", () => {
+    // Regression: before the fix, when Decimal was imported (not defined inline),
+    // buildSupportingDeclarations would filter out the host interface declaration
+    // (because it referenced the imported name Decimal), causing the synthetic
+    // checker to fail to resolve the host type and emit spurious TYPE_MISMATCH errors.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-numeric-ext-import-"));
+    tempDirs.push(dir);
+
+    fs.writeFileSync(path.join(dir, "decimal.ts"), "export type Decimal = string;\n");
+
+    const filePath = path.join(dir, "config.ts");
+    fs.writeFileSync(
+      filePath,
+      [
+        'import type { Decimal } from "./decimal.js";',
+        "",
+        "export interface MixedConfig {",
+        "  /** @minimum 0 */",
+        "  amount: Decimal;",
+        "",
+        "  /** @minLength 1 */",
+        "  label: string;",
+        "}",
+      ].join("\n")
+    );
+
+    const { jsonSchema } = generateSchemas({
+      filePath,
+      typeName: "MixedConfig",
+      extensionRegistry: createNumericExtensionRegistry(),
+      vendorPrefix: "x-formspec",
+    });
+
+    expect(jsonSchema.properties?.["amount"]).toEqual({
+      type: "string",
+      "x-formspec-decimal": true,
+      "x-formspec-decimal-minimum": "0.0",
+    });
+    expect(jsonSchema.properties?.["label"]).toEqual({
+      type: "string",
+      minLength: 1,
+    });
+  });
+
   it("parses, formats, compares, adds, and subtracts Decimal values", () => {
     const left = parseDecimal("12.50");
     const right = parseDecimal("0.25");

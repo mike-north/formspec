@@ -55,6 +55,7 @@ export {
 } from "./semantic-targets.js";
 export type {
   ExtensionConstraintTagSource,
+  ExtensionCustomTypeSource,
   ExtensionTagSource,
   FormSpecPlacement,
   FormSpecTagCategory,

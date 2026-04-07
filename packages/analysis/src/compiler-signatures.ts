@@ -396,6 +396,68 @@ export function getMatchingTagSignatures(
 }
 
 /**
+ * TypeScript primitive type keywords that cannot be used as type alias names
+ * (TS2457: "Type alias name cannot be 'X'"). These are already known to the
+ * TypeScript compiler, so no synthetic declaration is needed for them.
+ */
+const TS_PRIMITIVE_KEYWORDS = new Set([
+  "any",
+  "bigint",
+  "boolean",
+  "never",
+  "null",
+  "number",
+  "object",
+  "string",
+  "symbol",
+  "undefined",
+  "unknown",
+  "void",
+]);
+
+/**
+ * Collects deduplicated custom type names from extensions, suitable for
+ * emission as `type X = unknown;` declarations in the synthetic prelude.
+ *
+ * Throws if the same name is registered more than once (across or within
+ * extensions). Skips TypeScript primitive keywords: they are already known to
+ * the compiler and cannot be redeclared as type aliases (TS2457). Registering
+ * a primitive keyword as a `tsTypeName` is still valid in the extension
+ * registry -- it means "match the native type" -- the skip is only for the
+ * synthetic prelude declaration.
+ */
+function collectExtensionCustomTypeNames(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly string[] {
+  if (extensions === undefined) {
+    return [];
+  }
+  const seen = new Map<string, string>(); // tsName -> extensionId
+  const result: string[] = [];
+  for (const ext of extensions) {
+    for (const customType of ext.customTypes ?? []) {
+      for (const tsName of customType.tsTypeNames) {
+        // TypeScript already resolves primitive keywords; no declaration needed.
+        if (TS_PRIMITIVE_KEYWORDS.has(tsName)) {
+          continue;
+        }
+        const existingExtensionId = seen.get(tsName);
+        if (existingExtensionId !== undefined) {
+          throw new Error(
+            `Duplicate custom type name "${tsName}" registered by extensions ` +
+              `"${existingExtensionId}" and "${ext.extensionId}". ` +
+              `Extension-registered types must have unique names.`
+          );
+        }
+        seen.set(tsName, ext.extensionId);
+        result.push(tsName);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Builds the synthetic helper declarations used to validate FormSpec tag
  * applications through the TypeScript checker.
  *
@@ -405,7 +467,21 @@ export function getMatchingTagSignatures(
  * TypeScript program, never emitted to disk.
  */
 export function buildSyntheticHelperPrelude(extensions?: readonly ExtensionTagSource[]): string {
-  const lines = [...PRELUDE_LINES, "", "declare namespace __formspec {"];
+  const lines: string[] = [...PRELUDE_LINES];
+
+  // Emit synthetic type declarations for extension-registered custom types.
+  // This allows the synthetic program to resolve types like `Decimal` that
+  // are imported from external packages but registered in the extension.
+  const customTypeNames = collectExtensionCustomTypeNames(extensions);
+  if (customTypeNames.length > 0) {
+    lines.push("");
+    lines.push("// Extension-registered custom types");
+    for (const tsName of customTypeNames) {
+      lines.push(`type ${tsName} = unknown;`);
+    }
+  }
+
+  lines.push("", "declare namespace __formspec {");
 
   for (const definition of getAllTagDefinitions(extensions)) {
     for (const signature of definition.signatures) {
@@ -750,7 +826,19 @@ function buildNarrowSyntheticBatchSource(
 function collectBatchExtensions(
   applications: readonly SyntheticBatchApplication[]
 ): readonly ExtensionTagSource[] | undefined {
-  const extensions = applications.flatMap((application) => application.options.extensions ?? []);
+  // Deduplicate by extensionId: when the same extension is referenced by
+  // multiple applications in a batch, including it twice would cause
+  // collectExtensionCustomTypeNames to throw on the duplicate custom type names.
+  const seen = new Set<string>();
+  const extensions: ExtensionTagSource[] = [];
+  for (const application of applications) {
+    for (const ext of application.options.extensions ?? []) {
+      if (!seen.has(ext.extensionId)) {
+        seen.add(ext.extensionId);
+        extensions.push(ext);
+      }
+    }
+  }
   return extensions.length === 0 ? undefined : extensions;
 }
 

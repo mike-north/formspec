@@ -86,10 +86,22 @@ export interface ExtensionConstraintTagSource {
   readonly tagName: string;
 }
 
+/**
+ * Synthetic type declaration info for extension-registered custom types.
+ * Used to emit type aliases in the synthetic program so declarations
+ * referencing these types can be included in supportingDeclarations.
+ */
+export interface ExtensionCustomTypeSource {
+  /** TypeScript surface names that resolve to this type (e.g., ['Decimal']) */
+  readonly tsTypeNames: readonly string[];
+}
+
 export interface ExtensionTagSource {
   readonly extensionId: string;
   readonly constraintTags?: readonly ExtensionConstraintTagSource[];
   readonly metadataSlots?: readonly MetadataSlotRegistration[];
+  /** Custom types registered by this extension */
+  readonly customTypes?: readonly ExtensionCustomTypeSource[];
 }
 
 export const FORM_SPEC_PLACEMENTS = [
