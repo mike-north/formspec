@@ -2000,10 +2000,12 @@ function resolveAliasedPrimitiveTarget(
   visiting: Set<ts.Type>,
   metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
-  diagnostics?: ConstraintSemanticDiagnostic[]
+  diagnostics?: ConstraintSemanticDiagnostic[],
+  visitedAliases: Set<ts.TypeAliasDeclaration> = new Set<ts.TypeAliasDeclaration>()
 ): TypeNode {
   const nestedAliasDecl = type.aliasSymbol?.declarations?.find(ts.isTypeAliasDeclaration);
-  if (nestedAliasDecl !== undefined) {
+  if (nestedAliasDecl !== undefined && !visitedAliases.has(nestedAliasDecl)) {
+    visitedAliases.add(nestedAliasDecl);
     return resolveAliasedPrimitiveTarget(
       checker.getTypeFromTypeNode(nestedAliasDecl.type),
       checker,
@@ -2012,8 +2014,25 @@ function resolveAliasedPrimitiveTarget(
       visiting,
       metadataPolicy,
       extensionRegistry,
-      diagnostics
+      diagnostics,
+      visitedAliases
     );
+  }
+
+  if (type.flags & ts.TypeFlags.String) {
+    return { kind: "primitive", primitiveKind: "string" };
+  }
+  if (type.flags & ts.TypeFlags.Number) {
+    return { kind: "primitive", primitiveKind: "number" };
+  }
+  if (type.flags & (ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)) {
+    return { kind: "primitive", primitiveKind: "bigint" };
+  }
+  if (type.flags & ts.TypeFlags.Boolean) {
+    return { kind: "primitive", primitiveKind: "boolean" };
+  }
+  if (type.flags & ts.TypeFlags.Null) {
+    return { kind: "primitive", primitiveKind: "null" };
   }
 
   return resolveTypeNode(

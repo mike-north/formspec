@@ -5,6 +5,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
 import { generateSchemas } from "../generators/class-schema.js";
 
+function expectRecord(value: unknown, label: string): Record<string, unknown> {
+  expect(value, label).toBeDefined();
+  expect(value, label).not.toBeNull();
+  expect(typeof value, label).toBe("object");
+
+  if (value === null || typeof value !== "object") {
+    throw new Error(label);
+  }
+
+  return value as Record<string, unknown>;
+}
+
 describe("@discriminator schema generation", () => {
   let tmpDir: string;
   let fixturePath: string;
@@ -167,6 +179,24 @@ describe("@discriminator schema generation", () => {
         "  readonly __type?: T;",
         "});",
         "",
+        "export type LocalExtractObjectTag<T> = T extends { readonly object: infer O }",
+        "  ? O extends string ? O : never",
+        "  : never;",
+        "",
+        "/** @discriminator :type T */",
+        "export type SameFileHelperPointer<T extends { readonly object: string }> = {",
+        "  type: LocalExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "};",
+        "",
+        "/** @discriminator :type T */",
+        "export type InlineConditionalPointer<T extends { readonly object: string }> = {",
+        "  type: T extends { readonly object: infer O } ? O extends string ? O : never : never;",
+        "  id: string;",
+        "  url: string;",
+        "};",
+        "",
         "export interface ValidWrapper {",
         "  fromInterface: TaggedValue<Customer>;",
         "  fromClass: TaggedClass<Organization>;",
@@ -188,6 +218,13 @@ describe("@discriminator schema generation", () => {
         "  fromParenthesizedIntersectionAlias: ParenthesizedIntersectionPointer<CustomerObjectCarrier>;",
         "  fromMetadataFallback: IntersectionPointer<Bar>;",
         "  fromInferredMetadataFallback: IntersectionPointer<InferredObjectCarrier>;",
+        "}",
+        "",
+        "export interface SameFileConditionalHelperWrapper {",
+        "  importedHelperMetadataFallback: LiteralPointer<Bar>;",
+        "  sameFileHelperMetadataFallback: SameFileHelperPointer<Bar>;",
+        "  sameFileInlineMetadataFallback: InlineConditionalPointer<Bar>;",
+        "  sameFileHelperInferredMetadataFallback: SameFileHelperPointer<InferredObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -404,21 +441,91 @@ describe("@discriminator schema generation", () => {
     const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
     const defs = result.jsonSchema.$defs ?? {};
     const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
-      const propertySchema = rootProperties[propertyName] as Record<string, unknown>;
-      const ref = typeof propertySchema["$ref"] === "string" ? propertySchema["$ref"] : undefined;
-      const resolvedSchema =
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+      const resolvedSchemaRecord = expectRecord(
         ref === undefined
-          ? propertySchema
-          : ((defs[ref.replace(/^#\/\$defs\//u, "")] ?? null) as Record<string, unknown> | null);
-      expect(resolvedSchema).not.toBeNull();
-      const properties = resolvedSchema?.properties as Record<string, unknown>;
-      return (properties["type"] as Record<string, unknown>).enum as readonly unknown[];
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+      const typePropertyRecord = expectRecord(
+        propertiesRecord["type"],
+        `Missing discriminator field schema for ${propertyName}`
+      );
+
+      return typePropertyRecord["enum"] as readonly unknown[];
     };
 
     expect(resolveTypeEnum("fromLiteralAlias")).toEqual(["customer"]);
     expect(resolveTypeEnum("fromMetadataFallback")).toEqual(["v2.custom.custom_bar"]);
     expect(resolveTypeEnum("fromInferredMetadataFallback")).toEqual([
       "v2.custom.inferred_object_carrier",
+    ]);
+  });
+
+  it("supports same-file conditional helper aliases for metadata-backed discriminator fallback", () => {
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "SameFileConditionalHelperWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+      discriminator: {
+        apiNamePrefix: "prefixed_",
+      },
+    });
+
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+      const resolvedSchemaRecord = expectRecord(
+        ref === undefined
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+      const typePropertyRecord = expectRecord(
+        propertiesRecord["type"],
+        `Missing discriminator field schema for ${propertyName}`
+      );
+
+      return typePropertyRecord["enum"] as readonly unknown[];
+    };
+
+    expect(resolveTypeEnum("importedHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileInlineMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileHelperInferredMetadataFallback")).toEqual([
+      "prefixed_inferred_object_carrier",
     ]);
   });
 
