@@ -40,6 +40,7 @@ import {
   extractPathTarget as extractSharedPathTarget,
   getTagDefinition,
   hasTypeSemanticCapability,
+  normalizeFormSpecTagName,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   type ParsedCommentTag,
@@ -628,10 +629,10 @@ const parseResultCache = new Map<string, TSDocParseResult>();
 function getParser(options?: ParseTSDocOptions): TSDocParser {
   const extensionTagNames = [
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
-      (extension.constraintTags ?? []).map((tag) => tag.tagName)
+      (extension.constraintTags ?? []).map((tag) => normalizeFormSpecTagName(tag.tagName))
     ) ?? []),
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
-      (extension.metadataSlots ?? []).map((slot) => slot.tagName)
+      (extension.metadataSlots ?? []).map((slot) => normalizeFormSpecTagName(slot.tagName))
     ) ?? []),
   ].sort();
   const cacheKey = extensionTagNames.join("|");
@@ -705,8 +706,23 @@ function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): 
       JSON.stringify({
         extensionId: extension.extensionId,
         typeNames: extension.types?.map((type) => type.typeName) ?? [],
-        constraintTags: extension.constraintTags?.map((tag) => tag.tagName) ?? [],
-        metadataSlots: extension.metadataSlots?.map((slot) => slot.tagName) ?? [],
+        constraintTags:
+          extension.constraintTags?.map((tag) => normalizeFormSpecTagName(tag.tagName)) ?? [],
+        metadataSlots:
+          extension.metadataSlots?.map((slot) => ({
+            tagName: normalizeFormSpecTagName(slot.tagName),
+            declarationKinds: [...slot.declarationKinds].sort(),
+            allowBare: slot.allowBare !== false,
+            qualifiers:
+              slot.qualifiers
+                ?.map((qualifier) => ({
+                  qualifier: qualifier.qualifier,
+                  ...(qualifier.sourceQualifier !== undefined
+                    ? { sourceQualifier: qualifier.sourceQualifier }
+                    : {}),
+                }))
+                .toSorted((left, right) => left.qualifier.localeCompare(right.qualifier)) ?? [],
+          })) ?? [],
       })
     )
     .join("|");

@@ -389,7 +389,7 @@ export type MetadataSlotId = string;
 export interface MetadataSlotInferenceContext extends MetadataInferenceContext {
     readonly baseValue?: string | undefined;
     readonly qualifier?: string | undefined;
-    readonly slotId: string;
+    readonly slotId: MetadataSlotId;
     readonly tagName: string;
 }
 

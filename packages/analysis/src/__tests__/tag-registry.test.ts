@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { defineExtension, defineMetadataSlot } from "@formspec/core";
 import { getTagDefinition } from "../internal.js";
 
 describe("tag-registry", () => {
@@ -51,5 +52,41 @@ describe("tag-registry", () => {
 
   it("normalizes names through the shared registry entry point", () => {
     expect(getTagDefinition("ApiName")?.canonicalName).toBe("apiName");
+  });
+
+  it("normalizes extension metadata tag registrations to canonical names", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "ExternalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+
+    expect(getTagDefinition("externalName", [extension])).toMatchObject({
+      canonicalName: "externalName",
+      supportedTargets: ["none"],
+    });
+  });
+
+  it("rejects extension metadata slots that disable bare syntax without qualifiers", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "externalName",
+          declarationKinds: ["field"],
+          allowBare: false,
+        }),
+      ],
+    });
+
+    expect(() => getTagDefinition("externalName", [extension])).toThrow(
+      'Metadata tag "@externalName" must allow bare usage or declare at least one qualifier.'
+    );
   });
 });

@@ -811,25 +811,33 @@ function buildExtensionMetadataTagDefinition(
   extensionId: string,
   slot: MetadataSlotRegistration
 ): TagDefinition {
+  const canonicalName = normalizeFormSpecTagName(slot.tagName);
   const supportsQualifiers = (slot.qualifiers?.length ?? 0) > 0;
+  if (slot.allowBare === false && !supportsQualifiers) {
+    throw new Error(
+      `Metadata tag "@${canonicalName}" must allow bare usage or declare at least one qualifier.`
+    );
+  }
   const supportedTargets: readonly FormSpecTargetKind[] = supportsQualifiers
     ? slot.allowBare === false
       ? ["variant"]
       : ["none", "variant"]
-    : ["none"];
+    : slot.allowBare === false
+      ? []
+      : ["none"];
   const placements = placementsForMetadataDeclarationKinds(slot.declarationKinds);
   const signatures: TagSignature[] = [];
   const valueKind = "string";
 
   if (supportedTargets.includes("none")) {
-    signatures.push(createSignature(slot.tagName, placements, null, valueKind, "<value>"));
+    signatures.push(createSignature(canonicalName, placements, null, valueKind, "<value>"));
   }
   if (supportedTargets.includes("variant")) {
-    signatures.push(createSignature(slot.tagName, placements, "variant", valueKind, "<value>"));
+    signatures.push(createSignature(canonicalName, placements, "variant", valueKind, "<value>"));
   }
 
   return {
-    canonicalName: slot.tagName,
+    canonicalName,
     valueKind,
     requiresArgument: true,
     supportedTargets,
@@ -839,7 +847,7 @@ function buildExtensionMetadataTagDefinition(
     capabilities: capabilitiesForValueKind(valueKind),
     completionDetail: `Extension metadata tag from ${extensionId}`,
     hoverMarkdown: [
-      `**@${slot.tagName}** \`<value>\``,
+      `**@${canonicalName}** \`<value>\``,
       "",
       `Extension-defined metadata tag from \`${extensionId}\`.`,
       "",
@@ -954,7 +962,7 @@ function getExtensionConstraintTags(
       const tagRecords = extension.constraintTags ?? [];
       return tagRecords.map((tag) => ({
         extensionId: extension.extensionId,
-        tagName: tag.tagName,
+        tagName: normalizeFormSpecTagName(tag.tagName),
       }));
     }) ?? []
   );
@@ -967,7 +975,7 @@ function getExtensionMetadataSlots(
     extensions?.flatMap((extension) =>
       (extension.metadataSlots ?? []).map((slot) => ({
         extensionId: extension.extensionId,
-        tagName: slot.tagName,
+        tagName: normalizeFormSpecTagName(slot.tagName),
         slot,
       }))
     ) ?? []

@@ -58,7 +58,7 @@ export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
  */
 export interface MetadataSlotInferenceContext extends MetadataInferenceContext {
   /** Stable logical slot identifier. */
-  readonly slotId: string;
+  readonly slotId: MetadataSlotId;
   /** Tag name associated with the slot, without the `@` prefix. */
   readonly tagName: string;
   /** Optional qualifier being inferred (for example `plural`). */

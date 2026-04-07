@@ -4,6 +4,7 @@ import {
   defineCustomType,
   defineConstraint,
   defineConstraintTag,
+  defineMetadataSlot,
   IR_VERSION,
 } from "@formspec/core/internals";
 import type {
@@ -223,6 +224,49 @@ describe("Extension API", () => {
     it("creates an empty registry from an empty list", () => {
       const registry = createExtensionRegistry([]);
       expect(registry.extensions).toHaveLength(0);
+    });
+
+    it("rejects metadata slots that disable bare syntax without qualifiers", () => {
+      expect(() =>
+        createExtensionRegistry([
+          defineExtension({
+            extensionId: "x-acme/metadata",
+            metadataSlots: [
+              defineMetadataSlot({
+                slotId: "invoiceLabel",
+                tagName: "InvoiceLabel",
+                declarationKinds: ["field"],
+                allowBare: false,
+              }),
+            ],
+          }),
+        ])
+      ).toThrow(
+        'Metadata tag "@invoiceLabel" must allow bare usage or declare at least one qualifier.'
+      );
+    });
+
+    it("rejects leading-case collisions between metadata tags and constraint tags", () => {
+      expect(() =>
+        createExtensionRegistry([
+          defineExtension({
+            extensionId: "x-acme/metadata",
+            constraintTags: [
+              defineConstraintTag({
+                tagName: "Currency",
+                constraintName: "Currency",
+              }),
+            ],
+            metadataSlots: [
+              defineMetadataSlot({
+                slotId: "currencyLabel",
+                tagName: "currency",
+                declarationKinds: ["field"],
+              }),
+            ],
+          }),
+        ])
+      ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
     });
 
     it("throws on duplicate type IDs across extensions", () => {

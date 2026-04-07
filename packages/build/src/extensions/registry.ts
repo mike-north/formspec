@@ -16,6 +16,15 @@ import type {
   ConstraintTagRegistration,
   BuiltinConstraintBroadeningRegistration,
 } from "@formspec/core";
+import {
+  BUILTIN_CONSTRAINT_DEFINITIONS,
+  normalizeConstraintTagName,
+} from "@formspec/core/internals";
+import {
+  getTagDefinition,
+  normalizeFormSpecTagName,
+  type ExtensionTagSource,
+} from "@formspec/analysis/internal";
 
 // =============================================================================
 // PUBLIC API
@@ -93,6 +102,31 @@ export interface ExtensionRegistry {
 // IMPLEMENTATION
 // =============================================================================
 
+const BUILTIN_METADATA_TAGS = new Set(["apiName", "displayName"]);
+
+function buildConstraintTagSources(
+  extensions: readonly ExtensionDefinition[]
+): readonly ExtensionTagSource[] {
+  return extensions.map((extension) => ({
+    extensionId: extension.extensionId,
+    ...(extension.constraintTags !== undefined
+      ? {
+          constraintTags: extension.constraintTags.map((tag) => ({
+            tagName: normalizeFormSpecTagName(tag.tagName),
+          })),
+        }
+      : {}),
+    ...(extension.metadataSlots !== undefined
+      ? {
+          metadataSlots: extension.metadataSlots.map((slot) => ({
+            ...slot,
+            tagName: normalizeFormSpecTagName(slot.tagName),
+          })),
+        }
+      : {}),
+  }));
+}
+
 /**
  * Creates an extension registry from a list of extension definitions.
  *
@@ -109,6 +143,7 @@ export interface ExtensionRegistry {
 export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]
 ): ExtensionRegistry {
+  const reservedTagSources = buildConstraintTagSources(extensions);
   const typeMap = new Map<string, CustomTypeRegistration>();
   const typeNameMap = new Map<
     string,
@@ -173,10 +208,11 @@ export function createExtensionRegistry(
 
     if (ext.constraintTags !== undefined) {
       for (const tag of ext.constraintTags) {
-        if (constraintTagMap.has(tag.tagName)) {
-          throw new Error(`Duplicate custom constraint tag: "@${tag.tagName}"`);
+        const canonicalTagName = normalizeFormSpecTagName(tag.tagName);
+        if (constraintTagMap.has(canonicalTagName)) {
+          throw new Error(`Duplicate custom constraint tag: "@${canonicalTagName}"`);
         }
-        constraintTagMap.set(tag.tagName, {
+        constraintTagMap.set(canonicalTagName, {
           extensionId: ext.extensionId,
           registration: tag,
         });
@@ -195,16 +231,48 @@ export function createExtensionRegistry(
 
     if (ext.metadataSlots !== undefined) {
       for (const slot of ext.metadataSlots) {
-        const qualifiedId = `${ext.extensionId}/${slot.slotId}`;
-        if (metadataSlotMap.has(qualifiedId)) {
-          throw new Error(`Duplicate metadata slot ID: "${qualifiedId}"`);
+        if (metadataSlotMap.has(slot.slotId)) {
+          throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
         }
-        metadataSlotMap.set(qualifiedId, true);
+        metadataSlotMap.set(slot.slotId, true);
 
-        if (metadataTagMap.has(slot.tagName)) {
-          throw new Error(`Duplicate metadata tag: "@${slot.tagName}"`);
+        const canonicalTagName = normalizeFormSpecTagName(slot.tagName);
+        if (slot.allowBare === false && (slot.qualifiers?.length ?? 0) === 0) {
+          throw new Error(
+            `Metadata tag "@${canonicalTagName}" must allow bare usage or declare at least one qualifier.`
+          );
         }
-        metadataTagMap.set(slot.tagName, true);
+        if (metadataTagMap.has(canonicalTagName)) {
+          throw new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
+        }
+        if (BUILTIN_METADATA_TAGS.has(canonicalTagName)) {
+          throw new Error(
+            `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+          );
+        }
+        if (constraintTagMap.has(canonicalTagName)) {
+          throw new Error(
+            `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
+          );
+        }
+        if (
+          Object.hasOwn(BUILTIN_CONSTRAINT_DEFINITIONS, normalizeConstraintTagName(canonicalTagName))
+        ) {
+          throw new Error(
+            `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${normalizeConstraintTagName(canonicalTagName)}".`
+          );
+        }
+        const existingTag = getTagDefinition(canonicalTagName, reservedTagSources);
+        if (existingTag !== null) {
+          throw BUILTIN_METADATA_TAGS.has(existingTag.canonicalName)
+            ? new Error(
+                `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+              )
+            : new Error(
+                `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
+              );
+        }
+        metadataTagMap.set(canonicalTagName, true);
       }
     }
   }
@@ -214,7 +282,8 @@ export function createExtensionRegistry(
     findType: (typeId: string) => typeMap.get(typeId),
     findTypeByName: (typeName: string) => typeNameMap.get(typeName),
     findConstraint: (constraintId: string) => constraintMap.get(constraintId),
-    findConstraintTag: (tagName: string) => constraintTagMap.get(tagName),
+    findConstraintTag: (tagName: string) =>
+      constraintTagMap.get(normalizeFormSpecTagName(tagName)),
     findBuiltinConstraintBroadening: (typeId: string, tagName: string) =>
       builtinBroadeningMap.get(`${typeId}:${tagName}`),
     findAnnotation: (annotationId: string) => annotationMap.get(annotationId),
