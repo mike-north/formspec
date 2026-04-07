@@ -8,6 +8,23 @@
  * @packageDocumentation
  */
 import type { TSESLint } from "@typescript-eslint/utils";
+export {
+  analyzeMetadataForNode,
+  analyzeMetadataForSourceFile,
+} from "@formspec/analysis";
+export type {
+  AnalyzeMetadataOptions,
+  AnalyzeMetadataForNodeOptions,
+  AnalyzeMetadataForSourceFileOptions,
+} from "@formspec/analysis";
+export type {
+  ExplicitMetadataSource,
+  MetadataAnalysisResult,
+  MetadataApplicableSlot,
+  MetadataResolvedEntry,
+  MetadataSlotRegistration,
+  MetadataSourceSpan,
+} from "@formspec/core";
 import packageJson from "../package.json" with { type: "json" };
 import {
   noUnknownTags,

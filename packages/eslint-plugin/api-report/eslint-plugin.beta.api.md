@@ -4,9 +4,20 @@
 
 ```ts
 
+import { analyzeMetadataForNode } from '@formspec/analysis';
+import { AnalyzeMetadataForNodeOptions } from '@formspec/analysis';
+import { analyzeMetadataForSourceFile } from '@formspec/analysis';
+import { AnalyzeMetadataForSourceFileOptions } from '@formspec/analysis';
+import { AnalyzeMetadataOptions } from '@formspec/analysis';
 import { ESLintUtils } from '@typescript-eslint/utils';
+import { ExplicitMetadataSource } from '@formspec/core';
 import { FieldTypeConstraints } from '@formspec/constraints/browser';
 import { LayoutConstraints } from '@formspec/constraints/browser';
+import { MetadataAnalysisResult } from '@formspec/core';
+import { MetadataApplicableSlot } from '@formspec/core';
+import { MetadataResolvedEntry } from '@formspec/core';
+import { MetadataSlotRegistration } from '@formspec/core';
+import { MetadataSourceSpan } from '@formspec/core';
 import type { TSESLint } from '@typescript-eslint/utils';
 
 // @public
@@ -27,17 +38,39 @@ export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditiona
 // @public
 export type AllowedLayoutsOptions = [LayoutConstraints];
 
+export { analyzeMetadataForNode }
+
+export { AnalyzeMetadataForNodeOptions }
+
+export { analyzeMetadataForSourceFile }
+
+export { AnalyzeMetadataForSourceFileOptions }
+
+export { AnalyzeMetadataOptions }
+
 // @public
 export const configs: {
     readonly recommended: TSESLint.FlatConfig.ConfigArray;
     readonly strict: TSESLint.FlatConfig.ConfigArray;
 };
 
+export { ExplicitMetadataSource }
+
 // @public
 export const meta: {
     name: string;
     version: string;
 };
+
+export { MetadataAnalysisResult }
+
+export { MetadataApplicableSlot }
+
+export { MetadataResolvedEntry }
+
+export { MetadataSlotRegistration }
+
+export { MetadataSourceSpan }
 
 // @public
 export type NamedRuleModule<MessageIds extends string, Options extends readonly unknown[]> = TSESLint.RuleModule<MessageIds, Options> & {

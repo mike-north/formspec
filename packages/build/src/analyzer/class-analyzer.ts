@@ -8,6 +8,7 @@
 
 import * as ts from "typescript";
 import {
+  analyzeMetadataForNodeWithChecker,
   parseCommentBlock,
   type ConstraintSemanticDiagnostic,
   type ParsedCommentTag,
@@ -38,9 +39,7 @@ import type { ExtensionRegistry } from "../extensions/index.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import {
   getDeclarationMetadataPolicy,
-  makeMetadataContext,
   normalizeMetadataPolicy,
-  resolveMetadata,
 } from "../metadata/index.js";
 
 // =============================================================================
@@ -163,64 +162,16 @@ interface DiscriminatorDirective {
   readonly provenance: Provenance;
 }
 
-type AnalyzerMetadataPolicy = ReturnType<typeof normalizeMetadataPolicy>;
-
-function makeExplicitScalarMetadata(value: string | undefined): ResolvedScalarMetadata | undefined {
-  return value === undefined || value === "" ? undefined : { value, source: "explicit" as const };
+interface AnalyzerMetadataPolicy {
+  readonly raw: MetadataPolicyInput | undefined;
+  readonly normalized: ReturnType<typeof normalizeMetadataPolicy>;
 }
 
-function extractExplicitMetadata(node: ts.Node): ResolvedMetadata | undefined {
-  let apiName: string | undefined;
-  let displayName: string | undefined;
-  let apiNamePlural: string | undefined;
-  let displayNamePlural: string | undefined;
-
-  for (const tag of getLeadingParsedTags(node)) {
-    const value = tag.argumentText.trim();
-    if (value === "") {
-      continue;
-    }
-
-    if (tag.normalizedTagName === "apiName") {
-      if (tag.target === null) {
-        apiName ??= value;
-      } else if (tag.target.kind === "variant") {
-        if (tag.target.rawText === "singular") {
-          apiName ??= value;
-        } else if (tag.target.rawText === "plural") {
-          apiNamePlural ??= value;
-        }
-      }
-      continue;
-    }
-
-    if (tag.normalizedTagName === "displayName") {
-      if (tag.target === null) {
-        displayName ??= value;
-      } else if (tag.target.kind === "variant") {
-        if (tag.target.rawText === "singular") {
-          displayName ??= value;
-        } else if (tag.target.rawText === "plural") {
-          displayNamePlural ??= value;
-        }
-      }
-    }
-  }
-
-  const resolvedApiName = makeExplicitScalarMetadata(apiName);
-  const resolvedDisplayName = makeExplicitScalarMetadata(displayName);
-  const resolvedApiNamePlural = makeExplicitScalarMetadata(apiNamePlural);
-  const resolvedDisplayNamePlural = makeExplicitScalarMetadata(displayNamePlural);
-  const metadata: ResolvedMetadata = {
-    ...(resolvedApiName !== undefined && { apiName: resolvedApiName }),
-    ...(resolvedDisplayName !== undefined && { displayName: resolvedDisplayName }),
-    ...(resolvedApiNamePlural !== undefined && { apiNamePlural: resolvedApiNamePlural }),
-    ...(resolvedDisplayNamePlural !== undefined && {
-      displayNamePlural: resolvedDisplayNamePlural,
-    }),
+export function createAnalyzerMetadataPolicy(input?: MetadataPolicyInput): AnalyzerMetadataPolicy {
+  return {
+    raw: input,
+    normalized: normalizeMetadataPolicy(input),
   };
-
-  return Object.keys(metadata).length === 0 ? undefined : metadata;
 }
 
 function resolveNodeMetadata(
@@ -228,23 +179,50 @@ function resolveNodeMetadata(
   declarationKind: "type" | "field" | "method",
   logicalName: string,
   node: ts.Node,
-  buildContext?: unknown
+  checker: ts.TypeChecker,
+  extensionRegistry?: ExtensionRegistry
 ): ResolvedMetadata | undefined {
-  const explicit = extractExplicitMetadata(node);
-  return resolveMetadata(
-    {
-      ...(explicit?.apiName !== undefined && { apiName: explicit.apiName.value }),
-      ...(explicit?.displayName !== undefined && { displayName: explicit.displayName.value }),
-      ...(explicit?.apiNamePlural !== undefined && {
-        apiNamePlural: explicit.apiNamePlural.value,
-      }),
-      ...(explicit?.displayNamePlural !== undefined && {
-        displayNamePlural: explicit.displayNamePlural.value,
-      }),
-    },
-    getDeclarationMetadataPolicy(metadataPolicy, declarationKind),
-    makeMetadataContext("tsdoc", declarationKind, logicalName, buildContext)
-  );
+  const analysis = analyzeMetadataForNodeWithChecker({
+    checker,
+    node,
+    logicalName,
+    metadata: metadataPolicy.raw,
+    extensions: extensionRegistry?.extensions,
+  });
+  const resolvedMetadata = analysis?.resolvedMetadata;
+  const declarationPolicy = getDeclarationMetadataPolicy(metadataPolicy.normalized, declarationKind);
+
+  if (resolvedMetadata?.apiName === undefined && declarationPolicy.apiName.mode === "require-explicit") {
+    throw new Error(
+      `Metadata policy requires explicit apiName for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    resolvedMetadata?.displayName === undefined &&
+    declarationPolicy.displayName.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit displayName for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    resolvedMetadata?.apiNamePlural === undefined &&
+    declarationPolicy.apiName.pluralization.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit apiNamePlural for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    resolvedMetadata?.displayNamePlural === undefined &&
+    declarationPolicy.displayName.pluralization.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit displayNamePlural for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+
+  return resolvedMetadata;
 }
 
 export function analyzeDeclarationRootInfo(
@@ -254,7 +232,7 @@ export function analyzeDeclarationRootInfo(
   extensionRegistry?: ExtensionRegistry,
   metadataPolicy?: MetadataPolicyInput
 ): DeclarationRootInfo {
-  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
   const declarationType = checker.getTypeAtLocation(declaration);
   const logicalName = ts.isClassDeclaration(declaration)
     ? (declaration.name?.text ?? "AnonymousClass")
@@ -264,12 +242,14 @@ export function analyzeDeclarationRootInfo(
     file,
     makeParseOptions(extensionRegistry, undefined, checker, declarationType, declarationType)
   );
-  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", logicalName, declaration, {
-    checker,
+  const metadata = resolveNodeMetadata(
+    normalizedMetadataPolicy,
+    "type",
+    logicalName,
     declaration,
-    subjectType: declarationType,
-    hostType: declarationType,
-  });
+    checker,
+    extensionRegistry
+  );
 
   return {
     ...(metadata !== undefined && { metadata }),
@@ -292,7 +272,7 @@ export function analyzeClassToIR(
   extensionRegistry?: ExtensionRegistry,
   metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
-  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
   const name = classDecl.name?.text ?? "AnonymousClass";
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
@@ -349,12 +329,14 @@ export function analyzeClassToIR(
     diagnostics,
     normalizedMetadataPolicy
   );
-  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, classDecl, {
+  const metadata = resolveNodeMetadata(
+    normalizedMetadataPolicy,
+    "type",
+    name,
+    classDecl,
     checker,
-    declaration: classDecl,
-    subjectType: classType,
-    hostType: classType,
-  });
+    extensionRegistry
+  );
 
   return {
     name,
@@ -379,7 +361,7 @@ export function analyzeInterfaceToIR(
   extensionRegistry?: ExtensionRegistry,
   metadataPolicy?: MetadataPolicyInput
 ): IRClassAnalysis {
-  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -423,12 +405,14 @@ export function analyzeInterfaceToIR(
     normalizedMetadataPolicy
   );
   const fieldLayouts: FieldLayoutMetadata[] = specializedFields.map(() => ({}));
-  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, interfaceDecl, {
+  const metadata = resolveNodeMetadata(
+    normalizedMetadataPolicy,
+    "type",
+    name,
+    interfaceDecl,
     checker,
-    declaration: interfaceDecl,
-    subjectType: interfaceType,
-    hostType: interfaceType,
-  });
+    extensionRegistry
+  );
 
   return {
     name,
@@ -465,7 +449,7 @@ export function analyzeTypeAliasToIR(
   }
 
   const typeLiteral = typeAlias.type;
-  const normalizedMetadataPolicy = normalizeMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -508,12 +492,14 @@ export function analyzeTypeAliasToIR(
     diagnostics,
     normalizedMetadataPolicy
   );
-  const metadata = resolveNodeMetadata(normalizedMetadataPolicy, "type", name, typeAlias, {
+  const metadata = resolveNodeMetadata(
+    normalizedMetadataPolicy,
+    "type",
+    name,
+    typeAlias,
     checker,
-    declaration: typeAlias,
-    subjectType: aliasType,
-    hostType: aliasType,
-  });
+    extensionRegistry
+  );
 
   return {
     ok: true,
@@ -875,11 +861,7 @@ function resolveDiscriminatorApiName(
     "type",
     getDiscriminatorLogicalName(boundType, declaration, checker),
     declaration,
-    {
-      checker,
-      declaration,
-      subjectType: boundType,
-    }
+    checker
   );
   return metadata?.apiName;
 }
@@ -1243,12 +1225,14 @@ function analyzeFieldToIR(
   }
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
-  const metadata = resolveNodeMetadata(metadataPolicy, "field", name, prop, {
+  const metadata = resolveNodeMetadata(
+    metadataPolicy,
+    "field",
+    name,
+    prop,
     checker,
-    declaration: prop,
-    subjectType: tsType,
-    hostType,
-  });
+    extensionRegistry
+  );
 
   return {
     kind: "field",
@@ -1324,12 +1308,14 @@ function analyzeInterfacePropertyToIR(
   annotations.push(...docResult.annotations);
 
   ({ type, annotations } = applyEnumMemberDisplayNames(type, annotations));
-  const metadata = resolveNodeMetadata(metadataPolicy, "field", name, prop, {
+  const metadata = resolveNodeMetadata(
+    metadataPolicy,
+    "field",
+    name,
+    prop,
     checker,
-    declaration: prop,
-    subjectType: tsType,
-    hostType,
-  });
+    extensionRegistry
+  );
 
   return {
     kind: "field",
@@ -1552,7 +1538,7 @@ export function resolveTypeNode(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1668,7 +1654,7 @@ function tryResolveNamedPrimitiveAlias(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode | null {
@@ -1705,11 +1691,14 @@ function tryResolveNamedPrimitiveAlias(
       file,
       makeParseOptions(extensionRegistry)
     );
-    const metadata = resolveNodeMetadata(metadataPolicy, "type", aliasName, aliasDecl, {
+    const metadata = resolveNodeMetadata(
+      metadataPolicy,
+      "type",
+      aliasName,
+      aliasDecl,
       checker,
-      declaration: aliasDecl,
-      subjectType: aliasType,
-    });
+      extensionRegistry
+    );
     typeRegistry[aliasName] = {
       name: aliasName,
       ...(metadata !== undefined && { metadata }),
@@ -1785,7 +1774,7 @@ function resolveAliasedPrimitiveTarget(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1823,7 +1812,7 @@ function resolveUnionType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -1869,11 +1858,14 @@ function resolveUnionType(
       : undefined;
     const metadata =
       namedDecl !== undefined
-        ? resolveNodeMetadata(metadataPolicy, "type", typeName, namedDecl, {
+        ? resolveNodeMetadata(
+            metadataPolicy,
+            "type",
+            typeName,
+            namedDecl,
             checker,
-            declaration: namedDecl,
-            subjectType: type,
-          })
+            extensionRegistry
+          )
         : undefined;
     typeRegistry[typeName] = {
       name: typeName,
@@ -1984,7 +1976,7 @@ function resolveArrayType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -2022,7 +2014,7 @@ function tryResolveRecordType(
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): RecordTypeNode | null {
@@ -2104,7 +2096,7 @@ function resolveObjectType(
   typeRegistry: Record<string, TypeDefinition>,
   visiting: Set<ts.Type>,
   sourceNode?: ts.Node,
-  metadataPolicy: AnalyzerMetadataPolicy = normalizeMetadataPolicy(undefined),
+  metadataPolicy: AnalyzerMetadataPolicy = createAnalyzerMetadataPolicy(undefined),
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
@@ -2213,11 +2205,14 @@ function resolveObjectType(
         : undefined;
       const metadata =
         namedDecl !== undefined
-          ? resolveNodeMetadata(metadataPolicy, "type", registryTypeName, namedDecl, {
+          ? resolveNodeMetadata(
+              metadataPolicy,
+              "type",
+              registryTypeName,
+              namedDecl,
               checker,
-              declaration: namedDecl,
-              subjectType: type,
-            })
+              extensionRegistry
+            )
           : undefined;
       typeRegistry[registryTypeName] = {
         name: registryTypeName,
@@ -2343,11 +2338,14 @@ function resolveObjectType(
       : undefined;
     const metadata =
       namedDecl !== undefined
-        ? resolveNodeMetadata(metadataPolicy, "type", registryTypeName, namedDecl, {
+        ? resolveNodeMetadata(
+            metadataPolicy,
+            "type",
+            registryTypeName,
+            namedDecl,
             checker,
-            declaration: namedDecl,
-            subjectType: type,
-          })
+            extensionRegistry
+          )
         : undefined;
     typeRegistry[registryTypeName] = {
       name: registryTypeName,

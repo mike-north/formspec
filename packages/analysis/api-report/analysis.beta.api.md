@@ -4,6 +4,31 @@
 
 ```ts
 
+import * as ts from 'typescript';
+
+// @public
+export function analyzeMetadataForNode(options: AnalyzeMetadataForNodeOptions): MetadataAnalysisResult | null;
+
+// @public
+export interface AnalyzeMetadataForNodeOptions extends AnalyzeMetadataOptions {
+    readonly node: ts.Node;
+}
+
+// @public
+export function analyzeMetadataForSourceFile(options: AnalyzeMetadataForSourceFileOptions): readonly MetadataAnalysisResult[];
+
+// @public
+export interface AnalyzeMetadataForSourceFileOptions extends AnalyzeMetadataOptions {
+    readonly sourceFile: ts.SourceFile;
+}
+
+// @public
+export interface AnalyzeMetadataOptions {
+    readonly extensions?: readonly ExtensionDefinition[] | undefined;
+    readonly metadata?: MetadataPolicyInput | undefined;
+    readonly program: ts.Program;
+}
+
 // @public
 export interface CommentSourceSpan {
     readonly end: number;

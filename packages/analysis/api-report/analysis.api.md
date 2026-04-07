@@ -4,6 +4,35 @@
 
 ```ts
 
+import * as ts from 'typescript';
+
+// Warning: (ae-forgotten-export) The symbol "MetadataAnalysisResult" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function analyzeMetadataForNode(options: AnalyzeMetadataForNodeOptions): MetadataAnalysisResult | null;
+
+// @public
+export interface AnalyzeMetadataForNodeOptions extends AnalyzeMetadataOptions {
+    readonly node: ts.Node;
+}
+
+// @public
+export function analyzeMetadataForSourceFile(options: AnalyzeMetadataForSourceFileOptions): readonly MetadataAnalysisResult[];
+
+// @public
+export interface AnalyzeMetadataForSourceFileOptions extends AnalyzeMetadataOptions {
+    readonly sourceFile: ts.SourceFile;
+}
+
+// @public
+export interface AnalyzeMetadataOptions {
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition[] | undefined;
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput | undefined;
+    readonly program: ts.Program;
+}
+
 // @public
 export interface CommentSourceSpan {
     readonly end: number;

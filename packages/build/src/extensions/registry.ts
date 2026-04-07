@@ -116,14 +116,6 @@ function buildConstraintTagSources(
           })),
         }
       : {}),
-    ...(extension.metadataSlots !== undefined
-      ? {
-          metadataSlots: extension.metadataSlots.map((slot) => ({
-            ...slot,
-            tagName: normalizeFormSpecTagName(slot.tagName),
-          })),
-        }
-      : {}),
   }));
 }
 

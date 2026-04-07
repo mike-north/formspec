@@ -114,6 +114,17 @@ export {
   serializeParsedCommentTag,
 } from "./semantic-protocol.js";
 export {
+  analyzeMetadataForNode,
+  analyzeMetadataForSourceFile,
+  analyzeMetadataForNodeWithChecker,
+} from "./metadata-analysis.js";
+export type {
+  AnalyzeMetadataOptions,
+  AnalyzeMetadataForNodeOptions,
+  AnalyzeMetadataForSourceFileOptions,
+  AnalyzeMetadataWithCheckerOptions,
+} from "./metadata-analysis.js";
+export {
   collectCompatiblePathTargets,
   getTypeSemanticCapabilities,
   hasTypeSemanticCapability,

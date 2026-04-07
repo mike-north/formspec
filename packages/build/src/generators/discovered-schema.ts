@@ -13,6 +13,7 @@ import {
   analyzeClassToIR,
   analyzeInterfaceToIR,
   analyzeTypeAliasToIR,
+  createAnalyzerMetadataPolicy,
   resolveTypeNode,
   type IRClassAnalysis,
 } from "../analyzer/class-analyzer.js";
@@ -24,7 +25,7 @@ import {
 import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { IR_VERSION, type FieldNode } from "@formspec/core/internals";
 import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
-import { mergeResolvedMetadata, normalizeMetadataPolicy } from "../metadata/index.js";
+import { mergeResolvedMetadata } from "../metadata/index.js";
 
 /**
  * Generated schemas for a discovered declaration or signature type.
@@ -355,7 +356,7 @@ function generateSchemasFromResolvedType(
     typeRegistry,
     new Set<ts.Type>(),
     options.sourceNode,
-    normalizeMetadataPolicy(options.metadata),
+    createAnalyzerMetadataPolicy(options.metadata),
     options.extensionRegistry,
     diagnostics
   );
