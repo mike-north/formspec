@@ -199,7 +199,8 @@ export const validDiscriminator = createRule<[], MessageIds>({
       const directMembers = getDirectPropertyMembers(node, services);
 
       for (const tag of tags) {
-        if (tag.target === null) {
+        const target = tag.target;
+        if (target === null) {
           context.report({
             loc: tag.comment.loc,
             messageId: "missingTarget",
@@ -207,7 +208,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
           continue;
         }
 
-        if (tag.target.value.includes(".")) {
+        if (target.value.includes(".")) {
           context.report({
             loc: tag.comment.loc,
             messageId: "nestedTarget",
@@ -216,13 +217,13 @@ export const validDiscriminator = createRule<[], MessageIds>({
         }
 
         const targetMember = directMembers.find(
-          (member) => getDeclarationName(member) === tag.target.value
+          (member) => getDeclarationName(member) === target.value
         );
         if (!targetMember) {
           context.report({
             loc: tag.comment.loc,
             messageId: "missingTargetField",
-            data: { target: tag.target.value },
+            data: { target: target.value },
           });
           continue;
         }
@@ -249,7 +250,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
           context.report({
             loc: targetLoc,
             messageId: "optionalTargetField",
-            data: { target: tag.target.value },
+            data: { target: target.value },
           });
           continue;
         }
@@ -259,7 +260,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
           context.report({
             loc: targetLoc,
             messageId: "missingTargetField",
-            data: { target: tag.target.value },
+            data: { target: target.value },
           });
           continue;
         }
@@ -268,7 +269,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
           context.report({
             loc: targetLoc,
             messageId: "nullableTargetField",
-            data: { target: tag.target.value },
+            data: { target: target.value },
           });
           continue;
         }
@@ -278,7 +279,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
             loc: targetLoc,
             messageId: "nonStringLikeTargetField",
             data: {
-              target: tag.target.value,
+              target: target.value,
               actualType: getResolvedTypeName(targetType, services),
             },
           });
