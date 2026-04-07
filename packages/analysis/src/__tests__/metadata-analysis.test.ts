@@ -158,27 +158,33 @@ describe("metadata analysis", () => {
     expect(plural?.explicitSource?.valueRange).toBeDefined();
     expect(plural?.explicitSource?.qualifierRange).toBeDefined();
 
+    if (plural?.explicitSource === undefined) {
+      throw new Error("Expected explicit source ranges for plural displayName");
+    }
+
+    const { explicitSource } = plural;
+
     const commentText = sourceFile.text.slice(
       property.getFullStart(),
       property.getStart(sourceFile)
     );
     expect(
-      sliceCommentSpan(commentText, plural!.explicitSource!.fullRange!, {
+      sliceCommentSpan(commentText, explicitSource.fullRange, {
         offset: property.getFullStart(),
       })
     ).toContain("@displayName :plural Order Items");
     expect(
-      sliceCommentSpan(commentText, plural!.explicitSource!.tagNameRange!, {
+      sliceCommentSpan(commentText, explicitSource.tagNameRange, {
         offset: property.getFullStart(),
       })
     ).toBe("@displayName");
     expect(
-      sliceCommentSpan(commentText, plural!.explicitSource!.valueRange!, {
+      sliceCommentSpan(commentText, explicitSource.valueRange, {
         offset: property.getFullStart(),
       })
     ).toBe("Order Items");
     expect(
-      sliceCommentSpan(commentText, plural!.explicitSource!.qualifierRange!, {
+      sliceCommentSpan(commentText, explicitSource.qualifierRange, {
         offset: property.getFullStart(),
       })
     ).toBe("plural");
