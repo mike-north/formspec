@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { defineConstraintTag, defineExtension, defineMetadataSlot } from "@formspec/core";
 import { createProgramContext, findInterfaceByName } from "../analyzer/program.js";
 import { analyzeInterfaceToIR } from "../analyzer/class-analyzer.js";
 import { createExtensionRegistry } from "../extensions/index.js";
@@ -97,5 +98,121 @@ describe("build metadata extension integration", () => {
     expect(amountField.metadata).toMatchObject({
       apiName: { value: "invoice_amount", source: "explicit" },
     });
+  });
+
+  it("preserves buildContext details for metadata policy inference hooks", () => {
+    const filePath = writeTempSource(`
+      export interface InvoiceModel {
+        amount: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const ctx = createProgramContext(filePath);
+    const decl = findInterfaceByName(ctx.sourceFile, "InvoiceModel");
+    if (!decl) {
+      throw new Error("InvoiceModel interface not found");
+    }
+
+    const analysis = analyzeInterfaceToIR(decl, ctx.checker, filePath, undefined, {
+      field: {
+        displayName: {
+          mode: "infer-if-missing",
+          infer: ({ logicalName, buildContext }) => {
+            const context = buildContext as {
+              declaration?: unknown;
+              subjectType?: unknown;
+              hostType?: unknown;
+            };
+            return context.declaration !== undefined &&
+              context.subjectType !== undefined &&
+              context.hostType !== undefined
+              ? `Label ${logicalName}`
+              : "missing-build-context";
+          },
+        },
+      },
+    });
+    const amountField = analysis.fields.find((field) => field.name === "amount");
+    if (!amountField) {
+      throw new Error('Expected field "amount"');
+    }
+
+    expect(amountField.metadata).toMatchObject({
+      displayName: { value: "Label amount", source: "inferred" },
+    });
+  });
+
+  it("rejects metadata tags that collide with extension constraint tags at registry creation", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata",
+          constraintTags: [
+            defineConstraintTag({
+              tagName: "currency",
+              constraintName: "currency",
+            }),
+          ],
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyLabel",
+              tagName: "currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+  });
+
+  it("rejects metadata tags that differ from constraint tags only by leading case", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata",
+          constraintTags: [
+            defineConstraintTag({
+              tagName: "currency",
+              constraintName: "currency",
+            }),
+          ],
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyLabel",
+              tagName: "Currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+  });
+
+  it("rejects metadata tags that differ only by leading case at registry creation", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata-a",
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyLabel",
+              tagName: "Currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+        defineExtension({
+          extensionId: "x-test/metadata-b",
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyCode",
+              tagName: "currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Duplicate metadata tag: "@currency"');
   });
 });

@@ -1,4 +1,5 @@
 import type {
+  ExplicitMetadataSource,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataDeclarationKind,
@@ -10,7 +11,8 @@ import type {
   ExtensionDefinition,
 } from "@formspec/core";
 import * as ts from "typescript";
-import { parseCommentBlock } from "./comment-syntax.js";
+import { parseCommentBlock, type ParsedCommentTag } from "./comment-syntax.js";
+import { getTagDefinition, normalizeFormSpecTagName } from "./tag-registry.js";
 import { resolveDeclarationPlacement } from "./ts-binding.js";
 
 /**
@@ -59,6 +61,7 @@ export interface AnalyzeMetadataWithCheckerOptions {
   readonly logicalName?: string;
   readonly metadata?: MetadataPolicyInput | undefined;
   readonly extensions?: readonly ExtensionDefinition[] | undefined;
+  readonly buildContext?: unknown;
 }
 
 interface NormalizedMetadataSlotQualifier {
@@ -88,6 +91,57 @@ interface NormalizedMetadataSlot {
 interface ExplicitEntryCandidate {
   readonly value: string;
   readonly qualifier?: string;
+  readonly explicitSource: ExplicitMetadataSource;
+}
+
+const BUILTIN_METADATA_TAG_NAMES = new Set(["apiName", "displayName"]);
+
+function validateExtensionMetadataSlots(
+  extensions: readonly ExtensionDefinition[] | undefined
+): void {
+  const slotIds = new Set<string>();
+  const tagNames = new Set(BUILTIN_METADATA_TAG_NAMES);
+  const metadataFreeExtensions =
+    extensions?.map((extension) => ({
+      extensionId: extension.extensionId,
+      ...(extension.constraintTags !== undefined
+        ? {
+            constraintTags: extension.constraintTags.map((tag) => ({
+              tagName: normalizeFormSpecTagName(tag.tagName),
+            })),
+          }
+        : {}),
+    })) ?? [];
+
+  for (const extension of extensions ?? []) {
+    for (const slot of extension.metadataSlots ?? []) {
+      if (slotIds.has(slot.slotId)) {
+        throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
+      }
+      slotIds.add(slot.slotId);
+
+      const canonicalTagName = normalizeFormSpecTagName(slot.tagName);
+
+      if (tagNames.has(canonicalTagName)) {
+        throw BUILTIN_METADATA_TAG_NAMES.has(canonicalTagName)
+          ? new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+            )
+          : new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
+      }
+      const existingTag = getTagDefinition(canonicalTagName, metadataFreeExtensions);
+      if (existingTag !== null) {
+        throw BUILTIN_METADATA_TAG_NAMES.has(existingTag.canonicalName)
+          ? new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
+            )
+          : new Error(
+              `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
+            );
+      }
+      tagNames.add(canonicalTagName);
+    }
+  }
 }
 
 function getLogicalName(node: ts.Node): string | null {
@@ -238,25 +292,42 @@ function normalizeBuiltInSlots(
 function normalizeExtensionSlots(
   extensions: readonly ExtensionDefinition[] | undefined
 ): readonly NormalizedMetadataSlot[] {
+  const seenSlotIds = new Set<string>();
+  const seenTagNames = new Set<string>();
+
   return (
     extensions?.flatMap((extension) =>
-      (extension.metadataSlots ?? []).map((slot) => ({
-        slotId: slot.slotId,
-        tagName: slot.tagName,
-        declarationKinds: slot.declarationKinds,
-        allowBare: slot.allowBare !== false,
-        primaryQualifierAliases: slot.allowBare === false ? [] : ["singular"],
-        ...(slot.inferValue !== undefined && { inferValue: slot.inferValue }),
-        ...(slot.isApplicable !== undefined && { isApplicable: slot.isApplicable }),
-        qualifiers:
-          slot.qualifiers?.map((qualifier) => ({
-            qualifier: qualifier.qualifier,
-            ...(qualifier.sourceQualifier !== undefined && {
-              sourceQualifier: qualifier.sourceQualifier,
-            }),
-            ...(qualifier.inferValue !== undefined && { inferValue: qualifier.inferValue }),
-          })) ?? [],
-      }))
+      (extension.metadataSlots ?? []).map((slot) => {
+        const normalizedTagName = normalizeFormSpecTagName(slot.tagName);
+        if (seenSlotIds.has(slot.slotId)) {
+          throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
+        }
+        seenSlotIds.add(slot.slotId);
+
+        if (seenTagNames.has(normalizedTagName)) {
+          throw new Error(`Duplicate metadata tag: "@${normalizedTagName}"`);
+        }
+        seenTagNames.add(normalizedTagName);
+
+        return {
+          slotId: slot.slotId,
+          tagName: normalizedTagName,
+          declarationKinds: slot.declarationKinds,
+          allowBare: slot.allowBare !== false,
+          // Extension slots only accept the qualifiers they explicitly register.
+          primaryQualifierAliases: [],
+          ...(slot.inferValue !== undefined && { inferValue: slot.inferValue }),
+          ...(slot.isApplicable !== undefined && { isApplicable: slot.isApplicable }),
+          qualifiers:
+            slot.qualifiers?.map((qualifier) => ({
+              qualifier: qualifier.qualifier,
+              ...(qualifier.sourceQualifier !== undefined && {
+                sourceQualifier: qualifier.sourceQualifier,
+              }),
+              ...(qualifier.inferValue !== undefined && { inferValue: qualifier.inferValue }),
+            })) ?? [],
+        };
+      })
     ) ?? []
   );
 }
@@ -269,6 +340,7 @@ function getApplicableSlots(
   extensions: readonly ExtensionDefinition[] | undefined,
   buildContext: unknown
 ): readonly NormalizedMetadataSlot[] {
+  validateExtensionMetadataSlots(extensions);
   return [...normalizeBuiltInSlots(metadata), ...normalizeExtensionSlots(extensions)].filter(
     (slot) =>
       slot.declarationKinds.includes(declarationKind) &&
@@ -291,6 +363,26 @@ function toApplicableSlot(slot: NormalizedMetadataSlot): MetadataApplicableSlot 
     tagName: slot.tagName,
     allowBare: slot.allowBare,
     qualifiers: slot.qualifiers.map((qualifier) => qualifier.qualifier),
+  };
+}
+
+function buildExplicitSource(tag: ParsedCommentTag): ExplicitMetadataSource {
+  if (tag.argumentSpan === null) {
+    throw new Error(
+      `Expected explicit metadata tag @${tag.normalizedTagName} to have a value span.`
+    );
+  }
+
+  return {
+    tagName: tag.normalizedTagName,
+    form: tag.target === null ? "bare" : "qualified",
+    fullRange: { ...tag.fullSpan },
+    tagNameRange: { ...tag.tagNameSpan },
+    ...(tag.target !== null && {
+      qualifier: tag.target.rawText,
+      qualifierRange: { ...tag.target.span },
+    }),
+    valueRange: { ...tag.argumentSpan },
   };
 }
 
@@ -348,6 +440,7 @@ function collectExplicitCandidates(
         if (slot.allowBare && !primaryEntries.has(slot.slotId)) {
           primaryEntries.set(slot.slotId, {
             value,
+            explicitSource: buildExplicitSource(tag),
           });
         }
         continue;
@@ -358,6 +451,7 @@ function collectExplicitCandidates(
           primaryEntries.set(slot.slotId, {
             value,
             qualifier,
+            explicitSource: buildExplicitSource(tag),
           });
         }
         continue;
@@ -372,6 +466,7 @@ function collectExplicitCandidates(
         qualifiedEntries.set(key, {
           value,
           qualifier,
+          explicitSource: buildExplicitSource(tag),
         });
       }
     }
@@ -434,6 +529,7 @@ function resolveSlotEntries(
           tagName: slot.tagName,
           value: primaryExplicit.value,
           source: "explicit",
+          explicitSource: primaryExplicit.explicitSource,
         } satisfies MetadataResolvedEntry)
       : inferEntry(
           slot,
@@ -463,6 +559,7 @@ function resolveSlotEntries(
         qualifier: qualifier.qualifier,
         value: explicitQualified.value,
         source: "explicit",
+        explicitSource: explicitQualified.explicitSource,
       });
       continue;
     }
@@ -503,6 +600,9 @@ export function analyzeMetadataForNodeWithChecker(
   }
 
   const buildContext = {
+    ...(options.buildContext !== undefined && typeof options.buildContext === "object"
+      ? options.buildContext
+      : {}),
     ...(options.program !== undefined && { program: options.program }),
     checker: options.checker,
     node: options.node,
@@ -559,15 +659,22 @@ export function analyzeMetadataForSourceFile(
   const checker = options.program.getTypeChecker();
 
   const visit = (node: ts.Node): void => {
-    const analyzed = analyzeMetadataForNodeWithChecker({
-      program: options.program,
-      checker,
-      node,
-      ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
-      ...(options.extensions !== undefined ? { extensions: options.extensions } : {}),
-    });
-    if (analyzed !== null) {
-      results.push(analyzed);
+    const declarationKind = getMetadataDeclarationKind(node);
+    if (
+      declarationKind !== null &&
+      !ts.isVariableDeclaration(node) &&
+      !ts.isParameter(node)
+    ) {
+      const analyzed = analyzeMetadataForNodeWithChecker({
+        program: options.program,
+        checker,
+        node,
+        ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
+        ...(options.extensions !== undefined ? { extensions: options.extensions } : {}),
+      });
+      if (analyzed !== null) {
+        results.push(analyzed);
+      }
     }
     ts.forEachChild(node, visit);
   };
