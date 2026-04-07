@@ -162,6 +162,17 @@ function sharedTagValueOptions(options?: ParseTSDocOptions) {
 const SYNTHETIC_TYPE_FORMAT_FLAGS =
   ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
+function getExtensionTypeNames(registry: ExtensionRegistry | undefined): ReadonlySet<string> {
+  if (registry === undefined) {
+    return new Set();
+  }
+  return new Set(
+    registry.extensions.flatMap((ext) =>
+      (ext.types ?? []).flatMap((t) => t.tsTypeNames ?? [t.typeName])
+    )
+  );
+}
+
 function collectImportedNames(sourceFile: ts.SourceFile): ReadonlySet<string> {
   const importedNames = new Set<string>();
 
@@ -241,6 +252,10 @@ function statementReferencesImportedName(
   statement: ts.Statement,
   importedNames: ReadonlySet<string>
 ): boolean {
+  if (importedNames.size === 0) {
+    return false;
+  }
+
   let referencesImportedName = false;
 
   const visit = (node: ts.Node): void => {
@@ -260,8 +275,17 @@ function statementReferencesImportedName(
   return referencesImportedName;
 }
 
-function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string[] {
+function buildSupportingDeclarations(
+  sourceFile: ts.SourceFile,
+  extensionTypeNames: ReadonlySet<string>
+): readonly string[] {
   const importedNames = collectImportedNames(sourceFile);
+
+  // Filter out extension-registered type names: the synthetic program provides
+  // type aliases for these, so declarations referencing them are safe to include.
+  const importedNamesToSkip = new Set(
+    [...importedNames].filter((name) => !extensionTypeNames.has(name))
+  );
 
   return sourceFile.statements
     .filter((statement) => {
@@ -271,11 +295,10 @@ function buildSupportingDeclarations(sourceFile: ts.SourceFile): readonly string
       if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
         return false;
 
-      // Skip declarations whose AST references an imported identifier.
-      // This prevents the synthetic program from emitting errors about
-      // unresolvable imported types without falsely matching comments,
-      // string literals, or unrelated property names.
-      if (importedNames.size > 0 && statementReferencesImportedName(statement, importedNames)) {
+      // Skip declarations whose AST references an imported identifier,
+      // unless that identifier is an extension-registered type (which will
+      // have a synthetic type alias in the synthetic program).
+      if (statementReferencesImportedName(statement, importedNamesToSkip)) {
         return false;
       }
 
@@ -603,6 +626,13 @@ function buildCompilerBackedConstraintDiagnostics(
                   metadataSlots: extension.metadataSlots,
                 }
               : {}),
+            ...(extension.types !== undefined
+              ? {
+                  customTypes: extension.types.map((t) => ({
+                    tsTypeNames: t.tsTypeNames ?? [t.typeName],
+                  })),
+                }
+              : {}),
           })),
         }
       : {}),
@@ -799,7 +829,12 @@ export function parseTSDocTags(
   // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
-  const supportingDeclarations = buildSupportingDeclarations(sourceFile);
+
+  // Collect extension-registered type names so we don't skip declarations
+  // that reference them (the synthetic program provides aliases for these).
+  const extensionTypeNames = getExtensionTypeNames(options?.extensionRegistry);
+
+  const supportingDeclarations = buildSupportingDeclarations(sourceFile, extensionTypeNames);
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
   const rawTextFallbacks = collectRawTextFallbacks(node, file);
 

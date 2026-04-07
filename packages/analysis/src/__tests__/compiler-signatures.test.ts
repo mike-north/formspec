@@ -319,6 +319,94 @@ describe("compiler-signatures", () => {
     expect(prelude).toContain("function tag_acmeConstraint<Host, Subject>(");
   });
 
+  it("emits type declarations for extension-registered custom types", () => {
+    const prelude = buildSyntheticHelperPrelude([
+      {
+        extensionId: "x-stripe/monetary",
+        customTypes: [{ tsTypeNames: ["Decimal"] }],
+      },
+    ]);
+
+    expect(prelude).toContain("type Decimal = unknown;");
+  });
+
+  it("skips type declarations for TypeScript primitive keywords", () => {
+    // "bigint" is a TypeScript reserved keyword; emitting `type bigint = unknown;`
+    // causes TS2457. It's already known to the compiler, so no declaration is needed.
+    // Registering it as a tsTypeName is still valid (it means "match the native bigint
+    // type as a custom type"); only the prelude declaration is skipped.
+    const prelude = buildSyntheticHelperPrelude([
+      {
+        extensionId: "x-example/bigint",
+        customTypes: [{ tsTypeNames: ["bigint"] }],
+      },
+    ]);
+
+    expect(prelude).not.toContain("type bigint = unknown;");
+  });
+
+  it("throws when a custom type name is not a valid TypeScript identifier", () => {
+    expect(() =>
+      buildSyntheticHelperPrelude([
+        {
+          extensionId: "ext-a",
+          customTypes: [{ tsTypeNames: ["Not A Type"] }],
+        },
+      ])
+    ).toThrow('Invalid custom type name "Not A Type"');
+  });
+
+  it("throws when the same custom type name is registered by two different extensions", () => {
+    expect(() =>
+      buildSyntheticHelperPrelude([
+        {
+          extensionId: "ext-a",
+          customTypes: [{ tsTypeNames: ["Decimal"] }],
+        },
+        {
+          extensionId: "ext-b",
+          customTypes: [{ tsTypeNames: ["Decimal"] }],
+        },
+      ])
+    ).toThrow('Duplicate custom type name "Decimal"');
+  });
+
+  it("throws when the same custom type name appears twice within a single extension", () => {
+    expect(() =>
+      buildSyntheticHelperPrelude([
+        {
+          extensionId: "ext-a",
+          customTypes: [{ tsTypeNames: ["Decimal", "Decimal"] }],
+        },
+      ])
+    ).toThrow('Duplicate custom type name "Decimal"');
+  });
+
+  it("accepts a constraint on a field in an interface that references a custom extension type", () => {
+    // MixedConfig references Decimal, which is not defined in supportingDeclarations
+    // (it would normally be imported). The extension provides it as a custom type,
+    // causing `type Decimal = unknown;` to appear in the prelude, so the interface
+    // resolves and the minLength check on the string field passes.
+    const result = checkSyntheticTagApplication({
+      tagName: "minLength",
+      placement: "class-field",
+      hostType: "MixedConfig",
+      subjectType: "string",
+      argumentExpression: "1",
+      supportingDeclarations: [
+        "interface MixedConfig { amount: Decimal; label: string; }",
+      ],
+      extensions: [
+        {
+          extensionId: "x-stripe/monetary",
+          customTypes: [{ tsTypeNames: ["Decimal"] }],
+        },
+      ],
+    });
+
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
   it("lowers extension tag applications when extension metadata is supplied", () => {
     const lowered = lowerTagApplicationToSyntheticCall({
       tagName: "acmeConstraint",
