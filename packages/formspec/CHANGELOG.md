@@ -1,5 +1,22 @@
 # formspec
 
+## 0.1.0-alpha.35
+
+### Patch Changes
+
+- [#234](https://github.com/mike-north/formspec/pull/234) [`6945d19`](https://github.com/mike-north/formspec/commit/6945d19caff5fbd7b3aa0ffb074ae22ca6b03c5d) Thanks [@mike-north](https://github.com/mike-north)! - Fix a stack overflow in discriminator specialization when a generic object-like alias
+  uses a same-file conditional helper alias for the discriminator field and the bound
+  type falls back to metadata-derived discriminator values.
+  - `@formspec/build` now guards primitive alias unwrapping for same-file conditional
+    helper aliases so metadata-backed discriminator specialization no longer recurses
+    indefinitely.
+  - Added regression coverage for same-file local helper aliases, same-file inline
+    conditional discriminator fields, and the existing cross-file imported-helper
+    contrast case.
+
+- Updated dependencies [[`6945d19`](https://github.com/mike-north/formspec/commit/6945d19caff5fbd7b3aa0ffb074ae22ca6b03c5d)]:
+  - @formspec/build@0.1.0-alpha.35
+
 ## 0.1.0-alpha.34
 
 ### Patch Changes
