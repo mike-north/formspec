@@ -119,6 +119,24 @@ describe("@discriminator schema generation", () => {
       ].join("\n")
     );
 
+    fs.writeFileSync(
+      path.join(tmpDir, "refs.ts"),
+      [
+        "declare const __brand: unique symbol;",
+        "declare const __stripeType: unique symbol;",
+        "",
+        "/** @discriminator :type T */",
+        "export type Ref<T extends { readonly object: string } = { readonly object: string }> = {",
+        "  type: T extends { readonly object: infer O } ? (O extends string ? O : never) : never;",
+        "  id: string;",
+        "  url: string;",
+        "} & {",
+        "  readonly [__brand]: 'Ref';",
+        "  readonly [__stripeType]?: T;",
+        "};",
+      ].join("\n")
+    );
+
     fixturePath = path.join(tmpDir, "fixture.ts");
     fs.writeFileSync(
       fixturePath,
@@ -126,6 +144,7 @@ describe("@discriminator schema generation", () => {
         'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier, ExtractObjectTag } from "./names.js";',
         'import { Bar, InferredObjectCarrier } from "./names.js";',
         'import type { ReExportedCustomer, ReExportedOrganization } from "./aliases.js";',
+        'import type { Ref as ImportedRef } from "./refs.js";',
         "",
         "/** @discriminator :kind T */",
         "export interface TaggedValue<T> {",
@@ -197,6 +216,24 @@ describe("@discriminator schema generation", () => {
         "  url: string;",
         "};",
         "",
+        "declare const __localBrand: unique symbol;",
+        "declare const __localStripeType: unique symbol;",
+        "",
+        "/** @discriminator :type T */",
+        "export type LocalBrandedRef<T extends { readonly object: string } = { readonly object: string }> = {",
+        "  type: T extends { readonly object: infer O } ? (O extends string ? O : never) : never;",
+        "  id: string;",
+        "  url: string;",
+        "} & {",
+        "  readonly [__localBrand]: 'Ref';",
+        "  readonly [__localStripeType]?: T;",
+        "};",
+        "",
+        "export interface ImportedAliasCustomer {",
+        '  readonly object: "customer";',
+        "  readonly id: string;",
+        "}",
+        "",
         "export interface ValidWrapper {",
         "  fromInterface: TaggedValue<Customer>;",
         "  fromClass: TaggedClass<Organization>;",
@@ -225,6 +262,15 @@ describe("@discriminator schema generation", () => {
         "  sameFileHelperMetadataFallback: SameFileHelperPointer<Bar>;",
         "  sameFileInlineMetadataFallback: InlineConditionalPointer<Bar>;",
         "  sameFileHelperInferredMetadataFallback: SameFileHelperPointer<InferredObjectCarrier>;",
+        "}",
+        "",
+        "export interface ImportedAliasWrapper {",
+        "  localCustomer: LocalBrandedRef<ImportedAliasCustomer>;",
+        "  importedCustomer: ImportedRef<ImportedAliasCustomer>;",
+        "  localBar: LocalBrandedRef<Bar>;",
+        "  importedBar: ImportedRef<Bar>;",
+        "  localInferredBar: LocalBrandedRef<InferredObjectCarrier>;",
+        "  importedInferredBar: ImportedRef<InferredObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -525,6 +571,63 @@ describe("@discriminator schema generation", () => {
     expect(resolveTypeEnum("sameFileHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("sameFileInlineMetadataFallback")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("sameFileHelperInferredMetadataFallback")).toEqual([
+      "prefixed_inferred_object_carrier",
+    ]);
+  });
+
+  it("specializes imported generic aliases the same way as local generic aliases", () => {
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "ImportedAliasWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+      discriminator: {
+        apiNamePrefix: "prefixed_",
+      },
+    });
+
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+      const resolvedSchemaRecord = expectRecord(
+        ref === undefined
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+      const typePropertyRecord = expectRecord(
+        propertiesRecord["type"],
+        `Missing discriminator field schema for ${propertyName}`
+      );
+
+      return typePropertyRecord["enum"] as readonly unknown[];
+    };
+
+    expect(resolveTypeEnum("localCustomer")).toEqual(["customer"]);
+    expect(resolveTypeEnum("importedCustomer")).toEqual(["customer"]);
+    expect(resolveTypeEnum("localBar")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("importedBar")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("localInferredBar")).toEqual(["prefixed_inferred_object_carrier"]);
+    expect(resolveTypeEnum("importedInferredBar")).toEqual([
       "prefixed_inferred_object_carrier",
     ]);
   });
