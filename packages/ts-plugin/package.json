@@ -1,6 +1,6 @@
 {
   "name": "@formspec/ts-plugin",
-  "version": "0.1.0-alpha.30",
+  "version": "0.1.0-alpha.33",
   "description": "TypeScript language service plugin for FormSpec semantic comment analysis",
   "type": "module",
   "main": "./index.cjs",
