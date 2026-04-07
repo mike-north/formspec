@@ -1,5 +1,13 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.35
+
+### Patch Changes
+
+- Updated dependencies [[`6945d19`](https://github.com/mike-north/formspec/commit/6945d19caff5fbd7b3aa0ffb074ae22ca6b03c5d)]:
+  - @formspec/build@0.1.0-alpha.35
+  - @formspec/cli@0.1.0-alpha.35
+
 ## 0.1.0-alpha.34
 
 ### Patch Changes
