@@ -1669,9 +1669,7 @@ function resolveRegisteredCustomTypeFromTypeNode(
   }
 
   if (ts.isTypeReferenceNode(typeNode) && ts.isIdentifier(typeNode.typeName)) {
-    const aliasDecl = checker
-      .getSymbolAtLocation(typeNode.typeName)
-      ?.declarations?.find(ts.isTypeAliasDeclaration);
+    const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
     if (aliasDecl !== undefined) {
       return resolveRegisteredCustomTypeFromTypeNode(aliasDecl.type, extensionRegistry, checker);
     }
@@ -1960,9 +1958,7 @@ function getReferencedTypeAliasDeclaration(
     return undefined;
   }
 
-  return checker
-    .getSymbolAtLocation(typeNode.typeName)
-    ?.declarations?.find(ts.isTypeAliasDeclaration);
+  return getTypeAliasDeclarationFromTypeReference(typeNode, checker);
 }
 
 function shouldEmitPrimitiveAliasDefinition(
@@ -1973,9 +1969,7 @@ function shouldEmitPrimitiveAliasDefinition(
     return false;
   }
 
-  const aliasDecl = checker
-    .getSymbolAtLocation(typeNode.typeName)
-    ?.declarations?.find(ts.isTypeAliasDeclaration);
+  const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
   if (!aliasDecl) {
     return false;
   }
@@ -2776,8 +2770,7 @@ function resolveAliasedTypeNode(
     return typeNode;
   }
 
-  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  const aliasDecl = symbol?.declarations?.find(ts.isTypeAliasDeclaration);
+  const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
   if (aliasDecl === undefined || visited.has(aliasDecl)) {
     return typeNode;
   }
@@ -2875,9 +2868,7 @@ function extractTypeAliasConstraintNodes(
   }
 
   const symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  if (!symbol?.declarations) return [];
-
-  const aliasDecl = symbol.declarations.find(ts.isTypeAliasDeclaration);
+  const aliasDecl = getAliasedTypeAliasDeclaration(symbol, checker);
   if (!aliasDecl) return [];
 
   // Don't extract from object type aliases
@@ -2907,6 +2898,28 @@ function extractTypeAliasConstraintNodes(
   );
 
   return constraints;
+}
+
+function getAliasedSymbol(symbol: ts.Symbol | undefined, checker: ts.TypeChecker): ts.Symbol | undefined {
+  if (symbol === undefined) {
+    return undefined;
+  }
+
+  return symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+}
+
+function getAliasedTypeAliasDeclaration(
+  symbol: ts.Symbol | undefined,
+  checker: ts.TypeChecker
+): ts.TypeAliasDeclaration | undefined {
+  return getAliasedSymbol(symbol, checker)?.declarations?.find(ts.isTypeAliasDeclaration);
+}
+
+function getTypeAliasDeclarationFromTypeReference(
+  typeNode: ts.TypeReferenceNode,
+  checker: ts.TypeChecker
+): ts.TypeAliasDeclaration | undefined {
+  return getAliasedTypeAliasDeclaration(checker.getSymbolAtLocation(typeNode.typeName), checker);
 }
 
 // =============================================================================
