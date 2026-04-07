@@ -8,7 +8,7 @@ import type {
   ResolvedMetadata,
   ResolvedScalarMetadata,
   ExtensionDefinition,
-} from "@formspec/core/internals";
+} from "@formspec/core";
 import * as ts from "typescript";
 import { parseCommentBlock } from "./comment-syntax.js";
 import { resolveDeclarationPlacement } from "./ts-binding.js";
@@ -555,10 +555,12 @@ export function analyzeMetadataForSourceFile(
   options: AnalyzeMetadataForSourceFileOptions
 ): readonly MetadataAnalysisResult[] {
   const results: MetadataAnalysisResult[] = [];
+  const checker = options.program.getTypeChecker();
 
   const visit = (node: ts.Node): void => {
-    const analyzed = analyzeMetadataForNode({
+    const analyzed = analyzeMetadataForNodeWithChecker({
       program: options.program,
+      checker,
       node,
       ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
       ...(options.extensions !== undefined ? { extensions: options.extensions } : {}),
