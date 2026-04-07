@@ -28,7 +28,16 @@ export type FieldTypeCategory =
  * @param checker - The TypeScript type checker instance
  * @returns True if the type is string, a string literal, or a union of string types
  */
-export function isStringType(type: ts.Type, checker: ts.TypeChecker): boolean {
+export function isStringType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  seen = new Set<ts.Type>()
+): boolean {
+  if (seen.has(type)) {
+    return false;
+  }
+  seen.add(type);
+
   // Check for string primitive
   if (type.flags & 4 /* ts.TypeFlags.String */) {
     return true;
@@ -41,7 +50,12 @@ export function isStringType(type: ts.Type, checker: ts.TypeChecker): boolean {
 
   // Check for union of string literals (e.g., "a" | "b")
   if (type.isUnion()) {
-    return type.types.every((t) => isStringType(t, checker));
+    return type.types.every((t) => isStringType(t, checker, seen));
+  }
+
+  const baseConstraint = checker.getBaseConstraintOfType(type);
+  if (baseConstraint !== undefined && baseConstraint !== type) {
+    return isStringType(baseConstraint, checker, seen);
   }
 
   return false;

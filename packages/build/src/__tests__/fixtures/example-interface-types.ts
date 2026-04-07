@@ -82,6 +82,34 @@ export type TypeAliasWithEnumOptions = {
   color: "red" | "green" | "blue";
 };
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing parenthesized object-like alias analysis
+export type ParenthesizedTypeAlias = ({
+  /** @displayName Parenthesized Label */
+  label: string;
+});
+
+export type IntersectionTypeAlias = {
+  /** @displayName Left Label */
+  label: string;
+} & {
+  /** @displayName Right Count */
+  count: number;
+};
+
+export type ParenthesizedIntersectionTypeAlias = ({
+  /** @displayName Parenthesized Left Label */
+  label: string;
+} & {
+  /** @displayName Parenthesized Right Count */
+  count: number;
+});
+
+export type GenericReferencedTypeAlias<T> = {
+  label: T;
+};
+
+export type InstantiatedReferencedTypeAlias = GenericReferencedTypeAlias<string>;
+
 // Non-object type aliases (should produce error results)
 export type StringAlias = string;
 export type UnionAlias = "a" | "b" | "c";

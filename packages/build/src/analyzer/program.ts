@@ -11,6 +11,7 @@ import {
   analyzeClassToIR,
   analyzeInterfaceToIR,
   analyzeTypeAliasToIR,
+  type DiscriminatorResolutionOptions,
   type IRClassAnalysis,
 } from "./class-analyzer.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
@@ -210,7 +211,8 @@ export function analyzeNamedTypeToIR(
   filePath: string,
   typeName: string,
   extensionRegistry?: ExtensionRegistry,
-  metadataPolicy?: MetadataPolicyInput
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
 ): IRClassAnalysis {
   const ctx = createProgramContext(filePath);
   return analyzeNamedTypeToIRFromProgramContext(
@@ -218,7 +220,8 @@ export function analyzeNamedTypeToIR(
     filePath,
     typeName,
     extensionRegistry,
-    metadataPolicy
+    metadataPolicy,
+    discriminatorOptions
   );
 }
 
@@ -230,7 +233,8 @@ export function analyzeNamedTypeToIRFromProgramContext(
   filePath: string,
   typeName: string,
   extensionRegistry?: ExtensionRegistry,
-  metadataPolicy?: MetadataPolicyInput
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
 ): IRClassAnalysis {
   const analysisFilePath = path.resolve(filePath);
 
@@ -241,7 +245,8 @@ export function analyzeNamedTypeToIRFromProgramContext(
       ctx.checker,
       analysisFilePath,
       extensionRegistry,
-      metadataPolicy
+      metadataPolicy,
+      discriminatorOptions
     );
   }
 
@@ -252,7 +257,8 @@ export function analyzeNamedTypeToIRFromProgramContext(
       ctx.checker,
       analysisFilePath,
       extensionRegistry,
-      metadataPolicy
+      metadataPolicy,
+      discriminatorOptions
     );
   }
 
@@ -263,7 +269,8 @@ export function analyzeNamedTypeToIRFromProgramContext(
       ctx.checker,
       analysisFilePath,
       extensionRegistry,
-      metadataPolicy
+      metadataPolicy,
+      discriminatorOptions
     );
     if (result.ok) {
       return result.analysis;

@@ -50,6 +50,10 @@ function isObjectType(type: ts.Type): type is ts.ObjectType {
   return !!(type.flags & ts.TypeFlags.Object);
 }
 
+function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
+  return !!(type.flags & ts.TypeFlags.Intersection);
+}
+
 /**
  * Type guard for ts.TypeReference — checks ObjectFlags.Reference on top of ObjectType.
  * The internal `as` cast is isolated inside this guard and is required because
@@ -153,6 +157,21 @@ export interface DeclarationRootInfo {
   readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
 }
 
+/**
+ * Discriminator-specific schema generation options.
+ *
+ * @public
+ */
+export interface DiscriminatorResolutionOptions {
+  /**
+   * Optional prefix applied only to metadata-derived discriminator values.
+   *
+   * Literal discriminator identities taken directly from a bound type remain
+   * unchanged.
+   */
+  readonly apiNamePrefix?: string | undefined;
+}
+
 interface DiscriminatorDirective {
   readonly fieldName: string;
   readonly typeParameterName: string;
@@ -162,12 +181,17 @@ interface DiscriminatorDirective {
 interface AnalyzerMetadataPolicy {
   readonly raw: MetadataPolicyInput | undefined;
   readonly normalized: ReturnType<typeof normalizeMetadataPolicy>;
+  readonly discriminator: DiscriminatorResolutionOptions | undefined;
 }
 
-export function createAnalyzerMetadataPolicy(input?: MetadataPolicyInput): AnalyzerMetadataPolicy {
+export function createAnalyzerMetadataPolicy(
+  input?: MetadataPolicyInput,
+  discriminator?: DiscriminatorResolutionOptions
+): AnalyzerMetadataPolicy {
   return {
     raw: input,
     normalized: normalizeMetadataPolicy(input),
+    discriminator,
   };
 }
 
@@ -281,9 +305,13 @@ export function analyzeClassToIR(
   checker: ts.TypeChecker,
   file = "",
   extensionRegistry?: ExtensionRegistry,
-  metadataPolicy?: MetadataPolicyInput
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
 ): IRClassAnalysis {
-  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(
+    metadataPolicy,
+    discriminatorOptions
+  );
   const name = classDecl.name?.text ?? "AnonymousClass";
   const fields: FieldNode[] = [];
   const fieldLayouts: FieldLayoutMetadata[] = [];
@@ -376,9 +404,13 @@ export function analyzeInterfaceToIR(
   checker: ts.TypeChecker,
   file = "",
   extensionRegistry?: ExtensionRegistry,
-  metadataPolicy?: MetadataPolicyInput
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
 ): IRClassAnalysis {
-  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(
+    metadataPolicy,
+    discriminatorOptions
+  );
   const name = interfaceDecl.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -458,21 +490,25 @@ export function analyzeTypeAliasToIR(
   checker: ts.TypeChecker,
   file = "",
   extensionRegistry?: ExtensionRegistry,
-  metadataPolicy?: MetadataPolicyInput
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
 ): AnalyzeTypeAliasToIRResult {
-  if (!ts.isTypeLiteralNode(typeAlias.type)) {
+  const members = getObjectLikeTypeAliasMembers(typeAlias.type);
+  if (members === null) {
     const sourceFile = typeAlias.getSourceFile();
     const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- enum reverse mapping can be undefined for compiler-internal kinds
     const kindDesc = ts.SyntaxKind[typeAlias.type.kind] ?? "unknown";
     return {
       ok: false,
-      error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object type literal (found ${kindDesc})`,
+      error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object-like type alias (found ${kindDesc})`,
     };
   }
 
-  const typeLiteral = typeAlias.type;
-  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(metadataPolicy);
+  const normalizedMetadataPolicy = createAnalyzerMetadataPolicy(
+    metadataPolicy,
+    discriminatorOptions
+  );
   const name = typeAlias.name.text;
   const fields: FieldNode[] = [];
   const typeRegistry: Record<string, TypeDefinition> = {};
@@ -487,7 +523,7 @@ export function analyzeTypeAliasToIR(
   diagnostics.push(...typeAliasDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
-  for (const member of typeLiteral.members) {
+  for (const member of members) {
     if (ts.isPropertySignature(member)) {
       const fieldNode = analyzeInterfacePropertyToIR(
         member,
@@ -653,16 +689,59 @@ function isNullishSemanticType(type: ts.Type): boolean {
   return type.isUnion() && type.types.some((member) => isNullishSemanticType(member));
 }
 
-function isStringLikeSemanticType(type: ts.Type): boolean {
+function isStringLikeSemanticType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  seen = new Set<ts.Type>()
+): boolean {
+  if (seen.has(type)) {
+    return false;
+  }
+  seen.add(type);
+
   if (type.flags & ts.TypeFlags.StringLike) {
     return true;
   }
 
   if (type.isUnion()) {
-    return type.types.length > 0 && type.types.every((member) => isStringLikeSemanticType(member));
+    return (
+      type.types.length > 0 &&
+      type.types.every((member) => isStringLikeSemanticType(member, checker, seen))
+    );
+  }
+
+  const baseConstraint = checker.getBaseConstraintOfType(type);
+  if (baseConstraint !== undefined && baseConstraint !== type) {
+    return isStringLikeSemanticType(baseConstraint, checker, seen);
   }
 
   return false;
+}
+
+function getObjectLikeTypeAliasMembers(
+  typeNode: ts.TypeNode
+): readonly ts.TypeElement[] | null {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return getObjectLikeTypeAliasMembers(typeNode.type);
+  }
+
+  if (ts.isTypeLiteralNode(typeNode)) {
+    return [...typeNode.members];
+  }
+
+  if (ts.isIntersectionTypeNode(typeNode)) {
+    const members: ts.TypeElement[] = [];
+    for (const intersectionMember of typeNode.types) {
+      const resolvedMembers = getObjectLikeTypeAliasMembers(intersectionMember);
+      if (resolvedMembers === null) {
+        return null;
+      }
+      members.push(...resolvedMembers);
+    }
+    return members;
+  }
+
+  return null;
 }
 
 function extractDiscriminatorDirective(
@@ -792,7 +871,7 @@ function validateDiscriminatorDirective(
     return null;
   }
 
-  if (!isStringLikeSemanticType(property.type)) {
+  if (!isStringLikeSemanticType(property.type, checker)) {
     diagnostics.push(
       makeAnalysisDiagnostic(
         "TYPE_MISMATCH",
@@ -834,12 +913,12 @@ function getConcreteTypeArgumentForDiscriminator(
 
 function resolveLiteralDiscriminatorPropertyValue(
   boundType: ts.Type,
-  fieldName: string,
+  propertyName: string,
   checker: ts.TypeChecker,
   provenance: Provenance,
   diagnostics: ConstraintSemanticDiagnostic[]
 ): string | null | undefined {
-  const propertySymbol = boundType.getProperty(fieldName);
+  const propertySymbol = boundType.getProperty(propertyName);
   if (propertySymbol === undefined) {
     return undefined;
   }
@@ -875,6 +954,10 @@ function resolveLiteralDiscriminatorPropertyValue(
   return undefined;
 }
 
+function getDiscriminatorIdentityPropertyNames(fieldName: string): readonly string[] {
+  return fieldName === "object" ? ["object"] : [fieldName, "object"];
+}
+
 function resolveDiscriminatorApiName(
   boundType: ts.Type,
   checker: ts.TypeChecker,
@@ -899,6 +982,14 @@ function resolveDiscriminatorApiName(
     }
   );
   return metadata?.apiName;
+}
+
+function applyDiscriminatorApiNamePrefix(
+  value: string,
+  discriminatorOptions: DiscriminatorResolutionOptions | undefined
+): string {
+  const prefix = discriminatorOptions?.apiNamePrefix;
+  return prefix === undefined || prefix === "" ? value : `${prefix}${value}`;
 }
 
 function resolveNamedDiscriminatorDeclaration(
@@ -981,23 +1072,28 @@ function resolveDiscriminatorValue(
     }
   }
 
-  const literalIdentityValue = resolveLiteralDiscriminatorPropertyValue(
-    boundType,
-    fieldName,
-    checker,
-    provenance,
-    diagnostics
-  );
-  if (literalIdentityValue !== undefined) {
-    return literalIdentityValue;
+  for (const identityPropertyName of getDiscriminatorIdentityPropertyNames(fieldName)) {
+    const literalIdentityValue = resolveLiteralDiscriminatorPropertyValue(
+      boundType,
+      identityPropertyName,
+      checker,
+      provenance,
+      diagnostics
+    );
+    if (literalIdentityValue === null) {
+      return null;
+    }
+    if (literalIdentityValue !== undefined) {
+      return literalIdentityValue;
+    }
   }
 
   const apiName = resolveDiscriminatorApiName(boundType, checker, metadataPolicy);
   if (apiName?.source === "explicit") {
-    return apiName.value;
+    return applyDiscriminatorApiNamePrefix(apiName.value, metadataPolicy.discriminator);
   }
   if (apiName?.source === "inferred") {
-    return apiName.value;
+    return applyDiscriminatorApiNamePrefix(apiName.value, metadataPolicy.discriminator);
   }
 
   diagnostics.push(
@@ -1115,17 +1211,26 @@ function extractReferenceTypeArguments(
   extensionRegistry: ExtensionRegistry | undefined,
   diagnostics: ConstraintSemanticDiagnostic[] | undefined
 ): readonly { readonly tsType: ts.Type; readonly typeNode: TypeNode }[] {
-  const typeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
-  if (typeNode === undefined) {
+  const sourceTypeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+  if (sourceTypeNode === undefined) {
     return [];
   }
 
-  const resolvedTypeNode = resolveAliasedTypeNode(typeNode, checker);
-  if (!ts.isTypeReferenceNode(resolvedTypeNode) || resolvedTypeNode.typeArguments === undefined) {
+  const unwrapParentheses = (typeNode: ts.TypeNode): ts.TypeNode =>
+    ts.isParenthesizedTypeNode(typeNode) ? unwrapParentheses(typeNode.type) : typeNode;
+
+  const directTypeNode = unwrapParentheses(sourceTypeNode);
+  const referenceTypeNode = ts.isTypeReferenceNode(directTypeNode)
+    ? directTypeNode
+    : (() => {
+        const resolvedTypeNode = resolveAliasedTypeNode(directTypeNode, checker);
+        return ts.isTypeReferenceNode(resolvedTypeNode) ? resolvedTypeNode : null;
+      })();
+  if (referenceTypeNode?.typeArguments === undefined) {
     return [];
   }
 
-  return resolvedTypeNode.typeArguments.map((argumentNode) => {
+  return referenceTypeNode.typeArguments.map((argumentNode) => {
     const argumentType = checker.getTypeFromTypeNode(argumentNode);
     return {
       tsType: argumentType,
@@ -1675,6 +1780,29 @@ export function resolveTypeNode(
     );
   }
 
+  if (isIntersectionType(type)) {
+    const sourceTypeNode =
+      sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+    const resolvedSourceTypeNode =
+      sourceTypeNode === undefined ? undefined : resolveAliasedTypeNode(sourceTypeNode, checker);
+    if (
+      resolvedSourceTypeNode !== undefined &&
+      getObjectLikeTypeAliasMembers(resolvedSourceTypeNode) !== null
+    ) {
+      return resolveObjectType(
+        type,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        sourceNode,
+        metadataPolicy,
+        extensionRegistry,
+        diagnostics
+      );
+    }
+  }
+
   // --- Object types ---
   if (isObjectType(type)) {
     return resolveObjectType(
@@ -2147,7 +2275,7 @@ function shouldEmitResolvedObjectProperty(
 }
 
 function resolveObjectType(
-  type: ts.ObjectType,
+  type: ts.Type,
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,
@@ -2239,16 +2367,18 @@ function resolveObjectType(
   // Detect pure dictionary types (Record<string, T> or { [k: string]: T })
   // after the recursion guard/placeholder setup so recursive records can point
   // back at the named type instead of collapsing to an empty object.
-  const recordNode = tryResolveRecordType(
-    type,
-    checker,
-    file,
-    typeRegistry,
-    visiting,
-    metadataPolicy,
-    extensionRegistry,
-    collectedDiagnostics
-  );
+  const recordNode = isObjectType(type)
+    ? tryResolveRecordType(
+        type,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        metadataPolicy,
+        extensionRegistry,
+        collectedDiagnostics
+      )
+    : null;
   if (recordNode) {
     visiting.delete(type);
     if (registryTypeName !== undefined && shouldRegisterNamedType) {
@@ -2513,9 +2643,13 @@ function getNamedTypeFieldNodeInfoMap(
 
     // Try type alias with type literal body
     const typeAliasDecl = declarations.find(ts.isTypeAliasDeclaration);
-    if (typeAliasDecl && ts.isTypeLiteralNode(typeAliasDecl.type)) {
+    const typeAliasMembers =
+      typeAliasDecl === undefined
+        ? null
+        : getObjectLikeTypeAliasMembers(typeAliasDecl.type);
+    if (typeAliasDecl && typeAliasMembers !== null) {
       return buildFieldNodeInfoMap(
-        typeAliasDecl.type.members,
+        typeAliasMembers,
         checker,
         file,
         typeRegistry,
@@ -2605,7 +2739,7 @@ function isNullishTypeNode(typeNode: ts.TypeNode): boolean {
 }
 
 function buildFieldNodeInfoMap(
-  members: ts.NodeArray<ts.TypeElement>,
+  members: readonly ts.TypeElement[],
   checker: ts.TypeChecker,
   file: string,
   typeRegistry: Record<string, TypeDefinition>,

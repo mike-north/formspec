@@ -67,7 +67,8 @@ export function buildMixedAuthoringSchemas(
     filePath,
     typeName,
     schemaOptions.extensionRegistry,
-    schemaOptions.metadata
+    schemaOptions.metadata,
+    schemaOptions.discriminator
   );
   const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays, schemaOptions.metadata);
   const ir = canonicalizeTSDoc(

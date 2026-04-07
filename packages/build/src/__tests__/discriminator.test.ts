@@ -51,6 +51,23 @@ describe("@discriminator schema generation", () => {
         "  id: string;",
         "}",
         "",
+        "/** @apiName customer_record */",
+        "export interface CustomerObjectCarrier {",
+        '  readonly object: "customer";',
+        "  readonly id: string;",
+        "}",
+        "",
+        "/** @apiName custom_bar */",
+        "export class Bar {",
+        "  readonly object!: string;",
+        "  readonly id!: string;",
+        "}",
+        "",
+        "export class InferredObjectCarrier {",
+        "  readonly object!: string;",
+        "  readonly id!: string;",
+        "}",
+        "",
         "export type ObjectAliasCarrier = {",
         '  kind: "object_alias_carrier";',
         "  id: string;",
@@ -75,6 +92,10 @@ describe("@discriminator schema generation", () => {
         "export interface MissingCarrier {",
         "  id: string;",
         "}",
+        "",
+        "export type ExtractObjectTag<T> = T extends { readonly object: infer O }",
+        "  ? O extends string ? O : never",
+        "  : never;",
       ].join("\n")
     );
 
@@ -90,7 +111,8 @@ describe("@discriminator schema generation", () => {
     fs.writeFileSync(
       fixturePath,
       [
-        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier } from "./names.js";',
+        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier, ExtractObjectTag } from "./names.js";',
+        'import { Bar, InferredObjectCarrier } from "./names.js";',
         'import type { ReExportedCustomer, ReExportedOrganization } from "./aliases.js";',
         "",
         "/** @discriminator :kind T */",
@@ -111,6 +133,40 @@ describe("@discriminator schema generation", () => {
         "  id: string;",
         "};",
         "",
+        "/** @discriminator :type T */",
+        "export type LiteralPointer<T extends { readonly object: string }> = {",
+        "  type: ExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "  readonly __type?: T;",
+        "};",
+        "",
+        "/** @discriminator :type T */",
+        "export type ParenthesizedLiteralPointer<T extends { readonly object: string }> = ({",
+        "  type: ExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "  readonly __type?: T;",
+        "});",
+        "",
+        "/** @discriminator :type T */",
+        "export type IntersectionPointer<T extends { readonly object: string }> = {",
+        "  type: ExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "} & {",
+        "  readonly __type?: T;",
+        "};",
+        "",
+        "/** @discriminator :type T */",
+        "export type ParenthesizedIntersectionPointer<T extends { readonly object: string }> = ({",
+        "  type: ExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "} & {",
+        "  readonly __type?: T;",
+        "});",
+        "",
         "export interface ValidWrapper {",
         "  fromInterface: TaggedValue<Customer>;",
         "  fromClass: TaggedClass<Organization>;",
@@ -123,6 +179,15 @@ describe("@discriminator schema generation", () => {
         "  fromIntersectionAlias: TaggedValue<IntersectionAliasCarrier>;",
         "  fromGenericString: TaggedValue<GenericCarrier<string>>;",
         "  fromGenericNumber: TaggedValue<GenericCarrier<number>>;",
+        "}",
+        "",
+        "export interface GenericObjectAliasWrapper {",
+        "  fromLiteralAlias: LiteralPointer<CustomerObjectCarrier>;",
+        "  fromParenthesizedLiteralAlias: ParenthesizedLiteralPointer<CustomerObjectCarrier>;",
+        "  fromIntersectionAlias: IntersectionPointer<CustomerObjectCarrier>;",
+        "  fromParenthesizedIntersectionAlias: ParenthesizedIntersectionPointer<CustomerObjectCarrier>;",
+        "  fromMetadataFallback: IntersectionPointer<Bar>;",
+        "  fromInferredMetadataFallback: IntersectionPointer<InferredObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -260,6 +325,101 @@ describe("@discriminator schema generation", () => {
     expectResolvedKindEnum("fromIntersectionAlias", "intersection_alias_carrier");
     expectResolvedKindEnum("fromGenericString", "generic_carrier__string");
     expectResolvedKindEnum("fromGenericNumber", "generic_carrier__number");
+  });
+
+  it("specializes generic object aliases across literal and intersection shapes", () => {
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "GenericObjectAliasWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+    });
+
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolvePropertySchema = (propertyName: string): Record<string, unknown> => {
+      const propertySchema = rootProperties[propertyName];
+      expect(propertySchema).toBeDefined();
+      expect(typeof propertySchema).toBe("object");
+      expect(propertySchema).not.toBeNull();
+
+      const propertyRecord = propertySchema as Record<string, unknown>;
+      const ref = typeof propertyRecord["$ref"] === "string" ? propertyRecord["$ref"] : undefined;
+      if (ref === undefined) {
+        return propertyRecord;
+      }
+
+      expect(ref.startsWith("#/$defs/")).toBe(true);
+      const definitionName = ref.replace(/^#\/\$defs\//u, "");
+      const definition = defs[definitionName];
+      expect(definition).toBeDefined();
+      expect(typeof definition).toBe("object");
+      expect(definition).not.toBeNull();
+      return definition as Record<string, unknown>;
+    };
+    const expectResolvedTypeEnum = (propertyName: string, expectedValue: string): void => {
+      expect(resolvePropertySchema(propertyName)).toMatchObject({
+        type: "object",
+        properties: {
+          type: {
+            enum: [expectedValue],
+          },
+        },
+      });
+    };
+
+    expectResolvedTypeEnum("fromLiteralAlias", "customer");
+    expectResolvedTypeEnum("fromParenthesizedLiteralAlias", "customer");
+    expectResolvedTypeEnum("fromIntersectionAlias", "customer");
+    expectResolvedTypeEnum("fromParenthesizedIntersectionAlias", "customer");
+    expectResolvedTypeEnum("fromMetadataFallback", "custom_bar");
+    expectResolvedTypeEnum("fromInferredMetadataFallback", "inferred_object_carrier");
+  });
+
+  it("applies discriminator apiNamePrefix only to metadata-derived discriminator values", () => {
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "GenericObjectAliasWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+      discriminator: {
+        apiNamePrefix: "v2.custom.",
+      },
+    });
+
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
+      const propertySchema = rootProperties[propertyName] as Record<string, unknown>;
+      const ref = typeof propertySchema["$ref"] === "string" ? propertySchema["$ref"] : undefined;
+      const resolvedSchema =
+        ref === undefined
+          ? propertySchema
+          : ((defs[ref.replace(/^#\/\$defs\//u, "")] ?? null) as Record<string, unknown> | null);
+      expect(resolvedSchema).not.toBeNull();
+      const properties = resolvedSchema?.properties as Record<string, unknown>;
+      return (properties["type"] as Record<string, unknown>).enum as readonly unknown[];
+    };
+
+    expect(resolveTypeEnum("fromLiteralAlias")).toEqual(["customer"]);
+    expect(resolveTypeEnum("fromMetadataFallback")).toEqual(["v2.custom.custom_bar"]);
+    expect(resolveTypeEnum("fromInferredMetadataFallback")).toEqual([
+      "v2.custom.inferred_object_carrier",
+    ]);
   });
 
   it("rejects optional discriminator fields", () => {

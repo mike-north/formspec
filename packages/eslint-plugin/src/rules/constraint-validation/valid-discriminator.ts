@@ -25,40 +25,6 @@ type MessageIds =
   | "nullableTargetField"
   | "nonStringLikeTargetField";
 
-function getDirectPropertyMembers(
-  node: import("../../utils/rule-helpers.js").SupportedDeclaration
-): readonly (TSESTree.PropertyDefinition | TSESTree.TSPropertySignature)[] {
-  switch (node.type) {
-    case AST_NODE_TYPES.PropertyDefinition:
-    case AST_NODE_TYPES.TSPropertySignature:
-      return [node];
-
-    case AST_NODE_TYPES.ClassDeclaration:
-      return node.body.body.filter(
-        (member): member is TSESTree.PropertyDefinition =>
-          member.type === AST_NODE_TYPES.PropertyDefinition
-      );
-
-    case AST_NODE_TYPES.TSInterfaceDeclaration:
-      return node.body.body.filter(
-        (member): member is TSESTree.TSPropertySignature =>
-          member.type === AST_NODE_TYPES.TSPropertySignature
-      );
-
-    case AST_NODE_TYPES.TSTypeAliasDeclaration:
-      if (node.typeAnnotation.type !== AST_NODE_TYPES.TSTypeLiteral) {
-        return [];
-      }
-      return node.typeAnnotation.members.filter(
-        (member): member is TSESTree.TSPropertySignature =>
-          member.type === AST_NODE_TYPES.TSPropertySignature
-      );
-
-    default:
-      return [];
-  }
-}
-
 function getLocalTypeParameterNames(
   node: import("../../utils/rule-helpers.js").SupportedDeclaration
 ): Set<string> {
@@ -82,6 +48,76 @@ function isOptionalProperty(
     (ts.isPropertyDeclaration(tsMember) || ts.isPropertySignature(tsMember)) &&
     tsMember.questionToken !== undefined
   );
+}
+
+function getObjectLikeTypeAliasMembers(
+  typeNode: ts.TypeNode
+): readonly ts.TypeElement[] | null {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return getObjectLikeTypeAliasMembers(typeNode.type);
+  }
+
+  if (ts.isTypeLiteralNode(typeNode)) {
+    return [...typeNode.members];
+  }
+
+  if (ts.isIntersectionTypeNode(typeNode)) {
+    const members: ts.TypeElement[] = [];
+    for (const intersectionMember of typeNode.types) {
+      const resolvedMembers = getObjectLikeTypeAliasMembers(intersectionMember);
+      if (resolvedMembers === null) {
+        return null;
+      }
+      members.push(...resolvedMembers);
+    }
+    return members;
+  }
+
+  return null;
+}
+
+function isObjectLikeTypeAliasDeclaration(
+  node: TSESTree.TSTypeAliasDeclaration,
+  services: ParserServicesWithTypeInformation
+): boolean {
+  const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+  return ts.isTypeAliasDeclaration(tsNode) && getObjectLikeTypeAliasMembers(tsNode.type) !== null;
+}
+
+function getDirectPropertyMembers(
+  node: import("../../utils/rule-helpers.js").SupportedDeclaration,
+  services: ParserServicesWithTypeInformation
+): readonly (TSESTree.PropertyDefinition | TSESTree.TSPropertySignature)[] {
+  switch (node.type) {
+    case AST_NODE_TYPES.ClassDeclaration:
+      return node.body.body.filter(
+        (member): member is TSESTree.PropertyDefinition =>
+          member.type === AST_NODE_TYPES.PropertyDefinition
+      );
+    case AST_NODE_TYPES.TSInterfaceDeclaration:
+      return node.body.body.filter(
+        (member): member is TSESTree.TSPropertySignature =>
+          member.type === AST_NODE_TYPES.TSPropertySignature
+      );
+    case AST_NODE_TYPES.TSTypeAliasDeclaration: {
+      const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+      if (!ts.isTypeAliasDeclaration(tsNode)) {
+        return [];
+      }
+
+      const directMembers = getObjectLikeTypeAliasMembers(tsNode.type) ?? [];
+      return directMembers.flatMap((member) => {
+        if (!ts.isPropertySignature(member)) {
+          return [];
+        }
+
+        const estreeNode = services.tsNodeToESTreeNodeMap.get(member);
+        return estreeNode.type === AST_NODE_TYPES.TSPropertySignature ? [estreeNode] : [];
+      });
+    }
+    default:
+      return [];
+  }
 }
 
 function isIdentifierLike(value: string): boolean {
@@ -137,7 +173,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
         node.type === AST_NODE_TYPES.PropertyDefinition ||
         node.type === AST_NODE_TYPES.TSPropertySignature ||
         (node.type === AST_NODE_TYPES.TSTypeAliasDeclaration &&
-          node.typeAnnotation.type !== AST_NODE_TYPES.TSTypeLiteral)
+          !isObjectLikeTypeAliasDeclaration(node, services))
       ) {
         for (const tag of tags) {
           context.report({
@@ -158,9 +194,9 @@ export const validDiscriminator = createRule<[], MessageIds>({
         }
         return;
       }
-
       const localTypeParameters = getLocalTypeParameterNames(node);
-      const directMembers = getDirectPropertyMembers(node);
+      const checker = services.program.getTypeChecker();
+      const directMembers = getDirectPropertyMembers(node, services);
 
       for (const tag of tags) {
         if (tag.target === null) {
@@ -180,7 +216,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
         }
 
         const targetMember = directMembers.find(
-          (member) => getDeclarationName(member) === tag.target?.value
+          (member) => getDeclarationName(member) === tag.target.value
         );
         if (!targetMember) {
           context.report({
@@ -190,6 +226,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
           });
           continue;
         }
+        const targetLoc = targetMember.key.loc;
 
         if (!isIdentifierLike(tag.valueText)) {
           context.report({
@@ -210,7 +247,7 @@ export const validDiscriminator = createRule<[], MessageIds>({
 
         if (isOptionalProperty(targetMember, services)) {
           context.report({
-            loc: targetMember.key.loc,
+            loc: targetLoc,
             messageId: "optionalTargetField",
             data: { target: tag.target.value },
           });
@@ -218,9 +255,9 @@ export const validDiscriminator = createRule<[], MessageIds>({
         }
 
         const targetType = getDeclarationType(targetMember, services);
-        if (!targetType) {
+        if (targetType === null) {
           context.report({
-            loc: targetMember.key.loc,
+            loc: targetLoc,
             messageId: "missingTargetField",
             data: { target: tag.target.value },
           });
@@ -229,16 +266,16 @@ export const validDiscriminator = createRule<[], MessageIds>({
 
         if (isNullableType(targetType)) {
           context.report({
-            loc: targetMember.key.loc,
+            loc: targetLoc,
             messageId: "nullableTargetField",
             data: { target: tag.target.value },
           });
           continue;
         }
 
-        if (!isStringType(targetType, services.program.getTypeChecker())) {
+        if (!isStringType(targetType, checker)) {
           context.report({
-            loc: targetMember.key.loc,
+            loc: targetLoc,
             messageId: "nonStringLikeTargetField",
             data: {
               target: tag.target.value,

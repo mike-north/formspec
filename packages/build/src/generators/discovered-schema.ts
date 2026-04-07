@@ -356,7 +356,7 @@ function generateSchemasFromResolvedType(
     typeRegistry,
     new Set<ts.Type>(),
     options.sourceNode,
-    createAnalyzerMetadataPolicy(options.metadata),
+    createAnalyzerMetadataPolicy(options.metadata, options.discriminator),
     options.extensionRegistry,
     diagnostics
   );
@@ -425,7 +425,8 @@ export function generateSchemasFromDeclaration(
         options.context.checker,
         filePath,
         options.extensionRegistry,
-        options.metadata
+        options.metadata,
+        options.discriminator
       ),
       filePath,
       options
@@ -439,7 +440,8 @@ export function generateSchemasFromDeclaration(
         options.context.checker,
         filePath,
         options.extensionRegistry,
-        options.metadata
+        options.metadata,
+        options.discriminator
       ),
       filePath,
       options
@@ -452,7 +454,8 @@ export function generateSchemasFromDeclaration(
       options.context.checker,
       filePath,
       options.extensionRegistry,
-      options.metadata
+      options.metadata,
+      options.discriminator
     );
     if (analyzedAlias.ok) {
       return generateSchemasFromAnalysis(analyzedAlias.analysis, filePath, options);
