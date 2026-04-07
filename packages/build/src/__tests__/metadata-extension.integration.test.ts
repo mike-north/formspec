@@ -188,4 +188,31 @@ describe("build metadata extension integration", () => {
       ])
     ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
   });
+
+  it("rejects metadata tags that differ only by leading case at registry creation", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata-a",
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyLabel",
+              tagName: "Currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+        defineExtension({
+          extensionId: "x-test/metadata-b",
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "currencyCode",
+              tagName: "currency",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Duplicate metadata tag: "@currency"');
+  });
 });

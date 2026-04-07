@@ -475,6 +475,92 @@ describe("metadata analysis", () => {
     ).toThrow('Metadata tag "@minimum" conflicts with existing FormSpec tag "@minimum".');
   });
 
+  it("rejects duplicate metadata slot IDs across extensions before normalization", () => {
+    const extensions = [
+      defineExtension({
+        extensionId: "x-example/metadata-a",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "externalName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+      defineExtension({
+        extensionId: "x-example/metadata-b",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "externalName",
+            tagName: "billingName",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+    ];
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions,
+      })
+    ).toThrow('Duplicate metadata slot ID: "externalName"');
+  });
+
+  it("normalizes extension metadata tag names during validation and parsing", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "ExternalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const { program, sourceFile } = createProgram(`
+      export interface ProductRecord {
+        /** @externalName PRODUCTS */
+        products: string[];
+      }
+    `);
+    const declaration = findInterface(sourceFile, "ProductRecord");
+    const property = findInterfaceProperty(declaration, "products");
+
+    const analysis = analyzeMetadataForNode({
+      program,
+      node: property,
+      extensions: [extension],
+    });
+
+    expect(analysis?.applicableSlots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "externalName",
+          tagName: "externalName",
+        }),
+      ])
+    );
+    expect(analysis?.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "externalName",
+          tagName: "externalName",
+          value: "PRODUCTS",
+          source: "explicit",
+        }),
+      ])
+    );
+  });
+
   it("rejects extension metadata tags that shadow extension constraint tags", () => {
     const extension = defineExtension({
       extensionId: "x-example/metadata",
@@ -502,5 +588,45 @@ describe("metadata analysis", () => {
         extensions: [extension],
       })
     ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+  });
+
+  it("rejects metadata tag duplicates that differ only by leading case", () => {
+    const extensions = [
+      defineExtension({
+        extensionId: "x-example/metadata-a",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "currencyLabel",
+            tagName: "Currency",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+      defineExtension({
+        extensionId: "x-example/metadata-b",
+        metadataSlots: [
+          defineMetadataSlot({
+            slotId: "currencyCode",
+            tagName: "currency",
+            declarationKinds: ["field"],
+          }),
+        ],
+      }),
+    ];
+    const { program, sourceFile } = createProgram(`
+      export interface CustomerRecord {
+        customerName: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "CustomerRecord");
+    const property = findInterfaceProperty(declaration, "customerName");
+
+    expect(() =>
+      analyzeMetadataForNode({
+        program,
+        node: property,
+        extensions,
+      })
+    ).toThrow('Duplicate metadata tag: "@currency"');
   });
 });

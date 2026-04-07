@@ -298,20 +298,20 @@ function normalizeExtensionSlots(
   return (
     extensions?.flatMap((extension) =>
       (extension.metadataSlots ?? []).map((slot) => {
+        const normalizedTagName = normalizeFormSpecTagName(slot.tagName);
         if (seenSlotIds.has(slot.slotId)) {
           throw new Error(`Duplicate metadata slot ID: "${slot.slotId}"`);
         }
         seenSlotIds.add(slot.slotId);
 
-        const canonicalTagName = normalizeFormSpecTagName(slot.tagName);
-        if (seenTagNames.has(canonicalTagName)) {
-          throw new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
+        if (seenTagNames.has(normalizedTagName)) {
+          throw new Error(`Duplicate metadata tag: "@${normalizedTagName}"`);
         }
-        seenTagNames.add(canonicalTagName);
+        seenTagNames.add(normalizedTagName);
 
         return {
           slotId: slot.slotId,
-          tagName: canonicalTagName,
+          tagName: normalizedTagName,
           declarationKinds: slot.declarationKinds,
           allowBare: slot.allowBare !== false,
           // Extension slots only accept the qualifiers they explicitly register.
