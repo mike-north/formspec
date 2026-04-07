@@ -115,6 +115,11 @@ export interface DiscoveredTypeSchemas {
     readonly uiSchema: UISchema | null;
 }
 
+// @public
+export interface DiscriminatorResolutionOptions {
+    readonly apiNamePrefix?: string | undefined;
+}
+
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
@@ -413,6 +418,7 @@ export { StaticEnumField }
 
 // @public
 export interface StaticSchemaGenerationOptions {
+    readonly discriminator?: DiscriminatorResolutionOptions | undefined;
     readonly extensionRegistry?: ExtensionRegistry | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;

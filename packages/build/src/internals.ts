@@ -36,6 +36,7 @@ export {
   analyzeTypeAliasToIR,
 } from "./analyzer/class-analyzer.js";
 export type {
+  DiscriminatorResolutionOptions,
   IRClassAnalysis,
   FieldLayoutMetadata,
   AnalyzeTypeAliasToIRResult,

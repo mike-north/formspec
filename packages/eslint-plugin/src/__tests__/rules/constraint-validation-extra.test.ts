@@ -125,6 +125,49 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
     },
     {
       code: `
+        type ExtractObjectTag<T> = T extends { readonly object: infer O }
+          ? O extends string ? O : never
+          : never;
+
+        /** @discriminator :type T */
+        type TaggedValue<T extends { readonly object: string }> = {
+          type: ExtractObjectTag<T>;
+          id: string;
+        } & {
+          readonly __type?: T;
+        };
+      `,
+    },
+    {
+      code: `
+        type ExtractObjectTag<T> = T extends { readonly object: infer O }
+          ? O extends string ? O : never
+          : never;
+
+        /** @discriminator :type T */
+        type TaggedValue<T extends { readonly object: string }> = ({
+          type: ExtractObjectTag<T>;
+          id: string;
+        });
+      `,
+    },
+    {
+      code: `
+        type ExtractObjectTag<T> = T extends { readonly object: infer O }
+          ? O extends string ? O : never
+          : never;
+
+        /** @discriminator :type T */
+        type TaggedValue<T extends { readonly object: string }> = ({
+          type: ExtractObjectTag<T>;
+          id: string;
+        } & {
+          readonly __type?: T;
+        });
+      `,
+    },
+    {
+      code: `
         /** @discriminator :kind $Tag */
         interface TaggedValue<$Tag> {
           kind: string;
@@ -163,6 +206,20 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
     },
     {
       code: `
+        type ExtractObjectTag<T> = T extends { readonly object: infer O }
+          ? O extends number ? O : never
+          : never;
+
+        /** @discriminator :type T */
+        type TaggedValue<T extends { readonly object: number }> = {
+          type: ExtractObjectTag<T>;
+          id: string;
+        };
+      `,
+      errors: [{ messageId: "nonStringLikeTargetField" }],
+    },
+    {
+      code: `
         /** @discriminator :meta.kind T */
         class TaggedValue<T> {
           kind!: string;
@@ -176,6 +233,20 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
         /** @discriminator :missing T */
         interface TaggedValue<T> {
           kind: string;
+        }
+      `,
+      errors: [{ messageId: "missingTargetField" }],
+    },
+    {
+      code: `
+        interface BaseTaggedValue<T> {
+          kind: string;
+          id: string;
+        }
+
+        /** @discriminator :kind T */
+        interface DerivedTaggedValue<T> extends BaseTaggedValue<T> {
+          href: string;
         }
       `,
       errors: [{ messageId: "missingTargetField" }],

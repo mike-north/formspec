@@ -15,7 +15,11 @@ import {
   createProgramContextFromProgram,
   findClassByName,
 } from "../analyzer/program.js";
-import { analyzeClassToIR, type IRClassAnalysis } from "../analyzer/class-analyzer.js";
+import {
+  analyzeClassToIR,
+  type DiscriminatorResolutionOptions,
+  type IRClassAnalysis,
+} from "../analyzer/class-analyzer.js";
 import { canonicalizeTSDoc, type TSDocSource } from "../canonicalize/index.js";
 import {
   generateJsonSchemaFromIR,
@@ -25,6 +29,8 @@ import {
 import type { ExtensionRegistry } from "../extensions/index.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
+
+export type { DiscriminatorResolutionOptions } from "../analyzer/class-analyzer.js";
 
 /**
  * Generated schemas for a class.
@@ -115,6 +121,8 @@ export interface StaticSchemaGenerationOptions {
   readonly vendorPrefix?: string | undefined;
   /** Metadata resolution policy for static schema generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
+  /** Discriminator-specific schema generation behavior. */
+  readonly discriminator?: DiscriminatorResolutionOptions | undefined;
 }
 
 /**
@@ -191,7 +199,8 @@ export function generateSchemasFromClass(
     ctx.checker,
     options.filePath,
     options.extensionRegistry,
-    options.metadata
+    options.metadata,
+    options.discriminator
   );
   return generateClassSchemas(
     analysis,
@@ -269,7 +278,8 @@ export function generateSchemasFromProgram(
     options.filePath,
     options.typeName,
     options.extensionRegistry,
-    options.metadata
+    options.metadata,
+    options.discriminator
   );
   return generateClassSchemas(
     analysis,

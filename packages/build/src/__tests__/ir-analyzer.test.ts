@@ -431,6 +431,77 @@ describe("analyzeTypeAliasToIR", () => {
     }
   }, 15_000);
 
+  it("succeeds for parenthesized object-like type aliases", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "ParenthesizedTypeAlias");
+    if (!decl) throw new Error("ParenthesizedTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.analysis.fields).toHaveLength(1);
+      const labelField = findField(result.analysis.fields, "label");
+      expect(labelField.type).toEqual({
+        kind: "primitive",
+        primitiveKind: "string",
+      });
+      expect(findAnnotation(labelField.annotations, "displayName")).toMatchObject({
+        annotationKind: "displayName",
+        value: "Parenthesized Label",
+      });
+    }
+  });
+
+  it("succeeds for intersection object-like type aliases", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "IntersectionTypeAlias");
+    if (!decl) throw new Error("IntersectionTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.analysis.fields).toHaveLength(2);
+      expect(findField(result.analysis.fields, "label").type).toEqual({
+        kind: "primitive",
+        primitiveKind: "string",
+      });
+      expect(findField(result.analysis.fields, "count").type).toEqual({
+        kind: "primitive",
+        primitiveKind: "number",
+      });
+      expect(findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName"))
+        .toMatchObject({
+          annotationKind: "displayName",
+          value: "Left Label",
+        });
+    }
+  });
+
+  it("succeeds for parenthesized intersection object-like type aliases", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "ParenthesizedIntersectionTypeAlias");
+    if (!decl) throw new Error("ParenthesizedIntersectionTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.analysis.fields).toHaveLength(2);
+      expect(findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName"))
+        .toMatchObject({
+          annotationKind: "displayName",
+          value: "Parenthesized Left Label",
+        });
+      expect(findAnnotation(findField(result.analysis.fields, "count").annotations, "displayName"))
+        .toMatchObject({
+          annotationKind: "displayName",
+          value: "Parenthesized Right Count",
+        });
+    }
+  });
+
   it("returns error for non-object type aliases", () => {
     const ctx = createProgramContext(interfaceFixturePath);
     const decl = findTypeAliasByName(ctx.sourceFile, "StringAlias");
@@ -441,7 +512,7 @@ describe("analyzeTypeAliasToIR", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toContain("StringAlias");
-      expect(result.error).toContain("not an object type literal");
+      expect(result.error).toContain("not an object-like type alias");
     }
   });
 
@@ -452,6 +523,35 @@ describe("analyzeTypeAliasToIR", () => {
 
     const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
     expect(result.ok).toBe(false);
+  });
+
+  it("returns error for referenced generic object aliases", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "InstantiatedReferencedTypeAlias");
+    if (!decl) throw new Error("InstantiatedReferencedTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("InstantiatedReferencedTypeAlias");
+      expect(result.error).toContain("not an object-like type alias");
+    }
+  });
+
+  it("returns error for duplicate property names across intersection members", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "DuplicateIntersectionTypeAlias");
+    if (!decl) throw new Error("DuplicateIntersectionTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain("DuplicateIntersectionTypeAlias");
+      expect(result.error).toContain("duplicate property names");
+      expect(result.error).toContain("id");
+    }
   });
 });
 

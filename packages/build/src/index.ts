@@ -91,6 +91,7 @@ export type {
 } from "./ui-schema/types.js";
 
 export type {
+  DiscriminatorResolutionOptions,
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
