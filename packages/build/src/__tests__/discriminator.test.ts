@@ -212,6 +212,7 @@ describe("@discriminator schema generation", () => {
         "  importedHelperMetadataFallback: LiteralPointer<Bar>;",
         "  sameFileHelperMetadataFallback: SameFileHelperPointer<Bar>;",
         "  sameFileInlineMetadataFallback: InlineConditionalPointer<Bar>;",
+        "  sameFileHelperInferredMetadataFallback: SameFileHelperPointer<InferredObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -481,6 +482,9 @@ describe("@discriminator schema generation", () => {
     expect(resolveTypeEnum("importedHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("sameFileHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("sameFileInlineMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileHelperInferredMetadataFallback")).toEqual([
+      "prefixed_inferred_object_carrier",
+    ]);
   });
 
   it("rejects optional discriminator fields", () => {
