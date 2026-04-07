@@ -167,6 +167,24 @@ describe("@discriminator schema generation", () => {
         "  readonly __type?: T;",
         "});",
         "",
+        "export type LocalExtractObjectTag<T> = T extends { readonly object: infer O }",
+        "  ? O extends string ? O : never",
+        "  : never;",
+        "",
+        "/** @discriminator :type T */",
+        "export type SameFileHelperPointer<T extends { readonly object: string }> = {",
+        "  type: LocalExtractObjectTag<T>;",
+        "  id: string;",
+        "  url: string;",
+        "};",
+        "",
+        "/** @discriminator :type T */",
+        "export type InlineConditionalPointer<T extends { readonly object: string }> = {",
+        "  type: T extends { readonly object: infer O } ? O extends string ? O : never : never;",
+        "  id: string;",
+        "  url: string;",
+        "};",
+        "",
         "export interface ValidWrapper {",
         "  fromInterface: TaggedValue<Customer>;",
         "  fromClass: TaggedClass<Organization>;",
@@ -188,6 +206,12 @@ describe("@discriminator schema generation", () => {
         "  fromParenthesizedIntersectionAlias: ParenthesizedIntersectionPointer<CustomerObjectCarrier>;",
         "  fromMetadataFallback: IntersectionPointer<Bar>;",
         "  fromInferredMetadataFallback: IntersectionPointer<InferredObjectCarrier>;",
+        "}",
+        "",
+        "export interface SameFileConditionalHelperWrapper {",
+        "  importedHelperMetadataFallback: LiteralPointer<Bar>;",
+        "  sameFileHelperMetadataFallback: SameFileHelperPointer<Bar>;",
+        "  sameFileInlineMetadataFallback: InlineConditionalPointer<Bar>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -420,6 +444,43 @@ describe("@discriminator schema generation", () => {
     expect(resolveTypeEnum("fromInferredMetadataFallback")).toEqual([
       "v2.custom.inferred_object_carrier",
     ]);
+  });
+
+  it("supports same-file conditional helper aliases for metadata-backed discriminator fallback", () => {
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "SameFileConditionalHelperWrapper",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+      discriminator: {
+        apiNamePrefix: "prefixed_",
+      },
+    });
+
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolveTypeEnum = (propertyName: string): readonly unknown[] => {
+      const propertySchema = rootProperties[propertyName] as Record<string, unknown>;
+      const ref = typeof propertySchema["$ref"] === "string" ? propertySchema["$ref"] : undefined;
+      const resolvedSchema =
+        ref === undefined
+          ? propertySchema
+          : ((defs[ref.replace(/^#\/\$defs\//u, "")] ?? null) as Record<string, unknown> | null);
+      expect(resolvedSchema).not.toBeNull();
+      const properties = resolvedSchema?.properties as Record<string, unknown>;
+      return (properties["type"] as Record<string, unknown>).enum as readonly unknown[];
+    };
+
+    expect(resolveTypeEnum("importedHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileHelperMetadataFallback")).toEqual(["prefixed_custom_bar"]);
+    expect(resolveTypeEnum("sameFileInlineMetadataFallback")).toEqual(["prefixed_custom_bar"]);
   });
 
   it("rejects optional discriminator fields", () => {
