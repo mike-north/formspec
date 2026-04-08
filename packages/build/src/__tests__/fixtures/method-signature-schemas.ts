@@ -52,6 +52,23 @@ export class PaymentService {
     };
   }
 
+  async submitAsync(input: SubmitInput): Promise<SubmitResult> {
+    await Promise.resolve();
+    return {
+      approved: input.amount > 0,
+    };
+  }
+
+  async wrappedSubmitAsync(): Promise<Envelope<SubmitInput>> {
+    await Promise.resolve();
+    return {
+      payload: {
+        amount: 100,
+        currency: "USD",
+      },
+    };
+  }
+
   inline(input: {
     /** @apiName inline_amount_cents */
     amount: number;
@@ -81,6 +98,13 @@ export class PaymentService {
 }
 
 export function submitPayment(input: SubmitInput): SubmitResult {
+  return {
+    approved: input.amount > 0,
+  };
+}
+
+export async function submitPaymentAsync(input: SubmitInput): Promise<SubmitResult> {
+  await Promise.resolve();
   return {
     approved: input.amount > 0,
   };

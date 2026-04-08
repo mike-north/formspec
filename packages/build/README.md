@@ -76,7 +76,7 @@ Public helpers in this workflow:
 - `resolveModuleExportDeclaration(context, exportName?)` - Resolve only schema-source declarations (`class`, `interface`, `type` alias).
 - `generateSchemasFromDeclaration(...)` - Generate from a resolved schema-source declaration.
 - `generateSchemasFromParameter(...)` - Generate from a method or function parameter declaration.
-- `generateSchemasFromReturnType(...)` - Generate from a method or function return type.
+- `generateSchemasFromReturnType(...)` - Generate from a method or function return type, unwrapping awaited `Promise<T>`-style returns before generation.
 - `generateSchemasFromType(...)` - Generate directly from a resolved `ts.Type`.
 
 Use `resolveModuleExportDeclaration(...)` when your tooling wants to hand a resolved

@@ -530,16 +530,25 @@ export function generateSchemasFromParameter(
 /**
  * Generates schemas for a method or function return type.
  *
+ * Awaited `Promise<T>`-style return types are unwrapped before generation.
+ *
  * @public
  */
 export function generateSchemasFromReturnType(
   options: GenerateSchemasFromReturnTypeOptions
 ): DiscoveredTypeSchemas {
   const signature = options.context.checker.getSignatureFromDeclaration(options.declaration);
-  const type =
+  const returnType =
     signature !== undefined
       ? options.context.checker.getReturnTypeOfSignature(signature)
       : options.context.checker.getTypeAtLocation(options.declaration);
+  const type = unwrapPromiseType(options.context.checker, returnType);
+  const sourceNode =
+    type !== returnType
+      ? (unwrapPromiseTypeNode(options.declaration.type) ??
+        options.declaration.type ??
+        options.declaration)
+      : (options.declaration.type ?? options.declaration);
 
   const fallbackName =
     options.declaration.name !== undefined && ts.isIdentifier(options.declaration.name)
@@ -549,7 +558,40 @@ export function generateSchemasFromReturnType(
   return generateSchemasFromResolvedType({
     ...options,
     type,
-    sourceNode: options.declaration.type ?? options.declaration,
+    sourceNode,
     name: fallbackName,
   });
+}
+
+function unwrapPromiseType(checker: ts.TypeChecker, type: ts.Type): ts.Type {
+  if (!("getAwaitedType" in checker) || typeof checker.getAwaitedType !== "function") {
+    return type;
+  }
+
+  return checker.getAwaitedType(type) ?? type;
+}
+
+function unwrapPromiseTypeNode(typeNode: ts.TypeNode | undefined): ts.TypeNode | undefined {
+  if (typeNode === undefined) {
+    return undefined;
+  }
+
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    const unwrapped = unwrapPromiseTypeNode(typeNode.type);
+    return unwrapped ?? typeNode;
+  }
+
+  return isPromiseTypeReferenceNode(typeNode) ? typeNode.typeArguments[0] : typeNode;
+}
+
+function isPromiseTypeReferenceNode(
+  typeNode: ts.TypeNode
+): typeNode is ts.TypeReferenceNode & { typeArguments: [ts.TypeNode, ...ts.TypeNode[]] } {
+  return (
+    ts.isTypeReferenceNode(typeNode) &&
+    ts.isIdentifier(typeNode.typeName) &&
+    typeNode.typeName.text === "Promise" &&
+    typeNode.typeArguments !== undefined &&
+    typeNode.typeArguments.length > 0
+  );
 }
