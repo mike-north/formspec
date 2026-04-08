@@ -54,6 +54,39 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
+export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return isResolvableObjectLikeAliasTypeNode(typeNode.type);
+  }
+
+  if (ts.isTypeLiteralNode(typeNode) || ts.isTypeReferenceNode(typeNode)) {
+    return true;
+  }
+
+  return (
+    ts.isIntersectionTypeNode(typeNode) &&
+    typeNode.types.length > 0 &&
+    typeNode.types.every((member) => isResolvableObjectLikeAliasTypeNode(member))
+  );
+}
+
+function isSemanticallyPlainObjectLikeType(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if (isIntersectionType(type)) {
+    return (
+      type.types.length > 0 &&
+      type.types.every((member) => isSemanticallyPlainObjectLikeType(member, checker))
+    );
+  }
+
+  return (
+    isObjectType(type) &&
+    checker.getSignaturesOfType(type, ts.SignatureKind.Call).length === 0 &&
+    checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length === 0 &&
+    !checker.isArrayType(type) &&
+    !checker.isTupleType(type)
+  );
+}
+
 /**
  * Type guard for ts.TypeReference — checks ObjectFlags.Reference on top of ObjectType.
  * The internal `as` cast is isolated inside this guard and is required because
@@ -144,12 +177,18 @@ export interface IRClassAnalysis {
   readonly staticMethods: readonly MethodInfo[];
 }
 
+export type AnalyzeTypeAliasToIRFailureKind = "duplicate-properties" | "not-object-like";
+
 /**
  * Result of analyzing a type alias into IR — either success or error.
  */
 export type AnalyzeTypeAliasToIRResult =
   | { readonly ok: true; readonly analysis: IRClassAnalysis }
-  | { readonly ok: false; readonly error: string };
+  | {
+      readonly ok: false;
+      readonly kind: AnalyzeTypeAliasToIRFailureKind;
+      readonly error: string;
+    };
 
 export interface DeclarationRootInfo {
   readonly metadata?: ResolvedMetadata;
@@ -501,6 +540,7 @@ export function analyzeTypeAliasToIR(
     const kindDesc = ts.SyntaxKind[typeAlias.type.kind] ?? "unknown";
     return {
       ok: false,
+      kind: "not-object-like",
       error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object-like type alias (found ${kindDesc})`,
     };
   }
@@ -516,6 +556,7 @@ export function analyzeTypeAliasToIR(
     const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
     return {
       ok: false,
+      kind: "duplicate-properties",
       error: `Type alias "${name}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`,
     };
   }
@@ -1517,12 +1558,12 @@ function findDuplicateObjectLikeTypeAliasPropertyNames(
   return [...duplicates].sort();
 }
 
-function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): string | null {
-  if (!ts.isIdentifier(name)) {
-    return null;
+export function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): string | null {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
   }
 
-  return name.text;
+  return null;
 }
 
 /**
@@ -1830,6 +1871,24 @@ export function resolveTypeNode(
     if (
       resolvedSourceTypeNode !== undefined &&
       getObjectLikeTypeAliasMembers(resolvedSourceTypeNode) !== null
+    ) {
+      return resolveObjectType(
+        type,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        sourceNode,
+        metadataPolicy,
+        extensionRegistry,
+        diagnostics
+      );
+    }
+
+    if (
+      resolvedSourceTypeNode !== undefined &&
+      isResolvableObjectLikeAliasTypeNode(resolvedSourceTypeNode) &&
+      isSemanticallyPlainObjectLikeType(type, checker)
     ) {
       return resolveObjectType(
         type,

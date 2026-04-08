@@ -295,6 +295,8 @@ export interface FormSpecSerializedTagSemanticContext {
     readonly argumentCompletions: readonly string[];
     readonly argumentHoverMarkdown: string | null;
     readonly compatiblePathTargets: readonly string[];
+    readonly contextualSignatures: readonly FormSpecSerializedTagSignature[];
+    readonly contextualTagHoverMarkdown: string | null;
     readonly placement: FormSpecPlacement | null;
     readonly signatures: readonly FormSpecSerializedTagSignature[];
     readonly supportedTargets: readonly FormSpecTargetKind[];

@@ -18,6 +18,7 @@ const DISCRIMINATOR_TAG_METADATA: TagDefinition = {
   placements: ["class", "interface", "type-alias"],
   capabilities: ["object-like"],
   completionDetail: "Declares a discriminator field for a generic object type.",
+  hoverSummary: "Declares the field used as the discriminator for a generic object type.",
   hoverMarkdown: "**@discriminator**\n\nDeclares a discriminator field for an object type.",
   signatures: [
     {

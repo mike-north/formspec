@@ -5,6 +5,7 @@ import {
   getCommentCompletionContextAtOffset,
   getCommentHoverInfoAtOffset,
   getCommentCursorTargetAtOffset,
+  getCommentTagSemanticContext,
   getSemanticCommentCompletionContextAtOffset,
   getTagCompletionPrefixAtOffset,
 } from "../internal.js";
@@ -159,6 +160,33 @@ describe("cursor-context", () => {
     }
   });
 
+  it("exposes contextual signatures for the active tag occurrence", () => {
+    const source = `
+      class Foo {
+        /** @displayName Amount */
+        value!: string;
+      }
+    `;
+    const tag = findCommentTagAtOffset(source, source.indexOf("@displayName") + 2);
+    if (tag === null) {
+      throw new Error("Expected displayName tag");
+    }
+
+    const semantic = getCommentTagSemanticContext(tag, {
+      placement: "class-field",
+    });
+
+    expect(semantic.signatures.map((signature) => signature.label)).toEqual([
+      "@displayName <label>",
+      "@displayName :member <label>",
+    ]);
+    expect(semantic.contextualSignatures.map((signature) => signature.label)).toEqual([
+      "@displayName <label>",
+    ]);
+    expect(semantic.contextualTagHoverMarkdown).toContain("@displayName <label>");
+    expect(semantic.contextualTagHoverMarkdown).not.toContain(":member");
+  });
+
   it("provides target hover details for variant-target tags", () => {
     const source = "/** @apiName :plural homes */";
     const offset = source.indexOf("plural") + 2;
@@ -178,6 +206,41 @@ describe("cursor-context", () => {
     expect(hover?.kind).toBe("argument");
     expect(hover?.markdown).toContain("Argument for @minimum");
     expect(hover?.markdown).toContain("<number>");
+  });
+
+  it("uses contextual tag hover content for plain field tags", () => {
+    const source = `
+      class Foo {
+        /** @displayName Amount */
+        value!: string;
+      }
+    `;
+    const offset = source.indexOf("@displayName") + 2;
+    const hover = getCommentHoverInfoAtOffset(source, offset, {
+      placement: "class-field",
+    });
+
+    expect(hover?.kind).toBe("tag-name");
+    expect(hover?.markdown).toContain("Relevant usage here");
+    expect(hover?.markdown).toContain("@displayName <label>");
+    expect(hover?.markdown).not.toContain(":member");
+  });
+
+  it("uses contextual argument hover signatures for plain field tags", () => {
+    const source = `
+      class Foo {
+        /** @displayName Amount */
+        value!: string;
+      }
+    `;
+    const offset = source.indexOf("Amount");
+    const hover = getCommentHoverInfoAtOffset(source, offset, {
+      placement: "class-field",
+    });
+
+    expect(hover?.kind).toBe("argument");
+    expect(hover?.markdown).toContain("@displayName <label>");
+    expect(hover?.markdown).not.toContain(":member");
   });
 
   it("provides discriminator argument hover details for a local type parameter", () => {

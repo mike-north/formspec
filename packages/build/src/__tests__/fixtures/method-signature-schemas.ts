@@ -32,6 +32,45 @@ export type PaymentStatus = "ok" | "error";
 export type AliasedSubmitInput = SubmitInput;
 
 /**
+ * @displayName Partial Submit Input
+ */
+export type PartialSubmitInput = Partial<SubmitInput>;
+
+/**
+ * @displayName Amount Only Submit Input
+ */
+export type AmountOnlySubmitInput = Pick<SubmitInput, "amount">;
+
+/**
+ * @displayName Audited Submit Input
+ */
+export type AuditedSubmitInput = Partial<SubmitInput> & {
+  /** @displayName Audit Id */
+  auditId: string;
+};
+
+/**
+ * @displayName Conflicting Submit Input
+ */
+export type ConflictingSubmitInput = Pick<SubmitInput, "currency"> & {
+  currency: number;
+};
+
+/**
+ * @displayName Quoted Conflicting Submit Input
+ */
+export type QuotedConflictingSubmitInput = Pick<SubmitInput, "currency"> & {
+  "currency": number;
+};
+
+/**
+ * @displayName Callable Submit Input
+ */
+export type CallableSubmitInput = (() => void) & {
+  amount: number;
+};
+
+/**
  * @minimum 1
  */
 export type InvalidTaggedStatus = "ok" | "error";

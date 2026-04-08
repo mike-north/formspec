@@ -61,11 +61,13 @@ export interface CommentTagSemanticContext {
   readonly tagDefinition: TagDefinition | null;
   readonly placement: FormSpecPlacement | null;
   readonly signatures: readonly TagSignature[];
+  readonly contextualSignatures: readonly TagSignature[];
   readonly supportedTargets: readonly FormSpecTargetKind[];
   readonly targetCompletions: readonly string[];
   readonly compatiblePathTargets: readonly string[];
   readonly valueLabels: readonly string[];
   readonly argumentCompletions: readonly string[];
+  readonly contextualTagHoverMarkdown: string | null;
   readonly tagHoverMarkdown: string | null;
   readonly targetHoverMarkdown: string | null;
   readonly argumentHoverMarkdown: string | null;
@@ -124,6 +126,54 @@ function filterSignaturesByPlacement(
 
   const filtered = signatures.filter((signature) => signature.placements.includes(placement));
   return filtered.length > 0 ? filtered : signatures;
+}
+
+function hasExplicitTarget(signature: TagSignature): boolean {
+  return signature.parameters.some(
+    (parameter) =>
+      parameter.kind === "target-path" ||
+      parameter.kind === "target-member" ||
+      parameter.kind === "target-variant"
+  );
+}
+
+function matchesTargetKind(
+  signature: TagSignature,
+  targetKind: "path" | "member" | "variant"
+): boolean {
+  return signature.parameters.some((parameter) => {
+    switch (targetKind) {
+      case "path":
+        return parameter.kind === "target-path";
+      case "member":
+        return parameter.kind === "target-member";
+      case "variant":
+        return parameter.kind === "target-variant";
+      default: {
+        const exhaustive: never = targetKind;
+        return exhaustive;
+      }
+    }
+  });
+}
+
+function getContextualSignatures(
+  tag: ParsedCommentTag,
+  signatures: readonly TagSignature[]
+): readonly TagSignature[] {
+  const target = tag.target;
+  if (target === null) {
+    const untargeted = signatures.filter((signature) => !hasExplicitTarget(signature));
+    return untargeted.length > 0 ? untargeted : signatures;
+  }
+
+  if (target.kind === "ambiguous") {
+    return signatures;
+  }
+
+  const targetKind = target.kind;
+  const targeted = signatures.filter((signature) => matchesTargetKind(signature, targetKind));
+  return targeted.length > 0 ? targeted : signatures;
 }
 
 function getCompatiblePathTargetsForSignatures(
@@ -243,12 +293,14 @@ export function getCommentTagSemanticContext(
     tagDefinition?.canonicalName === "discriminator"
       ? compatiblePathTargets
       : getTargetCompletions(signatures, compatiblePathTargets);
+  const contextualSignatures = getContextualSignatures(tag, signatures);
 
   const semantic: CommentTagSemanticContext = {
     tag,
     tagDefinition,
     placement: options?.placement ?? null,
     signatures,
+    contextualSignatures,
     supportedTargets: getSupportedTargets(signatures),
     targetCompletions,
     compatiblePathTargets,
@@ -257,6 +309,7 @@ export function getCommentTagSemanticContext(
       tagDefinition?.canonicalName === "discriminator"
         ? getDiscriminatorArgumentCompletions(options)
         : [],
+    contextualTagHoverMarkdown: null,
     tagHoverMarkdown: tagDefinition?.hoverMarkdown ?? null,
     targetHoverMarkdown: null,
     argumentHoverMarkdown: null,
@@ -264,6 +317,7 @@ export function getCommentTagSemanticContext(
 
   return {
     ...semantic,
+    contextualTagHoverMarkdown: buildContextualTagHoverMarkdown(semantic),
     targetHoverMarkdown: buildTargetHoverMarkdown(semantic),
     argumentHoverMarkdown: buildArgumentHoverMarkdown(semantic),
   };
@@ -286,6 +340,29 @@ function getTargetKindLabels(supportedTargets: readonly FormSpecTargetKind[]): s
     .filter((kind): kind is Exclude<FormSpecTargetKind, "none"> => kind !== "none")
     .map((kind) => `\`${kind}\``);
   return labels.length === 0 ? "none" : labels.join(", ");
+}
+
+function buildContextualTagHoverMarkdown(semantic: CommentTagSemanticContext): string | null {
+  if (semantic.tagDefinition === null) {
+    return null;
+  }
+
+  const signatureLines =
+    semantic.contextualSignatures.length === 1
+      ? [`**Relevant usage here:** \`${semantic.contextualSignatures[0]?.label ?? ""}\``]
+      : semantic.contextualSignatures.length > 1
+        ? [
+            "**Relevant usages here:**",
+            ...semantic.contextualSignatures.map((signature) => `- \`${signature.label}\``),
+          ]
+        : [];
+
+  return [
+    `**@${semantic.tagDefinition.canonicalName}**`,
+    "",
+    semantic.tagDefinition.hoverSummary,
+    ...(signatureLines.length > 0 ? ["", ...signatureLines] : []),
+  ].join("\n");
 }
 
 function buildTargetHoverMarkdown(semantic: CommentTagSemanticContext): string | null {
@@ -327,18 +404,19 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
     return null;
   }
 
-  const valueLabels = getValueLabels(semantic.signatures);
+  const valueLabels = getValueLabels(semantic.contextualSignatures);
   const formattedValueLabels = valueLabels.map((label) => `\`${label}\``);
   const formattedArgumentCompletions = semantic.argumentCompletions.map((label) => `\`${label}\``);
-  const soleSignature = semantic.signatures.length === 1 ? semantic.signatures[0] : undefined;
+  const soleSignature =
+    semantic.contextualSignatures.length === 1 ? semantic.contextualSignatures[0] : undefined;
   const signatureLines =
-    semantic.signatures.length === 0
+    semantic.contextualSignatures.length === 0
       ? []
       : soleSignature !== undefined
         ? [`**Signature:** \`${soleSignature.label}\``]
         : [
             "**Signatures:**",
-            ...semantic.signatures.map((signature) => `- \`${signature.label}\``),
+            ...semantic.contextualSignatures.map((signature) => `- \`${signature.label}\``),
           ];
 
   return [
@@ -573,7 +651,7 @@ export function getCommentHoverInfoAtOffset(
 
   switch (target.kind) {
     case "tag-name":
-      markdown = semantic.tagHoverMarkdown;
+      markdown = semantic.contextualTagHoverMarkdown ?? semantic.tagHoverMarkdown;
       break;
     case "colon":
     case "target":

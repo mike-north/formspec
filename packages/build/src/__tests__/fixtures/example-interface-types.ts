@@ -111,6 +111,13 @@ export type DuplicateIntersectionTypeAlias = {
   label: string;
 };
 
+export type DuplicateQuotedIntersectionTypeAlias = {
+  id: string;
+} & {
+  "id": "fixed";
+  label: string;
+};
+
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing referenced generic type alias rejection
 export type GenericReferencedTypeAlias<T> = {
   label: T;
