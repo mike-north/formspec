@@ -74,6 +74,7 @@ export interface TagDefinition {
   readonly placements: readonly FormSpecPlacement[];
   readonly capabilities: readonly SemanticCapability[];
   readonly completionDetail: string;
+  readonly hoverSummary: string;
   readonly hoverMarkdown: string;
   readonly signatures: readonly TagSignature[];
 }
@@ -303,6 +304,22 @@ const CONSTRAINT_HOVER_DOCS: Record<string, string> = {
     "",
     "**Signature:** `@const [:path] <json-literal>`",
   ].join("\n"),
+};
+
+const CONSTRAINT_HOVER_SUMMARIES: Record<BuiltinConstraintName, string> = {
+  minimum: "Sets an inclusive lower bound on a numeric field.",
+  maximum: "Sets an inclusive upper bound on a numeric field.",
+  exclusiveMinimum: "Sets an exclusive lower bound on a numeric field.",
+  exclusiveMaximum: "Sets an exclusive upper bound on a numeric field.",
+  multipleOf: "Requires the numeric value to be a multiple of the given number.",
+  minLength: "Sets a minimum character length on a string field.",
+  maxLength: "Sets a maximum character length on a string field.",
+  minItems: "Sets a minimum number of items in an array field.",
+  maxItems: "Sets a maximum number of items in an array field.",
+  uniqueItems: "Requires all items in an array field to be distinct.",
+  pattern: "Sets a regular expression pattern that a string field must match.",
+  enumOptions: "Specifies the allowed values for an enum field as an inline JSON array.",
+  const: "Requires the field value to equal a single constant JSON value.",
 };
 
 type SupportedSignatureTarget = Exclude<FormSpecTargetKind, "none">;
@@ -553,6 +570,7 @@ const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
         placements: FIELD_PLACEMENTS,
         capabilities: [subjectCapability],
         completionDetail: CONSTRAINT_COMPLETION_DETAIL[name] ?? `@${name}`,
+        hoverSummary: CONSTRAINT_HOVER_SUMMARIES[name],
         hoverMarkdown: CONSTRAINT_HOVER_DOCS[name] ?? `**@${name}**`,
         signatures: makeConstraintSignatures(name),
       } satisfies TagDefinition,
@@ -783,6 +801,7 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     placements: spec.placements,
     capabilities: capabilitiesForValueKind(valueKind),
     completionDetail: spec.completionDetail,
+    hoverSummary: spec.hoverSummary,
     hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),
     signatures,
   };
@@ -858,6 +877,7 @@ function buildExtensionMetadataTagDefinition(
     placements,
     capabilities: capabilitiesForValueKind(valueKind),
     completionDetail: `Extension metadata tag from ${extensionId}`,
+    hoverSummary: `Extension-defined metadata tag from \`${extensionId}\`.`,
     hoverMarkdown: [
       `**@${canonicalName}** \`<value>\``,
       "",
@@ -910,6 +930,7 @@ export function getTagDefinition(
       placements: FIELD_PLACEMENTS,
       capabilities: [],
       completionDetail: `Extension constraint tag from ${extensionRegistration.extensionId}`,
+      hoverSummary: `Extension-defined constraint tag from \`${extensionRegistration.extensionId}\`.`,
       hoverMarkdown: [
         `**@${extensionRegistration.tagName}** \`<value>\``,
         "",
