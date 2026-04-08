@@ -54,6 +54,39 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
+export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return isResolvableObjectLikeAliasTypeNode(typeNode.type);
+  }
+
+  if (ts.isTypeLiteralNode(typeNode) || ts.isTypeReferenceNode(typeNode)) {
+    return true;
+  }
+
+  return (
+    ts.isIntersectionTypeNode(typeNode) &&
+    typeNode.types.length > 0 &&
+    typeNode.types.every((member) => isResolvableObjectLikeAliasTypeNode(member))
+  );
+}
+
+function isSemanticallyPlainObjectLikeType(type: ts.Type, checker: ts.TypeChecker): boolean {
+  if (isIntersectionType(type)) {
+    return (
+      type.types.length > 0 &&
+      type.types.every((member) => isSemanticallyPlainObjectLikeType(member, checker))
+    );
+  }
+
+  return (
+    isObjectType(type) &&
+    checker.getSignaturesOfType(type, ts.SignatureKind.Call).length === 0 &&
+    checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length === 0 &&
+    !checker.isArrayType(type) &&
+    !checker.isTupleType(type)
+  );
+}
+
 /**
  * Type guard for ts.TypeReference — checks ObjectFlags.Reference on top of ObjectType.
  * The internal `as` cast is isolated inside this guard and is required because
@@ -1830,6 +1863,24 @@ export function resolveTypeNode(
     if (
       resolvedSourceTypeNode !== undefined &&
       getObjectLikeTypeAliasMembers(resolvedSourceTypeNode) !== null
+    ) {
+      return resolveObjectType(
+        type,
+        checker,
+        file,
+        typeRegistry,
+        visiting,
+        sourceNode,
+        metadataPolicy,
+        extensionRegistry,
+        diagnostics
+      );
+    }
+
+    if (
+      resolvedSourceTypeNode !== undefined &&
+      isResolvableObjectLikeAliasTypeNode(resolvedSourceTypeNode) &&
+      isSemanticallyPlainObjectLikeType(type, checker)
     ) {
       return resolveObjectType(
         type,
