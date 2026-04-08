@@ -103,11 +103,18 @@ describe("semantic protocol", () => {
           tagName: "minimum",
           tagDefinition: null,
           placement: "class-field",
+          contextualSignatures: [
+            {
+              label: "@minimum <number>",
+              placements: ["class-field"],
+            },
+          ],
           supportedTargets: ["none", "path"],
           targetCompletions: ["amount"],
           compatiblePathTargets: ["amount"],
           valueLabels: ["<number>"],
           argumentCompletions: [],
+          contextualTagHoverMarkdown: "**@minimum**",
           signatures: [
             {
               label: "@minimum :path <number>",
@@ -211,6 +218,12 @@ describe("semantic protocol", () => {
     expect(context.kind).toBe("argument");
     if (context.kind === "argument") {
       expect(context.semantic.argumentCompletions).toEqual(["T"]);
+      expect(context.semantic.contextualSignatures).toEqual([
+        {
+          label: "@discriminator [:path] <typeParam>",
+          placements: ["class", "interface", "type-alias"],
+        },
+      ]);
     }
   });
 

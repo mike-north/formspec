@@ -126,6 +126,8 @@ export interface FormSpecSerializedTagSemanticContext {
   readonly tagDefinition: FormSpecSerializedTagDefinition | null;
   /** Placement inferred for the tag in the current comment. */
   readonly placement: FormSpecPlacement | null;
+  /** Usage variants filtered to the active tag occurrence. */
+  readonly contextualSignatures: readonly FormSpecSerializedTagSignature[];
   /** Target kinds supported by the tag. */
   readonly supportedTargets: readonly FormSpecTargetKind[];
   /** Completion candidates for tag targets. */
@@ -136,6 +138,8 @@ export interface FormSpecSerializedTagSemanticContext {
   readonly valueLabels: readonly string[];
   /** Completion candidates for the argument position. */
   readonly argumentCompletions: readonly string[];
+  /** Markdown hover content for the tag in the active occurrence context. */
+  readonly contextualTagHoverMarkdown: string | null;
   /** Summaries of the tag's overloads or signatures. */
   readonly signatures: readonly FormSpecSerializedTagSignature[];
   /** Markdown hover content for the tag itself. */
@@ -568,6 +572,8 @@ function isSerializedTagSemanticContext(
     typeof candidate.tagName === "string" &&
     (candidate.tagDefinition === null || isSerializedTagDefinition(candidate.tagDefinition)) &&
     (candidate.placement === null || isPlacementValue(candidate.placement)) &&
+    Array.isArray(candidate.contextualSignatures) &&
+    candidate.contextualSignatures.every(isSerializedTagSignature) &&
     isTargetKindArray(candidate.supportedTargets) &&
     isStringArray(candidate.targetCompletions) &&
     isStringArray(candidate.compatiblePathTargets) &&
@@ -575,6 +581,8 @@ function isSerializedTagSemanticContext(
     isStringArray(candidate.argumentCompletions) &&
     Array.isArray(candidate.signatures) &&
     candidate.signatures.every(isSerializedTagSignature) &&
+    (candidate.contextualTagHoverMarkdown === null ||
+      typeof candidate.contextualTagHoverMarkdown === "string") &&
     (candidate.tagHoverMarkdown === null || typeof candidate.tagHoverMarkdown === "string") &&
     (candidate.targetHoverMarkdown === null || typeof candidate.targetHoverMarkdown === "string") &&
     (candidate.argumentHoverMarkdown === null ||
@@ -871,11 +879,16 @@ export function serializeCommentTagSemanticContext(
             hoverMarkdown: semantic.tagDefinition.hoverMarkdown,
           },
     placement: semantic.placement,
+    contextualSignatures: semantic.contextualSignatures.map((signature) => ({
+      label: signature.label,
+      placements: signature.placements,
+    })),
     supportedTargets: semantic.supportedTargets,
     targetCompletions: semantic.targetCompletions,
     compatiblePathTargets: semantic.compatiblePathTargets,
     valueLabels: semantic.valueLabels,
     argumentCompletions: semantic.argumentCompletions,
+    contextualTagHoverMarkdown: semantic.contextualTagHoverMarkdown,
     signatures: semantic.signatures.map((signature) => ({
       label: signature.label,
       placements: signature.placements,
