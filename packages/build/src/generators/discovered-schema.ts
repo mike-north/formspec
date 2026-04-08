@@ -543,7 +543,12 @@ export function generateSchemasFromReturnType(
       ? options.context.checker.getReturnTypeOfSignature(signature)
       : options.context.checker.getTypeAtLocation(options.declaration);
   const type = unwrapPromiseType(options.context.checker, returnType);
-  const sourceNode = unwrapPromiseTypeNode(options.declaration.type) ?? options.declaration;
+  const sourceNode =
+    type !== returnType
+      ? (unwrapPromiseTypeNode(options.declaration.type) ??
+        options.declaration.type ??
+        options.declaration)
+      : (options.declaration.type ?? options.declaration);
 
   const fallbackName =
     options.declaration.name !== undefined && ts.isIdentifier(options.declaration.name)
