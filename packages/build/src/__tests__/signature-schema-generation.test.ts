@@ -86,6 +86,58 @@ describe("method-signature schema generation", () => {
     });
   });
 
+  it("unwraps Promise return types for async methods", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "submitAsync");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    expect(schemas.jsonSchema.title).toBe("Submit Result");
+    expect(schemas.jsonSchema.properties).toMatchObject({
+      approved_flag: { type: "boolean" },
+    });
+    expect(schemas.uiSchema).toMatchObject({
+      type: "VerticalLayout",
+      elements: [{ type: "Control", scope: "#/properties/approved_flag" }],
+    });
+  });
+
+  it("preserves generic type arguments after unwrapping Promise return types", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "wrappedSubmitAsync");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    expect(schemas.jsonSchema.properties).toMatchObject({
+      payload: {
+        $ref: "#/$defs/SubmitInput",
+      },
+    });
+    expect(schemas.jsonSchema.$defs).toMatchObject({
+      SubmitInput: {
+        type: "object",
+        properties: {
+          amount_cents: { type: "number" },
+          currency: { type: "string" },
+        },
+      },
+    });
+  });
+
   it("generates schemas from inline method parameter types", () => {
     const context = createStaticBuildContext(fixturePath);
     const declaration = resolveModuleExportDeclaration(context, "PaymentService");

@@ -5,6 +5,9 @@ import {
   createStaticBuildContext,
   createStaticBuildContextFromProgram,
   generateSchemasFromDeclaration,
+  generateSchemasFromParameter,
+  generateSchemasFromReturnType,
+  generateSchemasFromType,
   resolveModuleExport,
   resolveModuleExportDeclaration,
 } from "../index.js";
@@ -21,6 +24,24 @@ function createProgram(): ts.Program {
     strict: true,
     skipLibCheck: true,
   });
+}
+
+function getMethod(
+  classDeclaration: ts.ClassDeclaration,
+  methodName: string
+): ts.MethodDeclaration {
+  const method = classDeclaration.members.find(
+    (member): member is ts.MethodDeclaration =>
+      ts.isMethodDeclaration(member) &&
+      ts.isIdentifier(member.name) &&
+      member.name.text === methodName
+  );
+
+  if (method === undefined) {
+    throw new Error(`Method "${methodName}" not found`);
+  }
+
+  return method;
 }
 
 describe("static build context", () => {
@@ -113,6 +134,99 @@ describe("static build context", () => {
     expect(resultSchemas.jsonSchema.title).toBe("Submit Result");
     expect(resultSchemas.jsonSchema.properties).toMatchObject({
       approved_flag: { type: "boolean" },
+    });
+  });
+
+  it("supports host-owned program workflows through public schema-generation helpers", () => {
+    const program = createProgram();
+    const context = createStaticBuildContextFromProgram(program, entryFixturePath);
+    const serviceDeclaration = resolveModuleExportDeclaration(context, "PaymentService");
+    const inputDeclaration = resolveModuleExportDeclaration(context, "PaymentSubmitInput");
+    const submitSymbol = resolveModuleExport(context, "submitPayment");
+    const submitDeclaration = submitSymbol?.declarations?.find(ts.isFunctionDeclaration);
+    const asyncSubmitSymbol = resolveModuleExport(context, "submitPaymentAsync");
+    const asyncSubmitDeclaration = asyncSubmitSymbol?.declarations?.find(ts.isFunctionDeclaration);
+    if (serviceDeclaration === null || !ts.isClassDeclaration(serviceDeclaration)) {
+      throw new Error("PaymentService class not found");
+    }
+    if (inputDeclaration === null) {
+      throw new Error("PaymentSubmitInput type not found");
+    }
+    if (submitDeclaration === undefined) {
+      throw new Error("submitPayment function not found");
+    }
+    if (asyncSubmitDeclaration === undefined) {
+      throw new Error("submitPaymentAsync function not found");
+    }
+
+    const declarationSchemas = generateSchemasFromDeclaration({
+      context,
+      declaration: inputDeclaration,
+    });
+    const submitMethod = getMethod(serviceDeclaration, "submit");
+    const parameter = submitMethod.parameters[0];
+    if (parameter === undefined) {
+      throw new Error("submit parameter not found");
+    }
+
+    const parameterSchemas = generateSchemasFromParameter({
+      context,
+      parameter,
+    });
+    const returnSchemas = generateSchemasFromReturnType({
+      context,
+      declaration: submitMethod,
+    });
+    const functionReturnSchemas = generateSchemasFromReturnType({
+      context,
+      declaration: submitDeclaration,
+    });
+    const asyncFunctionReturnSchemas = generateSchemasFromReturnType({
+      context,
+      declaration: asyncSubmitDeclaration,
+    });
+    const typeSchemas = generateSchemasFromType({
+      context,
+      type: context.checker.getTypeAtLocation(parameter),
+      sourceNode: parameter,
+      name: "SubmitInputFromHostProgram",
+    });
+
+    expect(declarationSchemas.jsonSchema.title).toBe("Submit Input");
+    expect(declarationSchemas.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+    });
+
+    expect(parameterSchemas.jsonSchema.title).toBe("Submit Input");
+    expect(parameterSchemas.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+    });
+
+    expect(returnSchemas.jsonSchema.title).toBe("Submit Result");
+    expect(returnSchemas.jsonSchema.properties).toMatchObject({
+      approved_flag: { type: "boolean" },
+    });
+    expect(functionReturnSchemas.jsonSchema.title).toBe("Submit Result");
+    expect(functionReturnSchemas.jsonSchema.properties).toMatchObject({
+      approved_flag: { type: "boolean" },
+    });
+    expect(asyncFunctionReturnSchemas.jsonSchema.title).toBe("Submit Result");
+    expect(asyncFunctionReturnSchemas.jsonSchema.properties).toMatchObject({
+      approved_flag: { type: "boolean" },
+    });
+
+    expect(typeSchemas.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+    });
+    expect(typeSchemas.uiSchema).toMatchObject({
+      type: "VerticalLayout",
+      elements: [
+        { type: "Control", scope: "#/properties/amount_cents" },
+        { type: "Control", scope: "#/properties/currency", label: "Currency" },
+      ],
     });
   });
 
