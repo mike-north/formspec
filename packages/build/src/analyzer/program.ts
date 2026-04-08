@@ -7,12 +7,19 @@
 
 import * as ts from "typescript";
 import * as path from "node:path";
+import type { FieldNode, TypeDefinition, TypeNode } from "@formspec/core/internals";
+import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
 import {
+  analyzeDeclarationRootInfo,
   analyzeClassToIR,
+  createAnalyzerMetadataPolicy,
   analyzeInterfaceToIR,
+  isResolvableObjectLikeAliasTypeNode,
   analyzeTypeAliasToIR,
+  type DeclarationRootInfo,
   type DiscriminatorResolutionOptions,
   type IRClassAnalysis,
+  resolveTypeNode,
 } from "./class-analyzer.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
 import type { MetadataPolicyInput } from "@formspec/core";
@@ -195,6 +202,124 @@ export function findTypeAliasByName(
   return findNodeByName(sourceFile, aliasName, ts.isTypeAliasDeclaration, (n) => n.name.text);
 }
 
+function getResolvedObjectRootType(
+  rootType: TypeNode,
+  typeRegistry: Record<string, TypeDefinition>
+): Extract<TypeNode, { kind: "object" }> | null {
+  if (rootType.kind === "object") {
+    return rootType;
+  }
+
+  if (rootType.kind !== "reference") {
+    return null;
+  }
+
+  const definition = typeRegistry[rootType.name];
+  return definition?.type.kind === "object" ? definition.type : null;
+}
+
+function createResolvedObjectAliasAnalysis(
+  name: string,
+  rootType: TypeNode,
+  typeRegistry: Record<string, TypeDefinition>,
+  rootInfo: DeclarationRootInfo,
+  diagnostics: readonly ConstraintSemanticDiagnostic[]
+): IRClassAnalysis | null {
+  const resolvedRootType = getResolvedObjectRootType(rootType, typeRegistry);
+  if (resolvedRootType === null) {
+    return null;
+  }
+
+  const fields: FieldNode[] = resolvedRootType.properties.map((property) => ({
+    kind: "field",
+    name: property.name,
+    ...(property.metadata !== undefined && { metadata: property.metadata }),
+    type: property.type,
+    required: !property.optional,
+    constraints: property.constraints,
+    annotations: property.annotations,
+    provenance: property.provenance,
+  }));
+
+  return {
+    name,
+    ...(rootInfo.metadata !== undefined && { metadata: rootInfo.metadata }),
+    fields,
+    fieldLayouts: fields.map(() => ({})),
+    typeRegistry,
+    ...(rootInfo.annotations.length > 0 && { annotations: [...rootInfo.annotations] }),
+    ...(diagnostics.length > 0 && { diagnostics: [...diagnostics] }),
+    instanceMethods: [],
+    staticMethods: [],
+  };
+}
+
+function containsTypeReferenceInObjectLikeAlias(typeNode: ts.TypeNode): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return containsTypeReferenceInObjectLikeAlias(typeNode.type);
+  }
+
+  if (ts.isTypeReferenceNode(typeNode)) {
+    return true;
+  }
+
+  return (
+    ts.isIntersectionTypeNode(typeNode) &&
+    typeNode.types.some((member) => containsTypeReferenceInObjectLikeAlias(member))
+  );
+}
+
+function collectFallbackAliasMemberPropertyNames(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker
+): readonly string[] | null {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return collectFallbackAliasMemberPropertyNames(typeNode.type, checker);
+  }
+
+  if (ts.isTypeLiteralNode(typeNode)) {
+    return typeNode.members
+      .filter(ts.isPropertySignature)
+      .map((member) => member.name?.getText())
+      .filter((name): name is string => name !== undefined);
+  }
+
+  if (ts.isTypeReferenceNode(typeNode)) {
+    return checker.getTypeFromTypeNode(typeNode).getProperties().map((property) => property.getName());
+  }
+
+  return null;
+}
+
+function findFallbackAliasDuplicatePropertyNames(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker
+): readonly string[] {
+  if (!ts.isIntersectionTypeNode(typeNode)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const member of typeNode.types) {
+    const propertyNames = collectFallbackAliasMemberPropertyNames(member, checker);
+    if (propertyNames === null) {
+      continue;
+    }
+
+    for (const propertyName of propertyNames) {
+      if (seen.has(propertyName)) {
+        duplicates.add(propertyName);
+      } else {
+        seen.add(propertyName);
+      }
+    }
+  }
+
+  return [...duplicates].sort();
+}
+
 /**
  * Analyzes a named type (class, interface, or type alias) from a TypeScript
  * source file and returns an `IRClassAnalysis`.
@@ -275,6 +400,58 @@ export function analyzeNamedTypeToIRFromProgramContext(
     if (result.ok) {
       return result.analysis;
     }
+
+    const fallbackEligible =
+      result.error.includes("is not an object-like type alias") &&
+      isResolvableObjectLikeAliasTypeNode(typeAlias.type) &&
+      containsTypeReferenceInObjectLikeAlias(typeAlias.type);
+    if (!fallbackEligible) {
+      throw new Error(result.error);
+    }
+
+    const duplicatePropertyNames = findFallbackAliasDuplicatePropertyNames(
+      typeAlias.type,
+      ctx.checker
+    );
+    if (duplicatePropertyNames.length > 0) {
+      const sourceFile = typeAlias.getSourceFile();
+      const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
+      throw new Error(
+        `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`
+      );
+    }
+
+    const rootInfo = analyzeDeclarationRootInfo(
+      typeAlias,
+      ctx.checker,
+      analysisFilePath,
+      extensionRegistry,
+      metadataPolicy
+    );
+    const diagnostics: ConstraintSemanticDiagnostic[] = [...rootInfo.diagnostics];
+    const typeRegistry: Record<string, TypeDefinition> = {};
+    const rootType = resolveTypeNode(
+      ctx.checker.getTypeAtLocation(typeAlias),
+      ctx.checker,
+      analysisFilePath,
+      typeRegistry,
+      new Set<ts.Type>(),
+      typeAlias,
+      createAnalyzerMetadataPolicy(metadataPolicy, discriminatorOptions),
+      extensionRegistry,
+      diagnostics
+    );
+    const fallbackAnalysis = createResolvedObjectAliasAnalysis(
+      typeAlias.name.text,
+      rootType,
+      typeRegistry,
+      rootInfo,
+      diagnostics
+    );
+    if (fallbackAnalysis !== null) {
+      return fallbackAnalysis;
+    }
+
     throw new Error(result.error);
   }
 

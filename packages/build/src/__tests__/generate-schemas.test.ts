@@ -18,6 +18,20 @@ const metadataDescriptionRegressionFixture = path.join(
   "fixtures",
   "issue-220-metadata-description.ts"
 );
+const methodSignatureSchemasFixture = path.join(
+  __dirname,
+  "fixtures",
+  "method-signature-schemas.ts"
+);
+
+function findControlByScope(
+  elements: readonly Record<string, unknown>[],
+  scope: string
+): Record<string, unknown> | undefined {
+  return elements.find(
+    (element) => element["type"] === "Control" && element["scope"] === scope
+  );
+}
 
 describe("generateSchemas", () => {
   it("emits named primitive aliases into $defs for reused constrained aliases", () => {
@@ -154,5 +168,100 @@ describe("generateSchemas", () => {
         required: ["nested_workflow_status"],
       },
     });
+  });
+
+  it("supports direct object aliases through the public generation entry point", () => {
+    const result = generateSchemas({
+      filePath: methodSignatureSchemasFixture,
+      typeName: "AliasedSubmitInput",
+    });
+
+    expect(result.jsonSchema.title).toBe("Aliased Submit Input");
+    expect(result.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+    });
+    expect(result.jsonSchema.required).toEqual(["amount_cents", "currency"]);
+    expect(result.uiSchema.elements).toMatchObject([
+      { type: "Control", scope: "#/properties/amount_cents" },
+      { type: "Control", scope: "#/properties/currency", label: "Currency" },
+    ]);
+  });
+
+  it("preserves field metadata and optionality for mapped utility aliases", () => {
+    const result = generateSchemas({
+      filePath: methodSignatureSchemasFixture,
+      typeName: "PartialSubmitInput",
+    });
+
+    expect(result.jsonSchema.title).toBe("Partial Submit Input");
+    expect(result.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+    });
+    expect(result.jsonSchema.required).toBeUndefined();
+
+    const currencyControl = findControlByScope(result.uiSchema.elements, "#/properties/currency");
+    expect(currencyControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/currency",
+      label: "Currency",
+    });
+  });
+
+  it("supports Pick aliases without leaking omitted properties", () => {
+    const result = generateSchemas({
+      filePath: methodSignatureSchemasFixture,
+      typeName: "AmountOnlySubmitInput",
+    });
+
+    expect(result.jsonSchema.title).toBe("Amount Only Submit Input");
+    expect(result.jsonSchema.properties).toEqual({
+      amount_cents: { type: "number" },
+    });
+    expect(result.jsonSchema.required).toEqual(["amount_cents"]);
+    expect(result.uiSchema.elements).toEqual([
+      { type: "Control", scope: "#/properties/amount_cents" },
+    ]);
+  });
+
+  it("supports utility/intersection aliases that add inline members", () => {
+    const result = generateSchemas({
+      filePath: methodSignatureSchemasFixture,
+      typeName: "AuditedSubmitInput",
+    });
+
+    expect(result.jsonSchema.title).toBe("Audited Submit Input");
+    expect(result.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" },
+      currency: { type: "string", title: "Currency" },
+      auditId: { type: "string", title: "Audit Id" },
+    });
+    expect(result.jsonSchema.required).toEqual(["auditId"]);
+
+    const auditControl = findControlByScope(result.uiSchema.elements, "#/properties/auditId");
+    expect(auditControl).toMatchObject({
+      type: "Control",
+      scope: "#/properties/auditId",
+      label: "Audit Id",
+    });
+  });
+
+  it("rejects mixed alias intersections that duplicate property names", () => {
+    expect(() =>
+      generateSchemas({
+        filePath: methodSignatureSchemasFixture,
+        typeName: "ConflictingSubmitInput",
+      })
+    ).toThrow(/duplicate property names[\s\S]*currency/i);
+  });
+
+  it("rejects callable intersections that only look object-like structurally", () => {
+    expect(() =>
+      generateSchemas({
+        filePath: methodSignatureSchemasFixture,
+        typeName: "CallableSubmitInput",
+      })
+    ).toThrow(/not an object-like type alias/i);
   });
 });
