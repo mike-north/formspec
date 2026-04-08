@@ -57,6 +57,13 @@ export type ConflictingSubmitInput = Pick<SubmitInput, "currency"> & {
 };
 
 /**
+ * @displayName Quoted Conflicting Submit Input
+ */
+export type QuotedConflictingSubmitInput = Pick<SubmitInput, "currency"> & {
+  "currency": number;
+};
+
+/**
  * @displayName Callable Submit Input
  */
 export type CallableSubmitInput = (() => void) & {

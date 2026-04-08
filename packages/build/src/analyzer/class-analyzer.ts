@@ -177,12 +177,18 @@ export interface IRClassAnalysis {
   readonly staticMethods: readonly MethodInfo[];
 }
 
+export type AnalyzeTypeAliasToIRFailureKind = "duplicate-properties" | "not-object-like";
+
 /**
  * Result of analyzing a type alias into IR — either success or error.
  */
 export type AnalyzeTypeAliasToIRResult =
   | { readonly ok: true; readonly analysis: IRClassAnalysis }
-  | { readonly ok: false; readonly error: string };
+  | {
+      readonly ok: false;
+      readonly kind: AnalyzeTypeAliasToIRFailureKind;
+      readonly error: string;
+    };
 
 export interface DeclarationRootInfo {
   readonly metadata?: ResolvedMetadata;
@@ -534,6 +540,7 @@ export function analyzeTypeAliasToIR(
     const kindDesc = ts.SyntaxKind[typeAlias.type.kind] ?? "unknown";
     return {
       ok: false,
+      kind: "not-object-like",
       error: `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} is not an object-like type alias (found ${kindDesc})`,
     };
   }
@@ -549,6 +556,7 @@ export function analyzeTypeAliasToIR(
     const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
     return {
       ok: false,
+      kind: "duplicate-properties",
       error: `Type alias "${name}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`,
     };
   }
@@ -1550,12 +1558,12 @@ function findDuplicateObjectLikeTypeAliasPropertyNames(
   return [...duplicates].sort();
 }
 
-function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): string | null {
-  if (!ts.isIdentifier(name)) {
-    return null;
+export function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): string | null {
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+    return name.text;
   }
 
-  return name.text;
+  return null;
 }
 
 /**

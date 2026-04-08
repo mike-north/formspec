@@ -13,6 +13,7 @@ import {
   analyzeDeclarationRootInfo,
   analyzeClassToIR,
   createAnalyzerMetadataPolicy,
+  getAnalyzableObjectLikePropertyName,
   analyzeInterfaceToIR,
   isResolvableObjectLikeAliasTypeNode,
   analyzeTypeAliasToIR,
@@ -278,10 +279,19 @@ function collectFallbackAliasMemberPropertyNames(
   }
 
   if (ts.isTypeLiteralNode(typeNode)) {
-    return typeNode.members
-      .filter(ts.isPropertySignature)
-      .map((member) => member.name?.getText())
-      .filter((name): name is string => name !== undefined);
+    const propertyNames: string[] = [];
+    for (const member of typeNode.members) {
+      if (!ts.isPropertySignature(member)) {
+        continue;
+      }
+
+      const propertyName = getAnalyzableObjectLikePropertyName(member.name);
+      if (propertyName !== null) {
+        propertyNames.push(propertyName);
+      }
+    }
+
+    return propertyNames;
   }
 
   if (ts.isTypeReferenceNode(typeNode)) {
@@ -402,7 +412,7 @@ export function analyzeNamedTypeToIRFromProgramContext(
     }
 
     const fallbackEligible =
-      result.error.includes("is not an object-like type alias") &&
+      result.kind === "not-object-like" &&
       isResolvableObjectLikeAliasTypeNode(typeAlias.type) &&
       containsTypeReferenceInObjectLikeAlias(typeAlias.type);
     if (!fallbackEligible) {

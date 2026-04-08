@@ -256,6 +256,15 @@ describe("generateSchemas", () => {
     ).toThrow(/duplicate property names[\s\S]*currency/i);
   });
 
+  it("rejects mixed alias intersections that duplicate quoted property names", () => {
+    expect(() =>
+      generateSchemas({
+        filePath: methodSignatureSchemasFixture,
+        typeName: "QuotedConflictingSubmitInput",
+      })
+    ).toThrow(/duplicate property names[\s\S]*currency/i);
+  });
+
   it("rejects callable intersections that only look object-like structurally", () => {
     expect(() =>
       generateSchemas({

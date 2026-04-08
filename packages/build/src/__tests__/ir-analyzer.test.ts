@@ -511,6 +511,7 @@ describe("analyzeTypeAliasToIR", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
+      expect(result.kind).toBe("not-object-like");
       expect(result.error).toContain("StringAlias");
       expect(result.error).toContain("not an object-like type alias");
     }
@@ -534,6 +535,7 @@ describe("analyzeTypeAliasToIR", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
+      expect(result.kind).toBe("not-object-like");
       expect(result.error).toContain("InstantiatedReferencedTypeAlias");
       expect(result.error).toContain("not an object-like type alias");
     }
@@ -548,7 +550,24 @@ describe("analyzeTypeAliasToIR", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
+      expect(result.kind).toBe("duplicate-properties");
       expect(result.error).toContain("DuplicateIntersectionTypeAlias");
+      expect(result.error).toContain("duplicate property names");
+      expect(result.error).toContain("id");
+    }
+  });
+
+  it("returns error for duplicate quoted property names across intersection members", () => {
+    const ctx = createProgramContext(interfaceFixturePath);
+    const decl = findTypeAliasByName(ctx.sourceFile, "DuplicateQuotedIntersectionTypeAlias");
+    if (!decl) throw new Error("DuplicateQuotedIntersectionTypeAlias not found");
+
+    const result = analyzeTypeAliasToIR(decl, ctx.checker, interfaceFixturePath);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.kind).toBe("duplicate-properties");
+      expect(result.error).toContain("DuplicateQuotedIntersectionTypeAlias");
       expect(result.error).toContain("duplicate property names");
       expect(result.error).toContain("id");
     }
