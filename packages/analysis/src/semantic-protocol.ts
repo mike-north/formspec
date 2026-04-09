@@ -20,13 +20,219 @@ import {
  *
  * @public
  */
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 3;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 4;
 /**
  * Version of the serialized analysis payload schema.
  *
  * @public
  */
-export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
+export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 2;
+
+/**
+ * Serializable source details for one explicit metadata value.
+ *
+ * @public
+ */
+export interface FormSpecSerializedExplicitMetadataSource {
+  /** Tag name associated with the explicit value, without the `@` prefix. */
+  readonly tagName: string;
+  /** Whether the explicit value used a bare or qualified tag form. */
+  readonly form: "bare" | "qualified";
+  /** Full range covering the explicit tag occurrence. */
+  readonly fullRange: CommentSpan;
+  /** Range covering only the tag name token. */
+  readonly tagNameRange: CommentSpan;
+  /** Range covering the qualifier text, when present. */
+  readonly qualifierRange?: CommentSpan | undefined;
+  /** Range covering only the explicit value text. */
+  readonly valueRange: CommentSpan;
+  /** Qualifier text without the leading colon, when present. */
+  readonly qualifier?: string | undefined;
+}
+
+/**
+ * Serializable scalar metadata value plus its provenance.
+ *
+ * @public
+ */
+export interface FormSpecSerializedResolvedScalarMetadata {
+  /** Effective metadata value after policy resolution. */
+  readonly value: string;
+  /** Whether the value was authored directly or inferred. */
+  readonly source: "explicit" | "inferred";
+}
+
+/**
+ * Serializable built-in metadata projection for one declaration.
+ *
+ * @public
+ */
+export interface FormSpecSerializedResolvedMetadata {
+  /** Effective JSON-facing singular name. */
+  readonly apiName?: FormSpecSerializedResolvedScalarMetadata | undefined;
+  /** Effective human-facing singular label. */
+  readonly displayName?: FormSpecSerializedResolvedScalarMetadata | undefined;
+  /** Effective JSON-facing plural name, where applicable. */
+  readonly apiNamePlural?: FormSpecSerializedResolvedScalarMetadata | undefined;
+  /** Effective human-facing plural label, where applicable. */
+  readonly displayNamePlural?: FormSpecSerializedResolvedScalarMetadata | undefined;
+}
+
+/**
+ * Serializable metadata slot resolution for one declaration.
+ *
+ * @public
+ */
+export interface FormSpecSerializedMetadataEntry {
+  /** Stable logical slot identifier. */
+  readonly slotId: string;
+  /** Tag name associated with the slot, without the `@` prefix. */
+  readonly tagName: string;
+  /** Optional qualifier text without the leading colon. */
+  readonly qualifier?: string | undefined;
+  /** Effective value after explicit/inferred resolution. */
+  readonly value: string;
+  /** Whether the value was authored directly or inferred. */
+  readonly source: "explicit" | "inferred";
+  /** Fixer-oriented source details when the winning value was explicit. */
+  readonly explicitSource?: FormSpecSerializedExplicitMetadataSource | undefined;
+}
+
+/**
+ * JSON-safe value carried by declaration summary facts.
+ *
+ * @public
+ */
+export type FormSpecSerializedJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly FormSpecSerializedJsonValue[]
+  | { readonly [key: string]: FormSpecSerializedJsonValue };
+
+/**
+ * Structured declaration-level fact derived from one or more comment tags.
+ *
+ * @public
+ */
+export type FormSpecSerializedDeclarationFact =
+  | {
+      /** Summary text attached to the declaration body before the first tag. */
+      readonly kind: "description";
+      /** Summary text rendered from the declaration doc comment. */
+      readonly value: string;
+    }
+  | {
+      /** Additional remarks text attached to the declaration. */
+      readonly kind: "remarks";
+      /** Remarks text as authored. */
+      readonly value: string;
+    }
+  | {
+      /** Default JSON value carried by the declaration metadata. */
+      readonly kind: "default-value";
+      /** Parsed JSON-safe default value. */
+      readonly value: FormSpecSerializedJsonValue;
+    }
+  | {
+      /** Example text attached to the declaration. */
+      readonly kind: "example";
+      /** Example text as authored. */
+      readonly value: string;
+    }
+  | {
+      /** Deprecation status for the declaration. */
+      readonly kind: "deprecated";
+      /** Optional deprecation guidance authored alongside the tag. */
+      readonly message: string | null;
+    }
+  | {
+      /** Combined numeric constraints for one declaration target. */
+      readonly kind: "numeric-constraints";
+      /** Target path receiving the constraints, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Inclusive lower bound, when present. */
+      readonly minimum?: number | undefined;
+      /** Inclusive upper bound, when present. */
+      readonly maximum?: number | undefined;
+      /** Exclusive lower bound, when present. */
+      readonly exclusiveMinimum?: number | undefined;
+      /** Exclusive upper bound, when present. */
+      readonly exclusiveMaximum?: number | undefined;
+      /** Divisibility constraint, when present. */
+      readonly multipleOf?: number | undefined;
+    }
+  | {
+      /** Combined string constraints for one declaration target. */
+      readonly kind: "string-constraints";
+      /** Target path receiving the constraints, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Minimum string length, when present. */
+      readonly minLength?: number | undefined;
+      /** Maximum string length, when present. */
+      readonly maxLength?: number | undefined;
+      /** Regex patterns that must all be satisfied. */
+      readonly patterns: readonly string[];
+    }
+  | {
+      /** Combined array constraints for one declaration target. */
+      readonly kind: "array-constraints";
+      /** Target path receiving the constraints, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Minimum item count, when present. */
+      readonly minItems?: number | undefined;
+      /** Maximum item count, when present. */
+      readonly maxItems?: number | undefined;
+      /** Whether items must be unique. */
+      readonly uniqueItems?: boolean | undefined;
+    }
+  | {
+      /** Enum/member whitelist constraint for one declaration target. */
+      readonly kind: "allowed-members";
+      /** Target path receiving the constraint, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Allowed member identifiers after normalization. */
+      readonly members: readonly (string | number)[];
+    }
+  | {
+      /** Constant-value constraint for one declaration target. */
+      readonly kind: "const";
+      /** Target path receiving the constraint, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Constant JSON-safe value. */
+      readonly value: FormSpecSerializedJsonValue;
+    }
+  | {
+      /** Extension-defined constraint fact for one declaration target. */
+      readonly kind: "custom-constraint";
+      /** Target path receiving the constraint, or `null` for the declaration itself. */
+      readonly targetPath: string | null;
+      /** Stable extension-qualified constraint identifier. */
+      readonly constraintId: string;
+      /** Composition rule used when combining repeated applications. */
+      readonly compositionRule: "intersect" | "override";
+      /** JSON-safe payload parsed from the authored tag. */
+      readonly payload: FormSpecSerializedJsonValue;
+    };
+
+/**
+ * Public declaration-level semantic summary for one documented declaration.
+ *
+ * @public
+ */
+export interface FormSpecAnalysisDeclarationSummary {
+  /** Summary text attached to the declaration before the first tag, if present. */
+  readonly summaryText: string | null;
+  /** Built-in resolved metadata projected for the declaration. */
+  readonly resolvedMetadata: FormSpecSerializedResolvedMetadata | null;
+  /** Resolved metadata entries, including extension-contributed slots. */
+  readonly metadataEntries: readonly FormSpecSerializedMetadataEntry[];
+  /** Structured declaration facts derived by FormSpec. */
+  readonly facts: readonly FormSpecSerializedDeclarationFact[];
+  /** Pre-rendered markdown optimized for declaration hover surfaces. */
+  readonly hoverMarkdown: string;
+}
 
 /**
  * Cross-process endpoint used by the language server to reach the semantic
@@ -191,7 +397,7 @@ export type FormSpecSerializedCompletionContext =
  */
 export interface FormSpecSerializedHoverInfo {
   /** Token kind that produced this hover payload. */
-  readonly kind: "tag-name" | "target" | "argument";
+  readonly kind: "tag-name" | "target" | "argument" | "declaration";
   /** Markdown content returned to the hover UI. */
   readonly markdown: string;
 }
@@ -303,6 +509,8 @@ export interface FormSpecAnalysisCommentSnapshot {
   readonly subjectType: string | null;
   /** Resolved host type that owns the comment, if known. */
   readonly hostType: string | null;
+  /** Declaration-level applied metadata and constraints derived by FormSpec. */
+  readonly declarationSummary: FormSpecAnalysisDeclarationSummary;
   /** Parsed tags contained in the doc comment. */
   readonly tags: readonly FormSpecAnalysisTagSnapshot[];
 }
@@ -456,8 +664,32 @@ function isNumberArray(value: unknown): value is readonly number[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "number");
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function isBooleanArray(value: unknown): value is readonly boolean[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === "boolean");
+}
+
+function isJsonValue(value: unknown): value is FormSpecSerializedJsonValue {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+
+  if (isFiniteNumber(value)) {
+    return true;
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(isJsonValue);
+  }
+
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  return Object.values(value).every(isJsonValue);
 }
 
 function isDiagnosticDataValue(value: unknown): value is FormSpecAnalysisDiagnosticDataValue {
@@ -629,7 +861,8 @@ function isSerializedHoverInfo(value: unknown): value is FormSpecSerializedHover
   return (
     (candidate.kind === "tag-name" ||
       candidate.kind === "target" ||
-      candidate.kind === "argument") &&
+      candidate.kind === "argument" ||
+      candidate.kind === "declaration") &&
     typeof candidate.markdown === "string"
   );
 }
@@ -693,6 +926,152 @@ function isAnalysisTagSnapshot(value: unknown): value is FormSpecAnalysisTagSnap
   );
 }
 
+function isExplicitMetadataSource(
+  value: unknown
+): value is FormSpecSerializedExplicitMetadataSource {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecSerializedExplicitMetadataSource>;
+  return (
+    typeof candidate.tagName === "string" &&
+    (candidate.form === "bare" || candidate.form === "qualified") &&
+    isCommentSpan(candidate.fullRange) &&
+    isCommentSpan(candidate.tagNameRange) &&
+    (candidate.qualifierRange === undefined || isCommentSpan(candidate.qualifierRange)) &&
+    isCommentSpan(candidate.valueRange) &&
+    (candidate.qualifier === undefined || typeof candidate.qualifier === "string")
+  );
+}
+
+function isResolvedScalarMetadata(
+  value: unknown
+): value is FormSpecSerializedResolvedScalarMetadata {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecSerializedResolvedScalarMetadata>;
+  return (
+    typeof candidate.value === "string" &&
+    (candidate.source === "explicit" || candidate.source === "inferred")
+  );
+}
+
+function isResolvedMetadata(value: unknown): value is FormSpecSerializedResolvedMetadata {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecSerializedResolvedMetadata>;
+  return (
+    (candidate.apiName === undefined || isResolvedScalarMetadata(candidate.apiName)) &&
+    (candidate.displayName === undefined || isResolvedScalarMetadata(candidate.displayName)) &&
+    (candidate.apiNamePlural === undefined ||
+      isResolvedScalarMetadata(candidate.apiNamePlural)) &&
+    (candidate.displayNamePlural === undefined ||
+      isResolvedScalarMetadata(candidate.displayNamePlural))
+  );
+}
+
+function isMetadataEntry(value: unknown): value is FormSpecSerializedMetadataEntry {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecSerializedMetadataEntry>;
+  return (
+    typeof candidate.slotId === "string" &&
+    typeof candidate.tagName === "string" &&
+    (candidate.qualifier === undefined || typeof candidate.qualifier === "string") &&
+    typeof candidate.value === "string" &&
+    (candidate.source === "explicit" || candidate.source === "inferred") &&
+    (candidate.explicitSource === undefined ||
+      isExplicitMetadataSource(candidate.explicitSource))
+  );
+}
+
+function isDeclarationFact(value: unknown): value is FormSpecSerializedDeclarationFact {
+  if (!isObjectRecord(value) || typeof value["kind"] !== "string") {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecSerializedDeclarationFact>;
+  switch (candidate.kind) {
+    case "description":
+    case "remarks":
+    case "example":
+      return typeof candidate.value === "string";
+    case "default-value":
+      return isJsonValue(candidate.value);
+    case "deprecated":
+      return candidate.message === null || typeof candidate.message === "string";
+    case "numeric-constraints":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        (candidate.minimum === undefined || isFiniteNumber(candidate.minimum)) &&
+        (candidate.maximum === undefined || isFiniteNumber(candidate.maximum)) &&
+        (candidate.exclusiveMinimum === undefined || isFiniteNumber(candidate.exclusiveMinimum)) &&
+        (candidate.exclusiveMaximum === undefined || isFiniteNumber(candidate.exclusiveMaximum)) &&
+        (candidate.multipleOf === undefined || isFiniteNumber(candidate.multipleOf))
+      );
+    case "string-constraints":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        (candidate.minLength === undefined || isFiniteNumber(candidate.minLength)) &&
+        (candidate.maxLength === undefined || isFiniteNumber(candidate.maxLength)) &&
+        isStringArray(candidate.patterns)
+      );
+    case "array-constraints":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        (candidate.minItems === undefined || isFiniteNumber(candidate.minItems)) &&
+        (candidate.maxItems === undefined || isFiniteNumber(candidate.maxItems)) &&
+        (candidate.uniqueItems === undefined || typeof candidate.uniqueItems === "boolean")
+      );
+    case "allowed-members":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        Array.isArray(candidate.members) &&
+        candidate.members.every(
+          (member) => typeof member === "string" || isFiniteNumber(member)
+        )
+      );
+    case "const":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        isJsonValue(candidate.value)
+      );
+    case "custom-constraint":
+      return (
+        (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
+        typeof candidate.constraintId === "string" &&
+        (candidate.compositionRule === "intersect" || candidate.compositionRule === "override") &&
+        isJsonValue(candidate.payload)
+      );
+    default:
+      return false;
+  }
+}
+
+function isDeclarationSummary(value: unknown): value is FormSpecAnalysisDeclarationSummary {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<FormSpecAnalysisDeclarationSummary>;
+  return (
+    (candidate.summaryText === null || typeof candidate.summaryText === "string") &&
+    (candidate.resolvedMetadata === null || isResolvedMetadata(candidate.resolvedMetadata)) &&
+    Array.isArray(candidate.metadataEntries) &&
+    candidate.metadataEntries.every(isMetadataEntry) &&
+    Array.isArray(candidate.facts) &&
+    candidate.facts.every(isDeclarationFact) &&
+    typeof candidate.hoverMarkdown === "string"
+  );
+}
+
 function isAnalysisCommentSnapshot(value: unknown): value is FormSpecAnalysisCommentSnapshot {
   if (!isObjectRecord(value)) {
     return false;
@@ -705,6 +1084,7 @@ function isAnalysisCommentSnapshot(value: unknown): value is FormSpecAnalysisCom
     (candidate.placement === null || isPlacementValue(candidate.placement)) &&
     (candidate.subjectType === null || typeof candidate.subjectType === "string") &&
     (candidate.hostType === null || typeof candidate.hostType === "string") &&
+    isDeclarationSummary(candidate.declarationSummary) &&
     Array.isArray(candidate.tags) &&
     candidate.tags.every(isAnalysisTagSnapshot)
   );

@@ -117,6 +117,16 @@ function isTagStart(lineText: string, index: number): boolean {
   return previousChar === undefined || isWhitespace(previousChar);
 }
 
+function collectTagStarts(lineText: string): readonly number[] {
+  const tagStarts: number[] = [];
+  for (let index = 0; index < lineText.length; index += 1) {
+    if (isTagStart(lineText, index)) {
+      tagStarts.push(index);
+    }
+  }
+  return tagStarts;
+}
+
 function findTagEnd(lineText: string, index: number): number {
   let cursor = index + 1;
   while (cursor < lineText.length && /[A-Za-z0-9]/u.test(lineText[cursor] ?? "")) {
@@ -297,13 +307,7 @@ export function parseCommentBlock(
   const baseOffset = options?.offset ?? 0;
 
   for (const line of projectCommentLines(commentText)) {
-    const tagStarts: number[] = [];
-
-    for (let index = 0; index < line.text.length; index += 1) {
-      if (isTagStart(line.text, index)) {
-        tagStarts.push(index);
-      }
-    }
+    const tagStarts = collectTagStarts(line.text);
 
     for (let tagIndex = 0; tagIndex < tagStarts.length; tagIndex += 1) {
       const tagStart = tagStarts[tagIndex];
@@ -403,6 +407,123 @@ export function parseTagSyntax(
     throw new Error(`Unable to parse synthetic tag syntax for @${rawTagName}`);
   }
   return tag;
+}
+
+/**
+ * Extracts summary text from a doc comment by taking the cleaned text that
+ * appears before the first recognized tag marker.
+ *
+ * @public
+ */
+export function extractCommentSummaryText(commentText: string): string {
+  const summaryLines: string[] = [];
+
+  for (const line of projectCommentLines(commentText)) {
+    let cutoff = line.text.length;
+    for (let index = 0; index < line.text.length; index += 1) {
+      if (isTagStart(line.text, index)) {
+        cutoff = index;
+        break;
+      }
+    }
+
+    const segment = line.text.slice(0, cutoff).trimEnd();
+    if (cutoff < line.text.length) {
+      if (segment.trim() !== "") {
+        summaryLines.push(segment.trim());
+      }
+      break;
+    }
+
+    summaryLines.push(segment);
+  }
+
+  return summaryLines.join("\n").trim();
+}
+
+/**
+ * Extracts one or more TSDoc-style block-tag payloads, including continuation
+ * lines until the next block tag begins.
+ *
+ * @public
+ */
+export function extractCommentBlockTagTexts(
+  commentText: string,
+  rawTagName: string
+): readonly string[] {
+  const lines = projectCommentLines(commentText);
+  const canonicalName = normalizeFormSpecTagName(rawTagName);
+  const values: string[] = [];
+
+  let lineIndex = 0;
+  while (lineIndex < lines.length) {
+    const line = lines[lineIndex];
+    if (line === undefined) {
+      break;
+    }
+
+    const tagStarts = collectTagStarts(line.text);
+    let nextLineIndex = lineIndex + 1;
+
+    for (let tagIndex = 0; tagIndex < tagStarts.length; tagIndex += 1) {
+      const tagStart = tagStarts[tagIndex];
+      if (tagStart === undefined) {
+        continue;
+      }
+
+      const tagEnd = findTagEnd(line.text, tagStart);
+      const candidateName = normalizeFormSpecTagName(line.text.slice(tagStart + 1, tagEnd));
+      if (candidateName !== canonicalName) {
+        continue;
+      }
+
+      let payloadStart = tagEnd;
+      const nextTagStart = tagStarts[tagIndex + 1] ?? line.text.length;
+      while (payloadStart < nextTagStart && isWhitespace(line.text[payloadStart])) {
+        payloadStart += 1;
+      }
+
+      const blockLines: string[] = [
+        line.text
+          .slice(payloadStart, trimTrailingWhitespace(line.text, nextTagStart))
+          .replace(/[ \t]+$/u, ""),
+      ];
+
+      if (nextTagStart === line.text.length) {
+        let continuationIndex = lineIndex + 1;
+        while (continuationIndex < lines.length) {
+          const continuation = lines[continuationIndex];
+          if (continuation === undefined) {
+            break;
+          }
+
+          if (collectTagStarts(continuation.text).length > 0) {
+            break;
+          }
+
+          const continuationText = continuation.text.replace(/[ \t]+$/u, "");
+          if (continuationText.trim() === "/") {
+            break;
+          }
+
+          blockLines.push(continuationText);
+          continuationIndex += 1;
+        }
+        if (continuationIndex > nextLineIndex) {
+          nextLineIndex = continuationIndex;
+        }
+      }
+
+      const text = blockLines.join("\n").trim();
+      if (text !== "") {
+        values.push(text);
+      }
+    }
+
+    lineIndex = nextLineIndex;
+  }
+
+  return values;
 }
 
 /**

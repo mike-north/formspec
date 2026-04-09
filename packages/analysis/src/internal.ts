@@ -1,4 +1,9 @@
-export { parseCommentBlock, parseTagSyntax, sliceCommentSpan } from "./comment-syntax.js";
+export {
+  extractCommentSummaryText,
+  parseCommentBlock,
+  parseTagSyntax,
+  sliceCommentSpan,
+} from "./comment-syntax.js";
 export type {
   CommentSourceSpan,
   CommentSpan,

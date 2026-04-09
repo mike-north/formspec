@@ -45,19 +45,29 @@ export type CommentSpan = CommentSourceSpan;
 export function computeFormSpecTextHash(text: string): string;
 
 // @public
-export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 3;
+export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 4;
 
 // @public
-export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 1;
+export const FORMSPEC_ANALYSIS_SCHEMA_VERSION = 2;
 
 // @public
 export interface FormSpecAnalysisCommentSnapshot {
     readonly commentSpan: CommentSpan;
     readonly declarationSpan: CommentSpan;
+    readonly declarationSummary: FormSpecAnalysisDeclarationSummary;
     readonly hostType: string | null;
     readonly placement: FormSpecPlacement | null;
     readonly subjectType: string | null;
     readonly tags: readonly FormSpecAnalysisTagSnapshot[];
+}
+
+// @public
+export interface FormSpecAnalysisDeclarationSummary {
+    readonly facts: readonly FormSpecSerializedDeclarationFact[];
+    readonly hoverMarkdown: string;
+    readonly metadataEntries: readonly FormSpecSerializedMetadataEntry[];
+    readonly resolvedMetadata: FormSpecSerializedResolvedMetadata | null;
+    readonly summaryText: string | null;
 }
 
 // @public
@@ -210,9 +220,101 @@ export type FormSpecSerializedCompletionContext = {
 };
 
 // @public
+export type FormSpecSerializedDeclarationFact = {
+    readonly kind: "description";
+    readonly value: string;
+} | {
+    readonly kind: "remarks";
+    readonly value: string;
+} | {
+    readonly kind: "default-value";
+    readonly value: FormSpecSerializedJsonValue;
+} | {
+    readonly kind: "example";
+    readonly value: string;
+} | {
+    readonly kind: "deprecated";
+    readonly message: string | null;
+} | {
+    readonly kind: "numeric-constraints";
+    readonly targetPath: string | null;
+    readonly minimum?: number | undefined;
+    readonly maximum?: number | undefined;
+    readonly exclusiveMinimum?: number | undefined;
+    readonly exclusiveMaximum?: number | undefined;
+    readonly multipleOf?: number | undefined;
+} | {
+    readonly kind: "string-constraints";
+    readonly targetPath: string | null;
+    readonly minLength?: number | undefined;
+    readonly maxLength?: number | undefined;
+    readonly patterns: readonly string[];
+} | {
+    readonly kind: "array-constraints";
+    readonly targetPath: string | null;
+    readonly minItems?: number | undefined;
+    readonly maxItems?: number | undefined;
+    readonly uniqueItems?: boolean | undefined;
+} | {
+    readonly kind: "allowed-members";
+    readonly targetPath: string | null;
+    readonly members: readonly (string | number)[];
+} | {
+    readonly kind: "const";
+    readonly targetPath: string | null;
+    readonly value: FormSpecSerializedJsonValue;
+} | {
+    readonly kind: "custom-constraint";
+    readonly targetPath: string | null;
+    readonly constraintId: string;
+    readonly compositionRule: "intersect" | "override";
+    readonly payload: FormSpecSerializedJsonValue;
+};
+
+// @public
+export interface FormSpecSerializedExplicitMetadataSource {
+    readonly form: "bare" | "qualified";
+    readonly fullRange: CommentSpan;
+    readonly qualifier?: string | undefined;
+    readonly qualifierRange?: CommentSpan | undefined;
+    readonly tagName: string;
+    readonly tagNameRange: CommentSpan;
+    readonly valueRange: CommentSpan;
+}
+
+// @public
 export interface FormSpecSerializedHoverInfo {
-    readonly kind: "tag-name" | "target" | "argument";
+    readonly kind: "tag-name" | "target" | "argument" | "declaration";
     readonly markdown: string;
+}
+
+// @public
+export type FormSpecSerializedJsonValue = string | number | boolean | null | readonly FormSpecSerializedJsonValue[] | {
+    readonly [key: string]: FormSpecSerializedJsonValue;
+};
+
+// @public
+export interface FormSpecSerializedMetadataEntry {
+    readonly explicitSource?: FormSpecSerializedExplicitMetadataSource | undefined;
+    readonly qualifier?: string | undefined;
+    readonly slotId: string;
+    readonly source: "explicit" | "inferred";
+    readonly tagName: string;
+    readonly value: string;
+}
+
+// @public
+export interface FormSpecSerializedResolvedMetadata {
+    readonly apiName?: FormSpecSerializedResolvedScalarMetadata | undefined;
+    readonly apiNamePlural?: FormSpecSerializedResolvedScalarMetadata | undefined;
+    readonly displayName?: FormSpecSerializedResolvedScalarMetadata | undefined;
+    readonly displayNamePlural?: FormSpecSerializedResolvedScalarMetadata | undefined;
+}
+
+// @public
+export interface FormSpecSerializedResolvedScalarMetadata {
+    readonly source: "explicit" | "inferred";
+    readonly value: string;
 }
 
 // @public

@@ -1,4 +1,5 @@
 export type {
+  FormSpecAnalysisDeclarationSummary,
   FormSpecAnalysisCommentSnapshot,
   FormSpecAnalysisDiagnosticCategory,
   FormSpecAnalysisDiagnosticDataValue,
@@ -8,6 +9,12 @@ export type {
   FormSpecAnalysisManifest,
   FormSpecAnalysisTagSnapshot,
   FormSpecIpcEndpoint,
+  FormSpecSerializedDeclarationFact,
+  FormSpecSerializedExplicitMetadataSource,
+  FormSpecSerializedJsonValue,
+  FormSpecSerializedMetadataEntry,
+  FormSpecSerializedResolvedMetadata,
+  FormSpecSerializedResolvedScalarMetadata,
   FormSpecSemanticQuery,
   FormSpecSemanticResponse,
   FormSpecSerializedCommentTargetSpecifier,

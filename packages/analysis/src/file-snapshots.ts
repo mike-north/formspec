@@ -1,13 +1,21 @@
+import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
 import {
   checkSyntheticTagApplications,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
-import { parseCommentBlock, type CommentSpan } from "./comment-syntax.js";
+import {
+  extractCommentBlockTagTexts,
+  extractCommentSummaryText,
+  parseCommentBlock,
+  sliceCommentSpan,
+  type CommentSpan,
+} from "./comment-syntax.js";
 import {
   getCommentTagSemanticContext,
   type CommentSemanticContextOptions,
 } from "./cursor-context.js";
+import { analyzeMetadataForNodeWithChecker } from "./metadata-analysis.js";
 import { extractPathTarget } from "./path-target.js";
 import { getHostType, getLastLeadingDocCommentRange, getSubjectType } from "./source-bindings.js";
 import {
@@ -17,10 +25,16 @@ import {
 } from "./source-bindings.js";
 import {
   computeFormSpecTextHash,
+  type FormSpecAnalysisDeclarationSummary,
   serializeParsedCommentTag,
   type FormSpecAnalysisCommentSnapshot,
   type FormSpecAnalysisDiagnostic,
   type FormSpecAnalysisFileSnapshot,
+  type FormSpecSerializedDeclarationFact,
+  type FormSpecSerializedJsonValue,
+  type FormSpecSerializedMetadataEntry,
+  type FormSpecSerializedResolvedMetadata,
+  type FormSpecSerializedResolvedScalarMetadata,
 } from "./semantic-protocol.js";
 import {
   getFormSpecPerformanceNow,
@@ -28,11 +42,20 @@ import {
   type FormSpecPerformanceRecorder,
 } from "./perf-tracing.js";
 import {
+  parseConstraintTagValue,
+  parseDefaultValueTagValue,
+  type ConstraintTagParseRegistryLike,
+} from "./tag-value-parser.js";
+import {
+  normalizeFormSpecTagName,
+  type ExtensionTagSource,
+  type FormSpecPlacement,
+} from "./tag-registry.js";
+import {
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
   resolvePathTargetType,
 } from "./ts-binding.js";
-import type { ExtensionTagSource, FormSpecPlacement } from "./tag-registry.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -41,6 +64,7 @@ import type { ExtensionTagSource, FormSpecPlacement } from "./tag-registry.js";
 export interface BuildFormSpecAnalysisFileSnapshotOptions {
   readonly checker: ts.TypeChecker;
   readonly extensions?: readonly ExtensionTagSource[];
+  readonly extensionDefinitions?: readonly ExtensionDefinition[];
   readonly now?: () => Date;
   readonly performance?: FormSpecPerformanceRecorder;
 }
@@ -60,8 +84,682 @@ const SYNTHETIC_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
 );
 
 const SYNTHETIC_TYPE_PRINTER = ts.createPrinter({ removeComments: true });
+
+interface NumericConstraintAccumulator {
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+  multipleOf?: number;
+}
+
+interface StringConstraintAccumulator {
+  minLength?: number;
+  maxLength?: number;
+  patterns: string[];
+}
+
+interface ArrayConstraintAccumulator {
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+}
+
+function toExtensionTagSources(
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): readonly ExtensionTagSource[] | undefined {
+  if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
+    return undefined;
+  }
+
+  return extensionDefinitions.map((extension) => ({
+    extensionId: extension.extensionId,
+    ...(extension.constraintTags === undefined
+      ? {}
+      : {
+          constraintTags: extension.constraintTags.map((tag) => ({
+            tagName: normalizeFormSpecTagName(tag.tagName),
+          })),
+        }),
+    ...(extension.metadataSlots === undefined ? {} : { metadataSlots: extension.metadataSlots }),
+    ...(extension.types === undefined
+      ? {}
+      : {
+          customTypes: extension.types.map((type) => ({
+            tsTypeNames: type.tsTypeNames ?? [type.typeName],
+          })),
+        }),
+  }));
+}
+
+function createConstraintTagRegistry(
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): ConstraintTagParseRegistryLike | undefined {
+  if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
+    return undefined;
+  }
+
+  return {
+    extensions: extensionDefinitions,
+    findConstraint(constraintId) {
+      for (const extension of extensionDefinitions) {
+        for (const constraint of extension.constraints ?? []) {
+          if (`${extension.extensionId}/${constraint.constraintName}` === constraintId) {
+            return constraint;
+          }
+        }
+      }
+      return undefined;
+    },
+    findConstraintTag(tagName) {
+      const normalizedTagName = normalizeFormSpecTagName(tagName);
+      for (const extension of extensionDefinitions) {
+        for (const registration of extension.constraintTags ?? []) {
+          if (normalizeFormSpecTagName(registration.tagName) === normalizedTagName) {
+            return {
+              extensionId: extension.extensionId,
+              registration,
+            };
+          }
+        }
+      }
+      return undefined;
+    },
+    findBuiltinConstraintBroadening(typeId, tagName) {
+      const normalizedTagName = normalizeFormSpecTagName(tagName);
+      for (const extension of extensionDefinitions) {
+        for (const type of extension.types ?? []) {
+          if (type.typeName !== typeId) {
+            continue;
+          }
+
+          for (const registration of type.builtinConstraintBroadenings ?? []) {
+            if (normalizeFormSpecTagName(registration.tagName) === normalizedTagName) {
+              return {
+                extensionId: extension.extensionId,
+                registration,
+              };
+            }
+          }
+        }
+      }
+      return undefined;
+    },
+  };
+}
+
+function renderTargetLabel(targetPath: string | null): string {
+  return targetPath === null ? "Declaration" : `Target \`${targetPath}\``;
+}
+
 function spanFromPos(start: number, end: number): CommentSpan {
   return { start, end };
+}
+
+function toSerializedResolvedScalarMetadata(
+  value:
+    | {
+        readonly value: string;
+        readonly source: "explicit" | "inferred";
+      }
+    | undefined
+): FormSpecSerializedResolvedScalarMetadata | undefined {
+  return value === undefined ? undefined : { value: value.value, source: value.source };
+}
+
+function toSerializedResolvedMetadata(
+  value:
+    | {
+        readonly apiName?: {
+          readonly value: string;
+          readonly source: "explicit" | "inferred";
+        };
+        readonly displayName?: {
+          readonly value: string;
+          readonly source: "explicit" | "inferred";
+        };
+        readonly apiNamePlural?: {
+          readonly value: string;
+          readonly source: "explicit" | "inferred";
+        };
+        readonly displayNamePlural?: {
+          readonly value: string;
+          readonly source: "explicit" | "inferred";
+        };
+      }
+    | undefined
+): FormSpecSerializedResolvedMetadata | null {
+  if (value === undefined) {
+    return null;
+  }
+
+  return {
+    ...(value.apiName === undefined
+      ? {}
+      : { apiName: toSerializedResolvedScalarMetadata(value.apiName) }),
+    ...(value.displayName === undefined
+      ? {}
+      : { displayName: toSerializedResolvedScalarMetadata(value.displayName) }),
+    ...(value.apiNamePlural === undefined
+      ? {}
+      : { apiNamePlural: toSerializedResolvedScalarMetadata(value.apiNamePlural) }),
+    ...(value.displayNamePlural === undefined
+      ? {}
+      : { displayNamePlural: toSerializedResolvedScalarMetadata(value.displayNamePlural) }),
+  };
+}
+
+function toSerializedMetadataEntries(
+  entries: readonly {
+    readonly slotId: string;
+    readonly tagName: string;
+    readonly qualifier?: string | undefined;
+    readonly value: string;
+    readonly source: "explicit" | "inferred";
+    readonly explicitSource?:
+      | {
+          readonly tagName: string;
+          readonly form: "bare" | "qualified";
+          readonly fullRange: { readonly start: number; readonly end: number };
+          readonly tagNameRange: { readonly start: number; readonly end: number };
+          readonly qualifierRange?: { readonly start: number; readonly end: number } | undefined;
+          readonly valueRange: { readonly start: number; readonly end: number };
+          readonly qualifier?: string | undefined;
+        }
+      | undefined;
+  }[]
+): readonly FormSpecSerializedMetadataEntry[] {
+  return entries.map((entry) => ({
+    slotId: entry.slotId,
+    tagName: entry.tagName,
+    ...(entry.qualifier === undefined ? {} : { qualifier: entry.qualifier }),
+    value: entry.value,
+    source: entry.source,
+    ...(entry.explicitSource === undefined
+      ? {}
+      : {
+          explicitSource: {
+            tagName: entry.explicitSource.tagName,
+            form: entry.explicitSource.form,
+            fullRange: entry.explicitSource.fullRange,
+            tagNameRange: entry.explicitSource.tagNameRange,
+            ...(entry.explicitSource.qualifierRange === undefined
+              ? {}
+              : { qualifierRange: entry.explicitSource.qualifierRange }),
+            valueRange: entry.explicitSource.valueRange,
+            ...(entry.explicitSource.qualifier === undefined
+              ? {}
+              : { qualifier: entry.explicitSource.qualifier }),
+          },
+        }),
+  }));
+}
+
+function getTagPayloadText(
+  parsed: ReturnType<typeof parseCommentBlock>,
+  tag: ReturnType<typeof parseCommentBlock>["tags"][number]
+): string {
+  if (tag.payloadSpan === null) {
+    return "";
+  }
+
+  return sliceCommentSpan(parsed.commentText, tag.payloadSpan, { offset: parsed.offset });
+}
+
+function getConstraintTargetPath(
+  path: { readonly segments: readonly string[] } | undefined
+): string | null {
+  return path === undefined ? null : path.segments.join(".");
+}
+
+function provenanceForTag(
+  sourceFile: ts.SourceFile,
+  tag: ReturnType<typeof parseCommentBlock>["tags"][number]
+): {
+  readonly surface: "tsdoc";
+  readonly file: string;
+  readonly line: number;
+  readonly column: number;
+  readonly length: number;
+  readonly tagName: string;
+} {
+  const lineAndCharacter = sourceFile.getLineAndCharacterOfPosition(tag.fullSpan.start);
+  return {
+    surface: "tsdoc",
+    file: sourceFile.fileName,
+    line: lineAndCharacter.line + 1,
+    column: lineAndCharacter.character,
+    length: tag.fullSpan.end - tag.fullSpan.start,
+    tagName: `@${tag.normalizedTagName}`,
+  };
+}
+
+function updateLowerBound(current: number | undefined, next: number): number {
+  return current === undefined ? next : Math.max(current, next);
+}
+
+function updateUpperBound(current: number | undefined, next: number): number {
+  return current === undefined ? next : Math.min(current, next);
+}
+
+function buildNumericConstraintFact(
+  targetPath: string | null,
+  accumulator: NumericConstraintAccumulator
+): FormSpecSerializedDeclarationFact | null {
+  if (
+    accumulator.minimum === undefined &&
+    accumulator.maximum === undefined &&
+    accumulator.exclusiveMinimum === undefined &&
+    accumulator.exclusiveMaximum === undefined &&
+    accumulator.multipleOf === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    kind: "numeric-constraints",
+    targetPath,
+    ...(accumulator.minimum === undefined ? {} : { minimum: accumulator.minimum }),
+    ...(accumulator.maximum === undefined ? {} : { maximum: accumulator.maximum }),
+    ...(accumulator.exclusiveMinimum === undefined
+      ? {}
+      : { exclusiveMinimum: accumulator.exclusiveMinimum }),
+    ...(accumulator.exclusiveMaximum === undefined
+      ? {}
+      : { exclusiveMaximum: accumulator.exclusiveMaximum }),
+    ...(accumulator.multipleOf === undefined ? {} : { multipleOf: accumulator.multipleOf }),
+  };
+}
+
+function buildStringConstraintFact(
+  targetPath: string | null,
+  accumulator: StringConstraintAccumulator
+): FormSpecSerializedDeclarationFact | null {
+  if (
+    accumulator.minLength === undefined &&
+    accumulator.maxLength === undefined &&
+    accumulator.patterns.length === 0
+  ) {
+    return null;
+  }
+
+  return {
+    kind: "string-constraints",
+    targetPath,
+    ...(accumulator.minLength === undefined ? {} : { minLength: accumulator.minLength }),
+    ...(accumulator.maxLength === undefined ? {} : { maxLength: accumulator.maxLength }),
+    patterns: accumulator.patterns,
+  };
+}
+
+function buildArrayConstraintFact(
+  targetPath: string | null,
+  accumulator: ArrayConstraintAccumulator
+): FormSpecSerializedDeclarationFact | null {
+  if (
+    accumulator.minItems === undefined &&
+    accumulator.maxItems === undefined &&
+    accumulator.uniqueItems === undefined
+  ) {
+    return null;
+  }
+
+  return {
+    kind: "array-constraints",
+    targetPath,
+    ...(accumulator.minItems === undefined ? {} : { minItems: accumulator.minItems }),
+    ...(accumulator.maxItems === undefined ? {} : { maxItems: accumulator.maxItems }),
+    ...(accumulator.uniqueItems === undefined ? {} : { uniqueItems: accumulator.uniqueItems }),
+  };
+}
+
+function formatDeclarationFactMarkdown(fact: FormSpecSerializedDeclarationFact): string {
+  switch (fact.kind) {
+    case "description":
+      return fact.value;
+    case "remarks":
+      return `Remarks: ${fact.value}`;
+    case "default-value":
+      return `Default: \`${JSON.stringify(fact.value)}\``;
+    case "example":
+      return `Example: \`${fact.value}\``;
+    case "deprecated":
+      return fact.message === null ? "Deprecated" : `Deprecated: ${fact.message}`;
+    case "numeric-constraints": {
+      const parts: string[] = [];
+      if (fact.minimum !== undefined) {
+        parts.push(`minimum ${String(fact.minimum)}`);
+      }
+      if (fact.maximum !== undefined) {
+        parts.push(`maximum ${String(fact.maximum)}`);
+      }
+      if (fact.exclusiveMinimum !== undefined) {
+        parts.push(`exclusive minimum ${String(fact.exclusiveMinimum)}`);
+      }
+      if (fact.exclusiveMaximum !== undefined) {
+        parts.push(`exclusive maximum ${String(fact.exclusiveMaximum)}`);
+      }
+      if (fact.multipleOf !== undefined) {
+        parts.push(`multiple of ${String(fact.multipleOf)}`);
+      }
+      return `${renderTargetLabel(fact.targetPath)}: ${parts.join(", ")}`;
+    }
+    case "string-constraints": {
+      const parts: string[] = [];
+      if (fact.minLength !== undefined && fact.maxLength !== undefined) {
+        parts.push(`length ${String(fact.minLength)}-${String(fact.maxLength)}`);
+      } else if (fact.minLength !== undefined) {
+        parts.push(`minimum length ${String(fact.minLength)}`);
+      } else if (fact.maxLength !== undefined) {
+        parts.push(`maximum length ${String(fact.maxLength)}`);
+      }
+      if (fact.patterns.length > 0) {
+        const renderedPatterns = fact.patterns
+          .map((pattern) => `\`${pattern}\``)
+          .join(", ");
+        parts.push(
+          fact.patterns.length === 1
+            ? `pattern ${renderedPatterns}`
+            : `patterns ${renderedPatterns}`
+        );
+      }
+      return `${renderTargetLabel(fact.targetPath)}: ${parts.join(", ")}`;
+    }
+    case "array-constraints": {
+      const parts: string[] = [];
+      if (fact.minItems !== undefined && fact.maxItems !== undefined) {
+        parts.push(`items ${String(fact.minItems)}-${String(fact.maxItems)}`);
+      } else if (fact.minItems !== undefined) {
+        parts.push(`minimum items ${String(fact.minItems)}`);
+      } else if (fact.maxItems !== undefined) {
+        parts.push(`maximum items ${String(fact.maxItems)}`);
+      }
+      if (fact.uniqueItems === true) {
+        parts.push("unique items");
+      }
+      return `${renderTargetLabel(fact.targetPath)}: ${parts.join(", ")}`;
+    }
+    case "allowed-members":
+      return `${renderTargetLabel(fact.targetPath)}: allowed members ${fact.members
+        .map((member) => `\`${String(member)}\``)
+        .join(", ")}`;
+    case "const":
+      return `${renderTargetLabel(fact.targetPath)}: constant \`${JSON.stringify(fact.value)}\``;
+    case "custom-constraint":
+      return `${renderTargetLabel(fact.targetPath)}: constraint \`${fact.constraintId}\` = \`${JSON.stringify(fact.payload)}\``;
+    default: {
+      const exhaustive: never = fact;
+      return exhaustive;
+    }
+  }
+}
+
+function buildDeclarationHoverMarkdown(
+  summaryText: string | null,
+  resolvedMetadata: FormSpecSerializedResolvedMetadata | null,
+  facts: readonly FormSpecSerializedDeclarationFact[]
+): string {
+  const lines: string[] = ["**FormSpec Declaration Summary**"];
+
+  if (resolvedMetadata?.displayName !== undefined) {
+    lines.push("", `Display name: \`${resolvedMetadata.displayName.value}\``);
+  }
+  if (resolvedMetadata?.apiName !== undefined) {
+    lines.push("", `API name: \`${resolvedMetadata.apiName.value}\``);
+  }
+  if (resolvedMetadata?.displayNamePlural !== undefined) {
+    lines.push("", `Display name (plural): \`${resolvedMetadata.displayNamePlural.value}\``);
+  }
+  if (resolvedMetadata?.apiNamePlural !== undefined) {
+    lines.push("", `API name (plural): \`${resolvedMetadata.apiNamePlural.value}\``);
+  }
+  if (summaryText !== null) {
+    lines.push("", summaryText);
+  }
+
+  const factLines = facts
+    .filter((fact) => fact.kind !== "description")
+    .map((fact) => `- ${formatDeclarationFactMarkdown(fact)}`);
+  if (factLines.length > 0) {
+    lines.push("", ...factLines);
+  }
+
+  return lines.join("\n");
+}
+
+function buildDeclarationSummary(
+  node: ts.Node,
+  parsed: ReturnType<typeof parseCommentBlock>,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): FormSpecAnalysisDeclarationSummary {
+  const sourceFile = node.getSourceFile();
+  const summaryText = extractCommentSummaryText(parsed.commentText);
+  const metadataAnalysis = analyzeMetadataForNodeWithChecker({
+    checker,
+    node,
+    ...(extensionDefinitions === undefined ? {} : { extensions: extensionDefinitions }),
+  });
+  const resolvedMetadata = toSerializedResolvedMetadata(metadataAnalysis?.resolvedMetadata);
+  const metadataEntries = toSerializedMetadataEntries(metadataAnalysis?.entries ?? []);
+  const constraintRegistry = createConstraintTagRegistry(extensionDefinitions);
+  const numericConstraints = new Map<string | null, NumericConstraintAccumulator>();
+  const stringConstraints = new Map<string | null, StringConstraintAccumulator>();
+  const arrayConstraints = new Map<string | null, ArrayConstraintAccumulator>();
+  const blockTagTexts = new Map(
+    ["deprecated", "example", "remarks"].map((tagName) => [
+      tagName,
+      extractCommentBlockTagTexts(parsed.commentText, tagName),
+    ])
+  );
+  const blockTagIndexes = new Map<string, number>();
+  const facts: FormSpecSerializedDeclarationFact[] = [];
+
+  const takeBlockTagText = (tagName: string): string | null => {
+    const values = blockTagTexts.get(tagName);
+    if (values === undefined) {
+      return null;
+    }
+
+    const index = blockTagIndexes.get(tagName) ?? 0;
+    blockTagIndexes.set(tagName, index + 1);
+    return values[index] ?? null;
+  };
+
+  if (summaryText !== "") {
+    facts.push({
+      kind: "description",
+      value: summaryText,
+    });
+  }
+
+  for (const tag of parsed.tags) {
+    const payloadText = getTagPayloadText(parsed, tag);
+    const constraint = parseConstraintTagValue(
+      tag.normalizedTagName,
+      payloadText,
+      provenanceForTag(sourceFile, tag),
+      constraintRegistry === undefined ? undefined : { registry: constraintRegistry }
+    );
+    if (constraint !== null) {
+      const targetPath = getConstraintTargetPath(constraint.path);
+      switch (constraint.constraintKind) {
+        case "minimum":
+        case "exclusiveMinimum":
+        case "maximum":
+        case "exclusiveMaximum":
+        case "multipleOf": {
+          const current = numericConstraints.get(targetPath) ?? {};
+          switch (constraint.constraintKind) {
+            case "minimum":
+              current.minimum = updateLowerBound(current.minimum, constraint.value);
+              break;
+            case "exclusiveMinimum":
+              current.exclusiveMinimum = updateLowerBound(current.exclusiveMinimum, constraint.value);
+              break;
+            case "maximum":
+              current.maximum = updateUpperBound(current.maximum, constraint.value);
+              break;
+            case "exclusiveMaximum":
+              current.exclusiveMaximum = updateUpperBound(current.exclusiveMaximum, constraint.value);
+              break;
+            case "multipleOf":
+              current.multipleOf = constraint.value;
+              break;
+          }
+          numericConstraints.set(targetPath, current);
+          continue;
+        }
+        case "minLength":
+        case "maxLength":
+        case "pattern": {
+          const current = stringConstraints.get(targetPath) ?? { patterns: [] };
+          switch (constraint.constraintKind) {
+            case "minLength":
+              current.minLength = updateLowerBound(current.minLength, constraint.value);
+              break;
+            case "maxLength":
+              current.maxLength = updateUpperBound(current.maxLength, constraint.value);
+              break;
+            case "pattern":
+              if (!current.patterns.includes(constraint.pattern)) {
+                current.patterns.push(constraint.pattern);
+              }
+              break;
+          }
+          stringConstraints.set(targetPath, current);
+          continue;
+        }
+        case "minItems":
+        case "maxItems":
+        case "uniqueItems": {
+          const current = arrayConstraints.get(targetPath) ?? {};
+          switch (constraint.constraintKind) {
+            case "minItems":
+              current.minItems = updateLowerBound(current.minItems, constraint.value);
+              break;
+            case "maxItems":
+              current.maxItems = updateUpperBound(current.maxItems, constraint.value);
+              break;
+            case "uniqueItems":
+              current.uniqueItems = constraint.value;
+              break;
+          }
+          arrayConstraints.set(targetPath, current);
+          continue;
+        }
+        case "allowedMembers":
+          facts.push({
+            kind: "allowed-members",
+            targetPath,
+            members: constraint.members,
+          });
+          continue;
+        case "const":
+          facts.push({
+            kind: "const",
+            targetPath,
+            value: constraint.value as FormSpecSerializedJsonValue,
+          });
+          continue;
+        case "custom":
+          facts.push({
+            kind: "custom-constraint",
+            targetPath,
+            constraintId: constraint.constraintId,
+            compositionRule: constraint.compositionRule,
+            payload: constraint.payload as FormSpecSerializedJsonValue,
+          });
+          continue;
+        default:
+          continue;
+      }
+    }
+
+    switch (tag.normalizedTagName) {
+      case "defaultValue":
+        {
+          if (tag.argumentText.trim() === "") {
+            break;
+          }
+          const defaultValue = parseDefaultValueTagValue(
+            tag.argumentText,
+            provenanceForTag(sourceFile, tag)
+          );
+          if (defaultValue.annotationKind !== "defaultValue") {
+            break;
+          }
+          facts.push({
+            kind: "default-value",
+            value: defaultValue.value as FormSpecSerializedJsonValue,
+          });
+          break;
+        }
+      case "example": {
+        const value = (takeBlockTagText("example") ?? tag.argumentText).trim();
+        if (value !== "") {
+          facts.push({
+            kind: "example",
+            value,
+          });
+        }
+        break;
+      }
+      case "deprecated": {
+        const value = (takeBlockTagText("deprecated") ?? tag.argumentText).trim();
+        facts.push({
+          kind: "deprecated",
+          message: value === "" ? null : value,
+        });
+        break;
+      }
+      case "remarks": {
+        const value = (takeBlockTagText("remarks") ?? tag.argumentText).trim();
+        if (value !== "") {
+          facts.push({
+            kind: "remarks",
+            value,
+          });
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  for (const [targetPath, accumulator] of numericConstraints.entries()) {
+    const fact = buildNumericConstraintFact(targetPath, accumulator);
+    if (fact !== null) {
+      facts.push(fact);
+    }
+  }
+
+  for (const [targetPath, accumulator] of stringConstraints.entries()) {
+    const fact = buildStringConstraintFact(targetPath, accumulator);
+    if (fact !== null) {
+      facts.push(fact);
+    }
+  }
+
+  for (const [targetPath, accumulator] of arrayConstraints.entries()) {
+    const fact = buildArrayConstraintFact(targetPath, accumulator);
+    if (fact !== null) {
+      facts.push(fact);
+    }
+  }
+
+  return {
+    summaryText: summaryText === "" ? null : summaryText,
+    resolvedMetadata,
+    metadataEntries,
+    facts,
+    hoverMarkdown: buildDeclarationHoverMarkdown(
+      summaryText === "" ? null : summaryText,
+      resolvedMetadata,
+      facts
+    ),
+  };
 }
 
 function typeToString(type: ts.Type | undefined, checker: ts.TypeChecker): string | null {
@@ -733,6 +1431,7 @@ function buildCommentSnapshot(
   sourceFile: ts.SourceFile,
   checker: ts.TypeChecker,
   extensions: readonly ExtensionTagSource[] | undefined,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
   performance: FormSpecPerformanceRecorder | undefined
 ): FormSpecAnalysisCommentSnapshot | null {
   return optionalMeasure(
@@ -752,7 +1451,13 @@ function buildCommentSnapshot(
         offset: docComment.pos,
         ...(extensions === undefined ? {} : { extensions }),
       });
-      if (parsed.tags.length === 0) {
+      const declarationSummary = buildDeclarationSummary(
+        node,
+        parsed,
+        checker,
+        extensionDefinitions
+      );
+      if (parsed.tags.length === 0 && declarationSummary.summaryText === null) {
         return null;
       }
 
@@ -776,6 +1481,7 @@ function buildCommentSnapshot(
         placement,
         subjectType: typeToString(subjectType, checker),
         hostType: typeToString(hostType, checker),
+        declarationSummary,
         tags,
       };
     }
@@ -794,6 +1500,7 @@ export function buildFormSpecAnalysisFileSnapshot(
   const startedAt = getFormSpecPerformanceNow();
   const comments: FormSpecAnalysisCommentSnapshot[] = [];
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
+  const extensions = options.extensions ?? toExtensionTagSources(options.extensionDefinitions);
 
   const visit = (node: ts.Node): void => {
     const placement = resolveDeclarationPlacement(node);
@@ -802,7 +1509,8 @@ export function buildFormSpecAnalysisFileSnapshot(
         node,
         sourceFile,
         options.checker,
-        options.extensions,
+        extensions,
+        options.extensionDefinitions,
         options.performance
       );
       if (snapshot !== null) {
@@ -831,7 +1539,7 @@ export function buildFormSpecAnalysisFileSnapshot(
                   checker: options.checker,
                   ...(subjectType === undefined ? {} : { subjectType }),
                   placement,
-                  ...(options.extensions === undefined ? {} : { extensions: options.extensions }),
+                  ...(extensions === undefined ? {} : { extensions }),
                 },
                 options.performance
               )

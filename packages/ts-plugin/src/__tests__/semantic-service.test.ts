@@ -81,6 +81,66 @@ describe("FormSpecSemanticService", () => {
     expect(hover?.hover?.markdown).toContain("@minimum");
   });
 
+  it("returns declaration-level hover summaries when hovering the documented declaration", async () => {
+    const source = `
+      class Checkout {
+        /**
+         * Internal program name
+         * @displayName Program Name
+         * @minLength 1
+         * @maxLength 20
+         */
+        name!: string;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+
+    const getProgram = vi.fn(() => context.program);
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram,
+    });
+    services.push(service);
+
+    const hover = service.getHover(context.filePath, source.indexOf("name!: string;") + 1);
+
+    expect(hover?.hover?.kind).toBe("declaration");
+    expect(hover?.hover?.markdown).toContain("Program Name");
+    expect(hover?.hover?.markdown).toContain("length 1-20");
+    expect(getProgram).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers the innermost declaration summary when declaration spans overlap", async () => {
+    const source = `
+      /**
+       * Outer checkout summary
+       */
+      class Checkout {
+        /**
+         * Inner field summary
+         */
+        name!: string;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const hover = service.getHover(context.filePath, source.indexOf("name!: string;") + 1);
+
+    expect(hover?.hover?.kind).toBe("declaration");
+    expect(hover?.hover?.markdown).toContain("Inner field summary");
+    expect(hover?.hover?.markdown).not.toContain("Outer checkout summary");
+  });
+
   it("tracks warm and cold query paths plus synthetic cache reuse", async () => {
     const source = `
       class Checkout {
