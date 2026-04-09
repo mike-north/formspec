@@ -1,5 +1,20 @@
 # formspec
 
+## 0.1.0-alpha.37
+
+### Patch Changes
+
+- [#246](https://github.com/mike-north/formspec/pull/246) [`a12ff31`](https://github.com/mike-north/formspec/commit/a12ff31e5ba0f28398bd409bcaf8b635dd68549c) Thanks [@mike-north](https://github.com/mike-north)! - Expose declaration-level semantic summaries for documented declarations and use them for declaration hover payloads.
+
+- [#241](https://github.com/mike-north/formspec/pull/241) [`66736d9`](https://github.com/mike-north/formspec/commit/66736d98033fd71e22fe29b9fb298cf6d4b9b0a3) Thanks [@mike-north](https://github.com/mike-north)! - Expand static-build API coverage for host-owned programs and awaited return types.
+
+- [#244](https://github.com/mike-north/formspec/pull/244) [`fdfd076`](https://github.com/mike-north/formspec/commit/fdfd07698448ee8895fa42dd9daee4af9a23d775) Thanks [@mike-north](https://github.com/mike-north)! - Support mapped and referenced object-like type aliases through the public schema generation entry points.
+  - `@formspec/build` now generates schemas for object-like utility aliases such as `Partial<T>`, `Pick<T, ...>`, and intersections that add inline members.
+  - Invalid callable intersections and duplicate-property alias merges continue to be rejected.
+
+- Updated dependencies [[`a12ff31`](https://github.com/mike-north/formspec/commit/a12ff31e5ba0f28398bd409bcaf8b635dd68549c), [`66736d9`](https://github.com/mike-north/formspec/commit/66736d98033fd71e22fe29b9fb298cf6d4b9b0a3), [`fdfd076`](https://github.com/mike-north/formspec/commit/fdfd07698448ee8895fa42dd9daee4af9a23d775)]:
+  - @formspec/build@0.1.0-alpha.37
+
 ## 0.1.0-alpha.36
 
 ### Patch Changes
