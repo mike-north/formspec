@@ -926,7 +926,7 @@ The following categories group the symbolic codes conceptually:
 
 | Diagnostic category   | Meaning                                                 |
 | --------------------- | ------------------------------------------------------- |
-| Tag recognition       | Unknown tags, missing arguments, disabled tags          |
+| Tag recognition       | Unknown tags, missing arguments, disabled tags, invalid extension overrides |
 | Value parsing         | Malformed numeric, regex, JSON, or date values          |
 | Type compatibility    | Tags applied to incompatible types                      |
 | Target resolution     | Invalid path-target, member-target, or scope references |
@@ -953,6 +953,18 @@ The following categories group the symbolic codes conceptually:
 **Condition:** A tag is present but has been disabled via project constraints (PP9).
 **Message:** `"@{tagName}" is disabled in this project's FormSpec configuration. Remove the tag or update .formspec.yml.`
 **Auto-fix (D5):** Offer to remove the tag from the source.
+
+**`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`: Unsupported custom type override**
+**Severity:** error
+**Condition:** An extension registers a `tsTypeName` that conflicts with a TypeScript global built-in type whose override semantics FormSpec does not yet support.
+**Message:** `Custom type name "{typeName}" registered by extension "{extensionId}" conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding. Rename the custom type to a non-conflicting name.`
+**Auto-fix:** None.
+
+**`SYNTHETIC_SETUP_FAILURE`: Synthetic setup failure**
+**Severity:** error
+**Condition:** Compiler-backed synthetic validation cannot build or configure its synthetic TypeScript program because of invalid or conflicting extension custom type registrations or another setup error unrelated to a specific tag's type compatibility.
+**Message:** The original setup failure message is surfaced directly so the invalid extension configuration can be fixed at the source.
+**Auto-fix:** None.
 
 ---
 

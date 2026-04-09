@@ -76,6 +76,8 @@ const { jsonSchema, uiSchema } = generateSchemas({
 });
 ```
 
+For invalid static-analysis inputs, `generateSchemas()` throws with stable diagnostic codes embedded in the error message. In particular, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension setup problems, while `TYPE_MISMATCH` indicates an incompatible tag application in author source.
+
 ```ts
 export interface UserRegistration {
   /** @displayName Full Name @minLength 1 */

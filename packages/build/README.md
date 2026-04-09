@@ -180,6 +180,41 @@ const result = generateSchemas({
 
 Generation validates canonical IR before emitting schemas. Invalid inputs now fail generation with structured diagnostic codes surfaced in the thrown error.
 
+### Handling Generation Failures
+
+Static generation APIs such as `generateSchemas()` still throw on invalid input, but the thrown error message now includes stable diagnostic codes that consumers can inspect or surface directly.
+
+```ts
+import { generateSchemas } from "@formspec/build";
+
+try {
+  const { jsonSchema, uiSchema } = generateSchemas({
+    filePath: "./src/forms.ts",
+    typeName: "Invoice",
+  });
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes("UNSUPPORTED_CUSTOM_TYPE_OVERRIDE")) {
+    // An extension tried to override a TS global built-in such as Date or Array
+  } else if (message.includes("SYNTHETIC_SETUP_FAILURE")) {
+    // Extension setup failed before tag type-checking could run
+  } else if (message.includes("TYPE_MISMATCH")) {
+    // A tag was applied to an incompatible field or target type
+  }
+
+  throw error;
+}
+```
+
+The most relevant codes for extension-backed static analysis failures are:
+
+- `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` for extension custom types that conflict with unsupported TypeScript global built-ins.
+- `SYNTHETIC_SETUP_FAILURE` for invalid or conflicting extension custom type registrations and other synthetic compiler setup failures.
+- `TYPE_MISMATCH` for normal tag-on-type incompatibilities in author source.
+
+As a rule of thumb, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension configuration problems, while `TYPE_MISMATCH` usually indicates an authoring error in the analyzed source.
+
 ## Internal Entry Point
 
 Low-level canonical IR generators, analyzer primitives, and validation helpers are intentionally no longer exported from the package root. If you need those unstable internals inside the monorepo, import them from `@formspec/build/internals`.
