@@ -269,6 +269,40 @@ describe("file-snapshots", () => {
     );
   });
 
+  it("keeps empty-payload boolean constraints and continuation-only block tags", () => {
+    const source = `
+      class Checkout {
+        /**
+         * @uniqueItems
+         * @remarks
+         * Every label must be distinct.
+         */
+        labels!: string[];
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-empty-payload-constraints.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    const comment = snapshot.comments.find((entry) => entry.subjectType === "string[]");
+
+    expect(comment?.declarationSummary.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "array-constraints",
+          targetPath: null,
+          uniqueItems: true,
+        }),
+        expect.objectContaining({
+          kind: "remarks",
+          value: "Every label must be distinct.",
+        }),
+      ])
+    );
+  });
+
   it("includes extension metadata and custom constraint facts in declaration summaries", () => {
     const extension = defineExtension({
       extensionId: "x-example/money",

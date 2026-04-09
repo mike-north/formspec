@@ -96,10 +96,11 @@ describe("FormSpecSemanticService", () => {
     const context = await createProgramContext(source);
     workspaces.push(context.workspaceRoot);
 
+    const getProgram = vi.fn(() => context.program);
     const service = new FormSpecSemanticService({
       workspaceRoot: context.workspaceRoot,
       typescriptVersion: ts.version,
-      getProgram: () => context.program,
+      getProgram,
     });
     services.push(service);
 
@@ -108,6 +109,7 @@ describe("FormSpecSemanticService", () => {
     expect(hover?.hover?.kind).toBe("declaration");
     expect(hover?.hover?.markdown).toContain("Program Name");
     expect(hover?.hover?.markdown).toContain("length 1-20");
+    expect(getProgram).toHaveBeenCalledTimes(1);
   });
 
   it("prefers the innermost declaration summary when declaration spans overlap", async () => {

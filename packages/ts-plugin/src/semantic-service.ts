@@ -348,12 +348,12 @@ export class FormSpecSemanticService {
         };
       }
 
-      const { snapshot } = this.getFileSnapshotWithCacheState(filePath, performance);
+      const { snapshot } = this.getFileSnapshotWithCacheState(filePath, performance, environment);
       const declarationSummary = findInnermostDeclarationSummary(snapshot, offset);
 
       return {
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-        sourceHash: environment.sourceHash,
+        sourceHash: snapshot.sourceHash,
         hover:
           declarationSummary === undefined
             ? null
@@ -507,14 +507,16 @@ export class FormSpecSemanticService {
 
   private getFileSnapshotWithCacheState(
     filePath: string,
-    performance: FormSpecPerformanceRecorder
+    performance: FormSpecPerformanceRecorder,
+    environment?: SourceEnvironment | null
   ): {
     readonly snapshot: FormSpecAnalysisFileSnapshot;
     readonly cacheState: SnapshotCacheState;
   } {
     const startedAt = getFormSpecPerformanceNow();
-    const environment = this.getSourceEnvironment(filePath, performance);
-    if (environment === null) {
+    const sourceEnvironment =
+      environment === undefined ? this.getSourceEnvironment(filePath, performance) : environment;
+    if (sourceEnvironment === null) {
       this.stats.fileSnapshotCacheMisses += 1;
       const snapshot: FormSpecAnalysisFileSnapshot = {
         filePath,
@@ -550,7 +552,7 @@ export class FormSpecSemanticService {
     }
 
     const cached = this.snapshotCache.get(filePath);
-    if (cached?.sourceHash === environment.sourceHash) {
+    if (cached?.sourceHash === sourceEnvironment.sourceHash) {
       this.stats.fileSnapshotCacheHits += 1;
       performance.record({
         name: "semantic.getFileSnapshot.result",
@@ -567,13 +569,13 @@ export class FormSpecSemanticService {
     }
 
     this.stats.fileSnapshotCacheMisses += 1;
-    const snapshot = buildFormSpecAnalysisFileSnapshot(environment.sourceFile, {
-      checker: environment.checker,
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceEnvironment.sourceFile, {
+      checker: sourceEnvironment.checker,
       now: () => this.getNow(),
       performance,
     } satisfies BuildFormSpecAnalysisFileSnapshotOptions);
     this.snapshotCache.set(filePath, {
-      sourceHash: environment.sourceHash,
+      sourceHash: sourceEnvironment.sourceHash,
       snapshot,
     });
     performance.record({

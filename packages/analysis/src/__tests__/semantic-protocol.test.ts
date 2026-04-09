@@ -336,6 +336,44 @@ describe("semantic protocol", () => {
     ).toBe(false);
   });
 
+  it("rejects non-finite allowed-members declaration facts", () => {
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "file-snapshot",
+        snapshot: {
+          filePath: "/workspace/formspec/example.ts",
+          sourceHash: "deadbeef",
+          generatedAt: "2026-04-08T00:00:00.000Z",
+          comments: [
+            {
+              commentSpan: { start: 0, end: 28 },
+              declarationSpan: { start: 29, end: 45 },
+              placement: "class-field",
+              subjectType: "number",
+              hostType: "Example",
+              declarationSummary: {
+                summaryText: "Allowed members",
+                resolvedMetadata: null,
+                metadataEntries: [],
+                facts: [
+                  {
+                    kind: "allowed-members",
+                    targetPath: null,
+                    members: [1, Number.POSITIVE_INFINITY],
+                  },
+                ],
+                hoverMarkdown: "**FormSpec Declaration Summary**",
+              },
+              tags: [],
+            },
+          ],
+          diagnostics: [],
+        },
+      })
+    ).toBe(false);
+  });
+
   it("accepts diagnostics with structured white-label data and related locations", () => {
     expect(
       isFormSpecSemanticResponse({

@@ -454,10 +454,13 @@ function formatDeclarationFactMarkdown(fact: FormSpecSerializedDeclarationFact):
         parts.push(`maximum length ${String(fact.maxLength)}`);
       }
       if (fact.patterns.length > 0) {
+        const renderedPatterns = fact.patterns
+          .map((pattern) => `\`${pattern}\``)
+          .join(", ");
         parts.push(
           fact.patterns.length === 1
-            ? `pattern \`${fact.patterns[0]}\``
-            : `patterns ${fact.patterns.map((pattern) => `\`${pattern}\``).join(", ")}`
+            ? `pattern ${renderedPatterns}`
+            : `patterns ${renderedPatterns}`
         );
       }
       return `${renderTargetLabel(fact.targetPath)}: ${parts.join(", ")}`;
@@ -572,10 +575,6 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
-    if (payloadText.trim() === "" && tag.normalizedTagName !== "deprecated") {
-      continue;
-    }
-
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
@@ -680,6 +679,9 @@ function buildDeclarationSummary(
     switch (tag.normalizedTagName) {
       case "defaultValue":
         {
+          if (tag.argumentText.trim() === "") {
+            break;
+          }
           const defaultValue = parseDefaultValueTagValue(
             tag.argumentText,
             provenanceForTag(sourceFile, tag)
@@ -687,11 +689,11 @@ function buildDeclarationSummary(
           if (defaultValue.annotationKind !== "defaultValue") {
             break;
           }
-        facts.push({
-          kind: "default-value",
-          value: defaultValue.value as FormSpecSerializedJsonValue,
-        });
-        break;
+          facts.push({
+            kind: "default-value",
+            value: defaultValue.value as FormSpecSerializedJsonValue,
+          });
+          break;
         }
       case "example": {
         const value = (takeBlockTagText("example") ?? tag.argumentText).trim();

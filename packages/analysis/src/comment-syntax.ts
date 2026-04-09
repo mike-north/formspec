@@ -117,6 +117,16 @@ function isTagStart(lineText: string, index: number): boolean {
   return previousChar === undefined || isWhitespace(previousChar);
 }
 
+function collectTagStarts(lineText: string): readonly number[] {
+  const tagStarts: number[] = [];
+  for (let index = 0; index < lineText.length; index += 1) {
+    if (isTagStart(lineText, index)) {
+      tagStarts.push(index);
+    }
+  }
+  return tagStarts;
+}
+
 function findTagEnd(lineText: string, index: number): number {
   let cursor = index + 1;
   while (cursor < lineText.length && /[A-Za-z0-9]/u.test(lineText[cursor] ?? "")) {
@@ -297,13 +307,7 @@ export function parseCommentBlock(
   const baseOffset = options?.offset ?? 0;
 
   for (const line of projectCommentLines(commentText)) {
-    const tagStarts: number[] = [];
-
-    for (let index = 0; index < line.text.length; index += 1) {
-      if (isTagStart(line.text, index)) {
-        tagStarts.push(index);
-      }
-    }
+    const tagStarts = collectTagStarts(line.text);
 
     for (let tagIndex = 0; tagIndex < tagStarts.length; tagIndex += 1) {
       const tagStart = tagStarts[tagIndex];
@@ -458,58 +462,65 @@ export function extractCommentBlockTagTexts(
       break;
     }
 
-    let matchingTagEnd: number | null = null;
-    for (let index = 0; index < line.text.length; index += 1) {
-      if (!isTagStart(line.text, index)) {
+    const tagStarts = collectTagStarts(line.text);
+    let nextLineIndex = lineIndex + 1;
+
+    for (let tagIndex = 0; tagIndex < tagStarts.length; tagIndex += 1) {
+      const tagStart = tagStarts[tagIndex];
+      if (tagStart === undefined) {
         continue;
       }
 
-      const tagEnd = findTagEnd(line.text, index);
-      const candidateName = normalizeFormSpecTagName(line.text.slice(index + 1, tagEnd));
-      if (candidateName === canonicalName) {
-        matchingTagEnd = tagEnd;
-        break;
-      }
-    }
-
-    if (matchingTagEnd === null) {
-      lineIndex += 1;
-      continue;
-    }
-
-    const blockLines: string[] = [];
-    let payloadStart = matchingTagEnd;
-    while (payloadStart < line.text.length && isWhitespace(line.text[payloadStart])) {
-      payloadStart += 1;
-    }
-    blockLines.push(line.text.slice(payloadStart).replace(/[ \t]+$/u, ""));
-    lineIndex += 1;
-
-    while (lineIndex < lines.length) {
-      const continuation = lines[lineIndex];
-      if (continuation === undefined) {
-        break;
+      const tagEnd = findTagEnd(line.text, tagStart);
+      const candidateName = normalizeFormSpecTagName(line.text.slice(tagStart + 1, tagEnd));
+      if (candidateName !== canonicalName) {
+        continue;
       }
 
-      let nextTagStarts = false;
-      for (let index = 0; index < continuation.text.length; index += 1) {
-        if (isTagStart(continuation.text, index)) {
-          nextTagStarts = true;
-          break;
+      let payloadStart = tagEnd;
+      const nextTagStart = tagStarts[tagIndex + 1] ?? line.text.length;
+      while (payloadStart < nextTagStart && isWhitespace(line.text[payloadStart])) {
+        payloadStart += 1;
+      }
+
+      const blockLines: string[] = [
+        line.text
+          .slice(payloadStart, trimTrailingWhitespace(line.text, nextTagStart))
+          .replace(/[ \t]+$/u, ""),
+      ];
+
+      if (nextTagStart === line.text.length) {
+        let continuationIndex = lineIndex + 1;
+        while (continuationIndex < lines.length) {
+          const continuation = lines[continuationIndex];
+          if (continuation === undefined) {
+            break;
+          }
+
+          if (collectTagStarts(continuation.text).length > 0) {
+            break;
+          }
+
+          const continuationText = continuation.text.replace(/[ \t]+$/u, "");
+          if (continuationText.trim() === "/") {
+            break;
+          }
+
+          blockLines.push(continuationText);
+          continuationIndex += 1;
+        }
+        if (continuationIndex > nextLineIndex) {
+          nextLineIndex = continuationIndex;
         }
       }
-      if (nextTagStarts) {
-        break;
+
+      const text = blockLines.join("\n").trim();
+      if (text !== "") {
+        values.push(text);
       }
-
-      blockLines.push(continuation.text.replace(/[ \t]+$/u, ""));
-      lineIndex += 1;
     }
 
-    const text = blockLines.join("\n").trim();
-    if (text !== "") {
-      values.push(text);
-    }
+    lineIndex = nextLineIndex;
   }
 
   return values;

@@ -1034,7 +1034,9 @@ function isDeclarationFact(value: unknown): value is FormSpecSerializedDeclarati
       return (
         (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
         Array.isArray(candidate.members) &&
-        candidate.members.every((member) => typeof member === "string" || typeof member === "number")
+        candidate.members.every(
+          (member) => typeof member === "string" || isFiniteNumber(member)
+        )
       );
     case "const":
       return (
