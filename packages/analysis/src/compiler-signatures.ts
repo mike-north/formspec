@@ -416,15 +416,67 @@ const TS_PRIMITIVE_KEYWORDS = new Set([
 ]);
 
 /**
+ * TypeScript global built-in type names that conflict with synthetic `type X =
+ * unknown;` declarations (TS2300 "Duplicate identifier"). The boolean value
+ * indicates whether FormSpec supports intercepting that type as a custom type
+ * override (`true`) or not yet (`false`).
+ *
+ * To promote a type from unsupported to supported, change its value to `true`.
+ * Supported types are skipped in the synthetic prelude (TypeScript's lib files
+ * already declare them). Unsupported types produce a clear error at extension
+ * registration time rather than a cryptic TS2300 from the prelude.
+ */
+const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
+  ["Date", true], // ISO 8601 datetime -- { type: "string", format: "date-time" }
+  ["Array", false],
+  ["ArrayBuffer", false],
+  ["BigInt", false],
+  ["Boolean", false],
+  ["DataView", false],
+  ["Error", false],
+  ["EvalError", false],
+  ["Float32Array", false],
+  ["Float64Array", false],
+  ["Function", false],
+  ["Int16Array", false],
+  ["Int32Array", false],
+  ["Int8Array", false],
+  ["Map", false],
+  ["Number", false],
+  ["Object", false],
+  ["Promise", false],
+  ["Proxy", false],
+  ["RangeError", false],
+  ["ReferenceError", false],
+  ["RegExp", false],
+  ["Set", false],
+  ["SharedArrayBuffer", false],
+  ["String", false],
+  ["Symbol", false],
+  ["SyntaxError", false],
+  ["TypeError", false],
+  ["URIError", false],
+  ["Uint16Array", false],
+  ["Uint32Array", false],
+  ["Uint8Array", false],
+  ["Uint8ClampedArray", false],
+  ["WeakMap", false],
+  ["WeakSet", false],
+]);
+
+/**
  * Collects deduplicated custom type names from extensions, suitable for
  * emission as `type X = unknown;` declarations in the synthetic prelude.
  *
  * Throws if the same name is registered more than once (across or within
- * extensions). Skips TypeScript primitive keywords: they are already known to
- * the compiler and cannot be redeclared as type aliases (TS2457). Registering
- * a primitive keyword as a `tsTypeName` is still valid in the extension
- * registry -- it means "match the native type" -- the skip is only for the
- * synthetic prelude declaration.
+ * extensions). Skips TypeScript primitive keywords (TS2457) and supported
+ * global built-in type overrides (TS2300): both are already declared by the
+ * compiler, and no synthetic declaration is needed. Registering these names
+ * as `tsTypeNames` is still valid -- it means "match the native type."
+ *
+ * Throws if an unsupported TypeScript global built-in is registered. To add
+ * support for a new global built-in, set its value to `true` in
+ * `TS_GLOBAL_BUILTIN_TYPES`.
  */
 function collectExtensionCustomTypeNames(
   extensions: readonly ExtensionTagSource[] | undefined
@@ -440,6 +492,19 @@ function collectExtensionCustomTypeNames(
         // TypeScript already resolves primitive keywords; no declaration needed.
         if (TS_PRIMITIVE_KEYWORDS.has(tsName)) {
           continue;
+        }
+        const globalBuiltinSupported = TS_GLOBAL_BUILTIN_TYPES.get(tsName);
+        if (globalBuiltinSupported === true) {
+          // Already declared in TypeScript's lib files; skip to avoid TS2300.
+          continue;
+        }
+        if (globalBuiltinSupported === false) {
+          throw new Error(
+            `Custom type name "${tsName}" registered by extension "${ext.extensionId}" ` +
+              `conflicts with a TypeScript global built-in type that FormSpec does not ` +
+              `yet support overriding. To add support, set "${tsName}" to true in ` +
+              `TS_GLOBAL_BUILTIN_TYPES in compiler-signatures.ts.`
+          );
         }
         // Guard against malformed names being interpolated into the synthetic
         // source (e.g. names with spaces, punctuation, or operator characters).
