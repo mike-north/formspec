@@ -423,8 +423,9 @@ const TS_PRIMITIVE_KEYWORDS = new Set([
  *
  * To promote a type from unsupported to supported, change its value to `true`.
  * Supported types are skipped in the synthetic prelude (TypeScript's lib files
- * already declare them). Unsupported types produce a clear error at extension
- * registration time rather than a cryptic TS2300 from the prelude.
+ * already declare them). Unsupported types produce a clear error when the
+ * synthetic prelude is built during analysis, rather than a cryptic TS2300
+ * duplicate-identifier error from the prelude.
  */
 const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
   ["Date", true], // ISO 8601 datetime -- { type: "string", format: "date-time" }
@@ -502,8 +503,10 @@ function collectExtensionCustomTypeNames(
           throw new Error(
             `Custom type name "${tsName}" registered by extension "${ext.extensionId}" ` +
               `conflicts with a TypeScript global built-in type that FormSpec does not ` +
-              `yet support overriding. To add support, set "${tsName}" to true in ` +
-              `TS_GLOBAL_BUILTIN_TYPES in compiler-signatures.ts.`
+              `yet support overriding. Choose a different tsTypeName, avoid overriding ` +
+              `this built-in, or upgrade FormSpec when support is added. ` +
+              `(FormSpec contributors: enable support by setting "${tsName}" to true ` +
+              `in TS_GLOBAL_BUILTIN_TYPES in compiler-signatures.ts.)`
           );
         }
         // Guard against malformed names being interpolated into the synthetic

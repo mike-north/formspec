@@ -330,6 +330,31 @@ describe("compiler-signatures", () => {
     expect(prelude).toContain("type Decimal = unknown;");
   });
 
+  it("skips type declarations for supported TypeScript global built-in types", () => {
+    // "Date" is already declared in TypeScript's lib files; emitting
+    // `type Date = unknown;` causes TS2300. Registering it as a tsTypeName
+    // is still valid; only the prelude declaration is skipped.
+    const prelude = buildSyntheticHelperPrelude([
+      {
+        extensionId: "x-example/date",
+        customTypes: [{ tsTypeNames: ["Date"] }],
+      },
+    ]);
+
+    expect(prelude).not.toContain("type Date = unknown;");
+  });
+
+  it("throws for unsupported TypeScript global built-in types", () => {
+    expect(() =>
+      buildSyntheticHelperPrelude([
+        {
+          extensionId: "ext-a",
+          customTypes: [{ tsTypeNames: ["Array"] }],
+        },
+      ])
+    ).toThrow('conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding');
+  });
+
   it("skips type declarations for TypeScript primitive keywords", () => {
     // "bigint" is a TypeScript reserved keyword; emitting `type bigint = unknown;`
     // causes TS2457. It's already known to the compiler, so no declaration is needed.
