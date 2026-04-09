@@ -313,7 +313,8 @@ function pushUniqueCompilerDiagnostics(
 ): void {
   for (const diagnostic of additions) {
     if (
-      diagnostic.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE" &&
+      (diagnostic.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE" ||
+        diagnostic.code === "SYNTHETIC_SETUP_FAILURE") &&
       target.some(
         (existing) =>
           existing.code === diagnostic.code && existing.message === diagnostic.message
@@ -660,12 +661,16 @@ function buildCompilerBackedConstraintDiagnostics(
     return [];
   }
 
-  const setupDiagnostic = result.diagnostics.find(
-    (diagnostic) => diagnostic.kind === "unsupported-custom-type-override"
-  );
+  const setupDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.kind !== "typescript");
   if (setupDiagnostic !== undefined) {
     return [
-      makeDiagnostic("UNSUPPORTED_CUSTOM_TYPE_OVERRIDE", setupDiagnostic.message, provenance),
+      makeDiagnostic(
+        setupDiagnostic.kind === "unsupported-custom-type-override"
+          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+          : "SYNTHETIC_SETUP_FAILURE",
+        setupDiagnostic.message,
+        provenance
+      ),
     ];
   }
 

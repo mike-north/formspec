@@ -424,6 +424,33 @@ describe("compiler-signatures", () => {
     expect(secondResult.globalDiagnostics[0]?.message).toContain("conflicts with a TypeScript global built-in type");
   });
 
+  it("classifies invalid custom type registrations as synthetic setup failures", () => {
+    const result = checkSyntheticTagApplicationsDetailed({
+      applications: [
+        {
+          tagName: "minLength",
+          placement: "class-field",
+          hostType: "Foo",
+          subjectType: "string",
+          argumentExpression: "1",
+          supportingDeclarations: ["interface Foo { label: string; }"],
+          extensions: [
+            {
+              extensionId: "x-example/invalid-type",
+              customTypes: [{ tsTypeNames: ["Not A Type"] }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(result.applicationResults).toHaveLength(1);
+    expect(result.applicationResults[0]?.diagnostics).toHaveLength(0);
+    expect(result.globalDiagnostics).toHaveLength(1);
+    expect(result.globalDiagnostics[0]?.kind).toBe("synthetic-setup");
+    expect(result.globalDiagnostics[0]?.message).toContain("Invalid custom type name");
+  });
+
   it("keeps legacy batched synthetic checks non-lossy for setup-level failures", () => {
     const results = checkSyntheticTagApplications({
       applications: [

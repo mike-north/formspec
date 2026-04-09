@@ -168,6 +168,36 @@ describe("file-snapshots", () => {
     );
   });
 
+  it("emits a setup diagnostic instead of TYPE_MISMATCH for invalid custom type registrations", () => {
+    const source = `
+      interface Foo {
+        /**
+         * @minLength 1
+         * @maxLength 10
+         */
+        label: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(source, "/virtual/formspec-invalid-custom-type.ts");
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      extensions: [
+        {
+          extensionId: "x-example/invalid-type",
+          customTypes: [{ tsTypeNames: ["Not A Type"] }],
+        },
+      ],
+    });
+
+    expect(
+      snapshot.diagnostics.filter((diagnostic) => diagnostic.code === "SYNTHETIC_SETUP_FAILURE")
+    ).toHaveLength(1);
+    expect(snapshot.diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(
+      false
+    );
+  });
+
   it("captures comments attached to interfaces and type aliases", () => {
     const source = `
       /** Payment status @pattern ^(draft|sent)$ */

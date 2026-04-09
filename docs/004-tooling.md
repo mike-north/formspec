@@ -232,7 +232,7 @@ Each rule category maps directly to a diagnostic category from 002 §6:
 
 | Rule category           | Diagnostic families                                              | Responsibility                                    |
 | ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
-| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` | Unknown tags, missing arguments, disabled tags, and invalid extension overrides |
+| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
 | `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related | Malformed numeric, regex, JSON, and date values   |
 | `type-compatibility`    | `TYPE_MISMATCH`                                                  | Tags applied to incompatible field types          |
 | `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related          | Invalid path-target and member-target references  |
@@ -822,7 +822,7 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 | Category              | Representative symbolic codes                             | Responsibility                                    |
 | --------------------- | --------------------------------------------------------- | ------------------------------------------------- |
-| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` | Unknown tags, missing arguments, disabled tags, and invalid extension overrides |
+| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
 | Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related | Malformed numeric, regex, JSON, and date values   |
 | Type compatibility    | `TYPE_MISMATCH`                                           | Tags applied to incompatible field types          |
 | Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related   | Invalid path-target and member-target references  |

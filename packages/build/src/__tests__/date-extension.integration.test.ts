@@ -60,6 +60,24 @@ function createUnsupportedArrayRegistry() {
   ]);
 }
 
+function createInvalidTypeNameRegistry() {
+  return createExtensionRegistry([
+    defineExtension({
+      extensionId: "x-example/invalid-type",
+      types: [
+        defineCustomType({
+          typeName: "InvalidType",
+          tsTypeNames: ["Not A Type"],
+          toJsonSchema: () => ({
+            type: "string",
+            "x-formspec-invalid-type": true,
+          }),
+        }),
+      ],
+    }),
+  ]);
+}
+
 function getThrownMessage(action: () => void): string {
   try {
     action();
@@ -229,5 +247,32 @@ describe("date extension integration", () => {
     expect(message).toMatch(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/);
     expect(message).not.toMatch(/TYPE_MISMATCH/);
     expect(message.match(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/g)).toHaveLength(1);
+  });
+
+  it("surfaces invalid custom type registrations as setup diagnostics", () => {
+    const filePath = writeTempSource(`
+      export interface InvalidCustomTypeRegistration {
+        /**
+         * @minLength 1
+         * @maxLength 10
+         */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const message = getThrownMessage(() =>
+      generateSchemas({
+        filePath,
+        typeName: "InvalidCustomTypeRegistration",
+        extensionRegistry: createInvalidTypeNameRegistry(),
+        vendorPrefix: "x-formspec",
+      })
+    );
+
+    expect(message).toMatch(/SYNTHETIC_SETUP_FAILURE/);
+    expect(message).toMatch(/Invalid custom type name "Not A Type"/);
+    expect(message).not.toMatch(/TYPE_MISMATCH/);
+    expect(message.match(/SYNTHETIC_SETUP_FAILURE/g)).toHaveLength(1);
   });
 });

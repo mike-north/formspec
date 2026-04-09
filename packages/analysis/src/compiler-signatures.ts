@@ -67,6 +67,10 @@ export interface SyntheticCompilerDiagnostic {
   readonly message: string;
 }
 
+interface SyntheticSetupError extends Error {
+  diagnosticKind: Exclude<SyntheticCompilerDiagnostic["kind"], "typescript">;
+}
+
 /**
  * Options for running the TypeScript checker against a synthetic tag call.
  */
@@ -512,26 +516,26 @@ function collectExtensionCustomTypeNames(
           continue;
         }
         if (globalBuiltinSupported === false) {
-          throw new Error(
+          throw createSyntheticSetupError(
+            "unsupported-custom-type-override",
             `Custom type name "${tsName}" registered by extension "${ext.extensionId}" ` +
               `conflicts with a TypeScript global built-in type that FormSpec does not ` +
-              `yet support overriding. Choose a different tsTypeName, avoid overriding ` +
-              `this built-in, or upgrade FormSpec when support is added. ` +
-              `(FormSpec contributors: enable support by setting "${tsName}" to true ` +
-              `in TS_GLOBAL_BUILTIN_TYPES in compiler-signatures.ts.)`
+              `yet support overriding. Rename the custom type to a non-conflicting name.`
           );
         }
         // Guard against malformed names being interpolated into the synthetic
         // source (e.g. names with spaces, punctuation, or operator characters).
         if (!/^[$_a-zA-Z][$_a-zA-Z0-9]*$/.test(tsName)) {
-          throw new Error(
+          throw createSyntheticSetupError(
+            "synthetic-setup",
             `Invalid custom type name "${tsName}" registered by extension "${ext.extensionId}": ` +
               `must be a valid TypeScript identifier.`
           );
         }
         const existingExtensionId = seen.get(tsName);
         if (existingExtensionId !== undefined) {
-          throw new Error(
+          throw createSyntheticSetupError(
+            "synthetic-setup",
             `Duplicate custom type name "${tsName}" registered by extensions ` +
               `"${existingExtensionId}" and "${ext.extensionId}". ` +
               `Extension-registered types must have unique names.`
@@ -769,6 +773,19 @@ function buildNarrowSyntheticSourceBodyLines(
 
 function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): string {
   return ts.flattenDiagnosticMessageText(message, "\n");
+}
+
+function createSyntheticSetupError(
+  diagnosticKind: SyntheticSetupError["diagnosticKind"],
+  message: string
+): SyntheticSetupError {
+  const error = new Error(message) as SyntheticSetupError;
+  error.diagnosticKind = diagnosticKind;
+  return error;
+}
+
+function isSyntheticSetupError(error: unknown): error is SyntheticSetupError {
+  return error instanceof Error && "diagnosticKind" in error;
 }
 
 function isUnsupportedCustomTypeOverrideErrorMessage(message: string): boolean {
@@ -1057,9 +1074,11 @@ function createEmptySyntheticTagCheckResults(
 function serializeSyntheticBatchError(error: unknown): SyntheticCompilerDiagnostic {
   const message = error instanceof Error ? error.message : String(error);
   return {
-    kind: isUnsupportedCustomTypeOverrideErrorMessage(message)
-      ? "unsupported-custom-type-override"
-      : "synthetic-setup",
+    kind: isSyntheticSetupError(error)
+      ? error.diagnosticKind
+      : isUnsupportedCustomTypeOverrideErrorMessage(message)
+        ? "unsupported-custom-type-override"
+        : "synthetic-setup",
     // Negative codes are reserved for FormSpec-generated synthetic setup errors.
     code: -1,
     message,

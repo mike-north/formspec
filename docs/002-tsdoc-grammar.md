@@ -957,7 +957,13 @@ The following categories group the symbolic codes conceptually:
 **`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`: Unsupported custom type override**
 **Severity:** error
 **Condition:** An extension registers a `tsTypeName` that conflicts with a TypeScript global built-in type whose override semantics FormSpec does not yet support.
-**Message:** `Custom type name "{typeName}" conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding.`
+**Message:** `Custom type name "{typeName}" registered by extension "{extensionId}" conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding. Rename the custom type to a non-conflicting name.`
+**Auto-fix:** None.
+
+**`SYNTHETIC_SETUP_FAILURE`: Synthetic setup failure**
+**Severity:** error
+**Condition:** Compiler-backed synthetic validation cannot build or configure its synthetic TypeScript program because of invalid or conflicting extension custom type registrations or another setup error unrelated to a specific tag's type compatibility.
+**Message:** The original setup failure message is surfaced directly so the invalid extension configuration can be fixed at the source.
 **Auto-fix:** None.
 
 ---

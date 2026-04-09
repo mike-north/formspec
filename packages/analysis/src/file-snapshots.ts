@@ -942,6 +942,7 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
   switch (code) {
     case "INVALID_TAG_ARGUMENT":
     case "INVALID_TAG_PLACEMENT":
+    case "SYNTHETIC_SETUP_FAILURE":
     case "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE":
     case "TYPE_MISMATCH":
     case "UNKNOWN_PATH_TARGET":
@@ -965,6 +966,7 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
     case "INVALID_TAG_ARGUMENT":
       return "value-parsing";
     case "INVALID_TAG_PLACEMENT":
+    case "SYNTHETIC_SETUP_FAILURE":
     case "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE":
       return "tag-recognition";
     case "TYPE_MISMATCH":
@@ -1377,11 +1379,15 @@ function buildTagDiagnostics(
 
   if (globalDiagnosticRange !== null) {
     for (const diagnostic of batchCheck.globalDiagnostics) {
+      const code =
+        diagnostic.kind === "unsupported-custom-type-override"
+          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+          : diagnostic.kind === "synthetic-setup"
+            ? "SYNTHETIC_SETUP_FAILURE"
+            : "TYPE_MISMATCH";
       diagnostics.push(
         createAnalysisDiagnostic(
-          diagnostic.kind === "unsupported-custom-type-override"
-            ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-            : "TYPE_MISMATCH",
+          code,
           diagnostic.message,
           globalDiagnosticRange,
           {
