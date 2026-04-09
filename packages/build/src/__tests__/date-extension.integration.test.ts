@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { defineCustomType, defineExtension } from "@formspec/core/internals";
 import { generateSchemas } from "../generators/class-schema.js";
+import { createExtensionRegistry } from "../extensions/index.js";
 import {
   createDateExtensionRegistry,
   parseCanonicalDateTime,
@@ -19,6 +21,53 @@ function writeTempSource(source: string): string {
   const filePath = path.join(dir, "model.ts");
   fs.writeFileSync(filePath, source);
   return filePath;
+}
+
+function createBuiltInDateRegistry() {
+  return createExtensionRegistry([
+    defineExtension({
+      extensionId: "x-example/date-object",
+      types: [
+        defineCustomType({
+          typeName: "DateObject",
+          tsTypeNames: ["Date"],
+          toJsonSchema: () => ({
+            type: "string",
+            format: "date-time",
+            "x-formspec-date-object": true,
+          }),
+        }),
+      ],
+    }),
+  ]);
+}
+
+function createUnsupportedArrayRegistry() {
+  return createExtensionRegistry([
+    defineExtension({
+      extensionId: "x-example/array-object",
+      types: [
+        defineCustomType({
+          typeName: "ArrayObject",
+          tsTypeNames: ["Array"],
+          toJsonSchema: () => ({
+            type: "array",
+            "x-formspec-array-object": true,
+          }),
+        }),
+      ],
+    }),
+  ]);
+}
+
+function getThrownMessage(action: () => void): string {
+  try {
+    action();
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  throw new Error("Expected action to throw");
 }
 
 describe("date extension integration", () => {
@@ -123,5 +172,62 @@ describe("date extension integration", () => {
         vendorPrefix: "x-formspec",
       })
     ).toThrow(/exactly millisecond precision and an explicit timezone/);
+  });
+
+  it("allows a custom type override named Date without poisoning unrelated tag analysis", () => {
+    const filePath = writeTempSource(`
+      export interface BookingMetadata {
+        createdAt: Date;
+
+        /** @minLength 1 */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const { jsonSchema } = generateSchemas({
+      filePath,
+      typeName: "BookingMetadata",
+      extensionRegistry: createBuiltInDateRegistry(),
+      vendorPrefix: "x-formspec",
+    });
+
+    expect(jsonSchema.properties?.["createdAt"]).toEqual({
+      type: "string",
+      format: "date-time",
+      "x-formspec-date-object": true,
+    });
+    expect(jsonSchema.properties?.["label"]).toMatchObject({
+      type: "string",
+      minLength: 1,
+    });
+  });
+
+  it("reports unsupported global built-in overrides as validation diagnostics", () => {
+    const filePath = writeTempSource(`
+      export interface UnsupportedArrayOverride {
+        items: Array<string>;
+
+        /**
+         * @minLength 1
+         * @maxLength 10
+         */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const message = getThrownMessage(() =>
+      generateSchemas({
+        filePath,
+        typeName: "UnsupportedArrayOverride",
+        extensionRegistry: createUnsupportedArrayRegistry(),
+        vendorPrefix: "x-formspec",
+      })
+    );
+
+    expect(message).toMatch(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/);
+    expect(message).not.toMatch(/TYPE_MISMATCH/);
+    expect(message.match(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/g)).toHaveLength(1);
   });
 });

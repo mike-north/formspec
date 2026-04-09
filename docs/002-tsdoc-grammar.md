@@ -926,7 +926,7 @@ The following categories group the symbolic codes conceptually:
 
 | Diagnostic category   | Meaning                                                 |
 | --------------------- | ------------------------------------------------------- |
-| Tag recognition       | Unknown tags, missing arguments, disabled tags          |
+| Tag recognition       | Unknown tags, missing arguments, disabled tags, invalid extension overrides |
 | Value parsing         | Malformed numeric, regex, JSON, or date values          |
 | Type compatibility    | Tags applied to incompatible types                      |
 | Target resolution     | Invalid path-target, member-target, or scope references |
@@ -953,6 +953,12 @@ The following categories group the symbolic codes conceptually:
 **Condition:** A tag is present but has been disabled via project constraints (PP9).
 **Message:** `"@{tagName}" is disabled in this project's FormSpec configuration. Remove the tag or update .formspec.yml.`
 **Auto-fix (D5):** Offer to remove the tag from the source.
+
+**`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`: Unsupported custom type override**
+**Severity:** error
+**Condition:** An extension registers a `tsTypeName` that conflicts with a TypeScript global built-in type whose override semantics FormSpec does not yet support.
+**Message:** `Custom type name "{typeName}" conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding.`
+**Auto-fix:** None.
 
 ---
 

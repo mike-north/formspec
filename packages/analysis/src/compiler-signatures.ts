@@ -62,6 +62,7 @@ export interface LoweredSyntheticTagApplication {
  * A simplified TypeScript diagnostic surfaced from the synthetic compiler pass.
  */
 export interface SyntheticCompilerDiagnostic {
+  readonly kind: "typescript" | "unsupported-custom-type-override" | "synthetic-setup";
   readonly code: number;
   readonly message: string;
 }
@@ -82,6 +83,17 @@ export interface CheckSyntheticTagApplicationOptions extends LowerSyntheticTagAp
 export interface SyntheticTagCheckResult {
   readonly sourceText: string;
   readonly diagnostics: readonly SyntheticCompilerDiagnostic[];
+}
+
+/**
+ * Detailed synthetic batch result that keeps compiler diagnostics which do not
+ * belong to any single lowered application separate from per-application
+ * results.
+ */
+export interface SyntheticBatchCheckResult {
+  readonly sourceText: string;
+  readonly applicationResults: readonly SyntheticTagCheckResult[];
+  readonly globalDiagnostics: readonly SyntheticCompilerDiagnostic[];
 }
 
 /**
@@ -759,6 +771,10 @@ function flattenDiagnosticMessage(message: string | ts.DiagnosticMessageChain): 
   return ts.flattenDiagnosticMessageText(message, "\n");
 }
 
+function isUnsupportedCustomTypeOverrideErrorMessage(message: string): boolean {
+  return message.includes("conflicts with a TypeScript global built-in type");
+}
+
 const SYNTHETIC_COMPILER_OPTIONS: ts.CompilerOptions = {
   strict: true,
   noEmit: true,
@@ -768,7 +784,7 @@ const SYNTHETIC_COMPILER_OPTIONS: ts.CompilerOptions = {
   types: [],
 };
 
-const syntheticBatchResultCache = new LruCache<string, readonly SyntheticTagCheckResult[]>(
+const syntheticBatchResultCache = new LruCache<string, MappedBatchDiagnostics>(
   FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES
 );
 
@@ -825,6 +841,11 @@ interface SyntheticBatchSource {
     readonly startLine: number;
     readonly endLine: number;
   }[];
+}
+
+interface MappedBatchDiagnostics {
+  readonly applicationResults: readonly SyntheticTagCheckResult[];
+  readonly globalDiagnostics: readonly SyntheticCompilerDiagnostic[];
 }
 
 function pushChunkLines(target: string[], chunk: string): void {
@@ -925,21 +946,20 @@ function mapBatchDiagnostics(
     readonly startLine: number;
     readonly endLine: number;
   }[]
-): readonly SyntheticTagCheckResult[] {
+): MappedBatchDiagnostics {
   const diagnosticsByApplication = applicationLineRanges.map<SyntheticCompilerDiagnostic[]>(
     () => []
   );
-  const defaultResult = diagnosticsByApplication[0];
+  const globalDiagnostics: SyntheticCompilerDiagnostic[] = [];
 
   for (const diagnostic of diagnostics) {
     const serialized = {
+      kind: "typescript" as const,
       code: diagnostic.code,
       message: flattenDiagnosticMessage(diagnostic.messageText),
     };
     if (diagnostic.file === undefined || diagnostic.start === undefined) {
-      if (defaultResult !== undefined) {
-        defaultResult.push(serialized);
-      }
+      globalDiagnostics.push(serialized);
       continue;
     }
 
@@ -948,9 +968,7 @@ function mapBatchDiagnostics(
       (range) => line >= range.startLine && line <= range.endLine
     );
     if (applicationIndex < 0) {
-      if (defaultResult !== undefined) {
-        defaultResult.push(serialized);
-      }
+      globalDiagnostics.push(serialized);
       continue;
     }
     const targetResult = diagnosticsByApplication[applicationIndex];
@@ -959,10 +977,13 @@ function mapBatchDiagnostics(
     }
   }
 
-  return diagnosticsByApplication.map((diagnosticsForApplication) => ({
-    sourceText: sourceFile.text,
-    diagnostics: diagnosticsForApplication,
-  }));
+  return {
+    applicationResults: diagnosticsByApplication.map((diagnosticsForApplication) => ({
+      sourceText: sourceFile.text,
+      diagnostics: diagnosticsForApplication,
+    })),
+    globalDiagnostics,
+  };
 }
 
 function runSyntheticProgram(
@@ -1009,7 +1030,7 @@ interface BatchSyntheticCheckOptions<TApplication, TResolvedApplication> {
   readonly applications: readonly TApplication[];
   readonly performance: FormSpecPerformanceRecorder | undefined;
   readonly compilerOptions: ts.CompilerOptions | undefined;
-  readonly cache: LruCache<string, readonly SyntheticTagCheckResult[]>;
+  readonly cache: LruCache<string, MappedBatchDiagnostics>;
   readonly eventPrefix: string;
   readonly missingSourceFileMessage: string;
   readonly fileName: string;
@@ -1023,15 +1044,50 @@ interface BatchSyntheticCheckOptions<TApplication, TResolvedApplication> {
   ) => SyntheticBatchSource;
 }
 
+function createEmptySyntheticTagCheckResults(
+  applicationCount: number,
+  sourceText: string
+): readonly SyntheticTagCheckResult[] {
+  return Array.from({ length: applicationCount }, () => ({
+    sourceText,
+    diagnostics: [],
+  }));
+}
+
+function serializeSyntheticBatchError(error: unknown): SyntheticCompilerDiagnostic {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    kind: isUnsupportedCustomTypeOverrideErrorMessage(message)
+      ? "unsupported-custom-type-override"
+      : "synthetic-setup",
+    // Negative codes are reserved for FormSpec-generated synthetic setup errors.
+    code: -1,
+    message,
+  };
+}
+
 function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
   options: BatchSyntheticCheckOptions<TApplication, TResolvedApplication>
-): readonly SyntheticTagCheckResult[] {
+): SyntheticBatchCheckResult {
   if (options.applications.length === 0) {
-    return [];
+    return {
+      sourceText: "",
+      applicationResults: [],
+      globalDiagnostics: [],
+    };
   }
 
   const resolvedApplications = options.lowerApplications(options.applications, options.performance);
-  const batchSource = options.buildBatchSource(resolvedApplications, options.performance);
+  let batchSource: SyntheticBatchSource;
+  try {
+    batchSource = options.buildBatchSource(resolvedApplications, options.performance);
+  } catch (error) {
+    return {
+      sourceText: "",
+      applicationResults: createEmptySyntheticTagCheckResults(options.applications.length, ""),
+      globalDiagnostics: [serializeSyntheticBatchError(error)],
+    };
+  }
   const cacheKey = buildSyntheticBatchCacheKey(batchSource.sourceText, options.compilerOptions);
   const cached = options.cache.get(cacheKey);
   if (cached !== undefined) {
@@ -1042,7 +1098,11 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
         applicationCount: options.applications.length,
       },
     });
-    return cached;
+    return {
+      sourceText: batchSource.sourceText,
+      applicationResults: cached.applicationResults,
+      globalDiagnostics: cached.globalDiagnostics,
+    };
   }
 
   options.performance?.record({
@@ -1068,7 +1128,11 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
     () => mapBatchDiagnostics(diagnostics, sourceFile, batchSource.applicationLineRanges)
   );
   options.cache.set(cacheKey, results);
-  return results;
+  return {
+    sourceText: batchSource.sourceText,
+    applicationResults: results.applicationResults,
+    globalDiagnostics: results.globalDiagnostics,
+  };
 }
 
 function resolveNarrowSyntheticBatchApplication(
@@ -1110,9 +1174,9 @@ function resolveNarrowSyntheticBatchApplication(
  * Runs the TypeScript checker once against multiple lowered synthetic tag
  * applications and returns per-application diagnostics.
  */
-export function checkSyntheticTagApplications(
+export function checkSyntheticTagApplicationsDetailed(
   options: CheckSyntheticTagApplicationsOptions
-): readonly SyntheticTagCheckResult[] {
+): SyntheticBatchCheckResult {
   return runBatchSyntheticCheck<CheckSyntheticTagApplicationOptions, SyntheticBatchApplication>({
     applications: options.applications,
     performance: options.performance,
@@ -1137,6 +1201,22 @@ export function checkSyntheticTagApplications(
         buildSyntheticBatchSource(applications)
       ),
   });
+}
+
+export function checkSyntheticTagApplications(
+  options: CheckSyntheticTagApplicationsOptions
+): readonly SyntheticTagCheckResult[] {
+  const result = checkSyntheticTagApplicationsDetailed(options);
+  if (result.globalDiagnostics.length === 0) {
+    return result.applicationResults;
+  }
+
+  // The legacy batched API has no separate channel for setup-level diagnostics.
+  // Merge them into each application result so callers do not lose those errors.
+  return result.applicationResults.map((applicationResult) => ({
+    sourceText: applicationResult.sourceText,
+    diagnostics: [...applicationResult.diagnostics, ...result.globalDiagnostics],
+  }));
 }
 
 /**
@@ -1168,7 +1248,7 @@ export function checkNarrowSyntheticTagApplicabilities(
         undefined,
         () => buildNarrowSyntheticBatchSource(applications)
       ),
-  });
+  }).applicationResults;
 }
 
 /**
@@ -1181,15 +1261,22 @@ export function checkNarrowSyntheticTagApplicabilities(
 export function checkSyntheticTagApplication(
   options: CheckSyntheticTagApplicationOptions
 ): SyntheticTagCheckResult {
-  const result = checkSyntheticTagApplications({
+  const batchResult = checkSyntheticTagApplicationsDetailed({
     applications: [options],
     ...(options.performance === undefined ? {} : { performance: options.performance }),
     ...(options.compilerOptions === undefined ? {} : { compilerOptions: options.compilerOptions }),
-  })[0];
+  });
+  const result = batchResult.applicationResults[0];
   if (result === undefined) {
     throw new Error("Invariant violation: missing synthetic batch result for singular check");
   }
-  return result;
+  if (batchResult.globalDiagnostics.length === 0) {
+    return result;
+  }
+  return {
+    sourceText: result.sourceText,
+    diagnostics: [...result.diagnostics, ...batchResult.globalDiagnostics],
+  };
 }
 
 /**
