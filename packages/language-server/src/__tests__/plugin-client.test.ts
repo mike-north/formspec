@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   computeFormSpecTextHash,
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+  FORMSPEC_ANALYSIS_SCHEMA_VERSION,
   type FormSpecAnalysisManifest,
   type FormSpecSemanticResponse,
 } from "@formspec/analysis";
@@ -39,7 +40,7 @@ function createManifest(
 ): FormSpecAnalysisManifest {
   return {
     protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-    analysisSchemaVersion: 1,
+    analysisSchemaVersion: FORMSPEC_ANALYSIS_SCHEMA_VERSION,
     workspaceRoot,
     workspaceId: "test",
     endpoint: {

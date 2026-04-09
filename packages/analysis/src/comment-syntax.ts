@@ -406,6 +406,116 @@ export function parseTagSyntax(
 }
 
 /**
+ * Extracts summary text from a doc comment by taking the cleaned text that
+ * appears before the first recognized tag marker.
+ *
+ * @public
+ */
+export function extractCommentSummaryText(commentText: string): string {
+  const summaryLines: string[] = [];
+
+  for (const line of projectCommentLines(commentText)) {
+    let cutoff = line.text.length;
+    for (let index = 0; index < line.text.length; index += 1) {
+      if (isTagStart(line.text, index)) {
+        cutoff = index;
+        break;
+      }
+    }
+
+    const segment = line.text.slice(0, cutoff).trimEnd();
+    if (cutoff < line.text.length) {
+      if (segment.trim() !== "") {
+        summaryLines.push(segment.trim());
+      }
+      break;
+    }
+
+    summaryLines.push(segment);
+  }
+
+  return summaryLines.join("\n").trim();
+}
+
+/**
+ * Extracts one or more TSDoc-style block-tag payloads, including continuation
+ * lines until the next block tag begins.
+ *
+ * @public
+ */
+export function extractCommentBlockTagTexts(
+  commentText: string,
+  rawTagName: string
+): readonly string[] {
+  const lines = projectCommentLines(commentText);
+  const canonicalName = normalizeFormSpecTagName(rawTagName);
+  const values: string[] = [];
+
+  let lineIndex = 0;
+  while (lineIndex < lines.length) {
+    const line = lines[lineIndex];
+    if (line === undefined) {
+      break;
+    }
+
+    let matchingTagEnd: number | null = null;
+    for (let index = 0; index < line.text.length; index += 1) {
+      if (!isTagStart(line.text, index)) {
+        continue;
+      }
+
+      const tagEnd = findTagEnd(line.text, index);
+      const candidateName = normalizeFormSpecTagName(line.text.slice(index + 1, tagEnd));
+      if (candidateName === canonicalName) {
+        matchingTagEnd = tagEnd;
+        break;
+      }
+    }
+
+    if (matchingTagEnd === null) {
+      lineIndex += 1;
+      continue;
+    }
+
+    const blockLines: string[] = [];
+    let payloadStart = matchingTagEnd;
+    while (payloadStart < line.text.length && isWhitespace(line.text[payloadStart])) {
+      payloadStart += 1;
+    }
+    blockLines.push(line.text.slice(payloadStart).replace(/[ \t]+$/u, ""));
+    lineIndex += 1;
+
+    while (lineIndex < lines.length) {
+      const continuation = lines[lineIndex];
+      if (continuation === undefined) {
+        break;
+      }
+
+      let nextTagStarts = false;
+      for (let index = 0; index < continuation.text.length; index += 1) {
+        if (isTagStart(continuation.text, index)) {
+          nextTagStarts = true;
+          break;
+        }
+      }
+      if (nextTagStarts) {
+        break;
+      }
+
+      blockLines.push(continuation.text.replace(/[ \t]+$/u, ""));
+      lineIndex += 1;
+    }
+
+    const text = blockLines.join("\n").trim();
+    if (text !== "") {
+      values.push(text);
+    }
+  }
+
+  return values;
+}
+
+/**
  * Extract the raw text corresponding to a serialized comment span.
  *
  * @public

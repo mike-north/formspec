@@ -2,6 +2,7 @@ import * as ts from "typescript";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   computeFormSpecTextHash,
+  type FormSpecAnalysisDeclarationSummary,
   type FormSpecAnalysisDiagnostic,
   type FormSpecAnalysisFileSnapshot,
   type FormSpecSerializedCompletionContext,
@@ -160,6 +161,32 @@ interface CommentQueryContext extends SourceEnvironment {
   readonly subjectType: ts.Type | undefined;
 }
 
+function findInnermostDeclarationSummary(
+  snapshot: FormSpecAnalysisFileSnapshot,
+  offset: number
+): FormSpecAnalysisDeclarationSummary | undefined {
+  let bestMatch: FormSpecAnalysisDeclarationSummary | undefined;
+  let bestWidth = Number.POSITIVE_INFINITY;
+
+  for (const comment of snapshot.comments) {
+    if (
+      offset < comment.declarationSpan.start ||
+      offset >= comment.declarationSpan.end ||
+      (offset >= comment.commentSpan.start && offset < comment.commentSpan.end)
+    ) {
+      continue;
+    }
+
+    const width = comment.declarationSpan.end - comment.declarationSpan.start;
+    if (width <= bestWidth) {
+      bestMatch = comment.declarationSummary;
+      bestWidth = width;
+    }
+  }
+
+  return bestMatch;
+}
+
 type SnapshotCacheState = "hit" | "miss" | "missing-source";
 
 interface MutableSemanticServiceStats {
@@ -278,20 +305,64 @@ export class FormSpecSemanticService {
   /** Resolves semantic hover payload for a comment cursor position. */
   public getHover(filePath: string, offset: number): FormSpecSemanticHoverResult | null {
     this.stats.queryTotals.hover += 1;
-    return this.runMeasured("semantic.getHover", { filePath, offset }, (performance) =>
-      this.withCommentQueryContext(filePath, offset, performance, (context) => ({
+    return this.runMeasured("semantic.getHover", { filePath, offset }, (performance) => {
+      const environment = this.getSourceEnvironment(filePath, performance);
+      if (environment === null) {
+        return null;
+      }
+
+      const declaration = optionalMeasure(
+        performance,
+        "semantic.findDeclarationForCommentOffset",
+        {
+          filePath,
+          offset,
+        },
+        () => findDeclarationForCommentOffset(environment.sourceFile, offset)
+      );
+      const placement =
+        declaration === null
+          ? null
+          : optionalMeasure(performance, "semantic.resolveDeclarationPlacement", undefined, () =>
+              resolveDeclarationPlacement(declaration)
+            );
+      const subjectType =
+        declaration === null
+          ? undefined
+          : optionalMeasure(performance, "semantic.getSubjectType", undefined, () =>
+              getSubjectType(declaration, environment.checker)
+            );
+      const hover = serializeHoverInfo(
+        getCommentHoverInfoAtOffset(environment.sourceFile.text, offset, {
+          checker: environment.checker,
+          ...(placement === null ? {} : { placement }),
+          ...(subjectType === undefined ? {} : { subjectType }),
+          ...(declaration === null ? {} : { declaration }),
+        })
+      );
+      if (hover !== null) {
+        return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          sourceHash: environment.sourceHash,
+          hover,
+        };
+      }
+
+      const { snapshot } = this.getFileSnapshotWithCacheState(filePath, performance);
+      const declarationSummary = findInnermostDeclarationSummary(snapshot, offset);
+
+      return {
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-        sourceHash: context.sourceHash,
-        hover: serializeHoverInfo(
-          getCommentHoverInfoAtOffset(context.sourceFile.text, offset, {
-            checker: context.checker,
-            ...(context.placement === null ? {} : { placement: context.placement }),
-            ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
-            ...(context.declaration === null ? {} : { declaration: context.declaration }),
-          })
-        ),
-      }))
-    );
+        sourceHash: environment.sourceHash,
+        hover:
+          declarationSummary === undefined
+            ? null
+            : {
+                kind: "declaration",
+                markdown: declarationSummary.hoverMarkdown,
+              },
+      };
+    });
   }
 
   /** Returns canonical FormSpec diagnostics for a file in the current host program. */

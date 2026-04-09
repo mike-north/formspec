@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
   FORMSPEC_ANALYSIS_SCHEMA_VERSION,
+  buildFormSpecAnalysisFileSnapshot,
   computeFormSpecTextHash,
   getCommentHoverInfoAtOffset,
   getSemanticCommentCompletionContextAtOffset,
@@ -236,6 +237,103 @@ describe("semantic protocol", () => {
         kind: "tag-name",
       })
     );
+  });
+
+  it("accepts declaration hover payloads and declaration summaries in file snapshots", () => {
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "hover",
+        sourceHash: "deadbeef",
+        hover: {
+          kind: "declaration",
+          markdown: "**FormSpec Declaration Summary**",
+        },
+      })
+    ).toBe(true);
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "file-snapshot",
+        snapshot: {
+          filePath: "/workspace/formspec/example.ts",
+          sourceHash: "deadbeef",
+          generatedAt: "2026-04-08T00:00:00.000Z",
+          comments: [
+            {
+              commentSpan: { start: 0, end: 20 },
+              declarationSpan: { start: 21, end: 40 },
+              placement: "class-field",
+              subjectType: "string",
+              hostType: "Example",
+              declarationSummary: {
+                summaryText: "Example field",
+                resolvedMetadata: {
+                  displayName: {
+                    value: "Example Field",
+                    source: "explicit",
+                  },
+                },
+                metadataEntries: [],
+                facts: [
+                  {
+                    kind: "description",
+                    value: "Example field",
+                  },
+                ],
+                hoverMarkdown: "**FormSpec Declaration Summary**",
+              },
+              tags: [],
+            },
+          ],
+          diagnostics: [],
+        },
+      })
+    ).toBe(true);
+  });
+
+  it("rejects non-finite JSON payloads in declaration summary facts", () => {
+    const source = `
+      class Checkout {
+        /**
+         * Internal name
+         * @defaultValue "demo"
+         */
+        name!: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(source);
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "file-snapshot",
+        snapshot,
+      })
+    ).toBe(true);
+
+    const invalidSnapshot = {
+      ...snapshot,
+      comments: snapshot.comments.map((comment) => ({
+        ...comment,
+        declarationSummary: {
+          ...comment.declarationSummary,
+          facts: comment.declarationSummary.facts.map((fact) =>
+            fact.kind === "default-value" ? { ...fact, value: Number.POSITIVE_INFINITY } : fact
+          ),
+        },
+      })),
+    };
+
+    expect(
+      isFormSpecSemanticResponse({
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "file-snapshot",
+        snapshot: invalidSnapshot,
+      })
+    ).toBe(false);
   });
 
   it("accepts diagnostics with structured white-label data and related locations", () => {

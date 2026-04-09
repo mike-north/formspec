@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  defineConstraint,
+  defineConstraintTag,
+  defineExtension,
+  defineMetadataSlot,
+} from "@formspec/core";
+import {
   buildFormSpecAnalysisFileSnapshot,
   computeFormSpecTextHash,
   createFormSpecPerformanceRecorder,
@@ -144,6 +150,194 @@ describe("file-snapshots", () => {
 
     expect(snapshot.comments.map((comment) => comment.placement)).toEqual(
       expect.arrayContaining(["type-alias", "interface"])
+    );
+  });
+
+  it("derives declaration-level summaries with resolved metadata and combined constraints", () => {
+    const source = `
+      class ProgramSettings {
+        /**
+         * Internal program name
+         * @displayName Program Name
+         * @minLength 1
+         * @maxLength 20
+         * @pattern ^[a-z]+$
+         * @defaultValue "demo"
+         */
+        name!: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-declaration-summary.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    const comment = snapshot.comments[0];
+
+    expect(comment).toBeDefined();
+    expect(comment?.declarationSummary.summaryText).toBe("Internal program name");
+    expect(comment?.declarationSummary.resolvedMetadata?.displayName?.value).toBe("Program Name");
+    expect(comment?.declarationSummary.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "description",
+          value: "Internal program name",
+        }),
+        expect.objectContaining({
+          kind: "string-constraints",
+          targetPath: null,
+          minLength: 1,
+          maxLength: 20,
+          patterns: ["^[a-z]+$"],
+        }),
+        expect.objectContaining({
+          kind: "default-value",
+          value: "demo",
+        }),
+      ])
+    );
+    expect(comment?.declarationSummary.hoverMarkdown).toContain("Program Name");
+    expect(comment?.declarationSummary.hoverMarkdown).toContain("length 1-20");
+  });
+
+  it("keeps summary-only declaration comments in the snapshot", () => {
+    const source = `
+      class Checkout {
+        /**
+         * Internal program name
+         * that spans multiple lines.
+         */
+        name!: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-summary-only-comment.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    const comment = snapshot.comments.find((entry) => entry.subjectType === "string");
+
+    expect(comment).toBeDefined();
+    expect(comment?.tags).toEqual([]);
+    expect(comment?.declarationSummary.summaryText).toBe(
+      "Internal program name\nthat spans multiple lines."
+    );
+    expect(comment?.declarationSummary.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "description",
+          value: "Internal program name\nthat spans multiple lines.",
+        }),
+      ])
+    );
+  });
+
+  it("preserves multiline block-tag text in declaration summaries", () => {
+    const source = `
+      class Checkout {
+        /**
+         * Internal program name
+         * @remarks First line of remarks.
+         * Second line of remarks.
+         * @deprecated First line of guidance.
+         * Second line of guidance.
+         */
+        name!: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-multiline-block-tags.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    const comment = snapshot.comments.find((entry) => entry.subjectType === "string");
+
+    expect(comment?.declarationSummary.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "remarks",
+          value: "First line of remarks.\nSecond line of remarks.",
+        }),
+        expect.objectContaining({
+          kind: "deprecated",
+          message: "First line of guidance.\nSecond line of guidance.",
+        }),
+      ])
+    );
+  });
+
+  it("includes extension metadata and custom constraint facts in declaration summaries", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/money",
+      constraints: [
+        defineConstraint({
+          constraintName: "Currency",
+          applicableTypes: null,
+          compositionRule: "override",
+          toJsonSchema() {
+            return {};
+          },
+        }),
+      ],
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "currency",
+          constraintName: "Currency",
+          parseValue(raw) {
+            return raw.trim();
+          },
+        }),
+      ],
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "externalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+    const source = `
+      interface Checkout {
+        /**
+         * @externalName TOTAL_AMOUNT
+         * @currency USD
+         */
+        total: string;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-extension-summary.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      extensionDefinitions: [extension],
+    });
+    const comment = snapshot.comments.find((entry) => entry.subjectType === "string");
+
+    expect(comment?.declarationSummary.metadataEntries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "externalName",
+          tagName: "externalName",
+          value: "TOTAL_AMOUNT",
+          source: "explicit",
+        }),
+      ])
+    );
+    expect(comment?.declarationSummary.facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "custom-constraint",
+          constraintId: "x-example/money/Currency",
+          compositionRule: "override",
+          payload: "USD",
+        }),
+      ])
     );
   });
 
