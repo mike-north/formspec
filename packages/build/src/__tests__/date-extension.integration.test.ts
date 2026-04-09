@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
-import { generateSchemas } from "../generators/class-schema.js";
+import { generateSchemas, generateSchemasDetailed } from "../generators/class-schema.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   createDateExtensionRegistry,
@@ -249,6 +249,33 @@ describe("date extension integration", () => {
     expect(message.match(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/g)).toHaveLength(1);
   });
 
+  it("returns unsupported global built-in overrides as structured diagnostics", () => {
+    const filePath = writeTempSource(`
+      export interface UnsupportedArrayOverrideDetailed {
+        items: Array<string>;
+
+        /** @minLength 1 */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const result = generateSchemasDetailed({
+      filePath,
+      typeName: "UnsupportedArrayOverrideDetailed",
+      extensionRegistry: createUnsupportedArrayRegistry(),
+      vendorPrefix: "x-formspec",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([
+      {
+        code: "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
+      },
+    ]);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
+  });
+
   it("surfaces invalid custom type registrations as setup diagnostics", () => {
     const filePath = writeTempSource(`
       export interface InvalidCustomTypeRegistration {
@@ -274,5 +301,31 @@ describe("date extension integration", () => {
     expect(message).toMatch(/Invalid custom type name "Not A Type"/);
     expect(message).not.toMatch(/TYPE_MISMATCH/);
     expect(message.match(/SYNTHETIC_SETUP_FAILURE/g)).toHaveLength(1);
+  });
+
+  it("returns invalid custom type registrations as setup diagnostics without throwing", () => {
+    const filePath = writeTempSource(`
+      export interface InvalidCustomTypeRegistrationDetailed {
+        /** @minLength 1 */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const result = generateSchemasDetailed({
+      filePath,
+      typeName: "InvalidCustomTypeRegistrationDetailed",
+      extensionRegistry: createInvalidTypeNameRegistry(),
+      vendorPrefix: "x-formspec",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([
+      {
+        code: "SYNTHETIC_SETUP_FAILURE",
+      },
+    ]);
+    expect(result.diagnostics[0]?.message).toMatch(/Invalid custom type name "Not A Type"/);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
   });
 });

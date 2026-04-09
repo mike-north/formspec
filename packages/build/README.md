@@ -182,10 +182,15 @@ Generation validates canonical IR before emitting schemas. Invalid inputs now fa
 
 ### Handling Generation Failures
 
-Static generation APIs such as `generateSchemas()` still throw on invalid input, but the thrown error message now includes stable diagnostic codes that consumers can inspect or surface directly.
+Static generation APIs now come in two forms:
+
+- `generateSchemas()` and `generateSchemasFromProgram()` keep the simple throw-on-error contract.
+- `generateSchemasDetailed()`, `generateSchemasFromProgramDetailed()`, `generateSchemasBatch()`, and `generateSchemasBatchFromProgram()` return structured diagnostics instead of throwing for analysis and validation failures.
+
+Use the throwing APIs when you want "schema or failure" ergonomics. Use the detailed APIs when you want to surface as much feedback as possible in one pass, especially in editor, CI, or migration tooling.
 
 ```ts
-import { generateSchemas } from "@formspec/build";
+import { generateSchemas, generateSchemasDetailed, generateSchemasBatch } from "@formspec/build";
 
 try {
   const { jsonSchema, uiSchema } = generateSchemas({
@@ -205,6 +210,32 @@ try {
 
   throw error;
 }
+
+const detailed = generateSchemasDetailed({
+  filePath: "./src/forms.ts",
+  typeName: "Invoice",
+});
+
+if (!detailed.ok) {
+  for (const diagnostic of detailed.diagnostics) {
+    console.error(`${diagnostic.code}: ${diagnostic.message}`);
+  }
+}
+
+const batch = generateSchemasBatch({
+  targets: [
+    { filePath: "./src/forms.ts", typeName: "Invoice" },
+    { filePath: "./src/forms.ts", typeName: "PaymentTerms" },
+  ],
+});
+
+for (const result of batch) {
+  if (!result.ok) {
+    console.error(
+      `${result.typeName} failed: ${result.diagnostics.map((diagnostic) => diagnostic.code).join(", ")}`
+    );
+  }
+}
 ```
 
 The most relevant codes for extension-backed static analysis failures are:
@@ -212,6 +243,9 @@ The most relevant codes for extension-backed static analysis failures are:
 - `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` for extension custom types that conflict with unsupported TypeScript global built-ins.
 - `SYNTHETIC_SETUP_FAILURE` for invalid or conflicting extension custom type registrations and other synthetic compiler setup failures.
 - `TYPE_MISMATCH` for normal tag-on-type incompatibilities in author source.
+- `TYPE_NOT_FOUND` when a requested exported target cannot be resolved.
+- `UNSUPPORTED_ROOT_TYPE` and `DUPLICATE_ROOT_PROPERTIES` when a requested type alias cannot be treated as a schema root.
+- `PROGRAM_CONTEXT_FAILURE` when the package cannot create or reuse a TypeScript program for the requested file.
 
 As a rule of thumb, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension configuration problems, while `TYPE_MISMATCH` usually indicates an authoring error in the analyzed source.
 
@@ -226,8 +260,12 @@ Low-level canonical IR generators, analyzer primitives, and validation helpers a
 - `generateUiSchema(form)`
 - `writeSchemas(form, options)`
 - `generateSchemas(options)`
+- `generateSchemasDetailed(options)`
 - `generateSchemasFromClass(options)`
 - `generateSchemasFromProgram(options)`
+- `generateSchemasFromProgramDetailed(options)`
+- `generateSchemasBatch(options)`
+- `generateSchemasBatchFromProgram(options)`
 - `buildMixedAuthoringSchemas(options)`
 - `createExtensionRegistry(extensions)`
 

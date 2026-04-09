@@ -91,11 +91,16 @@ export type {
 } from "./ui-schema/types.js";
 
 export type {
+  DetailedClassSchemasResult,
+  DetailedSchemaGenerationTargetResult,
   DiscriminatorResolutionOptions,
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
+  GenerateSchemasBatchFromProgramOptions,
+  GenerateSchemasBatchOptions,
   GenerateSchemasFromProgramOptions,
+  SchemaGenerationTarget,
   StaticSchemaGenerationOptions,
 } from "./generators/class-schema.js";
 export type { StaticBuildContext } from "./static-build.js";
@@ -126,8 +131,12 @@ export { uiSchema as uiSchemaSchema } from "./ui-schema/schema.js";
 export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
 export {
+  generateSchemasBatch,
+  generateSchemasBatchFromProgram,
+  generateSchemasDetailed,
   generateSchemasFromClass,
   generateSchemas,
+  generateSchemasFromProgramDetailed,
   generateSchemasFromProgram,
 } from "./generators/class-schema.js";
 export {

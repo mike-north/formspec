@@ -110,6 +110,20 @@ export { CustomConstraintRegistration }
 export { CustomTypeRegistration }
 
 // @public
+export interface DetailedClassSchemasResult {
+    readonly diagnostics: readonly ValidationDiagnostic[];
+    readonly jsonSchema?: JsonSchema2020 | undefined;
+    readonly ok: boolean;
+    readonly uiSchema?: UISchema | undefined;
+}
+
+// @public
+export interface DetailedSchemaGenerationTargetResult extends DetailedClassSchemasResult {
+    readonly filePath: string;
+    readonly typeName: string;
+}
+
+// @public
 export interface DiscoveredTypeSchemas {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema | null;
@@ -185,6 +199,26 @@ export interface GenerateJsonSchemaOptions {
 export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
 
 // @public
+export function generateSchemasBatch(options: GenerateSchemasBatchOptions): readonly DetailedSchemaGenerationTargetResult[];
+
+// @public
+export function generateSchemasBatchFromProgram(options: GenerateSchemasBatchFromProgramOptions): readonly DetailedSchemaGenerationTargetResult[];
+
+// @public
+export interface GenerateSchemasBatchFromProgramOptions extends StaticSchemaGenerationOptions {
+    readonly program: ts.Program;
+    readonly targets: readonly SchemaGenerationTarget[];
+}
+
+// @public
+export interface GenerateSchemasBatchOptions extends StaticSchemaGenerationOptions {
+    readonly targets: readonly SchemaGenerationTarget[];
+}
+
+// @public
+export function generateSchemasDetailed(options: GenerateSchemasOptions): DetailedClassSchemasResult;
+
+// @public
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
 
 // @public
@@ -207,6 +241,9 @@ export interface GenerateSchemasFromParameterOptions extends StaticSchemaGenerat
 
 // @public
 export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions): GenerateFromClassResult;
+
+// @public
+export function generateSchemasFromProgramDetailed(options: GenerateSchemasFromProgramOptions): DetailedClassSchemasResult;
 
 // @public
 export interface GenerateSchemasFromProgramOptions extends StaticSchemaGenerationOptions {
@@ -402,6 +439,12 @@ export type RuleEffect = "SHOW" | "HIDE" | "ENABLE" | "DISABLE";
 export interface SchemaBasedCondition {
     readonly schema: RuleConditionSchema;
     readonly scope: string;
+}
+
+// @public
+export interface SchemaGenerationTarget {
+    readonly filePath: string;
+    readonly typeName: string;
 }
 
 // @public

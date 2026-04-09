@@ -10,10 +10,12 @@ import * as ts from "typescript";
 import type { UISchema } from "../ui-schema/types.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import {
-  analyzeNamedTypeToIRFromProgramContext,
+  analyzeNamedTypeToIRFromProgramContextDetailed,
   createProgramContext,
   createProgramContextFromProgram,
   findClassByName,
+  type AnalyzeNamedTypeToIRDetailedResult,
+  type ProgramContext,
 } from "../analyzer/program.js";
 import {
   analyzeClassToIR,
@@ -45,6 +47,68 @@ export interface ClassSchemas {
 }
 
 /**
+ * Non-throwing schema generation result with structured diagnostics.
+ *
+ * @public
+ */
+export interface DetailedClassSchemasResult {
+  /** Whether schema generation completed without error-severity diagnostics. */
+  readonly ok: boolean;
+  /** Collected analysis and validation diagnostics for this target. */
+  readonly diagnostics: readonly ValidationDiagnostic[];
+  /** JSON Schema 2020-12 for validation, when generation succeeds. */
+  readonly jsonSchema?: JsonSchema2020 | undefined;
+  /** JSON Forms UI Schema for rendering, when generation succeeds. */
+  readonly uiSchema?: UISchema | undefined;
+}
+
+/**
+ * A batch target for non-throwing schema generation.
+ *
+ * @public
+ */
+export interface SchemaGenerationTarget {
+  /** Path to the TypeScript source file. */
+  readonly filePath: string;
+  /** Name of the exported class, interface, or type alias to analyze. */
+  readonly typeName: string;
+}
+
+/**
+ * Batch options for non-throwing schema generation.
+ *
+ * @public
+ */
+export interface GenerateSchemasBatchOptions extends StaticSchemaGenerationOptions {
+  /** Targets to analyze and generate. */
+  readonly targets: readonly SchemaGenerationTarget[];
+}
+
+/**
+ * Batch options for non-throwing schema generation using an existing program.
+ *
+ * @public
+ */
+export interface GenerateSchemasBatchFromProgramOptions extends StaticSchemaGenerationOptions {
+  /** Existing TypeScript program supplied by the caller. */
+  readonly program: ts.Program;
+  /** Targets to analyze and generate. */
+  readonly targets: readonly SchemaGenerationTarget[];
+}
+
+/**
+ * Result for a single target in a batch generation request.
+ *
+ * @public
+ */
+export interface DetailedSchemaGenerationTargetResult extends DetailedClassSchemasResult {
+  /** Path to the TypeScript source file. */
+  readonly filePath: string;
+  /** Name of the exported class, interface, or type alias that was analyzed. */
+  readonly typeName: string;
+}
+
+/**
  * Generates JSON Schema 2020-12 and UI Schema from an IR class analysis.
  *
  * Routes through the canonical IR pipeline:
@@ -59,11 +123,37 @@ export function generateClassSchemas(
   source?: TSDocSource,
   options?: GenerateJsonSchemaFromIROptions & { metadata?: MetadataPolicyInput | undefined }
 ): ClassSchemas {
-  const errorDiagnostics = analysis.diagnostics?.filter(
+  const result = generateClassSchemasDetailed(analysis, source, options);
+  if (!result.ok || result.jsonSchema === undefined || result.uiSchema === undefined) {
+    throw new Error(formatValidationError(result.diagnostics));
+  }
+
+  return {
+    jsonSchema: result.jsonSchema,
+    uiSchema: result.uiSchema,
+  };
+}
+
+/**
+ * Generates JSON Schema 2020-12 and UI Schema from an IR class analysis
+ * without throwing on validation diagnostics.
+ *
+ * @public
+ */
+export function generateClassSchemasDetailed(
+  analysis: IRClassAnalysis,
+  source?: TSDocSource,
+  options?: GenerateJsonSchemaFromIROptions & { metadata?: MetadataPolicyInput | undefined }
+): DetailedClassSchemasResult {
+  const analysisDiagnostics = analysis.diagnostics ?? [];
+  const errorDiagnostics = analysisDiagnostics.filter(
     (diagnostic) => diagnostic.severity === "error"
   );
-  if (errorDiagnostics !== undefined && errorDiagnostics.length > 0) {
-    throw new Error(formatValidationError(errorDiagnostics));
+  if (errorDiagnostics.length > 0) {
+    return {
+      ok: false,
+      diagnostics: analysisDiagnostics,
+    };
   }
 
   const ir = canonicalizeTSDoc(
@@ -78,10 +168,15 @@ export function generateClassSchemas(
     ...(options?.vendorPrefix !== undefined && { vendorPrefix: options.vendorPrefix }),
   });
   if (!validationResult.valid) {
-    throw new Error(formatValidationError(validationResult.diagnostics));
+    return {
+      ok: false,
+      diagnostics: [...analysisDiagnostics, ...validationResult.diagnostics],
+    };
   }
 
   return {
+    ok: true,
+    diagnostics: analysisDiagnostics,
     jsonSchema: generateJsonSchemaFromIR(ir, options),
     uiSchema: generateUiSchemaFromIR(ir),
   };
@@ -272,22 +367,186 @@ export function generateSchemasFromProgram(
 export function generateSchemasFromProgram(
   options: GenerateSchemasFromProgramOptions
 ): GenerateFromClassResult {
-  const ctx = createProgramContextFromProgram(options.program, options.filePath);
-  const analysis = analyzeNamedTypeToIRFromProgramContext(
-    ctx,
-    options.filePath,
-    options.typeName,
-    options.extensionRegistry,
-    options.metadata,
-    options.discriminator
-  );
-  return generateClassSchemas(
-    analysis,
-    { file: options.filePath },
+  const result = generateSchemasFromProgramDetailed(options);
+  if (!result.ok || result.jsonSchema === undefined || result.uiSchema === undefined) {
+    throw new Error(formatValidationError(result.diagnostics));
+  }
+
+  return {
+    jsonSchema: result.jsonSchema,
+    uiSchema: result.uiSchema,
+  };
+}
+
+/**
+ * Generates JSON Schema and UI Schema from a named type and returns structured
+ * diagnostics instead of throwing on validation or analysis failures.
+ *
+ * @public
+ */
+export function generateSchemasDetailed(
+  options: GenerateSchemasOptions
+): DetailedClassSchemasResult {
+  try {
+    const ctx = createProgramContext(options.filePath);
+    return generateSchemasFromDetailedProgramContext(
+      ctx,
+      options.filePath,
+      options.typeName,
+      options
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      diagnostics: [createProgramContextFailureDiagnostic(options.filePath, error)],
+    };
+  }
+}
+
+/**
+ * Generates JSON Schema and UI Schema from a named type within an existing
+ * TypeScript program and returns structured diagnostics instead of throwing on
+ * validation or analysis failures.
+ *
+ * @public
+ */
+export function generateSchemasFromProgramDetailed(
+  options: GenerateSchemasFromProgramOptions
+): DetailedClassSchemasResult {
+  try {
+    const ctx = createProgramContextFromProgram(options.program, options.filePath);
+    return generateSchemasFromDetailedProgramContext(
+      ctx,
+      options.filePath,
+      options.typeName,
+      options
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      diagnostics: [createProgramContextFailureDiagnostic(options.filePath, error)],
+    };
+  }
+}
+
+/**
+ * Generates schemas for many targets and returns per-target diagnostics instead
+ * of failing on the first problem.
+ *
+ * @public
+ */
+export function generateSchemasBatch(
+  options: GenerateSchemasBatchOptions
+): readonly DetailedSchemaGenerationTargetResult[] {
+  const contextCache = new Map<string, ProgramContext>();
+
+  return options.targets.map((target) => {
+    try {
+      const cacheKey = ts.sys.useCaseSensitiveFileNames
+        ? target.filePath
+        : target.filePath.toLowerCase();
+      let ctx = contextCache.get(cacheKey);
+      if (ctx === undefined) {
+        ctx = createProgramContext(target.filePath);
+        contextCache.set(cacheKey, ctx);
+      }
+
+      return withTarget(
+        target,
+        generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+      );
+    } catch (error) {
+      return withTarget(target, {
+        ok: false,
+        diagnostics: [createProgramContextFailureDiagnostic(target.filePath, error)],
+      });
+    }
+  });
+}
+
+/**
+ * Generates schemas for many targets from an existing TypeScript program and
+ * returns per-target diagnostics instead of failing on the first problem.
+ *
+ * @public
+ */
+export function generateSchemasBatchFromProgram(
+  options: GenerateSchemasBatchFromProgramOptions
+): readonly DetailedSchemaGenerationTargetResult[] {
+  return options.targets.map((target) => {
+    try {
+      const ctx = createProgramContextFromProgram(options.program, target.filePath);
+      return withTarget(
+        target,
+        generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+      );
+    } catch (error) {
+      return withTarget(target, {
+        ok: false,
+        diagnostics: [createProgramContextFailureDiagnostic(target.filePath, error)],
+      });
+    }
+  });
+}
+
+function generateSchemasFromDetailedProgramContext(
+  ctx: ProgramContext,
+  filePath: string,
+  typeName: string,
+  options: StaticSchemaGenerationOptions
+): DetailedClassSchemasResult {
+  const analysisResult: AnalyzeNamedTypeToIRDetailedResult =
+    analyzeNamedTypeToIRFromProgramContextDetailed(
+      ctx,
+      filePath,
+      typeName,
+      options.extensionRegistry,
+      options.metadata,
+      options.discriminator
+    );
+  if (!analysisResult.ok) {
+    return {
+      ok: false,
+      diagnostics: analysisResult.diagnostics,
+    };
+  }
+
+  return generateClassSchemasDetailed(
+    analysisResult.analysis,
+    { file: filePath },
     {
       extensionRegistry: options.extensionRegistry,
       metadata: options.metadata,
       vendorPrefix: options.vendorPrefix,
     }
   );
+}
+
+function withTarget(
+  target: SchemaGenerationTarget,
+  result: DetailedClassSchemasResult
+): DetailedSchemaGenerationTargetResult {
+  return {
+    filePath: target.filePath,
+    typeName: target.typeName,
+    ...result,
+  };
+}
+
+function createProgramContextFailureDiagnostic(
+  filePath: string,
+  error: unknown
+): ValidationDiagnostic {
+  return {
+    code: "PROGRAM_CONTEXT_FAILURE",
+    message: error instanceof Error ? error.message : String(error),
+    severity: "error",
+    primaryLocation: {
+      surface: "tsdoc",
+      file: filePath,
+      line: 1,
+      column: 0,
+    },
+    relatedLocations: [],
+  };
 }

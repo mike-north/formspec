@@ -16,15 +16,34 @@ import {
 import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
+/**
+ * A machine-readable validation diagnostic returned by static schema analysis.
+ *
+ * @public
+ */
 export type ValidationDiagnostic = ConstraintSemanticDiagnostic;
 
+/**
+ * Result of validating canonical FormIR before schema emission.
+ *
+ * @public
+ */
 export interface ValidationResult {
+  /** Diagnostics produced during validation. */
   readonly diagnostics: readonly ValidationDiagnostic[];
+  /** Whether any error-severity diagnostics were produced. */
   readonly valid: boolean;
 }
 
+/**
+ * Options for validating canonical FormIR.
+ *
+ * @public
+ */
 export interface ValidateIROptions {
+  /** Vendor prefix used when resolving extension-backed keywords. */
   readonly vendorPrefix?: string;
+  /** Extension registry used to resolve custom constraints and types. */
   readonly extensionRegistry?: ExtensionRegistry;
 }
 
@@ -103,6 +122,11 @@ function validateElement(ctx: ValidationContext, element: FormIRElement): void {
   }
 }
 
+/**
+ * Validates canonical FormIR and returns all discovered diagnostics.
+ *
+ * @public
+ */
 export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationResult {
   const ctx: ValidationContext = {
     diagnostics: [],

@@ -1,7 +1,14 @@
 import * as path from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { generateSchemas, generateSchemasFromProgram } from "../generators/class-schema.js";
+import {
+  generateSchemas,
+  generateSchemasBatch,
+  generateSchemasBatchFromProgram,
+  generateSchemasDetailed,
+  generateSchemasFromProgram,
+  generateSchemasFromProgramDetailed,
+} from "../generators/class-schema.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -142,6 +149,52 @@ describe("generateSchemas", () => {
     expect(message).toContain("[related:");
   });
 
+  it("returns structured diagnostics instead of throwing from the detailed API", () => {
+    const result = generateSchemasDetailed({
+      filePath: classSchemaRegressionsPath,
+      typeName: "MismatchedForm",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.jsonSchema).toBeUndefined();
+    expect(result.uiSchema).toBeUndefined();
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
+  });
+
+  it("returns target-not-found diagnostics from the detailed API", () => {
+    const result = generateSchemasDetailed({
+      filePath: classSchemaRegressionsPath,
+      typeName: "MissingExport",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([
+      {
+        code: "TYPE_NOT_FOUND",
+      },
+    ]);
+  });
+
+  it("can accumulate mixed results across a batch request", () => {
+    const results = generateSchemasBatch({
+      targets: [
+        { filePath: classSchemaRegressionsPath, typeName: "NotificationPreferences" },
+        { filePath: classSchemaRegressionsPath, typeName: "MismatchedForm" },
+        { filePath: classSchemaRegressionsPath, typeName: "MissingExport" },
+      ],
+    });
+
+    expect(results).toHaveLength(3);
+    expect(results[0]).toMatchObject({
+      filePath: classSchemaRegressionsPath,
+      typeName: "NotificationPreferences",
+      ok: true,
+    });
+    expect(results[0].jsonSchema?.properties?.["channel"]).toMatchObject({ default: "email" });
+    expect(results[1].diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
+    expect(results[2].diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_NOT_FOUND");
+  });
+
   it("can analyze within an existing TypeScript program", () => {
     const program = ts.createProgram([sampleFormsPath], {
       target: ts.ScriptTarget.ES2022,
@@ -158,5 +211,36 @@ describe("generateSchemas", () => {
     });
 
     expect(result.jsonSchema.title).toBe("Vehicle Registration");
+  });
+
+  it("returns structured diagnostics from an existing program", () => {
+    const program = ts.createProgram([classSchemaRegressionsPath], {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      strict: true,
+      skipLibCheck: true,
+    });
+
+    const result = generateSchemasFromProgramDetailed({
+      program,
+      filePath: classSchemaRegressionsPath,
+      typeName: "MismatchedForm",
+    });
+    const batchResults = generateSchemasBatchFromProgram({
+      program,
+      targets: [
+        { filePath: classSchemaRegressionsPath, typeName: "NotificationPreferences" },
+        { filePath: classSchemaRegressionsPath, typeName: "MissingExport" },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
+    expect(batchResults).toHaveLength(2);
+    expect(batchResults[0].ok).toBe(true);
+    expect(batchResults[1].diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+      "TYPE_NOT_FOUND"
+    );
   });
 });
