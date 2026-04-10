@@ -98,6 +98,10 @@ export interface MergedConfig {
 }
 
 export class PaymentService {
+  /**
+   * @apiName submit_payment
+   * @displayName Submit Payment
+   */
   submit(input: SubmitInput): SubmitResult {
     return {
       approved: input.amount > 0,

@@ -114,9 +114,11 @@ export type {
 export type {
   DiscoveredTypeSchemas,
   GenerateSchemasFromDeclarationOptions,
+  MetadataSourceDeclaration,
   GenerateSchemasFromParameterOptions,
   GenerateSchemasFromReturnTypeOptions,
   GenerateSchemasFromTypeOptions,
+  ResolveDeclarationMetadataOptions,
   SchemaSourceDeclaration,
 } from "./generators/discovered-schema.js";
 export type {
@@ -163,6 +165,7 @@ export {
   generateSchemasFromParameter,
   generateSchemasFromReturnType,
   generateSchemasFromType,
+  resolveDeclarationMetadata,
 } from "./generators/discovered-schema.js";
 export { buildMixedAuthoringSchemas } from "./generators/mixed-authoring.js";
 

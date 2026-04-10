@@ -8,6 +8,7 @@ import {
   generateSchemasFromParameter,
   generateSchemasFromReturnType,
   generateSchemasFromType,
+  resolveDeclarationMetadata,
   resolveModuleExport,
   resolveModuleExportDeclaration,
 } from "../index.js";
@@ -314,5 +315,57 @@ describe("static build context", () => {
         declaration,
       })
     ).toThrow(/INVALID_TAG_PLACEMENT/);
+  });
+
+  it("resolves explicit method metadata through the public build context workflow", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService export not found");
+    }
+
+    const metadata = resolveDeclarationMetadata({
+      context,
+      declaration: getMethod(declaration, "submit"),
+    });
+
+    expect(metadata).toEqual({
+      apiName: { value: "submit_payment", source: "explicit" },
+      displayName: { value: "Submit Payment", source: "explicit" },
+    });
+  });
+
+  it("resolves inferred method metadata through the public build context workflow", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService export not found");
+    }
+
+    const metadata = resolveDeclarationMetadata({
+      context,
+      declaration: getMethod(declaration, "submitAsync"),
+      metadata: {
+        method: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+          displayName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName
+                .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                .replace(/^./, (char) => char.toUpperCase()),
+          },
+        },
+      },
+    });
+
+    expect(metadata).toEqual({
+      apiName: { value: "submit_async", source: "inferred" },
+      displayName: { value: "Submit Async", source: "inferred" },
+    });
   });
 });

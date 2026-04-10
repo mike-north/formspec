@@ -74,6 +74,7 @@ Public helpers in this workflow:
 - `createStaticBuildContextFromProgram(program, filePath)` - Reuse a host-owned `ts.Program`.
 - `resolveModuleExport(context, exportName?)` - Resolve any exported symbol, including functions and other non-schema declarations.
 - `resolveModuleExportDeclaration(context, exportName?)` - Resolve only schema-source declarations (`class`, `interface`, `type` alias).
+- `resolveDeclarationMetadata(...)` - Resolve metadata for supported declarations such as types, fields, and methods using FormSpec's active metadata policy.
 - `generateSchemasFromDeclaration(...)` - Generate from a resolved schema-source declaration.
 - `generateSchemasFromParameter(...)` - Generate from a method or function parameter declaration.
 - `generateSchemasFromReturnType(...)` - Generate from a method or function return type, unwrapping awaited `Promise<T>`-style returns before generation.
@@ -91,6 +92,7 @@ import {
   generateSchemasFromDeclaration,
   generateSchemasFromParameter,
   generateSchemasFromReturnType,
+  resolveDeclarationMetadata,
   resolveModuleExport,
   resolveModuleExportDeclaration,
 } from "@formspec/build";
@@ -107,6 +109,10 @@ if (serviceDeclaration && ts.isClassDeclaration(serviceDeclaration)) {
   );
 
   if (submitMethod?.parameters[0]) {
+    const methodMetadata = resolveDeclarationMetadata({
+      context,
+      declaration: submitMethod,
+    });
     const inputSchemas = generateSchemasFromParameter({
       context,
       parameter: submitMethod.parameters[0],
