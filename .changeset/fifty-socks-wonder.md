@@ -1,5 +1,7 @@
 ---
 "@formspec/build": minor
+"@formspec/cli": patch
+"formspec": patch
 ---
 
-Expose resolved type metadata on `DiscoveredTypeSchemas` so static build consumers can read singular and plural API/display names directly from discovered schema generation results.
+Expose resolved type metadata on `DiscoveredTypeSchemas` so static build consumers can read singular and plural API/display names directly from discovered schema generation results, and roll the updated build dependency into the published CLI and umbrella packages.

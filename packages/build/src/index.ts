@@ -105,6 +105,13 @@ export type {
 } from "./generators/class-schema.js";
 export type { StaticBuildContext } from "./static-build.js";
 export type {
+  ValidateIROptions,
+  ValidationDiagnostic,
+  ValidationDiagnosticLocation,
+  ValidationDiagnosticSeverity,
+  ValidationResult,
+} from "./validate/index.js";
+export type {
   DiscoveredTypeSchemas,
   GenerateSchemasFromDeclarationOptions,
   GenerateSchemasFromParameterOptions,

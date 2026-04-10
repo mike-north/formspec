@@ -491,6 +491,40 @@ export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayo
 export const uiSchemaSchema: z.ZodType<UISchema>;
 
 // @public
+export interface ValidateIROptions {
+    readonly extensionRegistry?: ExtensionRegistry;
+    readonly vendorPrefix?: string;
+}
+
+// @public
+export interface ValidationDiagnostic {
+    readonly code: string;
+    readonly message: string;
+    readonly primaryLocation: ValidationDiagnosticLocation;
+    readonly relatedLocations: readonly ValidationDiagnosticLocation[];
+    readonly severity: ValidationDiagnosticSeverity;
+}
+
+// @public
+export interface ValidationDiagnosticLocation {
+    readonly column: number;
+    readonly file: string;
+    readonly length?: number;
+    readonly line: number;
+    readonly surface: "tsdoc" | "chain-dsl" | "extension" | "inferred";
+    readonly tagName?: string;
+}
+
+// @public
+export type ValidationDiagnosticSeverity = "error" | "warning";
+
+// @public
+export interface ValidationResult {
+    readonly diagnostics: readonly ValidationDiagnostic[];
+    readonly valid: boolean;
+}
+
+// @public
 export interface VerticalLayout {
     readonly [k: string]: unknown;
     readonly elements: UISchemaElement[];

@@ -176,7 +176,7 @@ export function generateClassSchemasDetailed(
 
   return {
     ok: true,
-    diagnostics: analysisDiagnostics,
+    diagnostics: [...analysisDiagnostics, ...validationResult.diagnostics],
     jsonSchema: generateJsonSchemaFromIR(ir, options),
     uiSchema: generateUiSchemaFromIR(ir),
   };
@@ -387,20 +387,17 @@ export function generateSchemasFromProgram(
 export function generateSchemasDetailed(
   options: GenerateSchemasOptions
 ): DetailedClassSchemasResult {
+  let ctx: ProgramContext;
   try {
-    const ctx = createProgramContext(options.filePath);
-    return generateSchemasFromDetailedProgramContext(
-      ctx,
-      options.filePath,
-      options.typeName,
-      options
-    );
+    ctx = createProgramContext(options.filePath);
   } catch (error) {
     return {
       ok: false,
       diagnostics: [createProgramContextFailureDiagnostic(options.filePath, error)],
     };
   }
+
+  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
 }
 
 /**
@@ -413,20 +410,17 @@ export function generateSchemasDetailed(
 export function generateSchemasFromProgramDetailed(
   options: GenerateSchemasFromProgramOptions
 ): DetailedClassSchemasResult {
+  let ctx: ProgramContext;
   try {
-    const ctx = createProgramContextFromProgram(options.program, options.filePath);
-    return generateSchemasFromDetailedProgramContext(
-      ctx,
-      options.filePath,
-      options.typeName,
-      options
-    );
+    ctx = createProgramContextFromProgram(options.program, options.filePath);
   } catch (error) {
     return {
       ok: false,
       diagnostics: [createProgramContextFailureDiagnostic(options.filePath, error)],
     };
   }
+
+  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
 }
 
 /**
@@ -441,26 +435,29 @@ export function generateSchemasBatch(
   const contextCache = new Map<string, ProgramContext>();
 
   return options.targets.map((target) => {
+    let ctx: ProgramContext;
     try {
       const cacheKey = ts.sys.useCaseSensitiveFileNames
         ? target.filePath
         : target.filePath.toLowerCase();
-      let ctx = contextCache.get(cacheKey);
-      if (ctx === undefined) {
+      const cachedContext = contextCache.get(cacheKey);
+      if (cachedContext === undefined) {
         ctx = createProgramContext(target.filePath);
         contextCache.set(cacheKey, ctx);
+      } else {
+        ctx = cachedContext;
       }
-
-      return withTarget(
-        target,
-        generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
-      );
     } catch (error) {
       return withTarget(target, {
         ok: false,
         diagnostics: [createProgramContextFailureDiagnostic(target.filePath, error)],
       });
     }
+
+    return withTarget(
+      target,
+      generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+    );
   });
 }
 
@@ -474,18 +471,20 @@ export function generateSchemasBatchFromProgram(
   options: GenerateSchemasBatchFromProgramOptions
 ): readonly DetailedSchemaGenerationTargetResult[] {
   return options.targets.map((target) => {
+    let ctx: ProgramContext;
     try {
-      const ctx = createProgramContextFromProgram(options.program, target.filePath);
-      return withTarget(
-        target,
-        generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
-      );
+      ctx = createProgramContextFromProgram(options.program, target.filePath);
     } catch (error) {
       return withTarget(target, {
         ok: false,
         diagnostics: [createProgramContextFailureDiagnostic(target.filePath, error)],
       });
     }
+
+    return withTarget(
+      target,
+      generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+    );
   });
 }
 

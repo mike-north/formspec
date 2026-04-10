@@ -1,7 +1,10 @@
 import * as path from "node:path";
 import * as ts from "typescript";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { FieldNode, IRClassAnalysis, Provenance } from "@formspec/core/internals";
+import { createExtensionRegistry } from "../extensions/index.js";
 import {
+  generateClassSchemasDetailed,
   generateSchemas,
   generateSchemasBatch,
   generateSchemasBatchFromProgram,
@@ -9,10 +12,22 @@ import {
   generateSchemasFromProgram,
   generateSchemasFromProgramDetailed,
 } from "../generators/class-schema.js";
+import * as validateModule from "../validate/index.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
 const classSchemaRegressionsPath = path.join(fixturesDir, "class-schema-regressions.ts");
+const testFile = "/project/src/class-schema.test.ts";
+
+function provenance(line: number, tagName?: string): Provenance {
+  return {
+    surface: "chain-dsl",
+    file: testFile,
+    line,
+    column: 0,
+    ...(tagName !== undefined && { tagName }),
+  };
+}
 
 function getGenerationFailureMessage(typeName: string): string {
   try {
@@ -173,6 +188,53 @@ describe("generateSchemas", () => {
         code: "TYPE_NOT_FOUND",
       },
     ]);
+  });
+
+  it("includes validation warnings in successful detailed generation results", () => {
+    const analysis: IRClassAnalysis = {
+      name: "PriceModel",
+      fields: [
+        {
+          kind: "field",
+          name: "price",
+          type: { kind: "primitive", primitiveKind: "string" },
+          required: true,
+          constraints: [],
+          annotations: [],
+          provenance: provenance(1),
+        },
+      ],
+      fieldLayouts: [{}],
+      typeRegistry: {},
+      instanceMethods: [],
+      staticMethods: [],
+    };
+    const validateSpy = vi
+      .spyOn(validateModule, "validateIR")
+      .mockReturnValueOnce({
+        valid: true,
+        diagnostics: [
+          {
+            code: "UNKNOWN_EXTENSION",
+            message: "warn",
+            severity: "warning",
+            primaryLocation: provenance(1),
+            relatedLocations: [],
+          },
+        ],
+      });
+
+    const result = generateClassSchemasDetailed(
+      analysis,
+      { file: testFile },
+      {
+        extensionRegistry: createExtensionRegistry([]),
+      }
+    );
+    validateSpy.mockRestore();
+
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("UNKNOWN_EXTENSION");
   });
 
   it("can accumulate mixed results across a batch request", () => {
