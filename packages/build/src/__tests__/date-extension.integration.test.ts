@@ -3,7 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
-import { generateSchemas } from "../generators/class-schema.js";
+import {
+  generateSchemas,
+  type GenerateSchemasOptions,
+} from "../generators/class-schema.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   createDateExtensionRegistry,
@@ -14,6 +17,13 @@ interface NullableDateTimeSchema {
   readonly $ref?: string;
   readonly oneOf?: readonly unknown[];
   readonly ["x-formspec-after"]?: unknown;
+}
+
+function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
+  return generateSchemas({
+    ...options,
+    errorReporting: "throw",
+  });
 }
 
 function writeTempSource(source: string): string {
@@ -127,7 +137,7 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema, uiSchema } = generateSchemas({
+    const { jsonSchema, uiSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "BookingWindow",
       extensionRegistry: createDateExtensionRegistry(),
@@ -183,7 +193,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "InvalidWindow",
         extensionRegistry: createDateExtensionRegistry(),
@@ -203,7 +213,7 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema } = generateSchemas({
+    const { jsonSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "BookingMetadata",
       extensionRegistry: createBuiltInDateRegistry(),
@@ -236,7 +246,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     const message = getThrownMessage(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "UnsupportedArrayOverride",
         extensionRegistry: createUnsupportedArrayRegistry(),
@@ -247,6 +257,34 @@ describe("date extension integration", () => {
     expect(message).toMatch(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/);
     expect(message).not.toMatch(/TYPE_MISMATCH/);
     expect(message.match(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/g)).toHaveLength(1);
+  });
+
+  it("returns unsupported global built-in overrides as structured diagnostics", () => {
+    const filePath = writeTempSource(`
+      export interface UnsupportedArrayOverrideDetailed {
+        items: Array<string>;
+
+        /** @minLength 1 */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const result = generateSchemas({
+      filePath,
+      typeName: "UnsupportedArrayOverrideDetailed",
+      extensionRegistry: createUnsupportedArrayRegistry(),
+      vendorPrefix: "x-formspec",
+      errorReporting: "diagnostics",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([
+      {
+        code: "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
+      },
+    ]);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
   });
 
   it("surfaces invalid custom type registrations as setup diagnostics", () => {
@@ -262,7 +300,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     const message = getThrownMessage(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "InvalidCustomTypeRegistration",
         extensionRegistry: createInvalidTypeNameRegistry(),
@@ -274,5 +312,32 @@ describe("date extension integration", () => {
     expect(message).toMatch(/Invalid custom type name "Not A Type"/);
     expect(message).not.toMatch(/TYPE_MISMATCH/);
     expect(message.match(/SYNTHETIC_SETUP_FAILURE/g)).toHaveLength(1);
+  });
+
+  it("returns invalid custom type registrations as setup diagnostics without throwing", () => {
+    const filePath = writeTempSource(`
+      export interface InvalidCustomTypeRegistrationDetailed {
+        /** @minLength 1 */
+        label: string;
+      }
+    `);
+    tempDirs.push(path.dirname(filePath));
+
+    const result = generateSchemas({
+      filePath,
+      typeName: "InvalidCustomTypeRegistrationDetailed",
+      extensionRegistry: createInvalidTypeNameRegistry(),
+      vendorPrefix: "x-formspec",
+      errorReporting: "diagnostics",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toMatchObject([
+      {
+        code: "SYNTHETIC_SETUP_FAILURE",
+      },
+    ]);
+    expect(result.diagnostics[0]?.message).toMatch(/Invalid custom type name "Not A Type"/);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
   });
 });

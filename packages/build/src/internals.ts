@@ -26,6 +26,7 @@ export {
   findClassByName,
   findInterfaceByName,
   findTypeAliasByName,
+  analyzeNamedTypeToIRFromProgramContextDetailed,
   analyzeNamedTypeToIRFromProgramContext,
 } from "./analyzer/program.js";
 
@@ -41,10 +42,11 @@ export type {
   FieldLayoutMetadata,
   AnalyzeTypeAliasToIRResult,
 } from "./analyzer/class-analyzer.js";
+export type { AnalyzeNamedTypeToIRDetailedResult } from "./analyzer/program.js";
 
 // Generators: class schema (now routes through IR)
-export { generateClassSchemas } from "./generators/class-schema.js";
-export type { ClassSchemas } from "./generators/class-schema.js";
+export { generateClassSchemas, generateClassSchemasDetailed } from "./generators/class-schema.js";
+export type { ClassSchemas, DetailedClassSchemasResult } from "./generators/class-schema.js";
 
 // JSON Schema 2020-12: IR-based generator
 export { generateJsonSchemaFromIR } from "./json-schema/ir-generator.js";

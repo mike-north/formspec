@@ -91,14 +91,26 @@ export type {
 } from "./ui-schema/types.js";
 
 export type {
+  DetailedClassSchemasResult,
+  DetailedSchemaGenerationTargetResult,
   DiscriminatorResolutionOptions,
   GenerateFromClassOptions,
   GenerateFromClassResult,
   GenerateSchemasOptions,
+  GenerateSchemasBatchFromProgramOptions,
+  GenerateSchemasBatchOptions,
   GenerateSchemasFromProgramOptions,
+  SchemaGenerationTarget,
   StaticSchemaGenerationOptions,
 } from "./generators/class-schema.js";
 export type { StaticBuildContext } from "./static-build.js";
+export type {
+  ValidateIROptions,
+  ValidationDiagnostic,
+  ValidationDiagnosticLocation,
+  ValidationDiagnosticSeverity,
+  ValidationResult,
+} from "./validate/index.js";
 export type {
   DiscoveredTypeSchemas,
   GenerateSchemasFromDeclarationOptions,
@@ -126,10 +138,20 @@ export { uiSchema as uiSchemaSchema } from "./ui-schema/schema.js";
 export { generateJsonSchema } from "./json-schema/generator.js";
 export { generateUiSchema } from "./ui-schema/generator.js";
 export {
+  generateSchemasBatch,
+  generateSchemasBatchFromProgram,
   generateSchemasFromClass,
-  generateSchemas,
-  generateSchemasFromProgram,
 } from "./generators/class-schema.js";
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { generateSchemas } from "./generators/class-schema.js";
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { generateSchemasFromProgram } from "./generators/class-schema.js";
+/* eslint-disable @typescript-eslint/no-deprecated */
+export {
+  generateSchemasDetailed,
+  generateSchemasFromProgramDetailed,
+} from "./generators/class-schema.js";
+/* eslint-enable @typescript-eslint/no-deprecated */
 export {
   createStaticBuildContext,
   createStaticBuildContextFromProgram,

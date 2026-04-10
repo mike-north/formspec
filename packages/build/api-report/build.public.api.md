@@ -24,6 +24,7 @@ import { Group } from '@formspec/core';
 import type { MetadataPolicyInput } from '@formspec/core';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
+import type { ResolvedMetadata } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
 import { TextField } from '@formspec/core';
 import * as ts from 'typescript';
@@ -110,8 +111,23 @@ export { CustomConstraintRegistration }
 export { CustomTypeRegistration }
 
 // @public
+export interface DetailedClassSchemasResult {
+    readonly diagnostics: readonly ValidationDiagnostic[];
+    readonly jsonSchema?: JsonSchema2020 | undefined;
+    readonly ok: boolean;
+    readonly uiSchema?: UISchema | undefined;
+}
+
+// @public
+export interface DetailedSchemaGenerationTargetResult extends DetailedClassSchemasResult {
+    readonly filePath: string;
+    readonly typeName: string;
+}
+
+// @public
 export interface DiscoveredTypeSchemas {
     readonly jsonSchema: JsonSchema2020;
+    readonly resolvedMetadata?: ResolvedMetadata | undefined;
     readonly uiSchema: UISchema | null;
 }
 
@@ -182,7 +198,43 @@ export interface GenerateJsonSchemaOptions {
 }
 
 // @public
-export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
+export function generateSchemas(options: GenerateSchemasOptions & {
+    readonly errorReporting: "throw";
+}): GenerateFromClassResult;
+
+// @public
+export function generateSchemas(options: GenerateSchemasOptions & {
+    readonly errorReporting: "diagnostics";
+}): DetailedClassSchemasResult;
+
+// @public @deprecated
+export function generateSchemas(options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+}): GenerateFromClassResult;
+
+// @public
+export function generateSchemasBatch(options: GenerateSchemasBatchOptions): readonly DetailedSchemaGenerationTargetResult[];
+
+// @public
+export function generateSchemasBatchFromProgram(options: GenerateSchemasBatchFromProgramOptions): readonly DetailedSchemaGenerationTargetResult[];
+
+// @public
+export interface GenerateSchemasBatchFromProgramOptions extends StaticSchemaGenerationOptions {
+    readonly program: ts.Program;
+    readonly targets: readonly SchemaGenerationTarget[];
+}
+
+// @public
+export interface GenerateSchemasBatchOptions extends StaticSchemaGenerationOptions {
+    readonly targets: readonly SchemaGenerationTarget[];
+}
+
+// @public @deprecated
+export function generateSchemasDetailed(options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+}): DetailedClassSchemasResult;
 
 // @public
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
@@ -206,10 +258,32 @@ export interface GenerateSchemasFromParameterOptions extends StaticSchemaGenerat
 }
 
 // @public
-export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions): GenerateFromClassResult;
+export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions & {
+    readonly errorReporting: "throw";
+}): GenerateFromClassResult;
+
+// @public
+export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions & {
+    readonly errorReporting: "diagnostics";
+}): DetailedClassSchemasResult;
+
+// @public @deprecated
+export function generateSchemasFromProgram(options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+}): GenerateFromClassResult;
+
+// @public @deprecated
+export function generateSchemasFromProgramDetailed(options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+}): DetailedClassSchemasResult;
 
 // @public
 export interface GenerateSchemasFromProgramOptions extends StaticSchemaGenerationOptions {
+    readonly errorReporting: "throw" | "diagnostics";
     readonly filePath: string;
     readonly program: ts.Program;
     readonly typeName: string;
@@ -237,8 +311,9 @@ export interface GenerateSchemasFromTypeOptions extends StaticSchemaGenerationOp
 
 // @public
 export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
-    filePath: string;
-    typeName: string;
+    readonly errorReporting: "throw" | "diagnostics";
+    readonly filePath: string;
+    readonly typeName: string;
 }
 
 // @public
@@ -405,6 +480,12 @@ export interface SchemaBasedCondition {
 }
 
 // @public
+export interface SchemaGenerationTarget {
+    readonly filePath: string;
+    readonly typeName: string;
+}
+
+// @public
 export type SchemaSourceDeclaration = ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration;
 
 // @public
@@ -444,6 +525,40 @@ export type UISchemaElementType = "Control" | "VerticalLayout" | "HorizontalLayo
 
 // @public
 export const uiSchemaSchema: z.ZodType<UISchema>;
+
+// @public
+export interface ValidateIROptions {
+    readonly extensionRegistry?: ExtensionRegistry;
+    readonly vendorPrefix?: string;
+}
+
+// @public
+export interface ValidationDiagnostic {
+    readonly code: string;
+    readonly message: string;
+    readonly primaryLocation: ValidationDiagnosticLocation;
+    readonly relatedLocations: readonly ValidationDiagnosticLocation[];
+    readonly severity: ValidationDiagnosticSeverity;
+}
+
+// @public
+export interface ValidationDiagnosticLocation {
+    readonly column: number;
+    readonly file: string;
+    readonly length?: number;
+    readonly line: number;
+    readonly surface: "tsdoc" | "chain-dsl" | "extension" | "inferred";
+    readonly tagName?: string;
+}
+
+// @public
+export type ValidationDiagnosticSeverity = "error" | "warning";
+
+// @public
+export interface ValidationResult {
+    readonly diagnostics: readonly ValidationDiagnostic[];
+    readonly valid: boolean;
+}
 
 // @public
 export interface VerticalLayout {

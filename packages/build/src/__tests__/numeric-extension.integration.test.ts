@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { generateSchemas } from "../generators/class-schema.js";
+import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 import {
   addDecimal,
   compareDecimal,
@@ -16,6 +16,13 @@ interface NullableSchema {
   readonly oneOf?: readonly unknown[];
   readonly ["x-formspec-max-decimal-places"]?: unknown;
   readonly ["x-formspec-decimal-minimum"]?: unknown;
+}
+
+function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
+  return generateSchemas({
+    ...options,
+    errorReporting: "throw",
+  });
 }
 
 function writeTempSource(source: string): string {
@@ -60,7 +67,7 @@ describe("numeric extension integration", () => {
       ].join("\n")
     );
 
-    const { jsonSchema } = generateSchemas({
+    const { jsonSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "MixedConfig",
       extensionRegistry: createNumericExtensionRegistry(),
@@ -134,7 +141,7 @@ describe("numeric extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema, uiSchema } = generateSchemas({
+    const { jsonSchema, uiSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "Invoice",
       extensionRegistry: createNumericExtensionRegistry(),
