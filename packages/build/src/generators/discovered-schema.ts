@@ -40,6 +40,14 @@ export interface DiscoveredTypeSchemas {
   readonly jsonSchema: JsonSchema2020;
   /** UI Schema for object-shaped roots, or `null` when not applicable. */
   readonly uiSchema: UISchema | null;
+  /**
+   * Resolved type-level metadata used during generation, when available.
+   *
+   * This preserves explicit and inferred naming metadata such as singular and
+   * plural API/display names for consumers that need the resolved values in
+   * addition to the emitted schema artifacts.
+   */
+  readonly resolvedMetadata?: ResolvedMetadata | undefined;
 }
 
 /**
@@ -109,8 +117,14 @@ export interface GenerateSchemasFromReturnTypeOptions extends StaticSchemaGenera
   readonly declaration: ts.SignatureDeclaration;
 }
 
-function toDiscoveredTypeSchemas(result: ClassSchemas): DiscoveredTypeSchemas {
-  return result;
+function toDiscoveredTypeSchemas(
+  result: ClassSchemas,
+  resolvedMetadata?: ResolvedMetadata
+): DiscoveredTypeSchemas {
+  return {
+    ...result,
+    ...(resolvedMetadata !== undefined && { resolvedMetadata }),
+  };
 }
 
 function isNamedTypeDeclaration(
@@ -325,7 +339,8 @@ function generateSchemasFromAnalysis(
         metadata: options?.metadata,
         vendorPrefix: options?.vendorPrefix,
       }
-    )
+    ),
+    analysis.metadata
   );
 }
 
@@ -400,6 +415,7 @@ function generateSchemasFromResolvedType(
   return {
     jsonSchema: toStandaloneJsonSchema(root, typeRegistry, options),
     uiSchema: null,
+    ...(root.metadata !== undefined && { resolvedMetadata: root.metadata }),
   };
 }
 

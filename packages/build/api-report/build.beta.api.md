@@ -24,6 +24,7 @@ import { Group } from '@formspec/core';
 import type { MetadataPolicyInput } from '@formspec/core';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
+import type { ResolvedMetadata } from '@formspec/core';
 import { StaticEnumField } from '@formspec/core';
 import { TextField } from '@formspec/core';
 import * as ts from 'typescript';
@@ -126,6 +127,7 @@ export interface DetailedSchemaGenerationTargetResult extends DetailedClassSchem
 // @public
 export interface DiscoveredTypeSchemas {
     readonly jsonSchema: JsonSchema2020;
+    readonly resolvedMetadata?: ResolvedMetadata | undefined;
     readonly uiSchema: UISchema | null;
 }
 

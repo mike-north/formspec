@@ -17,12 +17,25 @@ export interface SubmitResult {
   approved: boolean;
 }
 
+/**
+ * @apiName :singular payment_method
+ * @apiName :plural payment_methods
+ * @displayName :singular Payment Method
+ * @displayName :plural Payment Methods
+ */
+export interface PaymentMethod {
+  id: string;
+}
+
 export interface Envelope<T> {
   payload: T;
 }
 
 /**
- * @apiName payment_status
+ * @apiName :singular payment_status
+ * @apiName :plural payment_statuses
+ * @displayName :singular Payment Status
+ * @displayName :plural Payment Statuses
  */
 export type PaymentStatus = "ok" | "error";
 

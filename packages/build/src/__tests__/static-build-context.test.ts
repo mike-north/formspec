@@ -245,6 +245,62 @@ describe("static build context", () => {
     expect(schemas.jsonSchema.title).toBe("Aliased Submit Input");
   });
 
+  it("returns resolved metadata for declaration-driven object roots", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentMethod");
+    if (declaration === null) {
+      throw new Error("PaymentMethod export not found");
+    }
+
+    const schemas = generateSchemasFromDeclaration({
+      context,
+      declaration,
+    });
+
+    expect(schemas.resolvedMetadata).toEqual({
+      apiName: { value: "payment_method", source: "explicit" },
+      apiNamePlural: { value: "payment_methods", source: "explicit" },
+      displayName: { value: "Payment Method", source: "explicit" },
+      displayNamePlural: { value: "Payment Methods", source: "explicit" },
+    });
+    expect(schemas.jsonSchema.title).toBe("Payment Method");
+  });
+
+  it("returns resolved metadata for declaration-driven standalone aliases and type generation", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentStatus");
+    if (declaration === null) {
+      throw new Error("PaymentStatus export not found");
+    }
+
+    const declarationSchemas = generateSchemasFromDeclaration({
+      context,
+      declaration,
+    });
+    const typeSchemas = generateSchemasFromType({
+      context,
+      type: context.checker.getTypeAtLocation(declaration),
+      sourceNode: declaration,
+      name: "PaymentStatus",
+    });
+
+    expect(declarationSchemas.resolvedMetadata).toEqual({
+      apiName: { value: "payment_status", source: "explicit" },
+      apiNamePlural: { value: "payment_statuses", source: "explicit" },
+      displayName: { value: "Payment Status", source: "explicit" },
+      displayNamePlural: { value: "Payment Statuses", source: "explicit" },
+    });
+    expect(declarationSchemas.uiSchema).toBeNull();
+    expect(declarationSchemas.jsonSchema.title).toBe("Payment Status");
+
+    expect(typeSchemas.resolvedMetadata).toEqual({
+      apiName: { value: "payment_status", source: "explicit" },
+      apiNamePlural: { value: "payment_statuses", source: "explicit" },
+      displayName: { value: "Payment Status", source: "explicit" },
+      displayNamePlural: { value: "Payment Statuses", source: "explicit" },
+    });
+  });
+
   it("surfaces declaration diagnostics for fallback alias generation", () => {
     const context = createStaticBuildContext(targetFixturePath);
     const declaration = resolveModuleExportDeclaration(context, "InvalidTaggedStatus");
