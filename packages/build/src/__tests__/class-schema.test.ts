@@ -6,6 +6,8 @@ import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   generateClassSchemasDetailed,
+  type GenerateSchemasFromProgramOptions,
+  type GenerateSchemasOptions,
   generateSchemas,
   generateSchemasBatch,
   generateSchemasBatchFromProgram,
@@ -21,6 +23,22 @@ const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
 const classSchemaRegressionsPath = path.join(fixturesDir, "class-schema-regressions.ts");
 const testFile = "/project/src/class-schema.test.ts";
 
+function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
+  return generateSchemas({
+    ...options,
+    errorReporting: "throw",
+  });
+}
+
+function generateSchemasFromProgramOrThrow(
+  options: Omit<GenerateSchemasFromProgramOptions, "errorReporting">
+) {
+  return generateSchemasFromProgram({
+    ...options,
+    errorReporting: "throw",
+  });
+}
+
 function provenance(line: number, tagName?: string): Provenance {
   return {
     surface: "chain-dsl",
@@ -33,7 +51,7 @@ function provenance(line: number, tagName?: string): Provenance {
 
 function getGenerationFailureMessage(typeName: string): string {
   try {
-    generateSchemas({
+    generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName,
     });
@@ -46,7 +64,7 @@ function getGenerationFailureMessage(typeName: string): string {
 
 describe("generateSchemas", () => {
   it("emits root title and description from class-level annotations", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: sampleFormsPath,
       typeName: "VehicleRegistration",
     });
@@ -56,7 +74,7 @@ describe("generateSchemas", () => {
   });
 
   it("emits default values from @defaultValue tags", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "NotificationPreferences",
     });
@@ -68,11 +86,11 @@ describe("generateSchemas", () => {
   });
 
   it("emits format and placeholder annotations into schema outputs", () => {
-    const schemaResult = generateSchemas({
+    const schemaResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "ContactForm",
     });
-    const uiResult = generateSchemas({
+    const uiResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "SearchForm",
     });
@@ -85,15 +103,15 @@ describe("generateSchemas", () => {
   });
 
   it("emits deprecation messages, uniqueItems, and typed-array item constraints", () => {
-    const deprecatedResult = generateSchemas({
+    const deprecatedResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "SettingsForm",
     });
-    const uniqueItemsResult = generateSchemas({
+    const uniqueItemsResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "TagManager",
     });
-    const typedArrayResult = generateSchemas({
+    const typedArrayResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "SurveyForm",
     });
@@ -111,7 +129,7 @@ describe("generateSchemas", () => {
   }, 15_000);
 
   it("maps summary text to description and @remarks to x-formspec-remarks", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,
       typeName: "DescriptionPrecedenceForm",
     });
@@ -166,7 +184,30 @@ describe("generateSchemas", () => {
     expect(message).toContain("[related:");
   });
 
+  it("returns structured diagnostics when errorReporting is diagnostics", () => {
+    const result = generateSchemas({
+      filePath: classSchemaRegressionsPath,
+      typeName: "MismatchedForm",
+      errorReporting: "diagnostics",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.jsonSchema).toBeUndefined();
+    expect(result.uiSchema).toBeUndefined();
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
+  });
+
+  it("throws when errorReporting is throw", () => {
+    expect(() =>
+      generateSchemasOrThrow({
+        filePath: classSchemaRegressionsPath,
+        typeName: "MismatchedForm",
+      })
+    ).toThrow(/TYPE_MISMATCH/);
+  });
+
   it("returns structured diagnostics instead of throwing from the detailed API", () => {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const result = generateSchemasDetailed({
       filePath: classSchemaRegressionsPath,
       typeName: "MismatchedForm",
@@ -179,6 +220,7 @@ describe("generateSchemas", () => {
   });
 
   it("returns target-not-found diagnostics from the detailed API", () => {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const result = generateSchemasDetailed({
       filePath: classSchemaRegressionsPath,
       typeName: "MissingExport",
@@ -269,13 +311,33 @@ describe("generateSchemas", () => {
       skipLibCheck: true,
     });
 
-    const result = generateSchemasFromProgram({
+    const result = generateSchemasFromProgramOrThrow({
       program,
       filePath: sampleFormsPath,
       typeName: "VehicleRegistration",
     });
 
     expect(result.jsonSchema.title).toBe("Vehicle Registration");
+  });
+
+  it("returns structured diagnostics from an existing program when requested", () => {
+    const program = ts.createProgram([classSchemaRegressionsPath], {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.NodeNext,
+      moduleResolution: ts.ModuleResolutionKind.NodeNext,
+      strict: true,
+      skipLibCheck: true,
+    });
+
+    const result = generateSchemasFromProgram({
+      program,
+      filePath: classSchemaRegressionsPath,
+      typeName: "MismatchedForm",
+      errorReporting: "diagnostics",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
   });
 
   it("returns structured diagnostics from an existing program", () => {
@@ -287,6 +349,7 @@ describe("generateSchemas", () => {
       skipLibCheck: true,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     const result = generateSchemasFromProgramDetailed({
       program,
       filePath: classSchemaRegressionsPath,

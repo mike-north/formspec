@@ -182,20 +182,22 @@ Generation validates canonical IR before emitting schemas. Invalid inputs now fa
 
 ### Handling Generation Failures
 
-Static generation APIs now come in two forms:
+Static generation now uses explicit error reporting on the main entry points:
 
-- `generateSchemas()` and `generateSchemasFromProgram()` keep the simple throw-on-error contract.
-- `generateSchemasDetailed()`, `generateSchemasFromProgramDetailed()`, `generateSchemasBatch()`, and `generateSchemasBatchFromProgram()` return structured diagnostics instead of throwing for analysis and validation failures.
+- `generateSchemas({ ..., errorReporting: "throw" })` and `generateSchemasFromProgram({ ..., errorReporting: "throw" })` keep the simple throw-on-error contract.
+- `generateSchemas({ ..., errorReporting: "diagnostics" })` and `generateSchemasFromProgram({ ..., errorReporting: "diagnostics" })` return structured diagnostics instead of throwing for analysis and validation failures.
+- `generateSchemasBatch()` and `generateSchemasBatchFromProgram()` continue to return per-target diagnostics across multiple targets.
 
-Use the throwing APIs when you want "schema or failure" ergonomics. Use the detailed APIs when you want to surface as much feedback as possible in one pass, especially in editor, CI, or migration tooling.
+Use the `"throw"` mode when you want "schema or failure" ergonomics. Use the `"diagnostics"` mode when you want to surface as much feedback as possible in one pass, especially in editor, CI, or migration tooling. The older `generateSchemasDetailed()` and `generateSchemasFromProgramDetailed()` wrappers remain available only as deprecated compatibility shims.
 
 ```ts
-import { generateSchemas, generateSchemasDetailed, generateSchemasBatch } from "@formspec/build";
+import { generateSchemas, generateSchemasBatch } from "@formspec/build";
 
 try {
   const { jsonSchema, uiSchema } = generateSchemas({
     filePath: "./src/forms.ts",
     typeName: "Invoice",
+    errorReporting: "throw",
   });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
@@ -211,9 +213,10 @@ try {
   throw error;
 }
 
-const detailed = generateSchemasDetailed({
+const detailed = generateSchemas({
   filePath: "./src/forms.ts",
   typeName: "Invoice",
+  errorReporting: "diagnostics",
 });
 
 if (!detailed.ok) {
@@ -260,10 +263,8 @@ Low-level canonical IR generators, analyzer primitives, and validation helpers a
 - `generateUiSchema(form)`
 - `writeSchemas(form, options)`
 - `generateSchemas(options)`
-- `generateSchemasDetailed(options)`
 - `generateSchemasFromClass(options)`
 - `generateSchemasFromProgram(options)`
-- `generateSchemasFromProgramDetailed(options)`
 - `generateSchemasBatch(options)`
 - `generateSchemasBatchFromProgram(options)`
 - `buildMixedAuthoringSchemas(options)`

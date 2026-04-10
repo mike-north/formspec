@@ -4,4 +4,4 @@
 "formspec": patch
 ---
 
-Expose resolved type metadata on `DiscoveredTypeSchemas` so static build consumers can read singular and plural API/display names directly from discovered schema generation results, and roll the updated build dependency into the published CLI and umbrella packages.
+Expose resolved type metadata on `DiscoveredTypeSchemas`, add explicit `errorReporting: "throw" | "diagnostics"` overloads on the main static schema generation entry points, and deprecate the older `generateSchemasDetailed()` compatibility wrappers. This also rolls the updated build dependency into the published CLI and umbrella packages.

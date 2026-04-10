@@ -3,7 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
-import { generateSchemas, generateSchemasDetailed } from "../generators/class-schema.js";
+import {
+  generateSchemas,
+  type GenerateSchemasOptions,
+} from "../generators/class-schema.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   createDateExtensionRegistry,
@@ -14,6 +17,13 @@ interface NullableDateTimeSchema {
   readonly $ref?: string;
   readonly oneOf?: readonly unknown[];
   readonly ["x-formspec-after"]?: unknown;
+}
+
+function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
+  return generateSchemas({
+    ...options,
+    errorReporting: "throw",
+  });
 }
 
 function writeTempSource(source: string): string {
@@ -127,7 +137,7 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema, uiSchema } = generateSchemas({
+    const { jsonSchema, uiSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "BookingWindow",
       extensionRegistry: createDateExtensionRegistry(),
@@ -183,7 +193,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "InvalidWindow",
         extensionRegistry: createDateExtensionRegistry(),
@@ -203,7 +213,7 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema } = generateSchemas({
+    const { jsonSchema } = generateSchemasOrThrow({
       filePath,
       typeName: "BookingMetadata",
       extensionRegistry: createBuiltInDateRegistry(),
@@ -236,7 +246,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     const message = getThrownMessage(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "UnsupportedArrayOverride",
         extensionRegistry: createUnsupportedArrayRegistry(),
@@ -260,11 +270,12 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const result = generateSchemasDetailed({
+    const result = generateSchemas({
       filePath,
       typeName: "UnsupportedArrayOverrideDetailed",
       extensionRegistry: createUnsupportedArrayRegistry(),
       vendorPrefix: "x-formspec",
+      errorReporting: "diagnostics",
     });
 
     expect(result.ok).toBe(false);
@@ -289,7 +300,7 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     const message = getThrownMessage(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath,
         typeName: "InvalidCustomTypeRegistration",
         extensionRegistry: createInvalidTypeNameRegistry(),
@@ -312,11 +323,12 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const result = generateSchemasDetailed({
+    const result = generateSchemas({
       filePath,
       typeName: "InvalidCustomTypeRegistrationDetailed",
       extensionRegistry: createInvalidTypeNameRegistry(),
       vendorPrefix: "x-formspec",
+      errorReporting: "diagnostics",
     });
 
     expect(result.ok).toBe(false);

@@ -3,7 +3,14 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
-import { generateSchemas } from "../generators/class-schema.js";
+import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
+
+function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
+  return generateSchemas({
+    ...options,
+    errorReporting: "throw",
+  });
+}
 
 function expectRecord(value: unknown, label: string): Record<string, unknown> {
   expect(value, label).toBeDefined();
@@ -350,7 +357,7 @@ describe("@discriminator schema generation", () => {
   });
 
   it("specializes discriminator fields to singleton enums for explicit, literal-property, inferred, object-alias, re-export, and generic-instantiation sources", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: fixturePath,
       typeName: "ValidWrapper",
       metadata: {
@@ -411,7 +418,7 @@ describe("@discriminator schema generation", () => {
   });
 
   it("specializes generic object aliases across literal and intersection shapes", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: fixturePath,
       typeName: "GenericObjectAliasWrapper",
       metadata: {
@@ -467,7 +474,7 @@ describe("@discriminator schema generation", () => {
   });
 
   it("applies discriminator apiNamePrefix only to metadata-derived discriminator values", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: fixturePath,
       typeName: "GenericObjectAliasWrapper",
       metadata: {
@@ -521,7 +528,7 @@ describe("@discriminator schema generation", () => {
   });
 
   it("supports same-file conditional helper aliases for metadata-backed discriminator fallback", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: fixturePath,
       typeName: "SameFileConditionalHelperWrapper",
       metadata: {
@@ -576,7 +583,7 @@ describe("@discriminator schema generation", () => {
   });
 
   it("specializes imported generic aliases the same way as local generic aliases", () => {
-    const result = generateSchemas({
+    const result = generateSchemasOrThrow({
       filePath: fixturePath,
       typeName: "ImportedAliasWrapper",
       metadata: {
@@ -634,7 +641,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects optional discriminator fields", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "OptionalWrapper",
       })
@@ -643,7 +650,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects nested discriminator targets in v1", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "NestedWrapper",
       })
@@ -652,7 +659,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects union-valued discriminator sources in v1", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "UnionWrapper",
       })
@@ -661,7 +668,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects union-valued identity properties in v1", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "UnionIdentityWrapper",
       })
@@ -670,7 +677,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects discriminator targets that are not string-like", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "NumberKindWrapper",
       })
@@ -679,7 +686,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects discriminator sources that are not local type parameters", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "UnknownTypeParameterWrapper",
       })
@@ -688,7 +695,7 @@ describe("@discriminator schema generation", () => {
 
   it("rejects discriminator sources when no JSON-facing value can be derived", () => {
     expect(() =>
-      generateSchemas({
+      generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "MissingCarrierWrapper",
       })

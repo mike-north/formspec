@@ -256,6 +256,10 @@ export interface GenerateSchemasFromProgramOptions extends StaticSchemaGeneratio
   readonly filePath: string;
   /** Name of the exported class, interface, or type alias to analyze */
   readonly typeName: string;
+  /**
+   * Controls whether error-severity diagnostics throw or are returned in the result.
+   */
+  readonly errorReporting: "throw" | "diagnostics";
 }
 
 /**
@@ -315,10 +319,27 @@ export function generateSchemasFromClass(
  */
 export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
   /** Path to the TypeScript source file */
-  filePath: string;
+  readonly filePath: string;
   /** Name of the exported class, interface, or type alias to analyze */
-  typeName: string;
+  readonly typeName: string;
+  /**
+   * Controls whether error-severity diagnostics throw or are returned in the result.
+   */
+  readonly errorReporting: "throw" | "diagnostics";
 }
+
+type GenerateSchemasImplementationOptions = StaticSchemaGenerationOptions & {
+  readonly filePath: string;
+  readonly typeName: string;
+  readonly errorReporting?: "throw" | "diagnostics" | undefined;
+};
+
+type GenerateSchemasFromProgramImplementationOptions = StaticSchemaGenerationOptions & {
+  readonly program: ts.Program;
+  readonly filePath: string;
+  readonly typeName: string;
+  readonly errorReporting?: "throw" | "diagnostics" | undefined;
+};
 
 /**
  * Generates JSON Schema and UI Schema from a named TypeScript
@@ -333,20 +354,66 @@ export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
  * const result = generateSchemas({
  *   filePath: "./src/config.ts",
  *   typeName: "DiscountConfig",
+ *   errorReporting: "throw",
  * });
  * ```
+ */
+/**
+ * Generates JSON Schema and UI Schema from a named type and throws when
+ * generation reports error-severity diagnostics.
  *
+ * @param options - File path, type name, and explicit throw-on-error reporting
+ * @returns Generated JSON Schema and UI Schema
+ *
+ * @public
+ */
+export function generateSchemas(
+  options: GenerateSchemasOptions & { readonly errorReporting: "throw" }
+): GenerateFromClassResult;
+/**
+ * Generates JSON Schema and UI Schema from a named type and returns structured
+ * diagnostics instead of throwing on validation or analysis failures.
+ *
+ * @param options - File path, type name, and explicit diagnostics reporting
+ * @returns Structured generation result with diagnostics
+ *
+ * @public
+ */
+export function generateSchemas(
+  options: GenerateSchemasOptions & { readonly errorReporting: "diagnostics" }
+): DetailedClassSchemasResult;
+/**
+ * Generates JSON Schema and UI Schema from a named type.
+ *
+ * @deprecated Pass `errorReporting` explicitly. Omitting it defaults to `"throw"` only for backward compatibility.
  * @param options - File path and type name
  * @returns Generated JSON Schema and UI Schema
  *
  * @public
  */
-export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult {
-  const ctx = createProgramContext(options.filePath);
-  return generateSchemasFromProgram({
-    ...options,
-    program: ctx.program,
-  });
+/* eslint-disable @typescript-eslint/unified-signatures */
+export function generateSchemas(
+  options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+  }
+): GenerateFromClassResult;
+/* eslint-enable @typescript-eslint/unified-signatures */
+export function generateSchemas(
+  options: GenerateSchemasImplementationOptions
+): GenerateFromClassResult | DetailedClassSchemasResult {
+  const result = generateSchemasDetailedInternal(options);
+  if (options.errorReporting === "diagnostics") {
+    return result;
+  }
+  if (!result.ok || result.jsonSchema === undefined || result.uiSchema === undefined) {
+    throw new Error(formatValidationError(result.diagnostics));
+  }
+
+  return {
+    jsonSchema: result.jsonSchema,
+    uiSchema: result.uiSchema,
+  };
 }
 
 /**
@@ -355,19 +422,58 @@ export function generateSchemas(options: GenerateSchemasOptions): GenerateFromCl
  *
  * This low-level entry point lets downstream tooling reuse a host-owned
  * `Program` for both FormSpec extraction and other TypeScript analysis.
+ */
+/**
+ * Generates JSON Schema and UI Schema from a named type within an existing
+ * TypeScript program and throws when generation reports error-severity diagnostics.
  *
- * @param options - Host program, file path, type name, and optional schema generation options
+ * @param options - Host program, file path, type name, and explicit throw-on-error reporting
  * @returns Generated JSON Schema and UI Schema
  *
  * @public
  */
 export function generateSchemasFromProgram(
-  options: GenerateSchemasFromProgramOptions
+  options: GenerateSchemasFromProgramOptions & { readonly errorReporting: "throw" }
 ): GenerateFromClassResult;
+/**
+ * Generates JSON Schema and UI Schema from a named type within an existing
+ * TypeScript program and returns structured diagnostics instead of throwing on
+ * validation or analysis failures.
+ *
+ * @param options - Host program, file path, type name, and explicit diagnostics reporting
+ * @returns Structured generation result with diagnostics
+ *
+ * @public
+ */
 export function generateSchemasFromProgram(
-  options: GenerateSchemasFromProgramOptions
-): GenerateFromClassResult {
-  const result = generateSchemasFromProgramDetailed(options);
+  options: GenerateSchemasFromProgramOptions & { readonly errorReporting: "diagnostics" }
+): DetailedClassSchemasResult;
+/**
+ * Generates JSON Schema and UI Schema from a named type within an existing
+ * TypeScript program.
+ *
+ * @deprecated Pass `errorReporting` explicitly. Omitting it defaults to `"throw"` only for backward compatibility.
+ * @param options - Host program, file path, and type name
+ * @returns Generated JSON Schema and UI Schema
+ *
+ * @public
+ */
+/* eslint-disable @typescript-eslint/unified-signatures */
+export function generateSchemasFromProgram(
+  options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+  }
+): GenerateFromClassResult;
+/* eslint-enable @typescript-eslint/unified-signatures */
+export function generateSchemasFromProgram(
+  options: GenerateSchemasFromProgramImplementationOptions
+): GenerateFromClassResult | DetailedClassSchemasResult {
+  const result = generateSchemasFromProgramDetailedInternal(options);
+  if (options.errorReporting === "diagnostics") {
+    return result;
+  }
   if (!result.ok || result.jsonSchema === undefined || result.uiSchema === undefined) {
     throw new Error(formatValidationError(result.diagnostics));
   }
@@ -381,11 +487,24 @@ export function generateSchemasFromProgram(
 /**
  * Generates JSON Schema and UI Schema from a named type and returns structured
  * diagnostics instead of throwing on validation or analysis failures.
+ * @deprecated Use `generateSchemas({ ...options, errorReporting: "diagnostics" })` instead.
  *
  * @public
  */
 export function generateSchemasDetailed(
-  options: GenerateSchemasOptions
+  options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+  }
+): DetailedClassSchemasResult {
+  return generateSchemas({
+    ...options,
+    errorReporting: "diagnostics",
+  });
+}
+
+function generateSchemasDetailedInternal(
+  options: GenerateSchemasImplementationOptions
 ): DetailedClassSchemasResult {
   let ctx: ProgramContext;
   try {
@@ -404,11 +523,25 @@ export function generateSchemasDetailed(
  * Generates JSON Schema and UI Schema from a named type within an existing
  * TypeScript program and returns structured diagnostics instead of throwing on
  * validation or analysis failures.
+ * @deprecated Use `generateSchemasFromProgram({ ...options, errorReporting: "diagnostics" })` instead.
  *
  * @public
  */
 export function generateSchemasFromProgramDetailed(
-  options: GenerateSchemasFromProgramOptions
+  options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+  }
+): DetailedClassSchemasResult {
+  return generateSchemasFromProgram({
+    ...options,
+    errorReporting: "diagnostics",
+  });
+}
+
+function generateSchemasFromProgramDetailedInternal(
+  options: GenerateSchemasFromProgramImplementationOptions
 ): DetailedClassSchemasResult {
   let ctx: ProgramContext;
   try {

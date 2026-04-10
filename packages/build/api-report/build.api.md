@@ -198,7 +198,20 @@ export interface GenerateJsonSchemaOptions {
 }
 
 // @public
-export function generateSchemas(options: GenerateSchemasOptions): GenerateFromClassResult;
+export function generateSchemas(options: GenerateSchemasOptions & {
+    readonly errorReporting: "throw";
+}): GenerateFromClassResult;
+
+// @public
+export function generateSchemas(options: GenerateSchemasOptions & {
+    readonly errorReporting: "diagnostics";
+}): DetailedClassSchemasResult;
+
+// @public @deprecated
+export function generateSchemas(options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+}): GenerateFromClassResult;
 
 // @public
 export function generateSchemasBatch(options: GenerateSchemasBatchOptions): readonly DetailedSchemaGenerationTargetResult[];
@@ -217,8 +230,11 @@ export interface GenerateSchemasBatchOptions extends StaticSchemaGenerationOptio
     readonly targets: readonly SchemaGenerationTarget[];
 }
 
-// @public
-export function generateSchemasDetailed(options: GenerateSchemasOptions): DetailedClassSchemasResult;
+// @public @deprecated
+export function generateSchemasDetailed(options: StaticSchemaGenerationOptions & {
+    readonly filePath: string;
+    readonly typeName: string;
+}): DetailedClassSchemasResult;
 
 // @public
 export function generateSchemasFromClass(options: GenerateFromClassOptions): GenerateFromClassResult;
@@ -242,13 +258,32 @@ export interface GenerateSchemasFromParameterOptions extends StaticSchemaGenerat
 }
 
 // @public
-export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions): GenerateFromClassResult;
+export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions & {
+    readonly errorReporting: "throw";
+}): GenerateFromClassResult;
 
 // @public
-export function generateSchemasFromProgramDetailed(options: GenerateSchemasFromProgramOptions): DetailedClassSchemasResult;
+export function generateSchemasFromProgram(options: GenerateSchemasFromProgramOptions & {
+    readonly errorReporting: "diagnostics";
+}): DetailedClassSchemasResult;
+
+// @public @deprecated
+export function generateSchemasFromProgram(options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+}): GenerateFromClassResult;
+
+// @public @deprecated
+export function generateSchemasFromProgramDetailed(options: StaticSchemaGenerationOptions & {
+    readonly program: ts.Program;
+    readonly filePath: string;
+    readonly typeName: string;
+}): DetailedClassSchemasResult;
 
 // @public
 export interface GenerateSchemasFromProgramOptions extends StaticSchemaGenerationOptions {
+    readonly errorReporting: "throw" | "diagnostics";
     readonly filePath: string;
     readonly program: ts.Program;
     readonly typeName: string;
@@ -276,8 +311,9 @@ export interface GenerateSchemasFromTypeOptions extends StaticSchemaGenerationOp
 
 // @public
 export interface GenerateSchemasOptions extends StaticSchemaGenerationOptions {
-    filePath: string;
-    typeName: string;
+    readonly errorReporting: "throw" | "diagnostics";
+    readonly filePath: string;
+    readonly typeName: string;
 }
 
 // @public

@@ -68,16 +68,18 @@ const resolvers = defineResolvers(Form, {
 Static schema generation lives in `@formspec/build` and `@formspec/cli`.
 
 ```ts
-import { generateSchemas, generateSchemasDetailed, generateSchemasBatch } from "@formspec/build";
+import { generateSchemas, generateSchemasBatch } from "@formspec/build";
 
 const { jsonSchema, uiSchema } = generateSchemas({
   filePath: "./src/forms.ts",
   typeName: "UserRegistration",
+  errorReporting: "throw",
 });
 
-const detailed = generateSchemasDetailed({
+const diagnostics = generateSchemas({
   filePath: "./src/forms.ts",
   typeName: "UserRegistration",
+  errorReporting: "diagnostics",
 });
 
 const batch = generateSchemasBatch({
@@ -88,9 +90,9 @@ const batch = generateSchemasBatch({
 });
 ```
 
-For invalid static-analysis inputs, `generateSchemas()` throws with stable diagnostic codes embedded in the error message. In particular, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension setup problems, while `TYPE_MISMATCH` indicates an incompatible tag application in author source.
+For invalid static-analysis inputs, `generateSchemas({ ..., errorReporting: "throw" })` throws with stable diagnostic codes embedded in the error message. In particular, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension setup problems, while `TYPE_MISMATCH` indicates an incompatible tag application in author source.
 
-Use `generateSchemasDetailed()` when you want structured diagnostics instead of exceptions for a single target, and `generateSchemasBatch()` when you want to accumulate feedback across many targets in one pass.
+Use `generateSchemas({ ..., errorReporting: "diagnostics" })` when you want structured diagnostics instead of exceptions for a single target, and `generateSchemasBatch()` when you want to accumulate feedback across many targets in one pass. The older `generateSchemasDetailed()` compatibility wrapper is deprecated.
 
 ```ts
 export interface UserRegistration {

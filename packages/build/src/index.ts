@@ -140,12 +140,18 @@ export { generateUiSchema } from "./ui-schema/generator.js";
 export {
   generateSchemasBatch,
   generateSchemasBatchFromProgram,
-  generateSchemasDetailed,
   generateSchemasFromClass,
-  generateSchemas,
-  generateSchemasFromProgramDetailed,
-  generateSchemasFromProgram,
 } from "./generators/class-schema.js";
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { generateSchemas } from "./generators/class-schema.js";
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { generateSchemasFromProgram } from "./generators/class-schema.js";
+/* eslint-disable @typescript-eslint/no-deprecated */
+export {
+  generateSchemasDetailed,
+  generateSchemasFromProgramDetailed,
+} from "./generators/class-schema.js";
+/* eslint-enable @typescript-eslint/no-deprecated */
 export {
   createStaticBuildContext,
   createStaticBuildContextFromProgram,
