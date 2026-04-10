@@ -1,5 +1,13 @@
 # @formspec/build
 
+## 0.1.0-alpha.39
+
+### Minor Changes
+
+- [#250](https://github.com/mike-north/formspec/pull/250) [`857f63d`](https://github.com/mike-north/formspec/commit/857f63d6279c268f540a4fca13dc917f15f90545) Thanks [@mike-north](https://github.com/mike-north)! - Add non-throwing static schema generation APIs that return structured diagnostics for single-target and batch workflows, including `generateSchemasDetailed`, `generateSchemasFromProgramDetailed`, `generateSchemasBatch`, and `generateSchemasBatchFromProgram`.
+
+- [#250](https://github.com/mike-north/formspec/pull/250) [`857f63d`](https://github.com/mike-north/formspec/commit/857f63d6279c268f540a4fca13dc917f15f90545) Thanks [@mike-north](https://github.com/mike-north)! - Expose resolved type metadata on `DiscoveredTypeSchemas`, add explicit `errorReporting: "throw" | "diagnostics"` overloads on the main static schema generation entry points, and deprecate the older `generateSchemasDetailed()` compatibility wrappers. This also rolls the updated build dependency into the published CLI and umbrella packages.
+
 ## 0.1.0-alpha.38
 
 ### Patch Changes
