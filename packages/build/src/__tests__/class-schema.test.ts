@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import type { FieldNode, IRClassAnalysis, Provenance } from "@formspec/core/internals";
+import type { Provenance } from "@formspec/core/internals";
+import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   generateClassSchemasDetailed,
@@ -13,6 +14,7 @@ import {
   generateSchemasFromProgramDetailed,
 } from "../generators/class-schema.js";
 import * as validateModule from "../validate/index.js";
+import type { ValidationResult } from "../validate/index.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
@@ -209,20 +211,21 @@ describe("generateSchemas", () => {
       instanceMethods: [],
       staticMethods: [],
     };
+    const validationResult: ValidationResult = {
+      valid: true,
+      diagnostics: [
+        {
+          code: "UNKNOWN_EXTENSION",
+          message: "warn",
+          severity: "warning",
+          primaryLocation: provenance(1),
+          relatedLocations: [],
+        },
+      ],
+    };
     const validateSpy = vi
       .spyOn(validateModule, "validateIR")
-      .mockReturnValueOnce({
-        valid: true,
-        diagnostics: [
-          {
-            code: "UNKNOWN_EXTENSION",
-            message: "warn",
-            severity: "warning",
-            primaryLocation: provenance(1),
-            relatedLocations: [],
-          },
-        ],
-      });
+      .mockReturnValueOnce(validationResult);
 
     const result = generateClassSchemasDetailed(
       analysis,
