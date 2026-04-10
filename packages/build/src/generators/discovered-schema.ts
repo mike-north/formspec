@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import { analyzeMetadataForNodeWithChecker } from "@formspec/analysis/internal";
 import type {
   AnnotationNode,
   ObjectProperty,
@@ -25,7 +26,11 @@ import {
 import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { IR_VERSION, type FieldNode } from "@formspec/core/internals";
 import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
-import { mergeResolvedMetadata } from "../metadata/index.js";
+import {
+  getDeclarationMetadataPolicy,
+  mergeResolvedMetadata,
+  normalizeMetadataPolicy,
+} from "../metadata/index.js";
 
 /**
  * Generated schemas for a discovered declaration or signature type.
@@ -59,6 +64,22 @@ export type SchemaSourceDeclaration =
   | ts.ClassDeclaration
   | ts.InterfaceDeclaration
   | ts.TypeAliasDeclaration;
+
+/**
+ * Supported declaration kinds for standalone metadata resolution.
+ *
+ * This helper is intentionally limited to named type declarations,
+ * methods/functions, and object-like properties. It does not currently expose
+ * parameter or variable metadata resolution on the public build surface.
+ *
+ * @public
+ */
+export type MetadataSourceDeclaration =
+  | SchemaSourceDeclaration
+  | ts.MethodDeclaration
+  | ts.FunctionDeclaration
+  | ts.PropertyDeclaration
+  | ts.PropertySignature;
 
 /**
  * Options for generating schemas from a resolved declaration.
@@ -115,6 +136,19 @@ export interface GenerateSchemasFromReturnTypeOptions extends StaticSchemaGenera
   readonly context: StaticBuildContext;
   /** Signature declaration whose return type should be converted into schemas. */
   readonly declaration: ts.SignatureDeclaration;
+}
+
+/**
+ * Options for resolving metadata from a declaration against the active
+ * metadata policy.
+ *
+ * @public
+ */
+export interface ResolveDeclarationMetadataOptions extends StaticSchemaGenerationOptions {
+  /** Supported build context used for checker access and related analysis. */
+  readonly context: StaticBuildContext;
+  /** Declaration whose metadata should be resolved. */
+  readonly declaration: MetadataSourceDeclaration;
 }
 
 function toDiscoveredTypeSchemas(
@@ -235,6 +269,48 @@ function omitApiName(metadata: ResolvedMetadata | undefined): ResolvedMetadata |
 
   const { apiName: _apiName, ...rest } = metadata;
   return Object.keys(rest).length > 0 ? rest : undefined;
+}
+
+function enforceRequiredMetadata(
+  metadata: ResolvedMetadata | undefined,
+  declarationKind: "type" | "field" | "method",
+  logicalName: string,
+  options: ResolveDeclarationMetadataOptions
+): void {
+  const declarationPolicy = getDeclarationMetadataPolicy(
+    normalizeMetadataPolicy(options.metadata),
+    declarationKind
+  );
+
+  if (metadata?.apiName === undefined && declarationPolicy.apiName.mode === "require-explicit") {
+    throw new Error(
+      `Metadata policy requires explicit apiName for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    metadata?.displayName === undefined &&
+    declarationPolicy.displayName.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit displayName for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    metadata?.apiNamePlural === undefined &&
+    declarationPolicy.apiName.pluralization.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit apiNamePlural for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
+  if (
+    metadata?.displayNamePlural === undefined &&
+    declarationPolicy.displayName.pluralization.mode === "require-explicit"
+  ) {
+    throw new Error(
+      `Metadata policy requires explicit displayNamePlural for ${declarationKind} "${logicalName}" on the tsdoc surface.`
+    );
+  }
 }
 
 function describeRootType(
@@ -577,6 +653,32 @@ export function generateSchemasFromReturnType(
     sourceNode,
     name: fallbackName,
   });
+}
+
+/**
+ * Resolves metadata from a declaration using FormSpec's configured metadata
+ * policy for the matching declaration kind.
+ *
+ * @public
+ */
+export function resolveDeclarationMetadata(
+  options: ResolveDeclarationMetadataOptions
+): ResolvedMetadata | undefined {
+  const analysis = analyzeMetadataForNodeWithChecker({
+    checker: options.context.checker,
+    node: options.declaration,
+    metadata: options.metadata,
+    extensions: options.extensionRegistry?.extensions,
+    buildContext: options.context,
+  });
+  if (analysis === null) {
+    return undefined;
+  }
+
+  const metadata = analysis.resolvedMetadata;
+
+  enforceRequiredMetadata(metadata, analysis.declarationKind, analysis.logicalName, options);
+  return metadata;
 }
 
 function unwrapPromiseType(checker: ts.TypeChecker, type: ts.Type): ts.Type {

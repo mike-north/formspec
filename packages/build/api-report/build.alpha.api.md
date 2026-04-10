@@ -433,6 +433,9 @@ export interface LabelElement {
 }
 
 // @public
+export type MetadataSourceDeclaration = SchemaSourceDeclaration | ts.MethodDeclaration | ts.FunctionDeclaration | ts.PropertyDeclaration | ts.PropertySignature;
+
+// @public
 export interface MixedAuthoringSchemas {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
@@ -441,6 +444,15 @@ export interface MixedAuthoringSchemas {
 export { NumberField }
 
 export { ObjectField }
+
+// @public
+export function resolveDeclarationMetadata(options: ResolveDeclarationMetadataOptions): ResolvedMetadata | undefined;
+
+// @public
+export interface ResolveDeclarationMetadataOptions extends StaticSchemaGenerationOptions {
+    readonly context: StaticBuildContext;
+    readonly declaration: MetadataSourceDeclaration;
+}
 
 // @public
 export function resolveModuleExport(context: StaticBuildContext, exportName?: string): ts.Symbol | null;

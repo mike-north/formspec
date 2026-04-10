@@ -98,6 +98,10 @@ export interface MergedConfig {
 }
 
 export class PaymentService {
+  /**
+   * @apiName submit_payment
+   * @displayName Submit Payment
+   */
   submit(input: SubmitInput): SubmitResult {
     return {
       approved: input.amount > 0,
@@ -106,6 +110,12 @@ export class PaymentService {
 
   async submitAsync(input: SubmitInput): Promise<SubmitResult> {
     await Promise.resolve();
+    return {
+      approved: input.amount > 0,
+    };
+  }
+
+  ["submitComputed"](input: SubmitInput): SubmitResult {
     return {
       approved: input.amount > 0,
     };
