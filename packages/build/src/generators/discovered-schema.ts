@@ -68,6 +68,10 @@ export type SchemaSourceDeclaration =
 /**
  * Supported declaration kinds for standalone metadata resolution.
  *
+ * This helper is intentionally limited to named type declarations,
+ * methods/functions, and object-like properties. It does not currently expose
+ * parameter or variable metadata resolution on the public build surface.
+ *
  * @public
  */
 export type MetadataSourceDeclaration =
@@ -265,61 +269,6 @@ function omitApiName(metadata: ResolvedMetadata | undefined): ResolvedMetadata |
 
   const { apiName: _apiName, ...rest } = metadata;
   return Object.keys(rest).length > 0 ? rest : undefined;
-}
-
-function getDeclarationLogicalName(
-  declaration: MetadataSourceDeclaration,
-  fallback: string
-): string {
-  if (ts.isClassDeclaration(declaration)) {
-    return declaration.name?.text ?? fallback;
-  }
-
-  if (
-    ts.isInterfaceDeclaration(declaration) ||
-    ts.isTypeAliasDeclaration(declaration) ||
-    ts.isFunctionDeclaration(declaration)
-  ) {
-    return declaration.name?.text ?? fallback;
-  }
-
-  const name = declaration.name;
-  if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
-    return name.text;
-  }
-  if (ts.isPrivateIdentifier(name)) {
-    return name.text;
-  }
-
-  return name.getText(declaration.getSourceFile());
-}
-
-function getDeclarationMetadataInfo(declaration: MetadataSourceDeclaration): {
-  readonly declarationKind: "type" | "field" | "method";
-  readonly logicalName: string;
-} {
-  if (
-    ts.isClassDeclaration(declaration) ||
-    ts.isInterfaceDeclaration(declaration) ||
-    ts.isTypeAliasDeclaration(declaration)
-  ) {
-    return {
-      declarationKind: "type",
-      logicalName: getDeclarationLogicalName(declaration, "AnonymousType"),
-    };
-  }
-
-  if (ts.isMethodDeclaration(declaration) || ts.isFunctionDeclaration(declaration)) {
-    return {
-      declarationKind: "method",
-      logicalName: getDeclarationLogicalName(declaration, "AnonymousMethod"),
-    };
-  }
-
-  return {
-    declarationKind: "field",
-    logicalName: getDeclarationLogicalName(declaration, "AnonymousField"),
-  };
 }
 
 function enforceRequiredMetadata(
@@ -715,18 +664,20 @@ export function generateSchemasFromReturnType(
 export function resolveDeclarationMetadata(
   options: ResolveDeclarationMetadataOptions
 ): ResolvedMetadata | undefined {
-  const { declarationKind, logicalName } = getDeclarationMetadataInfo(options.declaration);
   const analysis = analyzeMetadataForNodeWithChecker({
     checker: options.context.checker,
     node: options.declaration,
-    logicalName,
     metadata: options.metadata,
     extensions: options.extensionRegistry?.extensions,
     buildContext: options.context,
   });
-  const metadata = analysis?.resolvedMetadata;
+  if (analysis === null) {
+    return undefined;
+  }
 
-  enforceRequiredMetadata(metadata, declarationKind, logicalName, options);
+  const metadata = analysis.resolvedMetadata;
+
+  enforceRequiredMetadata(metadata, analysis.declarationKind, analysis.logicalName, options);
   return metadata;
 }
 

@@ -115,6 +115,12 @@ export class PaymentService {
     };
   }
 
+  ["submitComputed"](input: SubmitInput): SubmitResult {
+    return {
+      approved: input.amount > 0,
+    };
+  }
+
   async wrappedSubmitAsync(): Promise<Envelope<SubmitInput>> {
     await Promise.resolve();
     return {
