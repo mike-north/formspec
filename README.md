@@ -68,13 +68,31 @@ const resolvers = defineResolvers(Form, {
 Static schema generation lives in `@formspec/build` and `@formspec/cli`.
 
 ```ts
-import { generateSchemas } from "@formspec/build";
+import { generateSchemas, generateSchemasBatch } from "@formspec/build";
 
 const { jsonSchema, uiSchema } = generateSchemas({
   filePath: "./src/forms.ts",
   typeName: "UserRegistration",
+  errorReporting: "throw",
+});
+
+const diagnostics = generateSchemas({
+  filePath: "./src/forms.ts",
+  typeName: "UserRegistration",
+  errorReporting: "diagnostics",
+});
+
+const batch = generateSchemasBatch({
+  targets: [
+    { filePath: "./src/forms.ts", typeName: "UserRegistration" },
+    { filePath: "./src/forms.ts", typeName: "BillingAddress" },
+  ],
 });
 ```
+
+For invalid static-analysis inputs, `generateSchemas({ ..., errorReporting: "throw" })` throws with stable diagnostic codes embedded in the error message. In particular, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension setup problems, while `TYPE_MISMATCH` indicates an incompatible tag application in author source.
+
+Use `generateSchemas({ ..., errorReporting: "diagnostics" })` when you want structured diagnostics instead of exceptions for a single target, and `generateSchemasBatch()` when you want to accumulate feedback across many targets in one pass. The older `generateSchemasDetailed()` compatibility wrapper is deprecated.
 
 ```ts
 export interface UserRegistration {
@@ -257,7 +275,7 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/dsl`             | Chain DSL authoring surface                                                         |
 | `@formspec/build`           | JSON Schema / UI Schema generation and static TypeScript analysis                   |
 | `@formspec/runtime`         | Resolver helpers for dynamic data                                                   |
-| `@formspec/analysis`        | Shared semantic-analysis protocol types and comment-tag utilities                    |
+| `@formspec/analysis`        | Shared semantic-analysis protocol types and comment-tag utilities                   |
 | `@formspec/constraints`     | `.formspec.yml` configuration and DSL capability validation                         |
 | `@formspec/validator`       | Runtime JSON Schema validation for secure environments                              |
 | `@formspec/eslint-plugin`   | ESLint rules for FormSpec tags and DSL usage                                        |

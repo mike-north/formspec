@@ -29,6 +29,7 @@ export interface ResolveFormIRMetadataOptions {
   readonly surface: MetadataAuthoringSurface;
   readonly buildContext?: unknown;
   readonly rootLogicalName?: string;
+  readonly resolveRootTypeMetadata?: boolean;
 }
 
 function toExplicitScalar(value: string | undefined): ResolvedScalarMetadata | undefined {
@@ -398,13 +399,15 @@ export function resolveFormIRMetadata(
   ir: FormIR,
   options: ResolveFormIRMetadataOptions
 ): FormIR {
-  const rootLogicalName = options.rootLogicalName ?? ir.name ?? "FormSpec";
-  const metadata = resolveResolvedMetadata(ir.metadata, options.policy.type, {
-    surface: options.surface,
-    declarationKind: "type",
-    logicalName: rootLogicalName,
-    ...(options.buildContext !== undefined && { buildContext: options.buildContext }),
-  });
+  const metadata =
+    options.resolveRootTypeMetadata === false
+      ? ir.metadata
+      : resolveResolvedMetadata(ir.metadata, options.policy.type, {
+          surface: options.surface,
+          declarationKind: "type",
+          logicalName: options.rootLogicalName ?? ir.name ?? "FormSpec",
+          ...(options.buildContext !== undefined && { buildContext: options.buildContext }),
+        });
 
   return {
     ...ir,

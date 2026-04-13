@@ -1,5 +1,32 @@
 # formspec
 
+## 0.1.0-alpha.40
+
+### Patch Changes
+
+- [#254](https://github.com/mike-north/formspec/pull/254) [`138dbbe`](https://github.com/mike-north/formspec/commit/138dbbe597a93c1c9c565fdb31385ef83f5cdea8) Thanks [@mike-north](https://github.com/mike-north)! - Add `resolveDeclarationMetadata()` to the static build workflow so consumers can resolve method-, field-, and type-level metadata from declarations using FormSpec's active metadata policy. This makes method-level `@apiName` and `@displayName` resolution available alongside existing parameter and return-type schema generation helpers.
+
+- Updated dependencies [[`138dbbe`](https://github.com/mike-north/formspec/commit/138dbbe597a93c1c9c565fdb31385ef83f5cdea8)]:
+  - @formspec/build@0.1.0-alpha.40
+
+## 0.1.0-alpha.39
+
+### Patch Changes
+
+- [#250](https://github.com/mike-north/formspec/pull/250) [`857f63d`](https://github.com/mike-north/formspec/commit/857f63d6279c268f540a4fca13dc917f15f90545) Thanks [@mike-north](https://github.com/mike-north)! - Expose resolved type metadata on `DiscoveredTypeSchemas`, add explicit `errorReporting: "throw" | "diagnostics"` overloads on the main static schema generation entry points, and deprecate the older `generateSchemasDetailed()` compatibility wrappers. This also rolls the updated build dependency into the published CLI and umbrella packages.
+
+- Updated dependencies [[`857f63d`](https://github.com/mike-north/formspec/commit/857f63d6279c268f540a4fca13dc917f15f90545), [`857f63d`](https://github.com/mike-north/formspec/commit/857f63d6279c268f540a4fca13dc917f15f90545)]:
+  - @formspec/build@0.1.0-alpha.39
+
+## 0.1.0-alpha.38
+
+### Patch Changes
+
+- [#247](https://github.com/mike-north/formspec/pull/247) [`329482b`](https://github.com/mike-north/formspec/commit/329482b3a51685b456050597d4e5c58f5b68d420) Thanks [@aelliott-stripe](https://github.com/aelliott-stripe)! - Fix TS2300 "Duplicate identifier" when a TypeScript global built-in type (e.g. `Date`) is registered as an extension custom type. The synthetic prelude no longer emits `type X = unknown;` for types already declared in TypeScript's lib files, preventing spurious type errors that were misattributed to unrelated tag applications. Unsupported global built-in overrides now surface as a structured `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` diagnostic, and other synthetic setup failures now surface as `SYNTHETIC_SETUP_FAILURE` instead of being collapsed into unrelated tag failures.
+
+- Updated dependencies [[`329482b`](https://github.com/mike-north/formspec/commit/329482b3a51685b456050597d4e5c58f5b68d420)]:
+  - @formspec/build@0.1.0-alpha.38
+
 ## 0.1.0-alpha.37
 
 ### Patch Changes

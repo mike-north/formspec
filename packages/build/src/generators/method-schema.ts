@@ -10,7 +10,11 @@ import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
 import type { MethodInfo, ParameterInfo } from "../analyzer/class-analyzer.js";
 import { resolveTypeNode } from "../analyzer/class-analyzer.js";
 import type { TypeDefinition } from "@formspec/core/internals";
-import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
+import {
+  generateJsonSchemaFromIR,
+  type GenerateJsonSchemaFromIROptions,
+  type JsonSchema2020,
+} from "../json-schema/ir-generator.js";
 import { IR_VERSION } from "@formspec/core/internals";
 
 /**
@@ -50,9 +54,21 @@ export interface MethodParamsSchemas {
 }
 
 /**
+ * Options for generating method schemas.
+ */
+export interface GenerateMethodSchemasOptions {
+  /** JSON Schema representation to use for static enums. */
+  readonly enumSerialization?: GenerateJsonSchemaFromIROptions["enumSerialization"] | undefined;
+}
+
+/**
  * Resolves a TypeScript type to a JSON Schema 2020-12 sub-schema via the IR.
  */
-function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema2020 {
+function typeToJsonSchema(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  options?: GenerateMethodSchemasOptions
+): JsonSchema2020 {
   const typeRegistry: Record<string, TypeDefinition> = {};
   const visiting = new Set<ts.Type>();
   const diagnostics: ConstraintSemanticDiagnostic[] = [];
@@ -98,7 +114,12 @@ function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema202
     provenance: fieldProvenance,
   };
 
-  const schema = generateJsonSchemaFromIR(ir);
+  const schema = generateJsonSchemaFromIR(
+    ir,
+    options?.enumSerialization === undefined
+      ? undefined
+      : { enumSerialization: options.enumSerialization }
+  );
   // Extract the single field's sub-schema from the wrapper.
   const fieldSchema = schema.properties?.["__result"];
   if (fieldSchema) {
@@ -126,13 +147,14 @@ function typeToJsonSchema(type: ts.Type, checker: ts.TypeChecker): JsonSchema202
 export function generateMethodSchemas(
   method: MethodInfo,
   checker: ts.TypeChecker,
-  loadedFormSpecs: Map<string, LoadedFormSpecSchemas>
+  loadedFormSpecs: Map<string, LoadedFormSpecSchemas>,
+  options?: GenerateMethodSchemasOptions
 ): MethodSchemas {
   // Generate return type schema via IR
-  const returnType = typeToJsonSchema(method.returnType, checker);
+  const returnType = typeToJsonSchema(method.returnType, checker, options);
 
   // Handle parameters
-  const params = generateParamsSchemas(method.parameters, checker, loadedFormSpecs);
+  const params = generateParamsSchemas(method.parameters, checker, loadedFormSpecs, options);
 
   return {
     name: method.name,
@@ -147,7 +169,8 @@ export function generateMethodSchemas(
 function generateParamsSchemas(
   parameters: ParameterInfo[],
   checker: ts.TypeChecker,
-  loadedFormSpecs: Map<string, LoadedFormSpecSchemas>
+  loadedFormSpecs: Map<string, LoadedFormSpecSchemas>,
+  options?: GenerateMethodSchemasOptions
 ): MethodParamsSchemas | null {
   if (parameters.length === 0) {
     return null;
@@ -175,7 +198,7 @@ function generateParamsSchemas(
   // Generate from static type analysis via IR
   if (parameters.length === 1 && parameters[0]) {
     const param = parameters[0];
-    const jsonSchema = typeToJsonSchema(param.type, checker);
+    const jsonSchema = typeToJsonSchema(param.type, checker, options);
     return {
       jsonSchema,
       uiSchema: null,
@@ -188,7 +211,7 @@ function generateParamsSchemas(
   const required: string[] = [];
 
   for (const param of parameters) {
-    const paramSchema = typeToJsonSchema(param.type, checker);
+    const paramSchema = typeToJsonSchema(param.type, checker, options);
     properties[param.name] = paramSchema;
     if (!param.optional) {
       required.push(param.name);

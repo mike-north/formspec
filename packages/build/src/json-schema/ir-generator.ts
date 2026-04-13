@@ -597,10 +597,10 @@ function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, strin
     return undefined;
   }
 
-  const displayNames: Record<string, string> = {};
+  const displayNames: Record<string, string> = Object.create(null) as Record<string, string>;
   for (const member of type.members) {
     const key = String(member.value);
-    if (key in displayNames) {
+    if (Object.hasOwn(displayNames, key)) {
       throw new Error(
         `Enum display-name key "${key}" is ambiguous after stringification. ` +
           `Use oneOf serialization for mixed string/number enum values that collide.`

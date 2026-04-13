@@ -7,7 +7,7 @@
 
 import * as ts from "typescript";
 import * as path from "node:path";
-import type { FieldNode, TypeDefinition, TypeNode } from "@formspec/core/internals";
+import type { FieldNode, Provenance, TypeDefinition, TypeNode } from "@formspec/core/internals";
 import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
 import {
   analyzeDeclarationRootInfo,
@@ -36,6 +36,13 @@ export interface ProgramContext {
   /** The source file being analyzed */
   sourceFile: ts.SourceFile;
 }
+
+export type AnalyzeNamedTypeToIRDetailedResult =
+  | { readonly ok: true; readonly analysis: IRClassAnalysis }
+  | {
+      readonly ok: false;
+      readonly diagnostics: readonly ConstraintSemanticDiagnostic[];
+    };
 
 /**
  * Resolves a source file and checker from an existing TypeScript program.
@@ -295,7 +302,10 @@ function collectFallbackAliasMemberPropertyNames(
   }
 
   if (ts.isTypeReferenceNode(typeNode)) {
-    return checker.getTypeFromTypeNode(typeNode).getProperties().map((property) => property.getName());
+    return checker
+      .getTypeFromTypeNode(typeNode)
+      .getProperties()
+      .map((property) => property.getName());
   }
 
   return null;
@@ -361,40 +371,47 @@ export function analyzeNamedTypeToIR(
 }
 
 /**
- * Analyzes a named type from an existing program context and returns an `IRClassAnalysis`.
+ * Analyzes a named type from an existing program context and returns either an
+ * `IRClassAnalysis` or structured diagnostics instead of throwing.
  */
-export function analyzeNamedTypeToIRFromProgramContext(
+export function analyzeNamedTypeToIRFromProgramContextDetailed(
   ctx: ProgramContext,
   filePath: string,
   typeName: string,
   extensionRegistry?: ExtensionRegistry,
   metadataPolicy?: MetadataPolicyInput,
   discriminatorOptions?: DiscriminatorResolutionOptions
-): IRClassAnalysis {
+): AnalyzeNamedTypeToIRDetailedResult {
   const analysisFilePath = path.resolve(filePath);
 
   const classDecl = findClassByName(ctx.sourceFile, typeName);
   if (classDecl !== null) {
-    return analyzeClassToIR(
-      classDecl,
-      ctx.checker,
-      analysisFilePath,
-      extensionRegistry,
-      metadataPolicy,
-      discriminatorOptions
-    );
+    return {
+      ok: true,
+      analysis: analyzeClassToIR(
+        classDecl,
+        ctx.checker,
+        analysisFilePath,
+        extensionRegistry,
+        metadataPolicy,
+        discriminatorOptions
+      ),
+    };
   }
 
   const interfaceDecl = findInterfaceByName(ctx.sourceFile, typeName);
   if (interfaceDecl !== null) {
-    return analyzeInterfaceToIR(
-      interfaceDecl,
-      ctx.checker,
-      analysisFilePath,
-      extensionRegistry,
-      metadataPolicy,
-      discriminatorOptions
-    );
+    return {
+      ok: true,
+      analysis: analyzeInterfaceToIR(
+        interfaceDecl,
+        ctx.checker,
+        analysisFilePath,
+        extensionRegistry,
+        metadataPolicy,
+        discriminatorOptions
+      ),
+    };
   }
 
   const typeAlias = findTypeAliasByName(ctx.sourceFile, typeName);
@@ -408,7 +425,7 @@ export function analyzeNamedTypeToIRFromProgramContext(
       discriminatorOptions
     );
     if (result.ok) {
-      return result.analysis;
+      return { ok: true, analysis: result.analysis };
     }
 
     const fallbackEligible =
@@ -416,7 +433,18 @@ export function analyzeNamedTypeToIRFromProgramContext(
       isResolvableObjectLikeAliasTypeNode(typeAlias.type) &&
       containsTypeReferenceInObjectLikeAlias(typeAlias.type);
     if (!fallbackEligible) {
-      throw new Error(result.error);
+      return {
+        ok: false,
+        diagnostics: [
+          makeProgramDiagnostic(
+            result.kind === "duplicate-properties"
+              ? "DUPLICATE_ROOT_PROPERTIES"
+              : "UNSUPPORTED_ROOT_TYPE",
+            result.error,
+            makeNodeProvenance(typeAlias, analysisFilePath)
+          ),
+        ],
+      };
     }
 
     const duplicatePropertyNames = findFallbackAliasDuplicatePropertyNames(
@@ -426,9 +454,16 @@ export function analyzeNamedTypeToIRFromProgramContext(
     if (duplicatePropertyNames.length > 0) {
       const sourceFile = typeAlias.getSourceFile();
       const { line } = sourceFile.getLineAndCharacterOfPosition(typeAlias.getStart());
-      throw new Error(
-        `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`
-      );
+      return {
+        ok: false,
+        diagnostics: [
+          makeProgramDiagnostic(
+            "DUPLICATE_ROOT_PROPERTIES",
+            `Type alias "${typeAlias.name.text}" at line ${String(line + 1)} contains duplicate property names across object-like members: ${duplicatePropertyNames.join(", ")}`,
+            makeNodeProvenance(typeAlias, analysisFilePath)
+          ),
+        ],
+      };
     }
 
     const rootInfo = analyzeDeclarationRootInfo(
@@ -459,13 +494,90 @@ export function analyzeNamedTypeToIRFromProgramContext(
       diagnostics
     );
     if (fallbackAnalysis !== null) {
-      return fallbackAnalysis;
+      return { ok: true, analysis: fallbackAnalysis };
     }
 
-    throw new Error(result.error);
+    return {
+      ok: false,
+      diagnostics: [
+        makeProgramDiagnostic(
+          "UNSUPPORTED_ROOT_TYPE",
+          result.error,
+          makeNodeProvenance(typeAlias, analysisFilePath)
+        ),
+      ],
+    };
   }
 
-  throw new Error(
-    `Type "${typeName}" not found as a class, interface, or type alias in ${analysisFilePath}`
+  return {
+    ok: false,
+    diagnostics: [
+      makeProgramDiagnostic(
+        "TYPE_NOT_FOUND",
+        `Type "${typeName}" not found as a class, interface, or type alias in ${analysisFilePath}`,
+        makeFileProvenance(analysisFilePath)
+      ),
+    ],
+  };
+}
+
+/**
+ * Analyzes a named type from an existing program context and returns an `IRClassAnalysis`.
+ */
+export function analyzeNamedTypeToIRFromProgramContext(
+  ctx: ProgramContext,
+  filePath: string,
+  typeName: string,
+  extensionRegistry?: ExtensionRegistry,
+  metadataPolicy?: MetadataPolicyInput,
+  discriminatorOptions?: DiscriminatorResolutionOptions
+): IRClassAnalysis {
+  const result = analyzeNamedTypeToIRFromProgramContextDetailed(
+    ctx,
+    filePath,
+    typeName,
+    extensionRegistry,
+    metadataPolicy,
+    discriminatorOptions
   );
+  if (result.ok) {
+    return result.analysis;
+  }
+
+  throw new Error(result.diagnostics.map((diagnostic) => diagnostic.message).join("\n"));
+}
+
+function makeProgramDiagnostic(
+  code: string,
+  message: string,
+  primaryLocation: Provenance
+): ConstraintSemanticDiagnostic {
+  return {
+    code,
+    message,
+    severity: "error",
+    primaryLocation,
+    relatedLocations: [],
+  };
+}
+
+function makeNodeProvenance(node: ts.Node, filePath: string): Provenance {
+  const sourceFile = node.getSourceFile();
+  const position = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+  return {
+    surface: "tsdoc",
+    file: filePath,
+    line: position.line + 1,
+    column: position.character,
+    length: node.getWidth(),
+  };
+}
+
+function makeFileProvenance(filePath: string): Provenance {
+  return {
+    surface: "tsdoc",
+    file: filePath,
+    line: 1,
+    column: 0,
+  };
 }

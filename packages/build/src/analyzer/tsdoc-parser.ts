@@ -307,6 +307,25 @@ function buildSupportingDeclarations(
     .map((statement) => statement.getText(sourceFile));
 }
 
+function pushUniqueCompilerDiagnostics(
+  target: ConstraintSemanticDiagnostic[],
+  additions: readonly ConstraintSemanticDiagnostic[]
+): void {
+  for (const diagnostic of additions) {
+    if (
+      (diagnostic.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE" ||
+        diagnostic.code === "SYNTHETIC_SETUP_FAILURE") &&
+      target.some(
+        (existing) =>
+          existing.code === diagnostic.code && existing.message === diagnostic.message
+      )
+    ) {
+      continue;
+    }
+    target.push(diagnostic);
+  }
+}
+
 function renderSyntheticArgumentExpression(
   valueKind: FormSpecValueKind | null,
   argumentText: string
@@ -642,6 +661,19 @@ function buildCompilerBackedConstraintDiagnostics(
     return [];
   }
 
+  const setupDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.kind !== "typescript");
+  if (setupDiagnostic !== undefined) {
+    return [
+      makeDiagnostic(
+        setupDiagnostic.kind === "unsupported-custom-type-override"
+          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+          : "SYNTHETIC_SETUP_FAILURE",
+        setupDiagnostic.message,
+        provenance
+      ),
+    ];
+  }
+
   const expectedLabel =
     definition.valueKind === null ? "compatible argument" : capabilityLabel(definition.valueKind);
   return [
@@ -940,7 +972,7 @@ export function parseTSDocTags(
           options
         );
         if (compilerDiagnostics.length > 0) {
-          diagnostics.push(...compilerDiagnostics);
+          pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
           continue;
         }
         const constraintNode = parseConstraintTagValue(
@@ -1043,7 +1075,7 @@ export function parseTSDocTags(
         options
       );
       if (compilerDiagnostics.length > 0) {
-        diagnostics.push(...compilerDiagnostics);
+        pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
         continue;
       }
 
@@ -1081,7 +1113,7 @@ export function parseTSDocTags(
         options
       );
       if (compilerDiagnostics.length > 0) {
-        diagnostics.push(...compilerDiagnostics);
+        pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
         continue;
       }
 
