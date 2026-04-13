@@ -25,7 +25,7 @@ import {
 import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { IR_VERSION, type FieldNode } from "@formspec/core/internals";
 import type { ConstraintSemanticDiagnostic } from "@formspec/analysis/internal";
-import { mergeResolvedMetadata } from "../metadata/index.js";
+import { mergeResolvedMetadata, normalizeMetadataPolicy, resolveFormIRMetadata } from "../metadata/index.js";
 
 /**
  * Generated schemas for a discovered declaration or signature type.
@@ -274,7 +274,7 @@ function toStandaloneJsonSchema(
     },
   };
 
-  const schema = generateJsonSchemaFromIR(
+  const ir = resolveFormIRMetadata(
     {
       kind: "form-ir",
       name: root.name,
@@ -287,7 +287,17 @@ function toStandaloneJsonSchema(
       provenance: syntheticField.provenance,
     },
     {
+      policy: normalizeMetadataPolicy(options?.metadata),
+      surface: "tsdoc",
+      rootLogicalName: root.name,
+    }
+  );
+
+  const schema = generateJsonSchemaFromIR(
+    ir,
+    {
       extensionRegistry: options?.extensionRegistry,
+      enumSerialization: options?.enumSerialization,
       vendorPrefix: options?.vendorPrefix,
     }
   );
@@ -322,6 +332,7 @@ function generateSchemasFromAnalysis(
       { file: filePath },
       {
         extensionRegistry: options?.extensionRegistry,
+        enumSerialization: options?.enumSerialization,
         metadata: options?.metadata,
         vendorPrefix: options?.vendorPrefix,
       }

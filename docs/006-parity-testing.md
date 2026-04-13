@@ -141,7 +141,7 @@ interface Promotion {
 
 ### 2.4 Fixture: PlanStatus
 
-**What it tests:** String literal union (enum) with `@displayName` per-member annotation, `oneOf` with `const`/`title` JSON Schema output, `@defaultValue`.
+**What it tests:** String literal union (enum) with `@displayName` per-member annotation, default `enum` JSON Schema output plus a complete `x-formspec-display-names` extension, `@defaultValue`.
 
 ```typescript
 // TSDoc surface
@@ -159,7 +159,7 @@ interface Subscription {
 }
 ```
 
-**Why this is a good fixture:** Per-member display names use the member-target grammar from S5. The generated JSON Schema must use `oneOf` with per-member `const`/`title` rather than a flat `enum` (see 003 §2.3). The `@defaultValue` annotation must appear at the `status` field level in the schema output, not inside the `PlanStatus` `$defs` entry.
+**Why this is a good fixture:** Per-member display names use the member-target grammar from S5. The generated JSON Schema must use flat `enum` plus a complete `x-formspec-display-names` extension by default (see 003 §2.3), while still preserving the `@defaultValue` annotation at the `status` field level in the schema output rather than inside the `PlanStatus` `$defs` entry.
 
 **Expected JSON Schema for `status`:**
 
@@ -174,11 +174,12 @@ interface Subscription {
 {
   "$defs": {
     "PlanStatus": {
-      "oneOf": [
-        { "const": "active", "title": "Active" },
-        { "const": "paused", "title": "Paused" },
-        { "const": "cancelled", "title": "Cancelled" }
-      ],
+      "enum": ["active", "paused", "cancelled"],
+      "x-formspec-display-names": {
+        "active": "Active",
+        "paused": "Paused",
+        "cancelled": "Cancelled"
+      },
       "title": "Plan Status"
     }
   }

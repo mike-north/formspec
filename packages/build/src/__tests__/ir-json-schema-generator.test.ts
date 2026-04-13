@@ -388,7 +388,7 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({ enum: ["draft", "sent", "paid"] });
     });
 
-    it("emits oneOf with title when any member has displayName", () => {
+    it("emits flat enum with a complete display-name extension by default", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
@@ -403,15 +403,16 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["status"];
 
       expect(prop).toEqual({
-        oneOf: [
-          { const: "draft", title: "Draft" },
-          { const: "sent", title: "Sent to Customer" },
-          { const: "paid", title: "Paid in Full" },
-        ],
+        enum: ["draft", "sent", "paid"],
+        "x-formspec-display-names": {
+          draft: "Draft",
+          sent: "Sent to Customer",
+          paid: "Paid in Full",
+        },
       });
     });
 
-    it("emits oneOf when only some members have displayNames (partial)", () => {
+    it("emits a complete display-name extension when only some members have displayNames", () => {
       const ir = makeIR([
         makeField("priority", {
           kind: "enum",
@@ -422,17 +423,15 @@ describe("generateJsonSchemaFromIR", () => {
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir);
-      const prop = (schema.properties as Record<string, unknown>)["priority"] as Record<
-        string,
-        unknown
-      >;
-      const oneOf = prop["oneOf"] as Record<string, unknown>[];
+      const prop = (schema.properties as Record<string, unknown>)["priority"];
 
-      expect(Array.isArray(oneOf)).toBe(true);
-      expect(oneOf[0]).toEqual({ const: "low", title: "Low" });
-      // Member without displayName should not have a title key
-      expect(oneOf[1]).toEqual({ const: "high" });
-      expect(oneOf[1]).not.toHaveProperty("title");
+      expect(prop).toEqual({
+        enum: ["low", "high"],
+        "x-formspec-display-names": {
+          low: "Low",
+          high: "high",
+        },
+      });
     });
 
     it("supports numeric enum values", () => {
@@ -446,6 +445,83 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["level"];
 
       expect(prop).toEqual({ enum: [1, 2, 3] });
+    });
+
+    it("supports oneOf serialization with explicit and fallback titles", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [
+            { value: "draft", displayName: "Draft" },
+            { value: "sent" },
+            { value: "paid", displayName: "Paid in Full" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+      const prop = (schema.properties as Record<string, unknown>)["status"];
+
+      expect(prop).toEqual({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "sent", title: "sent" },
+          { const: "paid", title: "Paid in Full" },
+        ],
+      });
+    });
+
+    it("supports oneOf serialization when no member has a displayName", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [{ value: "draft" }, { value: "sent" }],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+      const prop = (schema.properties as Record<string, unknown>)["status"];
+
+      expect(prop).toEqual({
+        oneOf: [
+          { const: "draft", title: "draft" },
+          { const: "sent", title: "sent" },
+        ],
+      });
+    });
+
+    it("uses the configured vendorPrefix for the display-name extension", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [
+            { value: "draft", displayName: "Draft" },
+            { value: "sent", displayName: "Sent" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { vendorPrefix: "x-acme" });
+      const prop = (schema.properties as Record<string, unknown>)["status"];
+
+      expect(prop).toEqual({
+        enum: ["draft", "sent"],
+        "x-acme-display-names": {
+          draft: "Draft",
+          sent: "Sent",
+        },
+      });
+    });
+
+    it("throws when display-name extension keys would collide after stringification", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [
+            { value: 1, displayName: "Numeric One" },
+            { value: "1", displayName: "String One" },
+          ],
+        }),
+      ]);
+
+      expect(() => generateJsonSchemaFromIR(ir)).toThrow(/display-name key "1"/i);
     });
   });
 
@@ -1793,13 +1869,14 @@ describe("generateJsonSchemaFromIR", () => {
         maxLength: 100,
       });
 
-      // status with displayNames → oneOf
+      // status with displayNames → enum plus a complete display-name extension
       expect(props["status"]).toEqual({
-        oneOf: [
-          { const: "draft", title: "Draft" },
-          { const: "sent", title: "Sent to Customer" },
-          { const: "paid", title: "Paid in Full" },
-        ],
+        enum: ["draft", "sent", "paid"],
+        "x-formspec-display-names": {
+          draft: "Draft",
+          sent: "Sent to Customer",
+          paid: "Paid in Full",
+        },
         default: "draft",
       });
 

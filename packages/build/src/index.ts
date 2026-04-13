@@ -267,11 +267,24 @@ export function writeSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options: WriteSchemasOptions
 ): WriteSchemasResult {
-  const { outDir, name = "schema", indent = 2, vendorPrefix, metadata } = options;
+  const {
+    outDir,
+    name = "schema",
+    indent = 2,
+    vendorPrefix,
+    enumSerialization,
+    metadata,
+  } = options;
 
   // Build schemas
   const buildOptions =
-    vendorPrefix === undefined && metadata === undefined ? undefined : { vendorPrefix, metadata };
+    vendorPrefix === undefined && enumSerialization === undefined && metadata === undefined
+      ? undefined
+      : {
+          ...(vendorPrefix !== undefined && { vendorPrefix }),
+          ...(enumSerialization !== undefined && { enumSerialization }),
+          ...(metadata !== undefined && { metadata }),
+        };
 
   const { jsonSchema, uiSchema } = buildFormSchemas(form, buildOptions);
 

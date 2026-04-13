@@ -46,6 +46,7 @@ export class SecondaryReport {
       const result = runCli(["generate", "--help"]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("--emit-ir");
+      expect(result.stdout).toContain("--enum-serialization");
       expect(result.stdout).toContain("--validate-only");
     });
   });
@@ -154,6 +155,57 @@ export const ProductConfigForm = formspec(
       expect(fs.existsSync(path.join(outDir, "formspecs", "ProductConfigForm"))).toBe(true);
       expect(fs.existsSync(path.join(outDir, "PrimaryReport"))).toBe(false);
       expect(fs.existsSync(path.join(outDir, "SecondaryReport"))).toBe(false);
+    });
+  });
+
+  describe("--enum-serialization", () => {
+    it("emits oneOf enum schemas when requested", () => {
+      const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
+      const outDir = path.join(tempDir, "oneof-enums");
+      const result = runCli([
+        "generate",
+        fixturePath,
+        "Subscription",
+        "--enum-serialization",
+        "oneOf",
+        "-o",
+        outDir,
+      ]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schemaFile = findSchemaFile(outDir, "schema.json");
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
+
+      const schema = readJson(schemaFile) as {
+        $defs?: Record<string, Record<string, unknown>>;
+      };
+      expect(schema.$defs?.["PlanStatus"]).toMatchObject({
+        oneOf: [
+          { const: "active", title: "Active" },
+          { const: "paused", title: "Paused" },
+          { const: "cancelled", title: "Cancelled" },
+        ],
+      });
+      expect(schema.$defs?.["PlanStatus"]?.["enum"]).toBeUndefined();
+    });
+
+    it('rejects invalid enum serialization values', () => {
+      const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
+      const result = runCli([
+        "generate",
+        fixturePath,
+        "Subscription",
+        "--enum-serialization",
+        "invalid",
+        "-o",
+        tempDir,
+      ]);
+
+      expect(result.exitCode).not.toBe(0);
+      const output = result.stdout + result.stderr;
+      expect(output).toContain('--enum-serialization must be "enum" or "oneOf"');
     });
   });
 

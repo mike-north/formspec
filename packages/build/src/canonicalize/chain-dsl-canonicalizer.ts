@@ -58,6 +58,7 @@ import {
   makeMetadataContext,
   normalizeMetadataPolicy,
   resolveMetadata,
+  resolveFormIRMetadata,
 } from "../metadata/index.js";
 
 // =============================================================================
@@ -111,7 +112,7 @@ export function canonicalizeChainDSL(
   const metadataPolicy = normalizeMetadataPolicy(
     options?.metadata ?? _getFormSpecMetadataPolicy(form)
   );
-  return {
+  const ir: FormIR = {
     kind: "form-ir",
     irVersion: IR_VERSION,
     elements: canonicalizeElements(form.elements, metadataPolicy),
@@ -119,6 +120,11 @@ export function canonicalizeChainDSL(
     typeRegistry: {},
     provenance: CHAIN_DSL_PROVENANCE,
   };
+
+  return resolveFormIRMetadata(ir, {
+    policy: metadataPolicy,
+    surface: "chain-dsl",
+  });
 }
 
 // =============================================================================

@@ -47,6 +47,7 @@ describe("CLI", () => {
       expect(result.stdout).toContain("FormSpec Build CLI");
       expect(result.stdout).toContain("Usage:");
       expect(result.stdout).toContain("--out-dir");
+      expect(result.stdout).toContain("--enum-serialization");
       expect(result.stdout).toContain("--name");
     });
 
@@ -98,6 +99,30 @@ describe("CLI", () => {
       const result = runCli([formFile, "--name"]);
       expect(result.exitCode).not.toBe(0);
       expect(result.stdout).toContain("--name requires a value");
+    });
+
+    it("should fail when --enum-serialization has no value", () => {
+      const formFile = createFormFile(
+        "form.js",
+        `
+        export default { elements: [] };
+      `
+      );
+      const result = runCli([formFile, "--enum-serialization"]);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("--enum-serialization requires a value");
+    });
+
+    it('should fail when --enum-serialization is not "enum" or "oneOf"', () => {
+      const formFile = createFormFile(
+        "form.js",
+        `
+        export default { elements: [] };
+      `
+      );
+      const result = runCli([formFile, "--enum-serialization", "invalid"]);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain('--enum-serialization must be "enum" or "oneOf"');
     });
   });
 
@@ -230,6 +255,44 @@ describe("CLI", () => {
 
       expect(result.exitCode).toBe(0);
       expect(fs.existsSync(path.join(outDir, "short-schema.json"))).toBe(true);
+    });
+
+    it("should support oneOf enum serialization", () => {
+      const formFile = createFormFile(
+        "form-enum.js",
+        `
+        export default {
+          elements: [
+            {
+              _type: "field",
+              _field: "enum",
+              name: "status",
+              options: [
+                { id: "draft", label: "Draft" },
+                { id: "sent", label: "Sent to Customer" }
+              ]
+            }
+          ]
+        };
+      `
+      );
+
+      const outDir = path.join(tempDir, "out-oneof");
+      const result = runCli([formFile, "-o", outDir, "--enum-serialization", "oneOf"]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schema = JSON.parse(
+        fs.readFileSync(path.join(outDir, "form-enum-schema.json"), "utf-8")
+      ) as Record<string, { oneOf?: unknown }>;
+      const properties = schema["properties"] as Record<string, unknown>;
+
+      expect(properties["status"]).toEqual({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "sent", title: "Sent to Customer" },
+        ],
+      });
     });
   });
 });

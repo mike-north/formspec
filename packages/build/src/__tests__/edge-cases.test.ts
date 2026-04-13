@@ -159,7 +159,10 @@ describe("Edge cases: Enum options", () => {
     const { jsonSchema } = buildFormSchemas(form);
 
     expect(jsonSchema.properties?.["singleObj"]).toMatchObject({
-      oneOf: [{ const: "only", title: "Only Option" }],
+      enum: ["only"],
+      "x-formspec-display-names": {
+        only: "Only Option",
+      },
     });
   });
 

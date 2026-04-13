@@ -1,4 +1,5 @@
 import type {
+  EnumTypeNode,
   FieldNode,
   FormIR,
   FormIRElement,
@@ -10,6 +11,7 @@ import type {
   TypeNode,
 } from "@formspec/core/internals";
 import type {
+  EnumMemberResolutionContext,
   MetadataResolutionContext,
   NormalizedDeclarationMetadataPolicy,
   NormalizedMetadataPolicy,
@@ -164,6 +166,57 @@ function pickResolvedMetadataValue(
   return baseValue ?? overlayValue;
 }
 
+function resolveEnumMemberDisplayName(
+  current: string | undefined,
+  policy: NormalizedMetadataPolicy["enumMember"]["displayName"],
+  context: EnumMemberResolutionContext
+): string | undefined {
+  if (current !== undefined) {
+    return current;
+  }
+
+  if (policy.mode === "require-explicit") {
+    throw new Error(
+      `Metadata policy requires explicit displayName for enum member "${context.logicalName}" on the ${context.surface} surface.`
+    );
+  }
+
+  if (policy.mode !== "infer-if-missing") {
+    return undefined;
+  }
+
+  const inferredValue = policy.infer(context).trim();
+  return inferredValue !== "" ? inferredValue : undefined;
+}
+
+function resolveEnumTypeMetadata(
+  type: EnumTypeNode,
+  options: ResolveFormIRMetadataOptions
+): EnumTypeNode {
+  let changed = false;
+  const members = type.members.map((member) => {
+    const displayName = resolveEnumMemberDisplayName(
+      member.displayName,
+      options.policy.enumMember.displayName,
+      {
+        surface: options.surface,
+        logicalName: String(member.value),
+        memberValue: member.value,
+        ...(options.buildContext !== undefined && { buildContext: options.buildContext }),
+      }
+    );
+
+    if (displayName === member.displayName) {
+      return member;
+    }
+
+    changed = true;
+    return displayName !== undefined ? { ...member, displayName } : member;
+  });
+
+  return changed ? { ...type, members } : type;
+}
+
 function resolveTypeNodeMetadata(
   type: TypeNode,
   options: ResolveFormIRMetadataOptions
@@ -193,9 +246,11 @@ function resolveTypeNodeMetadata(
         members: type.members.map((member) => resolveTypeNodeMetadata(member, options)),
       };
 
+    case "enum":
+      return resolveEnumTypeMetadata(type, options);
+
     case "reference":
     case "primitive":
-    case "enum":
     case "dynamic":
     case "custom":
       return type;

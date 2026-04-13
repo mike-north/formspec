@@ -1,5 +1,5 @@
 /**
- * @see 003-json-schema-vocabulary.md §2.3: enum member metadata uses oneOf/const/title
+ * @see 003-json-schema-vocabulary.md §2.3: enum member metadata uses enum plus a complete display-name extension by default
  * @see 003-json-schema-vocabulary.md §2.8: class/type-level display names and default values
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -43,13 +43,17 @@ describe("Parity: plan status annotations", () => {
     expect(defs?.["PlanStatus"]?.["title"]).toBe("Plan Status");
   });
 
-  it("PlanStatus member labels emit oneOf with const/title entries", () => {
+  it("PlanStatus member labels emit enum plus a complete display-name extension", () => {
     const defs = schema["$defs"] as Record<string, Record<string, unknown>> | undefined;
-    expect(defs?.["PlanStatus"]?.["oneOf"]).toEqual([
-      { const: "active", title: "Active" },
-      { const: "paused", title: "Paused" },
-      { const: "cancelled", title: "Cancelled" },
-    ]);
+    expect(defs?.["PlanStatus"]).toMatchObject({
+      enum: ["active", "paused", "cancelled"],
+      "x-formspec-display-names": {
+        active: "Active",
+        paused: "Paused",
+        cancelled: "Cancelled",
+      },
+    });
+    expect(defs?.["PlanStatus"]?.["oneOf"]).toBeUndefined();
   });
 
   it('status @defaultValue emits default: "active"', () => {

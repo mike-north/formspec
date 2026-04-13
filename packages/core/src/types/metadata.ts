@@ -52,6 +52,35 @@ export interface MetadataInferenceContext {
 export type MetadataInferenceFn = (context: MetadataInferenceContext) => string;
 
 /**
+ * Build-facing context passed to enum-member metadata inference callbacks.
+ *
+ * Enum members are resolved separately from declaration-level metadata so they
+ * do not participate in the shared declaration-kind model used by TSDoc and
+ * extension metadata slots.
+ *
+ * @public
+ */
+export interface EnumMemberMetadataInferenceContext {
+  /** Authoring surface the enum originated from. */
+  readonly surface: MetadataAuthoringSurface;
+  /** Logical member identifier used for policy inference. */
+  readonly logicalName: string;
+  /** Underlying enum value before stringification. */
+  readonly memberValue: string | number;
+  /** Optional build-only context supplied by the resolver. */
+  readonly buildContext?: unknown;
+}
+
+/**
+ * Callback used to infer enum-member display names.
+ *
+ * @public
+ */
+export type EnumMemberMetadataInferenceFn = (
+  context: EnumMemberMetadataInferenceContext
+) => string;
+
+/**
  * Context passed to extensible metadata inference hooks.
  *
  * @public
@@ -365,6 +394,58 @@ export type MetadataValuePolicyInput =
   | MetadataValueInferIfMissingPolicyInput;
 
 /**
+ * Enum-member display names remain unset unless authored explicitly.
+ *
+ * @public
+ */
+export interface EnumMemberDisplayNameDisabledPolicyInput {
+  /** Leaves missing enum-member display names unresolved. */
+  readonly mode: "disabled";
+}
+
+/**
+ * Enum members must declare display names explicitly.
+ *
+ * @public
+ */
+export interface EnumMemberDisplayNameRequireExplicitPolicyInput {
+  /** Fails when an enum member has no authored display name. */
+  readonly mode: "require-explicit";
+}
+
+/**
+ * Missing enum-member display names may be inferred.
+ *
+ * @public
+ */
+export interface EnumMemberDisplayNameInferIfMissingPolicyInput {
+  /** Infers an enum-member display name when it is not authored explicitly. */
+  readonly mode: "infer-if-missing";
+  /** Callback used to infer the missing display name. */
+  readonly infer: EnumMemberMetadataInferenceFn;
+}
+
+/**
+ * Enum-member display-name policy input.
+ *
+ * @public
+ */
+export type EnumMemberDisplayNamePolicyInput =
+  | EnumMemberDisplayNameDisabledPolicyInput
+  | EnumMemberDisplayNameRequireExplicitPolicyInput
+  | EnumMemberDisplayNameInferIfMissingPolicyInput;
+
+/**
+ * User-facing enum-member metadata policy input.
+ *
+ * @public
+ */
+export interface EnumMemberMetadataPolicyInput {
+  /** Policy for human-facing enum-member labels. */
+  readonly displayName?: EnumMemberDisplayNamePolicyInput | undefined;
+}
+
+/**
  * Per-declaration metadata policy input.
  *
  * @public
@@ -388,6 +469,8 @@ export interface MetadataPolicyInput {
   readonly field?: DeclarationMetadataPolicyInput | undefined;
   /** Policy applied to callable/method declarations. */
   readonly method?: DeclarationMetadataPolicyInput | undefined;
+  /** Policy applied to enum-member display names during build-time IR resolution. */
+  readonly enumMember?: EnumMemberMetadataPolicyInput | undefined;
 }
 
 /**
@@ -419,6 +502,28 @@ export interface NormalizedMetadataValuePolicy {
 }
 
 /**
+ * Internal normalized enum-member display-name policy.
+ *
+ * @public
+ */
+export interface NormalizedEnumMemberDisplayNamePolicy {
+  /** Effective enum-member resolution mode after normalization. */
+  readonly mode: "disabled" | "require-explicit" | "infer-if-missing";
+  /** Normalized inference callback for missing enum-member display names. */
+  readonly infer: EnumMemberMetadataInferenceFn;
+}
+
+/**
+ * Internal normalized enum-member metadata policy.
+ *
+ * @public
+ */
+export interface NormalizedEnumMemberMetadataPolicy {
+  /** Effective policy for enum-member display names. */
+  readonly displayName: NormalizedEnumMemberDisplayNamePolicy;
+}
+
+/**
  * Internal normalized per-declaration metadata policy.
  *
  * @public
@@ -442,4 +547,6 @@ export interface NormalizedMetadataPolicy {
   readonly field: NormalizedDeclarationMetadataPolicy;
   /** Effective policy for methods. */
   readonly method: NormalizedDeclarationMetadataPolicy;
+  /** Effective policy for enum-member display names. */
+  readonly enumMember: NormalizedEnumMemberMetadataPolicy;
 }

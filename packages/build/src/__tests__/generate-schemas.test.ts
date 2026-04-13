@@ -1,6 +1,10 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import { describe, expect, it } from "vitest";
+import { field, formspec } from "@formspec/dsl";
 import { generateSchemas } from "../generators/class-schema.js";
+import { generateJsonSchema } from "../json-schema/generator.js";
 
 const namedPrimitiveAliasesFixture = path.join(__dirname, "fixtures", "named-primitive-aliases.ts");
 const nestedArrayPathConstraintsFixture = path.join(
@@ -23,6 +27,13 @@ const methodSignatureSchemasFixture = path.join(
   "fixtures",
   "method-signature-schemas.ts"
 );
+
+function writeTempSource(source: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-generate-schemas-"));
+  const filePath = path.join(dir, "model.ts");
+  fs.writeFileSync(filePath, source);
+  return filePath;
+}
 
 function findControlByScope(
   elements: readonly Record<string, unknown>[],
@@ -272,5 +283,98 @@ describe("generateSchemas", () => {
         typeName: "CallableSubmitInput",
       })
     ).toThrow(/not an object-like type alias/i);
+  });
+
+  it("infers enum member display names through metadata policy for static analysis", () => {
+    const filePath = writeTempSource(`
+      export type PlanStatus = "draft" | "sent";
+
+      export interface InvoiceModel {
+        status: PlanStatus;
+      }
+    `);
+
+    try {
+      const result = generateSchemas({
+        filePath,
+        typeName: "InvoiceModel",
+        metadata: {
+          enumMember: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Label ${logicalName}`,
+            },
+          },
+        },
+      });
+
+      expect(result.jsonSchema.$defs).toMatchObject({
+        PlanStatus: {
+          enum: ["draft", "sent"],
+          "x-formspec-display-names": {
+            draft: "Label draft",
+            sent: "Label sent",
+          },
+        },
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("rejects static analysis enums when enumMember displayName policy requires explicit labels", () => {
+    const filePath = writeTempSource(`
+      export type PlanStatus = "draft" | "sent";
+
+      export interface InvoiceModel {
+        status: PlanStatus;
+      }
+    `);
+
+    try {
+      expect(() =>
+        generateSchemas({
+          filePath,
+          typeName: "InvoiceModel",
+          metadata: {
+            enumMember: {
+              displayName: {
+                mode: "require-explicit",
+              },
+            },
+          },
+        })
+      ).toThrow(/displayName/i);
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+});
+
+describe("generateJsonSchema", () => {
+  it("applies enumMember displayName policy to chain-dsl static enums", () => {
+    const schema = generateJsonSchema(
+      formspec(field.enum("status", ["draft", "sent"] as const)),
+      {
+        metadata: {
+          enumMember: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Choice ${logicalName}`,
+            },
+          },
+        },
+      }
+    );
+
+    expect(schema.properties).toEqual({
+      status: {
+        enum: ["draft", "sent"],
+        "x-formspec-display-names": {
+          draft: "Choice draft",
+          sent: "Choice sent",
+        },
+      },
+    });
   });
 });
