@@ -35,6 +35,7 @@
     "clean-surfaces-tighten",
     "cli-static-analysis",
     "cold-cups-dress",
+    "configurable-enum-serialization",
     "constraint-broadening-diagnostics",
     "constraint-literal-emission-round2",
     "constraints-fixes",
