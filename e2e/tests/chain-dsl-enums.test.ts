@@ -1,6 +1,6 @@
 /**
  * @see 003-json-schema-vocabulary.md — §2.3 enum variants: plain string → flat enum,
- *   per-member metadata → oneOf[{const, title}]
+ *   per-member metadata → flat enum plus display-name extension by default, or oneOf[{const, title}] when requested
  * @see 003-json-schema-vocabulary.md — §3.2 dynamic sources: x-formspec-source,
  *   x-formspec-params (annotation-only, applies to {type: "string"})
  */
@@ -13,6 +13,13 @@ describe("Chain DSL Enums", () => {
   const { jsonSchema } = buildFormSchemas(EnumVariantsForm);
   const schema = jsonSchema as Record<string, unknown>;
   const properties = schema["properties"] as Record<string, Record<string, unknown>>;
+  const { jsonSchema: oneOfJsonSchema } = buildFormSchemas(EnumVariantsForm, {
+    enumSerialization: "oneOf",
+  });
+  const oneOfProperties = (oneOfJsonSchema as Record<string, unknown>)["properties"] as Record<
+    string,
+    Record<string, unknown>
+  >;
 
   describe("JSON Schema", () => {
     it("produces a valid object schema", () => {
@@ -29,23 +36,29 @@ describe("Chain DSL Enums", () => {
       expect(prop["type"]).toBeUndefined();
     });
 
-    // 003 §2.3: "Per-member metadata → oneOf with const + title/description"
-    it("labeledPriority: per-member labels → oneOf with const/title", () => {
+    it("labeledPriority: default enum serialization emits a complete display-name extension", () => {
       const prop = properties["labeledPriority"];
+      expect(prop["enum"]).toEqual(["low", "medium", "high"]);
+      expect(prop["x-formspec-display-names"]).toEqual({
+        low: "Low Priority",
+        medium: "Medium Priority",
+        high: "High Priority",
+      });
+      expect(prop["oneOf"]).toBeUndefined();
+    });
+
+    it("labeledPriority: opt-in oneOf serialization emits const/title entries", () => {
+      const prop = oneOfProperties["labeledPriority"];
       expect(prop["oneOf"]).toEqual([
         { const: "low", title: "Low Priority" },
         { const: "medium", title: "Medium Priority" },
         { const: "high", title: "High Priority" },
       ]);
-      // Must NOT also have a flat enum (would be redundant/conflicting)
       expect(prop["enum"]).toBeUndefined();
     });
 
-    // 003 §2.3: Spec example shows oneOf WITHOUT type: "string" alongside it.
-    // Labeled enums use oneOf with const values — type: "string" must be omitted
-    // since oneOf already constrains the type.
     it("labeledPriority: oneOf should NOT have type alongside it", () => {
-      const prop = properties["labeledPriority"];
+      const prop = oneOfProperties["labeledPriority"];
       expect(prop["type"]).toBeUndefined();
     });
 

@@ -30,6 +30,7 @@ import {
   getDeclarationMetadataPolicy,
   mergeResolvedMetadata,
   normalizeMetadataPolicy,
+  resolveFormIRMetadata,
 } from "../metadata/index.js";
 
 /**
@@ -364,7 +365,7 @@ function toStandaloneJsonSchema(
     },
   };
 
-  const schema = generateJsonSchemaFromIR(
+  const ir = resolveFormIRMetadata(
     {
       kind: "form-ir",
       name: root.name,
@@ -377,7 +378,17 @@ function toStandaloneJsonSchema(
       provenance: syntheticField.provenance,
     },
     {
+      policy: normalizeMetadataPolicy(options?.metadata),
+      surface: "tsdoc",
+      rootLogicalName: root.name,
+    }
+  );
+
+  const schema = generateJsonSchemaFromIR(
+    ir,
+    {
       extensionRegistry: options?.extensionRegistry,
+      enumSerialization: options?.enumSerialization,
       vendorPrefix: options?.vendorPrefix,
     }
   );
@@ -412,6 +423,7 @@ function generateSchemasFromAnalysis(
       { file: filePath },
       {
         extensionRegistry: options?.extensionRegistry,
+        enumSerialization: options?.enumSerialization,
         metadata: options?.metadata,
         vendorPrefix: options?.vendorPrefix,
       }

@@ -1,6 +1,6 @@
 /**
  * @see 002-constraint-tags.md §3.2: "@displayName → title field on the JSON Schema object"
- * @see 003-json-schema-vocabulary.md §2.3: "per-member display names → oneOf with const/title"
+ * @see 003-json-schema-vocabulary.md §2.3: "per-member display names → enum plus x-formspec-display-names by default"
  * @see 003-json-schema-vocabulary.md §2.8: "Class-level @displayName → root schema title"
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -54,19 +54,18 @@ describe("Annotation: @displayName", () => {
     expect(properties["age"]["title"]).toBeUndefined();
   });
 
-  // @see 003-json-schema-vocabulary.md §2.3: "per-member display names (:member) → oneOf with const/title"
-  it("status with :member display names → oneOf with const/title entries", () => {
+  it("status with :member display names → enum plus a complete display-name extension", () => {
     const status = properties["status"];
-    expect(status["oneOf"]).toEqual([
-      { const: "active", title: "Active Account" },
-      { const: "suspended", title: "Suspended" },
-      { const: "closed", title: "Permanently Closed" },
-    ]);
+    expect(status["enum"]).toEqual(["active", "suspended", "closed"]);
+    expect(status["x-formspec-display-names"]).toEqual({
+      active: "Active Account",
+      suspended: "Suspended",
+      closed: "Permanently Closed",
+    });
     // Field-level title is absent when per-member titles are present
     // @see 002-constraint-tags.md §5.2
     expect(status["title"]).toBeUndefined();
-    // Must NOT also have a flat enum
-    expect(status["enum"]).toBeUndefined();
+    expect(status["oneOf"]).toBeUndefined();
   });
 
   // @see 003-json-schema-vocabulary.md §2.3: "no per-member metadata → flat enum"

@@ -1,5 +1,9 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import { describe, expect, it } from "vitest";
+import type { FormSpec, StaticEnumField, TextField } from "@formspec/core";
+import { generateJsonSchema } from "../json-schema/generator.js";
 import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 
 const namedPrimitiveAliasesFixture = path.join(__dirname, "fixtures", "named-primitive-aliases.ts");
@@ -23,6 +27,13 @@ const methodSignatureSchemasFixture = path.join(
   "fixtures",
   "method-signature-schemas.ts"
 );
+
+function writeTempSource(source: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-generate-schemas-"));
+  const filePath = path.join(dir, "model.ts");
+  fs.writeFileSync(filePath, source);
+  return filePath;
+}
 
 function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
   return generateSchemas({
@@ -279,5 +290,123 @@ describe("generateSchemas", () => {
         typeName: "CallableSubmitInput",
       })
     ).toThrow(/not an object-like type alias/i);
+  });
+
+  it("infers enum member display names through metadata policy for static analysis", () => {
+    const filePath = writeTempSource(`
+      export type PlanStatus = "draft" | "sent";
+
+      export interface InvoiceModel {
+        status: PlanStatus;
+      }
+    `);
+
+    try {
+      const result = generateSchemasOrThrow({
+        filePath,
+        typeName: "InvoiceModel",
+        metadata: {
+          enumMember: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Label ${logicalName}`,
+            },
+          },
+        },
+      });
+
+      expect(result.jsonSchema.$defs).toMatchObject({
+        PlanStatus: {
+          enum: ["draft", "sent"],
+          "x-formspec-display-names": {
+            draft: "Label draft",
+            sent: "Label sent",
+          },
+        },
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("rejects static analysis enums when enumMember displayName policy requires explicit labels", () => {
+    const filePath = writeTempSource(`
+      export type PlanStatus = "draft" | "sent";
+
+      export interface InvoiceModel {
+        status: PlanStatus;
+      }
+    `);
+
+    try {
+      expect(() =>
+        generateSchemasOrThrow({
+          filePath,
+          typeName: "InvoiceModel",
+          metadata: {
+            enumMember: {
+              displayName: {
+                mode: "require-explicit",
+              },
+            },
+          },
+        })
+      ).toThrow(/displayName/i);
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+});
+
+describe("generateJsonSchema", () => {
+  it("does not require explicit root type metadata for chain-dsl forms", () => {
+    const form: FormSpec<readonly [TextField<"status">]> = {
+      elements: [{ _type: "field", _field: "text", name: "status" }],
+    };
+
+    expect(() =>
+      generateJsonSchema(form, {
+        metadata: {
+          type: {
+            displayName: {
+              mode: "require-explicit",
+            },
+          },
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it("applies enumMember displayName policy to chain-dsl static enums", () => {
+    const form: FormSpec<readonly [StaticEnumField<"status", readonly ["draft", "sent"]>]> = {
+      elements: [
+        {
+          _type: "field",
+          _field: "enum",
+          name: "status",
+          options: ["draft", "sent"] as const,
+        },
+      ],
+    };
+    const schema = generateJsonSchema(form, {
+      metadata: {
+        enumMember: {
+          displayName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) => `Choice ${logicalName}`,
+          },
+        },
+      },
+    });
+
+    expect(schema.properties).toEqual({
+      status: {
+        enum: ["draft", "sent"],
+        "x-formspec-display-names": {
+          draft: "Choice draft",
+          sent: "Choice sent",
+        },
+      },
+    });
   });
 });

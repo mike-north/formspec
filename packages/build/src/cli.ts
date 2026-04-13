@@ -21,6 +21,7 @@ interface CliOptions {
   inputFile: string;
   outDir: string;
   name: string;
+  enumSerialization: "enum" | "oneOf";
 }
 
 function printHelp(): void {
@@ -33,6 +34,8 @@ Usage:
 Options:
   -o, --out-dir <dir>   Output directory (default: ./generated)
   -n, --name <name>     Base name for output files (default: derived from input)
+  --enum-serialization <enum|oneOf>
+                         Enum JSON Schema representation (default: enum)
   -h, --help            Show this help message
 
 Example:
@@ -50,6 +53,7 @@ function parseArgs(args: string[]): CliOptions | null {
   const positional: string[] = [];
   let outDir = "./generated";
   let name = "";
+  let enumSerialization: "enum" | "oneOf" = "enum";
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -82,6 +86,21 @@ function parseArgs(args: string[]): CliOptions | null {
       continue;
     }
 
+    if (arg === "--enum-serialization") {
+      const nextArg = args[i + 1];
+      if (!nextArg) {
+        console.error("Error: --enum-serialization requires a value");
+        return null;
+      }
+      if (nextArg !== "enum" && nextArg !== "oneOf") {
+        console.error('Error: --enum-serialization must be "enum" or "oneOf"');
+        return null;
+      }
+      enumSerialization = nextArg;
+      i++;
+      continue;
+    }
+
     if (arg.startsWith("-")) {
       console.error(`Error: Unknown option: ${arg}`);
       return null;
@@ -107,7 +126,7 @@ function parseArgs(args: string[]): CliOptions | null {
     name = path.basename(inputFile, path.extname(inputFile));
   }
 
-  return { inputFile, outDir, name };
+  return { inputFile, outDir, name, enumSerialization };
 }
 
 async function main(): Promise<void> {
@@ -118,7 +137,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const { inputFile, outDir, name } = options;
+  const { inputFile, outDir, name, enumSerialization } = options;
 
   // Resolve input file path
   const absoluteInput = path.resolve(process.cwd(), inputFile);
@@ -146,7 +165,7 @@ async function main(): Promise<void> {
 
     const { jsonSchemaPath, uiSchemaPath } = writeSchemas(
       form as Parameters<typeof writeSchemas>[0],
-      { outDir, name }
+      { outDir, name, enumSerialization }
     );
 
     console.log("Generated:");

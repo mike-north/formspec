@@ -58,6 +58,7 @@ interface CliOptions {
   className: string | undefined;
   outDir: string;
   compiledPath: string | undefined;
+  enumSerialization: "enum" | "oneOf";
   /** Emit FormIR JSON alongside generated schemas. */
   emitIr: boolean;
   /** Run constraint validation only; do not write schema files. */
@@ -94,6 +95,7 @@ function parseArgs(args: string[]): CliOptions {
   let className: string | undefined;
   let outDir = "./generated";
   let compiledPath: string | undefined;
+  let enumSerialization: "enum" | "oneOf" = "enum";
   let emitIr = false;
   let validateOnly = false;
   let dryRun = false;
@@ -105,6 +107,17 @@ function parseArgs(args: string[]): CliOptions {
     if (arg === "-o" || arg === "--output") {
       const nextArg = rest[++i];
       if (nextArg) outDir = nextArg;
+    } else if (arg === "--enum-serialization") {
+      const nextArg = rest[++i];
+      if (!nextArg) {
+        console.error('Error: --enum-serialization requires "enum" or "oneOf"');
+        process.exit(1);
+      }
+      if (nextArg !== "enum" && nextArg !== "oneOf") {
+        console.error('Error: --enum-serialization must be "enum" or "oneOf"');
+        process.exit(1);
+      }
+      enumSerialization = nextArg;
     } else if (arg === "--compiled" || arg === "-c") {
       const nextArg = rest[++i];
       if (nextArg) compiledPath = nextArg;
@@ -136,6 +149,7 @@ function parseArgs(args: string[]): CliOptions {
     className,
     outDir,
     compiledPath,
+    enumSerialization,
     emitIr,
     validateOnly,
     dryRun,
@@ -173,6 +187,8 @@ ARGUMENTS:
 OPTIONS:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+  --enum-serialization <enum|oneOf>
+                       Enum JSON Schema representation (default: enum)
   --emit-ir             Emit FormIR JSON alongside generated schemas
   --validate-only       Validate constraints only; do not write schema files
   --dry-run             Show planned outputs without writing any files
@@ -364,7 +380,9 @@ async function main(): Promise<void> {
       reportedRuntimeLoadFailure = true;
     };
     try {
-      const { formSpecs, module } = await loadFormSpecs(compiledPath);
+      const { formSpecs, module } = await loadFormSpecs(compiledPath, {
+        enumSerialization: options.enumSerialization,
+      });
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
       console.log(`✓ Loaded ${String(formSpecs.size)} FormSpec export(s) from module`);
@@ -465,7 +483,9 @@ async function main(): Promise<void> {
           if (missing.length > 0) {
             warnRuntimeLoadFailureOnce();
             try {
-              const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing);
+              const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing, {
+                enumSerialization: options.enumSerialization,
+              });
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);
               }
@@ -479,15 +499,21 @@ async function main(): Promise<void> {
         // generation succeeds and compute the exact file layout that a real run
         // would produce.
         // Generate class schemas
-        const classSchemas = generateClassSchemas(analysis, { file: options.filePath });
+        const classSchemas = generateClassSchemas(analysis, { file: options.filePath }, {
+          enumSerialization: options.enumSerialization,
+        });
 
         // Generate method schemas
         const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
         const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
+            enumSerialization: options.enumSerialization,
+          })
         );
         const staticMethodSchemas = analysis.staticMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
+            enumSerialization: options.enumSerialization,
+          })
         );
 
         if (options.dryRun) {

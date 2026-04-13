@@ -51,11 +51,12 @@ describe("generateJsonSchema", () => {
 
     expect(schema.properties?.["priority"]).toEqual({
       title: "Priority",
-      oneOf: [
-        { const: "low", title: "Low Priority" },
-        { const: "medium", title: "Medium Priority" },
-        { const: "high", title: "High Priority" },
-      ],
+      enum: ["low", "medium", "high"],
+      "x-formspec-display-names": {
+        low: "Low Priority",
+        medium: "Medium Priority",
+        high: "High Priority",
+      },
     });
   });
 

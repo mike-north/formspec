@@ -214,6 +214,11 @@ export interface StaticSchemaGenerationOptions {
    * @defaultValue "x-formspec"
    */
   readonly vendorPrefix?: string | undefined;
+  /**
+   * JSON Schema representation to use for static enums.
+   * @defaultValue "enum"
+   */
+  readonly enumSerialization?: "enum" | "oneOf";
   /** Metadata resolution policy for static schema generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
   /** Discriminator-specific schema generation behavior. */
@@ -307,6 +312,7 @@ export function generateSchemasFromClass(
     {
       extensionRegistry: options.extensionRegistry,
       metadata: options.metadata,
+      enumSerialization: options.enumSerialization,
       vendorPrefix: options.vendorPrefix,
     }
   );
@@ -649,6 +655,7 @@ function generateSchemasFromDetailedProgramContext(
     {
       extensionRegistry: options.extensionRegistry,
       metadata: options.metadata,
+      enumSerialization: options.enumSerialization,
       vendorPrefix: options.vendorPrefix,
     }
   );

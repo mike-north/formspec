@@ -141,6 +141,41 @@ export interface DynamicSchemaField<N extends string> {
 }
 
 // @public
+export interface EnumMemberDisplayNameDisabledPolicyInput {
+    readonly mode: "disabled";
+}
+
+// @public
+export interface EnumMemberDisplayNameInferIfMissingPolicyInput {
+    readonly infer: EnumMemberMetadataInferenceFn;
+    readonly mode: "infer-if-missing";
+}
+
+// @public
+export type EnumMemberDisplayNamePolicyInput = EnumMemberDisplayNameDisabledPolicyInput | EnumMemberDisplayNameRequireExplicitPolicyInput | EnumMemberDisplayNameInferIfMissingPolicyInput;
+
+// @public
+export interface EnumMemberDisplayNameRequireExplicitPolicyInput {
+    readonly mode: "require-explicit";
+}
+
+// @public
+export interface EnumMemberMetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly logicalName: string;
+    readonly memberValue: string | number;
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export type EnumMemberMetadataInferenceFn = (context: EnumMemberMetadataInferenceContext) => string;
+
+// @public
+export interface EnumMemberMetadataPolicyInput {
+    readonly displayName?: EnumMemberDisplayNamePolicyInput | undefined;
+}
+
+// @public
 export interface EnumOption {
     readonly id: string;
     readonly label: string;
@@ -254,6 +289,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
+    readonly enumSerialization?: "enum" | "oneOf";
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
@@ -432,6 +468,7 @@ export interface MetadataPluralizationRequireExplicitPolicyInput {
 
 // @public
 export interface MetadataPolicyInput {
+    readonly enumMember?: EnumMemberMetadataPolicyInput | undefined;
     readonly field?: DeclarationMetadataPolicyInput | undefined;
     readonly method?: DeclarationMetadataPolicyInput | undefined;
     readonly type?: DeclarationMetadataPolicyInput | undefined;

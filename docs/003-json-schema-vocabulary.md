@@ -73,19 +73,22 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 | Heterogeneous union `A \| B`             | `{ "oneOf": [<A schema>, <B schema>] }`         |
 | Boolean shorthand (`true \| false`)      | `{ "type": "boolean" }` (not `oneOf`)           |
 
-**Note on `enum` vs `oneOf[const]`:** When enum members carry per-member metadata (via member-level `@displayName`), the generator uses `oneOf` with per-member `const`/`title` instead of the flat `enum` keyword. This preserves the member metadata in a way that is standard-compliant and usable by form renderers:
+**Note on `enum` vs `oneOf[const]`:** Static enums support two JSON Schema encodings. The default is flat `enum` plus a vendor extension carrying display names. Callers may opt into `oneOf` with per-member `const`/`title` instead.
+
+Default `enum` encoding:
 
 ```json
 {
-  "oneOf": [
-    { "const": "draft", "title": "Draft Invoice" },
-    { "const": "sent", "title": "Sent to Customer" },
-    { "const": "paid", "title": "Paid in Full" }
-  ]
+  "enum": ["draft", "sent", "paid"],
+  "x-formspec-display-names": {
+    "draft": "Draft Invoice",
+    "sent": "Sent to Customer",
+    "paid": "Paid in Full"
+  }
 }
 ```
 
-When no per-member metadata exists, the flat `enum` form is preferred (simpler, equally valid).
+If any member has a resolved display name, the extension contains a complete set of labels, filling missing members with `String(enumValue)`. When callers select `oneOf`, each branch is emitted as `{ "const": value, "title": displayName ?? String(value) }`.
 
 ### 2.4 Array Types
 
@@ -783,11 +786,12 @@ interface InvoiceFormData {
       "maxLength": 100
     },
     "status": {
-      "oneOf": [
-        { "const": "draft", "title": "Draft" },
-        { "const": "sent", "title": "Sent to Customer" },
-        { "const": "paid", "title": "Paid in Full" }
-      ],
+      "enum": ["draft", "sent", "paid"],
+      "x-formspec-display-names": {
+        "draft": "Draft",
+        "sent": "Sent to Customer",
+        "paid": "Paid in Full"
+      },
       "default": "draft"
     },
     "total": {

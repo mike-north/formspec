@@ -131,6 +131,8 @@ interface GeneratorContext {
   readonly extensionRegistry: ExtensionRegistry | undefined;
   /** Vendor prefix passed through to extension toJsonSchema handlers. */
   readonly vendorPrefix: string;
+  /** Selected JSON Schema representation for enum-like values. */
+  readonly enumSerialization: "enum" | "oneOf";
 }
 
 /**
@@ -151,15 +153,31 @@ export interface GenerateJsonSchemaFromIROptions {
    * @defaultValue "x-formspec"
    */
   readonly vendorPrefix?: string | undefined;
+  /**
+   * JSON Schema representation to use for static enums.
+   * @defaultValue "enum"
+   */
+  readonly enumSerialization?: "enum" | "oneOf" | undefined;
 }
 
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
+  const rawEnumSerialization = options?.enumSerialization as string | undefined;
   if (!vendorPrefix.startsWith("x-")) {
     throw new Error(
       `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
     );
   }
+  if (
+    rawEnumSerialization !== undefined &&
+    rawEnumSerialization !== "enum" &&
+    rawEnumSerialization !== "oneOf"
+  ) {
+    throw new Error(
+      `Invalid enumSerialization "${rawEnumSerialization}". Expected "enum" or "oneOf".`
+    );
+  }
+  const enumSerialization: GeneratorContext["enumSerialization"] = rawEnumSerialization ?? "enum";
 
   return {
     defs: {},
@@ -167,6 +185,7 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
     typeRegistry: {},
     extensionRegistry: options?.extensionRegistry,
     vendorPrefix,
+    enumSerialization,
   };
 }
 
@@ -504,7 +523,7 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
       return generatePrimitiveType(type);
 
     case "enum":
-      return generateEnumType(type);
+      return generateEnumType(type, ctx);
 
     case "array":
       return generateArrayType(type, ctx);
@@ -554,26 +573,48 @@ function generatePrimitiveType(type: PrimitiveTypeNode): JsonSchema2020 {
 /**
  * Generates JSON Schema for a static enum type.
  *
- * When any member has a displayName, the output uses the `oneOf` form with
- * per-member `const`/`title` entries (per the JSON Schema vocabulary spec §2.3). Otherwise the
- * flat `enum` keyword is used (simpler, equally valid).
+ * Enum emission is caller-configurable. The default `enum` mode keeps the
+ * compact keyword and adds a complete vendor-prefixed display-name map when
+ * any member label is available. The `oneOf` mode always emits per-member
+ * `const`/`title` entries so downstream consumers can rely on `title`.
  */
-function generateEnumType(type: EnumTypeNode): JsonSchema2020 {
-  const hasDisplayNames = type.members.some((m) => m.displayName !== undefined);
-
-  if (hasDisplayNames) {
+function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema2020 {
+  if (ctx.enumSerialization === "oneOf") {
     return {
-      oneOf: type.members.map((m) => {
-        const entry: JsonSchema2020 = { const: m.value };
-        if (m.displayName !== undefined) {
-          entry.title = m.displayName;
-        }
-        return entry;
-      }),
+      oneOf: type.members.map((m) => ({
+        const: m.value,
+        title: m.displayName ?? String(m.value),
+      })),
     };
   }
 
-  return { enum: type.members.map((m) => m.value) };
+  const schema: JsonSchema2020 = { enum: type.members.map((m) => m.value) };
+  const displayNames = buildEnumDisplayNameExtension(type);
+  if (displayNames !== undefined) {
+    // Emit either no extension at all or a complete map for every member.
+    schema[`${ctx.vendorPrefix}-display-names` as `x-${string}`] = displayNames;
+  }
+  return schema;
+}
+
+function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, string> | undefined {
+  if (!type.members.some((member) => member.displayName !== undefined)) {
+    return undefined;
+  }
+
+  const displayNames: Record<string, string> = Object.create(null) as Record<string, string>;
+  for (const member of type.members) {
+    const key = String(member.value);
+    if (Object.hasOwn(displayNames, key)) {
+      throw new Error(
+        `Enum display-name key "${key}" is ambiguous after stringification. ` +
+          `Use oneOf serialization for mixed string/number enum values that collide.`
+      );
+    }
+    displayNames[key] = member.displayName ?? key;
+  }
+
+  return displayNames;
 }
 
 /**

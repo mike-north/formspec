@@ -23,6 +23,11 @@ export interface GenerateJsonSchemaOptions {
    * @defaultValue "x-formspec"
    */
   readonly vendorPrefix?: string | undefined;
+  /**
+   * JSON Schema representation to use for static enums.
+   * @defaultValue "enum"
+   */
+  readonly enumSerialization?: "enum" | "oneOf";
   /** Metadata resolution policy for chain DSL generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
 }
@@ -61,11 +66,19 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
+  const metadata = options?.metadata;
+  const vendorPrefix = options?.vendorPrefix;
+  const enumSerialization = options?.enumSerialization;
   const ir = canonicalizeChainDSL(
     form,
-    options?.metadata !== undefined ? { metadata: options.metadata } : undefined
+    metadata !== undefined ? { metadata } : undefined
   );
   const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
-    options?.vendorPrefix === undefined ? undefined : { vendorPrefix: options.vendorPrefix };
+    vendorPrefix === undefined && enumSerialization === undefined
+      ? undefined
+      : {
+          ...(vendorPrefix !== undefined && { vendorPrefix }),
+          ...(enumSerialization !== undefined && { enumSerialization }),
+        };
   return generateJsonSchemaFromIR(ir, internalOptions);
 }

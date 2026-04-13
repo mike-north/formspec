@@ -108,11 +108,12 @@ export class UserProfileForm {
       "type": "number"
     },
     "status": {
-      "oneOf": [
-        { "const": "active", "title": "Active Account" },
-        { "const": "suspended", "title": "Suspended" },
-        { "const": "closed", "title": "Permanently Closed" }
-      ]
+      "enum": ["active", "suspended", "closed"],
+      "x-formspec-display-names": {
+        "active": "Active Account",
+        "suspended": "Suspended",
+        "closed": "Permanently Closed"
+      }
     },
     "language": {
       "enum": ["en", "fr", "de"],
@@ -1322,12 +1323,13 @@ export class InvoiceForm {
       "default": "draft"
     },
     "priority": {
-      "oneOf": [
-        { "const": "low", "title": "Low Priority" },
-        { "const": "medium", "title": "Medium" },
-        { "const": "high", "title": "High Priority" },
-        { "const": "critical", "title": "Critical - Immediate Action" }
-      ],
+      "enum": ["low", "medium", "high", "critical"],
+      "x-formspec-display-names": {
+        "low": "Low Priority",
+        "medium": "Medium",
+        "high": "High Priority",
+        "critical": "Critical - Immediate Action"
+      },
       "title": "Priority Level"
     },
     "simpleEnum": {
@@ -1337,11 +1339,12 @@ export class InvoiceForm {
   "required": ["status", "priority", "simpleEnum"],
   "$defs": {
     "InvoiceStatus": {
-      "oneOf": [
-        { "const": "draft", "title": "Draft Invoice" },
-        { "const": "sent", "title": "Sent to Customer" },
-        { "const": "paid", "title": "Paid in Full" }
-      ]
+      "enum": ["draft", "sent", "paid"],
+      "x-formspec-display-names": {
+        "draft": "Draft Invoice",
+        "sent": "Sent to Customer",
+        "paid": "Paid in Full"
+      }
     }
   }
 }
@@ -1349,10 +1352,10 @@ export class InvoiceForm {
 
 #### Test assertions
 
-- [ ] Named type alias with `:member` display names → `$defs` entry with `oneOf`/`const`/`title` (spec 003 §2.3, 003 §5.2)
+- [ ] Named type alias with `:member` display names → `$defs` entry with flat `enum` plus `x-formspec-display-names` by default (spec 003 §2.3, 003 §5.2)
 - [ ] `status` references `InvoiceStatus` via `$ref` (spec 003 §5.1, PP7)
 - [ ] `status` has `"title"` and `"default"` as sibling keywords to `$ref` (spec 003 §7 — 2020-12 allows siblings)
-- [ ] `priority` has inline `oneOf` with per-member `const`/`title` because it's not a named type (spec 003 §2.3)
+- [ ] `priority` has inline `enum` plus `x-formspec-display-names` by default because member labels do not force `oneOf` (spec 003 §2.3)
 - [ ] `priority` field-level `@displayName` maps to `"title"` (spec 003 §2.8)
 - [ ] `simpleEnum` uses flat `enum` — no per-member metadata (spec 003 §2.3)
 - [ ] `@defaultValue "draft"` → `"default": "draft"` (spec 003 §2.8)
@@ -1839,11 +1842,12 @@ export class Subscription {
   "required": ["status"],
   "$defs": {
     "PlanStatus": {
-      "oneOf": [
-        { "const": "active", "title": "Active" },
-        { "const": "paused", "title": "Paused" },
-        { "const": "cancelled", "title": "Cancelled" }
-      ],
+      "enum": ["active", "paused", "cancelled"],
+      "x-formspec-display-names": {
+        "active": "Active",
+        "paused": "Paused",
+        "cancelled": "Cancelled"
+      },
       "title": "Plan Status"
     }
   }
@@ -1852,8 +1856,8 @@ export class Subscription {
 
 #### Test assertions
 
-- [ ] Named type `PlanStatus` appears in `$defs` with `oneOf` (spec 003 §5.2, 003 §2.3)
-- [ ] Per-member display names → `const`/`title` per member (spec 003 §2.3)
+- [ ] Named type `PlanStatus` appears in `$defs` with flat `enum` plus `x-formspec-display-names` by default (spec 003 §5.2, 003 §2.3)
+- [ ] Per-member display names populate a complete display-name extension for every member (spec 003 §2.3)
 - [ ] Type-level `@displayName Plan Status` → `$defs.PlanStatus.title` (spec 003 §2.8)
 - [ ] `@defaultValue` at field level → `"default"` sibling to `$ref` (spec 003 §2.8, 006 §2.4)
 - [ ] `$ref` + sibling keywords is valid 2020-12 (spec 003 §7 note)

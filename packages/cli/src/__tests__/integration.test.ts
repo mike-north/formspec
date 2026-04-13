@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import {
   createProgramContext,
@@ -100,6 +101,49 @@ describe("generators", () => {
     expect(methodSchemas.params?.jsonSchema.type).toBe("object");
     expect(methodSchemas.params?.uiSchema).toBeNull();
     expect(methodSchemas.returnType.type).toBe("boolean");
+  });
+
+  it("threads enum serialization into static method schemas", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-method-enums-"));
+    const filePath = path.join(dir, "enum-methods.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      export class EnumMethods {
+        updateStatus(status: "draft" | "sent"): "draft" | "sent" {
+          return status;
+        }
+      }
+    `
+    );
+
+    try {
+      const ctx = createProgramContext(filePath);
+      const classDecl = findClassByName(ctx.sourceFile, "EnumMethods");
+      if (!classDecl) throw new Error("EnumMethods class not found");
+      const analysis = analyzeClassToIR(classDecl, ctx.checker, filePath);
+      const updateStatus = analysis.instanceMethods[0];
+      if (!updateStatus) throw new Error("updateStatus method not found");
+
+      const methodSchemas = generateMethodSchemas(updateStatus, ctx.checker, new Map(), {
+        enumSerialization: "oneOf",
+      });
+
+      expect(methodSchemas.params?.jsonSchema).toEqual({
+        oneOf: [
+          { const: "draft", title: "draft" },
+          { const: "sent", title: "sent" },
+        ],
+      });
+      expect(methodSchemas.returnType).toEqual({
+        oneOf: [
+          { const: "draft", title: "draft" },
+          { const: "sent", title: "sent" },
+        ],
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

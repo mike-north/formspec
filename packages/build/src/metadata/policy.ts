@@ -1,4 +1,6 @@
 import type {
+  EnumMemberDisplayNamePolicyInput,
+  EnumMemberMetadataInferenceContext,
   MetadataAuthoringSurface,
   MetadataDeclarationKind,
   MetadataInferenceContext,
@@ -7,17 +9,22 @@ import type {
   MetadataPolicyInput,
   MetadataValuePolicyInput,
   NormalizedDeclarationMetadataPolicy,
+  NormalizedEnumMemberDisplayNamePolicy,
+  NormalizedEnumMemberMetadataPolicy,
   NormalizedMetadataPolicy,
   NormalizedMetadataPluralizationPolicy,
   NormalizedMetadataValuePolicy,
 } from "@formspec/core/internals";
 export type {
   NormalizedDeclarationMetadataPolicy,
+  NormalizedEnumMemberDisplayNamePolicy,
+  NormalizedEnumMemberMetadataPolicy,
   NormalizedMetadataPolicy,
   NormalizedMetadataPluralizationPolicy as NormalizedPluralizationPolicy,
 } from "@formspec/core/internals";
 
 export type MetadataResolutionContext = MetadataInferenceContext;
+export type EnumMemberResolutionContext = EnumMemberMetadataInferenceContext;
 export type NormalizedMetadataScalarPolicy = NormalizedMetadataValuePolicy;
 
 export function defaultApiNameInference(
@@ -95,6 +102,37 @@ function normalizeDeclarationPolicy(
   };
 }
 
+function normalizeEnumMemberDisplayNamePolicy(
+  input: EnumMemberDisplayNamePolicyInput | undefined
+): NormalizedEnumMemberDisplayNamePolicy {
+  if (input?.mode === "infer-if-missing") {
+    return {
+      mode: "infer-if-missing",
+      infer: input.infer,
+    };
+  }
+
+  if (input?.mode === "require-explicit") {
+    return {
+      mode: "require-explicit",
+      infer: () => "",
+    };
+  }
+
+  return {
+    mode: "disabled",
+    infer: () => "",
+  };
+}
+
+function normalizeEnumMemberPolicy(
+  input: MetadataPolicyInput["enumMember"] | undefined
+): NormalizedEnumMemberMetadataPolicy {
+  return {
+    displayName: normalizeEnumMemberDisplayNamePolicy(input?.displayName),
+  };
+}
+
 export function normalizeMetadataPolicy(
   input?: MetadataPolicyInput
 ): NormalizedMetadataPolicy {
@@ -102,6 +140,7 @@ export function normalizeMetadataPolicy(
     type: normalizeDeclarationPolicy(input?.type),
     field: normalizeDeclarationPolicy(input?.field),
     method: normalizeDeclarationPolicy(input?.method),
+    enumMember: normalizeEnumMemberPolicy(input?.enumMember),
   };
 }
 

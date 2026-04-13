@@ -20,6 +20,11 @@ interface FormSpecLike {
   elements: unknown[];
 }
 
+interface LoadFormSpecsOptions {
+  /** JSON Schema representation to use for static enums. */
+  readonly enumSerialization?: "enum" | "oneOf" | undefined;
+}
+
 /**
  * Result of loading and generating schemas from a FormSpec.
  */
@@ -78,7 +83,10 @@ export function isFormSpec(value: unknown): value is FormSpecLike {
  * @param filePath - Path to the compiled JavaScript file
  * @returns Map of export names to their generated schemas
  */
-export async function loadFormSpecs(filePath: string): Promise<ModuleFormSpecs> {
+export async function loadFormSpecs(
+  filePath: string,
+  options?: LoadFormSpecsOptions
+): Promise<ModuleFormSpecs> {
   const absolutePath = path.resolve(filePath);
 
   // Convert to file URL for ESM import
@@ -96,7 +104,12 @@ export async function loadFormSpecs(filePath: string): Promise<ModuleFormSpecs> 
         // Use @formspec/build generators
         // The types expect FormSpec<readonly FormElement[]>
         // but we're duck-typing at runtime
-        const jsonSchema = generateJsonSchema(value as never);
+        const jsonSchema = generateJsonSchema(
+          value as never,
+          options?.enumSerialization === undefined
+            ? undefined
+            : { enumSerialization: options.enumSerialization }
+        );
         const uiSchema = generateUiSchema(value as never);
 
         formSpecs.set(name, {
@@ -128,9 +141,10 @@ export async function loadFormSpecs(filePath: string): Promise<ModuleFormSpecs> 
  */
 export async function loadNamedFormSpecs(
   filePath: string,
-  exportNames: string[]
+  exportNames: string[],
+  options?: LoadFormSpecsOptions
 ): Promise<Map<string, FormSpecSchemas>> {
-  const { formSpecs, module } = await loadFormSpecs(filePath);
+  const { formSpecs, module } = await loadFormSpecs(filePath, options);
   const result = new Map<string, FormSpecSchemas>();
 
   for (const name of exportNames) {
@@ -145,7 +159,12 @@ export async function loadNamedFormSpecs(
     const value = module[name];
     if (value && isFormSpec(value)) {
       try {
-        const jsonSchema = generateJsonSchema(value as never);
+        const jsonSchema = generateJsonSchema(
+          value as never,
+          options?.enumSerialization === undefined
+            ? undefined
+            : { enumSerialization: options.enumSerialization }
+        );
         const uiSchema = generateUiSchema(value as never);
         result.set(name, { name, jsonSchema, uiSchema });
       } catch (error) {
