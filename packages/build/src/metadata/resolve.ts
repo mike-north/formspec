@@ -210,7 +210,7 @@ function resolveEnumTypeMetadata(
       return member;
     }
 
-    return { ...member, displayName };
+    return displayName === undefined ? { value: member.value } : { value: member.value, displayName };
   });
 
   return members.some((member, index) => member !== type.members[index]) ? { ...type, members } : type;
