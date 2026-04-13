@@ -194,7 +194,6 @@ function resolveEnumTypeMetadata(
   type: EnumTypeNode,
   options: ResolveFormIRMetadataOptions
 ): EnumTypeNode {
-  let changed = false;
   const members = type.members.map((member) => {
     const displayName = resolveEnumMemberDisplayName(
       member.displayName,
@@ -211,11 +210,10 @@ function resolveEnumTypeMetadata(
       return member;
     }
 
-    changed = true;
-    return displayName !== undefined ? { ...member, displayName } : member;
+    return { ...member, displayName };
   });
 
-  return changed ? { ...type, members } : type;
+  return members.some((member, index) => member !== type.members[index]) ? { ...type, members } : type;
 }
 
 function resolveTypeNodeMetadata(

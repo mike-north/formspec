@@ -162,17 +162,22 @@ export interface GenerateJsonSchemaFromIROptions {
 
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
-  const enumSerialization = options?.enumSerialization ?? "enum";
+  const rawEnumSerialization = options?.enumSerialization as string | undefined;
   if (!vendorPrefix.startsWith("x-")) {
     throw new Error(
       `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
     );
   }
-  if (enumSerialization !== "enum" && enumSerialization !== "oneOf") {
+  if (
+    rawEnumSerialization !== undefined &&
+    rawEnumSerialization !== "enum" &&
+    rawEnumSerialization !== "oneOf"
+  ) {
     throw new Error(
-      `Invalid enumSerialization "${enumSerialization}". Expected "enum" or "oneOf".`
+      `Invalid enumSerialization "${rawEnumSerialization}". Expected "enum" or "oneOf".`
     );
   }
+  const enumSerialization: GeneratorContext["enumSerialization"] = rawEnumSerialization ?? "enum";
 
   return {
     defs: {},

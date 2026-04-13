@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { describe, expect, it } from "vitest";
-import { field, formspec } from "@formspec/dsl";
+import type { FormSpec, StaticEnumField, TextField } from "@formspec/core";
 import { generateJsonSchema } from "../json-schema/generator.js";
 import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 
@@ -302,7 +302,7 @@ describe("generateSchemas", () => {
     `);
 
     try {
-      const result = generateSchemas({
+      const result = generateSchemasOrThrow({
         filePath,
         typeName: "InvoiceModel",
         metadata: {
@@ -340,7 +340,7 @@ describe("generateSchemas", () => {
 
     try {
       expect(() =>
-        generateSchemas({
+        generateSchemasOrThrow({
           filePath,
           typeName: "InvoiceModel",
           metadata: {
@@ -360,8 +360,12 @@ describe("generateSchemas", () => {
 
 describe("generateJsonSchema", () => {
   it("does not require explicit root type metadata for chain-dsl forms", () => {
+    const form: FormSpec<readonly [TextField<"status">]> = {
+      elements: [{ _type: "field", _field: "text", name: "status" }],
+    };
+
     expect(() =>
-      generateJsonSchema(formspec(field.text("status")), {
+      generateJsonSchema(form, {
         metadata: {
           type: {
             displayName: {
@@ -374,19 +378,26 @@ describe("generateJsonSchema", () => {
   });
 
   it("applies enumMember displayName policy to chain-dsl static enums", () => {
-    const schema = generateJsonSchema(
-      formspec(field.enum("status", ["draft", "sent"] as const)),
-      {
-        metadata: {
-          enumMember: {
-            displayName: {
-              mode: "infer-if-missing",
-              infer: ({ logicalName }) => `Choice ${logicalName}`,
-            },
+    const form: FormSpec<readonly [StaticEnumField<"status", readonly ["draft", "sent"]>]> = {
+      elements: [
+        {
+          _type: "field",
+          _field: "enum",
+          name: "status",
+          options: ["draft", "sent"] as const,
+        },
+      ],
+    };
+    const schema = generateJsonSchema(form, {
+      metadata: {
+        enumMember: {
+          displayName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) => `Choice ${logicalName}`,
           },
         },
-      }
-    );
+      },
+    });
 
     expect(schema.properties).toEqual({
       status: {
