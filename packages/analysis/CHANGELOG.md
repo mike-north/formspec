@@ -1,5 +1,19 @@
 # @formspec/analysis
 
+## 0.1.0-alpha.41
+
+### Patch Changes
+
+- [#258](https://github.com/mike-north/formspec/pull/258) [`62f5e2c`](https://github.com/mike-north/formspec/commit/62f5e2cfb34555a16f7d7cd1e50463f61c0711da) Thanks [@mike-north](https://github.com/mike-north)! - Add configurable enum JSON Schema serialization and enum-member display-name policy support.
+  - Default labeled enum output to flat `enum` plus a complete `x-<vendor>-display-names` extension
+  - Add opt-in `oneOf` enum serialization with `const`/`title` branches
+  - Add `metadata.enumMember.displayName` policy configuration for inferred or required enum-member labels
+  - Add `--enum-serialization <enum|oneOf>` to the published CLIs
+  - Re-export the new enum-member metadata policy types from `@formspec/core`, `@formspec/dsl`, and `formspec`
+
+- Updated dependencies [[`62f5e2c`](https://github.com/mike-north/formspec/commit/62f5e2cfb34555a16f7d7cd1e50463f61c0711da)]:
+  - @formspec/core@0.1.0-alpha.41
+
 ## 0.1.0-alpha.38
 
 ### Patch Changes
