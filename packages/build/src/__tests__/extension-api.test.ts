@@ -476,6 +476,88 @@ describe("Extension API", () => {
         })
       ).toThrow(/may only emit "x-test-\*" JSON Schema keywords/);
     });
+
+    it("allows non-prefixed keywords when emitsVocabularyKeywords is true", () => {
+      const vocabConstraint = defineConstraint({
+        constraintName: "DecimalMinimum",
+        compositionRule: "intersect",
+        applicableTypes: ["custom"],
+        emitsVocabularyKeywords: true,
+        toJsonSchema: (payload) => ({
+          decimalMinimum: payload,
+        }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/decimal",
+          types: [decimalType],
+          constraints: [vocabConstraint],
+        }),
+      ]);
+
+      const customType: CustomTypeNode = {
+        kind: "custom",
+        typeId: "x-test/decimal/Decimal",
+        payload: null,
+      };
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/decimal/DecimalMinimum",
+        payload: "0.01",
+        compositionRule: "intersect",
+        provenance: prov(1, "DecimalMinimum"),
+      };
+
+      const ir = makeIR([makeField("amount", customType, [customCon])]);
+      const result = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registry,
+        vendorPrefix: "x-test",
+      });
+
+      const props = result.properties ?? {};
+      expect(props.amount).toMatchObject({
+        type: "string",
+        "x-test-decimal": true,
+        decimalMinimum: "0.01",
+      });
+    });
+
+    it("still rejects non-prefixed keywords when emitsVocabularyKeywords is not set", () => {
+      const nonVocabConstraint = defineConstraint({
+        constraintName: "BadConstraint",
+        compositionRule: "intersect",
+        applicableTypes: ["primitive"],
+        // no emitsVocabularyKeywords
+        toJsonSchema: () => ({
+          decimalMinimum: "0.01",
+        }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/bad",
+          constraints: [nonVocabConstraint],
+        }),
+      ]);
+
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/bad/BadConstraint",
+        payload: null,
+        compositionRule: "intersect",
+        provenance: prov(1, "BadConstraint"),
+      };
+
+      const ir = makeIR([makeField("amount", NUMBER_TYPE, [customCon])]);
+
+      expect(() =>
+        generateJsonSchemaFromIR(ir, {
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        })
+      ).toThrow(/may only emit "x-test-\*" JSON Schema keywords/);
+    });
   });
 
   // ---------------------------------------------------------------------------

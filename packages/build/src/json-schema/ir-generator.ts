@@ -1205,12 +1205,24 @@ function applyCustomConstraint(
     );
   }
 
-  assignVendorPrefixedExtensionKeywords(
-    schema,
-    registration.toJsonSchema(constraint.payload, ctx.vendorPrefix),
-    ctx.vendorPrefix,
-    `custom constraint "${constraint.constraintId}"`
-  );
+  const extensionSchema = registration.toJsonSchema(constraint.payload, ctx.vendorPrefix);
+
+  if (registration.emitsVocabularyKeywords) {
+    // Vocabulary-mode: assign keywords directly without prefix enforcement.
+    // The cast is safe — vocabulary keywords are extension-defined and don't
+    // overlap with the built-in JsonSchema2020 index signature.
+    const target = schema as Record<string, unknown>;
+    for (const [key, value] of Object.entries(extensionSchema)) {
+      target[key] = value;
+    }
+  } else {
+    assignVendorPrefixedExtensionKeywords(
+      schema,
+      extensionSchema,
+      ctx.vendorPrefix,
+      `custom constraint "${constraint.constraintId}"`
+    );
+  }
 }
 
 function applyCustomAnnotation(
