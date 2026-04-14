@@ -106,6 +106,7 @@
     "type-guards-field-constraints",
     "unknown-path-target-diagnostic",
     "v2-pipeline-rewrite",
+    "vocabulary-keywords-constraint",
     "zod-validated-ui-schema"
   ]
 }
