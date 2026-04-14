@@ -558,6 +558,48 @@ describe("Extension API", () => {
         })
       ).toThrow(/may only emit "x-test-\*" JSON Schema keywords/);
     });
+
+    it("rejects vocabulary constraints that overwrite standard JSON Schema keywords", () => {
+      const collidingConstraint = defineConstraint({
+        constraintName: "Collider",
+        compositionRule: "intersect",
+        applicableTypes: ["custom"],
+        emitsVocabularyKeywords: true,
+        toJsonSchema: () => ({
+          type: "number", // collides with the base schema's type: "string"
+        }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/collide",
+          types: [decimalType],
+          constraints: [collidingConstraint],
+        }),
+      ]);
+
+      const customType: CustomTypeNode = {
+        kind: "custom",
+        typeId: "x-test/collide/Decimal",
+        payload: null,
+      };
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/collide/Collider",
+        payload: null,
+        compositionRule: "intersect",
+        provenance: prov(1, "Collider"),
+      };
+
+      const ir = makeIR([makeField("amount", customType, [customCon])]);
+
+      expect(() =>
+        generateJsonSchemaFromIR(ir, {
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        })
+      ).toThrow(/must not overwrite standard JSON Schema keyword "type"/);
+    });
   });
 
   // ---------------------------------------------------------------------------
