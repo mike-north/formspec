@@ -1193,6 +1193,29 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
   return registration.toJsonSchema(type.payload, ctx.vendorPrefix) as JsonSchema2020;
 }
 
+/**
+ * Standard JSON Schema 2020-12 keywords that vocabulary-mode constraints must
+ * not overwrite. Prevents accidental corruption of structural schema properties.
+ */
+const JSON_SCHEMA_STRUCTURAL_KEYWORDS = new Set([
+  "$schema", "$ref", "$defs", "$id", "$anchor", "$dynamicRef", "$dynamicAnchor",
+  "$vocabulary", "$comment",
+  "type", "enum", "const",
+  "properties", "patternProperties", "additionalProperties", "required",
+  "items", "prefixItems", "additionalItems", "contains",
+  "allOf", "oneOf", "anyOf", "not", "if", "then", "else",
+  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+  "minLength", "maxLength", "pattern",
+  "minItems", "maxItems", "uniqueItems",
+  "minProperties", "maxProperties",
+  "minContains", "maxContains",
+  "format", "title", "description", "default", "deprecated",
+  "readOnly", "writeOnly", "examples",
+  "dependentRequired", "dependentSchemas",
+  "propertyNames", "unevaluatedItems", "unevaluatedProperties",
+  "contentEncoding", "contentMediaType", "contentSchema",
+]);
+
 function applyCustomConstraint(
   schema: JsonSchema2020,
   constraint: Extract<ConstraintNode, { constraintKind: "custom" }>,
@@ -1205,12 +1228,29 @@ function applyCustomConstraint(
     );
   }
 
-  assignVendorPrefixedExtensionKeywords(
-    schema,
-    registration.toJsonSchema(constraint.payload, ctx.vendorPrefix),
-    ctx.vendorPrefix,
-    `custom constraint "${constraint.constraintId}"`
-  );
+  const extensionSchema = registration.toJsonSchema(constraint.payload, ctx.vendorPrefix);
+
+  if (registration.emitsVocabularyKeywords) {
+    // Vocabulary-mode: assign keywords directly without prefix enforcement.
+    // Guard against accidental collisions with standard JSON Schema keywords.
+    const target = schema as Record<string, unknown>;
+    for (const [key, value] of Object.entries(extensionSchema)) {
+      if (JSON_SCHEMA_STRUCTURAL_KEYWORDS.has(key)) {
+        throw new Error(
+          `Custom constraint "${constraint.constraintId}" with emitsVocabularyKeywords ` +
+          `must not overwrite standard JSON Schema keyword "${key}"`
+        );
+      }
+      target[key] = value;
+    }
+  } else {
+    assignVendorPrefixedExtensionKeywords(
+      schema,
+      extensionSchema,
+      ctx.vendorPrefix,
+      `custom constraint "${constraint.constraintId}"`
+    );
+  }
 }
 
 function applyCustomAnnotation(

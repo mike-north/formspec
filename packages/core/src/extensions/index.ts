@@ -147,6 +147,17 @@ export interface CustomConstraintRegistration {
     payload: ExtensionPayloadValue,
     vendorPrefix: string
   ) => Record<string, unknown>;
+  /**
+   * When true, `toJsonSchema` may emit vocabulary keywords that do not carry
+   * the vendor prefix. By default, all keys returned from `toJsonSchema` must
+   * start with `${vendorPrefix}-`; setting this flag relaxes that check so
+   * the constraint can produce standard or custom vocabulary keywords such as
+   * `decimalMinimum`.
+   *
+   * Use this for constraints that define their own JSON Schema vocabulary
+   * rather than namespacing under the vendor prefix.
+   */
+  readonly emitsVocabularyKeywords?: boolean;
 }
 
 /**

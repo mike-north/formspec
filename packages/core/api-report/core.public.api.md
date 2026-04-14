@@ -80,6 +80,7 @@ export interface CustomConstraintRegistration {
     readonly comparePayloads?: (left: ExtensionPayloadValue, right: ExtensionPayloadValue) => number;
     readonly compositionRule: "intersect" | "override";
     readonly constraintName: string;
+    readonly emitsVocabularyKeywords?: boolean;
     readonly isApplicableToType?: (type: ExtensionApplicableType) => boolean;
     readonly semanticRole?: ConstraintSemanticRole;
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
