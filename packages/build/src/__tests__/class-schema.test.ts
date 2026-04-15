@@ -155,6 +155,9 @@ describe("generateSchemas", () => {
     expect(result.jsonSchema.properties?.["remarksOnly"]).toMatchObject({
       "x-formspec-remarks": "Remarks go to x-formspec-remarks, not description.",
     });
+
+    // tag-only comments should not leak tag text into the description
+    expect(result.jsonSchema.properties?.["modifierTagOnly"]).not.toHaveProperty("description");
   });
 
   it("throws with CONTRADICTING_CONSTRAINTS for contradictory constraints", () => {
