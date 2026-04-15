@@ -24,6 +24,36 @@ function expectRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function padFieldIndex(index: number): string {
+  return index.toString().padStart(2, "0");
+}
+
+/**
+ * Builds a wide carrier type with mixed field shapes so Ref<T>-style
+ * discriminator specialization is exercised against large object inputs.
+ */
+function createLargeObjectCarrierSource(): string[] {
+  const lines = [
+    "export interface LargeObjectCarrier {",
+    '  readonly object: "large_object";',
+    "  readonly id: string;",
+  ];
+
+  for (let index = 1; index <= 20; index += 1) {
+    const suffix = padFieldIndex(index);
+    lines.push(`  textField${suffix}: string;`);
+    lines.push(`  numberField${suffix}: number;`);
+    lines.push(`  booleanField${suffix}: boolean;`);
+    lines.push(`  listField${suffix}: readonly string[];`);
+    lines.push(
+      `  nestedField${suffix}: { label: string; enabled: boolean; count: number };`
+    );
+  }
+
+  lines.push("}");
+  return lines;
+}
+
 describe("@discriminator schema generation", () => {
   let tmpDir: string;
   let fixturePath: string;
@@ -112,6 +142,8 @@ describe("@discriminator schema generation", () => {
         "  id: string;",
         "}",
         "",
+        ...createLargeObjectCarrierSource(),
+        "",
         "export type ExtractObjectTag<T> = T extends { readonly object: infer O }",
         "  ? O extends string ? O : never",
         "  : never;",
@@ -148,7 +180,7 @@ describe("@discriminator schema generation", () => {
     fs.writeFileSync(
       fixturePath,
       [
-        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier, ExtractObjectTag } from "./names.js";',
+        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier, LargeObjectCarrier, ExtractObjectTag } from "./names.js";',
         'import { Bar, InferredObjectCarrier } from "./names.js";',
         'import type { ReExportedCustomer, ReExportedOrganization } from "./aliases.js";',
         'import type { Ref as ImportedRef } from "./refs.js";',
@@ -278,6 +310,11 @@ describe("@discriminator schema generation", () => {
         "  importedBar: ImportedRef<Bar>;",
         "  localInferredBar: LocalBrandedRef<InferredObjectCarrier>;",
         "  importedInferredBar: ImportedRef<InferredObjectCarrier>;",
+        "}",
+        "",
+        "export interface LargeRefWrapper {",
+        "  localLarge: LocalBrandedRef<LargeObjectCarrier>;",
+        "  importedLarge: ImportedRef<LargeObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -637,6 +674,60 @@ describe("@discriminator schema generation", () => {
     expect(resolveTypeEnum("importedInferredBar")).toEqual([
       "prefixed_inferred_object_carrier",
     ]);
+  });
+
+  it("specializes Ref<T> for large object carriers without expanding the target object", () => {
+    const result = generateSchemasOrThrow({
+      filePath: fixturePath,
+      typeName: "LargeRefWrapper",
+    });
+
+    const rootProperties = expectRecord(result.jsonSchema.properties, "Missing root properties");
+    const defs = result.jsonSchema.$defs ?? {};
+    const resolvePropertySchema = (propertyName: string): Record<string, unknown> => {
+      const propertySchemaRecord = expectRecord(
+        rootProperties[propertyName],
+        `Missing schema for ${propertyName}`
+      );
+      const ref =
+        typeof propertySchemaRecord["$ref"] === "string"
+          ? propertySchemaRecord["$ref"]
+          : undefined;
+
+      return expectRecord(
+        ref === undefined
+          ? propertySchemaRecord
+          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        `Missing resolved schema for ${propertyName}`
+      );
+    };
+    const expectCompactRefSchema = (propertyName: string): void => {
+      const resolvedSchemaRecord = resolvePropertySchema(propertyName);
+      const propertiesRecord = expectRecord(
+        resolvedSchemaRecord["properties"],
+        `Missing properties for ${propertyName}`
+      );
+
+      expect(resolvedSchemaRecord).toMatchObject({
+        type: "object",
+        properties: {
+          type: {
+            enum: ["large_object"],
+          },
+          id: {
+            type: "string",
+          },
+          url: {
+            type: "string",
+          },
+        },
+      });
+      expect(Object.keys(propertiesRecord)).not.toContain("textField01");
+      expect(Object.keys(propertiesRecord)).not.toContain("nestedField20");
+    };
+
+    expectCompactRefSchema("localLarge");
+    expectCompactRefSchema("importedLarge");
   });
 
   it("rejects optional discriminator fields", () => {
