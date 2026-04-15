@@ -63,6 +63,9 @@ export interface ControlOptionConstraints {
 export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig;
 
 // @public
+export function defineFormSpecConfig(config: FormSpecConfig): FormSpecConfig;
+
+// @public
 export interface DynamicEnumField<N extends string, Source extends string> {
     readonly apiName?: string;
     readonly displayName?: string;
@@ -130,7 +133,19 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 
 // @public
 export interface FormSpecConfig {
-    constraints?: ConstraintConfig;
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly extensions?: readonly ExtensionDefinition[];
+    readonly metadata?: MetadataPolicyInput;
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly metadata?: MetadataPolicyInput;
 }
 
 // @public
@@ -161,25 +176,36 @@ export interface LayoutTypeConstraints {
     VerticalLayout?: Severity;
 }
 
-// @public
-export function loadConfig(options?: LoadConfigOptions): Promise<LoadConfigResult>;
+// @public @deprecated
+export function loadConfig(options?: LoadConfigOptions): Promise<{
+    config: ResolvedConstraintConfig;
+    configPath: string | null;
+    found: boolean;
+}>;
 
 // @public
-export function loadConfigFromString(yamlContent: string): ResolvedConstraintConfig;
+export interface LoadConfigFoundResult {
+    config: FormSpecConfig;
+    configPath: string;
+    found: true;
+}
+
+// @public
+export interface LoadConfigNotFoundResult {
+    found: false;
+}
 
 // @public
 export interface LoadConfigOptions {
     configPath?: string;
-    cwd?: string;
-    searchParents?: boolean;
+    searchFrom?: string;
 }
 
 // @public
-export interface LoadConfigResult {
-    config: ResolvedConstraintConfig;
-    configPath: string | null;
-    found: boolean;
-}
+export type LoadConfigResult = LoadConfigFoundResult | LoadConfigNotFoundResult;
+
+// @public
+export function loadFormSpecConfig(options?: LoadConfigOptions): Promise<LoadConfigResult>;
 
 // @public
 export interface NumberField<N extends string> {
@@ -208,12 +234,24 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 }
 
 // @public
+export function resolveConfigForFile(config: FormSpecConfig, filePath: string, configDir: string): ResolvedFormSpecConfig;
+
+// @public
 export interface ResolvedConstraintConfig {
     controlOptions: Required<ControlOptionConstraints>;
     fieldOptions: Required<FieldOptionConstraints>;
     fieldTypes: Required<FieldTypeConstraints>;
     layout: Required<LayoutConstraints>;
     uiSchema: ResolvedUISchemaConstraints;
+}
+
+// @public
+export interface ResolvedFormSpecConfig {
+    readonly constraints: ResolvedConstraintConfig;
+    readonly enumSerialization: "enum" | "oneOf";
+    readonly extensions: readonly ExtensionDefinition[];
+    readonly metadata: MetadataPolicyInput | undefined;
+    readonly vendorPrefix: string;
 }
 
 // @public
