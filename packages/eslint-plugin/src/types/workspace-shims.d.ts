@@ -1,4 +1,4 @@
-declare module "@formspec/constraints/browser" {
+declare module "@formspec/config/browser" {
   export interface FieldTypeConstraints {
     text?: "error" | "warn" | "off";
     number?: "error" | "warn" | "off";

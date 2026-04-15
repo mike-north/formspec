@@ -22,7 +22,7 @@
       "@formspec/core/internals": ["../core/dist/internals.d.ts"],
       "@formspec/dsl": ["../dsl/dist/dsl.d.ts"],
       "@formspec/build/browser": ["../build/dist/browser.d.ts"],
-      "@formspec/constraints/browser": ["../constraints/dist/browser.d.ts"],
+      "@formspec/config/browser": ["../constraints/dist/browser.d.ts"],
       "@formspec/eslint-plugin": ["../eslint-plugin/dist/eslint-plugin.d.ts"]
     }
   },

@@ -103,11 +103,11 @@ export function lintFormSpec(code: string, constraints: ConstraintsConfig): Lint
 
   if (hasFieldTypeRestrictions) {
     pluginRules["constraints-allowed-field-types"] = fieldTypesRule as unknown as RuleModule;
-    rules["@formspec/constraints-allowed-field-types"] = ["error", fieldTypeOptions];
+    rules["@formspec/config-allowed-field-types"] = ["error", fieldTypeOptions];
   }
   if (hasLayoutRestrictions) {
     pluginRules["constraints-allowed-layouts"] = layoutsRule as unknown as RuleModule;
-    rules["@formspec/constraints-allowed-layouts"] = ["error", layoutOptions];
+    rules["@formspec/config-allowed-layouts"] = ["error", layoutOptions];
   }
 
   // Create linter instance

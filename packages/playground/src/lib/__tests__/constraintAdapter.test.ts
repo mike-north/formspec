@@ -2,7 +2,7 @@
  * Tests for the constraint adapter module.
  *
  * The constraint adapter converts between playground UI config (booleans)
- * and @formspec/constraints config (Severity strings).
+ * and @formspec/config config (Severity strings).
  */
 
 import { describe, it, expect } from "vitest";

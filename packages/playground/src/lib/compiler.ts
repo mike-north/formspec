@@ -19,7 +19,7 @@ import {
   type UISchema,
   type ValidationDiagnostic,
 } from "@formspec/build/browser";
-import { validateFormSpec, type ConstraintConfig } from "@formspec/constraints/browser";
+import { validateFormSpec, type ConstraintConfig } from "@formspec/config/browser";
 import ts from "typescript";
 
 export interface CompilationResult {

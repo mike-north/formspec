@@ -1,14 +1,14 @@
 {
-  "name": "@formspec/constraints",
+  "name": "@formspec/config",
   "version": "0.1.0-alpha.42",
-  "description": "Constraint validation for FormSpec - restrict features based on target environment capabilities",
+  "description": "Unified configuration for FormSpec - extensions, constraints, metadata, and pipeline settings",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/constraints.d.ts",
+  "types": "./dist/config.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/constraints.d.ts",
+      "types": "./dist/config.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },

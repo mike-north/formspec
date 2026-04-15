@@ -163,7 +163,7 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(tsx@4.21.0)(yaml@2.8.2)
 
-  packages/constraints:
+  packages/config:
     dependencies:
       '@formspec/core':
         specifier: workspace:*
@@ -209,9 +209,9 @@ importers:
       '@formspec/analysis':
         specifier: workspace:*
         version: link:../analysis
-      '@formspec/constraints':
+      '@formspec/config':
         specifier: workspace:*
-        version: link:../constraints
+        version: link:../config
       '@formspec/core':
         specifier: workspace:*
         version: link:../core
@@ -283,9 +283,9 @@ importers:
       '@formspec/build':
         specifier: workspace:*
         version: link:../build
-      '@formspec/constraints':
+      '@formspec/config':
         specifier: workspace:*
-        version: link:../constraints
+        version: link:../config
       '@formspec/core':
         specifier: workspace:*
         version: link:../core

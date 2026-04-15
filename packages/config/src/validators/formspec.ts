@@ -34,7 +34,7 @@ export interface FormSpecValidationOptions {
  * @example
  * ```ts
  * import { formspec, field, group } from '@formspec/dsl';
- * import { validateFormSpecElements, defineConstraints } from '@formspec/constraints';
+ * import { validateFormSpecElements, defineConstraints } from '@formspec/config';
  *
  * const form = formspec(
  *   group("Contact",

@@ -1,5 +1,5 @@
 /**
- * \@formspec/constraints
+ * \@formspec/config
  *
  * Constraint validation for FormSpec - restrict features based on target
  * environment capabilities.
@@ -12,7 +12,7 @@
  *
  * @example
  * ```ts
- * import { loadConfig, validateFormSpecElements } from '@formspec/constraints';
+ * import { loadConfig, validateFormSpecElements } from '@formspec/config';
  * import { formspec, field } from '@formspec/dsl';
  *
  * // Load constraints from .formspec.yml

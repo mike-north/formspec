@@ -1,5 +1,5 @@
 /**
- * Browser-safe exports from @formspec/constraints.
+ * Browser-safe exports from @formspec/config.
  *
  * This entry point excludes the file-based config loader (loadConfig)
  * which requires Node.js APIs. Use this entry point for browser builds.

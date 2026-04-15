@@ -1,9 +1,9 @@
 /**
- * Converts between playground UI constraint config and @formspec/constraints config.
+ * Converts between playground UI constraint config and @formspec/config config.
  */
 
 import type { ConstraintsConfig } from "../components/Constraints";
-import type { ConstraintConfig, Severity } from "@formspec/constraints/browser";
+import type { ConstraintConfig, Severity } from "@formspec/config/browser";
 
 /**
  * Converts UI boolean (true = allowed, false = forbidden) to Severity.
@@ -13,7 +13,7 @@ function boolToSeverity(allowed: boolean): Severity {
 }
 
 /**
- * Converts playground ConstraintsConfig to @formspec/constraints ConstraintConfig.
+ * Converts playground ConstraintsConfig to @formspec/config ConstraintConfig.
  */
 export function toConstraintConfig(uiConfig: ConstraintsConfig): ConstraintConfig {
   return {
