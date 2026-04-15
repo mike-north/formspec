@@ -51,6 +51,7 @@ export type {
   ResolvedUISchemaConstraints,
   ResolvedRuleConstraints,
   FormSpecConfig,
+  FormSpecPackageOverride,
   ValidationIssue,
   ValidationResult,
 } from "./types.js";
@@ -80,6 +81,10 @@ export {
   type LoadConfigOptions,
   type LoadConfigResult,
 } from "./loader.js";
+
+// Config factory + resolution
+export { defineFormSpecConfig } from "./define.js";
+export { resolveConfigForFile, type ResolvedFormSpecConfig } from "./resolve.js";
 
 // Defaults
 export { DEFAULT_CONSTRAINTS, DEFAULT_CONFIG, mergeWithDefaults } from "./defaults.js";

@@ -216,11 +216,58 @@ export interface ResolvedConstraintConfig {
  * @public
  */
 export interface FormSpecConfig {
-  /** Constraint configuration */
-  constraints?: ConstraintConfig;
-  // Future: other top-level config sections
-  // build?: BuildConfig;
-  // presets?: string[];
+  /**
+   * Extension definitions providing custom types, constraints,
+   * annotations, and vocabulary keywords.
+   */
+  readonly extensions?: readonly import("@formspec/core").ExtensionDefinition[];
+
+  /** Constraint surface configuration — controls which field types,
+   * layouts, UI features, and field/control options are allowed. */
+  readonly constraints?: ConstraintConfig;
+
+  /**
+   * Metadata inference and naming policy. Controls how apiName,
+   * displayName, and plural forms are derived when not authored.
+   */
+  readonly metadata?: import("@formspec/core").MetadataPolicyInput;
+
+  /**
+   * Vendor prefix for extension-emitted JSON Schema keywords.
+   * Must start with "x-".
+   * @defaultValue "x-formspec"
+   */
+  readonly vendorPrefix?: string;
+
+  /**
+   * JSON Schema representation for static enums.
+   * - "enum": flat { "enum": ["a", "b"] }
+   * - "oneOf": { "oneOf": [{ "const": "a" }, ...] }
+   * @defaultValue "enum"
+   */
+  readonly enumSerialization?: "enum" | "oneOf";
+
+  /**
+   * Per-package configuration overrides for monorepos.
+   * Keys are glob patterns matched against file paths relative to
+   * the config file's directory. Values merge with root settings.
+   */
+  readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+}
+
+/**
+ * Per-package overrides that merge with the root config.
+ * Only settings that genuinely vary per package are overridable.
+ *
+ * @public
+ */
+export interface FormSpecPackageOverride {
+  /** Override constraint surface for this package. */
+  readonly constraints?: ConstraintConfig;
+  /** Override enum serialization for this package. */
+  readonly enumSerialization?: "enum" | "oneOf";
+  /** Override metadata policy for this package. */
+  readonly metadata?: import("@formspec/core").MetadataPolicyInput;
 }
 
 /**
