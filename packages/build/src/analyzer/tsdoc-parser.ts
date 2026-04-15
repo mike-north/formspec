@@ -40,6 +40,7 @@
 import * as ts from "typescript";
 import {
   checkSyntheticTagApplication,
+  extractCommentSummaryText,
   extractPathTarget as extractSharedPathTarget,
   getTagDefinition,
   hasTypeSemanticCapability,
@@ -1000,7 +1001,14 @@ export function parseTSDocTags(
       // Summary text → description annotation (spec 002 §2.3)
       {
         const summary = extractPlainText(docComment.summarySection).trim();
-        if (summary !== "") {
+        const sharedSummary = extractCommentSummaryText(commentText);
+
+        // TSDoc leaves unknown/custom modifier tags in the summary text when
+        // they are not registered with the parser. Fall back to the raw
+        // comment projection to detect the "tag-only, no summary" case so
+        // tag text does not leak into JSON Schema descriptions.
+        const hasTagOnlySummary = summary !== "" && sharedSummary === "" && parsedComment.tags.length > 0;
+        if (!hasTagOnlySummary && summary !== "") {
           annotations.push({
             kind: "annotation",
             annotationKind: "description",

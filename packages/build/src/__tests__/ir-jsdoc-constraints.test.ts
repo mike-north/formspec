@@ -533,6 +533,19 @@ describe("extractJSDocAnnotationNodes", () => {
     expect(descriptions).toHaveLength(0);
   });
 
+  it("does not treat a tag-only comment as summary text", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @primaryField */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    const descriptions = result.filter((n) => n.annotationKind === "description");
+    expect(descriptions).toHaveLength(0);
+  });
+
   it("summary + @remarks produces both description and remarks annotations (spec 002 §2.3)", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {

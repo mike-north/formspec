@@ -61,6 +61,9 @@ export class DescriptionPrecedenceForm {
 
   /** @remarks Remarks go to x-formspec-remarks, not description. */
   remarksOnly!: string;
+
+  /** @primaryField */
+  modifierTagOnly!: string;
 }
 
 export class PriceRange {
