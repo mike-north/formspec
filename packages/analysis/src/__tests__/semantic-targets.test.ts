@@ -281,4 +281,70 @@ describe("semantic-targets", () => {
       ])
     );
   });
+
+  it("allows built-in numeric constraints on custom types with builtinConstraintBroadenings", () => {
+    const customType: TypeNode = {
+      kind: "custom",
+      typeId: "x-test/decimal/Decimal",
+      payload: null,
+    };
+    const registry = {
+      findConstraint: () => undefined,
+      findConstraintTag: () => undefined,
+      findBuiltinConstraintBroadening: (typeId: string, tagName: string) =>
+        typeId === "x-test/decimal/Decimal" &&
+        ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"].includes(
+          tagName
+        )
+          ? { extensionId: "x-test/decimal", registration: {} }
+          : undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "amount",
+      customType,
+      [minimum(0, 1), maximum(999, 2)],
+      {},
+      { extensionRegistry: registry }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("rejects built-in numeric constraints on custom types without broadenings", () => {
+    const customType: TypeNode = {
+      kind: "custom",
+      typeId: "x-test/other/SomeType",
+      payload: null,
+    };
+    const registry = {
+      findConstraint: () => undefined,
+      findConstraintTag: () => undefined,
+      findBuiltinConstraintBroadening: () => undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "field",
+      customType,
+      [minimum(0, 1)],
+      {},
+      { extensionRegistry: registry }
+    );
+
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
+  });
+
+  it("rejects built-in numeric constraints on custom types when no registry is provided", () => {
+    const customType: TypeNode = {
+      kind: "custom",
+      typeId: "x-test/decimal/Decimal",
+      payload: null,
+    };
+
+    const result = analyzeConstraintTargets("amount", customType, [minimum(0, 1)], {});
+
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
+  });
 });

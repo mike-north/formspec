@@ -91,6 +91,10 @@ export interface ConstraintRegistryLike {
   ):
     | { readonly extensionId: string; readonly registration: ConstraintTagRegistrationLike }
     | undefined;
+  findBuiltinConstraintBroadening?(
+    typeId: string,
+    tagName: string
+  ): { readonly extensionId: string; readonly registration: unknown } | undefined;
 }
 
 function pathKey(path: PathTarget | null): string {
@@ -1155,13 +1159,22 @@ function checkConstraintOnType(
 
   const label = typeLabel(effectiveType);
 
+  // Check if a custom type has a builtin constraint broadening registered,
+  // which allows built-in constraints (e.g., @minimum) on non-numeric types.
+  const hasBroadening = (tagName: string): boolean => {
+    if (effectiveType.kind !== "custom" || extensionRegistry?.findBuiltinConstraintBroadening === undefined) {
+      return false;
+    }
+    return extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !== undefined;
+  };
+
   switch (constraint.constraintKind) {
     case "minimum":
     case "maximum":
     case "exclusiveMinimum":
     case "exclusiveMaximum":
     case "multipleOf":
-      if (!isNumber) {
+      if (!isNumber && !hasBroadening(constraint.constraintKind)) {
         addTypeMismatch(
           diagnostics,
           `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on number fields, but field type is "${label}"`,
