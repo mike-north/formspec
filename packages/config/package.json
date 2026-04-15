@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@formspec/core": "workspace:*",
+    "jiti": "^2.0.0",
     "yaml": "^2.7.0"
   },
   "devDependencies": {

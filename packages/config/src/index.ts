@@ -75,11 +75,13 @@ export type {
 
 // Config loading
 export {
+  loadFormSpecConfig,
   loadConfig,
-  loadConfigFromString,
   defineConstraints,
   type LoadConfigOptions,
   type LoadConfigResult,
+  type LoadConfigFoundResult,
+  type LoadConfigNotFoundResult,
 } from "./loader.js";
 
 // Config factory + resolution

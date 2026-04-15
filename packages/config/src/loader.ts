@@ -1,13 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { parse as parseYaml } from "yaml";
+import { createJiti } from "jiti";
 import type { FormSpecConfig, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
 
 /**
- * Default config file names to search for (in order of priority).
+ * Config file names to search for, in priority order.
  */
-const CONFIG_FILE_NAMES = [".formspec.yml", ".formspec.yaml", "formspec.yml"];
+const CONFIG_FILE_NAMES = [
+  "formspec.config.ts",
+  "formspec.config.mts",
+  "formspec.config.js",
+  "formspec.config.mjs",
+];
 
 /**
  * Options for loading configuration.
@@ -16,22 +21,40 @@ const CONFIG_FILE_NAMES = [".formspec.yml", ".formspec.yaml", "formspec.yml"];
  */
 export interface LoadConfigOptions {
   /**
-   * The directory to search for config files.
+   * The directory to start searching from.
    * Defaults to process.cwd().
    */
-  cwd?: string;
+  searchFrom?: string;
 
   /**
    * Explicit path to a config file.
-   * If provided, skips searching for default config file names.
+   * If provided, skips file discovery entirely.
    */
   configPath?: string;
+}
 
-  /**
-   * Whether to search parent directories for config files.
-   * Defaults to true.
-   */
-  searchParents?: boolean;
+/**
+ * Result when a config file was found and loaded.
+ *
+ * @public
+ */
+export interface LoadConfigFoundResult {
+  /** The loaded configuration */
+  config: FormSpecConfig;
+  /** The absolute path to the config file that was loaded */
+  configPath: string;
+  /** Whether a config file was found */
+  found: true;
+}
+
+/**
+ * Result when no config file was found.
+ *
+ * @public
+ */
+export interface LoadConfigNotFoundResult {
+  /** Whether a config file was found */
+  found: false;
 }
 
 /**
@@ -39,22 +62,31 @@ export interface LoadConfigOptions {
  *
  * @public
  */
-export interface LoadConfigResult {
-  /** The loaded and merged configuration */
-  config: ResolvedConstraintConfig;
-  /** The path to the config file that was loaded (if any) */
-  configPath: string | null;
-  /** Whether a config file was found */
-  found: boolean;
+export type LoadConfigResult = LoadConfigFoundResult | LoadConfigNotFoundResult;
+
+/**
+ * Checks if a directory is a workspace root by looking for a package.json
+ * with a "workspaces" field.
+ */
+async function isWorkspaceRoot(dir: string): Promise<boolean> {
+  const pkgPath = resolve(dir, "package.json");
+  try {
+    const content = await readFile(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as Record<string, unknown>;
+    return "workspaces" in pkg;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Searches for a config file in the given directory and optionally parent directories.
+ * Walks up the directory tree from startDir, searching for a config file.
+ * Stops at the filesystem root or a directory containing a workspace root package.json.
  */
-async function findConfigFile(startDir: string, searchParents: boolean): Promise<string | null> {
+async function findConfigFile(startDir: string): Promise<string | null> {
   let currentDir = resolve(startDir);
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break conditions
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit break conditions
   while (true) {
     for (const fileName of CONFIG_FILE_NAMES) {
       const filePath = resolve(currentDir, fileName);
@@ -62,11 +94,12 @@ async function findConfigFile(startDir: string, searchParents: boolean): Promise
         await readFile(filePath);
         return filePath;
       } catch {
-        // File doesn't exist, continue searching
+        // File doesn't exist, try next name
       }
     }
 
-    if (!searchParents) {
+    // Stop at workspace root — don't cross workspace boundaries
+    if (await isWorkspaceRoot(currentDir)) {
       break;
     }
 
@@ -82,69 +115,79 @@ async function findConfigFile(startDir: string, searchParents: boolean): Promise
 }
 
 /**
- * Parses a YAML config file and returns the FormSpecConfig.
+ * Loads and validates a TypeScript/JavaScript config file using jiti.
+ * The file must have a default export of a FormSpecConfig object.
  */
-async function parseConfigFile(filePath: string): Promise<FormSpecConfig> {
-  const content = await readFile(filePath, "utf-8");
-  const parsed = parseYaml(content) as unknown;
+async function loadConfigFile(filePath: string): Promise<FormSpecConfig> {
+  const jiti = createJiti(import.meta.url);
+  const mod = await jiti.import(filePath);
 
-  if (parsed === null || parsed === undefined) {
+  const defaultExport = (mod as { default?: unknown }).default ?? mod;
+
+  if (defaultExport === null || defaultExport === undefined) {
     return {};
   }
 
-  if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Invalid config file at ${filePath}: expected an object, got ${typeof parsed}`);
+  if (typeof defaultExport !== "object" || Array.isArray(defaultExport)) {
+    throw new Error(
+      `Invalid config file at ${filePath}: default export must be a FormSpecConfig object, got ${Array.isArray(defaultExport) ? "array" : typeof defaultExport}`,
+    );
   }
 
-  return parsed as FormSpecConfig;
+  return defaultExport as FormSpecConfig;
 }
 
 /**
- * Loads FormSpec constraint configuration from a .formspec.yml file.
+ * Loads FormSpec configuration from a TypeScript config file.
+ *
+ * Searches for `formspec.config.ts` (and `.mts`, `.js`, `.mjs` variants)
+ * starting from `searchFrom` and walking up the directory tree. Stops at
+ * the filesystem root or a workspace root (a directory with a package.json
+ * containing a "workspaces" field).
  *
  * @param options - Options for loading configuration
- * @returns The loaded configuration with defaults applied
+ * @returns The loaded configuration, or `{ found: false }` if no config file exists
  *
  * @example
  * ```ts
- * // Load from current directory (searches for .formspec.yml)
- * const result = await loadConfig();
+ * // Discover config from current directory
+ * const result = await loadFormSpecConfig();
+ * if (result.found) {
+ *   console.log(result.config, result.configPath);
+ * }
  *
- * // Load from specific directory
- * const result = await loadConfig({ cwd: '/path/to/project' });
+ * // Discover config from a specific directory
+ * const result = await loadFormSpecConfig({ searchFrom: '/path/to/project' });
  *
- * // Load from specific file
- * const result = await loadConfig({ configPath: '/path/to/config.yml' });
+ * // Load a specific config file
+ * const result = await loadFormSpecConfig({ configPath: '/path/to/formspec.config.ts' });
  * ```
  *
  * @public
  */
-export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadConfigResult> {
-  const { cwd = process.cwd(), configPath, searchParents = true } = options;
+export async function loadFormSpecConfig(
+  options: LoadConfigOptions = {},
+): Promise<LoadConfigResult> {
+  const { searchFrom = process.cwd(), configPath } = options;
 
   let resolvedPath: string | null = null;
 
   if (configPath) {
-    resolvedPath = resolve(cwd, configPath);
+    resolvedPath = resolve(configPath);
     try {
       await readFile(resolvedPath);
     } catch {
       throw new Error(`Config file not found at ${resolvedPath}`);
     }
   } else {
-    resolvedPath = await findConfigFile(cwd, searchParents);
+    resolvedPath = await findConfigFile(searchFrom);
   }
 
   if (!resolvedPath) {
-    return {
-      config: mergeWithDefaults(undefined),
-      configPath: null,
-      found: false,
-    };
+    return { found: false };
   }
 
-  const fileConfig = await parseConfigFile(resolvedPath);
-  const config = mergeWithDefaults(fileConfig.constraints);
+  const config = await loadConfigFile(resolvedPath);
 
   return {
     config,
@@ -154,31 +197,41 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<LoadC
 }
 
 /**
- * Synchronously loads config from a pre-parsed YAML string.
- * Useful for testing or when config is already available.
+ * Loads FormSpec constraint configuration from a config file.
+ * Returns the resolved constraints with defaults applied.
  *
- * @param yamlContent - The YAML content to parse
- * @returns The parsed and merged configuration
+ * @deprecated Use `loadFormSpecConfig` instead, which returns the full `FormSpecConfig`.
+ *
+ * @param options - Options for loading configuration
+ * @returns The loaded configuration with defaults applied
  *
  * @public
  */
-export function loadConfigFromString(yamlContent: string): ResolvedConstraintConfig {
-  const parsed = parseYaml(yamlContent) as FormSpecConfig | null | undefined;
+export async function loadConfig(options: LoadConfigOptions = {}): Promise<{
+  config: ResolvedConstraintConfig;
+  configPath: string | null;
+  found: boolean;
+}> {
+  const result = await loadFormSpecConfig(options);
 
-  if (parsed === null || parsed === undefined) {
-    return mergeWithDefaults(undefined);
+  if (!result.found) {
+    return {
+      config: mergeWithDefaults(undefined),
+      configPath: null,
+      found: false,
+    };
   }
 
-  if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Invalid config content: expected an object, got ${typeof parsed}`);
-  }
-
-  return mergeWithDefaults(parsed.constraints);
+  return {
+    config: mergeWithDefaults(result.config.constraints),
+    configPath: result.configPath,
+    found: true,
+  };
 }
 
 /**
  * Creates a constraint configuration directly from an object.
- * Useful for programmatic configuration without YAML.
+ * Useful for programmatic configuration without a config file.
  *
  * @param config - Partial constraint configuration
  * @returns Complete configuration with defaults applied
