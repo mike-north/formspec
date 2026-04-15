@@ -10,6 +10,7 @@
  * - Malformed/ignored tag syntax (bare tags, non-numeric, bad path-targets)
  * - PascalCase tag equivalence (@Minimum identical to @minimum)
  * - Path-targeted constraints (@minimum :prop value) skipped entirely
+ * - Builtin constraint broadening via extension registry in settings
  *
  * @see docs/002-tsdoc-grammar.md §2.1 (constraint tag type applicability)
  * @see docs/003-json-schema-vocabulary.md §2.6-§2.7 (constraint → keyword mapping)
@@ -36,6 +37,29 @@ const ruleTester = new RuleTester({
     },
   },
 });
+
+// ---------------------------------------------------------------------------
+// Mock extension registry for broadening tests
+// ---------------------------------------------------------------------------
+// Simulates a registry where "Decimal" is a custom type with a builtin
+// constraint broadening for the "minimum" tag (numeric-comparable).
+const mockRegistryWithDecimal = {
+  findTypeByName(typeName: string) {
+    if (typeName === "Decimal") {
+      return {
+        extensionId: "x-test",
+        registration: { typeName: "Decimal" },
+      };
+    }
+    return undefined;
+  },
+  findBuiltinConstraintBroadening(typeId: string, tagName: string) {
+    if (typeId === "x-test/Decimal" && tagName === "minimum") {
+      return { extensionId: "x-test", registration: { tagName: "minimum" } };
+    }
+    return undefined;
+  },
+};
 
 ruleTester.run("tag-type-check", tagTypeCheck, {
   valid: [
@@ -358,6 +382,41 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
           count!: number;
         }
       `,
+    },
+
+    // -------------------------------------------------------------------------
+    // Builtin constraint broadening via extension registry
+    // -------------------------------------------------------------------------
+    // @minimum on a custom "Decimal" type is allowed when the extension
+    // registry declares a broadening for x-test/Decimal + minimum.
+    {
+      code: `
+        type Decimal = { _brand: "Decimal" };
+        class Form {
+          /** @minimum 0 */
+          price!: Decimal;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: mockRegistryWithDecimal,
+        },
+      },
+    },
+    // Multiple numeric constraints on a broadened type — all pass
+    {
+      code: `
+        type Decimal = { _brand: "Decimal" };
+        class Form {
+          /** @minimum 0 */
+          priceA!: Decimal;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: mockRegistryWithDecimal,
+        },
+      },
     },
   ],
   invalid: [
@@ -691,6 +750,38 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
       errors: [{ messageId: "typeMismatch" }, { messageId: "typeMismatch" }],
+    },
+
+    // -------------------------------------------------------------------------
+    // Builtin constraint broadening: non-broadened tag still reports error
+    // -------------------------------------------------------------------------
+    // @maximum is not broadened for x-test/Decimal in the mock registry,
+    // so it still produces a type mismatch.
+    {
+      code: `
+        type Decimal = { _brand: "Decimal" };
+        class Form {
+          /** @maximum 100 */
+          price!: Decimal;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: mockRegistryWithDecimal,
+        },
+      },
+      errors: [{ messageId: "typeMismatch" }],
+    },
+    // Without a registry, custom types have no broadening and still fail.
+    {
+      code: `
+        type Decimal = { _brand: "Decimal" };
+        class Form {
+          /** @minimum 0 */
+          price!: Decimal;
+        }
+      `,
+      errors: [{ messageId: "typeMismatch" }],
     },
   ],
 });

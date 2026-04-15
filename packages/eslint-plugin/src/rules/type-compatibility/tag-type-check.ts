@@ -7,8 +7,9 @@ import {
   resolveTagTarget,
 } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
-import { getFieldTypeCategory } from "../../utils/type-utils.js";
+import { getFieldTypeCategory, type FieldTypeCategory } from "../../utils/type-utils.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";
+import { getTagDefinition, type SemanticCapability } from "@formspec/analysis/internal";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -16,20 +17,50 @@ const createRule = ESLintUtils.RuleCreator(
 
 type MessageIds = "typeMismatch";
 
-const EXPECTED_TYPES: Record<string, string[]> = {
-  minimum: ["number", "bigint"],
-  maximum: ["number", "bigint"],
-  exclusiveMinimum: ["number", "bigint"],
-  exclusiveMaximum: ["number", "bigint"],
-  multipleOf: ["number", "bigint"],
-  minLength: ["string"],
-  maxLength: ["string"],
-  pattern: ["string"],
-  minItems: ["array"],
-  maxItems: ["array"],
-  uniqueItems: ["array"],
-  enumOptions: ["string", "union"],
+/**
+ * Minimal interface for the extension registry stored in ESLint settings.
+ * Avoids importing @formspec/build in the rule itself.
+ */
+interface SettingsExtensionRegistry {
+  findTypeByName(
+    typeName: string
+  ): { readonly extensionId: string; readonly registration: { readonly typeName: string } } | undefined;
+  findBuiltinConstraintBroadening(
+    typeId: string,
+    tagName: string
+  ): object | undefined;
+}
+
+const CAPABILITY_TO_FIELD_TYPES: Record<SemanticCapability, FieldTypeCategory[]> = {
+  "numeric-comparable": ["number", "bigint"],
+  "string-like": ["string"],
+  "array-like": ["array"],
+  "enum-member-addressable": ["string", "union"],
+  "json-like": [],
+  "condition-like": [],
+  "object-like": ["object"],
 };
+
+function getExpectedTypesForTag(tagName: string): FieldTypeCategory[] | null {
+  const definition = getTagDefinition(tagName);
+  if (definition === null) return null;
+  const capabilities = definition.capabilities;
+  if (capabilities.length === 0) return null;
+  const types: FieldTypeCategory[] = [];
+  for (const cap of capabilities) {
+    // CAPABILITY_TO_FIELD_TYPES covers all SemanticCapability variants
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- exhaustive record
+    const capTypes = CAPABILITY_TO_FIELD_TYPES[cap]!;
+    if (capTypes.length === 0) {
+      // json-like or condition-like: skip type check entirely
+      return null;
+    }
+    for (const t of capTypes) {
+      if (!types.includes(t)) types.push(t);
+    }
+  }
+  return types.length > 0 ? types : null;
+}
 
 /**
  * ESLint rule that ensures FormSpec tags are applied to compatible field types.
@@ -54,12 +85,20 @@ export const tagTypeCheck = createRule<[], MessageIds>({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
+    const registry = (context.settings as Record<string, unknown>)?.["formspec"] !== undefined
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
+      ? ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
+          "extensionRegistry"
+        ] as SettingsExtensionRegistry | undefined)
+      : undefined;
+
     return createDeclarationVisitor((node) => {
       const declarationType = getDeclarationType(node, services);
       if (!declarationType) return;
       const fieldName = getDeclarationName(node);
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
-        const expectedTypes = EXPECTED_TYPES[tag.normalizedName];
+        const expectedTypes = getExpectedTypesForTag(tag.normalizedName);
         if (!expectedTypes) continue;
         const metadata = getTagMetadata(tag.rawName);
         const supportsValueLessCheck =
@@ -91,6 +130,22 @@ export const tagTypeCheck = createRule<[], MessageIds>({
         if (!resolved.valid || !resolved.type) continue;
         const actualCategory = getFieldTypeCategory(resolved.type, checker);
         if (expectedTypes.includes(actualCategory)) continue;
+
+        // Check for builtin constraint broadening via extension registry.
+        // Use checker.typeToString for the name — it correctly resolves
+        // type aliases (e.g., `type Decimal = ...` → "Decimal").
+        if (registry !== undefined) {
+          const typeName = checker.typeToString(resolved.type);
+          const typeResult = registry.findTypeByName(typeName);
+          if (typeResult !== undefined) {
+            const typeId = `${typeResult.extensionId}/${typeResult.registration.typeName}`;
+            const broadening = registry.findBuiltinConstraintBroadening(
+              typeId,
+              tag.normalizedName
+            );
+            if (broadening !== undefined) continue;
+          }
+        }
 
         context.report({
           loc: tag.comment.loc,
