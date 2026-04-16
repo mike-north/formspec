@@ -119,8 +119,8 @@ function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): T
 
   // Register FormSpec annotation and structure tags so summary extraction
   // stops at recognized tags and mid-prose mentions are parsed as real
-  // tags per TSDoc semantics. Tags that are standard TSDoc (@description,
-  // @example, @defaultValue, @deprecated) are already registered.
+  // tags per TSDoc semantics. Tags that are standard TSDoc (@example,
+  // @defaultValue, @deprecated) are already registered.
   for (const tagName of [
     "apiName",
     "displayName",
