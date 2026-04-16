@@ -59,12 +59,12 @@
     {
       "tagName": "@displayName",
       "syntaxKind": "block",
-      "allowMultiple": false
+      "allowMultiple": true
     },
     {
       "tagName": "@apiName",
       "syntaxKind": "block",
-      "allowMultiple": false
+      "allowMultiple": true
     },
     {
       "tagName": "@format",

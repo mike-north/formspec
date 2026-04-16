@@ -305,3 +305,27 @@ export function collectCompatiblePathTargets(
 ): readonly string[] {
   return collectPropertyPaths(type, checker, capability, [], new Set<ts.Type>());
 }
+
+/**
+ * Extracts addressable enum member values from a string literal union type
+ * for use as `:member` target completions.
+ */
+export function getEnumMemberCompletions(type: ts.Type): readonly string[] {
+  const stripped = stripNullishUnion(type);
+
+  if (stripped.isStringLiteral()) {
+    return [stripped.value];
+  }
+
+  if (!stripped.isUnion()) {
+    return [];
+  }
+
+  const members: string[] = [];
+  for (const member of stripped.types) {
+    if (member.isStringLiteral()) {
+      members.push(member.value);
+    }
+  }
+  return members.sort();
+}

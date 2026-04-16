@@ -160,6 +160,180 @@ describe("cursor-context", () => {
     }
   });
 
+  it.each(["displayName", "apiName"])(
+    "suggests enum member names for @%s :member on string union fields",
+    (tagName) => {
+      const source = `
+      class Foo {
+        /** @${tagName} :draft */
+        status!: "draft" | "active" | "archived";
+      }
+    `;
+      const offset = source.indexOf("draft", source.indexOf(":draft")) + 1;
+      const { checker, sourceFile } = createProgram(source);
+      const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+      const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+      if (property === undefined) {
+        throw new Error("Expected property declaration");
+      }
+
+      const subjectType = checker.getTypeAtLocation(property);
+      const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+        checker,
+        subjectType,
+        placement: "class-field",
+      });
+
+      if (context.kind !== "target") {
+        throw new Error("Expected target context");
+      }
+      expect(context.semantic.targetCompletions).toEqual(["active", "archived", "draft"]);
+    }
+  );
+
+  it("strips null from nullable string union and returns sorted member completions", () => {
+    const source = `
+      class Foo {
+        /** @displayName :draft */
+        status!: "draft" | "active" | null;
+      }
+    `;
+    const offset = source.indexOf("draft", source.indexOf(":draft")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    if (context.kind !== "target") {
+      throw new Error("Expected target context");
+    }
+    expect(context.semantic.targetCompletions).toEqual(["active", "draft"]);
+  });
+
+  it("returns the sole member for a single-member string literal type", () => {
+    const source = `
+      class Foo {
+        /** @displayName :only */
+        status!: "only";
+      }
+    `;
+    const offset = source.indexOf("only", source.indexOf(":only")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    if (context.kind !== "target") {
+      throw new Error("Expected target context");
+    }
+    expect(context.semantic.targetCompletions).toEqual(["only"]);
+  });
+
+  it("returns empty completions for a non-string union type", () => {
+    const source = `
+      class Foo {
+        /** @displayName :member */
+        count!: 1 | 2 | 3;
+      }
+    `;
+    const offset = source.indexOf("member", source.indexOf(":member")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    if (context.kind !== "target") {
+      throw new Error("Expected target context");
+    }
+    expect(context.semantic.targetCompletions).toEqual([]);
+  });
+
+  it("returns empty completions for a plain string type", () => {
+    const source = `
+      class Foo {
+        /** @displayName :member */
+        label!: string;
+      }
+    `;
+    const offset = source.indexOf("member", source.indexOf(":member")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    if (context.kind !== "target") {
+      throw new Error("Expected target context");
+    }
+    expect(context.semantic.targetCompletions).toEqual([]);
+  });
+
+  it("does not surface member completions for @minimum on a string union field", () => {
+    const source = `
+      class Foo {
+        /** @minimum :amount 0 */
+        status!: "draft" | "active" | "archived";
+      }
+    `;
+    // Cursor on the colon — @minimum has no target-member parameter, so no enum members appear
+    const colonOffset = source.indexOf(":", source.indexOf("@minimum"));
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, colonOffset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    if (context.kind !== "target") {
+      throw new Error("Expected target context");
+    }
+    expect(context.semantic.targetCompletions).not.toContain("draft");
+    expect(context.semantic.targetCompletions).not.toContain("active");
+    expect(context.semantic.targetCompletions).not.toContain("archived");
+  });
+
   it("exposes contextual signatures for the active tag occurrence", () => {
     const source = `
       class Foo {

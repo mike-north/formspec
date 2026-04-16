@@ -4,7 +4,7 @@ import {
   type ParsedCommentTag,
 } from "./comment-syntax.js";
 import type * as ts from "typescript";
-import { collectCompatiblePathTargets } from "./ts-binding.js";
+import { collectCompatiblePathTargets, getEnumMemberCompletions } from "./ts-binding.js";
 import {
   getDeclarationTypeParameterNames,
   getDirectPropertyTargets,
@@ -229,9 +229,11 @@ function getSupportedTargets(signatures: readonly TagSignature[]): readonly Form
   return [...supportedTargets];
 }
 
+
 function getTargetCompletions(
   signatures: readonly TagSignature[],
-  compatiblePathTargets: readonly string[]
+  compatiblePathTargets: readonly string[],
+  memberCompletions: readonly string[] = []
 ): readonly string[] {
   const completions = new Set<string>();
 
@@ -241,6 +243,11 @@ function getTargetCompletions(
         case "target-path":
           for (const target of compatiblePathTargets) {
             completions.add(target);
+          }
+          break;
+        case "target-member":
+          for (const member of memberCompletions) {
+            completions.add(member);
           }
           break;
         case "target-variant":
@@ -289,10 +296,12 @@ export function getCommentTagSemanticContext(
     tagDefinition?.canonicalName === "discriminator"
       ? getDiscriminatorTargetCompletions(options)
       : getCompatiblePathTargetsForSignatures(signatures, options?.checker, options?.subjectType);
+  const memberCompletions =
+    options?.subjectType !== undefined ? getEnumMemberCompletions(options.subjectType) : [];
   const targetCompletions =
     tagDefinition?.canonicalName === "discriminator"
       ? compatiblePathTargets
-      : getTargetCompletions(signatures, compatiblePathTargets);
+      : getTargetCompletions(signatures, compatiblePathTargets, memberCompletions);
   const contextualSignatures = getContextualSignatures(tag, signatures);
 
   const semantic: CommentTagSemanticContext = {

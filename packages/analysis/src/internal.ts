@@ -132,6 +132,7 @@ export type {
 } from "./metadata-analysis.js";
 export {
   collectCompatiblePathTargets,
+  getEnumMemberCompletions,
   getTypeSemanticCapabilities,
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
