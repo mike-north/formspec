@@ -1,5 +1,5 @@
 ---
-"@formspec/constraints": minor
+"@formspec/config": minor
 "@formspec/core": minor
 "@formspec/eslint-plugin": minor
 ---

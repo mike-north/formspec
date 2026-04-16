@@ -1,7 +1,6 @@
 ---
-"@formspec/playground": minor
 "@formspec/build": minor
-"@formspec/constraints": minor
+"@formspec/config": minor
 "@formspec/eslint-plugin": patch
 ---
 

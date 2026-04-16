@@ -1,5 +1,5 @@
 ---
-"@formspec/constraints": patch
+"@formspec/config": patch
 ---
 
 Fix type errors and improve test coverage in constraints package

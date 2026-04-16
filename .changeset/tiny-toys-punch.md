@@ -2,7 +2,7 @@
 "@formspec/analysis": patch
 "@formspec/build": minor
 "@formspec/cli": patch
-"@formspec/constraints": patch
+"@formspec/config": patch
 "@formspec/core": patch
 "@formspec/dsl": patch
 "@formspec/eslint-plugin": patch
