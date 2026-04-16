@@ -41,31 +41,22 @@ import * as ts from "typescript";
 import {
   checkSyntheticTagApplication,
   choosePreferredPayloadText,
-  extractBlockText,
-  extractCommentSummaryText,
   extractPathTarget as extractSharedPathTarget,
-  extractPlainText,
-  getOrCreateTSDocParser,
   getTagDefinition,
   hasTypeSemanticCapability,
   normalizeFormSpecTagName,
-  parseCommentBlock,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   parseTagSyntax,
+  parseUnifiedComment,
   resolveDeclarationPlacement,
   resolvePathTargetType,
-  sliceCommentSpan,
   TAGS_REQUIRING_RAW_TEXT,
   type ConstraintSemanticDiagnostic,
   type FormSpecValueKind,
   type ParsedCommentTag,
   type SemanticCapability,
 } from "@formspec/analysis/internal";
-import {
-  TextRange,
-  type DocBlock,
-} from "@microsoft/tsdoc";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,
@@ -79,17 +70,6 @@ import {
   type TypeNode,
 } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
-
-function sharedCommentSyntaxOptions(
-  options?: ParseTSDocOptions,
-  offset?: number
-): NonNullable<Parameters<typeof parseCommentBlock>[1]> {
-  const extensions = options?.extensionRegistry?.extensions;
-  return {
-    ...(offset !== undefined ? { offset } : {}),
-    ...(extensions !== undefined ? { extensions } : {}),
-  };
-}
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -626,8 +606,8 @@ function buildCompilerBackedConstraintDiagnostics(
 
 const parseResultCache = new Map<string, TSDocParseResult>();
 
-function getParser(options?: ParseTSDocOptions) {
-  const extensionTagNames = [
+function getExtensionTagNames(options?: ParseTSDocOptions): readonly string[] {
+  return [
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
       (extension.constraintTags ?? []).map((tag) => normalizeFormSpecTagName(tag.tagName))
     ) ?? []),
@@ -635,7 +615,6 @@ function getParser(options?: ParseTSDocOptions) {
       (extension.metadataSlots ?? []).map((slot) => normalizeFormSpecTagName(slot.tagName))
     ) ?? []),
   ].sort();
-  return getOrCreateTSDocParser(extensionTagNames);
 }
 
 // =============================================================================
@@ -748,13 +727,13 @@ function getParseCacheKey(
 
 /**
  * Parses the JSDoc comment attached to a TypeScript AST node using the
- * official TSDoc parser and returns canonical IR constraint and annotation
+ * unified comment parser and returns canonical IR constraint and annotation
  * nodes.
  *
  * For constraint tags (`@minimum`, `@pattern`, `@enumOptions`, etc.),
- * the structured TSDoc parser is used. Canonical annotation tags
- * (`@displayName`) are also parsed structurally. Summary text and `@remarks`
- * are extracted as separate annotation nodes.
+ * the unified parser provides aligned span and TSDoc block information.
+ * Canonical annotation tags (`@displayName`) are also parsed structurally.
+ * Summary text and `@remarks` are extracted as separate annotation nodes.
  *
  * @param node - The TS AST node to inspect (PropertyDeclaration, PropertySignature, etc.)
  * @param file - Absolute source file path for provenance
@@ -778,13 +757,7 @@ export function parseTSDocTags(
   let placeholder: string | undefined;
   let displayNameProvenance: Provenance | undefined;
   let placeholderProvenance: Provenance | undefined;
-  const rawTextTags: {
-    readonly tag: ParsedCommentTag;
-    readonly commentText: string;
-    readonly commentOffset: number;
-  }[] = [];
 
-  // ----- Phase 1: TSDoc structural parse for constraint tags -----
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
 
@@ -794,6 +767,9 @@ export function parseTSDocTags(
 
   const supportingDeclarations = buildSupportingDeclarations(sourceFile, extensionTypeNames);
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
+
+  // TS compiler API fallback for TAGS_REQUIRING_RAW_TEXT: handles tags that
+  // the regex parser misses (e.g. malformed or unusual comment syntax).
   const rawTextFallbacks = collectRawTextFallbacks(node, file);
 
   if (commentRanges) {
@@ -807,48 +783,21 @@ export function parseTSDocTags(
         continue;
       }
 
-      const parser = getParser(options);
-      const parserContext = parser.parseRange(
-        TextRange.fromStringRange(sourceText, range.pos, range.end)
-      );
-      const docComment = parserContext.docComment;
-      const parsedComment = parseCommentBlock(
-        commentText,
-        sharedCommentSyntaxOptions(options, range.pos)
-      );
-      let parsedTagCursor = 0;
+      const extensions = options?.extensionRegistry?.extensions;
+      const unified = parseUnifiedComment(commentText, {
+        offset: range.pos,
+        extensionTagNames: getExtensionTagNames(options),
+        ...(extensions !== undefined ? { extensions } : {}),
+      });
 
-      const nextParsedTag = (normalizedTagName: string) => {
-        while (parsedTagCursor < parsedComment.tags.length) {
-          const candidate = parsedComment.tags[parsedTagCursor];
-          parsedTagCursor += 1;
-          if (candidate?.normalizedTagName === normalizedTagName) {
-            return candidate;
-          }
-        }
-        return null;
-      };
+      for (const tag of unified.tags) {
+        const tagName = tag.normalizedTagName;
 
-      for (const parsedTag of parsedComment.tags) {
-        if (TAGS_REQUIRING_RAW_TEXT.has(parsedTag.normalizedTagName)) {
-          rawTextTags.push({ tag: parsedTag, commentText, commentOffset: range.pos });
-        }
-      }
-
-      // Extract constraint nodes from custom blocks.
-      // Tags in TAGS_REQUIRING_RAW_TEXT are skipped here and handled via the
-      // TS compiler API in Phase 1b below.
-      for (const block of docComment.customBlocks) {
-        const tagName = normalizeConstraintTagName(block.blockTag.tagName.substring(1)); // Remove leading @ and normalize to camelCase
-        const parsedTag = nextParsedTag(tagName);
         if (tagName === "displayName" || tagName === "format" || tagName === "placeholder") {
-          const text = getBestBlockPayloadText(parsedTag, commentText, range.pos, block);
+          const text = tag.rawPayloadText;
           if (text === "") continue;
 
-          const provenance =
-            parsedTag !== null
-              ? provenanceForParsedTag(parsedTag, sourceFile, file)
-              : provenanceForComment(range, sourceFile, file, tagName);
+          const provenance = provenanceForParsedTag(tag, sourceFile, file);
           switch (tagName) {
             case "displayName":
               if (!isMemberTargetDisplayName(text) && displayName === undefined) {
@@ -876,23 +825,60 @@ export function parseTSDocTags(
           continue;
         }
 
-        if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) continue;
+        if (TAGS_REQUIRING_RAW_TEXT.has(tagName)) {
+          // Consume corresponding compiler-API fallback entry (aligning by tag order).
+          // Use choosePreferredPayloadText to handle multi-line payloads: the
+          // regex parser's span may only capture the first line (e.g. `{`), while
+          // the TS compiler API provides the full content for multi-line payloads.
+          const fallback = rawTextFallbacks.get(tagName)?.shift();
+          const text = choosePreferredPayloadText(tag.rawPayloadText, fallback?.text ?? "");
+          if (text === "") continue;
 
-        const text = getBestBlockPayloadText(parsedTag, commentText, range.pos, block);
+          const provenance = provenanceForParsedTag(tag, sourceFile, file);
+          if (tagName === "defaultValue") {
+            annotations.push(parseDefaultValueTagValue(text, provenance));
+            continue;
+          }
+
+          const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
+            node,
+            sourceFile,
+            tagName,
+            tag,
+            provenance,
+            supportingDeclarations,
+            options
+          );
+          if (compilerDiagnostics.length > 0) {
+            pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
+            continue;
+          }
+
+          const constraintNode = parseConstraintTagValue(
+            tagName,
+            text,
+            provenance,
+            sharedTagValueOptions(options)
+          );
+          if (constraintNode) {
+            constraints.push(constraintNode);
+          }
+          continue;
+        }
+
+        // Regular constraint tag (not requiring raw text)
+        const text = tag.rawPayloadText;
         const expectedType = isBuiltinConstraintName(tagName)
           ? BUILTIN_CONSTRAINT_DEFINITIONS[tagName]
           : undefined;
         if (text === "" && expectedType !== "boolean") continue;
 
-        const provenance =
-          parsedTag !== null
-            ? provenanceForParsedTag(parsedTag, sourceFile, file)
-            : provenanceForComment(range, sourceFile, file, tagName);
+        const provenance = provenanceForParsedTag(tag, sourceFile, file);
         const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
           node,
           sourceFile,
           tagName,
-          parsedTag,
+          tag,
           provenance,
           supportingDeclarations,
           options
@@ -912,48 +898,34 @@ export function parseTSDocTags(
         }
       }
 
-      // Extract @deprecated from the standard deprecated block
-      if (docComment.deprecatedBlock !== undefined) {
-        const message = extractBlockText(docComment.deprecatedBlock).trim();
+      // Extract @deprecated from the unified parse result
+      if (unified.isDeprecated) {
         annotations.push({
           kind: "annotation",
           annotationKind: "deprecated",
-          ...(message !== "" && { message }),
+          ...(unified.deprecationMessage !== "" && { message: unified.deprecationMessage }),
           provenance: provenanceForComment(range, sourceFile, file, "deprecated"),
         });
       }
 
       // Summary text → description annotation (spec 002 §2.3)
-      {
-        const summary = extractPlainText(docComment.summarySection).trim();
-        const sharedSummary = extractCommentSummaryText(commentText);
-
-        // TSDoc leaves unknown/custom modifier tags in the summary text when
-        // they are not registered with the parser. Fall back to the raw
-        // comment projection to detect the "tag-only, no summary" case so
-        // tag text does not leak into JSON Schema descriptions.
-        const hasTagOnlySummary = summary !== "" && sharedSummary === "" && parsedComment.tags.length > 0;
-        if (!hasTagOnlySummary && summary !== "") {
-          annotations.push({
-            kind: "annotation",
-            annotationKind: "description",
-            value: summary,
-            provenance: provenanceForComment(range, sourceFile, file, "summary"),
-          });
-        }
+      if (unified.summaryText !== "") {
+        annotations.push({
+          kind: "annotation",
+          annotationKind: "description",
+          value: unified.summaryText,
+          provenance: provenanceForComment(range, sourceFile, file, "summary"),
+        });
       }
 
       // @remarks → separate remarks annotation (spec 002 §2.3)
-      if (docComment.remarksBlock !== undefined) {
-        const remarksText = extractBlockText(docComment.remarksBlock).trim();
-        if (remarksText !== "") {
-          annotations.push({
-            kind: "annotation",
-            annotationKind: "remarks",
-            value: remarksText,
-            provenance: provenanceForComment(range, sourceFile, file, "remarks"),
-          });
-        }
+      if (unified.remarksText !== "") {
+        annotations.push({
+          kind: "annotation",
+          annotationKind: "remarks",
+          value: unified.remarksText,
+          provenance: provenanceForComment(range, sourceFile, file, "remarks"),
+        });
       }
     }
   }
@@ -976,54 +948,8 @@ export function parseTSDocTags(
     });
   }
 
-  // ----- Phase 1b: TS compiler API for tags with TSDoc-incompatible content -----
-  // @pattern, @enumOptions, and @defaultValue content can contain `@`, `{}`,
-  // or quoted JSON payloads that the TSDoc parser treats as structural markers.
-  // Prefer the shared syntax parse for these payloads and fall back to the
-  // TS compiler API when a raw payload cannot be recovered from comments.
-  if (rawTextTags.length > 0) {
-    for (const rawTextTag of rawTextTags) {
-      const fallbackQueue = rawTextFallbacks.get(rawTextTag.tag.normalizedTagName);
-      const fallback = fallbackQueue?.shift();
-      const text = choosePreferredPayloadText(
-        getSharedPayloadText(rawTextTag.tag, rawTextTag.commentText, rawTextTag.commentOffset),
-        fallback?.text ?? ""
-      );
-      if (text === "") continue;
-
-      const provenance = provenanceForParsedTag(rawTextTag.tag, sourceFile, file);
-      if (rawTextTag.tag.normalizedTagName === "defaultValue") {
-        const defaultValueNode = parseDefaultValueTagValue(text, provenance);
-        annotations.push(defaultValueNode);
-        continue;
-      }
-
-      const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
-        node,
-        sourceFile,
-        rawTextTag.tag.normalizedTagName,
-        rawTextTag.tag,
-        provenance,
-        supportingDeclarations,
-        options
-      );
-      if (compilerDiagnostics.length > 0) {
-        pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
-        continue;
-      }
-
-      const constraintNode = parseConstraintTagValue(
-        rawTextTag.tag.normalizedTagName,
-        text,
-        provenance,
-        sharedTagValueOptions(options)
-      );
-      if (constraintNode) {
-        constraints.push(constraintNode);
-      }
-    }
-  }
-
+  // Process orphaned TS compiler API fallbacks: tags found by ts.getJSDocTags()
+  // that were not matched by the regex parser (e.g. malformed comment syntax).
   for (const [tagName, fallbacks] of rawTextFallbacks) {
     for (const fallback of fallbacks) {
       const text = fallback.text.trim();
@@ -1031,8 +957,7 @@ export function parseTSDocTags(
 
       const provenance = fallback.provenance;
       if (tagName === "defaultValue") {
-        const defaultValueNode = parseDefaultValueTagValue(text, provenance);
-        annotations.push(defaultValueNode);
+        annotations.push(parseDefaultValueTagValue(text, provenance));
         continue;
       }
 
@@ -1068,9 +993,7 @@ export function parseTSDocTags(
 }
 
 /**
- * Checks if a TS AST node has a `@deprecated` tag using the TSDoc parser.
- *
- * Falls back to the TS compiler API for nodes without doc comments.
+ * Checks if a TS AST node has a `@deprecated` tag using the unified parser.
  */
 export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
   const sourceFile = node.getSourceFile();
@@ -1083,11 +1006,7 @@ export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
       const commentText = sourceText.substring(range.pos, range.end);
       if (!commentText.startsWith("/**")) continue;
 
-      const parser = getParser();
-      const parserContext = parser.parseRange(
-        TextRange.fromStringRange(sourceText, range.pos, range.end)
-      );
-      if (parserContext.docComment.deprecatedBlock !== undefined) {
+      if (parseUnifiedComment(commentText).isDeprecated) {
         return true;
       }
     }
@@ -1115,8 +1034,8 @@ export function extractDisplayNameMetadata(node: ts.Node): DisplayNameMetadata {
       const commentText = sourceText.substring(range.pos, range.end);
       if (!commentText.startsWith("/**")) continue;
 
-      const parsed = parseCommentBlock(commentText);
-      for (const tag of parsed.tags) {
+      const unified = parseUnifiedComment(commentText);
+      for (const tag of unified.tags) {
         if (tag.normalizedTagName !== "displayName") {
           continue;
         }
@@ -1155,35 +1074,6 @@ export function extractPathTarget(
   text: string
 ): { path: PathTarget; remainingText: string } | null {
   return extractSharedPathTarget(text);
-}
-
-// =============================================================================
-// PRIVATE HELPERS — TSDoc text extraction
-// =============================================================================
-
-function getSharedPayloadText(
-  tag: ParsedCommentTag,
-  commentText: string,
-  commentOffset: number
-): string {
-  if (tag.payloadSpan === null) {
-    return "";
-  }
-
-  return sliceCommentSpan(commentText, tag.payloadSpan, {
-    offset: commentOffset,
-  }).trim();
-}
-
-function getBestBlockPayloadText(
-  tag: ParsedCommentTag | null,
-  commentText: string,
-  commentOffset: number,
-  block: DocBlock
-): string {
-  const sharedText = tag === null ? "" : getSharedPayloadText(tag, commentText, commentOffset);
-  const blockText = extractBlockText(block).replace(/\s+/g, " ").trim();
-  return choosePreferredPayloadText(sharedText, blockText);
 }
 
 function collectRawTextFallbacks(
