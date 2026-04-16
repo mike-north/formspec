@@ -42,6 +42,7 @@ import {
   noDescriptionTag,
   noContradictoryRules,
   validDiscriminator,
+  noDoubleUnderscoreFields,
 } from "./rules/index.js";
 import {
   noContradictions as noContradictionsRule,
@@ -157,6 +158,7 @@ export const rules = {
   "constraint-validation/no-description-tag": noDescriptionTag,
   "constraint-validation/no-contradictory-rules": noContradictoryRules,
   "constraint-validation/valid-discriminator": validDiscriminator,
+  "constraint-validation/no-double-underscore-fields": noDoubleUnderscoreFields,
 
   // Constraint rules for Chain DSL
   "constraints-allowed-field-types": allowedFieldTypes,
@@ -213,6 +215,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/constraint-validation/no-description-tag": "error",
       "formspec/constraint-validation/no-contradictory-rules": "error",
       "formspec/constraint-validation/valid-discriminator": "error",
+      "formspec/constraint-validation/no-double-underscore-fields": "warn",
     },
   },
 ];
@@ -248,6 +251,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/constraint-validation/no-description-tag": "error",
       "formspec/constraint-validation/no-contradictory-rules": "error",
       "formspec/constraint-validation/valid-discriminator": "error",
+      "formspec/constraint-validation/no-double-underscore-fields": "error",
     },
   },
 ];
@@ -291,4 +295,5 @@ export {
   noDuplicateTags,
   noDescriptionTag,
   noContradictoryRules,
+  noDoubleUnderscoreFields,
 };

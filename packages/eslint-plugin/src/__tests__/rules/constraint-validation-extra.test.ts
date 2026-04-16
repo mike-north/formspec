@@ -4,6 +4,7 @@ import { noDuplicateTags } from "../../rules/constraint-validation/no-duplicate-
 import { noDescriptionTag } from "../../rules/constraint-validation/no-description-tag.js";
 import { noContradictoryRules } from "../../rules/constraint-validation/no-contradictory-rules.js";
 import { validDiscriminator } from "../../rules/constraint-validation/valid-discriminator.js";
+import { noDoubleUnderscoreFields } from "../../rules/constraint-validation/no-double-underscore-fields.js";
 
 RuleTester.afterAll = vitest.afterAll;
 RuleTester.it = vitest.it;
@@ -294,6 +295,47 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
         type Invalid = TaggedValue<string>;
       `,
       errors: [{ messageId: "invalidPlacement" }],
+    },
+  ],
+});
+
+ruleTester.run("no-double-underscore-fields", noDoubleUnderscoreFields, {
+  valid: [
+    { code: `class Form { name!: string; }` },
+    { code: `class Form { _internal!: string; }` },
+    { code: `interface Foo { name: string; }` },
+    { code: `interface Foo { _internal: string; }` },
+    // Computed properties (e.g. symbol keys) must not be flagged
+    { code: `class Form { [Symbol.iterator]!: any; }` },
+  ],
+  invalid: [
+    {
+      code: `class Form { __type!: string; }`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    {
+      code: `interface Foo { __brand: string; }`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    // Type alias with a __-prefixed property in a type literal
+    {
+      code: `type Foo = { __phantom: string; id: number; };`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    // Type alias with a __-prefixed property in an intersection type
+    {
+      code: `type Bar = { id: string } & { __brand: string };`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    // Property named exactly __ (two underscores, no suffix)
+    {
+      code: `class Form { __!: string; }`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    // Multiple __-prefixed properties each produce their own error
+    {
+      code: `interface Multi { __a: string; __b: number; }`,
+      errors: [{ messageId: "phantomField" }, { messageId: "phantomField" }],
     },
   ],
 });
