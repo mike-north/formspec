@@ -67,6 +67,8 @@ This document specifies the expansion of `FormSpecConfig` from constraint-only c
 
 ### 2.2 Type Definition
 
+> **Note on `configPath`:** `configPath` is NOT a field of `FormSpecConfig`. It belongs on `StaticSchemaGenerationOptions` (the options object passed to `generateSchemas` and related build APIs). `FormSpecConfig` is runtime data describing the extension surface; `configPath` is a build-time concern that tells the pipeline where to find the config file so it can perform program-level analysis (e.g., resolving `defineCustomType<T>()` type parameters to `ts.Symbol` instances). See §4.1 for usage.
+
 ````typescript
 import type { ExtensionDefinition, MetadataPolicyInput } from "@formspec/core";
 
@@ -212,6 +214,18 @@ The config carries constructed extension objects, not paths or package names. Ex
 
 Consumers resolve extensions into an `ExtensionRegistry` internally. The registry is an implementation detail — consumers accept `FormSpecConfig`, not `ExtensionRegistry`.
 
+#### 3.1.1 Custom Type Detection Mechanisms
+
+When the build pipeline encounters a TypeScript type that may be a custom FormSpec type, it uses one of three detection mechanisms (resolved in priority order):
+
+1. **Name-based detection** (`tsTypeNames` on `CustomTypeRegistration`) — Matches the literal type reference name as it appears in the source AST. This is the legacy mechanism and has the lowest priority. It is deprecated; see §6.3.
+
+2. **Symbol-based detection** (`defineCustomType<T>()` type parameter) — When the config file uses a type parameter on `defineCustomType<T>()`, the build pipeline resolves `T` to a `ts.Symbol` at config-load time via program analysis of the config file. Lookups are O(1) identity-based comparisons against that symbol. This mechanism is immune to import aliases and type aliases — it matches regardless of how the type is referenced at the call site.
+
+3. **Brand-based detection** (`brand` field on `CustomTypeRegistration`) — Structural detection via `unique symbol` computed property keys. The pipeline inspects each type's property index to find a brand property matching the registered name. Works without config file analysis and is therefore useful in environments where the config file is not included in the TypeScript program.
+
+**Priority:** name-based → symbol-based → brand-based. Name-based wins for backward compatibility. Symbol-based is the most precise mechanism and is the recommended approach for new registrations. Brand-based is the fallback when the config file is unavailable to the build program.
+
 ### 3.2 `constraints`
 
 **Optional.** A `ConstraintConfig` object controlling which field types, layouts, UI features, and options are allowed. This is the same type currently used by the `.formspec.yml` system — it moves from YAML to the TypeScript config without changes to the constraint schema.
@@ -291,14 +305,23 @@ Every consumer accepts `FormSpecConfig` as its primary configuration input.
 
 ### 4.1 Build API (`generateSchemas`)
 
+To enable symbol-based detection of custom types (see §3.1.1), load the config with `loadFormSpecConfig` and pass the resolved `configPath` alongside `config`:
+
 ```typescript
+import { loadFormSpecConfig } from "@formspec/config";
+
+const { config, configPath } = await loadFormSpecConfig({ searchFrom: "./src" });
+
 const result = generateSchemas({
   config,
+  configPath,  // enables defineCustomType<T>() symbol-based detection
   filePath: "./src/config.ts",
   typeName: "DiscountConfig",
   errorReporting: "throw",
 });
 ```
+
+`configPath` is optional. When provided, the build pipeline includes the config file in the TypeScript program and walks its AST to extract type arguments from `defineCustomType<T>()` calls, resolving them to `ts.Symbol` instances for identity-based lookup. When omitted, only name-based and brand-based detection are available.
 
 Per-call overrides can be passed alongside `config` and take precedence:
 
@@ -376,21 +399,26 @@ TypeScript module with a default export of `FormSpecConfig`:
 ```typescript
 // formspec.config.ts
 import { defineFormSpecConfig } from "@formspec/config";
-import { stripeStdlibExtension } from "@stripe/extensibility-jsonschema-tools";
-import { stripeMetadataPolicy } from "@stripe/extensibility-tool-utils";
+import { defineCustomType, defineExtension } from "@formspec/core";
+import type { Decimal } from "@stripe/extensibility-sdk/stdlib";
 
 export default defineFormSpecConfig({
-  extensions: [stripeStdlibExtension],
-  metadata: stripeMetadataPolicy,
-  vendorPrefix: "x-stripe",
-  enumSerialization: "oneOf",
-  constraints: {
-    fieldTypes: {
-      dynamicSchema: "off",
-    },
-  },
+  extensions: [
+    defineExtension({
+      extensionId: "x-stripe/stdlib",
+      types: [
+        defineCustomType<Decimal>({
+          typeName: "Decimal",
+          brand: "__decimalBrand",
+          toJsonSchema: () => ({ type: "string", format: "decimal" }),
+        }),
+      ],
+    }),
+  ],
 });
 ```
+
+The `defineCustomType<Decimal>(...)` call uses a type parameter to register the type. When `configPath` is supplied to the build API (§4.1), the pipeline resolves `Decimal` to its `ts.Symbol` for identity-based lookup. The `brand` field provides structural fallback detection when the config file is not included in the program.
 
 ### 5.2 File Names
 
@@ -468,15 +496,16 @@ createServer({ config });
 
 ### 6.3 Deprecated APIs
 
-| Deprecated                               | Replacement                | Package                     |
-| ---------------------------------------- | -------------------------- | --------------------------- |
-| `extensionRegistry` on `generateSchemas` | `config.extensions`        | `@formspec/build`           |
-| `vendorPrefix` on `generateSchemas`      | `config.vendorPrefix`      | `@formspec/build`           |
-| `enumSerialization` on `generateSchemas` | `config.enumSerialization` | `@formspec/build`           |
-| `metadata` on `generateSchemas`          | `config.metadata`          | `@formspec/build`           |
-| `extensions` on `createServer`           | `config`                   | `@formspec/language-server` |
-| `.formspec.yml` file format              | `formspec.config.ts`       | `@formspec/config`          |
-| `loadConstraintConfig` (YAML loader)     | `loadFormSpecConfig`       | `@formspec/config`          |
+| Deprecated                               | Replacement                                                    | Package                     |
+| ---------------------------------------- | -------------------------------------------------------------- | --------------------------- |
+| `extensionRegistry` on `generateSchemas` | `config.extensions`                                            | `@formspec/build`           |
+| `vendorPrefix` on `generateSchemas`      | `config.vendorPrefix`                                          | `@formspec/build`           |
+| `enumSerialization` on `generateSchemas` | `config.enumSerialization`                                     | `@formspec/build`           |
+| `metadata` on `generateSchemas`          | `config.metadata`                                              | `@formspec/build`           |
+| `extensions` on `createServer`           | `config`                                                       | `@formspec/language-server` |
+| `.formspec.yml` file format              | `formspec.config.ts`                                           | `@formspec/config`          |
+| `loadConstraintConfig` (YAML loader)     | `loadFormSpecConfig`                                           | `@formspec/config`          |
+| `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter       | `@formspec/core`            |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
 
