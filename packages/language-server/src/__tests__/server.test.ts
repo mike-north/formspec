@@ -133,6 +133,88 @@ describe("createServer", () => {
     expect(mocks.getHoverAtOffset).toHaveBeenCalledWith("/** @min */", 6, [extension], null);
   });
 
+  it("uses config.extensions when config is provided", async () => {
+    const configExtension = defineExtension({
+      extensionId: "x-config/ext",
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "configTag",
+          constraintName: "ConfigTag",
+          parseValue: (raw) => raw.trim(),
+        }),
+      ],
+    });
+
+    const { createServer } = await import("../server.js");
+    createServer({ config: { extensions: [configExtension] } });
+
+    const completionHandler = mocks.connection.onCompletion.mock.calls[0]?.[0] as
+      | ((_params: unknown) => unknown)
+      | undefined;
+
+    mocks.documents.get.mockReturnValue({
+      getText: () => "/** @configTag */",
+      offsetAt: () => 4,
+    });
+
+    await completionHandler?.({
+      textDocument: { uri: "file:///test.ts" },
+      position: { line: 0, character: 4 },
+    });
+
+    expect(mocks.getCompletionItemsAtOffset).toHaveBeenCalledWith(
+      "/** @configTag */",
+      4,
+      [configExtension],
+      null
+    );
+  });
+
+  it("config.extensions takes precedence over extensions option", async () => {
+    const extensionsOption = defineExtension({
+      extensionId: "x-direct/ext",
+      constraintTags: [],
+    });
+    const configExtension = defineExtension({
+      extensionId: "x-config/ext",
+      constraintTags: [],
+    });
+
+    const { createServer } = await import("../server.js");
+    createServer({
+      extensions: [extensionsOption],
+      config: { extensions: [configExtension] },
+    });
+
+    const completionHandler = mocks.connection.onCompletion.mock.calls[0]?.[0] as
+      | ((_params: unknown) => unknown)
+      | undefined;
+
+    mocks.documents.get.mockReturnValue({
+      getText: () => "/** @tag */",
+      offsetAt: () => 4,
+    });
+
+    await completionHandler?.({
+      textDocument: { uri: "file:///test.ts" },
+      position: { line: 0, character: 4 },
+    });
+
+    // config.extensions should be used, not the direct extensions option
+    expect(mocks.getCompletionItemsAtOffset).toHaveBeenCalledWith(
+      "/** @tag */",
+      4,
+      [configExtension],
+      null
+    );
+    expect(mocks.getCompletionItemsAtOffset).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      [extensionsOption],
+      expect.anything()
+    );
+  });
+
   it("falls back to rootUri when workspaceFolders are absent", async () => {
     const { createServer } = await import("../server.js");
     createServer();

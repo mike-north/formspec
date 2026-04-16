@@ -7,7 +7,8 @@
     "paths": {
       "@formspec/core/internals": ["../core/dist/internals.d.ts"],
       "@formspec/build": ["../build/dist/build.d.ts"],
-      "@formspec/build/internals": ["../build/dist/internals.d.ts"]
+      "@formspec/build/internals": ["../build/dist/internals.d.ts"],
+      "@formspec/config": ["../config/dist/config.d.ts"]
     }
   },
   "include": ["src/**/*"],

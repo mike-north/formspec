@@ -152,6 +152,9 @@ importers:
       '@formspec/build':
         specifier: workspace:*
         version: link:../build
+      '@formspec/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
@@ -267,6 +270,9 @@ importers:
       '@formspec/analysis':
         specifier: workspace:*
         version: link:../analysis
+      '@formspec/config':
+        specifier: workspace:*
+        version: link:../config
       '@formspec/core':
         specifier: workspace:*
         version: link:../core
