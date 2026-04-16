@@ -1195,14 +1195,13 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
 
 /**
  * JSON Schema keywords that vocabulary-mode constraints (`emitsVocabularyKeywords`)
- * must not overwrite. Includes structural keywords (`type`, `properties`, `$ref`),
- * annotation keywords (`title`, `description`), and validation keywords for
- * strings/arrays/objects. Overwriting these could silently corrupt schema output.
+ * must not overwrite. Includes standard JSON Schema keywords (2020-12 and legacy):
+ * structural (`type`, `properties`, `$ref`), annotation (`title`, `description`),
+ * and validation (`minimum`, `maximum`, `minLength`, etc.).
  *
- * Numeric validation keywords (`minimum`, `maximum`, `exclusiveMinimum`,
- * `exclusiveMaximum`, `multipleOf`) are intentionally excluded — custom types
- * like `Integer` (`{ type: "integer" }`) need to emit these as standard JSON
- * Schema keywords via `builtinConstraintBroadenings`.
+ * Integer types are now builtin (via `__integerBrand`), so standard numeric
+ * constraints (`@minimum`, `@maximum`, etc.) are handled natively by the IR
+ * pipeline — extensions never need to emit these keywords.
  */
 const VOCABULARY_MODE_BLOCKED_KEYWORDS = new Set([
   "$schema", "$ref", "$defs", "$id", "$anchor", "$dynamicRef", "$dynamicAnchor",
@@ -1211,6 +1210,7 @@ const VOCABULARY_MODE_BLOCKED_KEYWORDS = new Set([
   "properties", "patternProperties", "additionalProperties", "required",
   "items", "prefixItems", "additionalItems", "contains",
   "allOf", "oneOf", "anyOf", "not", "if", "then", "else",
+  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
   "minLength", "maxLength", "pattern",
   "minItems", "maxItems", "uniqueItems",
   "minProperties", "maxProperties",

@@ -5,6 +5,9 @@
 ```ts
 
 // @public
+export const __integerBrand: unique symbol;
+
+// @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
 
 // @public
@@ -296,6 +299,11 @@ export interface Group<Elements extends readonly FormElement[]> {
     readonly label: string;
     readonly _type: "group";
 }
+
+// @public
+export type Integer = number & {
+    readonly [__integerBrand]: true;
+};
 
 // @public
 export function isArrayField(element: FormElement): element is ArrayField<string, readonly FormElement[]>;
