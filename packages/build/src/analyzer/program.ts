@@ -76,9 +76,15 @@ export function createProgramContextFromProgram(
  * Falls back to default compiler options if no config is found.
  *
  * @param filePath - Absolute path to the TypeScript source file
+ * @param additionalFiles - Optional additional files to include in the program
+ *   (e.g., the FormSpec config file for symbol-based custom type detection).
+ *   Duplicates are silently removed.
  * @returns Program context with checker and source file
  */
-export function createProgramContext(filePath: string): ProgramContext {
+export function createProgramContext(
+  filePath: string,
+  additionalFiles?: readonly string[]
+): ProgramContext {
   const absolutePath = path.resolve(filePath);
   const fileDir = path.dirname(absolutePath);
 
@@ -110,10 +116,10 @@ export function createProgramContext(filePath: string): ProgramContext {
     }
 
     compilerOptions = parsed.options;
-    // Include the target file in the program
-    fileNames = parsed.fileNames.includes(absolutePath)
-      ? parsed.fileNames
-      : [...parsed.fileNames, absolutePath];
+    // Include the target file and any additional files in the program.
+    // Use Set to eliminate duplicates.
+    const normalizedAdditional = (additionalFiles ?? []).map((f) => path.resolve(f));
+    fileNames = [...new Set([...parsed.fileNames, absolutePath, ...normalizedAdditional])];
   } else {
     // Fallback to default options
     compilerOptions = {
@@ -124,7 +130,8 @@ export function createProgramContext(filePath: string): ProgramContext {
       skipLibCheck: true,
       declaration: true,
     };
-    fileNames = [absolutePath];
+    const normalizedAdditional = (additionalFiles ?? []).map((f) => path.resolve(f));
+    fileNames = [...new Set([absolutePath, ...normalizedAdditional])];
   }
 
   const program = ts.createProgram(fileNames, compilerOptions);

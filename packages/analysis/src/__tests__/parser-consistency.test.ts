@@ -133,13 +133,9 @@ describe("parseCommentBlock — multiple tags", () => {
   });
 
   it("preserves order of tags across multiple lines", () => {
-    const comment = [
-      `/**`,
-      ` * @minimum 1`,
-      ` * @maximum 99`,
-      ` * @pattern ^[a-z]+$`,
-      ` */`,
-    ].join("\n");
+    const comment = [`/**`, ` * @minimum 1`, ` * @maximum 99`, ` * @pattern ^[a-z]+$`, ` */`].join(
+      "\n"
+    );
     const result = tags(comment);
     expect(result).toHaveLength(3);
     expect(result[0]?.normalizedTagName).toBe("minimum");
@@ -240,12 +236,9 @@ describe("parseCommentBlock — target specifiers", () => {
   });
 
   it("parses @apiName :singular and :plural pair on separate lines", () => {
-    const comment = [
-      `/**`,
-      ` * @apiName :singular home`,
-      ` * @apiName :plural homes`,
-      ` */`,
-    ].join("\n");
+    const comment = [`/**`, ` * @apiName :singular home`, ` * @apiName :plural homes`, ` */`].join(
+      "\n"
+    );
     const result = tags(comment);
     expect(result).toHaveLength(2);
 

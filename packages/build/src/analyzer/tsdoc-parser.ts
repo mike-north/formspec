@@ -235,8 +235,7 @@ function pushUniqueCompilerDiagnostics(
       (diagnostic.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE" ||
         diagnostic.code === "SYNTHETIC_SETUP_FAILURE") &&
       target.some(
-        (existing) =>
-          existing.code === diagnostic.code && existing.message === diagnostic.message
+        (existing) => existing.code === diagnostic.code && existing.message === diagnostic.message
       )
     ) {
       continue;
@@ -728,15 +727,14 @@ function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): 
             tagName: normalizeFormSpecTagName(slot.tagName),
             declarationKinds: [...slot.declarationKinds].sort(),
             allowBare: slot.allowBare !== false,
-            qualifiers:
-              (slot.qualifiers ?? [])
-                .map((qualifier) => ({
-                  qualifier: qualifier.qualifier,
-                  ...(qualifier.sourceQualifier !== undefined
-                    ? { sourceQualifier: qualifier.sourceQualifier }
-                    : {}),
-                }))
-                .sort((left, right) => left.qualifier.localeCompare(right.qualifier)),
+            qualifiers: (slot.qualifiers ?? [])
+              .map((qualifier) => ({
+                qualifier: qualifier.qualifier,
+                ...(qualifier.sourceQualifier !== undefined
+                  ? { sourceQualifier: qualifier.sourceQualifier }
+                  : {}),
+              }))
+              .sort((left, right) => left.qualifier.localeCompare(right.qualifier)),
           })) ?? [],
       })
     )

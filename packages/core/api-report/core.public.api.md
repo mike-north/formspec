@@ -94,6 +94,7 @@ export interface CustomTypeRegistration {
     readonly brand?: string;
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
+    // @deprecated
     readonly tsTypeNames?: readonly string[];
     readonly typeName: string;
 }
@@ -130,7 +131,7 @@ export function defineConstraint(reg: CustomConstraintRegistration): CustomConst
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
 
 // @public
-export function defineCustomType(reg: CustomTypeRegistration): CustomTypeRegistration;
+export function defineCustomType<T = unknown>(reg: CustomTypeRegistration): CustomTypeRegistration;
 
 // @public
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;

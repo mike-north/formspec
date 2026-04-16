@@ -146,7 +146,10 @@ describe("file-snapshots", () => {
         label: string;
       }
     `;
-    const { checker, sourceFile } = createProgram(source, "/virtual/formspec-unsupported-override.ts");
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-unsupported-override.ts"
+    );
 
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
       checker,
@@ -178,7 +181,10 @@ describe("file-snapshots", () => {
         label: string;
       }
     `;
-    const { checker, sourceFile } = createProgram(source, "/virtual/formspec-invalid-custom-type.ts");
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/formspec-invalid-custom-type.ts"
+    );
 
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
       checker,
@@ -406,10 +412,7 @@ describe("file-snapshots", () => {
         total: string;
       }
     `;
-    const { checker, sourceFile } = createProgram(
-      source,
-      "/virtual/formspec-extension-summary.ts"
-    );
+    const { checker, sourceFile } = createProgram(source, "/virtual/formspec-extension-summary.ts");
 
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
       checker,

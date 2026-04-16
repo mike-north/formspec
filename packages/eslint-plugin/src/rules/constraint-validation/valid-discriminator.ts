@@ -50,9 +50,7 @@ function isOptionalProperty(
   );
 }
 
-function getObjectLikeTypeAliasMembers(
-  typeNode: ts.TypeNode
-): readonly ts.TypeElement[] | null {
+function getObjectLikeTypeAliasMembers(typeNode: ts.TypeNode): readonly ts.TypeElement[] | null {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return getObjectLikeTypeAliasMembers(typeNode.type);
   }

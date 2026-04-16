@@ -46,7 +46,9 @@ export const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defau
  *
  * All tags are registered as BlockTag with allowMultiple: true.
  */
-export function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): TSDocConfiguration {
+export function createFormSpecTSDocConfig(
+  extensionTagNames: readonly string[] = []
+): TSDocConfiguration {
   const config = new TSDocConfiguration();
   const registered = new Set<string>();
 

@@ -83,10 +83,10 @@ export type TypeAliasWithEnumOptions = {
 };
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Testing parenthesized object-like alias analysis
-export type ParenthesizedTypeAlias = ({
+export type ParenthesizedTypeAlias = {
   /** @displayName Parenthesized Label */
   label: string;
-});
+};
 
 export type IntersectionTypeAlias = {
   /** @displayName Left Label */
@@ -96,13 +96,13 @@ export type IntersectionTypeAlias = {
   count: number;
 };
 
-export type ParenthesizedIntersectionTypeAlias = ({
+export type ParenthesizedIntersectionTypeAlias = {
   /** @displayName Parenthesized Left Label */
   label: string;
 } & {
   /** @displayName Parenthesized Right Count */
   count: number;
-});
+};
 
 export type DuplicateIntersectionTypeAlias = {
   id: string;
@@ -114,7 +114,7 @@ export type DuplicateIntersectionTypeAlias = {
 export type DuplicateQuotedIntersectionTypeAlias = {
   id: string;
 } & {
-  "id": "fixed";
+  id: "fixed";
   label: string;
 };
 

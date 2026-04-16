@@ -142,8 +142,8 @@ export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
 export function isNullableType(type: ts.Type): boolean {
   if (!type.isUnion()) {
     return (
-      (type.flags & 65536 /* ts.TypeFlags.Null */) !== 0 ||
-      (type.flags & 32768 /* ts.TypeFlags.Undefined */) !== 0
+      (type.flags & 65536) /* ts.TypeFlags.Null */ !== 0 ||
+      (type.flags & 32768) /* ts.TypeFlags.Undefined */ !== 0
     );
   }
 

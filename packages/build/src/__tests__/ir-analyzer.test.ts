@@ -266,12 +266,7 @@ describe("analyzeInterfaceToIR", () => {
       const decl = findInterfaceByName(ctx.sourceFile, "CustomerRecord");
       if (!decl) throw new Error("CustomerRecord not found");
 
-      const analysis = analyzeInterfaceToIR(
-        decl,
-        ctx.checker,
-        filePath,
-        extensionRegistry
-      );
+      const analysis = analyzeInterfaceToIR(decl, ctx.checker, filePath, extensionRegistry);
       const field = findField(analysis.fields, "customerName");
 
       expect(field.metadata?.apiName).toEqual({
@@ -471,11 +466,12 @@ describe("analyzeTypeAliasToIR", () => {
         kind: "primitive",
         primitiveKind: "number",
       });
-      expect(findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName"))
-        .toMatchObject({
-          annotationKind: "displayName",
-          value: "Left Label",
-        });
+      expect(
+        findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName")
+      ).toMatchObject({
+        annotationKind: "displayName",
+        value: "Left Label",
+      });
     }
   });
 
@@ -489,16 +485,18 @@ describe("analyzeTypeAliasToIR", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.analysis.fields).toHaveLength(2);
-      expect(findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName"))
-        .toMatchObject({
-          annotationKind: "displayName",
-          value: "Parenthesized Left Label",
-        });
-      expect(findAnnotation(findField(result.analysis.fields, "count").annotations, "displayName"))
-        .toMatchObject({
-          annotationKind: "displayName",
-          value: "Parenthesized Right Count",
-        });
+      expect(
+        findAnnotation(findField(result.analysis.fields, "label").annotations, "displayName")
+      ).toMatchObject({
+        annotationKind: "displayName",
+        value: "Parenthesized Left Label",
+      });
+      expect(
+        findAnnotation(findField(result.analysis.fields, "count").annotations, "displayName")
+      ).toMatchObject({
+        annotationKind: "displayName",
+        value: "Parenthesized Right Count",
+      });
     }
   });
 

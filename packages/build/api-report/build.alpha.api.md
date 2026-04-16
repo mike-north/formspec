@@ -96,7 +96,7 @@ export interface ControlElement {
 }
 
 // @public
-export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): MutableExtensionRegistry;
 
 // @public
 export function createStaticBuildContext(filePath: string): StaticBuildContext;
@@ -163,14 +163,15 @@ export interface ExtensionRegistry {
         readonly registration: ConstraintTagRegistration;
     } | undefined;
     findType(typeId: string): CustomTypeRegistration | undefined;
-    findTypeByBrand(brand: string): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
-    findTypeByName(typeName: string): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
+    findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
+    findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
+    findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
+}
+
+// @public
+export interface ExtensionTypeLookupResult {
+    readonly extensionId: string;
+    readonly registration: CustomTypeRegistration;
 }
 
 export { FormElement }
@@ -456,6 +457,11 @@ export interface MixedAuthoringSchemas {
     readonly uiSchema: UISchema;
 }
 
+// @public
+export interface MutableExtensionRegistry extends ExtensionRegistry {
+    setSymbolMap(map: Map<ts.Symbol, ExtensionTypeLookupResult>): void;
+}
+
 export { NumberField }
 
 export { ObjectField }
@@ -527,6 +533,7 @@ export { StaticEnumField }
 // @public
 export interface StaticSchemaGenerationOptions {
     readonly config?: FormSpecConfig | undefined;
+    readonly configPath?: string | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
     // @deprecated
     readonly enumSerialization?: "enum" | "oneOf";

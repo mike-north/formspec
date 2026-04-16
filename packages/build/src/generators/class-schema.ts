@@ -29,7 +29,12 @@ import {
   type GenerateJsonSchemaFromIROptions,
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
-import { createExtensionRegistry, type ExtensionRegistry } from "../extensions/index.js";
+import {
+  createExtensionRegistry,
+  type ExtensionRegistry,
+  type MutableExtensionRegistry,
+} from "../extensions/index.js";
+import { buildSymbolMapFromConfig } from "../extensions/symbol-registry.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
@@ -236,6 +241,22 @@ export interface StaticSchemaGenerationOptions {
   readonly metadata?: MetadataPolicyInput | undefined;
   /** Discriminator-specific schema generation behavior. */
   readonly discriminator?: DiscriminatorResolutionOptions | undefined;
+  /**
+   * Absolute path to the FormSpec config file (e.g., `formspec.config.ts`).
+   *
+   * When provided alongside a `config` that includes extensions, the build
+   * pipeline includes the config file in the TypeScript program and extracts
+   * `defineCustomType<T>()` type parameters. This enables symbol-based custom
+   * type detection — the most precise resolution path, immune to import aliases
+   * and name collisions.
+   *
+   * Obtain this from `loadFormSpecConfig()`:
+   * ```typescript
+   * const { config, configPath } = await loadFormSpecConfig();
+   * await generateSchemas({ filePath, typeName, config, configPath, errorReporting: "throw" });
+   * ```
+   */
+  readonly configPath?: string | undefined;
 }
 
 /**
@@ -304,7 +325,8 @@ export interface GenerateSchemasFromProgramOptions extends StaticSchemaGeneratio
 export function generateSchemasFromClass(
   options: GenerateFromClassOptions
 ): GenerateFromClassResult {
-  const ctx = createProgramContext(options.filePath);
+  const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
+  const ctx = createProgramContext(options.filePath, additionalFiles);
   const classDecl = findClassByName(ctx.sourceFile, options.className);
 
   if (!classDecl) {
@@ -533,7 +555,10 @@ function generateSchemasDetailedInternal(
 ): DetailedClassSchemasResult {
   let ctx: ProgramContext;
   try {
-    ctx = createProgramContext(options.filePath);
+    // Include the config file in the program when provided so that the config
+    // AST is available for symbol-based type-parameter extraction.
+    const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
+    ctx = createProgramContext(options.filePath, additionalFiles);
   } catch (error) {
     return {
       ok: false,
@@ -602,6 +627,12 @@ export function generateSchemasBatch(
 ): readonly DetailedSchemaGenerationTargetResult[] {
   const contextCache = new Map<string, ProgramContext>();
 
+  // Resolve options once. The symbol map is rebuilt whenever a new ts.Program is
+  // encountered — ts.Symbol identity is program-specific, so a map built from one
+  // program must not be used to look up symbols from a different program.
+  const resolved = resolveOptions(options);
+  let symbolMapProgram: ts.Program | undefined;
+
   return options.targets.map((target) => {
     let ctx: ProgramContext;
     try {
@@ -610,7 +641,8 @@ export function generateSchemasBatch(
         : target.filePath.toLowerCase();
       const cachedContext = contextCache.get(cacheKey);
       if (cachedContext === undefined) {
-        ctx = createProgramContext(target.filePath);
+        const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
+        ctx = createProgramContext(target.filePath, additionalFiles);
         contextCache.set(cacheKey, ctx);
       } else {
         ctx = cachedContext;
@@ -622,9 +654,34 @@ export function generateSchemasBatch(
       });
     }
 
+    // Rebuild the symbol map whenever the program changes. ts.Symbol identity is
+    // program-specific — a map seeded from one program cannot match symbols from
+    // a different program, so we must re-walk the config AST for each new program.
+    if (
+      options.configPath !== undefined &&
+      resolved.extensionRegistry !== undefined &&
+      isMutableRegistry(resolved.extensionRegistry) &&
+      ctx.program !== symbolMapProgram
+    ) {
+      const symbolMap = buildSymbolMapFromConfig(
+        options.configPath,
+        ctx.program,
+        ctx.checker,
+        resolved.extensionRegistry
+      );
+      resolved.extensionRegistry.setSymbolMap(symbolMap);
+      symbolMapProgram = ctx.program;
+    }
+
     return withTarget(
       target,
-      generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+      generateSchemasFromResolvedOptions(
+        ctx,
+        target.filePath,
+        target.typeName,
+        resolved,
+        options.discriminator
+      )
     );
   });
 }
@@ -656,8 +713,12 @@ export function generateSchemasBatchFromProgram(
   });
 }
 
+function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegistry {
+  return "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function";
+}
+
 function resolveOptions(options: StaticSchemaGenerationOptions): {
-  extensionRegistry: ExtensionRegistry | undefined;
+  extensionRegistry: MutableExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
   enumSerialization: "enum" | "oneOf" | undefined;
   metadata: MetadataPolicyInput | undefined;
@@ -667,9 +728,16 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
       ? createExtensionRegistry(options.config.extensions)
       : undefined;
 
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+  const legacyRegistry = options.extensionRegistry;
+
   return {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    extensionRegistry: options.extensionRegistry ?? configRegistry,
+    // When the caller provides the deprecated extensionRegistry field directly,
+    // it is typed as the read-only ExtensionRegistry interface. We cast here
+    // because the legacy path was introduced before MutableExtensionRegistry was
+    // split out; callers using createExtensionRegistry() always get a mutable
+    // registry, and this cast is safe for all registries produced by this module.
+    extensionRegistry: (legacyRegistry as MutableExtensionRegistry | undefined) ?? configRegistry,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
@@ -687,6 +755,50 @@ function generateSchemasFromDetailedProgramContext(
 ): DetailedClassSchemasResult {
   const resolved = resolveOptions(options);
 
+  // If a configPath and extension registry are both available, build the
+  // symbol map from the config AST and register it on the registry. This
+  // enables the symbol-based detection path in the type resolver.
+  if (
+    options.configPath !== undefined &&
+    resolved.extensionRegistry !== undefined &&
+    isMutableRegistry(resolved.extensionRegistry)
+  ) {
+    const symbolMap = buildSymbolMapFromConfig(
+      options.configPath,
+      ctx.program,
+      ctx.checker,
+      resolved.extensionRegistry
+    );
+    resolved.extensionRegistry.setSymbolMap(symbolMap);
+  }
+
+  return generateSchemasFromResolvedOptions(
+    ctx,
+    filePath,
+    typeName,
+    resolved,
+    options.discriminator
+  );
+}
+
+/**
+ * Inner implementation: generates schemas from a ProgramContext and pre-resolved options.
+ *
+ * Separated so that batch callers can resolve options and seed the symbol map once
+ * outside the per-target loop, then call this directly without repeating that work.
+ */
+function generateSchemasFromResolvedOptions(
+  ctx: ProgramContext,
+  filePath: string,
+  typeName: string,
+  resolved: {
+    extensionRegistry: MutableExtensionRegistry | undefined;
+    vendorPrefix: string | undefined;
+    enumSerialization: "enum" | "oneOf" | undefined;
+    metadata: MetadataPolicyInput | undefined;
+  },
+  discriminator: DiscriminatorResolutionOptions | undefined
+): DetailedClassSchemasResult {
   const analysisResult: AnalyzeNamedTypeToIRDetailedResult =
     analyzeNamedTypeToIRFromProgramContextDetailed(
       ctx,
@@ -694,7 +806,7 @@ function generateSchemasFromDetailedProgramContext(
       typeName,
       resolved.extensionRegistry,
       resolved.metadata,
-      options.discriminator
+      discriminator
     );
   if (!analysisResult.ok) {
     return {

@@ -1069,8 +1069,8 @@ describe("Extension API", () => {
         // the registered custom type, which emits `{ type: "string", format: "test" }`.
         const properties = result.jsonSchema.properties as Record<string, unknown>;
         expect(properties["field"]).toMatchObject({
-          type: "string",  // per toJsonSchema above
-          format: "test",  // per toJsonSchema above
+          type: "string", // per toJsonSchema above
+          format: "test", // per toJsonSchema above
         });
       });
 
@@ -1225,12 +1225,12 @@ describe("Extension API", () => {
           fs.writeFileSync(
             fixturePath,
             [
-              '// String-keyed property — NOT a computed symbol key',
-              'type FakeBranded = string & { __fakeBrand: true };',
-              '',
-              'export interface FakeConfig {',
-              '  field: FakeBranded;',
-              '}',
+              "// String-keyed property — NOT a computed symbol key",
+              "type FakeBranded = string & { __fakeBrand: true };",
+              "",
+              "export interface FakeConfig {",
+              "  field: FakeBranded;",
+              "}",
             ].join("\n")
           );
 
@@ -1268,13 +1268,13 @@ describe("Extension API", () => {
           fs.writeFileSync(
             fixturePath,
             [
-              'declare const __otherBrand: unique symbol;',
-              'declare const __realBrand: unique symbol;',
-              'type MultiBranded = string & { readonly [__otherBrand]: true; readonly [__realBrand]: true };',
-              '',
-              'export interface MultiBrandConfig {',
-              '  field: MultiBranded;',
-              '}',
+              "declare const __otherBrand: unique symbol;",
+              "declare const __realBrand: unique symbol;",
+              "type MultiBranded = string & { readonly [__otherBrand]: true; readonly [__realBrand]: true };",
+              "",
+              "export interface MultiBrandConfig {",
+              "  field: MultiBranded;",
+              "}",
             ].join("\n")
           );
 
@@ -1313,12 +1313,12 @@ describe("Extension API", () => {
           fs.writeFileSync(
             fixturePath,
             [
-              'declare const __dualBrand: unique symbol;',
-              'type DualType = string & { readonly [__dualBrand]: true };',
-              '',
-              'export interface DualConfig {',
-              '  field: DualType;',
-              '}',
+              "declare const __dualBrand: unique symbol;",
+              "type DualType = string & { readonly [__dualBrand]: true };",
+              "",
+              "export interface DualConfig {",
+              "  field: DualType;",
+              "}",
             ].join("\n")
           );
 

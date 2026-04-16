@@ -109,17 +109,10 @@ describe("generateJsonSchemaFromIR", () => {
 
     it("uses resolved metadata for property names and titles", () => {
       const ir = makeIR([
-        makeField(
-          "fullName",
-          { kind: "primitive", primitiveKind: "string" },
-          true,
-          [],
-          [],
-          {
-            apiName: { value: "full_name", source: "explicit" },
-            displayName: { value: "Full Name", source: "explicit" },
-          }
-        ),
+        makeField("fullName", { kind: "primitive", primitiveKind: "string" }, true, [], [], {
+          apiName: { value: "full_name", source: "explicit" },
+          displayName: { value: "Full Name", source: "explicit" },
+        }),
       ]);
 
       const schema = generateJsonSchemaFromIR(ir);

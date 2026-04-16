@@ -1167,7 +1167,10 @@ function checkConstraintOnType(
       return false;
     }
     if (effectiveType.kind === "custom") {
-      return extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !== undefined;
+      return (
+        extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !==
+        undefined
+      );
     }
     if (effectiveType.kind === "union") {
       return effectiveType.members.some((member) => {
@@ -1182,8 +1185,11 @@ function checkConstraintOnType(
         // extensionRegistry and findBuiltinConstraintBroadening are both defined
         // (narrowed by the outer guard), but TypeScript can't narrow optional
         // methods across closure boundaries — this is a safe call.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded above
-        return extensionRegistry.findBuiltinConstraintBroadening!(resolvedMember.typeId, tagName) !== undefined;
+        return (
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded above
+          extensionRegistry.findBuiltinConstraintBroadening!(resolvedMember.typeId, tagName) !==
+          undefined
+        );
       });
     }
     return false;

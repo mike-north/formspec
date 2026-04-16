@@ -20,10 +20,10 @@ This package is primarily for tooling authors. Most app code should consume high
 
 ## Entry Points
 
-| Entry point                   | Purpose                                               |
-| ----------------------------- | ----------------------------------------------------- |
-| `@formspec/analysis`          | Stable protocol types and runtime helpers             |
-| `@formspec/analysis/internal` | Unstable lower-level parsing, registry, and IPC APIs  |
+| Entry point                   | Purpose                                              |
+| ----------------------------- | ---------------------------------------------------- |
+| `@formspec/analysis`          | Stable protocol types and runtime helpers            |
+| `@formspec/analysis/internal` | Unstable lower-level parsing, registry, and IPC APIs |
 
 ## License
 

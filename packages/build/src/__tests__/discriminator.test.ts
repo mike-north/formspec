@@ -45,9 +45,7 @@ function createLargeObjectCarrierSource(): string[] {
     lines.push(`  numberField${suffix}: number;`);
     lines.push(`  booleanField${suffix}: boolean;`);
     lines.push(`  listField${suffix}: readonly string[];`);
-    lines.push(
-      `  nestedField${suffix}: { label: string; enabled: boolean; count: number };`
-    );
+    lines.push(`  nestedField${suffix}: { label: string; enabled: boolean; count: number };`);
   }
 
   lines.push("}");
@@ -577,13 +575,9 @@ describe("@discriminator schema generation", () => {
         `Missing schema for ${propertyName}`
       );
       const ref =
-        typeof propertySchemaRecord["$ref"] === "string"
-          ? propertySchemaRecord["$ref"]
-          : undefined;
+        typeof propertySchemaRecord["$ref"] === "string" ? propertySchemaRecord["$ref"] : undefined;
       const resolvedSchemaRecord = expectRecord(
-        ref === undefined
-          ? propertySchemaRecord
-          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        ref === undefined ? propertySchemaRecord : (defs[ref.replace(/^#\/\$defs\//u, "")] ?? null),
         `Missing resolved schema for ${propertyName}`
       );
       const propertiesRecord = expectRecord(
@@ -631,13 +625,9 @@ describe("@discriminator schema generation", () => {
         `Missing schema for ${propertyName}`
       );
       const ref =
-        typeof propertySchemaRecord["$ref"] === "string"
-          ? propertySchemaRecord["$ref"]
-          : undefined;
+        typeof propertySchemaRecord["$ref"] === "string" ? propertySchemaRecord["$ref"] : undefined;
       const resolvedSchemaRecord = expectRecord(
-        ref === undefined
-          ? propertySchemaRecord
-          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        ref === undefined ? propertySchemaRecord : (defs[ref.replace(/^#\/\$defs\//u, "")] ?? null),
         `Missing resolved schema for ${propertyName}`
       );
       const propertiesRecord = expectRecord(
@@ -686,13 +676,9 @@ describe("@discriminator schema generation", () => {
         `Missing schema for ${propertyName}`
       );
       const ref =
-        typeof propertySchemaRecord["$ref"] === "string"
-          ? propertySchemaRecord["$ref"]
-          : undefined;
+        typeof propertySchemaRecord["$ref"] === "string" ? propertySchemaRecord["$ref"] : undefined;
       const resolvedSchemaRecord = expectRecord(
-        ref === undefined
-          ? propertySchemaRecord
-          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        ref === undefined ? propertySchemaRecord : (defs[ref.replace(/^#\/\$defs\//u, "")] ?? null),
         `Missing resolved schema for ${propertyName}`
       );
       const propertiesRecord = expectRecord(
@@ -712,9 +698,7 @@ describe("@discriminator schema generation", () => {
     expect(resolveTypeEnum("localBar")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("importedBar")).toEqual(["prefixed_custom_bar"]);
     expect(resolveTypeEnum("localInferredBar")).toEqual(["prefixed_inferred_object_carrier"]);
-    expect(resolveTypeEnum("importedInferredBar")).toEqual([
-      "prefixed_inferred_object_carrier",
-    ]);
+    expect(resolveTypeEnum("importedInferredBar")).toEqual(["prefixed_inferred_object_carrier"]);
   });
 
   it("specializes Ref<T> for large object carriers without expanding the target object", () => {
@@ -731,14 +715,10 @@ describe("@discriminator schema generation", () => {
         `Missing schema for ${propertyName}`
       );
       const ref =
-        typeof propertySchemaRecord["$ref"] === "string"
-          ? propertySchemaRecord["$ref"]
-          : undefined;
+        typeof propertySchemaRecord["$ref"] === "string" ? propertySchemaRecord["$ref"] : undefined;
 
       return expectRecord(
-        ref === undefined
-          ? propertySchemaRecord
-          : defs[ref.replace(/^#\/\$defs\//u, "")] ?? null,
+        ref === undefined ? propertySchemaRecord : (defs[ref.replace(/^#\/\$defs\//u, "")] ?? null),
         `Missing resolved schema for ${propertyName}`
       );
     };
@@ -856,7 +836,7 @@ describe("@discriminator schema generation", () => {
     const fieldsRef = typeof fieldsSchema["$ref"] === "string" ? fieldsSchema["$ref"] : undefined;
     const resolvedFields = expectRecord(
       fieldsRef !== undefined
-        ? defs[fieldsRef.replace(/^#\/\$defs\//u, "")] ?? null
+        ? (defs[fieldsRef.replace(/^#\/\$defs\//u, "")] ?? null)
         : fieldsSchema,
       "Missing resolved fields schema"
     );
@@ -880,7 +860,10 @@ describe("@discriminator schema generation", () => {
     expect(typeProperty["enum"]).toEqual(["large_circular"]);
 
     // Confirm `ref` in TestFields resolves to the PhantomRef definition
-    const refFieldProperties = expectRecord(resolvedFields["properties"], "Missing TestFields properties");
+    const refFieldProperties = expectRecord(
+      resolvedFields["properties"],
+      "Missing TestFields properties"
+    );
     expect(refFieldProperties).toHaveProperty("ref");
   });
 });

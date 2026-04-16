@@ -34,10 +34,7 @@ export {
 export type { JSDocConstraint, RawJSDocTag } from "./utils/jsdoc-utils.js";
 
 // Shared metadata-analysis helpers for downstream rule authors
-export {
-  analyzeMetadataForNode,
-  analyzeMetadataForSourceFile,
-} from "@formspec/analysis";
+export { analyzeMetadataForNode, analyzeMetadataForSourceFile } from "@formspec/analysis";
 export type {
   AnalyzeMetadataOptions,
   AnalyzeMetadataForNodeOptions,

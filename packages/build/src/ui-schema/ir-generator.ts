@@ -122,9 +122,14 @@ function getFieldDisplayName(field: FieldNode): string | undefined {
  * The label prefers resolved metadata, with annotation fallback for callers
  * that still construct IR without the metadata resolver pass.
  */
-function fieldNodeToControl(field: FieldNode, fieldNameMap: ReadonlyMap<string, string>, parentRule?: Rule): ControlElement {
+function fieldNodeToControl(
+  field: FieldNode,
+  fieldNameMap: ReadonlyMap<string, string>,
+  parentRule?: Rule
+): ControlElement {
   const placeholderAnnotation = field.annotations.find((a) => a.annotationKind === "placeholder");
-  const serializedName = fieldNameMap.get(field.name) ?? getSerializedName(field.name, field.metadata);
+  const serializedName =
+    fieldNameMap.get(field.name) ?? getSerializedName(field.name, field.metadata);
   const displayName = getFieldDisplayName(field);
 
   const control: ControlElement = {
@@ -188,7 +193,10 @@ function irElementsToUiSchema(
 
       case "conditional": {
         // Build the rule for this conditional level.
-        const newRule = createShowRule(fieldNameMap.get(element.fieldName) ?? element.fieldName, element.value);
+        const newRule = createShowRule(
+          fieldNameMap.get(element.fieldName) ?? element.fieldName,
+          element.value
+        );
         // Combine with the inherited parent rule for nested conditionals.
         const combinedRule = parentRule !== undefined ? combineRules(parentRule, newRule) : newRule;
         // Children are flattened into the parent container with the combined

@@ -26,10 +26,7 @@ declare const FIELD_POLICY_BRAND: unique symbol;
  *
  * @public
  */
-export type FieldBuilderElement<
-  Policy,
-  Element extends FormElement = FormElement,
-> = Element & {
+export type FieldBuilderElement<Policy, Element extends FormElement = FormElement> = Element & {
   readonly [FIELD_POLICY_BRAND]: Policy extends undefined
     ? { readonly __formspecDefaultFieldPolicy: true }
     : Policy;
@@ -58,14 +55,12 @@ export type FieldMetadataPolicy<Policy> = Policy extends { readonly field?: infe
  *
  * @public
  */
-export type IsRequiredMetadata<
-  Policy,
-  Key extends "apiName" | "displayName",
-> = FieldMetadataPolicy<Policy> extends Record<string, unknown>
-  ? FieldMetadataPolicy<Policy>[Key] extends { readonly mode: "require-explicit" }
-    ? true
-    : false
-  : false;
+export type IsRequiredMetadata<Policy, Key extends "apiName" | "displayName"> =
+  FieldMetadataPolicy<Policy> extends Record<string, unknown>
+    ? FieldMetadataPolicy<Policy>[Key] extends { readonly mode: "require-explicit" }
+      ? true
+      : false
+    : false;
 
 /**
  * Label/displayName config shape under a required-or-optional policy.
@@ -95,21 +90,22 @@ export type ApiNameConfig<Required extends boolean> = Required extends true
  *
  * @public
  */
-export type HasRequiredMetadata<Policy> = IsRequiredMetadata<Policy, "apiName"> extends true
-  ? true
-  : IsRequiredMetadata<Policy, "displayName"> extends true
+export type HasRequiredMetadata<Policy> =
+  IsRequiredMetadata<Policy, "apiName"> extends true
     ? true
-    : false;
+    : IsRequiredMetadata<Policy, "displayName"> extends true
+      ? true
+      : false;
 
 /**
  * Base field config augmented with metadata requirements from the active policy.
  *
  * @public
  */
-export type MetadataAwareFieldConfig<
+export type MetadataAwareFieldConfig<BaseConfig, Policy> = Omit<
   BaseConfig,
-  Policy,
-> = Omit<BaseConfig, "label" | "displayName" | "apiName"> &
+  "label" | "displayName" | "apiName"
+> &
   ApiNameConfig<IsRequiredMetadata<Policy, "apiName">> &
   LabelDisplayNameConfig<IsRequiredMetadata<Policy, "displayName">>;
 
@@ -118,9 +114,8 @@ export type MetadataAwareFieldConfig<
  *
  * @public
  */
-export type MaybeRequiredConfigArg<Config, Policy> = HasRequiredMetadata<Policy> extends true
-  ? readonly [config: Config]
-  : readonly [config?: Config];
+export type MaybeRequiredConfigArg<Config, Policy> =
+  HasRequiredMetadata<Policy> extends true ? readonly [config: Config] : readonly [config?: Config];
 
 /**
  * Argument tuple for policy-scoped array field builders.
@@ -131,11 +126,12 @@ export type ArrayBuilderArgs<
   N extends string,
   Items extends readonly FieldBuilderInputElement<Policy>[],
   Policy,
-> = HasRequiredMetadata<Policy> extends true
-  ? readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items]
-  :
-      | readonly [...items: Items]
-      | readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items];
+> =
+  HasRequiredMetadata<Policy> extends true
+    ? readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items]
+    :
+        | readonly [...items: Items]
+        | readonly [config: ArrayFieldConfig<N, Items, Policy>, ...items: Items];
 
 /**
  * Argument tuple for policy-scoped object field builders.
@@ -146,11 +142,12 @@ export type ObjectBuilderArgs<
   N extends string,
   Properties extends readonly FieldBuilderInputElement<Policy>[],
   Policy,
-> = HasRequiredMetadata<Policy> extends true
-  ? readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties]
-  :
-      | readonly [...properties: Properties]
-      | readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties];
+> =
+  HasRequiredMetadata<Policy> extends true
+    ? readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties]
+    :
+        | readonly [...properties: Properties]
+        | readonly [config: ObjectFieldConfig<N, Properties, Policy>, ...properties: Properties];
 
 /**
  * Config accepted by policy-scoped text field builders.
@@ -191,14 +188,21 @@ export type StaticEnumFieldConfig<
   N extends string,
   O extends readonly EnumOptionValue[],
   Policy,
-> = MetadataAwareFieldConfig<Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">, Policy>;
+> = MetadataAwareFieldConfig<
+  Omit<StaticEnumField<N, O>, "_type" | "_field" | "name" | "options">,
+  Policy
+>;
 
 /**
  * Config accepted by policy-scoped dynamic enum field builders.
  *
  * @public
  */
-export type DynamicEnumFieldConfig<N extends string, Source extends string, Policy> = MetadataAwareFieldConfig<
+export type DynamicEnumFieldConfig<
+  N extends string,
+  Source extends string,
+  Policy,
+> = MetadataAwareFieldConfig<
   Omit<DynamicEnumField<N, Source>, "_type" | "_field" | "name" | "source">,
   Policy
 >;
@@ -218,19 +222,28 @@ export type DynamicSchemaFieldConfig<N extends string, Policy> = MetadataAwareFi
  *
  * @public
  */
-export type ArrayFieldConfig<N extends string, Items extends readonly FormElement[], Policy> =
-  MetadataAwareFieldConfig<Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">, Policy>;
+export type ArrayFieldConfig<
+  N extends string,
+  Items extends readonly FormElement[],
+  Policy,
+> = MetadataAwareFieldConfig<
+  Omit<ArrayField<N, Items>, "_type" | "_field" | "name" | "items">,
+  Policy
+>;
 
 /**
  * Config accepted by policy-scoped object field builders.
  *
  * @public
  */
-export type ObjectFieldConfig<N extends string, Properties extends readonly FormElement[], Policy> =
-  MetadataAwareFieldConfig<
-    Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
-    Policy
-  >;
+export type ObjectFieldConfig<
+  N extends string,
+  Properties extends readonly FormElement[],
+  Policy,
+> = MetadataAwareFieldConfig<
+  Omit<ObjectField<N, Properties>, "_type" | "_field" | "name" | "properties">,
+  Policy
+>;
 
 /**
  * Namespace of field builder functions produced by the DSL.
@@ -272,23 +285,35 @@ export interface FieldBuilderNamespace<Policy extends MetadataPolicyInput | unde
     ...args: MaybeRequiredConfigArg<DynamicSchemaFieldConfig<N, Policy>, Policy>
   ) => FieldBuilderElement<Policy, DynamicSchemaField<N>>;
   /** Builds an array field, optionally with config as the second argument. */
-  readonly array: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(
+  readonly array: <
+    const N extends string,
+    const Items extends readonly FieldBuilderInputElement<Policy>[],
+  >(
     name: N,
     ...args: ArrayBuilderArgs<N, Items, Policy>
   ) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
   /** Builds an array field with an explicit config object. */
-  readonly arrayWithConfig: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(
+  readonly arrayWithConfig: <
+    const N extends string,
+    const Items extends readonly FieldBuilderInputElement<Policy>[],
+  >(
     name: N,
     config: ArrayFieldConfig<N, Items, Policy>,
     ...items: Items
   ) => FieldBuilderElement<Policy, ArrayField<N, Items>>;
   /** Builds an object field, optionally with config as the second argument. */
-  readonly object: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(
+  readonly object: <
+    const N extends string,
+    const Properties extends readonly FieldBuilderInputElement<Policy>[],
+  >(
     name: N,
     ...args: ObjectBuilderArgs<N, Properties, Policy>
   ) => FieldBuilderElement<Policy, ObjectField<N, Properties>>;
   /** Builds an object field with an explicit config object. */
-  readonly objectWithConfig: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(
+  readonly objectWithConfig: <
+    const N extends string,
+    const Properties extends readonly FieldBuilderInputElement<Policy>[],
+  >(
     name: N,
     config: ObjectFieldConfig<N, Properties, Policy>,
     ...properties: Properties
@@ -464,7 +489,10 @@ export function createFieldBuilders<
       } as unknown as FieldBuilderElement<Policy, DynamicSchemaField<N>>;
     },
 
-    array: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(
+    array: <
+      const N extends string,
+      const Items extends readonly FieldBuilderInputElement<Policy>[],
+    >(
       name: N,
       ...args: ArrayBuilderArgs<N, Items, Policy>
     ): FieldBuilderElement<Policy, ArrayField<N, Items>> => {
@@ -483,7 +511,10 @@ export function createFieldBuilders<
       } as unknown as FieldBuilderElement<Policy, ArrayField<N, Items>>;
     },
 
-    arrayWithConfig: <const N extends string, const Items extends readonly FieldBuilderInputElement<Policy>[]>(
+    arrayWithConfig: <
+      const N extends string,
+      const Items extends readonly FieldBuilderInputElement<Policy>[],
+    >(
       name: N,
       config: ArrayFieldConfig<N, Items, Policy>,
       ...items: Items
@@ -498,7 +529,10 @@ export function createFieldBuilders<
       } as unknown as FieldBuilderElement<Policy, ArrayField<N, Items>>;
     },
 
-    object: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(
+    object: <
+      const N extends string,
+      const Properties extends readonly FieldBuilderInputElement<Policy>[],
+    >(
       name: N,
       ...args: ObjectBuilderArgs<N, Properties, Policy>
     ): FieldBuilderElement<Policy, ObjectField<N, Properties>> => {
@@ -517,7 +551,10 @@ export function createFieldBuilders<
       } as unknown as FieldBuilderElement<Policy, ObjectField<N, Properties>>;
     },
 
-    objectWithConfig: <const N extends string, const Properties extends readonly FieldBuilderInputElement<Policy>[]>(
+    objectWithConfig: <
+      const N extends string,
+      const Properties extends readonly FieldBuilderInputElement<Policy>[],
+    >(
       name: N,
       config: ObjectFieldConfig<N, Properties, Policy>,
       ...properties: Properties

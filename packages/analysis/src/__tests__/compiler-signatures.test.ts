@@ -353,7 +353,9 @@ describe("compiler-signatures", () => {
           customTypes: [{ tsTypeNames: ["Array"] }],
         },
       ])
-    ).toThrow('conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding');
+    ).toThrow(
+      "conflicts with a TypeScript global built-in type that FormSpec does not yet support overriding"
+    );
   });
 
   it("keeps prelude-level failures out of per-application batch diagnostics", () => {
@@ -394,7 +396,9 @@ describe("compiler-signatures", () => {
     expect(result.applicationResults.every((entry) => entry.diagnostics.length === 0)).toBe(true);
     expect(result.globalDiagnostics).toHaveLength(1);
     expect(result.globalDiagnostics[0]?.kind).toBe("unsupported-custom-type-override");
-    expect(result.globalDiagnostics[0]?.message).toContain("conflicts with a TypeScript global built-in type");
+    expect(result.globalDiagnostics[0]?.message).toContain(
+      "conflicts with a TypeScript global built-in type"
+    );
   });
 
   it("preserves prelude-level failures across synthetic batch cache hits", () => {
@@ -421,7 +425,9 @@ describe("compiler-signatures", () => {
     expect(firstResult.globalDiagnostics).toHaveLength(1);
     expect(secondResult.globalDiagnostics).toHaveLength(1);
     expect(secondResult.globalDiagnostics[0]?.kind).toBe("unsupported-custom-type-override");
-    expect(secondResult.globalDiagnostics[0]?.message).toContain("conflicts with a TypeScript global built-in type");
+    expect(secondResult.globalDiagnostics[0]?.message).toContain(
+      "conflicts with a TypeScript global built-in type"
+    );
   });
 
   it("classifies invalid custom type registrations as synthetic setup failures", () => {
@@ -487,11 +493,12 @@ describe("compiler-signatures", () => {
 
     expect(results).toHaveLength(2);
     expect(
-      results.every((entry) =>
-        entry.diagnostics.length > 0 &&
-        entry.diagnostics.some(
-          (diagnostic) => diagnostic.kind === "unsupported-custom-type-override"
-        )
+      results.every(
+        (entry) =>
+          entry.diagnostics.length > 0 &&
+          entry.diagnostics.some(
+            (diagnostic) => diagnostic.kind === "unsupported-custom-type-override"
+          )
       )
     ).toBe(true);
   });
@@ -559,9 +566,7 @@ describe("compiler-signatures", () => {
       hostType: "MixedConfig",
       subjectType: "string",
       argumentExpression: "1",
-      supportingDeclarations: [
-        "interface MixedConfig { amount: Decimal; label: string; }",
-      ],
+      supportingDeclarations: ["interface MixedConfig { amount: Decimal; label: string; }"],
       extensions: [
         {
           extensionId: "x-stripe/monetary",

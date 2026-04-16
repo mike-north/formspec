@@ -76,7 +76,9 @@ describe("withConfig()", () => {
     const registry = (entry?.settings?.["formspec"] as Record<string, unknown>)[
       "extensionRegistry"
     ] as {
-      findTypeByName: (name: string) => { extensionId: string; registration: { typeName: string } } | undefined;
+      findTypeByName: (
+        name: string
+      ) => { extensionId: string; registration: { typeName: string } } | undefined;
       findBuiltinConstraintBroadening: (typeId: string, tagName: string) => object | undefined;
     };
 

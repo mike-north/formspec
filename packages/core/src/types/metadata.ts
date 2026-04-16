@@ -76,9 +76,7 @@ export interface EnumMemberMetadataInferenceContext {
  *
  * @public
  */
-export type EnumMemberMetadataInferenceFn = (
-  context: EnumMemberMetadataInferenceContext
-) => string;
+export type EnumMemberMetadataInferenceFn = (context: EnumMemberMetadataInferenceContext) => string;
 
 /**
  * Context passed to extensible metadata inference hooks.
