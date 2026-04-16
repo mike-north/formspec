@@ -1192,5 +1192,102 @@ describe("Extension API", () => {
         expect(registry.findTypeByBrand("Decimal")).toBeUndefined();
       });
     });
+
+    // -------------------------------------------------------------------------
+    // 10f. Edge cases for brand detection robustness
+    // -------------------------------------------------------------------------
+    describe("brand detection edge cases", () => {
+      it("does not match a string-keyed property with the same name as a registered brand", () => {
+        // If someone writes `type Bad = string & { __testBrand: true }` (string key,
+        // not [__testBrand] computed key), brand detection must NOT fire.
+        let tmpDir: string;
+        let fixturePath: string;
+
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-string-key-"));
+        fixturePath = path.join(tmpDir, "string-key-brand.ts");
+        fs.writeFileSync(
+          fixturePath,
+          [
+            '// String-keyed property — NOT a computed symbol key',
+            'type FakeBranded = string & { __fakeBrand: true };',
+            '',
+            'export interface FakeConfig {',
+            '  field: FakeBranded;',
+            '}',
+          ].join("\n")
+        );
+
+        const fakeType = defineCustomType({
+          typeName: "Fake",
+          brand: "__fakeBrand",
+          toJsonSchema: () => ({ type: "string", format: "fake" }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/fake", types: [fakeType] }),
+        ]);
+
+        const result = generateSchemas({
+          filePath: fixturePath,
+          typeName: "FakeConfig",
+          errorReporting: "throw",
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        });
+
+        const properties = result.jsonSchema.properties as Record<string, unknown>;
+        // String-keyed __fakeBrand is NOT a computed property name,
+        // so brand detection must not fire
+        expect(properties["field"]).not.toMatchObject({ format: "fake" });
+
+        fs.rmSync(tmpDir, { recursive: true });
+      });
+
+      it("brand + tsTypeNames: name-based resolution takes priority when name matches", () => {
+        let tmpDir: string;
+        let fixturePath: string;
+
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-dual-"));
+        fixturePath = path.join(tmpDir, "dual-registration.ts");
+        fs.writeFileSync(
+          fixturePath,
+          [
+            'declare const __dualBrand: unique symbol;',
+            'type DualType = string & { readonly [__dualBrand]: true };',
+            '',
+            'export interface DualConfig {',
+            '  field: DualType;',
+            '}',
+          ].join("\n")
+        );
+
+        const dualType = defineCustomType({
+          typeName: "DualType",
+          tsTypeNames: ["DualType"],
+          brand: "__dualBrand",
+          toJsonSchema: () => ({ type: "string", format: "dual" }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/dual", types: [dualType] }),
+        ]);
+
+        const result = generateSchemas({
+          filePath: fixturePath,
+          typeName: "DualConfig",
+          errorReporting: "throw",
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        });
+
+        const properties = result.jsonSchema.properties as Record<string, unknown>;
+        // With both brand and tsTypeNames, name-based resolution runs first
+        // and succeeds — produces the same result either way
+        expect(properties["field"]).toMatchObject({
+          type: "string",
+          format: "dual",
+        });
+
+        fs.rmSync(tmpDir, { recursive: true });
+      });
+    });
   });
 });
