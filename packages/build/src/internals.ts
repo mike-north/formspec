@@ -45,7 +45,11 @@ export type {
 export type { AnalyzeNamedTypeToIRDetailedResult } from "./analyzer/program.js";
 
 // Generators: class schema (now routes through IR)
-export { generateClassSchemas, generateClassSchemasDetailed } from "./generators/class-schema.js";
+export {
+  generateClassSchemas,
+  generateClassSchemasDetailed,
+  resolveStaticOptions,
+} from "./generators/class-schema.js";
 export type { ClassSchemas, DetailedClassSchemasResult } from "./generators/class-schema.js";
 
 // JSON Schema 2020-12: IR-based generator
