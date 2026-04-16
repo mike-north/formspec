@@ -26,6 +26,8 @@ export function createServer(options?: CreateServerOptions): Connection;
 
 // @public
 export interface CreateServerOptions {
+    // Warning: (ae-forgotten-export) The symbol "FormSpecConfig" needs to be exported by the entry point index.d.ts
+    readonly config?: FormSpecConfig;
     readonly diagnosticsMode?: "off" | "plugin";
     readonly diagnosticSource?: string;
     readonly extensions?: readonly ExtensionDefinition[];

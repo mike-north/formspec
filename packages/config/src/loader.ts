@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { createJiti } from "jiti";
+// Lazy import — jiti is Node-only and must not be statically analyzed
+// by browser bundlers (e.g., the playground's Vite build).
+async function getJiti() {
+  const { createJiti } = await import("jiti");
+  return createJiti(import.meta.url);
+}
 import type { FormSpecConfig, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
 
@@ -119,7 +124,7 @@ async function findConfigFile(startDir: string): Promise<string | null> {
  * The file must have a default export of a FormSpecConfig object.
  */
 async function loadConfigFile(filePath: string): Promise<FormSpecConfig> {
-  const jiti = createJiti(import.meta.url);
+  const jiti = await getJiti();
   const mod = await jiti.import(filePath);
 
   const defaultExport = (mod as { default?: unknown }).default ?? mod;

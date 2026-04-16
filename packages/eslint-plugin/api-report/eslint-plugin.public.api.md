@@ -11,8 +11,8 @@ import { AnalyzeMetadataForSourceFileOptions } from '@formspec/analysis';
 import { AnalyzeMetadataOptions } from '@formspec/analysis';
 import { ESLintUtils } from '@typescript-eslint/utils';
 import { ExplicitMetadataSource } from '@formspec/core';
-import { FieldTypeConstraints } from '@formspec/config/browser';
-import { LayoutConstraints } from '@formspec/config/browser';
+import { FieldTypeConstraints as FieldTypeConstraints_2 } from '@formspec/config/browser';
+import { LayoutConstraints as LayoutConstraints_2 } from '@formspec/config/browser';
 import { MetadataAnalysisResult } from '@formspec/core';
 import { MetadataApplicableSlot } from '@formspec/core';
 import { MetadataResolvedEntry } from '@formspec/core';
@@ -27,7 +27,7 @@ export const allowedFieldTypes: NamedRuleModule<AllowedFieldTypesMessageIds, All
 export type AllowedFieldTypesMessageIds = "disallowedFieldType";
 
 // @public
-export type AllowedFieldTypesOptions = [FieldTypeConstraints];
+export type AllowedFieldTypesOptions = [FieldTypeConstraints_2];
 
 // @public
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
@@ -36,7 +36,7 @@ export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLa
 export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditional";
 
 // @public
-export type AllowedLayoutsOptions = [LayoutConstraints];
+export type AllowedLayoutsOptions = [LayoutConstraints_2];
 
 export { analyzeMetadataForNode }
 
@@ -293,5 +293,8 @@ export const validPathTarget: ESLintUtils.RuleModule<"unknownPathTarget", [], un
 export const validRegexPattern: ESLintUtils.RuleModule<"invalidRegexPattern", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export function withConfig(config: FormSpecConfig): typeof plugin;
 
 ```
