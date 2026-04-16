@@ -15,7 +15,7 @@ import {
   choosePreferredPayloadText,
 } from "./tsdoc-text-extraction.js";
 import {
-  parseCommentBlockCore,
+  parseCommentBlock,
   type ParsedCommentTag,
   type ParsedCommentBlock,
 } from "./comment-syntax.js";
@@ -43,16 +43,14 @@ export interface UnifiedParseOptions {
 }
 
 /**
- * A parsed tag that combines regex-derived span information with the TSDoc
- * block node for the same tag.
+ * A parsed tag that combines regex-derived span information with TSDoc
+ * structural enrichment for the same tag.
  *
  * @public
  */
 export interface UnifiedParsedTag extends ParsedCommentTag {
-  /** TSDoc block node for this tag, if available. */
-  readonly docBlock: DocBlock | null;
-  /** Best-effort raw payload text (prefers raw span for TAGS_REQUIRING_RAW_TEXT). */
-  readonly rawPayloadText: string;
+  /** Best-effort resolved payload text (prefers raw span for TAGS_REQUIRING_RAW_TEXT). */
+  readonly resolvedPayloadText: string;
 }
 
 /**
@@ -108,7 +106,7 @@ export function parseUnifiedComment(
   const docComment = parserContext.docComment;
 
   // Phase 2: Span enrichment via existing regex parser
-  const parsed = parseCommentBlockCore(
+  const parsed = parseCommentBlock(
     commentText,
     options?.extensions !== undefined
       ? { offset: baseOffset, extensions: options.extensions }
@@ -121,12 +119,11 @@ export function parseUnifiedComment(
   // Phase 4: Extract structural content from TSDoc
   const summaryText = extractSummaryText(docComment, commentText, parsed);
   const remarksText =
-    docComment.remarksBlock !== undefined
-      ? extractBlockText(docComment.remarksBlock).trim()
-      : "";
-  const isDeprecated = docComment.deprecatedBlock !== undefined;
-  const deprecationMessage = isDeprecated
-    ? extractBlockText(docComment.deprecatedBlock!).trim()
+    docComment.remarksBlock !== undefined ? extractBlockText(docComment.remarksBlock).trim() : "";
+  const deprecatedBlock = docComment.deprecatedBlock;
+  const isDeprecated = deprecatedBlock !== undefined;
+  const deprecationMessage = deprecatedBlock !== undefined
+    ? extractBlockText(deprecatedBlock).trim()
     : "";
 
   return {
@@ -176,18 +173,17 @@ function alignTagsWithBlocks(
       }
     }
 
-    const rawPayloadText = getRawPayloadText(tag, matchedBlock, commentText, baseOffset);
+    const resolvedPayloadText = getResolvedPayloadText(tag, matchedBlock, commentText, baseOffset);
 
     return {
       ...tag,
-      docBlock: matchedBlock,
-      rawPayloadText,
+      resolvedPayloadText,
     };
   });
 }
 
 /**
- * Determines the best raw payload text for a tag.
+ * Determines the best resolved payload text for a tag.
  *
  * For tags in TAGS_REQUIRING_RAW_TEXT (e.g. `@pattern`, `@enumOptions`), the
  * span-based extraction is always preferred because TSDoc may mangle `@` or
@@ -195,7 +191,7 @@ function alignTagsWithBlocks(
  *
  * For other tags, choosePreferredPayloadText picks the longer/richer source.
  */
-function getRawPayloadText(
+function getResolvedPayloadText(
   tag: ParsedCommentTag,
   docBlock: DocBlock | null,
   commentText: string,

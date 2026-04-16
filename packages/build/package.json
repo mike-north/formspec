@@ -44,8 +44,6 @@
     "@formspec/analysis": "workspace:*",
     "@formspec/config": "workspace:*",
     "@formspec/core": "workspace:*",
-    "@microsoft/tsdoc": "^0.16.0",
-    "@microsoft/tsdoc-config": "^0.18.1",
     "zod": "^3.25.0"
   },
   "peerDependencies": {

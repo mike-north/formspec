@@ -1,7 +1,6 @@
 export {
   extractCommentSummaryText,
   parseCommentBlock,
-  parseCommentBlockCore,
   parseTagSyntax,
   sliceCommentSpan,
 } from "./comment-syntax.js";
@@ -141,16 +140,8 @@ export {
   type FormSpecSemanticCapability,
   type ResolvedPathTargetType,
 } from "./ts-binding.js";
-export {
-  createFormSpecTSDocConfig,
-  TAGS_REQUIRING_RAW_TEXT,
-  getOrCreateTSDocParser,
-} from "./tsdoc-config.js";
-export {
-  extractPlainText,
-  extractBlockText,
-  choosePreferredPayloadText,
-} from "./tsdoc-text-extraction.js";
+export { TAGS_REQUIRING_RAW_TEXT } from "./tsdoc-config.js";
+export { choosePreferredPayloadText } from "./tsdoc-text-extraction.js";
 export type {
   CheckNarrowSyntheticTagApplicabilitiesOptions,
   CheckNarrowSyntheticTagApplicabilityOptions,

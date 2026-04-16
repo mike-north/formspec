@@ -245,6 +245,50 @@ function pushUniqueCompilerDiagnostics(
   }
 }
 
+/**
+ * Runs the full constraint tag processing pipeline for a single tag: compiler
+ * diagnostics check → constraint value parse → push to output arrays.
+ *
+ * If compiler diagnostics are found the constraint is skipped and diagnostics
+ * are accumulated instead. Returns without mutating outputs if the tag produces
+ * no usable constraint node.
+ */
+function processConstraintTag(
+  tagName: string,
+  text: string,
+  parsedTag: ParsedCommentTag | null,
+  provenance: Provenance,
+  node: ts.Node,
+  sourceFile: ts.SourceFile,
+  supportingDeclarations: readonly string[],
+  options: ParseTSDocOptions | undefined,
+  constraints: ConstraintNode[],
+  diagnostics: ConstraintSemanticDiagnostic[]
+): void {
+  const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
+    node,
+    sourceFile,
+    tagName,
+    parsedTag,
+    provenance,
+    supportingDeclarations,
+    options
+  );
+  if (compilerDiagnostics.length > 0) {
+    pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
+    return;
+  }
+  const constraintNode = parseConstraintTagValue(
+    tagName,
+    text,
+    provenance,
+    sharedTagValueOptions(options)
+  );
+  if (constraintNode) {
+    constraints.push(constraintNode);
+  }
+}
+
 function renderSyntheticArgumentExpression(
   valueKind: FormSpecValueKind | null,
   argumentText: string
@@ -794,7 +838,7 @@ export function parseTSDocTags(
         const tagName = tag.normalizedTagName;
 
         if (tagName === "displayName" || tagName === "format" || tagName === "placeholder") {
-          const text = tag.rawPayloadText;
+          const text = tag.resolvedPayloadText;
           if (text === "") continue;
 
           const provenance = provenanceForParsedTag(tag, sourceFile, file);
@@ -831,7 +875,7 @@ export function parseTSDocTags(
           // regex parser's span may only capture the first line (e.g. `{`), while
           // the TS compiler API provides the full content for multi-line payloads.
           const fallback = rawTextFallbacks.get(tagName)?.shift();
-          const text = choosePreferredPayloadText(tag.rawPayloadText, fallback?.text ?? "");
+          const text = choosePreferredPayloadText(tag.resolvedPayloadText, fallback?.text ?? "");
           if (text === "") continue;
 
           const provenance = provenanceForParsedTag(tag, sourceFile, file);
@@ -840,62 +884,41 @@ export function parseTSDocTags(
             continue;
           }
 
-          const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
-            node,
-            sourceFile,
-            tagName,
-            tag,
-            provenance,
-            supportingDeclarations,
-            options
-          );
-          if (compilerDiagnostics.length > 0) {
-            pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
-            continue;
-          }
-
-          const constraintNode = parseConstraintTagValue(
+          processConstraintTag(
             tagName,
             text,
+            tag,
             provenance,
-            sharedTagValueOptions(options)
+            node,
+            sourceFile,
+            supportingDeclarations,
+            options,
+            constraints,
+            diagnostics
           );
-          if (constraintNode) {
-            constraints.push(constraintNode);
-          }
           continue;
         }
 
         // Regular constraint tag (not requiring raw text)
-        const text = tag.rawPayloadText;
+        const text = tag.resolvedPayloadText;
         const expectedType = isBuiltinConstraintName(tagName)
           ? BUILTIN_CONSTRAINT_DEFINITIONS[tagName]
           : undefined;
         if (text === "" && expectedType !== "boolean") continue;
 
         const provenance = provenanceForParsedTag(tag, sourceFile, file);
-        const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
-          node,
-          sourceFile,
-          tagName,
-          tag,
-          provenance,
-          supportingDeclarations,
-          options
-        );
-        if (compilerDiagnostics.length > 0) {
-          pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
-          continue;
-        }
-        const constraintNode = parseConstraintTagValue(
+        processConstraintTag(
           tagName,
           text,
+          tag,
           provenance,
-          sharedTagValueOptions(options)
+          node,
+          sourceFile,
+          supportingDeclarations,
+          options,
+          constraints,
+          diagnostics
         );
-        if (constraintNode) {
-          constraints.push(constraintNode);
-        }
       }
 
       // Extract @deprecated from the unified parse result
@@ -961,29 +984,18 @@ export function parseTSDocTags(
         continue;
       }
 
-      const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
-        node,
-        sourceFile,
-        tagName,
-        null,
-        provenance,
-        supportingDeclarations,
-        options
-      );
-      if (compilerDiagnostics.length > 0) {
-        pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
-        continue;
-      }
-
-      const constraintNode = parseConstraintTagValue(
+      processConstraintTag(
         tagName,
         text,
+        null,
         provenance,
-        sharedTagValueOptions(options)
+        node,
+        sourceFile,
+        supportingDeclarations,
+        options,
+        constraints,
+        diagnostics
       );
-      if (constraintNode) {
-        constraints.push(constraintNode);
-      }
     }
   }
 

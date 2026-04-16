@@ -33,10 +33,8 @@ export function extractPlainText(node: DocNode): string {
   if (node instanceof DocSoftBreak) {
     return " ";
   }
-  if (typeof node.getChildNodes === "function") {
-    for (const child of node.getChildNodes()) {
-      result += extractPlainText(child);
-    }
+  for (const child of node.getChildNodes()) {
+    result += extractPlainText(child);
   }
   return result;
 }

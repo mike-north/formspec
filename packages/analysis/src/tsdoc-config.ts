@@ -46,10 +46,11 @@ export const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defau
  */
 export function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): TSDocConfiguration {
   const config = new TSDocConfiguration();
+  const registered = new Set<string>();
 
-  // Register each constraint tag as a custom block tag (allowMultiple so
-  // repeated tags don't produce warnings).
-  for (const tagName of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
+  function registerTag(tagName: string): void {
+    if (registered.has(tagName)) return;
+    registered.add(tagName);
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
@@ -57,6 +58,12 @@ export function createFormSpecTSDocConfig(extensionTagNames: readonly string[] =
         allowMultiple: true,
       })
     );
+  }
+
+  // Register each constraint tag as a custom block tag (allowMultiple so
+  // repeated tags don't produce warnings).
+  for (const tagName of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
+    registerTag(tagName);
   }
 
   // Register FormSpec annotation and structure tags so summary extraction
@@ -76,23 +83,11 @@ export function createFormSpecTSDocConfig(extensionTagNames: readonly string[] =
     "disableWhen",
     "discriminator",
   ]) {
-    config.addTagDefinition(
-      new TSDocTagDefinition({
-        tagName: "@" + tagName,
-        syntaxKind: TSDocTagSyntaxKind.BlockTag,
-        allowMultiple: true,
-      })
-    );
+    registerTag(tagName);
   }
 
   for (const tagName of extensionTagNames) {
-    config.addTagDefinition(
-      new TSDocTagDefinition({
-        tagName: "@" + tagName,
-        syntaxKind: TSDocTagSyntaxKind.BlockTag,
-        allowMultiple: true,
-      })
-    );
+    registerTag(tagName);
   }
 
   return config;

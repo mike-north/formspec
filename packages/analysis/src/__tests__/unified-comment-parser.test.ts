@@ -187,7 +187,7 @@ describe("parseUnifiedComment — deprecated extraction", () => {
 // RAW PAYLOAD FOR TAGS_REQUIRING_RAW_TEXT
 // =============================================================================
 
-describe("parseUnifiedComment — rawPayloadText for TAGS_REQUIRING_RAW_TEXT", () => {
+describe("parseUnifiedComment — resolvedPayloadText for TAGS_REQUIRING_RAW_TEXT", () => {
   it("preserves @ characters in @pattern payload via span-based extraction", () => {
     // spec (TAGS_REQUIRING_RAW_TEXT): always use span-based text for @pattern
     // because regex patterns commonly contain @ (e.g. email validation).
@@ -198,7 +198,7 @@ describe("parseUnifiedComment — rawPayloadText for TAGS_REQUIRING_RAW_TEXT", (
     const tag = result.tags[0];
     expect(tag?.normalizedTagName).toBe("pattern");
     // The full regex must be intact — span-based extraction preserves @
-    expect(tag?.rawPayloadText).toBe("^[^@]+@[^@]+$");
+    expect(tag?.resolvedPayloadText).toBe("^[^@]+@[^@]+$");
   });
 
   it("preserves {} characters in @enumOptions payload via span-based extraction", () => {
@@ -210,7 +210,7 @@ describe("parseUnifiedComment — rawPayloadText for TAGS_REQUIRING_RAW_TEXT", (
     expect(result.tags).toHaveLength(1);
     const tag = result.tags[0];
     expect(tag?.normalizedTagName).toBe("enumOptions");
-    expect(tag?.rawPayloadText).toBe('[{"a":1}]');
+    expect(tag?.resolvedPayloadText).toBe('[{"a":1}]');
   });
 
   it("preserves JSON in @defaultValue payload via span-based extraction", () => {
@@ -222,69 +222,68 @@ describe("parseUnifiedComment — rawPayloadText for TAGS_REQUIRING_RAW_TEXT", (
     expect(result.tags).toHaveLength(1);
     const tag = result.tags[0];
     expect(tag?.normalizedTagName).toBe("defaultValue");
-    expect(tag?.rawPayloadText).toBe('{"key": "value"}');
+    expect(tag?.resolvedPayloadText).toBe('{"key": "value"}');
   });
 
   it("uses non-raw extraction for a regular tag like @minimum", () => {
-    // @minimum is not in TAGS_REQUIRING_RAW_TEXT — rawPayloadText is still set
+    // @minimum is not in TAGS_REQUIRING_RAW_TEXT — resolvedPayloadText is still set
     // but comes from choosePreferredPayloadText, not forced span-only.
     const comment = "/** @minimum 42 */";
     const result = parseUnifiedComment(comment);
 
     const tag = result.tags[0];
-    expect(tag?.rawPayloadText).toBe("42");
+    expect(tag?.resolvedPayloadText).toBe("42");
   });
 });
 
 // =============================================================================
-// DOCBLOCK ALIGNMENT
+// BLOCK ALIGNMENT (observable via resolvedPayloadText)
 // =============================================================================
 
-describe("parseUnifiedComment — docBlock alignment", () => {
-  it("attaches a non-null docBlock for a registered tag", () => {
+describe("parseUnifiedComment — block alignment", () => {
+  it("resolves payload text for a registered tag", () => {
     // @minimum is registered in FormSpec's TSDoc config, so TSDoc produces a
-    // customBlock for it. alignTagsWithBlocks should match it.
+    // customBlock for it. The resolved payload text should be non-empty.
     const comment = "/** @minimum 5 */";
     const result = parseUnifiedComment(comment);
 
-    expect(result.tags[0]?.docBlock).not.toBeNull();
+    expect(result.tags[0]?.resolvedPayloadText).toBe("5");
   });
 
-  it("attaches a null docBlock for a tag that TSDoc does not know", () => {
-    // @foobar is not registered with TSDoc. TSDoc puts it in the summary
-    // section rather than creating a custom block. No block should match.
+  it("still resolves payload text for a tag TSDoc does not know (span-based fallback)", () => {
+    // @foobar is not registered with TSDoc. The span-based extraction provides
+    // the resolved text directly without a TSDoc block.
     const comment = "/** @foobar somevalue */";
     const result = parseUnifiedComment(comment);
 
-    expect(result.tags[0]?.docBlock).toBeNull();
+    expect(result.tags[0]?.resolvedPayloadText).toBe("somevalue");
   });
 
-  it("aligns multiple blocks to multiple tags by document order", () => {
-    // Both @minimum and @maximum are registered. Two TSDoc custom blocks
-    // must be matched to the two regex tags in order.
+  it("resolves correct payload text for multiple registered tags in document order", () => {
+    // Both @minimum and @maximum are registered. The resolved text must
+    // correspond to the right tag in document order.
     const comment = "/**\n * @minimum 0\n * @maximum 100\n */";
     const result = parseUnifiedComment(comment);
 
     expect(result.tags).toHaveLength(2);
-    expect(result.tags[0]?.docBlock).not.toBeNull();
-    expect(result.tags[1]?.docBlock).not.toBeNull();
-    // Block tag names must correspond to the right tags
-    expect(result.tags[0]?.docBlock?.blockTag.tagName).toBe("@minimum");
-    expect(result.tags[1]?.docBlock?.blockTag.tagName).toBe("@maximum");
+    expect(result.tags[0]?.normalizedTagName).toBe("minimum");
+    expect(result.tags[0]?.resolvedPayloadText).toBe("0");
+    expect(result.tags[1]?.normalizedTagName).toBe("maximum");
+    expect(result.tags[1]?.resolvedPayloadText).toBe("100");
   });
 
-  it("does not skip registered blocks when an unrecognized tag appears before them", () => {
+  it("resolves payload text for registered tag when an unrecognized tag appears before it", () => {
     // The cursor advances only on successful matches, not on every iteration,
-    // so an unrecognized tag in the middle must not consume a TSDoc block
-    // belonging to the next regex tag.
+    // so an unrecognized tag must not interfere with payload resolution for
+    // the following registered tag.
     const comment = "/** @foobar x @minimum 0 */";
     const result = parseUnifiedComment(comment);
 
     expect(result.tags).toHaveLength(2);
     expect(result.tags[0]?.normalizedTagName).toBe("foobar");
-    expect(result.tags[0]?.docBlock).toBeNull();
+    expect(result.tags[0]?.resolvedPayloadText).toBe("x");
     expect(result.tags[1]?.normalizedTagName).toBe("minimum");
-    expect(result.tags[1]?.docBlock).not.toBeNull();
+    expect(result.tags[1]?.resolvedPayloadText).toBe("0");
   });
 });
 
@@ -303,23 +302,23 @@ describe("parseUnifiedComment — tag spans preserved", () => {
     expect(unified.tags).toHaveLength(1);
     expect(regex.tags).toHaveLength(1);
 
-    const ut = unified.tags[0]!;
-    const rt = regex.tags[0]!;
+    const ut = unified.tags[0];
+    const rt = regex.tags[0];
 
-    expect(ut.fullSpan).toEqual(rt.fullSpan);
-    expect(ut.tagNameSpan).toEqual(rt.tagNameSpan);
-    expect(ut.argumentSpan).toEqual(rt.argumentSpan);
-    expect(ut.payloadSpan).toEqual(rt.payloadSpan);
+    expect(ut?.fullSpan).toEqual(rt?.fullSpan);
+    expect(ut?.tagNameSpan).toEqual(rt?.tagNameSpan);
+    expect(ut?.argumentSpan).toEqual(rt?.argumentSpan);
+    expect(ut?.payloadSpan).toEqual(rt?.payloadSpan);
   });
 
   it("shifts spans by the given offset", () => {
     const comment = "/** @minimum 0 */";
     const result = parseUnifiedComment(comment, { offset: 100 });
 
-    const tag = result.tags[0]!;
+    const tag = result.tags[0];
     // tagNameSpan.start == 4 (without offset) → 104 with offset 100
-    expect(tag.tagNameSpan.start).toBe(104);
-    expect(tag.tagNameSpan.end).toBe(112);
+    expect(tag?.tagNameSpan.start).toBe(104);
+    expect(tag?.tagNameSpan.end).toBe(112);
   });
 
   it("colonSpan and payloadSpan match parseCommentBlock for a path target", () => {
@@ -327,11 +326,11 @@ describe("parseUnifiedComment — tag spans preserved", () => {
     const unified = parseUnifiedComment(comment);
     const regex = parseCommentBlock(comment);
 
-    const ut = unified.tags[0]!;
-    const rt = regex.tags[0]!;
+    const ut = unified.tags[0];
+    const rt = regex.tags[0];
 
-    expect(ut.colonSpan).toEqual(rt.colonSpan);
-    expect(ut.payloadSpan).toEqual(rt.payloadSpan);
+    expect(ut?.colonSpan).toEqual(rt?.colonSpan);
+    expect(ut?.payloadSpan).toEqual(rt?.payloadSpan);
   });
 });
 
@@ -345,22 +344,22 @@ describe("parseUnifiedComment — target specifiers", () => {
     const comment = "/** @minimum :amount.value 0 */";
     const result = parseUnifiedComment(comment);
 
-    const tag = result.tags[0]!;
-    expect(tag.target).not.toBeNull();
-    expect(tag.target?.kind).toBe("path");
-    expect(tag.target?.rawText).toBe("amount.value");
-    expect(tag.argumentText).toBe("0");
+    const tag = result.tags[0];
+    expect(tag?.target).not.toBeNull();
+    expect(tag?.target?.kind).toBe("path");
+    expect(tag?.target?.rawText).toBe("amount.value");
+    expect(tag?.argumentText).toBe("0");
   });
 
   it("preserves member target specifier from regex parser", () => {
     const comment = "/** @apiName :singular home */";
     const result = parseUnifiedComment(comment);
 
-    const tag = result.tags[0]!;
-    expect(tag.target).not.toBeNull();
-    expect(tag.target?.kind).toBe("variant");
-    expect(tag.target?.rawText).toBe("singular");
-    expect(tag.argumentText).toBe("home");
+    const tag = result.tags[0];
+    expect(tag?.target).not.toBeNull();
+    expect(tag?.target?.kind).toBe("variant");
+    expect(tag?.target?.rawText).toBe("singular");
+    expect(tag?.argumentText).toBe("home");
   });
 
   it("preserves null target when no target specifier is present", () => {
@@ -401,24 +400,24 @@ describe("parseUnifiedComment — consistency with parseCommentBlock", () => {
 
       // Each tag's identity fields match
       for (let i = 0; i < regex.tags.length; i++) {
-        const ut = unified.tags[i]!;
-        const rt = regex.tags[i]!;
+        const ut = unified.tags[i];
+        const rt = regex.tags[i];
 
-        expect(ut.normalizedTagName).toBe(rt.normalizedTagName);
-        expect(ut.rawTagName).toBe(rt.rawTagName);
-        expect(ut.argumentText).toBe(rt.argumentText);
-        expect(ut.recognized).toBe(rt.recognized);
+        expect(ut?.normalizedTagName).toBe(rt?.normalizedTagName);
+        expect(ut?.rawTagName).toBe(rt?.rawTagName);
+        expect(ut?.argumentText).toBe(rt?.argumentText);
+        expect(ut?.recognized).toBe(rt?.recognized);
 
         // Target info preserved verbatim
-        expect(ut.target?.kind).toBe(rt.target?.kind);
-        expect(ut.target?.rawText).toBe(rt.target?.rawText);
+        expect(ut?.target?.kind).toBe(rt?.target?.kind);
+        expect(ut?.target?.rawText).toBe(rt?.target?.rawText);
 
         // All spans preserved verbatim
-        expect(ut.fullSpan).toEqual(rt.fullSpan);
-        expect(ut.tagNameSpan).toEqual(rt.tagNameSpan);
-        expect(ut.argumentSpan).toEqual(rt.argumentSpan);
-        expect(ut.payloadSpan).toEqual(rt.payloadSpan);
-        expect(ut.colonSpan).toEqual(rt.colonSpan);
+        expect(ut?.fullSpan).toEqual(rt?.fullSpan);
+        expect(ut?.tagNameSpan).toEqual(rt?.tagNameSpan);
+        expect(ut?.argumentSpan).toEqual(rt?.argumentSpan);
+        expect(ut?.payloadSpan).toEqual(rt?.payloadSpan);
+        expect(ut?.colonSpan).toEqual(rt?.colonSpan);
       }
     });
   }

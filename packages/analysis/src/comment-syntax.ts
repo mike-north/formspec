@@ -295,14 +295,11 @@ export interface ParseCommentSyntaxOptions {
 }
 
 /**
- * Core regex-based implementation of comment block parsing.
- * Exported so that `unified-comment-parser.ts` can call it directly without
- * creating a circular dependency (the unified parser imports this function;
- * `parseCommentBlock` imports the unified parser).
+ * Parse a doc comment block into tags and target/argument spans.
  *
  * @public
  */
-export function parseCommentBlockCore(
+export function parseCommentBlock(
   commentText: string,
   options?: ParseCommentSyntaxOptions
 ): ParsedCommentBlock {
@@ -391,18 +388,6 @@ export function parseCommentBlockCore(
     offset: baseOffset,
     tags,
   };
-}
-
-/**
- * Parse a doc comment block into tags and target/argument spans.
- *
- * @public
- */
-export function parseCommentBlock(
-  commentText: string,
-  options?: ParseCommentSyntaxOptions
-): ParsedCommentBlock {
-  return parseCommentBlockCore(commentText, options);
 }
 
 /**

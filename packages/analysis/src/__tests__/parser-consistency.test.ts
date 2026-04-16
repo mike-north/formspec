@@ -1,24 +1,16 @@
 /**
- * Comprehensive behavioral specification for `parseCommentBlock`.
+ * Behavioral specification for `parseCommentBlock`.
  *
- * This file verifies that the regex-based comment parser in `@formspec/analysis`
- * produces correct structural results for a representative set of comment strings.
- * Every assertion is derived from reading the comment syntax specification and
+ * This file verifies that the regex-based comment parser produces correct
+ * structural results for a representative set of comment strings. Every
+ * assertion is derived from reading the comment syntax specification and
  * source rules — not from capturing program output.
  *
- * Why here (in @formspec/build) and not in @formspec/analysis:
- *   The build package is where cross-cutting integration concerns are tested. This
- *   file also serves as the consistency baseline for the planned consolidation of
- *   the ESLint `scanComment` logic onto `parseCommentBlock`. When that migration
- *   lands, the existing 60+ ESLint rule tests verify the ESLint side; this file
- *   verifies the shared parsing contract.
- *
  * @see packages/analysis/src/comment-syntax.ts — `parseCommentBlock`, `ParsedCommentTag`
- * @see packages/eslint-plugin/src/utils/tag-scanner.ts — `scanComment` (private)
  */
 
 import { describe, expect, it } from "vitest";
-import { parseCommentBlock } from "@formspec/analysis/internal";
+import { parseCommentBlock } from "../comment-syntax.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -408,8 +400,8 @@ describe("parseCommentBlock — span correctness", () => {
     const [tag] = parseCommentBlock(comment, { offset: 0 }).tags;
     expect(tag?.tagNameSpan).not.toBeNull();
     // tagNameSpan covers '@minimum' = positions 4..12 in the comment string
-    expect(tag?.tagNameSpan?.start).toBe(4);
-    expect(tag?.tagNameSpan?.end).toBe(12);
+    expect(tag?.tagNameSpan.start).toBe(4);
+    expect(tag?.tagNameSpan.end).toBe(12);
   });
 
   it("argumentSpan covers exactly the argument text in a single-line comment", () => {
@@ -430,8 +422,8 @@ describe("parseCommentBlock — span correctness", () => {
     const comment = `/** @minimum 0 */`;
     const baseOffset = 100;
     const [tag] = parseCommentBlock(comment, { offset: baseOffset }).tags;
-    expect(tag?.tagNameSpan?.start).toBe(4 + baseOffset);
-    expect(tag?.tagNameSpan?.end).toBe(12 + baseOffset);
+    expect(tag?.tagNameSpan.start).toBe(4 + baseOffset);
+    expect(tag?.tagNameSpan.end).toBe(12 + baseOffset);
     expect(tag?.argumentSpan?.start).toBe(13 + baseOffset);
     expect(tag?.argumentSpan?.end).toBe(14 + baseOffset);
   });
@@ -455,7 +447,7 @@ describe("parseCommentBlock — span correctness", () => {
     const comment = `/** @minimum :amount.value 0 */`;
     const [tag] = parseCommentBlock(comment, { offset: 0 }).tags;
     expect(tag?.target?.fullSpan).not.toBeNull();
-    const slice = comment.slice(tag?.target?.fullSpan?.start, tag?.target?.fullSpan?.end);
+    const slice = comment.slice(tag?.target?.fullSpan.start, tag?.target?.fullSpan.end);
     expect(slice).toBe(":amount.value");
   });
 });
