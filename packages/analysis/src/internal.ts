@@ -140,6 +140,8 @@ export {
   type FormSpecSemanticCapability,
   type ResolvedPathTargetType,
 } from "./ts-binding.js";
+export { TAGS_REQUIRING_RAW_TEXT } from "./tsdoc-config.js";
+export { choosePreferredPayloadText } from "./tsdoc-text-extraction.js";
 export type {
   CheckNarrowSyntheticTagApplicabilitiesOptions,
   CheckNarrowSyntheticTagApplicabilityOptions,
@@ -159,3 +161,9 @@ export {
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
+export {
+  parseUnifiedComment,
+  type UnifiedParsedComment,
+  type UnifiedParsedTag,
+  type UnifiedParseOptions,
+} from "./unified-comment-parser.js";
