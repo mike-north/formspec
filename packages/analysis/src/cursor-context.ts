@@ -4,7 +4,7 @@ import {
   type ParsedCommentTag,
 } from "./comment-syntax.js";
 import type * as ts from "typescript";
-import { collectCompatiblePathTargets } from "./ts-binding.js";
+import { collectCompatiblePathTargets, getEnumMemberCompletions } from "./ts-binding.js";
 import {
   getDeclarationTypeParameterNames,
   getDirectPropertyTargets,
@@ -229,21 +229,6 @@ function getSupportedTargets(signatures: readonly TagSignature[]): readonly Form
   return [...supportedTargets];
 }
 
-function getStringLiteralUnionMembers(
-  subjectType: ts.Type | undefined
-): readonly string[] {
-  if (subjectType === undefined || !subjectType.isUnion()) {
-    return [];
-  }
-
-  const members: string[] = [];
-  for (const member of subjectType.types) {
-    if (member.isStringLiteral()) {
-      members.push(member.value);
-    }
-  }
-  return members;
-}
 
 function getTargetCompletions(
   signatures: readonly TagSignature[],
@@ -311,11 +296,8 @@ export function getCommentTagSemanticContext(
     tagDefinition?.canonicalName === "discriminator"
       ? getDiscriminatorTargetCompletions(options)
       : getCompatiblePathTargetsForSignatures(signatures, options?.checker, options?.subjectType);
-  const memberCompletions = signatures.some((sig) =>
-    sig.parameters.some((p) => p.kind === "target-member")
-  )
-    ? getStringLiteralUnionMembers(options?.subjectType)
-    : [];
+  const memberCompletions =
+    options?.subjectType !== undefined ? getEnumMemberCompletions(options.subjectType) : [];
   const targetCompletions =
     tagDefinition?.canonicalName === "discriminator"
       ? compatiblePathTargets
