@@ -160,6 +160,66 @@ describe("cursor-context", () => {
     }
   });
 
+  it("suggests enum member names for @displayName :member on string union fields", () => {
+    const source = `
+      class Foo {
+        /** @displayName :draft */
+        status!: "draft" | "active" | "archived";
+      }
+    `;
+    const offset = source.indexOf("draft", source.indexOf(":draft")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    expect(context.kind).toBe("target");
+    if (context.kind === "target") {
+      expect(context.semantic.targetCompletions).toContain("draft");
+      expect(context.semantic.targetCompletions).toContain("active");
+      expect(context.semantic.targetCompletions).toContain("archived");
+    }
+  });
+
+  it("suggests enum member names for @apiName :member on string union fields", () => {
+    const source = `
+      class Foo {
+        /** @apiName :draft */
+        status!: "draft" | "active" | "archived";
+      }
+    `;
+    const offset = source.indexOf("draft", source.indexOf(":draft")) + 1;
+    const { checker, sourceFile } = createProgram(source);
+    const classDeclaration = sourceFile.statements.find(ts.isClassDeclaration);
+    const property = classDeclaration?.members.find(ts.isPropertyDeclaration);
+    if (property === undefined) {
+      throw new Error("Expected property declaration");
+    }
+
+    const subjectType = checker.getTypeAtLocation(property);
+    const context = getSemanticCommentCompletionContextAtOffset(source, offset, {
+      checker,
+      subjectType,
+      placement: "class-field",
+    });
+
+    expect(context.kind).toBe("target");
+    if (context.kind === "target") {
+      expect(context.semantic.targetCompletions).toContain("draft");
+      expect(context.semantic.targetCompletions).toContain("active");
+      expect(context.semantic.targetCompletions).toContain("archived");
+    }
+  });
+
   it("exposes contextual signatures for the active tag occurrence", () => {
     const source = `
       class Foo {
