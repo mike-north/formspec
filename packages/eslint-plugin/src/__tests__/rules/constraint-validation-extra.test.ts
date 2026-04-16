@@ -327,6 +327,16 @@ ruleTester.run("no-double-underscore-fields", noDoubleUnderscoreFields, {
       code: `type Bar = { id: string } & { __brand: string };`,
       errors: [{ messageId: "phantomField" }],
     },
+    // Parenthesized type alias with __-prefixed property
+    {
+      code: `type X = ({ __phantom: string });`,
+      errors: [{ messageId: "phantomField" }],
+    },
+    // Parenthesized intersection type alias
+    {
+      code: `type X = ({ id: string } & { __brand: string });`,
+      errors: [{ messageId: "phantomField" }],
+    },
     // Property named exactly __ (two underscores, no suffix)
     {
       code: `class Form { __!: string; }`,
