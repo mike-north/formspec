@@ -174,6 +174,16 @@ export { FormElement }
 export { FormSpec }
 
 // @public
+export interface FormSpecConfig {
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly extensions?: readonly ExtensionDefinition_2[];
+    readonly metadata?: MetadataPolicyInput_2;
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
@@ -512,10 +522,15 @@ export { StaticEnumField }
 
 // @public
 export interface StaticSchemaGenerationOptions {
+    readonly config?: FormSpecConfig | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
+    // @deprecated
     readonly enumSerialization?: "enum" | "oneOf";
+    // @deprecated
     readonly extensionRegistry?: ExtensionRegistry | undefined;
+    // @deprecated
     readonly metadata?: MetadataPolicyInput | undefined;
+    // @deprecated
     readonly vendorPrefix?: string | undefined;
 }
 

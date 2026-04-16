@@ -66,14 +66,18 @@ export function buildMixedAuthoringSchemas(
   const analysis = analyzeNamedTypeToIR(
     filePath,
     typeName,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     schemaOptions.extensionRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     schemaOptions.metadata,
     schemaOptions.discriminator
   );
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
   const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays, schemaOptions.metadata);
   const ir = canonicalizeTSDoc(
     composedAnalysis,
     { file: filePath },
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     schemaOptions.metadata !== undefined ? { metadata: schemaOptions.metadata } : undefined
   );
 

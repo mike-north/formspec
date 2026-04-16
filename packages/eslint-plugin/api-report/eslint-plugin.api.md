@@ -11,8 +11,8 @@ import { AnalyzeMetadataForSourceFileOptions } from '@formspec/analysis';
 import { AnalyzeMetadataOptions } from '@formspec/analysis';
 import { ESLintUtils } from '@typescript-eslint/utils';
 import { ExplicitMetadataSource } from '@formspec/core';
-import { FieldTypeConstraints } from '@formspec/constraints/browser';
-import { LayoutConstraints } from '@formspec/constraints/browser';
+import { FieldTypeConstraints as FieldTypeConstraints_2 } from '@formspec/config/browser';
+import { LayoutConstraints as LayoutConstraints_2 } from '@formspec/config/browser';
 import { MetadataAnalysisResult } from '@formspec/core';
 import { MetadataApplicableSlot } from '@formspec/core';
 import { MetadataResolvedEntry } from '@formspec/core';
@@ -27,7 +27,7 @@ export const allowedFieldTypes: NamedRuleModule<AllowedFieldTypesMessageIds, All
 export type AllowedFieldTypesMessageIds = "disallowedFieldType";
 
 // @public
-export type AllowedFieldTypesOptions = [FieldTypeConstraints];
+export type AllowedFieldTypesOptions = [FieldTypeConstraints_2];
 
 // @public
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
@@ -36,7 +36,7 @@ export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLa
 export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditional";
 
 // @public
-export type AllowedLayoutsOptions = [LayoutConstraints];
+export type AllowedLayoutsOptions = [LayoutConstraints_2];
 
 export { analyzeMetadataForNode }
 
@@ -55,6 +55,20 @@ export const configs: {
 };
 
 export { ExplicitMetadataSource }
+
+// @public
+export interface FormSpecConfig {
+    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
 
 // @public
 export const meta: {
@@ -197,6 +211,7 @@ const plugin: {
         readonly recommended: TSESLint.FlatConfig.ConfigArray;
         readonly strict: TSESLint.FlatConfig.ConfigArray;
     };
+    withConfig: typeof withConfig;
 };
 export default plugin;
 
@@ -293,5 +308,8 @@ export const validPathTarget: ESLintUtils.RuleModule<"unknownPathTarget", [], un
 export const validRegexPattern: ESLintUtils.RuleModule<"invalidRegexPattern", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export function withConfig(config: FormSpecConfig): typeof plugin;
 
 ```

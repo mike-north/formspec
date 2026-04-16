@@ -26,6 +26,7 @@ export function createServer(options?: CreateServerOptions): Connection;
 
 // @public
 export interface CreateServerOptions {
+    readonly config?: FormSpecConfig;
     readonly diagnosticsMode?: "off" | "plugin";
     readonly diagnosticSource?: string;
     readonly extensions?: readonly ExtensionDefinition[];
@@ -61,6 +62,16 @@ export interface FormSpecAnalysisDiagnosticLocation {
     readonly filePath: string;
     readonly message?: string;
     readonly range: CommentSpan;
+}
+
+// @public
+export interface FormSpecConfig {
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly extensions?: readonly ExtensionDefinition_2[];
+    readonly metadata?: MetadataPolicyInput;
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
 }
 
 // @public

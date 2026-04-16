@@ -4,7 +4,7 @@
 "@formspec/eslint-plugin": minor
 "@formspec/analysis": patch
 "@formspec/cli": patch
-"@formspec/constraints": patch
+"@formspec/config": patch
 "@formspec/dsl": patch
 "@formspec/language-server": patch
 "@formspec/runtime": patch

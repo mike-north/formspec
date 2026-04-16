@@ -91,6 +91,10 @@ export interface ConstraintRegistryLike {
   ):
     | { readonly extensionId: string; readonly registration: ConstraintTagRegistrationLike }
     | undefined;
+  findBuiltinConstraintBroadening?(
+    typeId: string,
+    tagName: string
+  ): { readonly extensionId: string; readonly registration: unknown } | undefined;
 }
 
 function pathKey(path: PathTarget | null): string {
@@ -1155,13 +1159,43 @@ function checkConstraintOnType(
 
   const label = typeLabel(effectiveType);
 
+  // Check if a custom type has a builtin constraint broadening registered,
+  // which allows built-in constraints (e.g., @minimum) on non-numeric types.
+  // Also handles nullable unions (e.g., Decimal | null) by checking non-null members.
+  const hasBroadening = (tagName: string): boolean => {
+    if (extensionRegistry?.findBuiltinConstraintBroadening === undefined) {
+      return false;
+    }
+    if (effectiveType.kind === "custom") {
+      return extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !== undefined;
+    }
+    if (effectiveType.kind === "union") {
+      return effectiveType.members.some((member) => {
+        // Skip null members — they don't affect constraint applicability
+        if (member.kind === "primitive" && member.primitiveKind === "null") {
+          return false;
+        }
+        const resolvedMember = dereferenceAnalysisType(member, typeRegistry);
+        if (resolvedMember.kind !== "custom") {
+          return false;
+        }
+        // extensionRegistry and findBuiltinConstraintBroadening are both defined
+        // (narrowed by the outer guard), but TypeScript can't narrow optional
+        // methods across closure boundaries — this is a safe call.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded above
+        return extensionRegistry.findBuiltinConstraintBroadening!(resolvedMember.typeId, tagName) !== undefined;
+      });
+    }
+    return false;
+  };
+
   switch (constraint.constraintKind) {
     case "minimum":
     case "maximum":
     case "exclusiveMinimum":
     case "exclusiveMaximum":
     case "multipleOf":
-      if (!isNumber) {
+      if (!isNumber && !hasBroadening(constraint.constraintKind)) {
         addTypeMismatch(
           diagnostics,
           `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on number fields, but field type is "${label}"`,

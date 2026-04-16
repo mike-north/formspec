@@ -71,6 +71,7 @@ export type {
 
 export { createExtensionRegistry } from "./extensions/index.js";
 export type { ExtensionRegistry } from "./extensions/index.js";
+export type { FormSpecConfig } from "@formspec/config";
 
 export type {
   UISchema,

@@ -1,7 +1,7 @@
 ---
 "@formspec/analysis": patch
 "@formspec/core": minor
-"@formspec/constraints": patch
+"@formspec/config": patch
 "@formspec/build": minor
 "@formspec/cli": minor
 "@formspec/dsl": minor

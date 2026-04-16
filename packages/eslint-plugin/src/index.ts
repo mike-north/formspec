@@ -8,10 +8,7 @@
  * @packageDocumentation
  */
 import type { TSESLint } from "@typescript-eslint/utils";
-export {
-  analyzeMetadataForNode,
-  analyzeMetadataForSourceFile,
-} from "@formspec/analysis";
+export { analyzeMetadataForNode, analyzeMetadataForSourceFile } from "@formspec/analysis";
 export type {
   AnalyzeMetadataOptions,
   AnalyzeMetadataForNodeOptions,
@@ -26,6 +23,9 @@ export type {
   MetadataSourceSpan,
 } from "@formspec/core";
 import packageJson from "../package.json" with { type: "json" };
+import type { FormSpecConfig } from "@formspec/config";
+export type { FormSpecConfig } from "@formspec/config";
+import { createExtensionRegistry } from "@formspec/build";
 import {
   noUnknownTags,
   requireTagArguments,
@@ -73,8 +73,10 @@ import {
  *
  * @public
  */
-export type NamedRuleModule<MessageIds extends string, Options extends readonly unknown[]> =
-  TSESLint.RuleModule<MessageIds, Options> & { name: string };
+export type NamedRuleModule<
+  MessageIds extends string,
+  Options extends readonly unknown[],
+> = TSESLint.RuleModule<MessageIds, Options> & { name: string };
 
 export type {
   AllowedFieldTypesMessageIds,
@@ -271,7 +273,55 @@ const plugin = {
   meta,
   rules,
   configs,
+  withConfig,
 };
+
+/**
+ * Creates a configured version of the plugin with an extension registry
+ * derived from the provided FormSpec configuration.
+ *
+ * The registry is injected into `settings.formspec.extensionRegistry` so
+ * that rules like `tag-type-check` can consult it for builtin constraint
+ * broadenings registered by extensions.
+ *
+ * @example
+ * ```javascript
+ * import formspec from "@formspec/eslint-plugin";
+ * import myConfig from "./formspec.config.js";
+ *
+ * export default [
+ *   ...formspec.withConfig(myConfig).configs.recommended,
+ * ];
+ * ```
+ *
+ * @public
+ */
+export function withConfig(config: FormSpecConfig): typeof plugin {
+  const registry = createExtensionRegistry(config.extensions ?? []);
+  const configWithSettings = (
+    baseConfigs: TSESLint.FlatConfig.ConfigArray
+  ): TSESLint.FlatConfig.ConfigArray =>
+    baseConfigs.map((entry) => ({
+      ...entry,
+      settings: {
+        ...entry.settings,
+        formspec: {
+          ...(entry.settings?.["formspec"] as Record<string, unknown> | undefined),
+          extensionRegistry: registry,
+        },
+      },
+    }));
+
+  return {
+    meta,
+    rules,
+    configs: {
+      recommended: configWithSettings(recommendedConfig),
+      strict: configWithSettings(strictConfig),
+    },
+    withConfig,
+  };
+}
 
 export default plugin;
 

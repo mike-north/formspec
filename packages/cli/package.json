@@ -31,7 +31,8 @@
   },
   "dependencies": {
     "typescript": "^5.0.0",
-    "@formspec/build": "workspace:*"
+    "@formspec/build": "workspace:*",
+    "@formspec/config": "workspace:*"
   },
   "devDependencies": {
     "@formspec/core": "workspace:*",

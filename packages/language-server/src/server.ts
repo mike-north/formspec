@@ -20,6 +20,7 @@ import {
   type InitializeResult,
 } from "vscode-languageserver/node.js";
 import type { ExtensionDefinition } from "@formspec/core";
+import type { FormSpecConfig } from "@formspec/config";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";
@@ -79,6 +80,11 @@ function getWorkspaceRootsFromInitializeParams(params: {
  * @public
  */
 export interface CreateServerOptions {
+  /**
+   * Optional FormSpec configuration object. When provided, extensions are
+   * resolved from `config.extensions` and take precedence over `extensions`.
+   */
+  readonly config?: FormSpecConfig;
   /** Optional extension definitions whose custom tags should be surfaced by tooling. */
   readonly extensions?: readonly ExtensionDefinition[];
   /** Optional workspace roots to use before initialize() provides them. */
@@ -109,6 +115,9 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
   const diagnosticsMode = options.diagnosticsMode ?? "off";
   const diagnosticSource = options.diagnosticSource ?? "formspec";
+  // config.extensions takes precedence over extensions when config is provided
+  const effectiveExtensions: readonly ExtensionDefinition[] =
+    options.config?.extensions ?? options.extensions ?? [];
 
   documents.listen(connection);
 
@@ -181,7 +190,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
             pluginQueryTimeoutMs
           );
 
-    return getCompletionItemsAtOffset(documentText, offset, options.extensions, semanticContext);
+    return getCompletionItemsAtOffset(documentText, offset, effectiveExtensions, semanticContext);
   });
 
   connection.onHover(async (params) => {
@@ -204,7 +213,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
             pluginQueryTimeoutMs
           );
 
-    return getHoverAtOffset(documentText, offset, options.extensions, semanticHover);
+    return getHoverAtOffset(documentText, offset, effectiveExtensions, semanticHover);
   });
 
   connection.onDefinition((_params) => {

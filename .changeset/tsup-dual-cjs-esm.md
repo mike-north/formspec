@@ -3,7 +3,7 @@
 "@formspec/dsl": patch
 "@formspec/build": patch
 "@formspec/runtime": patch
-"@formspec/constraints": patch
+"@formspec/config": patch
 "@formspec/eslint-plugin": patch
 "@formspec/cli": patch
 "formspec": patch

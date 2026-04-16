@@ -9,6 +9,7 @@
 import * as ts from "typescript";
 import type { UISchema } from "../ui-schema/types.js";
 import type { MetadataPolicyInput } from "@formspec/core";
+import type { FormSpecConfig } from "@formspec/config";
 import {
   analyzeNamedTypeToIRFromProgramContextDetailed,
   createProgramContext,
@@ -28,7 +29,7 @@ import {
   type GenerateJsonSchemaFromIROptions,
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
-import type { ExtensionRegistry } from "../extensions/index.js";
+import { createExtensionRegistry, type ExtensionRegistry } from "../extensions/index.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
@@ -206,20 +207,32 @@ function formatLocation(location: ValidationDiagnostic["primaryLocation"]): stri
  */
 export interface StaticSchemaGenerationOptions {
   /**
+   * FormSpec project configuration. When provided, resolves `extensionRegistry`,
+   * `vendorPrefix`, `enumSerialization`, and `metadata` from the config object.
+   * Direct options take precedence over config values.
+   */
+  readonly config?: FormSpecConfig | undefined;
+  /**
    * Registry used to resolve custom types, constraints, and annotations.
+   * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
    */
   readonly extensionRegistry?: ExtensionRegistry | undefined;
   /**
    * Vendor prefix for emitted extension keywords.
    * @defaultValue "x-formspec"
+   * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
    */
   readonly vendorPrefix?: string | undefined;
   /**
    * JSON Schema representation to use for static enums.
    * @defaultValue "enum"
+   * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
    */
   readonly enumSerialization?: "enum" | "oneOf";
-  /** Metadata resolution policy for static schema generation. */
+  /**
+   * Metadata resolution policy for static schema generation.
+   * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
+   */
   readonly metadata?: MetadataPolicyInput | undefined;
   /** Discriminator-specific schema generation behavior. */
   readonly discriminator?: DiscriminatorResolutionOptions | undefined;
@@ -302,7 +315,9 @@ export function generateSchemasFromClass(
     classDecl,
     ctx.checker,
     options.filePath,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     options.extensionRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     options.metadata,
     options.discriminator
   );
@@ -310,9 +325,13 @@ export function generateSchemasFromClass(
     analysis,
     { file: options.filePath },
     {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       extensionRegistry: options.extensionRegistry,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       metadata: options.metadata,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       enumSerialization: options.enumSerialization,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       vendorPrefix: options.vendorPrefix,
     }
   );
@@ -522,7 +541,12 @@ function generateSchemasDetailedInternal(
     };
   }
 
-  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
+  return generateSchemasFromDetailedProgramContext(
+    ctx,
+    options.filePath,
+    options.typeName,
+    options
+  );
 }
 
 /**
@@ -559,7 +583,12 @@ function generateSchemasFromProgramDetailedInternal(
     };
   }
 
-  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
+  return generateSchemasFromDetailedProgramContext(
+    ctx,
+    options.filePath,
+    options.typeName,
+    options
+  );
 }
 
 /**
@@ -627,19 +656,44 @@ export function generateSchemasBatchFromProgram(
   });
 }
 
+function resolveOptions(options: StaticSchemaGenerationOptions): {
+  extensionRegistry: ExtensionRegistry | undefined;
+  vendorPrefix: string | undefined;
+  enumSerialization: "enum" | "oneOf" | undefined;
+  metadata: MetadataPolicyInput | undefined;
+} {
+  const configRegistry =
+    options.config?.extensions !== undefined
+      ? createExtensionRegistry(options.config.extensions)
+      : undefined;
+
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    extensionRegistry: options.extensionRegistry ?? configRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    enumSerialization: options.enumSerialization ?? options.config?.enumSerialization,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    metadata: options.metadata ?? options.config?.metadata,
+  };
+}
+
 function generateSchemasFromDetailedProgramContext(
   ctx: ProgramContext,
   filePath: string,
   typeName: string,
   options: StaticSchemaGenerationOptions
 ): DetailedClassSchemasResult {
+  const resolved = resolveOptions(options);
+
   const analysisResult: AnalyzeNamedTypeToIRDetailedResult =
     analyzeNamedTypeToIRFromProgramContextDetailed(
       ctx,
       filePath,
       typeName,
-      options.extensionRegistry,
-      options.metadata,
+      resolved.extensionRegistry,
+      resolved.metadata,
       options.discriminator
     );
   if (!analysisResult.ok) {
@@ -653,10 +707,10 @@ function generateSchemasFromDetailedProgramContext(
     analysisResult.analysis,
     { file: filePath },
     {
-      extensionRegistry: options.extensionRegistry,
-      metadata: options.metadata,
-      enumSerialization: options.enumSerialization,
-      vendorPrefix: options.vendorPrefix,
+      extensionRegistry: resolved.extensionRegistry,
+      metadata: resolved.metadata,
+      enumSerialization: resolved.enumSerialization,
+      vendorPrefix: resolved.vendorPrefix,
     }
   );
 }

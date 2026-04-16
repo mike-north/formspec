@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",
-    "@formspec/constraints": "workspace:*",
+    "@formspec/build": "workspace:*",
+    "@formspec/config": "workspace:*",
     "@formspec/core": "workspace:*",
     "@typescript-eslint/utils": "^8.0.0"
   },

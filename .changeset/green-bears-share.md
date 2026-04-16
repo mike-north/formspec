@@ -2,7 +2,7 @@
 "@formspec/analysis": minor
 "@formspec/build": minor
 "@formspec/cli": minor
-"@formspec/constraints": minor
+"@formspec/config": minor
 "@formspec/core": minor
 "@formspec/dsl": minor
 "@formspec/eslint-plugin": minor

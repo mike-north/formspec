@@ -32,6 +32,8 @@ import {
 } from "@formspec/build/internals";
 import type { LoadedFormSpecSchemas, ValidationResult } from "@formspec/build/internals";
 import type { FormIR } from "@formspec/core/internals";
+import { loadFormSpecConfig } from "@formspec/config";
+import type { FormSpecConfig } from "@formspec/config";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,
@@ -58,7 +60,9 @@ interface CliOptions {
   className: string | undefined;
   outDir: string;
   compiledPath: string | undefined;
-  enumSerialization: "enum" | "oneOf";
+  /** Explicit path to a formspec config file. */
+  configPath: string | undefined;
+  enumSerialization: "enum" | "oneOf" | undefined;
   /** Emit FormIR JSON alongside generated schemas. */
   emitIr: boolean;
   /** Run constraint validation only; do not write schema files. */
@@ -95,7 +99,8 @@ function parseArgs(args: string[]): CliOptions {
   let className: string | undefined;
   let outDir = "./generated";
   let compiledPath: string | undefined;
-  let enumSerialization: "enum" | "oneOf" = "enum";
+  let configPath: string | undefined;
+  let enumSerialization: "enum" | "oneOf" | undefined;
   let emitIr = false;
   let validateOnly = false;
   let dryRun = false;
@@ -107,6 +112,13 @@ function parseArgs(args: string[]): CliOptions {
     if (arg === "-o" || arg === "--output") {
       const nextArg = rest[++i];
       if (nextArg) outDir = nextArg;
+    } else if (arg === "--config") {
+      const nextArg = rest[++i];
+      if (!nextArg) {
+        console.error("Error: --config requires a path to a config file");
+        process.exit(1);
+      }
+      configPath = nextArg;
     } else if (arg === "--enum-serialization") {
       const nextArg = rest[++i];
       if (!nextArg) {
@@ -149,6 +161,7 @@ function parseArgs(args: string[]): CliOptions {
     className,
     outDir,
     compiledPath,
+    configPath,
     enumSerialization,
     emitIr,
     validateOnly,
@@ -187,8 +200,9 @@ ARGUMENTS:
 OPTIONS:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
+  --config <path>       Path to formspec.config.ts (auto-discovered if omitted)
   --enum-serialization <enum|oneOf>
-                       Enum JSON Schema representation (default: enum)
+                       Enum JSON Schema representation (default: enum, or from config)
   --emit-ir             Emit FormIR JSON alongside generated schemas
   --validate-only       Validate constraints only; do not write schema files
   --dry-run             Show planned outputs without writing any files
@@ -342,6 +356,29 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
+  // Load FormSpec config: explicit path takes precedence, otherwise auto-discover
+  let formSpecConfig: FormSpecConfig | undefined;
+  try {
+    const configResult = await loadFormSpecConfig(
+      options.configPath
+        ? { configPath: options.configPath }
+        : { searchFrom: path.dirname(path.resolve(options.filePath)) }
+    );
+    if (configResult.found) {
+      formSpecConfig = configResult.config;
+      console.log(`Using config: ${configResult.configPath}`);
+    }
+  } catch (error) {
+    console.error(
+      `Error loading config: ${error instanceof Error ? error.message : String(error)}`
+    );
+    process.exit(1);
+  }
+
+  // CLI flag overrides config; config overrides built-in default of "enum"
+  const enumSerialization: "enum" | "oneOf" =
+    options.enumSerialization ?? formSpecConfig?.enumSerialization ?? "enum";
+
   console.log(`Generating schemas from: ${options.filePath}`);
   if (options.className) {
     console.log(`Class: ${options.className}`);
@@ -381,7 +418,7 @@ async function main(): Promise<void> {
     };
     try {
       const { formSpecs, module } = await loadFormSpecs(compiledPath, {
-        enumSerialization: options.enumSerialization,
+        enumSerialization,
       });
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
@@ -484,7 +521,7 @@ async function main(): Promise<void> {
             warnRuntimeLoadFailureOnce();
             try {
               const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing, {
-                enumSerialization: options.enumSerialization,
+                enumSerialization,
               });
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);
@@ -499,21 +536,23 @@ async function main(): Promise<void> {
         // generation succeeds and compute the exact file layout that a real run
         // would produce.
         // Generate class schemas
-        const classSchemas = generateClassSchemas(analysis, { file: options.filePath }, {
-          enumSerialization: options.enumSerialization,
-        });
+        const schemaOptions = {
+          ...(formSpecConfig !== undefined && { config: formSpecConfig }),
+          enumSerialization,
+        };
+        const classSchemas = generateClassSchemas(
+          analysis,
+          { file: options.filePath },
+          schemaOptions
+        );
 
         // Generate method schemas
         const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
         const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization: options.enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, schemaOptions)
         );
         const staticMethodSchemas = analysis.staticMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization: options.enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, schemaOptions)
         );
 
         if (options.dryRun) {

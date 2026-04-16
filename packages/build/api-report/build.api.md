@@ -174,6 +174,20 @@ export { FormElement }
 export { FormSpec }
 
 // @public
+export interface FormSpecConfig {
+    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition_2[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput_2" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput_2;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
 
 // @public
@@ -512,10 +526,15 @@ export { StaticEnumField }
 
 // @public
 export interface StaticSchemaGenerationOptions {
+    readonly config?: FormSpecConfig | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
+    // @deprecated
     readonly enumSerialization?: "enum" | "oneOf";
+    // @deprecated
     readonly extensionRegistry?: ExtensionRegistry | undefined;
+    // @deprecated
     readonly metadata?: MetadataPolicyInput | undefined;
+    // @deprecated
     readonly vendorPrefix?: string | undefined;
 }
 

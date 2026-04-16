@@ -279,6 +279,7 @@ function enforceRequiredMetadata(
   options: ResolveDeclarationMetadataOptions
 ): void {
   const declarationPolicy = getDeclarationMetadataPolicy(
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     normalizeMetadataPolicy(options.metadata),
     declarationKind
   );
@@ -378,6 +379,7 @@ function toStandaloneJsonSchema(
       provenance: syntheticField.provenance,
     },
     {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       policy: normalizeMetadataPolicy(options?.metadata),
       surface: "tsdoc",
       rootLogicalName: root.name,
@@ -387,8 +389,11 @@ function toStandaloneJsonSchema(
   const schema = generateJsonSchemaFromIR(
     ir,
     {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       extensionRegistry: options?.extensionRegistry,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       enumSerialization: options?.enumSerialization,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       vendorPrefix: options?.vendorPrefix,
     }
   );
@@ -422,9 +427,13 @@ function generateSchemasFromAnalysis(
       analysis,
       { file: filePath },
       {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         extensionRegistry: options?.extensionRegistry,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         enumSerialization: options?.enumSerialization,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         metadata: options?.metadata,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         vendorPrefix: options?.vendorPrefix,
       }
     ),
@@ -459,7 +468,9 @@ function generateSchemasFromResolvedType(
     typeRegistry,
     new Set<ts.Type>(),
     options.sourceNode,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     createAnalyzerMetadataPolicy(options.metadata, options.discriminator),
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     options.extensionRegistry,
     diagnostics
   );
@@ -528,7 +539,9 @@ export function generateSchemasFromDeclaration(
         options.declaration,
         options.context.checker,
         filePath,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         options.extensionRegistry,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         options.metadata,
         options.discriminator
       ),
@@ -543,7 +556,9 @@ export function generateSchemasFromDeclaration(
         options.declaration,
         options.context.checker,
         filePath,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         options.extensionRegistry,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
         options.metadata,
         options.discriminator
       ),
@@ -557,7 +572,9 @@ export function generateSchemasFromDeclaration(
       options.declaration,
       options.context.checker,
       filePath,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       options.extensionRegistry,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       options.metadata,
       options.discriminator
     );
@@ -568,7 +585,9 @@ export function generateSchemasFromDeclaration(
       options.declaration,
       options.context.checker,
       filePath,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       options.extensionRegistry,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       options.metadata
     );
     if (aliasRootInfo.diagnostics.length > 0) {
@@ -679,7 +698,9 @@ export function resolveDeclarationMetadata(
   const analysis = analyzeMetadataForNodeWithChecker({
     checker: options.context.checker,
     node: options.declaration,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     metadata: options.metadata,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     extensions: options.extensionRegistry?.extensions,
     buildContext: options.context,
   });
