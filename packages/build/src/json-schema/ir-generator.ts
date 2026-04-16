@@ -1194,17 +1194,23 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
 }
 
 /**
- * Standard JSON Schema 2020-12 keywords that vocabulary-mode constraints must
- * not overwrite. Prevents accidental corruption of structural schema properties.
+ * JSON Schema keywords that vocabulary-mode constraints (`emitsVocabularyKeywords`)
+ * must not overwrite. Includes structural keywords (`type`, `properties`, `$ref`),
+ * annotation keywords (`title`, `description`), and validation keywords for
+ * strings/arrays/objects. Overwriting these could silently corrupt schema output.
+ *
+ * Numeric validation keywords (`minimum`, `maximum`, `exclusiveMinimum`,
+ * `exclusiveMaximum`, `multipleOf`) are intentionally excluded — custom types
+ * like `Integer` (`{ type: "integer" }`) need to emit these as standard JSON
+ * Schema keywords via `builtinConstraintBroadenings`.
  */
-const JSON_SCHEMA_STRUCTURAL_KEYWORDS = new Set([
+const VOCABULARY_MODE_BLOCKED_KEYWORDS = new Set([
   "$schema", "$ref", "$defs", "$id", "$anchor", "$dynamicRef", "$dynamicAnchor",
   "$vocabulary", "$comment",
   "type", "enum", "const",
   "properties", "patternProperties", "additionalProperties", "required",
   "items", "prefixItems", "additionalItems", "contains",
   "allOf", "oneOf", "anyOf", "not", "if", "then", "else",
-  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
   "minLength", "maxLength", "pattern",
   "minItems", "maxItems", "uniqueItems",
   "minProperties", "maxProperties",
@@ -1235,7 +1241,7 @@ function applyCustomConstraint(
     // Guard against accidental collisions with standard JSON Schema keywords.
     const target = schema as Record<string, unknown>;
     for (const [key, value] of Object.entries(extensionSchema)) {
-      if (JSON_SCHEMA_STRUCTURAL_KEYWORDS.has(key)) {
+      if (VOCABULARY_MODE_BLOCKED_KEYWORDS.has(key)) {
         throw new Error(
           `Custom constraint "${constraint.constraintId}" with emitsVocabularyKeywords ` +
           `must not overwrite standard JSON Schema keyword "${key}"`
