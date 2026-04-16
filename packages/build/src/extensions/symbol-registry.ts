@@ -203,10 +203,10 @@ function extractEnclosingExtensionId(
   call: ts.CallExpression,
   checker: ts.TypeChecker
 ): string | null {
-  let node: ts.Node = call;
-  while (node.parent !== undefined) {
-    node = node.parent;
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- ts.Node union requires runtime narrowing
+  // Walk up the AST parent chain to find an enclosing defineExtension() call.
+  // ts.Node.parent is always defined after binding, so we use isSourceFile as
+  // the termination condition instead of checking for undefined.
+  for (let node = call.parent; !ts.isSourceFile(node); node = node.parent) {
     if (ts.isCallExpression(node) && isDefineExtensionCall(node, checker)) {
       return extractExtensionIdFromCallArg(node);
     }
