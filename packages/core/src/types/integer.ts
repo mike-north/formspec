@@ -20,7 +20,7 @@
  *
  * @public
  */
-export declare const __integerBrand: unique symbol;
+export const __integerBrand: unique symbol = Symbol("__integerBrand");
 
 /**
  * Branded integer type. Values are `number` at runtime but carry

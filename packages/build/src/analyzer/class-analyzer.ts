@@ -58,10 +58,10 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
  * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
  *
  * Integer-branded types are intersections of `number` with a brand object
- * containing the `__integerBrand` unique symbol. TypeScript represents
- * symbol-keyed properties internally as `__@` + `_` + variableName + `@N`,
- * so `declare const __integerBrand: unique symbol` produces the property name
- * `__@___integerBrand@N` (three underscores between `__@` and `integerBrand`).
+ * containing the `__integerBrand` unique symbol. Detection inspects property
+ * declarations for computed property names referencing an identifier named
+ * `__integerBrand`, avoiding dependence on TypeScript's internal escaped-name
+ * encoding.
  */
 function isIntegerBrandedType(type: ts.Type): boolean {
   if (!type.isIntersection()) {
@@ -75,9 +75,23 @@ function isIntegerBrandedType(type: ts.Type): boolean {
     return false;
   }
 
-  return type.getProperties().some(
-    (prop) => prop.name.startsWith("__@___integerBrand")
-  );
+  return type.getProperties().some((prop) => {
+    const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
+    if (declaration === undefined) {
+      return false;
+    }
+    if (
+      !ts.isPropertySignature(declaration) &&
+      !ts.isPropertyDeclaration(declaration)
+    ) {
+      return false;
+    }
+    const name = declaration.name;
+    if (!ts.isComputedPropertyName(name)) {
+      return false;
+    }
+    return ts.isIdentifier(name.expression) && name.expression.text === "__integerBrand";
+  });
 }
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {

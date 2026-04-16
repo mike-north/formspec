@@ -75,6 +75,12 @@ const FIXTURE_SOURCE = [
   "  /** @minimum 0 @maximum 100 @exclusiveMinimum 0 @exclusiveMaximum 100 @multipleOf 5 */",
   "  value: Integer;",
   "}",
+  "",
+  // 6. Mixed: Integer and plain number in the same interface
+  "export interface MixedConfig {",
+  "  integerField: Integer;",
+  "  numberField: number;",
+  "}",
 ].join("\n");
 
 beforeAll(() => {
@@ -172,7 +178,7 @@ describe("builtin Integer type", () => {
         typeName: "IntegerFieldsConfig",
       });
 
-      // count is declared with `!`, so it must be required.
+      // count is a required interface property (not marked optional with `?`).
       expect(result.jsonSchema.required).toContain("count");
     });
 
@@ -334,6 +340,18 @@ describe("builtin Integer type", () => {
           );
         }
       }
+    });
+
+    it("plain number field produces type:number, not type:integer", () => {
+      const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "MixedConfig" });
+
+      // Integer field → type: "integer"
+      const integerProp = resolvePropertySchema(result, "integerField");
+      expect(integerProp).toHaveProperty("type", "integer");
+
+      // Plain number field → type: "number"
+      const numberProp = resolvePropertySchema(result, "numberField");
+      expect(numberProp).toHaveProperty("type", "number");
     });
   });
 });

@@ -1195,7 +1195,7 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
 
 /**
  * JSON Schema keywords that vocabulary-mode constraints (`emitsVocabularyKeywords`)
- * must not overwrite. Includes all standard JSON Schema 2020-12 keywords:
+ * must not overwrite. Includes standard JSON Schema keywords (2020-12 and legacy):
  * structural (`type`, `properties`, `$ref`), annotation (`title`, `description`),
  * and validation (`minimum`, `maximum`, `minLength`, etc.).
  *
