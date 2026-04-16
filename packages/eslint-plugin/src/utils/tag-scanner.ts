@@ -1,8 +1,11 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 import {
+  parseCommentBlock,
+  type ParsedCommentTag,
+} from "@formspec/analysis/internal";
+import {
   getTagMetadata,
-  normalizeFormSpecTagName,
   type FormSpecTargetKind,
 } from "./tag-metadata.js";
 
@@ -37,109 +40,104 @@ function getLeadingJSDocComments(node: TSESTree.Node, sourceCode: SourceCode): T
   return comments.filter((comment) => comment.type === "Block" && comment.value.startsWith("*"));
 }
 
-function scanComment(comment: TSESTree.Comment): ScannedTag[] {
-  const results: ScannedTag[] = [];
-  const commentContentStart = comment.range[0] + 2;
-  const lineRegex = /.*(?:\r?\n|$)/g;
+/**
+ * Resolve an "ambiguous" target kind (supports both member and variant but the
+ * value is not "singular"/"plural") to a concrete kind using the same logic as
+ * the legacy scanner: prefer "member" when the tag does not support "path",
+ * otherwise fall back to "path".
+ */
+function resolveAmbiguousKind(rawName: string): Exclude<FormSpecTargetKind, "none" | "ambiguous"> {
+  const metadata = getTagMetadata(rawName);
+  if (metadata?.supportedTargets.includes("member") && !metadata.supportedTargets.includes("path")) {
+    return "member";
+  }
+  return "path";
+}
 
-  let lineMatch: RegExpExecArray | null;
-  while ((lineMatch = lineRegex.exec(comment.value)) !== null) {
-    const rawLineWithBreak = lineMatch[0];
-    if (rawLineWithBreak === "") {
-      break;
-    }
+/**
+ * Regex matching a target specifier, including quoted targets that may contain
+ * spaces. parseCommentBlock truncates quoted targets at the first space because
+ * its path-target logic doesn't support quoted identifiers — we re-parse here.
+ */
+const QUOTED_TARGET_REGEX = /^:(["'][^"']*["']|[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)*)(?:\s+(.*))?$/u;
 
-    const line = rawLineWithBreak.replace(/\r?\n$/, "");
-    const lineStart = lineMatch.index;
-    const cleaned = line.replace(/^\s*\*\s?/, "");
-    const cleanedPrefixLength = line.length - cleaned.length;
-    const tagStartRegex = /(^|\s)@([A-Za-z][A-Za-z0-9]*)(?=\s|$)/g;
-    const starts: { rawName: string; start: number; end: number }[] = [];
-    let startMatch: RegExpExecArray | null;
-    while ((startMatch = tagStartRegex.exec(cleaned)) !== null) {
-      const rawName = startMatch[2];
-      if (!rawName) continue;
-      const prefixLength = (startMatch[1] ?? "").length;
-      const start = startMatch.index + prefixLength;
-      starts.push({ rawName, start, end: start + rawName.length + 1 });
-    }
+function mapParsedTagToScannedTag(
+  tag: ParsedCommentTag,
+  commentText: string,
+  commentStart: number,
+  comment: TSESTree.Comment
+): ScannedTag {
+  const rawText =
+    tag.fullSpan.start - commentStart < commentText.length &&
+    tag.fullSpan.end - commentStart <= commentText.length
+      ? commentText.slice(tag.fullSpan.start - commentStart, tag.fullSpan.end - commentStart)
+      : "";
 
-    for (let index = 0; index < starts.length; ) {
-      const current = starts[index];
-      if (!current) {
-        index += 1;
-        continue;
+  const rawArgument =
+    tag.payloadSpan !== null
+      ? commentText
+          .slice(tag.payloadSpan.start - commentStart, tag.payloadSpan.end - commentStart)
+          .trim()
+      : "";
+
+  const rawArgumentRange: readonly [number, number] | null =
+    tag.payloadSpan !== null && rawArgument !== ""
+      ? [tag.payloadSpan.start, tag.payloadSpan.end]
+      : null;
+
+  // Determine target and valueText. parseCommentBlock correctly handles
+  // unquoted targets; for quoted targets with spaces it truncates at the first
+  // space. Re-parse rawArgument with a regex that handles quoted targets.
+  let target: ScannedTagTarget | null = null;
+  let valueText = tag.argumentText;
+
+  if (rawArgument.startsWith(":")) {
+    const quotedMatch = QUOTED_TARGET_REGEX.exec(rawArgument);
+    if (quotedMatch?.[1]) {
+      const rawTargetText = quotedMatch[1];
+      const targetValue = rawTargetText.replace(/^['"]|['"]$/gu, "");
+      const isQuoted = rawTargetText.startsWith('"') || rawTargetText.startsWith("'");
+
+      let resolvedKind: Exclude<FormSpecTargetKind, "none">;
+      if (!isQuoted && tag.target !== null && tag.target.kind !== "ambiguous") {
+        // Use parseCommentBlock's classification for unquoted targets
+        resolvedKind = tag.target.kind;
+      } else if (targetValue === "singular" || targetValue === "plural") {
+        resolvedKind = "variant";
+      } else {
+        resolvedKind = resolveAmbiguousKind(tag.rawTagName);
       }
 
-      const next = starts[index + 1];
-      const metadata = getTagMetadata(current.rawName);
-      const nextBoundary = next?.start ?? cleaned.length;
-      const rawSegment = cleaned.slice(current.start, nextBoundary);
-      const rawText = rawSegment.trimEnd();
-      const rawArgumentWithWhitespace = rawText.slice(current.end - current.start);
-      const rawArgument = rawArgumentWithWhitespace.trim();
-      const leadingWhitespaceLength =
-        rawArgumentWithWhitespace.length - rawArgumentWithWhitespace.trimStart().length;
-      const rawArgumentStart =
-        commentContentStart +
-        lineStart +
-        cleanedPrefixLength +
-        current.start +
-        (current.end - current.start) +
-        leadingWhitespaceLength;
-      const rawArgumentRange =
-        rawArgument === ""
-          ? null
-          : ([rawArgumentStart, rawArgumentStart + rawArgument.length] as const);
-
-      const rawName = current.rawName;
-      const normalizedName = normalizeFormSpecTagName(rawName);
-
-      let target: ScannedTagTarget | null = null;
-      let valueText = rawArgument;
-      const targetMatch =
-        /^:("[^"]+"|'[^']+'|[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)*)(?:\s+(.*))?$/u.exec(rawArgument);
-      if (targetMatch?.[1]) {
-        const rawTarget = targetMatch[1];
-        const targetValue = rawTarget.replace(/^['"]|['"]$/g, "");
-        const inferredKind =
-          metadata?.supportedTargets.includes("variant") &&
-          (targetValue === "singular" || targetValue === "plural")
-            ? "variant"
-            : metadata?.supportedTargets.includes("member") &&
-                !metadata.supportedTargets.includes("path")
-              ? "member"
-              : metadata?.supportedTargets.includes("path") &&
-                  !metadata.supportedTargets.includes("member")
-                ? "path"
-                : "path";
-        target = {
-          kind: inferredKind,
-          raw: rawTarget,
-          value: targetValue,
-        };
-        valueText = (targetMatch[2] ?? "").trim();
-      }
-
-      results.push({
-        rawName,
-        normalizedName,
-        rawText,
-        rawArgument,
-        rawArgumentRange,
-        valueText,
-        target,
-        comment,
-      });
-
-      index += 1;
-      while (index < starts.length && (starts[index]?.start ?? cleaned.length) < nextBoundary) {
-        index += 1;
-      }
+      target = {
+        kind: resolvedKind,
+        value: targetValue,
+        raw: rawTargetText,
+      };
+      valueText = (quotedMatch[2] ?? "").trim();
     }
   }
 
-  return results;
+  return {
+    rawName: tag.rawTagName,
+    normalizedName: tag.normalizedTagName,
+    rawText,
+    rawArgument,
+    rawArgumentRange,
+    valueText,
+    target,
+    comment,
+  };
+}
+
+function scanComment(comment: TSESTree.Comment): ScannedTag[] {
+  const commentText = `/*${comment.value}*/`;
+  const commentStart = comment.range[0];
+
+  const parsed = parseCommentBlock(commentText, { offset: commentStart });
+
+  return parsed.tags.map((tag) =>
+    mapParsedTagToScannedTag(tag, commentText, commentStart, comment)
+  );
 }
 
 export function scanFormSpecTags(node: TSESTree.Node, sourceCode: SourceCode): ScannedTag[] {
