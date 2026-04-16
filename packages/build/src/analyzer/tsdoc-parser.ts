@@ -40,33 +40,30 @@
 import * as ts from "typescript";
 import {
   checkSyntheticTagApplication,
+  choosePreferredPayloadText,
+  extractBlockText,
   extractCommentSummaryText,
   extractPathTarget as extractSharedPathTarget,
+  extractPlainText,
+  getOrCreateTSDocParser,
   getTagDefinition,
   hasTypeSemanticCapability,
   normalizeFormSpecTagName,
+  parseCommentBlock,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
-  type ParsedCommentTag,
+  parseTagSyntax,
   resolveDeclarationPlacement,
   resolvePathTargetType,
   sliceCommentSpan,
-  parseCommentBlock,
-  parseTagSyntax,
+  TAGS_REQUIRING_RAW_TEXT,
   type ConstraintSemanticDiagnostic,
   type FormSpecValueKind,
+  type ParsedCommentTag,
   type SemanticCapability,
 } from "@formspec/analysis/internal";
 import {
-  TSDocParser,
-  TSDocConfiguration,
-  TSDocTagDefinition,
-  TSDocTagSyntaxKind,
-  DocExcerpt,
-  DocPlainText,
-  DocSoftBreak,
   TextRange,
-  type DocNode,
   type DocBlock,
 } from "@microsoft/tsdoc";
 import {
@@ -82,79 +79,6 @@ import {
   type TypeNode,
 } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
-
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
-
-/**
- * Tags whose content may contain TSDoc-significant characters (`{}`, `@`)
- * and must be extracted via the TS compiler JSDoc API rather than the
- * TSDoc DocNode tree to avoid content mangling.
- *
- * - `@pattern`: regex patterns commonly contain `@` (e.g. email validation)
- * - `@enumOptions`: JSON arrays may contain object literals with `{}`
- * - `@defaultValue`: JSON defaults may contain objects, arrays, or quoted strings
- */
-const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defaultValue"]);
-
-/**
- * Creates a TSDocConfiguration with FormSpec custom block tag definitions
- * registered for all constraint tags.
- */
-function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): TSDocConfiguration {
-  const config = new TSDocConfiguration();
-
-  // Register each constraint tag as a custom block tag (allowMultiple so
-  // repeated tags don't produce warnings).
-  for (const tagName of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
-    config.addTagDefinition(
-      new TSDocTagDefinition({
-        tagName: "@" + tagName,
-        syntaxKind: TSDocTagSyntaxKind.BlockTag,
-        allowMultiple: true,
-      })
-    );
-  }
-
-  // Register FormSpec annotation and structure tags so summary extraction
-  // stops at recognized tags and mid-prose mentions are parsed as real
-  // tags per TSDoc semantics. Tags that are standard TSDoc (@example,
-  // @defaultValue, @deprecated) are already registered.
-  for (const tagName of [
-    "apiName",
-    "displayName",
-    "format",
-    "placeholder",
-    "order",
-    "group",
-    "showWhen",
-    "hideWhen",
-    "enableWhen",
-    "disableWhen",
-    "discriminator",
-  ]) {
-    config.addTagDefinition(
-      new TSDocTagDefinition({
-        tagName: "@" + tagName,
-        syntaxKind: TSDocTagSyntaxKind.BlockTag,
-        allowMultiple: true,
-      })
-    );
-  }
-
-  for (const tagName of extensionTagNames) {
-    config.addTagDefinition(
-      new TSDocTagDefinition({
-        tagName: "@" + tagName,
-        syntaxKind: TSDocTagSyntaxKind.BlockTag,
-        allowMultiple: true,
-      })
-    );
-  }
-
-  return config;
-}
 
 function sharedCommentSyntaxOptions(
   options?: ParseTSDocOptions,
@@ -700,14 +624,9 @@ function buildCompilerBackedConstraintDiagnostics(
   ];
 }
 
-/**
- * Shared parser instance — thread-safe because TSDocParser is stateless;
- * all parse state lives in the returned ParserContext.
- */
-const parserCache = new Map<string, TSDocParser>();
 const parseResultCache = new Map<string, TSDocParseResult>();
 
-function getParser(options?: ParseTSDocOptions): TSDocParser {
+function getParser(options?: ParseTSDocOptions) {
   const extensionTagNames = [
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
       (extension.constraintTags ?? []).map((tag) => normalizeFormSpecTagName(tag.tagName))
@@ -716,15 +635,7 @@ function getParser(options?: ParseTSDocOptions): TSDocParser {
       (extension.metadataSlots ?? []).map((slot) => normalizeFormSpecTagName(slot.tagName))
     ) ?? []),
   ].sort();
-  const cacheKey = extensionTagNames.join("|");
-  const existing = parserCache.get(cacheKey);
-  if (existing) {
-    return existing;
-  }
-
-  const parser = new TSDocParser(createFormSpecTSDocConfig(extensionTagNames));
-  parserCache.set(cacheKey, parser);
-  return parser;
+  return getOrCreateTSDocParser(extensionTagNames);
 }
 
 // =============================================================================
@@ -1249,48 +1160,6 @@ export function extractPathTarget(
 // =============================================================================
 // PRIVATE HELPERS — TSDoc text extraction
 // =============================================================================
-
-/**
- * Recursively extracts plain text content from a TSDoc DocNode tree.
- *
- * Walks child nodes and concatenates DocPlainText and DocSoftBreak content.
- */
-function extractBlockText(block: DocBlock): string {
-  return extractPlainText(block.content);
-}
-
-function extractPlainText(node: DocNode): string {
-  let result = "";
-  if (node instanceof DocExcerpt) {
-    return node.content.toString();
-  }
-  if (node instanceof DocPlainText) {
-    return node.text;
-  }
-  if (node instanceof DocSoftBreak) {
-    return " ";
-  }
-  if (typeof node.getChildNodes === "function") {
-    for (const child of node.getChildNodes()) {
-      result += extractPlainText(child);
-    }
-  }
-  return result;
-}
-
-function choosePreferredPayloadText(primary: string, fallback: string): string {
-  const preferred = primary.trim();
-  const alternate = fallback.trim();
-
-  if (preferred === "") return alternate;
-  if (alternate === "") return preferred;
-  if (alternate.includes("\n")) return alternate;
-  if (alternate.length > preferred.length && alternate.startsWith(preferred)) {
-    return alternate;
-  }
-
-  return preferred;
-}
 
 function getSharedPayloadText(
   tag: ParsedCommentTag,

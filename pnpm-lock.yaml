@@ -108,6 +108,9 @@ importers:
       '@formspec/core':
         specifier: workspace:*
         version: link:../core
+      '@microsoft/tsdoc':
+        specifier: ^0.16.0
+        version: 0.16.0
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
