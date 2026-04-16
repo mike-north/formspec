@@ -1200,11 +1200,8 @@ describe("Extension API", () => {
       it("does not match a string-keyed property with the same name as a registered brand", () => {
         // If someone writes `type Bad = string & { __testBrand: true }` (string key,
         // not [__testBrand] computed key), brand detection must NOT fire.
-        let tmpDir: string;
-        let fixturePath: string;
-
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-string-key-"));
-        fixturePath = path.join(tmpDir, "string-key-brand.ts");
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-string-key-"));
+        const fixturePath = path.join(tmpDir, "string-key-brand.ts");
         fs.writeFileSync(
           fixturePath,
           [
@@ -1243,11 +1240,8 @@ describe("Extension API", () => {
       });
 
       it("brand + tsTypeNames: name-based resolution takes priority when name matches", () => {
-        let tmpDir: string;
-        let fixturePath: string;
-
-        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-dual-"));
-        fixturePath = path.join(tmpDir, "dual-registration.ts");
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-dual-"));
+        const fixturePath = path.join(tmpDir, "dual-registration.ts");
         fs.writeFileSync(
           fixturePath,
           [
