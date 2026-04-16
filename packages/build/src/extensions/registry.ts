@@ -64,6 +64,8 @@ export interface ExtensionRegistry {
    *
    * This is used during class analysis to resolve extension-defined custom types
    * via structural brand detection (`unique symbol` computed property keys).
+   * Brand identifiers are stored as plain strings, so they must be unique
+   * across all extensions loaded into the registry.
    *
    * @param brand - The identifier text of the `unique symbol` brand variable.
    */

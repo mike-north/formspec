@@ -55,28 +55,29 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
 }
 
 /**
- * Extracts the brand identifier text from an intersection type's computed
- * property names. Returns the first matching identifier or `null`.
+ * Extracts the brand identifier texts from an intersection type's computed
+ * property names.
  *
  * Shared by both `isIntegerBrandedType` (builtin) and `resolveBrandedCustomType`
  * (extension). Walks `type.getProperties()` looking for computed property names
  * backed by plain identifiers — the standard `unique symbol` brand pattern.
  */
-function findBrandIdentifier(type: ts.Type): string | null {
+function getBrandIdentifiers(type: ts.Type): readonly string[] {
   if (!type.isIntersection()) {
-    return null;
+    return [];
   }
 
+  const brandIdentifiers: string[] = [];
   for (const prop of type.getProperties()) {
     const decl = prop.valueDeclaration ?? prop.declarations?.[0];
     if (decl === undefined) continue;
     if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
     if (!ts.isComputedPropertyName(decl.name)) continue;
     if (!ts.isIdentifier(decl.name.expression)) continue;
-    return decl.name.expression.text;
+    brandIdentifiers.push(decl.name.expression.text);
   }
 
-  return null;
+  return brandIdentifiers;
 }
 
 /**
@@ -97,7 +98,7 @@ function isIntegerBrandedType(type: ts.Type): boolean {
     return false;
   }
 
-  return findBrandIdentifier(type) === "__integerBrand";
+  return getBrandIdentifiers(type).includes("__integerBrand");
 }
 
 /**
@@ -120,21 +121,20 @@ function resolveBrandedCustomType(
     return null;
   }
 
-  const brand = findBrandIdentifier(type);
-  if (brand === null) {
-    return null;
+  for (const brand of getBrandIdentifiers(type)) {
+    const registration = extensionRegistry.findTypeByBrand(brand);
+    if (registration === undefined) {
+      continue;
+    }
+
+    return {
+      kind: "custom",
+      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+      payload: null,
+    };
   }
 
-  const registration = extensionRegistry.findTypeByBrand(brand);
-  if (registration === undefined) {
-    return null;
-  }
-
-  return {
-    kind: "custom",
-    typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-    payload: null,
-  };
+  return null;
 }
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
