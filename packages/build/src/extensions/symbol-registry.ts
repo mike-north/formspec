@@ -93,10 +93,8 @@ export function buildSymbolMapFromConfig(
         entry = { extensionId, registration: reg };
       }
     }
-    if (entry === undefined) {
-      // Fallback: linear scan by typeName across all extensions.
-      entry = findRegistrationByTypeName(extensionRegistry, typeName);
-    }
+    // Fallback: linear scan by typeName across all extensions.
+    entry ??= findRegistrationByTypeName(extensionRegistry, typeName);
     if (entry === undefined) {
       return;
     }
@@ -208,6 +206,7 @@ function extractEnclosingExtensionId(
   let node: ts.Node = call;
   while (node.parent !== undefined) {
     node = node.parent;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- ts.Node union requires runtime narrowing
     if (ts.isCallExpression(node) && isDefineExtensionCall(node, checker)) {
       return extractExtensionIdFromCallArg(node);
     }

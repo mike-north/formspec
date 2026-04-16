@@ -737,7 +737,7 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
     // because the legacy path was introduced before MutableExtensionRegistry was
     // split out; callers using createExtensionRegistry() always get a mutable
     // registry, and this cast is safe for all registries produced by this module.
-    extensionRegistry: (legacyRegistry as MutableExtensionRegistry | undefined) ?? (configRegistry as MutableExtensionRegistry | undefined),
+    extensionRegistry: (legacyRegistry as MutableExtensionRegistry | undefined) ?? configRegistry,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
