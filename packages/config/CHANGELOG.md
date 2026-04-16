@@ -1,5 +1,39 @@
 # @formspec/constraints
 
+## 0.1.0-alpha.43
+
+### Minor Changes
+
+- [#31](https://github.com/mike-north/formspec/pull/31) [`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f) Thanks [@mike-north](https://github.com/mike-north)! - Add interactive FormSpec playground with browser-safe package entry points
+
+  **@formspec/playground:**
+  - New package with interactive playground for writing and testing FormSpec definitions
+  - Real-time TypeScript compilation and schema generation
+  - Live form preview with JSON Forms
+  - Monaco editor with FormSpec type definitions and autocomplete
+  - ESLint integration showing constraint violations in real-time
+  - Configurable constraints UI for restricting allowed DSL features
+  - Automatically deployed to GitHub Pages
+
+  **@formspec/build:**
+  - Add `@formspec/build/browser` entry point for browser environments
+  - Excludes Node.js-specific functions like `writeSchemas`
+  - Exports `buildFormSchemas`, `generateJsonSchema`, `generateUiSchema`
+
+  **@formspec/constraints:**
+  - Add `@formspec/constraints/browser` entry point for browser environments
+  - Excludes file-based config loader requiring Node.js APIs
+  - Exports `loadConfigFromString`, `defineConstraints`, validators
+
+  **@formspec/eslint-plugin:**
+  - Update constraint rules to import from browser-safe entry points
+
+- [#265](https://github.com/mike-north/formspec/pull/265) [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c) Thanks [@mike-north](https://github.com/mike-north)! - Introduce unified `FormSpecConfig` system. Rename `@formspec/constraints` to `@formspec/config`. All consumers (build, CLI, ESLint, language server) now accept a `FormSpecConfig` object carrying extensions, constraints, metadata, vendor prefix, and enum serialization. Adds `defineFormSpecConfig` identity function, `loadFormSpecConfig` with jiti-based TypeScript config file loading, `resolveConfigForFile` for monorepo per-package overrides, and `withConfig()` factory on the ESLint plugin. Removes the outdated playground package. See docs/007-configuration.md for the full spec.
+
+### Patch Changes
+
+- [#265](https://github.com/mike-north/formspec/pull/265) [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c) Thanks [@mike-north](https://github.com/mike-north)! - Fix TYPE_MISMATCH false positive when built-in numeric constraints (`@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf`) are applied to custom types that register `builtinConstraintBroadenings`. The validator now consults the extension registry before rejecting constraints on non-numeric types.
+
 ## 0.1.0-alpha.42
 
 ### Patch Changes

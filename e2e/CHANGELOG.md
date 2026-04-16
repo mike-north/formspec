@@ -1,5 +1,17 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.43
+
+### Patch Changes
+
+- Updated dependencies [[`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f), [`4a1d3fb`](https://github.com/mike-north/formspec/commit/4a1d3fb26e7d337c69c303b8368c962937360745), [`da45909`](https://github.com/mike-north/formspec/commit/da459096da0dad2054e54a17ca71785d179dd71e), [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c), [`6b373d1`](https://github.com/mike-north/formspec/commit/6b373d151f7b72b08fb8a24a3e823c78d3f5c488), [`1f87c94`](https://github.com/mike-north/formspec/commit/1f87c94bdc8be790c3e129d45762577eb73a71f6), [`82604ff`](https://github.com/mike-north/formspec/commit/82604ff886368570a2a0f7ee752ed140418b1932), [`32acd0b`](https://github.com/mike-north/formspec/commit/32acd0bd686bbdbfc6b05dea2a968406dd4081b9), [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c)]:
+  - @formspec/build@0.1.0-alpha.43
+  - @formspec/cli@0.1.0-alpha.43
+  - @formspec/analysis@0.1.0-alpha.43
+  - @formspec/language-server@0.1.0-alpha.43
+  - @formspec/ts-plugin@0.1.0-alpha.43
+  - @formspec/dsl@0.1.0-alpha.43
+
 ## 0.1.0-alpha.42
 
 ### Patch Changes
