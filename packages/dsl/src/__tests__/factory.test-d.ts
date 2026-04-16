@@ -27,15 +27,9 @@ const strictFactory = createFormSpecFactory({
 // @ts-expect-error config is required when metadata policy requires explicit names
 strictFactory.field.text("name");
 // @ts-expect-error array metadata config is required when metadata policy requires explicit names
-strictFactory.field.array(
-  "addresses",
-  strictFactory.field.text("street", { apiName: "street", displayName: "Street" })
-);
+strictFactory.field.array("addresses", strictFactory.field.text("street", { apiName: "street", displayName: "Street" }));
 // @ts-expect-error object metadata config is required when metadata policy requires explicit names
-strictFactory.field.object(
-  "address",
-  strictFactory.field.text("street", { apiName: "street", displayName: "Street" })
-);
+strictFactory.field.object("address", strictFactory.field.text("street", { apiName: "street", displayName: "Street" }));
 
 expectAssignable<TextField<"name">>(
   strictFactory.field.text("name", {
@@ -77,8 +71,4 @@ strictFactory.formspec(field.text("name", { apiName: "name", displayName: "Name"
 strictFactory.group("Customer", field.text("name", { apiName: "name", displayName: "Name" }));
 
 // @ts-expect-error strict factories should reject unscoped child elements in nested array builders
-strictFactory.field.array(
-  "addresses",
-  { apiName: "addresses", displayName: "Addresses" },
-  field.text("street", { apiName: "street", displayName: "Street" })
-);
+strictFactory.field.array("addresses", { apiName: "addresses", displayName: "Addresses" }, field.text("street", { apiName: "street", displayName: "Street" }));
