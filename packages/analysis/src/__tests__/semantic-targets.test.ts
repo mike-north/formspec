@@ -349,4 +349,63 @@ describe("semantic-targets", () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
     expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
   });
+
+  it("rejects built-in numeric constraints when registry lacks findBuiltinConstraintBroadening", () => {
+    const customType: TypeNode = {
+      kind: "custom",
+      typeId: "x-test/decimal/Decimal",
+      payload: null,
+    };
+    // Registry that implements ConstraintRegistryLike but omits the optional
+    // findBuiltinConstraintBroadening method — broadening should not apply.
+    const registry = {
+      findConstraint: () => undefined,
+      findConstraintTag: () => undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "amount",
+      customType,
+      [minimum(0, 1)],
+      {},
+      { extensionRegistry: registry }
+    );
+
+    expect(result.diagnostics).toHaveLength(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
+    expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
+  });
+
+  it("allows built-in numeric constraints on nullable custom union types with builtinConstraintBroadenings", () => {
+    // Optional Decimal fields produce a union: Decimal | null.
+    // The broadening registry should be consulted for the non-null member.
+    const nullableDecimalType: TypeNode = {
+      kind: "union",
+      members: [
+        { kind: "custom", typeId: "x-test/decimal/Decimal", payload: null },
+        { kind: "primitive", primitiveKind: "null" },
+      ],
+    };
+    const registry = {
+      findConstraint: () => undefined,
+      findConstraintTag: () => undefined,
+      findBuiltinConstraintBroadening: (typeId: string, tagName: string) =>
+        typeId === "x-test/decimal/Decimal" &&
+        ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"].includes(
+          tagName
+        )
+          ? { extensionId: "x-test/decimal", registration: {} }
+          : undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "amount",
+      nullableDecimalType,
+      [minimum(0, 1), maximum(999, 2)],
+      {},
+      { extensionRegistry: registry }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+  });
 });
