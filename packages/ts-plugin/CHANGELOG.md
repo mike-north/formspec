@@ -1,5 +1,14 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.44
+
+### Patch Changes
+
+- [#272](https://github.com/mike-north/formspec/pull/272) [`952785e`](https://github.com/mike-north/formspec/commit/952785ef382c5d5b857f12e35ad3b3f75f34c11f) Thanks [@mike-north](https://github.com/mike-north)! - Add builtin Integer type with `__integerBrand` symbol. Types branded with this symbol produce `{ type: "integer" }` in JSON Schema and accept standard numeric constraints (`@minimum`, `@maximum`, etc.) natively — no extension registration or constraint broadening needed. Re-tighten the vocabulary keyword blocklist now that Integer is handled by the IR pipeline.
+
+- Updated dependencies [[`952785e`](https://github.com/mike-north/formspec/commit/952785ef382c5d5b857f12e35ad3b3f75f34c11f)]:
+  - @formspec/analysis@0.1.0-alpha.44
+
 ## 0.1.0-alpha.43
 
 ### Patch Changes
