@@ -162,11 +162,8 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
       `Invalid config at ${filePath}: "vendorPrefix" must be a string starting with "x-", got ${JSON.stringify(config.vendorPrefix)}`
     );
   }
-  if (
-    config.enumSerialization !== undefined &&
-    config.enumSerialization !== "enum" &&
-    config.enumSerialization !== "oneOf"
-  ) {
+  const enumSerialization: unknown = config.enumSerialization;
+  if (enumSerialization !== undefined && enumSerialization !== "enum" && enumSerialization !== "oneOf") {
     throw new Error(
       `Invalid config at ${filePath}: "enumSerialization" must be "enum" or "oneOf", got ${JSON.stringify(config.enumSerialization)}`
     );

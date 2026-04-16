@@ -332,6 +332,7 @@ describe("semantic-targets", () => {
     );
 
     expect(result.diagnostics).toHaveLength(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
     expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
   });
 
@@ -345,6 +346,7 @@ describe("semantic-targets", () => {
     const result = analyzeConstraintTargets("amount", customType, [minimum(0, 1)], {});
 
     expect(result.diagnostics).toHaveLength(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
     expect(result.diagnostics[0]!.code).toBe("TYPE_MISMATCH");
   });
 });

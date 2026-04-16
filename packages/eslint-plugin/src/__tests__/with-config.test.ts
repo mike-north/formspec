@@ -46,7 +46,7 @@ describe("withConfig()", () => {
       expect(entry.settings).toBeDefined();
       expect(entry.settings?.["formspec"]).toBeDefined();
       expect(
-        (entry.settings?.["formspec"] as Record<string, unknown>)?.["extensionRegistry"]
+        (entry.settings?.["formspec"] as Record<string, unknown>)["extensionRegistry"]
       ).toBeDefined();
     }
   });
@@ -56,7 +56,7 @@ describe("withConfig()", () => {
     for (const entry of configured.configs.strict) {
       expect(entry.settings).toBeDefined();
       expect(
-        (entry.settings?.["formspec"] as Record<string, unknown>)?.["extensionRegistry"]
+        (entry.settings?.["formspec"] as Record<string, unknown>)["extensionRegistry"]
       ).toBeDefined();
     }
   });
@@ -64,7 +64,7 @@ describe("withConfig()", () => {
   it("registry from empty config has no types", () => {
     const configured = withConfig(emptyConfig);
     const entry = configured.configs.recommended[0];
-    const registry = (entry?.settings?.["formspec"] as Record<string, unknown>)?.[
+    const registry = (entry?.settings?.["formspec"] as Record<string, unknown>)[
       "extensionRegistry"
     ] as { findTypeByName: (name: string) => unknown };
     expect(registry.findTypeByName("Decimal")).toBeUndefined();
@@ -73,7 +73,7 @@ describe("withConfig()", () => {
   it("registry from config with extensions resolves types and broadenings", () => {
     const configured = withConfig(configWithExtension);
     const entry = configured.configs.recommended[0];
-    const registry = (entry?.settings?.["formspec"] as Record<string, unknown>)?.[
+    const registry = (entry?.settings?.["formspec"] as Record<string, unknown>)[
       "extensionRegistry"
     ] as {
       findTypeByName: (name: string) => { extensionId: string; registration: { typeName: string } } | undefined;

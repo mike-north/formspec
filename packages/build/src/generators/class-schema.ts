@@ -315,7 +315,9 @@ export function generateSchemasFromClass(
     classDecl,
     ctx.checker,
     options.filePath,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     options.extensionRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     options.metadata,
     options.discriminator
   );
@@ -323,9 +325,13 @@ export function generateSchemasFromClass(
     analysis,
     { file: options.filePath },
     {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       extensionRegistry: options.extensionRegistry,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       metadata: options.metadata,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       enumSerialization: options.enumSerialization,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
       vendorPrefix: options.vendorPrefix,
     }
   );
@@ -662,9 +668,13 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
       : undefined;
 
   return {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     extensionRegistry: options.extensionRegistry ?? configRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     enumSerialization: options.enumSerialization ?? options.config?.enumSerialization,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     metadata: options.metadata ?? options.config?.metadata,
   };
 }

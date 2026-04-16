@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { loadFormSpecConfig, loadConfig, defineConstraints } from "../index.js";
 
 async function mkTempDir(): Promise<string> {
-  const base = join(tmpdir(), `formspec-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const base = join(tmpdir(), `formspec-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}`);
   await mkdir(base, { recursive: true });
   return base;
 }
@@ -226,6 +226,7 @@ describe("loadConfig (deprecated wrapper)", () => {
       "utf-8",
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated API
     const result = await loadConfig({ configPath: filePath });
 
     expect(result.found).toBe(true);
@@ -238,6 +239,7 @@ describe("loadConfig (deprecated wrapper)", () => {
   it("returns defaults when no config file exists", async () => {
     const dir = await createTempDir();
 
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated API
     const result = await loadConfig({ searchFrom: dir });
 
     expect(result.found).toBe(false);

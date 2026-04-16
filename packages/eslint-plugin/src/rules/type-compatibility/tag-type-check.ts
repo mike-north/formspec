@@ -48,8 +48,7 @@ function getExpectedTypesForTag(tagName: string): FieldTypeCategory[] | null {
   const types: FieldTypeCategory[] = [];
   for (const cap of capabilities) {
     // CAPABILITY_TO_FIELD_TYPES covers all SemanticCapability variants
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- exhaustive record
-    const capTypes = CAPABILITY_TO_FIELD_TYPES[cap]!;
+    const capTypes = CAPABILITY_TO_FIELD_TYPES[cap];
     if (capTypes.length === 0) {
       // json-like or condition-like: skip type check entirely
       return null;
@@ -84,11 +83,9 @@ export const tagTypeCheck = createRule<[], MessageIds>({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
     const registry =
-      (context.settings as Record<string, unknown>)?.["formspec"] !== undefined
-        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
-          ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
+      (context.settings as Record<string, unknown>)["formspec"] !== undefined
+        ? ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
             "extensionRegistry"
           ] as SettingsExtensionRegistry | undefined)
         : undefined;

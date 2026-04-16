@@ -76,6 +76,7 @@ export type {
 // Config loading
 export {
   loadFormSpecConfig,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- backward-compatible re-export
   loadConfig,
   defineConstraints,
   type LoadConfigOptions,
