@@ -972,7 +972,101 @@ describe("symbol-based custom type resolution in schema generation", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scenario 5: priority order — name-based runs before symbol-based
+  // Scenario 5: symbol-only resolution — import alias not in tsTypeNames
+  // ---------------------------------------------------------------------------
+  describe("symbol-only: import alias not in tsTypeNames — name-based cannot match", () => {
+    let tmpDir: string;
+
+    beforeAll(() => {
+      tmpDir = makeDir("sym-alias-only");
+      writeTsConfig(tmpDir);
+
+      // The canonical type is declared as OriginalDecimal.
+      fs.writeFileSync(
+        path.join(tmpDir, "decimal.ts"),
+        [
+          "declare const __origDecBrand: unique symbol;",
+          "export type OriginalDecimal = string & { readonly [__origDecBrand]: true };",
+        ].join("\n")
+      );
+
+      // Consumer imports it under the alias "AliasedDecimal".
+      // Name-based lookup (tsTypeNames: ["OriginalDecimal"]) cannot match "AliasedDecimal".
+      // Only symbol-based resolution can succeed here.
+      fs.writeFileSync(
+        path.join(tmpDir, "form.ts"),
+        [
+          'import type { OriginalDecimal as AliasedDecimal } from "./decimal.js";',
+          "",
+          "export interface AliasForm {",
+          "  amount: AliasedDecimal;",
+          "}",
+        ].join("\n")
+      );
+
+      // Config registers with the type parameter <OriginalDecimal> AND tsTypeNames
+      // that only lists "OriginalDecimal" — the consumer's alias "AliasedDecimal" is absent.
+      fs.writeFileSync(
+        path.join(tmpDir, "formspec.config.ts"),
+        [
+          'import type { OriginalDecimal } from "./decimal.js";',
+          'import { defineCustomType, defineExtension } from "@formspec/core";',
+          "",
+          "export const extension = defineExtension({",
+          '  extensionId: "x-test/alias-only",',
+          "  types: [",
+          "    defineCustomType<OriginalDecimal>({",
+          '      typeName: "OriginalDecimal",',
+          '      tsTypeNames: ["OriginalDecimal"],',
+          '      toJsonSchema: () => ({ type: "string", format: "original-decimal" }),',
+          "    }),",
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      cleanDir(tmpDir);
+    });
+
+    it("resolves via symbol when tsTypeNames cannot match (import alias)", () => {
+      // The type is registered with tsTypeNames: ["OriginalDecimal"] only.
+      // The consumer uses "AliasedDecimal" — name-based lookup ("AliasedDecimal" vs
+      // tsTypeNames: ["OriginalDecimal"]) fails. Symbol-based must succeed via ts.Symbol identity.
+      const originalDecimalType = defineCustomType({
+        typeName: "OriginalDecimal",
+        tsTypeNames: ["OriginalDecimal"],
+        toJsonSchema: () => ({ type: "string", format: "original-decimal" }),
+      });
+      const config = {
+        extensions: [
+          defineExtension({
+            extensionId: "x-test/alias-only",
+            types: [originalDecimalType],
+          }),
+        ],
+        vendorPrefix: "x-test",
+      };
+
+      const result = generateSchemas({
+        filePath: path.join(tmpDir, "form.ts"),
+        typeName: "AliasForm",
+        errorReporting: "throw",
+        config,
+        configPath: path.join(tmpDir, "formspec.config.ts"),
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      // spec: symbol-based resolution matches OriginalDecimal via ts.Symbol identity,
+      // even though the consumer imports it as "AliasedDecimal" which is absent from tsTypeNames.
+      expect(properties["amount"]).toMatchObject({ type: "string", format: "original-decimal" });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Scenario 7: priority order — name-based runs before symbol-based
   // ---------------------------------------------------------------------------
   describe("priority order: name-based lookup fires before symbol-based lookup", () => {
     let tmpDir: string;

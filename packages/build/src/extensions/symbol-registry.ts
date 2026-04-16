@@ -81,8 +81,22 @@ export function buildSymbolMapFromConfig(
       return;
     }
 
-    // Look up the registration by typeName in the runtime registry.
-    const entry = findRegistrationByTypeName(extensionRegistry, typeName);
+    // Prefer a fully-qualified lookup (extensionId + typeName) to avoid ambiguity
+    // when two extensions register types with the same typeName. Walk up the AST to
+    // find the enclosing defineExtension() call and extract its extensionId.
+    let entry: ExtensionTypeLookupResult | undefined;
+    const extensionId = extractEnclosingExtensionId(call, checker);
+    if (extensionId !== null) {
+      // Qualified lookup — unambiguous when extensionId is known.
+      const reg = extensionRegistry.findType(`${extensionId}/${typeName}`);
+      if (reg !== undefined) {
+        entry = { extensionId, registration: reg };
+      }
+    }
+    if (entry === undefined) {
+      // Fallback: linear scan by typeName across all extensions.
+      entry = findRegistrationByTypeName(extensionRegistry, typeName);
+    }
     if (entry === undefined) {
       return;
     }
@@ -177,6 +191,76 @@ function extractTypeNameFromCallArg(call: ts.CallExpression): string | null {
   }
 
   return typeNameProp.initializer.text;
+}
+
+/**
+ * Walks up the AST from a `defineCustomType<T>()` call to find an enclosing
+ * `defineExtension({ extensionId: "..." })` call, and returns the extensionId.
+ *
+ * This enables unambiguous qualified lookup (`extensionId/typeName`) when two
+ * extensions register types with the same `typeName`. Returns `null` when
+ * no enclosing `defineExtension` call is found.
+ */
+function extractEnclosingExtensionId(
+  call: ts.CallExpression,
+  checker: ts.TypeChecker
+): string | null {
+  let node: ts.Node = call;
+  while (node.parent !== undefined) {
+    node = node.parent;
+    if (ts.isCallExpression(node) && isDefineExtensionCall(node, checker)) {
+      return extractExtensionIdFromCallArg(node);
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns true when `node` is a `defineExtension(...)` call expression, using
+ * the same symbol-resolution strategy as {@link isDefineCustomTypeCall}.
+ */
+function isDefineExtensionCall(node: ts.CallExpression, checker: ts.TypeChecker): boolean {
+  const callSymbol = checker.getSymbolAtLocation(node.expression);
+  if (callSymbol !== undefined) {
+    const resolved =
+      callSymbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(callSymbol) : callSymbol;
+    const decl = resolved.declarations?.[0];
+    if (decl !== undefined) {
+      const sourceFile = decl.getSourceFile().fileName.replace(/\\/g, "/");
+      return (
+        resolved.name === "defineExtension" &&
+        (sourceFile.includes("@formspec/core") || sourceFile.includes("/packages/core/"))
+      );
+    }
+  }
+  // Syntactic fallback for environments where module resolution is unavailable.
+  return ts.isIdentifier(node.expression) && node.expression.text === "defineExtension";
+}
+
+/**
+ * Extracts the `extensionId` string from a `defineExtension({ extensionId: "..." })` call.
+ *
+ * Returns `null` when the first argument is not an object literal or the
+ * `extensionId` property is missing / not a string literal.
+ */
+function extractExtensionIdFromCallArg(call: ts.CallExpression): string | null {
+  const arg = call.arguments[0];
+  if (arg === undefined || !ts.isObjectLiteralExpression(arg)) {
+    return null;
+  }
+
+  const prop = arg.properties.find(
+    (p): p is ts.PropertyAssignment =>
+      ts.isPropertyAssignment(p) &&
+      ts.isIdentifier(p.name) &&
+      p.name.text === "extensionId"
+  );
+
+  if (prop === undefined || !ts.isStringLiteral(prop.initializer)) {
+    return null;
+  }
+
+  return prop.initializer.text;
 }
 
 /**

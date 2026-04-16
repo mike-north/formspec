@@ -627,11 +627,11 @@ export function generateSchemasBatch(
 ): readonly DetailedSchemaGenerationTargetResult[] {
   const contextCache = new Map<string, ProgramContext>();
 
-  // Resolve options once and build the symbol map once per batch.
-  // All targets in this batch share the same config, so the config AST walk
-  // only needs to happen once — after the first ProgramContext is created.
+  // Resolve options once. The symbol map is rebuilt whenever a new ts.Program is
+  // encountered — ts.Symbol identity is program-specific, so a map built from one
+  // program must not be used to look up symbols from a different program.
   const resolved = resolveOptions(options);
-  let symbolMapSeeded = false;
+  let symbolMapProgram: ts.Program | undefined;
 
   return options.targets.map((target) => {
     let ctx: ProgramContext;
@@ -654,24 +654,23 @@ export function generateSchemasBatch(
       });
     }
 
-    // Build the symbol map once using the first available ProgramContext.
-    // The registry is shared across all targets in this batch, so subsequent
-    // targets benefit from the already-seeded map without re-walking the config AST.
-    if (!symbolMapSeeded) {
-      symbolMapSeeded = true;
-      if (
-        options.configPath !== undefined &&
-        resolved.extensionRegistry !== undefined &&
-        isMutableRegistry(resolved.extensionRegistry)
-      ) {
-        const symbolMap = buildSymbolMapFromConfig(
-          options.configPath,
-          ctx.program,
-          ctx.checker,
-          resolved.extensionRegistry
-        );
-        resolved.extensionRegistry.setSymbolMap(symbolMap);
-      }
+    // Rebuild the symbol map whenever the program changes. ts.Symbol identity is
+    // program-specific — a map seeded from one program cannot match symbols from
+    // a different program, so we must re-walk the config AST for each new program.
+    if (
+      options.configPath !== undefined &&
+      resolved.extensionRegistry !== undefined &&
+      isMutableRegistry(resolved.extensionRegistry) &&
+      ctx.program !== symbolMapProgram
+    ) {
+      const symbolMap = buildSymbolMapFromConfig(
+        options.configPath,
+        ctx.program,
+        ctx.checker,
+        resolved.extensionRegistry
+      );
+      resolved.extensionRegistry.setSymbolMap(symbolMap);
+      symbolMapProgram = ctx.program;
     }
 
     return withTarget(
