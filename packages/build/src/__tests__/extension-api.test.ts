@@ -1,4 +1,7 @@
-import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import {
   defineExtension,
   defineCustomType,
@@ -21,6 +24,7 @@ import type {
 import { createExtensionRegistry } from "../extensions/index.js";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { validateIR } from "../validate/index.js";
+import { generateSchemas } from "../generators/class-schema.js";
 
 // =============================================================================
 // HELPERS
@@ -887,6 +891,471 @@ describe("Extension API", () => {
       const result = currencyConstraint.toJsonSchema("EUR", "x-acme");
       expect(result).toEqual({
         "x-acme-currency": "EUR",
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 10. Brand-based type registration and detection
+  // ---------------------------------------------------------------------------
+
+  describe("brand-based type registration", () => {
+    // -------------------------------------------------------------------------
+    // 10a. Registry lookup by brand
+    // -------------------------------------------------------------------------
+    describe("findTypeByBrand", () => {
+      it("returns the registration for a known brand", () => {
+        const brandedType = defineCustomType({
+          typeName: "Decimal",
+          brand: "__decimalBrand",
+          toJsonSchema: (_payload, vendorPrefix) => ({
+            type: "string",
+            [`${vendorPrefix}-decimal`]: true,
+          }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/branded", types: [brandedType] }),
+        ]);
+
+        // brand: "__decimalBrand" → registered under that identifier
+        const result = registry.findTypeByBrand("__decimalBrand");
+        expect(result).toBeDefined();
+        expect(result?.extensionId).toBe("x-test/branded");
+        expect(result?.registration).toBe(brandedType);
+      });
+
+      it("returns undefined for an unknown brand", () => {
+        const registry = createExtensionRegistry([monetaryExtension]);
+        // monetaryExtension has no brand registrations
+        expect(registry.findTypeByBrand("__unknownBrand")).toBeUndefined();
+      });
+
+      it("returns undefined when no types are registered with brands", () => {
+        const registry = createExtensionRegistry([]);
+        expect(registry.findTypeByBrand("__anyBrand")).toBeUndefined();
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 10b. Duplicate brand detection
+    // -------------------------------------------------------------------------
+    describe("duplicate brand", () => {
+      it("throws when two types within the same extension share a brand", () => {
+        const typeA = defineCustomType({
+          typeName: "TypeA",
+          brand: "__sharedBrand",
+          toJsonSchema: () => ({ type: "string" }),
+        });
+        const typeB = defineCustomType({
+          typeName: "TypeB",
+          brand: "__sharedBrand",
+          toJsonSchema: () => ({ type: "number" }),
+        });
+        expect(() =>
+          createExtensionRegistry([
+            defineExtension({ extensionId: "x-test/dup", types: [typeA, typeB] }),
+          ])
+        ).toThrow('Duplicate custom type brand: "__sharedBrand"');
+      });
+
+      it("throws when two types across different extensions share a brand", () => {
+        const typeA = defineCustomType({
+          typeName: "TypeA",
+          brand: "__sharedBrand",
+          toJsonSchema: () => ({ type: "string" }),
+        });
+        const typeB = defineCustomType({
+          typeName: "TypeB",
+          brand: "__sharedBrand",
+          toJsonSchema: () => ({ type: "number" }),
+        });
+        expect(() =>
+          createExtensionRegistry([
+            defineExtension({ extensionId: "x-test/ext1", types: [typeA] }),
+            defineExtension({ extensionId: "x-test/ext2", types: [typeB] }),
+          ])
+        ).toThrow('Duplicate custom type brand: "__sharedBrand"');
+      });
+    });
+
+    it("rejects the reserved __integerBrand", () => {
+      const integerType = defineCustomType({
+        typeName: "MyInteger",
+        brand: "__integerBrand",
+        toJsonSchema: () => ({ type: "integer" }),
+      });
+      expect(() =>
+        createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/reserved", types: [integerType] }),
+        ])
+      ).toThrow(/reserved for the builtin Integer type/);
+    });
+
+    // -------------------------------------------------------------------------
+    // 10c. Brand-based schema generation (integration test with real TS program)
+    //
+    // The fixture defines a `unique symbol` brand and uses it as a computed
+    // property key in a branded intersection type. The extension registers the
+    // type with `brand: "__testBrand"`. The class-analyzer must detect the brand
+    // structurally (via property declarations) and resolve the field to the
+    // correct custom type, emitting `{ type: "string", format: "test" }`.
+    // -------------------------------------------------------------------------
+    describe("brand detection in schema generation", () => {
+      let tmpDir: string;
+      let fixturePath: string;
+
+      beforeAll(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-brand-detection-"));
+
+        fs.writeFileSync(
+          path.join(tmpDir, "tsconfig.json"),
+          JSON.stringify(
+            {
+              compilerOptions: {
+                target: "ES2022",
+                module: "NodeNext",
+                moduleResolution: "nodenext",
+                strict: true,
+                skipLibCheck: true,
+              },
+            },
+            null,
+            2
+          )
+        );
+
+        const fixtureSource = [
+          "declare const __testBrand: unique symbol;",
+          "type TestBranded = string & { readonly [__testBrand]: true };",
+          "",
+          "export interface Config {",
+          "  field: TestBranded;",
+          "}",
+        ].join("\n");
+
+        fixturePath = path.join(tmpDir, "fixture.ts");
+        fs.writeFileSync(fixturePath, fixtureSource);
+      });
+
+      afterAll(() => {
+        if (fs.existsSync(tmpDir)) {
+          fs.rmSync(tmpDir, { recursive: true });
+        }
+      });
+
+      it("resolves a brand-registered custom type to its JSON Schema via brand detection", () => {
+        // Register the type using the brand identifier that matches the unique symbol
+        // declared in the fixture source. The brand-based resolver checks for a
+        // computed property named `__testBrand` on the intersection type.
+        // spec: class-analyzer §resolveBrandedCustomType → custom type IR node
+        const testBrandedType = defineCustomType({
+          typeName: "TestBranded",
+          brand: "__testBrand",
+          toJsonSchema: () => ({ type: "string", format: "test" }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/branded", types: [testBrandedType] }),
+        ]);
+
+        const result = generateSchemas({
+          filePath: fixturePath,
+          typeName: "Config",
+          errorReporting: "throw",
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        });
+
+        // The field `field: TestBranded` must resolve via brand detection to
+        // the registered custom type, which emits `{ type: "string", format: "test" }`.
+        const properties = result.jsonSchema.properties as Record<string, unknown>;
+        expect(properties["field"]).toMatchObject({
+          type: "string",  // per toJsonSchema above
+          format: "test",  // per toJsonSchema above
+        });
+      });
+
+      it("falls back to name-based detection when the brand is unregistered", () => {
+        // The fixture type is still structurally branded, but this registration
+        // only exposes a TS-facing type name. Resolution must still succeed via
+        // `tsTypeNames` even though there is no brand registration.
+        const nameOnlyType = defineCustomType({
+          typeName: "RegisteredByName",
+          tsTypeNames: ["TestBranded"],
+          toJsonSchema: () => ({ type: "string", format: "name-fallback" }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/name-only", types: [nameOnlyType] }),
+        ]);
+
+        const result = generateSchemas({
+          filePath: fixturePath,
+          typeName: "Config",
+          errorReporting: "throw",
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        });
+
+        const properties = result.jsonSchema.properties as Record<string, unknown>;
+        expect(properties["field"]).toMatchObject({
+          type: "string",
+          format: "name-fallback",
+        });
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 10d. Brand takes priority over name when name doesn't match
+    //
+    // Register a type with `brand` only (no `tsTypeNames`). Import it under an
+    // alias so the name-based lookup would fail. Verify brand detection succeeds.
+    // -------------------------------------------------------------------------
+    describe("brand detection works regardless of import alias", () => {
+      let tmpDir: string;
+      let fixturePath: string;
+
+      beforeAll(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-brand-alias-"));
+
+        fs.writeFileSync(
+          path.join(tmpDir, "tsconfig.json"),
+          JSON.stringify(
+            {
+              compilerOptions: {
+                target: "ES2022",
+                module: "NodeNext",
+                moduleResolution: "nodenext",
+                strict: true,
+                skipLibCheck: true,
+              },
+            },
+            null,
+            2
+          )
+        );
+
+        fs.writeFileSync(
+          path.join(tmpDir, "branded-types.ts"),
+          [
+            "declare const __aliasBrand: unique symbol;",
+            "export type SourceBranded = string & { readonly [__aliasBrand]: true };",
+          ].join("\n")
+        );
+
+        // The consuming file imports the branded type under an alias that does
+        // not match the registered type name. Name-based lookup would fail.
+        const fixtureSource = [
+          'import type { SourceBranded as AliasedBranded } from "./branded-types.js";',
+          "",
+          "export interface AliasConfig {",
+          "  field: AliasedBranded;",
+          "}",
+        ].join("\n");
+
+        fixturePath = path.join(tmpDir, "fixture.ts");
+        fs.writeFileSync(fixturePath, fixtureSource);
+      });
+
+      afterAll(() => {
+        if (fs.existsSync(tmpDir)) {
+          fs.rmSync(tmpDir, { recursive: true });
+        }
+      });
+
+      it("detects brand through an imported alias when the registered typeName differs", () => {
+        // "RegisteredBranded" does not match the imported alias "AliasedBranded",
+        // so the new brand-based path must succeed for the field to resolve.
+        // spec: class-analyzer §resolveBrandedCustomType → works with aliased imports
+        const registeredType = defineCustomType({
+          typeName: "RegisteredBranded",
+          brand: "__aliasBrand",
+          toJsonSchema: () => ({ type: "string", format: "alias-test" }),
+        });
+        const registry = createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/alias", types: [registeredType] }),
+        ]);
+
+        const result = generateSchemas({
+          filePath: fixturePath,
+          typeName: "AliasConfig",
+          errorReporting: "throw",
+          extensionRegistry: registry,
+          vendorPrefix: "x-test",
+        });
+
+        const properties = result.jsonSchema.properties as Record<string, unknown>;
+        // Brand detection resolves to "RegisteredBranded" via the __aliasBrand symbol,
+        // which emits { type: "string", format: "alias-test" }.
+        expect(properties["field"]).toMatchObject({
+          type: "string",
+          format: "alias-test",
+        });
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 10e. Type without brand still works via tsTypeNames
+    // -------------------------------------------------------------------------
+    describe("name-based fallback still works when no brand is provided", () => {
+      it("resolves a type without brand via tsTypeNames", () => {
+        // decimalType has no brand; it should still be findable by name
+        const registry = createExtensionRegistry([monetaryExtension]);
+
+        // Name-based lookup must still work — brand field is undefined
+        const result = registry.findTypeByName("Decimal");
+        expect(result).toBeDefined();
+        expect(result?.extensionId).toBe("x-stripe/monetary");
+        expect(result?.registration).toBe(decimalType);
+
+        // Brand lookup for a name the type was not registered with must return undefined
+        expect(registry.findTypeByBrand("Decimal")).toBeUndefined();
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // 10f. Edge cases for brand detection robustness
+    // -------------------------------------------------------------------------
+    describe("brand detection edge cases", () => {
+      it("does not match a string-keyed property with the same name as a registered brand", () => {
+        // If someone writes `type Bad = string & { __testBrand: true }` (string key,
+        // not [__testBrand] computed key), brand detection must NOT fire.
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-string-key-"));
+
+        try {
+          const fixturePath = path.join(tmpDir, "string-key-brand.ts");
+          fs.writeFileSync(
+            fixturePath,
+            [
+              '// String-keyed property — NOT a computed symbol key',
+              'type FakeBranded = string & { __fakeBrand: true };',
+              '',
+              'export interface FakeConfig {',
+              '  field: FakeBranded;',
+              '}',
+            ].join("\n")
+          );
+
+          const fakeType = defineCustomType({
+            typeName: "Fake",
+            brand: "__fakeBrand",
+            toJsonSchema: () => ({ type: "string", format: "fake" }),
+          });
+          const registry = createExtensionRegistry([
+            defineExtension({ extensionId: "x-test/fake", types: [fakeType] }),
+          ]);
+
+          const result = generateSchemas({
+            filePath: fixturePath,
+            typeName: "FakeConfig",
+            errorReporting: "throw",
+            extensionRegistry: registry,
+            vendorPrefix: "x-test",
+          });
+
+          const properties = result.jsonSchema.properties as Record<string, unknown>;
+          // String-keyed __fakeBrand is NOT a computed property name,
+          // so brand detection must not fire
+          expect(properties["field"]).not.toMatchObject({ format: "fake" });
+        } finally {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+      });
+
+      it("keeps scanning computed symbol keys until it finds a registered brand", () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-multiple-symbols-"));
+
+        try {
+          const fixturePath = path.join(tmpDir, "multiple-symbol-brands.ts");
+          fs.writeFileSync(
+            fixturePath,
+            [
+              'declare const __otherBrand: unique symbol;',
+              'declare const __realBrand: unique symbol;',
+              'type MultiBranded = string & { readonly [__otherBrand]: true; readonly [__realBrand]: true };',
+              '',
+              'export interface MultiBrandConfig {',
+              '  field: MultiBranded;',
+              '}',
+            ].join("\n")
+          );
+
+          const registeredType = defineCustomType({
+            typeName: "RegisteredBranded",
+            brand: "__realBrand",
+            toJsonSchema: () => ({ type: "string", format: "multi-brand" }),
+          });
+          const registry = createExtensionRegistry([
+            defineExtension({ extensionId: "x-test/multi-brand", types: [registeredType] }),
+          ]);
+
+          const result = generateSchemas({
+            filePath: fixturePath,
+            typeName: "MultiBrandConfig",
+            errorReporting: "throw",
+            extensionRegistry: registry,
+            vendorPrefix: "x-test",
+          });
+
+          const properties = result.jsonSchema.properties as Record<string, unknown>;
+          expect(properties["field"]).toMatchObject({
+            type: "string",
+            format: "multi-brand",
+          });
+        } finally {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
+      });
+
+      it("prefers the name-based registration when name and brand could both match", () => {
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "brand-dual-"));
+
+        try {
+          const fixturePath = path.join(tmpDir, "dual-registration.ts");
+          fs.writeFileSync(
+            fixturePath,
+            [
+              'declare const __dualBrand: unique symbol;',
+              'type DualType = string & { readonly [__dualBrand]: true };',
+              '',
+              'export interface DualConfig {',
+              '  field: DualType;',
+              '}',
+            ].join("\n")
+          );
+
+          const nameMatchedType = defineCustomType({
+            typeName: "NameMatchedType",
+            tsTypeNames: ["DualType"],
+            toJsonSchema: () => ({ type: "string", format: "name-wins" }),
+          });
+          const brandMatchedType = defineCustomType({
+            typeName: "BrandMatchedType",
+            brand: "__dualBrand",
+            toJsonSchema: () => ({ type: "string", format: "brand-wins" }),
+          });
+          const registry = createExtensionRegistry([
+            defineExtension({
+              extensionId: "x-test/dual",
+              types: [nameMatchedType, brandMatchedType],
+            }),
+          ]);
+
+          const result = generateSchemas({
+            filePath: fixturePath,
+            typeName: "DualConfig",
+            errorReporting: "throw",
+            extensionRegistry: registry,
+            vendorPrefix: "x-test",
+          });
+
+          const properties = result.jsonSchema.properties as Record<string, unknown>;
+          // If brand resolution ran first, this would emit `brand-wins` instead.
+          expect(properties["field"]).toMatchObject({
+            type: "string",
+            format: "name-wins",
+          });
+        } finally {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        }
       });
     });
   });

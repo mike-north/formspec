@@ -55,13 +55,40 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
 }
 
 /**
+ * Collects all brand identifier texts from an intersection type's computed
+ * property names.
+ *
+ * Shared by both `isIntegerBrandedType` (builtin) and `resolveBrandedCustomType`
+ * (extension). Walks `type.getProperties()` looking for computed property names
+ * backed by plain identifiers — the standard `unique symbol` brand pattern.
+ *
+ * Returns all matching identifiers so that types with multiple brands (e.g.,
+ * `number & { [__integerBrand]: true } & { [__otherBrand]: true }`) are
+ * fully inspected regardless of property order.
+ */
+function collectBrandIdentifiers(type: ts.Type): readonly string[] {
+  if (!type.isIntersection()) {
+    return [];
+  }
+
+  const brands: string[] = [];
+  for (const prop of type.getProperties()) {
+    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
+    if (decl === undefined) continue;
+    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
+    if (!ts.isComputedPropertyName(decl.name)) continue;
+    if (!ts.isIdentifier(decl.name.expression)) continue;
+    brands.push(decl.name.expression.text);
+  }
+
+  return brands;
+}
+
+/**
  * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
  *
  * Integer-branded types are intersections of `number` with a brand object
- * containing the `__integerBrand` unique symbol. Detection inspects property
- * declarations for computed property names referencing an identifier named
- * `__integerBrand`, avoiding dependence on TypeScript's internal escaped-name
- * encoding.
+ * containing the `__integerBrand` unique symbol.
  */
 function isIntegerBrandedType(type: ts.Type): boolean {
   if (!type.isIntersection()) {
@@ -75,23 +102,43 @@ function isIntegerBrandedType(type: ts.Type): boolean {
     return false;
   }
 
-  return type.getProperties().some((prop) => {
-    const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (declaration === undefined) {
-      return false;
+  return collectBrandIdentifiers(type).includes("__integerBrand");
+}
+
+/**
+ * Resolves a TypeScript intersection type to an extension-registered custom type
+ * by inspecting computed property names for a brand identifier match.
+ *
+ * This is more robust than name-based lookup because it works even when the
+ * type is imported under an alias. Brand detection is attempted after name-based
+ * resolution as a structural fallback.
+ *
+ * Returns `null` if the type is not an intersection, has no branded properties,
+ * or no registered brand matches. Note: the builtin `__integerBrand` is reserved
+ * and handled separately by `isIntegerBrandedType` — extensions cannot register it.
+ */
+function resolveBrandedCustomType(
+  type: ts.Type,
+  extensionRegistry: ExtensionRegistry | undefined
+): TypeNode | null {
+  if (extensionRegistry === undefined) {
+    return null;
+  }
+
+  for (const brand of collectBrandIdentifiers(type)) {
+    const registration = extensionRegistry.findTypeByBrand(brand);
+    if (registration === undefined) {
+      continue;
     }
-    if (
-      !ts.isPropertySignature(declaration) &&
-      !ts.isPropertyDeclaration(declaration)
-    ) {
-      return false;
-    }
-    const name = declaration.name;
-    if (!ts.isComputedPropertyName(name)) {
-      return false;
-    }
-    return ts.isIdentifier(name.expression) && name.expression.text === "__integerBrand";
-  });
+
+    return {
+      kind: "custom",
+      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+      payload: null,
+    };
+  }
+
+  return null;
 }
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
@@ -1820,6 +1867,10 @@ export function resolveTypeNode(
   const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
   if (customType) {
     return customType;
+  }
+  const brandedCustomType = resolveBrandedCustomType(type, extensionRegistry);
+  if (brandedCustomType) {
+    return brandedCustomType;
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(
     type,

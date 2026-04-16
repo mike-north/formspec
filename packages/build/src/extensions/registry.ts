@@ -59,6 +59,19 @@ export interface ExtensionRegistry {
   findTypeByName(
     typeName: string
   ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
+  /**
+   * Look up a custom type registration by a brand identifier.
+   *
+   * This is used during class analysis to resolve extension-defined custom types
+   * via structural brand detection (`unique symbol` computed property keys).
+   * Brand identifiers are stored as plain strings, so they must be unique
+   * across all extensions loaded into the registry.
+   *
+   * @param brand - The identifier text of the `unique symbol` brand variable.
+   */
+  findTypeByBrand(
+    brand: string
+  ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
 
   /**
    * Look up a custom constraint registration by its fully-qualified constraint ID.
@@ -141,6 +154,10 @@ export function createExtensionRegistry(
     string,
     { readonly extensionId: string; readonly registration: CustomTypeRegistration }
   >();
+  const brandMap = new Map<
+    string,
+    { readonly extensionId: string; readonly registration: CustomTypeRegistration }
+  >();
   const constraintMap = new Map<string, CustomConstraintRegistration>();
   const constraintTagMap = new Map<
     string,
@@ -168,6 +185,21 @@ export function createExtensionRegistry(
             throw new Error(`Duplicate custom type source name: "${sourceTypeName}"`);
           }
           typeNameMap.set(sourceTypeName, {
+            extensionId: ext.extensionId,
+            registration: type,
+          });
+        }
+
+        if (type.brand !== undefined) {
+          if (type.brand === "__integerBrand") {
+            throw new Error(
+              `Brand "__integerBrand" is reserved for the builtin Integer type and cannot be registered by extensions`
+            );
+          }
+          if (brandMap.has(type.brand)) {
+            throw new Error(`Duplicate custom type brand: "${type.brand}"`);
+          }
+          brandMap.set(type.brand, {
             extensionId: ext.extensionId,
             registration: type,
           });
@@ -273,6 +305,7 @@ export function createExtensionRegistry(
     extensions,
     findType: (typeId: string) => typeMap.get(typeId),
     findTypeByName: (typeName: string) => typeNameMap.get(typeName),
+    findTypeByBrand: (brand: string) => brandMap.get(brand),
     findConstraint: (constraintId: string) => constraintMap.get(constraintId),
     findConstraintTag: (tagName: string) =>
       constraintTagMap.get(normalizeFormSpecTagName(tagName)),

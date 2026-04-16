@@ -163,6 +163,10 @@ export interface ExtensionRegistry {
         readonly registration: ConstraintTagRegistration;
     } | undefined;
     findType(typeId: string): CustomTypeRegistration | undefined;
+    findTypeByBrand(brand: string): {
+        readonly extensionId: string;
+        readonly registration: CustomTypeRegistration;
+    } | undefined;
     findTypeByName(typeName: string): {
         readonly extensionId: string;
         readonly registration: CustomTypeRegistration;

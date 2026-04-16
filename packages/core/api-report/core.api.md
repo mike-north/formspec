@@ -157,6 +157,7 @@ export interface CustomTypeNode {
 
 // @public
 export interface CustomTypeRegistration {
+    readonly brand?: string;
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
     readonly tsTypeNames?: readonly string[];
