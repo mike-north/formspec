@@ -8,10 +8,7 @@
  * @packageDocumentation
  */
 import type { TSESLint } from "@typescript-eslint/utils";
-export {
-  analyzeMetadataForNode,
-  analyzeMetadataForSourceFile,
-} from "@formspec/analysis";
+export { analyzeMetadataForNode, analyzeMetadataForSourceFile } from "@formspec/analysis";
 export type {
   AnalyzeMetadataOptions,
   AnalyzeMetadataForNodeOptions,
@@ -75,8 +72,10 @@ import {
  *
  * @public
  */
-export type NamedRuleModule<MessageIds extends string, Options extends readonly unknown[]> =
-  TSESLint.RuleModule<MessageIds, Options> & { name: string };
+export type NamedRuleModule<
+  MessageIds extends string,
+  Options extends readonly unknown[],
+> = TSESLint.RuleModule<MessageIds, Options> & { name: string };
 
 export type {
   AllowedFieldTypesMessageIds,
@@ -273,6 +272,7 @@ const plugin = {
   meta,
   rules,
   configs,
+  withConfig,
 };
 
 /**
@@ -318,6 +318,7 @@ export function withConfig(config: FormSpecConfig): typeof plugin {
       recommended: configWithSettings(recommendedConfig),
       strict: configWithSettings(strictConfig),
     },
+    withConfig,
   };
 }
 

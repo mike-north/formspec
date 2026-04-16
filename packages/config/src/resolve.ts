@@ -1,6 +1,5 @@
-import type { FormSpecConfig, FormSpecPackageOverride } from "./types.js";
+import type { FormSpecConfig, FormSpecPackageOverride, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
-import type { ResolvedConstraintConfig } from "./types.js";
 
 /**
  * Resolved configuration for a specific file, with all defaults applied
@@ -72,8 +71,8 @@ function findMatchingOverride(
 }
 
 /**
- * Merges a package override into the root config. Override values
- * take precedence over root values.
+ * Deep-merges a package override into the root config. Override values
+ * take precedence on conflict; unspecified override fields inherit from root.
  */
 function applyOverride(
   config: FormSpecConfig,
@@ -83,12 +82,66 @@ function applyOverride(
 
   return {
     ...config,
-    ...(override.constraints !== undefined && { constraints: override.constraints }),
+    ...(override.constraints !== undefined && {
+      constraints: deepMergeConstraints(config.constraints, override.constraints),
+    }),
     ...(override.enumSerialization !== undefined && {
       enumSerialization: override.enumSerialization,
     }),
     ...(override.metadata !== undefined && { metadata: override.metadata }),
   };
+}
+
+/**
+ * Deep-merges constraint configs. Override fields take precedence;
+ * unspecified override sub-fields inherit from the base.
+ */
+function deepMergeConstraints(
+  base: ConstraintConfig | undefined,
+  override: ConstraintConfig
+): ConstraintConfig {
+  if (base === undefined) return override;
+
+  const merged: ConstraintConfig = {
+    fieldTypes: { ...base.fieldTypes, ...override.fieldTypes },
+    layout: { ...base.layout, ...override.layout },
+    fieldOptions: { ...base.fieldOptions, ...override.fieldOptions },
+  };
+
+  // Merge uiSchema if either side defines it
+  if (base.uiSchema !== undefined || override.uiSchema !== undefined) {
+    merged.uiSchema = {
+      layouts: { ...base.uiSchema?.layouts, ...override.uiSchema?.layouts },
+    };
+    if (base.uiSchema?.rules !== undefined || override.uiSchema?.rules !== undefined) {
+      merged.uiSchema.rules = {
+        ...base.uiSchema?.rules,
+        ...override.uiSchema?.rules,
+      };
+      if (base.uiSchema?.rules?.effects !== undefined || override.uiSchema?.rules?.effects !== undefined) {
+        merged.uiSchema.rules.effects = {
+          ...base.uiSchema?.rules?.effects,
+          ...override.uiSchema?.rules?.effects,
+        };
+      }
+    }
+  }
+
+  // Merge controlOptions with nested custom dict
+  if (base.controlOptions !== undefined || override.controlOptions !== undefined) {
+    merged.controlOptions = {
+      ...base.controlOptions,
+      ...override.controlOptions,
+    };
+    if (base.controlOptions?.custom !== undefined || override.controlOptions?.custom !== undefined) {
+      merged.controlOptions.custom = {
+        ...base.controlOptions?.custom,
+        ...override.controlOptions?.custom,
+      };
+    }
+  }
+
+  return merged;
 }
 
 /**
@@ -108,13 +161,16 @@ function relativePath(filePath: string, configDir: string): string {
 }
 
 /**
- * Minimal glob matching supporting `*` and `**` patterns.
- * Sufficient for package path matching; not a full glob implementation.
+ * Minimal glob matching supporting `*`, `**`, and `?` patterns.
+ * Does not support brace expansion, character classes, or negation.
+ *
+ * @internal
  */
 function matchGlob(pattern: string, path: string): boolean {
   const regexStr = pattern
     .replace(/\\/g, "/")
-    .replace(/[.+^${}()|[\]]/g, "\\$&") // escape regex special chars
+    .replace(/[.+?^${}()|[\]]/g, "\\$&") // escape regex special chars (incl. ?)
+    .replace(/\\\?/g, "[^/]") // glob ? = single non-separator char
     .replace(/\*\*/g, "{{GLOBSTAR}}") // placeholder for **
     .replace(/\*/g, "[^/]*") // * matches within a segment
     .replace(/{{GLOBSTAR}}/g, ".*"); // ** matches across segments

@@ -24,11 +24,10 @@ type MessageIds = "typeMismatch";
 interface SettingsExtensionRegistry {
   findTypeByName(
     typeName: string
-  ): { readonly extensionId: string; readonly registration: { readonly typeName: string } } | undefined;
-  findBuiltinConstraintBroadening(
-    typeId: string,
-    tagName: string
-  ): object | undefined;
+  ):
+    | { readonly extensionId: string; readonly registration: { readonly typeName: string } }
+    | undefined;
+  findBuiltinConstraintBroadening(typeId: string, tagName: string): object | undefined;
 }
 
 const CAPABILITY_TO_FIELD_TYPES: Record<SemanticCapability, FieldTypeCategory[]> = {
@@ -86,12 +85,13 @@ export const tagTypeCheck = createRule<[], MessageIds>({
     const checker = services.program.getTypeChecker();
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
-    const registry = (context.settings as Record<string, unknown>)?.["formspec"] !== undefined
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
-      ? ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
-          "extensionRegistry"
-        ] as SettingsExtensionRegistry | undefined)
-      : undefined;
+    const registry =
+      (context.settings as Record<string, unknown>)?.["formspec"] !== undefined
+        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- settings shape is user-provided
+          ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
+            "extensionRegistry"
+          ] as SettingsExtensionRegistry | undefined)
+        : undefined;
 
     return createDeclarationVisitor((node) => {
       const declarationType = getDeclarationType(node, services);
@@ -139,10 +139,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
           const typeResult = registry.findTypeByName(typeName);
           if (typeResult !== undefined) {
             const typeId = `${typeResult.extensionId}/${typeResult.registration.typeName}`;
-            const broadening = registry.findBuiltinConstraintBroadening(
-              typeId,
-              tag.normalizedName
-            );
+            const broadening = registry.findBuiltinConstraintBroadening(typeId, tag.normalizedName);
             if (broadening !== undefined) continue;
           }
         }

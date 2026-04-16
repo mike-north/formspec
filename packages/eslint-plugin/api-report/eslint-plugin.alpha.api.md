@@ -197,6 +197,7 @@ const plugin: {
         readonly recommended: TSESLint.FlatConfig.ConfigArray;
         readonly strict: TSESLint.FlatConfig.ConfigArray;
     };
+    withConfig: typeof withConfig;
 };
 export default plugin;
 

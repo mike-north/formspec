@@ -362,7 +362,7 @@ async function main(): Promise<void> {
     const configResult = await loadFormSpecConfig(
       options.configPath
         ? { configPath: options.configPath }
-        : { searchFrom: path.dirname(path.resolve(options.filePath)) },
+        : { searchFrom: path.dirname(path.resolve(options.filePath)) }
     );
     if (configResult.found) {
       formSpecConfig = configResult.config;
@@ -370,7 +370,7 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     console.error(
-      `Error loading config: ${error instanceof Error ? error.message : String(error)}`,
+      `Error loading config: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);
   }
@@ -536,21 +536,23 @@ async function main(): Promise<void> {
         // generation succeeds and compute the exact file layout that a real run
         // would produce.
         // Generate class schemas
-        const classSchemas = generateClassSchemas(analysis, { file: options.filePath }, {
+        const schemaOptions = {
+          ...(formSpecConfig !== undefined && { config: formSpecConfig }),
           enumSerialization,
-        });
+        };
+        const classSchemas = generateClassSchemas(
+          analysis,
+          { file: options.filePath },
+          schemaOptions
+        );
 
         // Generate method schemas
         const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
         const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, schemaOptions)
         );
         const staticMethodSchemas = analysis.staticMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, schemaOptions)
         );
 
         if (options.dryRun) {

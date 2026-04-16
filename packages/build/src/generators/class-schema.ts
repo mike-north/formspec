@@ -535,7 +535,12 @@ function generateSchemasDetailedInternal(
     };
   }
 
-  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
+  return generateSchemasFromDetailedProgramContext(
+    ctx,
+    options.filePath,
+    options.typeName,
+    options
+  );
 }
 
 /**
@@ -572,7 +577,12 @@ function generateSchemasFromProgramDetailedInternal(
     };
   }
 
-  return generateSchemasFromDetailedProgramContext(ctx, options.filePath, options.typeName, options);
+  return generateSchemasFromDetailedProgramContext(
+    ctx,
+    options.filePath,
+    options.typeName,
+    options
+  );
 }
 
 /**

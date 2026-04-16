@@ -135,11 +135,42 @@ async function loadConfigFile(filePath: string): Promise<FormSpecConfig> {
 
   if (typeof defaultExport !== "object" || Array.isArray(defaultExport)) {
     throw new Error(
-      `Invalid config file at ${filePath}: default export must be a FormSpecConfig object, got ${Array.isArray(defaultExport) ? "array" : typeof defaultExport}`,
+      `Invalid config file at ${filePath}: default export must be a FormSpecConfig object, got ${Array.isArray(defaultExport) ? "array" : typeof defaultExport}`
     );
   }
 
-  return defaultExport as FormSpecConfig;
+  const config = defaultExport as FormSpecConfig;
+  validateLoadedConfig(config, filePath);
+  return config;
+}
+
+/**
+ * Validates known fields of a loaded config for structural correctness.
+ * Catches common misconfiguration with clear error messages.
+ */
+function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
+  if (config.extensions !== undefined && !Array.isArray(config.extensions)) {
+    throw new Error(
+      `Invalid config at ${filePath}: "extensions" must be an array, got ${typeof config.extensions}`
+    );
+  }
+  if (
+    config.vendorPrefix !== undefined &&
+    (typeof config.vendorPrefix !== "string" || !config.vendorPrefix.startsWith("x-"))
+  ) {
+    throw new Error(
+      `Invalid config at ${filePath}: "vendorPrefix" must be a string starting with "x-", got ${JSON.stringify(config.vendorPrefix)}`
+    );
+  }
+  if (
+    config.enumSerialization !== undefined &&
+    config.enumSerialization !== "enum" &&
+    config.enumSerialization !== "oneOf"
+  ) {
+    throw new Error(
+      `Invalid config at ${filePath}: "enumSerialization" must be "enum" or "oneOf", got ${JSON.stringify(config.enumSerialization)}`
+    );
+  }
 }
 
 /**
@@ -171,7 +202,7 @@ async function loadConfigFile(filePath: string): Promise<FormSpecConfig> {
  * @public
  */
 export async function loadFormSpecConfig(
-  options: LoadConfigOptions = {},
+  options: LoadConfigOptions = {}
 ): Promise<LoadConfigResult> {
   const { searchFrom = process.cwd(), configPath } = options;
 
