@@ -117,9 +117,23 @@ function createFormSpecTSDocConfig(extensionTagNames: readonly string[] = []): T
     );
   }
 
-  // Register FormSpec metadata and annotation tags so summary extraction
-  // stops at recognized tags without having to scrub emitted descriptions.
-  for (const tagName of ["apiName", "displayName", "format", "placeholder"]) {
+  // Register FormSpec annotation and structure tags so summary extraction
+  // stops at recognized tags and mid-prose mentions are parsed as real
+  // tags per TSDoc semantics. Tags that are standard TSDoc (@description,
+  // @example, @defaultValue, @deprecated) are already registered.
+  for (const tagName of [
+    "apiName",
+    "displayName",
+    "format",
+    "placeholder",
+    "order",
+    "group",
+    "showWhen",
+    "hideWhen",
+    "enableWhen",
+    "disableWhen",
+    "discriminator",
+  ]) {
     config.addTagDefinition(
       new TSDocTagDefinition({
         tagName: "@" + tagName,
