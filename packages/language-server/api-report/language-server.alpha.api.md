@@ -65,6 +65,16 @@ export interface FormSpecAnalysisDiagnosticLocation {
 }
 
 // @public
+export interface FormSpecConfig {
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly extensions?: readonly ExtensionDefinition_2[];
+    readonly metadata?: MetadataPolicyInput;
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
 
 // @public

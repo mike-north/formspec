@@ -57,6 +57,20 @@ export const configs: {
 export { ExplicitMetadataSource }
 
 // @public
+export interface FormSpecConfig {
+    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
 export const meta: {
     name: string;
     version: string;
@@ -295,8 +309,6 @@ export const validRegexPattern: ESLintUtils.RuleModule<"invalidRegexPattern", []
     name: string;
 };
 
-// Warning: (ae-forgotten-export) The symbol "FormSpecConfig" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function withConfig(config: FormSpecConfig): typeof plugin;
 

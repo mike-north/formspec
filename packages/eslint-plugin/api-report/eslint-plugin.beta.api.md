@@ -57,6 +57,16 @@ export const configs: {
 export { ExplicitMetadataSource }
 
 // @public
+export interface FormSpecConfig {
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    readonly extensions?: readonly ExtensionDefinition[];
+    readonly metadata?: MetadataPolicyInput;
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
+}
+
+// @public
 export const meta: {
     name: string;
     version: string;

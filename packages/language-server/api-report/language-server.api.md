@@ -26,7 +26,6 @@ export function createServer(options?: CreateServerOptions): Connection;
 
 // @public
 export interface CreateServerOptions {
-    // Warning: (ae-forgotten-export) The symbol "FormSpecConfig" needs to be exported by the entry point index.d.ts
     readonly config?: FormSpecConfig;
     readonly diagnosticsMode?: "off" | "plugin";
     readonly diagnosticSource?: string;
@@ -63,6 +62,20 @@ export interface FormSpecAnalysisDiagnosticLocation {
     readonly filePath: string;
     readonly message?: string;
     readonly range: CommentSpan;
+}
+
+// @public
+export interface FormSpecConfig {
+    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
+    readonly constraints?: ConstraintConfig;
+    readonly enumSerialization?: "enum" | "oneOf";
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition_2[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
+    readonly metadata?: MetadataPolicyInput;
+    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
+    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly vendorPrefix?: string;
 }
 
 // @public

@@ -26,6 +26,7 @@
 
 export { createServer } from "./server.js";
 export type { CreateServerOptions } from "./server.js";
+export type { FormSpecConfig } from "@formspec/config";
 export type { ExtensionDefinition } from "@formspec/core";
 export type {
   CommentSourceSpan,
