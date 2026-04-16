@@ -1,5 +1,18 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.45
+
+### Patch Changes
+
+- Updated dependencies [[`1d09fe1`](https://github.com/mike-north/formspec/commit/1d09fe12561002ae3255b66a4e3a9ca32fc078f3), [`bcdaed6`](https://github.com/mike-north/formspec/commit/bcdaed673ec1f930502087e296dd834a6d8ca602)]:
+  - @formspec/core@0.1.0-alpha.45
+  - @formspec/build@0.1.0-alpha.45
+  - @formspec/analysis@0.1.0-alpha.45
+  - @formspec/cli@0.1.0-alpha.45
+  - @formspec/dsl@0.1.0-alpha.45
+  - @formspec/language-server@0.1.0-alpha.45
+  - @formspec/ts-plugin@0.1.0-alpha.45
+
 ## 0.1.0-alpha.44
 
 ### Patch Changes
