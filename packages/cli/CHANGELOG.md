@@ -1,5 +1,31 @@
 # @formspec/cli
 
+## 0.1.0-alpha.43
+
+### Minor Changes
+
+- [#265](https://github.com/mike-north/formspec/pull/265) [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c) Thanks [@mike-north](https://github.com/mike-north)! - Introduce unified `FormSpecConfig` system. Rename `@formspec/constraints` to `@formspec/config`. All consumers (build, CLI, ESLint, language server) now accept a `FormSpecConfig` object carrying extensions, constraints, metadata, vendor prefix, and enum serialization. Adds `defineFormSpecConfig` identity function, `loadFormSpecConfig` with jiti-based TypeScript config file loading, `resolveConfigForFile` for monorepo per-package overrides, and `withConfig()` factory on the ESLint plugin. Removes the outdated playground package. See docs/007-configuration.md for the full spec.
+
+### Patch Changes
+
+- [#263](https://github.com/mike-north/formspec/pull/263) [`4a1d3fb`](https://github.com/mike-north/formspec/commit/4a1d3fb26e7d337c69c303b8368c962937360745) Thanks [@mike-north](https://github.com/mike-north)! - Add regression coverage for `Ref<T>` discriminator specialization on large object carriers.
+
+- [#268](https://github.com/mike-north/formspec/pull/268) [`da45909`](https://github.com/mike-north/formspec/commit/da459096da0dad2054e54a17ca71785d179dd71e) Thanks [@mike-north](https://github.com/mike-north)! - Add enum member completions for `@displayName` and `@apiName` `:member` target syntax on string literal union fields.
+
+- [#265](https://github.com/mike-north/formspec/pull/265) [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c) Thanks [@mike-north](https://github.com/mike-north)! - Fix TYPE_MISMATCH false positive when built-in numeric constraints (`@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf`) are applied to custom types that register `builtinConstraintBroadenings`. The validator now consults the extension registry before rejecting constraints on non-numeric types.
+
+- [#262](https://github.com/mike-north/formspec/pull/262) [`6b373d1`](https://github.com/mike-north/formspec/commit/6b373d151f7b72b08fb8a24a3e823c78d3f5c488) Thanks [@mike-north](https://github.com/mike-north)! - Prevent tag-only TSDoc comments from leaking into emitted schema descriptions.
+
+- [#269](https://github.com/mike-north/formspec/pull/269) [`1f87c94`](https://github.com/mike-north/formspec/commit/1f87c94bdc8be790c3e129d45762577eb73a71f6) Thanks [@mike-north](https://github.com/mike-north)! - Consolidate comment parsers on a unified TSDoc-based parser in @formspec/analysis. ESLint scanner and build package delegate to the unified parser instead of maintaining independent tag detection.
+
+- [#266](https://github.com/mike-north/formspec/pull/266) [`82604ff`](https://github.com/mike-north/formspec/commit/82604ff886368570a2a0f7ee752ed140418b1932) Thanks [@mike-north](https://github.com/mike-north)! - Exclude `__`-prefixed phantom properties from schema emission, preventing OOM when resolving types like `Ref<Customer>` with large circular type graphs. Add `no-double-underscore-fields` ESLint rule to warn authors about excluded properties.
+
+- [#267](https://github.com/mike-north/formspec/pull/267) [`32acd0b`](https://github.com/mike-north/formspec/commit/32acd0bd686bbdbfc6b05dea2a968406dd4081b9) Thanks [@mike-north](https://github.com/mike-north)! - Register all formspec annotation, structure, and ecosystem tags with both tsdoc.json and the programmatic TSDoc parser so mid-prose tag mentions are parsed correctly.
+
+- Updated dependencies [[`5a73b5c`](https://github.com/mike-north/formspec/commit/5a73b5c5ba6e674008e48cf1e813a15ba5024f8f), [`4a1d3fb`](https://github.com/mike-north/formspec/commit/4a1d3fb26e7d337c69c303b8368c962937360745), [`da45909`](https://github.com/mike-north/formspec/commit/da459096da0dad2054e54a17ca71785d179dd71e), [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c), [`6b373d1`](https://github.com/mike-north/formspec/commit/6b373d151f7b72b08fb8a24a3e823c78d3f5c488), [`1f87c94`](https://github.com/mike-north/formspec/commit/1f87c94bdc8be790c3e129d45762577eb73a71f6), [`82604ff`](https://github.com/mike-north/formspec/commit/82604ff886368570a2a0f7ee752ed140418b1932), [`32acd0b`](https://github.com/mike-north/formspec/commit/32acd0bd686bbdbfc6b05dea2a968406dd4081b9), [`40e95ec`](https://github.com/mike-north/formspec/commit/40e95ec658d23e3b72d9328c81956fd6c8737f4c)]:
+  - @formspec/build@0.1.0-alpha.43
+  - @formspec/config@0.1.0-alpha.43
+
 ## 0.1.0-alpha.42
 
 ### Patch Changes
