@@ -169,3 +169,9 @@ export {
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
+export {
+  parseUnifiedComment,
+  type UnifiedParsedComment,
+  type UnifiedParsedTag,
+  type UnifiedParseOptions,
+} from "./unified-comment-parser.js";
