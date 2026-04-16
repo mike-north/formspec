@@ -145,8 +145,11 @@ export function parseUnifiedComment(
  * Aligns TSDoc custom blocks with regex-parsed tags by walking both sequences
  * in document order, matching on normalized tag names.
  *
- * A forward cursor over the TSDoc blocks avoids quadratic scanning — each
- * block is visited at most once.
+ * Uses a forward cursor over the TSDoc blocks. In the common case (all tags
+ * are registered and appear in the same order as their blocks), this is
+ * effectively linear. In the worst case (many unregistered regex tags that
+ * never match a block) it degrades to O(tags × blocks), which is acceptable
+ * given that most real comments have fewer than ~20 tags.
  */
 function alignTagsWithBlocks(
   parsed: ParsedCommentBlock,

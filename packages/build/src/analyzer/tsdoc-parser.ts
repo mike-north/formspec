@@ -816,6 +816,8 @@ export function parseTSDocTags(
   // the regex parser misses (e.g. malformed or unusual comment syntax).
   const rawTextFallbacks = collectRawTextFallbacks(node, file);
 
+  const extensionTagNames = getExtensionTagNames(options);
+
   if (commentRanges) {
     for (const range of commentRanges) {
       // Only parse /** ... */ comments (kind 3 = MultiLineCommentTrivia)
@@ -830,7 +832,7 @@ export function parseTSDocTags(
       const extensions = options?.extensionRegistry?.extensions;
       const unified = parseUnifiedComment(commentText, {
         offset: range.pos,
-        extensionTagNames: getExtensionTagNames(options),
+        extensionTagNames,
         ...(extensions !== undefined ? { extensions } : {}),
       });
 

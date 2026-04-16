@@ -75,9 +75,9 @@ describe("parseUnifiedComment — summary extraction", () => {
   });
 
   it("returns empty summaryText when only tags are present (no description)", () => {
-    // spec: tag-only leakage fix — TSDoc would put the unknown/unregistered
-    // tag text into the summary; we detect this and return "".
-    // @foobar is not registered, so TSDoc folds it into the summary section.
+    // A comment containing only a registered tag with no prose before it
+    // should produce an empty summaryText. TSDoc correctly places @minimum
+    // into a custom block, so no leakage into the summary section occurs.
     const comment = "/** @minimum 0 */";
     const result = parseUnifiedComment(comment);
 

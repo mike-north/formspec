@@ -114,6 +114,11 @@ function mapParsedTagToScannedTag(
         raw: rawTargetText,
       };
       valueText = (quotedMatch[2] ?? "").trim();
+    } else {
+      // Malformed target (starts with ':' but doesn't match the expected
+      // target syntax) — preserve rawArgument as valueText to match the
+      // legacy scanner's behavior for these edge cases.
+      valueText = rawArgument;
     }
   }
 

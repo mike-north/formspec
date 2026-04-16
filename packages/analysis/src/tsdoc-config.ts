@@ -20,8 +20,10 @@ import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 
 /**
  * Tags whose content may contain TSDoc-significant characters (`{}`, `@`)
- * and must be extracted via the TS compiler JSDoc API rather than the
- * TSDoc DocNode tree to avoid content mangling.
+ * and are extracted via raw span-based slicing of the original source text,
+ * with the TS compiler JSDoc API as a fallback in the build pipeline.
+ * This avoids content mangling that would occur if the TSDoc DocNode tree
+ * were used directly.
  *
  * - `@pattern`: regex patterns commonly contain `@` (e.g. email validation)
  * - `@enumOptions`: JSON arrays may contain object literals with `{}`
