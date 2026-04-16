@@ -8,6 +8,7 @@
  * @packageDocumentation
  */
 
+import type * as ts from "typescript";
 import type {
   ExtensionDefinition,
   CustomTypeRegistration,
@@ -72,6 +73,36 @@ export interface ExtensionRegistry {
   findTypeByBrand(
     brand: string
   ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
+
+  /**
+   * Look up a custom type by its TypeScript symbol identity.
+   *
+   * Built from `defineCustomType<T>()` type parameter extraction in the config file.
+   * This is the most precise detection path — it uses `ts.Symbol` identity, which is
+   * immune to import aliases and name collisions.
+   *
+   * Returns `undefined` until {@link ExtensionRegistry.setSymbolMap} has been called
+   * (i.e., before the TypeScript program is available), or when the symbol is not
+   * registered via a type parameter.
+   *
+   * @param symbol - The canonical TypeScript symbol to look up.
+   */
+  findTypeBySymbol(
+    symbol: ts.Symbol
+  ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
+
+  /**
+   * Sets the symbol map built from config AST analysis.
+   *
+   * Called after the TypeScript program is created and the config file is analyzed.
+   * Prior to this call, {@link ExtensionRegistry.findTypeBySymbol} always returns
+   * `undefined`.
+   *
+   * @param map - A map from canonical `ts.Symbol` to the matching registry entry.
+   */
+  setSymbolMap(
+    map: Map<ts.Symbol, { extensionId: string; registration: CustomTypeRegistration }>
+  ): void;
 
   /**
    * Look up a custom constraint registration by its fully-qualified constraint ID.
@@ -149,6 +180,7 @@ export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]
 ): ExtensionRegistry {
   const reservedTagSources = buildConstraintTagSources(extensions);
+  let symbolMap = new Map<ts.Symbol, { extensionId: string; registration: CustomTypeRegistration }>();
   const typeMap = new Map<string, CustomTypeRegistration>();
   const typeNameMap = new Map<
     string,
@@ -306,6 +338,10 @@ export function createExtensionRegistry(
     findType: (typeId: string) => typeMap.get(typeId),
     findTypeByName: (typeName: string) => typeNameMap.get(typeName),
     findTypeByBrand: (brand: string) => brandMap.get(brand),
+    findTypeBySymbol: (symbol: ts.Symbol) => symbolMap.get(symbol),
+    setSymbolMap: (map) => {
+      symbolMap = map;
+    },
     findConstraint: (constraintId: string) => constraintMap.get(constraintId),
     findConstraintTag: (tagName: string) =>
       constraintTagMap.get(normalizeFormSpecTagName(tagName)),

@@ -30,6 +30,7 @@ import {
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
 import { createExtensionRegistry, type ExtensionRegistry } from "../extensions/index.js";
+import { buildSymbolMapFromConfig } from "../extensions/symbol-registry.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
 
@@ -236,6 +237,22 @@ export interface StaticSchemaGenerationOptions {
   readonly metadata?: MetadataPolicyInput | undefined;
   /** Discriminator-specific schema generation behavior. */
   readonly discriminator?: DiscriminatorResolutionOptions | undefined;
+  /**
+   * Absolute path to the FormSpec config file (e.g., `formspec.config.ts`).
+   *
+   * When provided alongside a `config` that includes extensions, the build
+   * pipeline includes the config file in the TypeScript program and extracts
+   * `defineCustomType<T>()` type parameters. This enables symbol-based custom
+   * type detection — the most precise resolution path, immune to import aliases
+   * and name collisions.
+   *
+   * Obtain this from `loadFormSpecConfig()`:
+   * ```typescript
+   * const { config, configPath } = await loadFormSpecConfig();
+   * await generateSchemas({ filePath, typeName, config, configPath, errorReporting: "throw" });
+   * ```
+   */
+  readonly configPath?: string | undefined;
 }
 
 /**
@@ -533,7 +550,10 @@ function generateSchemasDetailedInternal(
 ): DetailedClassSchemasResult {
   let ctx: ProgramContext;
   try {
-    ctx = createProgramContext(options.filePath);
+    // Include the config file in the program when provided so that the config
+    // AST is available for symbol-based type-parameter extraction.
+    const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
+    ctx = createProgramContext(options.filePath, additionalFiles);
   } catch (error) {
     return {
       ok: false,
@@ -610,7 +630,9 @@ export function generateSchemasBatch(
         : target.filePath.toLowerCase();
       const cachedContext = contextCache.get(cacheKey);
       if (cachedContext === undefined) {
-        ctx = createProgramContext(target.filePath);
+        const additionalFiles =
+          options.configPath !== undefined ? [options.configPath] : undefined;
+        ctx = createProgramContext(target.filePath, additionalFiles);
         contextCache.set(cacheKey, ctx);
       } else {
         ctx = cachedContext;
@@ -686,6 +708,19 @@ function generateSchemasFromDetailedProgramContext(
   options: StaticSchemaGenerationOptions
 ): DetailedClassSchemasResult {
   const resolved = resolveOptions(options);
+
+  // If a configPath and extension registry are both available, build the
+  // symbol map from the config AST and register it on the registry. This
+  // enables the symbol-based detection path in the type resolver.
+  if (options.configPath !== undefined && resolved.extensionRegistry !== undefined) {
+    const symbolMap = buildSymbolMapFromConfig(
+      options.configPath,
+      ctx.program,
+      ctx.checker,
+      resolved.extensionRegistry
+    );
+    resolved.extensionRegistry.setSymbolMap(symbolMap);
+  }
 
   const analysisResult: AnalyzeNamedTypeToIRDetailedResult =
     analyzeNamedTypeToIRFromProgramContextDetailed(

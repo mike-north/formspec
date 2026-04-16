@@ -171,6 +171,14 @@ export interface ExtensionRegistry {
         readonly extensionId: string;
         readonly registration: CustomTypeRegistration;
     } | undefined;
+    findTypeBySymbol(symbol: ts.Symbol): {
+        readonly extensionId: string;
+        readonly registration: CustomTypeRegistration;
+    } | undefined;
+    setSymbolMap(map: Map<ts.Symbol, {
+        extensionId: string;
+        registration: CustomTypeRegistration;
+    }>): void;
 }
 
 export { FormElement }
@@ -531,6 +539,7 @@ export { StaticEnumField }
 // @public
 export interface StaticSchemaGenerationOptions {
     readonly config?: FormSpecConfig | undefined;
+    readonly configPath?: string | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
     // @deprecated
     readonly enumSerialization?: "enum" | "oneOf";

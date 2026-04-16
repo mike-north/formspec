@@ -85,6 +85,47 @@ function collectBrandIdentifiers(type: ts.Type): readonly string[] {
 }
 
 /**
+ * Resolves a type to an extension-registered custom type via ts.Symbol identity.
+ *
+ * This is the most precise detection mechanism — it uses TypeScript's own type
+ * identity, immune to import aliases and name collisions. Built from
+ * `defineCustomType<T>()` type parameter extraction in the config file.
+ *
+ * Returns `null` when:
+ * - `extensionRegistry` is undefined (no registry provided)
+ * - The type has no symbol (bare primitive, anonymous type)
+ * - The canonical symbol is not in the registry's symbol map
+ */
+function resolveSymbolBasedCustomType(
+  type: ts.Type,
+  extensionRegistry: ExtensionRegistry | undefined,
+  checker: ts.TypeChecker
+): TypeNode | null {
+  if (extensionRegistry === undefined) {
+    return null;
+  }
+
+  const rawSymbol = type.aliasSymbol ?? type.getSymbol();
+  if (rawSymbol === undefined) {
+    return null;
+  }
+
+  const canonical =
+    rawSymbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(rawSymbol) : rawSymbol;
+
+  const registration = extensionRegistry.findTypeBySymbol(canonical);
+  if (registration === undefined) {
+    return null;
+  }
+
+  return {
+    kind: "custom",
+    typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+    payload: null,
+  };
+}
+
+/**
  * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
  *
  * Integer-branded types are intersections of `number` with a brand object
@@ -1867,6 +1908,12 @@ export function resolveTypeNode(
   const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
   if (customType) {
     return customType;
+  }
+  // Symbol-based custom type detection (highest priority for extension types
+  // registered via defineCustomType<T>() type parameters).
+  const symbolCustomType = resolveSymbolBasedCustomType(type, extensionRegistry, checker);
+  if (symbolCustomType) {
+    return symbolCustomType;
   }
   const brandedCustomType = resolveBrandedCustomType(type, extensionRegistry);
   if (brandedCustomType) {

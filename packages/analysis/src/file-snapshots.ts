@@ -126,6 +126,7 @@ function toExtensionTagSources(
       ? {}
       : {
           customTypes: extension.types.map((type) => ({
+            // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
             tsTypeNames: type.tsTypeNames ?? [type.typeName],
           })),
         }),
