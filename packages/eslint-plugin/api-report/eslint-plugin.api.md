@@ -119,6 +119,11 @@ export type NoDisabledTagsOptions = [{
 }];
 
 // @public
+export const noDoubleUnderscoreFields: ESLintUtils.RuleModule<"phantomField", [], unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
+// @public
 export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
@@ -204,6 +209,9 @@ const plugin: {
         readonly "constraint-validation/valid-discriminator": TSESLint.RuleModule<"invalidPlacement" | "missingTarget" | "nestedTarget" | "invalidSourceOperand" | "nonLocalTypeParameter" | "missingTargetField" | "optionalTargetField" | "nullableTargetField" | "nonStringLikeTargetField", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
+        readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
         readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
         readonly "constraints-allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
     };
@@ -268,6 +276,9 @@ export const rules: {
         name: string;
     };
     readonly "constraint-validation/valid-discriminator": TSESLint.RuleModule<"invalidPlacement" | "missingTarget" | "nestedTarget" | "invalidSourceOperand" | "nonLocalTypeParameter" | "missingTargetField" | "optionalTargetField" | "nullableTargetField" | "nonStringLikeTargetField", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
