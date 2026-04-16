@@ -1,5 +1,7 @@
 ---
 "@formspec/build": patch
+"@formspec/cli": patch
+"formspec": patch
 "@formspec/eslint-plugin": minor
 ---
 
