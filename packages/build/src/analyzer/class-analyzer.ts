@@ -127,13 +127,15 @@ function resolveBrandedCustomType(
 
   for (const brand of collectBrandIdentifiers(type)) {
     const registration = extensionRegistry.findTypeByBrand(brand);
-    if (registration !== undefined) {
-      return {
-        kind: "custom",
-        typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-        payload: null,
-      };
+    if (registration === undefined) {
+      continue;
     }
+
+    return {
+      kind: "custom",
+      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+      payload: null,
+    };
   }
 
   return null;
