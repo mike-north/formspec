@@ -118,7 +118,8 @@ export function createProgramContext(
     compilerOptions = parsed.options;
     // Include the target file and any additional files in the program.
     // Use Set to eliminate duplicates.
-    fileNames = [...new Set([...parsed.fileNames, absolutePath, ...(additionalFiles ?? [])])];
+    const normalizedAdditional = (additionalFiles ?? []).map((f) => path.resolve(f));
+    fileNames = [...new Set([...parsed.fileNames, absolutePath, ...normalizedAdditional])];
   } else {
     // Fallback to default options
     compilerOptions = {
@@ -129,7 +130,8 @@ export function createProgramContext(
       skipLibCheck: true,
       declaration: true,
     };
-    fileNames = [...new Set([absolutePath, ...(additionalFiles ?? [])])];
+    const normalizedAdditional = (additionalFiles ?? []).map((f) => path.resolve(f));
+    fileNames = [...new Set([absolutePath, ...normalizedAdditional])];
   }
 
   const program = ts.createProgram(fileNames, compilerOptions);

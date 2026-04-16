@@ -325,7 +325,8 @@ export interface GenerateSchemasFromProgramOptions extends StaticSchemaGeneratio
 export function generateSchemasFromClass(
   options: GenerateFromClassOptions
 ): GenerateFromClassResult {
-  const ctx = createProgramContext(options.filePath);
+  const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
+  const ctx = createProgramContext(options.filePath, additionalFiles);
   const classDecl = findClassByName(ctx.sourceFile, options.className);
 
   if (!classDecl) {
@@ -658,7 +659,11 @@ export function generateSchemasBatch(
     // targets benefit from the already-seeded map without re-walking the config AST.
     if (!symbolMapSeeded) {
       symbolMapSeeded = true;
-      if (options.configPath !== undefined && resolved.extensionRegistry !== undefined) {
+      if (
+        options.configPath !== undefined &&
+        resolved.extensionRegistry !== undefined &&
+        isMutableRegistry(resolved.extensionRegistry)
+      ) {
         const symbolMap = buildSymbolMapFromConfig(
           options.configPath,
           ctx.program,
@@ -709,6 +714,10 @@ export function generateSchemasBatchFromProgram(
   });
 }
 
+function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegistry {
+  return "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function";
+}
+
 function resolveOptions(options: StaticSchemaGenerationOptions): {
   extensionRegistry: MutableExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
@@ -750,7 +759,11 @@ function generateSchemasFromDetailedProgramContext(
   // If a configPath and extension registry are both available, build the
   // symbol map from the config AST and register it on the registry. This
   // enables the symbol-based detection path in the type resolver.
-  if (options.configPath !== undefined && resolved.extensionRegistry !== undefined) {
+  if (
+    options.configPath !== undefined &&
+    resolved.extensionRegistry !== undefined &&
+    isMutableRegistry(resolved.extensionRegistry)
+  ) {
     const symbolMap = buildSymbolMapFromConfig(
       options.configPath,
       ctx.program,

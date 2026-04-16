@@ -12,6 +12,7 @@
  */
 
 import * as ts from "typescript";
+import * as path from "node:path";
 import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
 
 // =============================================================================
@@ -43,7 +44,8 @@ export function buildSymbolMapFromConfig(
 ): Map<ts.Symbol, ExtensionTypeLookupResult> {
   const symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();
 
-  const configFile = program.getSourceFile(configPath);
+  const normalizedPath = path.resolve(configPath);
+  const configFile = program.getSourceFile(normalizedPath);
   if (configFile === undefined) {
     return symbolMap;
   }
