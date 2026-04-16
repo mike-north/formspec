@@ -72,6 +72,33 @@ describe("metadata analysis", () => {
     ).toEqual(expect.arrayContaining(["apiName:default", "displayName:default"]));
   });
 
+  it("treats @apiName mid-prose as a real tag per TSDoc semantics (issue #424)", () => {
+    const { program, sourceFile } = createProgram(`
+      export interface MyRecord {
+        /**
+         * Field with @apiName override mentioned in prose.
+         * @apiName actual_name
+         */
+        myField: string;
+      }
+    `);
+    const declaration = findInterface(sourceFile, "MyRecord");
+    const property = findInterfaceProperty(declaration, "myField");
+
+    const analysis = analyzeMetadataForNode({
+      program,
+      node: property,
+      metadata: {},
+    });
+
+    // TSDoc treats @apiName mid-prose as a block tag — first occurrence wins.
+    // The value is everything from @apiName to the end of the line.
+    expect(analysis?.resolvedMetadata?.apiName).toEqual({
+      value: "override mentioned in prose.",
+      source: "explicit",
+    });
+  });
+
   it("honors an internal logical-name override for inferred metadata", () => {
     const { program, sourceFile } = createProgram(`
       export interface CustomerRecord {

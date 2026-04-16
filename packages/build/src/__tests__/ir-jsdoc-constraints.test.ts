@@ -644,6 +644,56 @@ describe("extractJSDocAnnotationNodes", () => {
     });
   });
 
+  it("treats @apiName mid-prose as a real tag per TSDoc semantics (issue #424)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Field with @apiName override mentioned in prose.
+         * @apiName actual_api_name
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    const description = result.find((n) => n.annotationKind === "description");
+
+    // TSDoc treats @apiName mid-prose as a block tag, so the summary stops before it.
+    // "Field with" is the prose before the first @apiName tag.
+    expect(description).toMatchObject({
+      annotationKind: "description",
+      value: "Field with",
+    });
+  });
+
+  it("treats @displayName mid-prose as a real tag per TSDoc semantics (issue #424)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * Use the @displayName tag to set a label.
+         * @displayName Actual Label
+         */
+        name: string;
+      }
+    `);
+
+    const result = extractJSDocAnnotationNodes(prop);
+    const displayName = result.find((n) => n.annotationKind === "displayName");
+    const description = result.find((n) => n.annotationKind === "description");
+
+    // TSDoc sees @displayName mid-prose as the first occurrence — first tag wins.
+    // The value is everything after @displayName up to the next tag/line boundary.
+    expect(displayName).toMatchObject({
+      annotationKind: "displayName",
+      value: "tag to set a label.",
+    });
+    // Summary is just the text before the first @displayName
+    expect(description).toMatchObject({
+      annotationKind: "description",
+      value: "Use the",
+    });
+  });
+
   it("parses multiple displayName tags for enum member labels via display-name metadata", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {
