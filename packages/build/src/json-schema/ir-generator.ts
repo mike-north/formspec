@@ -1196,6 +1196,17 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
 /**
  * Standard JSON Schema 2020-12 keywords that vocabulary-mode constraints must
  * not overwrite. Prevents accidental corruption of structural schema properties.
+ *
+ * Numeric constraint keywords (`minimum`, `maximum`, `exclusiveMinimum`,
+ * `exclusiveMaximum`, `multipleOf`) are intentionally excluded from this list.
+ * Custom types that emit `{ type: "integer" }` (or other numeric JSON Schema
+ * types) and use `builtinConstraintBroadenings` need to forward numeric
+ * constraints as standard JSON Schema keywords — for example, `Integer` fields
+ * annotated with `@minimum 0` should produce `{ minimum: 0 }`. Blocking those
+ * keywords here would prevent that pattern entirely.
+ *
+ * Schema- and object-structural keywords remain protected because overwriting
+ * them (e.g., `type`, `properties`, `$ref`) could silently corrupt output.
  */
 const JSON_SCHEMA_STRUCTURAL_KEYWORDS = new Set([
   "$schema", "$ref", "$defs", "$id", "$anchor", "$dynamicRef", "$dynamicAnchor",
@@ -1204,7 +1215,6 @@ const JSON_SCHEMA_STRUCTURAL_KEYWORDS = new Set([
   "properties", "patternProperties", "additionalProperties", "required",
   "items", "prefixItems", "additionalItems", "contains",
   "allOf", "oneOf", "anyOf", "not", "if", "then", "else",
-  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
   "minLength", "maxLength", "pattern",
   "minItems", "maxItems", "uniqueItems",
   "minProperties", "maxProperties",
