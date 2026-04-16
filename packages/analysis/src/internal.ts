@@ -1,6 +1,7 @@
 export {
   extractCommentSummaryText,
   parseCommentBlock,
+  parseCommentBlockCore,
   parseTagSyntax,
   sliceCommentSpan,
 } from "./comment-syntax.js";

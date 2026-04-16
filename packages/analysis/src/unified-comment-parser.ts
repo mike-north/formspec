@@ -15,7 +15,7 @@ import {
   choosePreferredPayloadText,
 } from "./tsdoc-text-extraction.js";
 import {
-  parseCommentBlock,
+  parseCommentBlockCore,
   type ParsedCommentTag,
   type ParsedCommentBlock,
 } from "./comment-syntax.js";
@@ -108,7 +108,7 @@ export function parseUnifiedComment(
   const docComment = parserContext.docComment;
 
   // Phase 2: Span enrichment via existing regex parser
-  const parsed = parseCommentBlock(
+  const parsed = parseCommentBlockCore(
     commentText,
     options?.extensions !== undefined
       ? { offset: baseOffset, extensions: options.extensions }
