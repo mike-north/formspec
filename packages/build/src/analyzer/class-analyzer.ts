@@ -54,6 +54,32 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
+/**
+ * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
+ *
+ * Integer-branded types are intersections of `number` with a brand object
+ * containing the `__integerBrand` unique symbol. TypeScript represents
+ * symbol-keyed properties internally as `__@` + `_` + variableName + `@N`,
+ * so `declare const __integerBrand: unique symbol` produces the property name
+ * `__@___integerBrand@N` (three underscores between `__@` and `integerBrand`).
+ */
+function isIntegerBrandedType(type: ts.Type): boolean {
+  if (!type.isIntersection()) {
+    return false;
+  }
+
+  const hasNumberBase = type.types.some(
+    (member) => !!(member.flags & ts.TypeFlags.Number)
+  );
+  if (!hasNumberBase) {
+    return false;
+  }
+
+  return type.getProperties().some(
+    (prop) => prop.name.startsWith("__@___integerBrand")
+  );
+}
+
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return isResolvableObjectLikeAliasTypeNode(typeNode.type);
@@ -1796,6 +1822,11 @@ export function resolveTypeNode(
     return primitiveAlias;
   }
 
+  // --- Integer-branded types (must check before Number) ---
+  if (isIntegerBrandedType(type)) {
+    return { kind: "primitive", primitiveKind: "integer" };
+  }
+
   // --- Primitives ---
   if (type.flags & ts.TypeFlags.String) {
     return { kind: "primitive", primitiveKind: "string" };
@@ -1943,7 +1974,8 @@ function tryResolveNamedPrimitiveAlias(
         ts.TypeFlags.BigIntLiteral |
         ts.TypeFlags.Boolean |
         ts.TypeFlags.Null)
-    )
+    ) &&
+    !isIntegerBrandedType(type)
   ) {
     return null;
   }
@@ -2072,6 +2104,9 @@ function resolveAliasedPrimitiveTarget(
     );
   }
 
+  if (isIntegerBrandedType(type)) {
+    return { kind: "primitive", primitiveKind: "integer" };
+  }
   if (type.flags & ts.TypeFlags.String) {
     return { kind: "primitive", primitiveKind: "string" };
   }
