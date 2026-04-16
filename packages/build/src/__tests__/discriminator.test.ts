@@ -144,6 +144,47 @@ describe("@discriminator schema generation", () => {
       ].join("\n")
     );
 
+    fs.writeFileSync(
+      path.join(tmpDir, "circular.ts"),
+      [
+        "export interface LargeCircularType {",
+        "  readonly object: 'large_circular';",
+        "  name: string;",
+        "  self: LargeCircularType | null;",
+        "  related: RelatedType | null;",
+        "}",
+        "",
+        "export interface RelatedType {",
+        "  readonly object: 'related';",
+        "  back: LargeCircularType | null;",
+        "}",
+        "",
+        "export type ExtractObjectTag<T> = T extends { readonly object: infer O }",
+        "  ? O extends string ? O : never",
+        "  : never;",
+        "",
+        "declare const __brand: unique symbol;",
+        "",
+        "/** @discriminator :type T */",
+        "export type PhantomRef<T extends { readonly object: string }> = {",
+        "  type: ExtractObjectTag<T>;",
+        "  id: string;",
+        "} & {",
+        "  readonly [__brand]: 'PhantomRef';",
+        "  readonly __type?: T;",
+        "};",
+        "",
+        "export interface TestFields {",
+        "  ref: PhantomRef<LargeCircularType>;",
+        "}",
+        "",
+        "/** @displayName Test */",
+        "export class TestForm {",
+        "  fields!: TestFields;",
+        "}",
+      ].join("\n")
+    );
+
     fixturePath = path.join(tmpDir, "fixture.ts");
     fs.writeFileSync(
       fixturePath,
@@ -700,5 +741,55 @@ describe("@discriminator schema generation", () => {
         typeName: "MissingCarrierWrapper",
       })
     ).toThrow(/INVALID_TAG_ARGUMENT/);
+  });
+
+  it("excludes __-prefixed phantom properties and completes without OOM on circular type graphs", () => {
+    const circularFixturePath = path.join(tmpDir, "circular.ts");
+    const result = generateSchemasOrThrow({
+      filePath: circularFixturePath,
+      typeName: "TestForm",
+      metadata: {
+        type: {
+          apiName: {
+            mode: "infer-if-missing",
+            infer: ({ logicalName }) =>
+              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+          },
+        },
+      },
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "Missing $defs");
+    const rootProperties = result.jsonSchema.properties as Record<string, unknown>;
+    const fieldsSchema = expectRecord(rootProperties["fields"], "Missing fields property");
+    const fieldsRef = typeof fieldsSchema["$ref"] === "string" ? fieldsSchema["$ref"] : undefined;
+    const resolvedFields = expectRecord(
+      fieldsRef !== undefined
+        ? defs[fieldsRef.replace(/^#\/\$defs\//u, "")] ?? null
+        : fieldsSchema,
+      "Missing resolved fields schema"
+    );
+
+    // Find the PhantomRef<LargeCircularType> definition in $defs — api name is inferred as snake_case
+    const phantomRefKey = Object.keys(defs).find((k) => k.includes("phantom_ref"));
+    expect(phantomRefKey, "Expected a phantom_ref definition in $defs").toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by the expect above
+    const phantomRefSchema = expectRecord(defs[phantomRefKey!], "Missing PhantomRef schema");
+    const phantomRefProperties = expectRecord(
+      phantomRefSchema["properties"],
+      "Missing PhantomRef properties"
+    );
+
+    // Only `type` and `id` should be present — no `__type`, `__brand`, or other phantom properties
+    const propertyKeys = Object.keys(phantomRefProperties);
+    expect(propertyKeys.sort()).toEqual(["id", "type"]);
+
+    // The discriminator field `type` must be specialized to the singleton enum for LargeCircularType
+    const typeProperty = expectRecord(phantomRefProperties["type"], "Missing type property schema");
+    expect(typeProperty["enum"]).toEqual(["large_circular"]);
+
+    // Confirm `ref` in TestFields resolves to the PhantomRef definition
+    const refFieldProperties = expectRecord(resolvedFields["properties"], "Missing TestFields properties");
+    expect(refFieldProperties).toHaveProperty("ref");
   });
 });

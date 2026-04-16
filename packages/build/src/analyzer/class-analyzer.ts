@@ -2368,11 +2368,19 @@ function typeNodeContainsReference(type: TypeNode, targetName: string): boolean 
   }
 }
 
+/**
+ * Determines which resolved object properties are emitted into the Canonical IR.
+ * Properties starting with `__` are excluded — they are reserved for phantom/brand type markers
+ * (e.g., `__type` in `Ref<T>`) that carry type information at the TypeScript level but must not
+ * appear in generated JSON Schema. Symbol-keyed properties (represented by TypeScript with
+ * `__@`-prefixed names) are also excluded, but are independently handled by the computed
+ * property name check below.
+ */
 function shouldEmitResolvedObjectProperty(
   property: ts.Symbol,
   declaration: ts.Declaration | undefined
 ): boolean {
-  if (property.name.startsWith("__@")) {
+  if (property.name.startsWith("__")) {
     return false;
   }
 
