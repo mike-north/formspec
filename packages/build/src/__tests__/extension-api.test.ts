@@ -559,6 +559,54 @@ describe("Extension API", () => {
       ).toThrow(/may only emit "x-test-\*" JSON Schema keywords/);
     });
 
+    it("allows standard numeric keywords (minimum, maximum) in vocabulary mode", () => {
+      const integerType = defineCustomType({
+        typeName: "Integer",
+        tsTypeNames: ["Integer"],
+        toJsonSchema: () => ({ type: "integer" }),
+      });
+      const integerMinimum = defineConstraint({
+        constraintName: "integerMinimum",
+        compositionRule: "intersect",
+        applicableTypes: ["custom"],
+        emitsVocabularyKeywords: true,
+        toJsonSchema: (payload) => ({ minimum: payload }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/integer",
+          types: [integerType],
+          constraints: [integerMinimum],
+        }),
+      ]);
+
+      const customType: CustomTypeNode = {
+        kind: "custom",
+        typeId: "x-test/integer/Integer",
+        payload: null,
+      };
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/integer/integerMinimum",
+        payload: 0,
+        compositionRule: "intersect",
+        provenance: prov(1, "integerMinimum"),
+      };
+
+      const ir = makeIR([makeField("count", customType, [customCon])]);
+      const result = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registry,
+        vendorPrefix: "x-test",
+      });
+
+      const props = result.properties ?? {};
+      expect(props.count).toMatchObject({
+        type: "integer",
+        minimum: 0,
+      });
+    });
+
     it("rejects vocabulary constraints that overwrite standard JSON Schema keywords", () => {
       const collidingConstraint = defineConstraint({
         constraintName: "Collider",
