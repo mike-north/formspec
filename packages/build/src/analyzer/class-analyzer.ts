@@ -55,13 +55,35 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
 }
 
 /**
+ * Extracts the brand identifier text from an intersection type's computed
+ * property names. Returns the first matching identifier or `null`.
+ *
+ * Shared by both `isIntegerBrandedType` (builtin) and `resolveBrandedCustomType`
+ * (extension). Walks `type.getProperties()` looking for computed property names
+ * backed by plain identifiers — the standard `unique symbol` brand pattern.
+ */
+function findBrandIdentifier(type: ts.Type): string | null {
+  if (!type.isIntersection()) {
+    return null;
+  }
+
+  for (const prop of type.getProperties()) {
+    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
+    if (decl === undefined) continue;
+    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
+    if (!ts.isComputedPropertyName(decl.name)) continue;
+    if (!ts.isIdentifier(decl.name.expression)) continue;
+    return decl.name.expression.text;
+  }
+
+  return null;
+}
+
+/**
  * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
  *
  * Integer-branded types are intersections of `number` with a brand object
- * containing the `__integerBrand` unique symbol. Detection inspects property
- * declarations for computed property names referencing an identifier named
- * `__integerBrand`, avoiding dependence on TypeScript's internal escaped-name
- * encoding.
+ * containing the `__integerBrand` unique symbol.
  */
 function isIntegerBrandedType(type: ts.Type): boolean {
   if (!type.isIntersection()) {
@@ -75,23 +97,7 @@ function isIntegerBrandedType(type: ts.Type): boolean {
     return false;
   }
 
-  return type.getProperties().some((prop) => {
-    const declaration = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (declaration === undefined) {
-      return false;
-    }
-    if (
-      !ts.isPropertySignature(declaration) &&
-      !ts.isPropertyDeclaration(declaration)
-    ) {
-      return false;
-    }
-    const name = declaration.name;
-    if (!ts.isComputedPropertyName(name)) {
-      return false;
-    }
-    return ts.isIdentifier(name.expression) && name.expression.text === "__integerBrand";
-  });
+  return findBrandIdentifier(type) === "__integerBrand";
 }
 
 /**
@@ -99,40 +105,36 @@ function isIntegerBrandedType(type: ts.Type): boolean {
  * by inspecting computed property names for a brand identifier match.
  *
  * This is more robust than name-based lookup because it works even when the
- * type is imported under an alias. Detection inspects property declarations for
- * computed property names whose expression is an identifier matching a registered
- * brand string.
+ * type is imported under an alias. Brand detection is attempted after name-based
+ * resolution as a structural fallback.
  *
  * Returns `null` if the type is not an intersection, has no branded properties,
- * or no registered brand matches.
+ * or no registered brand matches. Note: the builtin `__integerBrand` is reserved
+ * and handled separately by `isIntegerBrandedType` — extensions cannot register it.
  */
 function resolveBrandedCustomType(
   type: ts.Type,
   extensionRegistry: ExtensionRegistry | undefined
 ): TypeNode | null {
-  if (extensionRegistry === undefined || !type.isIntersection()) {
+  if (extensionRegistry === undefined) {
     return null;
   }
 
-  for (const prop of type.getProperties()) {
-    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (decl === undefined) continue;
-    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
-    if (!ts.isComputedPropertyName(decl.name)) continue;
-    if (!ts.isIdentifier(decl.name.expression)) continue;
-
-    const brandName = decl.name.expression.text;
-    const registration = extensionRegistry.findTypeByBrand(brandName);
-    if (registration !== undefined) {
-      return {
-        kind: "custom",
-        typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-        payload: null,
-      };
-    }
+  const brand = findBrandIdentifier(type);
+  if (brand === null) {
+    return null;
   }
 
-  return null;
+  const registration = extensionRegistry.findTypeByBrand(brand);
+  if (registration === undefined) {
+    return null;
+  }
+
+  return {
+    kind: "custom",
+    typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+    payload: null,
+  };
 }
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {

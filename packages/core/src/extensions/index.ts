@@ -89,10 +89,15 @@ export interface CustomTypeRegistration {
    * reliable than `tsTypeNames` because it works with import aliases and
    * prevents name collisions.
    *
+   * Brand detection is attempted after name-based resolution (`tsTypeNames`)
+   * as a structural fallback. If both match, name-based resolution wins.
+   *
    * The value should match the identifier text of a `unique symbol` declaration
    * used as a computed property key on the branded type. For example, if the
    * type is `string & { readonly [__decimalBrand]: true }`, the brand is
    * `"__decimalBrand"`.
+   *
+   * Note: `"__integerBrand"` is reserved for the builtin Integer type.
    */
   readonly brand?: string;
   /**

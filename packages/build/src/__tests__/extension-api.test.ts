@@ -978,6 +978,19 @@ describe("Extension API", () => {
       });
     });
 
+    it("rejects the reserved __integerBrand", () => {
+      const integerType = defineCustomType({
+        typeName: "MyInteger",
+        brand: "__integerBrand",
+        toJsonSchema: () => ({ type: "integer" }),
+      });
+      expect(() =>
+        createExtensionRegistry([
+          defineExtension({ extensionId: "x-test/reserved", types: [integerType] }),
+        ])
+      ).toThrow(/reserved for the builtin Integer type/);
+    });
+
     // -------------------------------------------------------------------------
     // 10c. Brand-based schema generation (integration test with real TS program)
     //

@@ -189,6 +189,11 @@ export function createExtensionRegistry(
         }
 
         if (type.brand !== undefined) {
+          if (type.brand === "__integerBrand") {
+            throw new Error(
+              `Brand "__integerBrand" is reserved for the builtin Integer type and cannot be registered by extensions`
+            );
+          }
           if (brandMap.has(type.brand)) {
             throw new Error(`Duplicate custom type brand: "${type.brand}"`);
           }
