@@ -94,6 +94,47 @@ function isIntegerBrandedType(type: ts.Type): boolean {
   });
 }
 
+/**
+ * Resolves a TypeScript intersection type to an extension-registered custom type
+ * by inspecting computed property names for a brand identifier match.
+ *
+ * This is more robust than name-based lookup because it works even when the
+ * type is imported under an alias. Detection inspects property declarations for
+ * computed property names whose expression is an identifier matching a registered
+ * brand string.
+ *
+ * Returns `null` if the type is not an intersection, has no branded properties,
+ * or no registered brand matches.
+ */
+function resolveBrandedCustomType(
+  type: ts.Type,
+  extensionRegistry: ExtensionRegistry | undefined
+): TypeNode | null {
+  if (extensionRegistry === undefined || !type.isIntersection()) {
+    return null;
+  }
+
+  for (const prop of type.getProperties()) {
+    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
+    if (decl === undefined) continue;
+    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
+    if (!ts.isComputedPropertyName(decl.name)) continue;
+    if (!ts.isIdentifier(decl.name.expression)) continue;
+
+    const brandName = decl.name.expression.text;
+    const registration = extensionRegistry.findTypeByBrand(brandName);
+    if (registration !== undefined) {
+      return {
+        kind: "custom",
+        typeId: `${registration.extensionId}/${registration.registration.typeName}`,
+        payload: null,
+      };
+    }
+  }
+
+  return null;
+}
+
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return isResolvableObjectLikeAliasTypeNode(typeNode.type);
@@ -1820,6 +1861,10 @@ export function resolveTypeNode(
   const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
   if (customType) {
     return customType;
+  }
+  const brandedCustomType = resolveBrandedCustomType(type, extensionRegistry);
+  if (brandedCustomType) {
+    return brandedCustomType;
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(
     type,

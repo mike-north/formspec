@@ -82,6 +82,20 @@ export interface CustomTypeRegistration {
    */
   readonly tsTypeNames?: readonly string[];
   /**
+   * Optional brand identifier for structural type detection.
+   *
+   * When provided, the type resolver checks `type.getProperties()` for a
+   * computed property whose name matches this identifier. This is more
+   * reliable than `tsTypeNames` because it works with import aliases and
+   * prevents name collisions.
+   *
+   * The value should match the identifier text of a `unique symbol` declaration
+   * used as a computed property key on the branded type. For example, if the
+   * type is `string & { readonly [__decimalBrand]: true }`, the brand is
+   * `"__decimalBrand"`.
+   */
+  readonly brand?: string;
+  /**
    * Converts the custom type's payload into a JSON Schema fragment.
    *
    * @param payload - The opaque JSON payload stored on the custom type node.
