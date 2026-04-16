@@ -430,14 +430,14 @@ function applyPathTargetedConstraints(
 ): JsonSchema2020 {
   // Array transparency: path-targeted constraints target the item type.
   if (schema.type === "array" && schema.items) {
-    const referencedType = typeNode?.kind === "reference" ? resolveReferencedType(typeNode, ctx) : undefined;
+    const referencedType =
+      typeNode?.kind === "reference" ? resolveReferencedType(typeNode, ctx) : undefined;
     const nestedType =
       typeNode?.kind === "array"
         ? typeNode.items
         : referencedType?.kind === "array"
           ? referencedType.items
-            : undefined
-        ;
+          : undefined;
     schema.items = applyPathTargetedConstraints(schema.items, pathConstraints, ctx, nestedType);
     return schema;
   }
@@ -759,9 +759,7 @@ function generateReferenceType(type: ReferenceTypeNode, ctx: GeneratorContext): 
   return { $ref: `#/$defs/${getSerializedTypeName(type.name, ctx)}` };
 }
 
-function getSerializedFieldName(
-  field: Pick<FieldNode, "name" | "metadata">
-): string {
+function getSerializedFieldName(field: Pick<FieldNode, "name" | "metadata">): string {
   return getSerializedName(field.name, field.metadata);
 }
 
@@ -792,7 +790,10 @@ function resolveReferencedType(
   return ctx.typeRegistry[type.name]?.type;
 }
 
-function dereferenceTypeNode(typeNode: TypeNode | undefined, ctx: GeneratorContext): TypeNode | undefined {
+function dereferenceTypeNode(
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): TypeNode | undefined {
   if (typeNode?.kind !== "reference") {
     return typeNode;
   }
@@ -1204,22 +1205,64 @@ function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSc
  * pipeline — extensions never need to emit these keywords.
  */
 const VOCABULARY_MODE_BLOCKED_KEYWORDS = new Set([
-  "$schema", "$ref", "$defs", "$id", "$anchor", "$dynamicRef", "$dynamicAnchor",
-  "$vocabulary", "$comment",
-  "type", "enum", "const",
-  "properties", "patternProperties", "additionalProperties", "required",
-  "items", "prefixItems", "additionalItems", "contains",
-  "allOf", "oneOf", "anyOf", "not", "if", "then", "else",
-  "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
-  "minLength", "maxLength", "pattern",
-  "minItems", "maxItems", "uniqueItems",
-  "minProperties", "maxProperties",
-  "minContains", "maxContains",
-  "format", "title", "description", "default", "deprecated",
-  "readOnly", "writeOnly", "examples",
-  "dependentRequired", "dependentSchemas",
-  "propertyNames", "unevaluatedItems", "unevaluatedProperties",
-  "contentEncoding", "contentMediaType", "contentSchema",
+  "$schema",
+  "$ref",
+  "$defs",
+  "$id",
+  "$anchor",
+  "$dynamicRef",
+  "$dynamicAnchor",
+  "$vocabulary",
+  "$comment",
+  "type",
+  "enum",
+  "const",
+  "properties",
+  "patternProperties",
+  "additionalProperties",
+  "required",
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "contains",
+  "allOf",
+  "oneOf",
+  "anyOf",
+  "not",
+  "if",
+  "then",
+  "else",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "minLength",
+  "maxLength",
+  "pattern",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "minProperties",
+  "maxProperties",
+  "minContains",
+  "maxContains",
+  "format",
+  "title",
+  "description",
+  "default",
+  "deprecated",
+  "readOnly",
+  "writeOnly",
+  "examples",
+  "dependentRequired",
+  "dependentSchemas",
+  "propertyNames",
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "contentEncoding",
+  "contentMediaType",
+  "contentSchema",
 ]);
 
 function applyCustomConstraint(
@@ -1244,7 +1287,7 @@ function applyCustomConstraint(
       if (VOCABULARY_MODE_BLOCKED_KEYWORDS.has(key)) {
         throw new Error(
           `Custom constraint "${constraint.constraintId}" with emitsVocabularyKeywords ` +
-          `must not overwrite standard JSON Schema keyword "${key}"`
+            `must not overwrite standard JSON Schema keyword "${key}"`
         );
       }
       target[key] = value;

@@ -191,7 +191,7 @@ export const ProductConfigForm = formspec(
       expect(schema.$defs?.["PlanStatus"]?.["enum"]).toBeUndefined();
     });
 
-    it('rejects invalid enum serialization values', () => {
+    it("rejects invalid enum serialization values", () => {
       const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
       const result = runCli([
         "generate",

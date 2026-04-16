@@ -3,10 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
-import {
-  generateSchemas,
-  type GenerateSchemasOptions,
-} from "../generators/class-schema.js";
+import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 import {
   createDateExtensionRegistry,

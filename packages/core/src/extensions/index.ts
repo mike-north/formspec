@@ -335,14 +335,14 @@ export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
  * Defines a custom type registration. Currently an identity function that
  * provides type-checking and IDE autocompletion.
  *
- * The optional type parameter `_T` can be used to associate a TypeScript type
+ * The optional type parameter `T` can be used to associate a TypeScript type
  * with this registration for symbol-based detection during build-time analysis.
  * When `defineCustomType<MyType>({ ... })` is called with a type argument,
  * `@formspec/build` resolves the TypeScript symbol for `MyType` and registers
  * it as an alternative detection path — immune to import aliases and name
  * collisions.
  *
- * `_T` defaults to `unknown` so the call site is backward compatible when no
+ * `T` defaults to `unknown` so the call site is backward compatible when no
  * type argument is supplied.
  *
  * @param reg - The custom type registration.
@@ -350,8 +350,8 @@ export function defineExtension(def: ExtensionDefinition): ExtensionDefinition {
  *
  * @public
  */
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- _T is intentionally unused at runtime; it exists solely to allow `@formspec/build` to extract the TypeScript symbol via AST type-argument inspection (defineCustomType<T>() type parameter extraction).
-export function defineCustomType<_T = unknown>(reg: CustomTypeRegistration): CustomTypeRegistration {
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters, @typescript-eslint/no-unused-vars -- T is intentionally unused at runtime; it exists solely to allow `@formspec/build` to extract the TypeScript symbol via AST type-argument inspection (defineCustomType<T>() type parameter extraction).
+export function defineCustomType<T = unknown>(reg: CustomTypeRegistration): CustomTypeRegistration {
   return reg;
 }
 

@@ -968,8 +968,7 @@ function isResolvedMetadata(value: unknown): value is FormSpecSerializedResolved
   return (
     (candidate.apiName === undefined || isResolvedScalarMetadata(candidate.apiName)) &&
     (candidate.displayName === undefined || isResolvedScalarMetadata(candidate.displayName)) &&
-    (candidate.apiNamePlural === undefined ||
-      isResolvedScalarMetadata(candidate.apiNamePlural)) &&
+    (candidate.apiNamePlural === undefined || isResolvedScalarMetadata(candidate.apiNamePlural)) &&
     (candidate.displayNamePlural === undefined ||
       isResolvedScalarMetadata(candidate.displayNamePlural))
   );
@@ -987,8 +986,7 @@ function isMetadataEntry(value: unknown): value is FormSpecSerializedMetadataEnt
     (candidate.qualifier === undefined || typeof candidate.qualifier === "string") &&
     typeof candidate.value === "string" &&
     (candidate.source === "explicit" || candidate.source === "inferred") &&
-    (candidate.explicitSource === undefined ||
-      isExplicitMetadataSource(candidate.explicitSource))
+    (candidate.explicitSource === undefined || isExplicitMetadataSource(candidate.explicitSource))
   );
 }
 
@@ -1034,9 +1032,7 @@ function isDeclarationFact(value: unknown): value is FormSpecSerializedDeclarati
       return (
         (candidate.targetPath === null || typeof candidate.targetPath === "string") &&
         Array.isArray(candidate.members) &&
-        candidate.members.every(
-          (member) => typeof member === "string" || isFiniteNumber(member)
-        )
+        candidate.members.every((member) => typeof member === "string" || isFiniteNumber(member))
       );
     case "const":
       return (

@@ -36,8 +36,25 @@ const TSCONFIG = JSON.stringify(
   2
 );
 
+// Root of the build package — used for creating temp dirs under the package so that
+// TypeScript's node_modules resolution can find @formspec/core when walking up.
+const BUILD_PACKAGE_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+
 function writeTsConfig(dir: string): void {
   fs.writeFileSync(path.join(dir, "tsconfig.json"), TSCONFIG);
+}
+
+/**
+ * Creates a temp directory as a subdirectory of the build package root so that
+ * TypeScript's module resolution can walk up and find `node_modules/@formspec/core`.
+ * Use this when the test needs checker-based symbol resolution (e.g., namespace imports).
+ */
+function makeDirUnderBuildPackage(prefix: string): string {
+  const scratchDir = path.join(BUILD_PACKAGE_ROOT, "scratch", "test-fixtures");
+  if (!fs.existsSync(scratchDir)) {
+    fs.mkdirSync(scratchDir, { recursive: true });
+  }
+  return fs.mkdtempSync(path.join(scratchDir, `formspec-sym-reg-${prefix}-`));
 }
 
 function makeDir(prefix: string): string {
@@ -105,12 +122,7 @@ describe("buildSymbolMapFromConfig", () => {
       // Include config file in program so its source is available
       const ctx = createProgramContext(path.join(tmpDir, "decimal.ts"), [configPath]);
 
-      const symbolMap = buildSymbolMapFromConfig(
-        configPath,
-        ctx.program,
-        ctx.checker,
-        registry
-      );
+      const symbolMap = buildSymbolMapFromConfig(configPath, ctx.program, ctx.checker, registry);
 
       // The Decimal symbol must appear in the map
       expect(symbolMap.size).toBe(1);
@@ -349,19 +361,290 @@ describe("ExtensionRegistry symbol map API", () => {
       }
 
       // First call
-      registry.setSymbolMap(
-        new Map([[sym, { extensionId: "x-test/multi", registration: typeA }]])
-      );
+      registry.setSymbolMap(new Map([[sym, { extensionId: "x-test/multi", registration: typeA }]]));
       expect(registry.findTypeBySymbol(sym)?.registration.typeName).toBe("TypeA");
 
       // Second call replaces the map
-      registry.setSymbolMap(
-        new Map([[sym, { extensionId: "x-test/multi", registration: typeB }]])
-      );
+      registry.setSymbolMap(new Map([[sym, { extensionId: "x-test/multi", registration: typeB }]]));
       expect(registry.findTypeBySymbol(sym)?.registration.typeName).toBe("TypeB");
     } finally {
       cleanDir(tmpDir);
     }
+  });
+});
+
+// =============================================================================
+// UNIT TESTS — buildSymbolMapFromConfig edge cases
+// =============================================================================
+
+describe("buildSymbolMapFromConfig edge cases", () => {
+  describe("multiple defineCustomType calls in one config", () => {
+    let tmpDir: string;
+
+    beforeAll(() => {
+      tmpDir = makeDir("multi-types");
+      writeTsConfig(tmpDir);
+
+      fs.writeFileSync(
+        path.join(tmpDir, "types.ts"),
+        [
+          "declare const __decBrand: unique symbol;",
+          "export type Decimal = string & { readonly [__decBrand]: true };",
+          "declare const __dateBrand: unique symbol;",
+          "export type DateOnly = string & { readonly [__dateBrand]: true };",
+        ].join("\n")
+      );
+
+      fs.writeFileSync(
+        path.join(tmpDir, "formspec.config.ts"),
+        [
+          'import type { Decimal, DateOnly } from "./types.js";',
+          'import { defineCustomType, defineExtension } from "@formspec/core";',
+          "",
+          "export const extension = defineExtension({",
+          '  extensionId: "x-test/multi",',
+          "  types: [",
+          '    defineCustomType<Decimal>({ typeName: "Decimal", toJsonSchema: () => ({ type: "string" }) }),',
+          '    defineCustomType<DateOnly>({ typeName: "DateOnly", toJsonSchema: () => ({ type: "string", format: "date" }) }),',
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      cleanDir(tmpDir);
+    });
+
+    it("registers both branded types when config has 2 defineCustomType<T> calls", () => {
+      const decimalType = defineCustomType({
+        typeName: "Decimal",
+        toJsonSchema: () => ({ type: "string" }),
+      });
+      const dateOnlyType = defineCustomType({
+        typeName: "DateOnly",
+        toJsonSchema: () => ({ type: "string", format: "date" }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/multi",
+          types: [decimalType, dateOnlyType],
+        }),
+      ]);
+
+      const configPath = path.join(tmpDir, "formspec.config.ts");
+      const ctx = createProgramContext(path.join(tmpDir, "types.ts"), [configPath]);
+
+      const symbolMap = buildSymbolMapFromConfig(configPath, ctx.program, ctx.checker, registry);
+
+      // spec: symbol-registry §buildSymbolMapFromConfig → one entry per <T> call
+      expect(symbolMap.size).toBe(2);
+
+      const typeNames = [...symbolMap.values()].map((e) => e.registration.typeName).sort();
+      expect(typeNames).toEqual(["DateOnly", "Decimal"]);
+    });
+  });
+
+  describe("symbol-based resolution wins over brand-based when both are available", () => {
+    let tmpDir: string;
+
+    beforeAll(() => {
+      tmpDir = makeDir("sym-brand-priority");
+      writeTsConfig(tmpDir);
+
+      // A type with a brand identifier
+      fs.writeFileSync(
+        path.join(tmpDir, "types.ts"),
+        [
+          "declare const __myBrand: unique symbol;",
+          "export type MyType = string & { readonly [__myBrand]: true };",
+        ].join("\n")
+      );
+
+      // Consumer file
+      fs.writeFileSync(
+        path.join(tmpDir, "form.ts"),
+        [
+          'import type { MyType } from "./types.js";',
+          "",
+          "export interface TestForm {",
+          "  field: MyType;",
+          "}",
+        ].join("\n")
+      );
+
+      // Config registers with both symbol AND brand
+      fs.writeFileSync(
+        path.join(tmpDir, "formspec.config.ts"),
+        [
+          'import type { MyType } from "./types.js";',
+          'import { defineCustomType, defineExtension } from "@formspec/core";',
+          "",
+          "export const extension = defineExtension({",
+          '  extensionId: "x-test/sym-brand",',
+          "  types: [",
+          "    defineCustomType<MyType>({",
+          '      typeName: "MyType",',
+          '      brand: "__myBrand",',
+          '      toJsonSchema: () => ({ type: "string", format: "via-symbol" }),',
+          "    }),",
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      cleanDir(tmpDir);
+    });
+
+    it("symbol-based resolution wins over brand-based when type has both symbol map entry and brand", () => {
+      const myType = defineCustomType({
+        typeName: "MyType",
+        brand: "__myBrand",
+        toJsonSchema: () => ({ type: "string", format: "via-symbol" }),
+      });
+      const config = {
+        extensions: [defineExtension({ extensionId: "x-test/sym-brand", types: [myType] })],
+        vendorPrefix: "x-test",
+      };
+
+      const result = generateSchemas({
+        filePath: path.join(tmpDir, "form.ts"),
+        typeName: "TestForm",
+        errorReporting: "throw",
+        config,
+        configPath: path.join(tmpDir, "formspec.config.ts"),
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      // spec: resolveSymbolBasedCustomType fires after name-based but before brand-based;
+      // with both paths available, format: "via-symbol" is produced via symbol-based detection.
+      expect(properties["field"]).toMatchObject({ type: "string", format: "via-symbol" });
+    });
+  });
+
+  describe("namespace import — import * as core → symbol still resolved via checker", () => {
+    let tmpDir: string;
+
+    beforeAll(() => {
+      // Place the temp dir under the build package root so TypeScript can walk up
+      // and find node_modules/@formspec/core for symbol-based detection.
+      tmpDir = makeDirUnderBuildPackage("ns-import");
+      writeTsConfig(tmpDir);
+
+      fs.writeFileSync(
+        path.join(tmpDir, "types.ts"),
+        [
+          "declare const __nsBrand: unique symbol;",
+          "export type NsType = string & { readonly [__nsBrand]: true };",
+        ].join("\n")
+      );
+
+      // Config uses namespace import — the visitor resolves the call symbol through the
+      // type checker, so core.defineCustomType<NsType>() is correctly identified.
+      fs.writeFileSync(
+        path.join(tmpDir, "formspec.config.ts"),
+        [
+          'import type { NsType } from "./types.js";',
+          'import * as core from "@formspec/core";',
+          "",
+          "export const extension = core.defineExtension({",
+          '  extensionId: "x-test/ns",',
+          "  types: [",
+          "    core.defineCustomType<NsType>({",
+          '      typeName: "NsType",',
+          '      toJsonSchema: () => ({ type: "string" }),',
+          "    }),",
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      cleanDir(tmpDir);
+    });
+
+    it("resolves defineCustomType<T> called via namespace import (core.defineCustomType)", () => {
+      const nsType = defineCustomType({
+        typeName: "NsType",
+        toJsonSchema: () => ({ type: "string" }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({ extensionId: "x-test/ns", types: [nsType] }),
+      ]);
+
+      const configPath = path.join(tmpDir, "formspec.config.ts");
+      const ctx = createProgramContext(path.join(tmpDir, "types.ts"), [configPath]);
+
+      const symbolMap = buildSymbolMapFromConfig(configPath, ctx.program, ctx.checker, registry);
+
+      // The checker resolves core.defineCustomType to the canonical @formspec/core declaration,
+      // so namespace imports produce a symbol map entry just like direct imports.
+      // spec: symbol-registry §isDefineCustomTypeCall → resolves via checker, handles namespace imports
+      expect(symbolMap.size).toBe(1);
+      const entry = [...symbolMap.values()][0];
+      expect(entry?.registration.typeName).toBe("NsType");
+    });
+  });
+
+  describe("typeName mismatch — typo in typeName prevents symbol map entry", () => {
+    let tmpDir: string;
+
+    beforeAll(() => {
+      tmpDir = makeDir("typo-typename");
+      writeTsConfig(tmpDir);
+
+      fs.writeFileSync(
+        path.join(tmpDir, "types.ts"),
+        [
+          "declare const __tyBrand: unique symbol;",
+          "export type Decimal = string & { readonly [__tyBrand]: true };",
+        ].join("\n")
+      );
+
+      // Config has typeName: "Deciml" (typo) — does not match registry entry "Decimal"
+      fs.writeFileSync(
+        path.join(tmpDir, "formspec.config.ts"),
+        [
+          'import type { Decimal } from "./types.js";',
+          'import { defineCustomType, defineExtension } from "@formspec/core";',
+          "",
+          "export const extension = defineExtension({",
+          '  extensionId: "x-test/typo",',
+          "  types: [",
+          '    defineCustomType<Decimal>({ typeName: "Deciml", toJsonSchema: () => ({ type: "string" }) }),',
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      cleanDir(tmpDir);
+    });
+
+    it("produces no symbol map entry when typeName in config does not match the registry", () => {
+      // Registry has the correct name "Decimal"; config file has typo "Deciml"
+      const decimalType = defineCustomType({
+        typeName: "Decimal",
+        toJsonSchema: () => ({ type: "string" }),
+      });
+      const registry = createExtensionRegistry([
+        defineExtension({ extensionId: "x-test/typo", types: [decimalType] }),
+      ]);
+
+      const configPath = path.join(tmpDir, "formspec.config.ts");
+      const ctx = createProgramContext(path.join(tmpDir, "types.ts"), [configPath]);
+
+      const symbolMap = buildSymbolMapFromConfig(configPath, ctx.program, ctx.checker, registry);
+
+      // spec: symbol-registry §findRegistrationByTypeName → typeName must match exactly;
+      // "Deciml" ≠ "Decimal" → no entry produced.
+      expect(symbolMap.size).toBe(0);
+    });
   });
 });
 
@@ -593,9 +876,7 @@ describe("symbol-based custom type resolution in schema generation", () => {
         toJsonSchema: () => ({ type: "string", format: "base-decimal" }),
       });
       const config = {
-        extensions: [
-          defineExtension({ extensionId: "x-test/chain", types: [baseDecimalType] }),
-        ],
+        extensions: [defineExtension({ extensionId: "x-test/chain", types: [baseDecimalType] })],
         vendorPrefix: "x-test",
       };
 
@@ -626,10 +907,7 @@ describe("symbol-based custom type resolution in schema generation", () => {
 
       fs.writeFileSync(
         path.join(tmpDir, "types.ts"),
-        [
-          "/** Tagged string */",
-          "export type Tagged = string;",
-        ].join("\n")
+        ["/** Tagged string */", "export type Tagged = string;"].join("\n")
       );
 
       fs.writeFileSync(

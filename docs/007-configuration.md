@@ -14,24 +14,26 @@ This document specifies a unified `FormSpecConfig` object that serves as the can
 
 ### 1.1 Principles Satisfied
 
-| Principle | Section | How |
-|-----------|---------|-----|
-| PP9 (Configurable surface area) | §2, §3 | Config carries all tunables: extensions, constraints, vendor prefix, enum serialization, metadata |
-| PP10 (White-labelable) | §3.4 | `vendorPrefix` controls all emitted vendor-scoped keywords |
-| A3 (Generation is pure function of IR) | §4.1 | Config is an explicit input, not ambient state |
-| A6 (Library-first, CLI as thin wrapper) | §4 | Every consumer accepts `FormSpecConfig` programmatically; CLI loads it from a file |
-| A7 (Clear lint vs. LS boundary) | §4.3, §4.4 | Both tools read the same config for their distinct responsibilities |
-| E3 (Custom vocabulary namespaced) | §3.4 | Vendor prefix flows from config to all extension keyword emission |
+| Principle                               | Section    | How                                                                                               |
+| --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
+| PP9 (Configurable surface area)         | §2, §3     | Config carries all tunables: extensions, constraints, vendor prefix, enum serialization, metadata |
+| PP10 (White-labelable)                  | §3.4       | `vendorPrefix` controls all emitted vendor-scoped keywords                                        |
+| A3 (Generation is pure function of IR)  | §4.1       | Config is an explicit input, not ambient state                                                    |
+| A6 (Library-first, CLI as thin wrapper) | §4         | Every consumer accepts `FormSpecConfig` programmatically; CLI loads it from a file                |
+| A7 (Clear lint vs. LS boundary)         | §4.3, §4.4 | Both tools read the same config for their distinct responsibilities                               |
+| E3 (Custom vocabulary namespaced)       | §3.4       | Vendor prefix flows from config to all extension keyword emission                                 |
 
 ### 1.2 Scope
 
 This document covers:
+
 - The `FormSpecConfig` type and its fields (§2–§3)
 - How each consumer integrates with the config (§4)
 - The config file convention and loading semantics (§5)
 - Migration path from current per-consumer wiring (§6)
 
 This document does **not** cover:
+
 - Individual extension registration APIs (`defineExtension`, `defineCustomType`, etc.) — see [005](./005-numeric-types.md)
 
 ### 1.3 Starting Point
@@ -65,11 +67,8 @@ This document specifies the expansion of `FormSpecConfig` from constraint-only c
 
 ### 2.2 Type Definition
 
-```typescript
-import type {
-  ExtensionDefinition,
-  MetadataPolicyInput,
-} from '@formspec/core';
+````typescript
+import type { ExtensionDefinition, MetadataPolicyInput } from "@formspec/core";
 
 export interface FormSpecConfig {
   /**
@@ -105,7 +104,7 @@ export interface FormSpecConfig {
    * - "oneOf": { "oneOf": [{ "const": "a" }, ...] }
    * @defaultValue "enum"
    */
-  readonly enumSerialization?: 'enum' | 'oneOf';
+  readonly enumSerialization?: "enum" | "oneOf";
 
   /**
    * Per-package configuration overrides for monorepos.
@@ -150,11 +149,11 @@ export interface FormSpecPackageOverride {
   /** Override constraint surface for this package. */
   readonly constraints?: ConstraintConfig;
   /** Override enum serialization for this package. */
-  readonly enumSerialization?: 'enum' | 'oneOf';
+  readonly enumSerialization?: "enum" | "oneOf";
   /** Override metadata policy for this package. */
   readonly metadata?: MetadataPolicyInput;
 }
-```
+````
 
 ### 2.3 `defineFormSpecConfig`
 
@@ -192,8 +191,8 @@ This means programmatic callers in a monorepo pass one config object and a file 
 // Build script iterating over all extensions
 for (const ext of extensions) {
   generateSchemas({
-    config,                    // same root config for all
-    filePath: ext.sourcePath,  // resolver picks the right overrides
+    config, // same root config for all
+    filePath: ext.sourcePath, // resolver picks the right overrides
     typeName: ext.typeName,
   });
 }
@@ -251,31 +250,31 @@ When no `packages` field is present, the root config applies uniformly — singl
 **Example: Stripe generated monorepo**
 
 ```typescript
-import { defineFormSpecConfig } from '@formspec/config';
-import { stripeStdlibExtension } from '@stripe/extensibility-jsonschema-tools';
-import { stripeMetadataPolicy } from '@stripe/extensibility-tool-utils';
+import { defineFormSpecConfig } from "@formspec/config";
+import { stripeStdlibExtension } from "@stripe/extensibility-jsonschema-tools";
+import { stripeMetadataPolicy } from "@stripe/extensibility-tool-utils";
 import {
   billingConstraints,
   workflowConstraints,
   customObjectConstraints,
-} from '@stripe/extensibility-eslint-plugin';
+} from "@stripe/extensibility-eslint-plugin";
 
 export default defineFormSpecConfig({
   // Shared across all packages
   extensions: [stripeStdlibExtension],
   metadata: stripeMetadataPolicy,
-  vendorPrefix: 'x-stripe',
-  enumSerialization: 'oneOf',
+  vendorPrefix: "x-stripe",
+  enumSerialization: "oneOf",
 
   // Per-package constraint surfaces
   packages: {
-    'extensions/loyalty-discount/**': {
+    "extensions/loyalty-discount/**": {
       constraints: billingConstraints,
     },
-    'extensions/invoice-action/**': {
+    "extensions/invoice-action/**": {
       constraints: workflowConstraints,
     },
-    'custom-objects/**': {
+    "custom-objects/**": {
       constraints: customObjectConstraints,
     },
   },
@@ -295,9 +294,9 @@ Every consumer accepts `FormSpecConfig` as its primary configuration input.
 ```typescript
 const result = generateSchemas({
   config,
-  filePath: './src/config.ts',
-  typeName: 'DiscountConfig',
-  errorReporting: 'throw',
+  filePath: "./src/config.ts",
+  typeName: "DiscountConfig",
+  errorReporting: "throw",
 });
 ```
 
@@ -308,7 +307,7 @@ generateSchemas({
   config,
   filePath,
   typeName,
-  enumSerialization: 'enum', // overrides config for this call
+  enumSerialization: "enum", // overrides config for this call
 });
 ```
 
@@ -324,12 +323,10 @@ Without `--config`, the CLI auto-discovers `formspec.config.ts` from cwd (see §
 
 ```typescript
 // eslint.config.ts
-import formspec from '@formspec/eslint-plugin';
-import config from './formspec.config.ts';
+import formspec from "@formspec/eslint-plugin";
+import config from "./formspec.config.ts";
 
-export default [
-  ...formspec.withConfig(config).configs.recommended,
-];
+export default [...formspec.withConfig(config).configs.recommended];
 ```
 
 `withConfig` resolves the extension registry and makes it available to all rules. Rules use it to:
@@ -343,8 +340,8 @@ Without `withConfig`, the plugin behaves as today — built-in constraints only.
 ### 4.4 Language Server
 
 ```typescript
-import { createServer } from '@formspec/language-server';
-import config from './formspec.config.ts';
+import { createServer } from "@formspec/language-server";
+import config from "./formspec.config.ts";
 
 createServer({ config });
 ```
@@ -358,10 +355,12 @@ Config path via `tsconfig.json`:
 ```json
 {
   "compilerOptions": {
-    "plugins": [{
-      "name": "@formspec/ts-plugin",
-      "configPath": "./formspec.config.ts"
-    }]
+    "plugins": [
+      {
+        "name": "@formspec/ts-plugin",
+        "configPath": "./formspec.config.ts"
+      }
+    ]
   }
 }
 ```
@@ -376,18 +375,18 @@ TypeScript module with a default export of `FormSpecConfig`:
 
 ```typescript
 // formspec.config.ts
-import { defineFormSpecConfig } from '@formspec/config';
-import { stripeStdlibExtension } from '@stripe/extensibility-jsonschema-tools';
-import { stripeMetadataPolicy } from '@stripe/extensibility-tool-utils';
+import { defineFormSpecConfig } from "@formspec/config";
+import { stripeStdlibExtension } from "@stripe/extensibility-jsonschema-tools";
+import { stripeMetadataPolicy } from "@stripe/extensibility-tool-utils";
 
 export default defineFormSpecConfig({
   extensions: [stripeStdlibExtension],
   metadata: stripeMetadataPolicy,
-  vendorPrefix: 'x-stripe',
-  enumSerialization: 'oneOf',
+  vendorPrefix: "x-stripe",
+  enumSerialization: "oneOf",
   constraints: {
     fieldTypes: {
-      dynamicSchema: 'off',
+      dynamicSchema: "off",
     },
   },
 });
@@ -436,14 +435,14 @@ The YAML config system has no users. It is replaced entirely:
 
 ```typescript
 // Build
-const defaults = { extensionRegistry, metadata, enumSerialization: 'oneOf' };
+const defaults = { extensionRegistry, metadata, enumSerialization: "oneOf" };
 function _generateSchemas(options) {
   return rawGenerateSchemas({ ...defaults, ...options });
 }
 
 // ESLint — no extension awareness
 // Language server
-createServer({ extensions: [stripeStdlibExtension] })
+createServer({ extensions: [stripeStdlibExtension] });
 ```
 
 **After** (single config):
@@ -453,15 +452,15 @@ createServer({ extensions: [stripeStdlibExtension] })
 export default defineFormSpecConfig({
   extensions: [stripeStdlibExtension],
   metadata: stripeMetadataPolicy,
-  vendorPrefix: 'x-stripe',
-  enumSerialization: 'oneOf',
+  vendorPrefix: "x-stripe",
+  enumSerialization: "oneOf",
 });
 
 // Build — no wrapper needed
 generateSchemas({ config, filePath, typeName });
 
 // ESLint — extension-aware
-formspec.withConfig(config).configs.recommended
+formspec.withConfig(config).configs.recommended;
 
 // Language server
 createServer({ config });
@@ -469,15 +468,15 @@ createServer({ config });
 
 ### 6.3 Deprecated APIs
 
-| Deprecated | Replacement | Package |
-|------------|-------------|---------|
-| `extensionRegistry` on `generateSchemas` | `config.extensions` | `@formspec/build` |
-| `vendorPrefix` on `generateSchemas` | `config.vendorPrefix` | `@formspec/build` |
-| `enumSerialization` on `generateSchemas` | `config.enumSerialization` | `@formspec/build` |
-| `metadata` on `generateSchemas` | `config.metadata` | `@formspec/build` |
-| `extensions` on `createServer` | `config` | `@formspec/language-server` |
-| `.formspec.yml` file format | `formspec.config.ts` | `@formspec/config` |
-| `loadConstraintConfig` (YAML loader) | `loadFormSpecConfig` | `@formspec/config` |
+| Deprecated                               | Replacement                | Package                     |
+| ---------------------------------------- | -------------------------- | --------------------------- |
+| `extensionRegistry` on `generateSchemas` | `config.extensions`        | `@formspec/build`           |
+| `vendorPrefix` on `generateSchemas`      | `config.vendorPrefix`      | `@formspec/build`           |
+| `enumSerialization` on `generateSchemas` | `config.enumSerialization` | `@formspec/build`           |
+| `metadata` on `generateSchemas`          | `config.metadata`          | `@formspec/build`           |
+| `extensions` on `createServer`           | `config`                   | `@formspec/language-server` |
+| `.formspec.yml` file format              | `formspec.config.ts`       | `@formspec/config`          |
+| `loadConstraintConfig` (YAML loader)     | `loadFormSpecConfig`       | `@formspec/config`          |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
 
@@ -495,16 +494,16 @@ All existing exports (`ConstraintConfig`, `ResolvedConstraintConfig`, `Validatio
 
 ```typescript
 // Types (FormSpecConfig expanded with extensions, metadata, vendorPrefix, enumSerialization)
-export type { FormSpecConfig } from './types.js';
+export type { FormSpecConfig } from "./types.js";
 
 // Factory
-export { defineFormSpecConfig } from './define.js';
+export { defineFormSpecConfig } from "./define.js";
 
 // TypeScript config file loader (replaces YAML loader)
-export { loadFormSpecConfig } from './loader.js';
+export { loadFormSpecConfig } from "./loader.js";
 
 // Config → ExtensionRegistry resolution
-export { resolveExtensionRegistry } from './resolve.js';
+export { resolveExtensionRegistry } from "./resolve.js";
 ```
 
 ### 7.3 New Dependencies

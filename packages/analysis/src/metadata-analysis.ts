@@ -124,17 +124,13 @@ function validateExtensionMetadataSlots(
 
       if (tagNames.has(canonicalTagName)) {
         throw BUILTIN_METADATA_TAG_NAMES.has(canonicalTagName)
-          ? new Error(
-              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
-            )
+          ? new Error(`Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`)
           : new Error(`Duplicate metadata tag: "@${canonicalTagName}"`);
       }
       const existingTag = getTagDefinition(canonicalTagName, metadataFreeExtensions);
       if (existingTag !== null) {
         throw BUILTIN_METADATA_TAG_NAMES.has(existingTag.canonicalName)
-          ? new Error(
-              `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
-            )
+          ? new Error(`Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`)
           : new Error(
               `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
             );
@@ -660,11 +656,7 @@ export function analyzeMetadataForSourceFile(
 
   const visit = (node: ts.Node): void => {
     const declarationKind = getMetadataDeclarationKind(node);
-    if (
-      declarationKind !== null &&
-      !ts.isVariableDeclaration(node) &&
-      !ts.isParameter(node)
-    ) {
+    if (declarationKind !== null && !ts.isVariableDeclaration(node) && !ts.isParameter(node)) {
       const analyzed = analyzeMetadataForNodeWithChecker({
         program: options.program,
         checker,

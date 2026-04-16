@@ -69,10 +69,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   const metadata = options?.metadata;
   const vendorPrefix = options?.vendorPrefix;
   const enumSerialization = options?.enumSerialization;
-  const ir = canonicalizeChainDSL(
-    form,
-    metadata !== undefined ? { metadata } : undefined
-  );
+  const ir = canonicalizeChainDSL(form, metadata !== undefined ? { metadata } : undefined);
   const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
     vendorPrefix === undefined && enumSerialization === undefined
       ? undefined

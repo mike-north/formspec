@@ -85,6 +85,21 @@ function collectBrandIdentifiers(type: ts.Type): readonly string[] {
 }
 
 /**
+ * Resolves a TypeScript type to its canonical `ts.Symbol`, following alias chains.
+ *
+ * `aliasSymbol` tracks type aliases (e.g. `type Foo = Bar`); `getSymbol()` tracks
+ * the structural symbol. We prefer `aliasSymbol` when present so that aliased types
+ * resolve to the declaration site rather than the structural shape.
+ *
+ * Returns `undefined` for bare primitives and anonymous types, which have no symbol.
+ */
+function resolveCanonicalSymbol(type: ts.Type, checker: ts.TypeChecker): ts.Symbol | undefined {
+  const raw = type.aliasSymbol ?? type.getSymbol();
+  if (raw === undefined) return undefined;
+  return raw.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(raw) : raw;
+}
+
+/**
  * Resolves a type to an extension-registered custom type via ts.Symbol identity.
  *
  * This is the most precise detection mechanism — it uses TypeScript's own type
@@ -105,13 +120,10 @@ function resolveSymbolBasedCustomType(
     return null;
   }
 
-  const rawSymbol = type.aliasSymbol ?? type.getSymbol();
-  if (rawSymbol === undefined) {
+  const canonical = resolveCanonicalSymbol(type, checker);
+  if (canonical === undefined) {
     return null;
   }
-
-  const canonical =
-    rawSymbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(rawSymbol) : rawSymbol;
 
   const registration = extensionRegistry.findTypeBySymbol(canonical);
   if (registration === undefined) {
@@ -136,9 +148,7 @@ function isIntegerBrandedType(type: ts.Type): boolean {
     return false;
   }
 
-  const hasNumberBase = type.types.some(
-    (member) => !!(member.flags & ts.TypeFlags.Number)
-  );
+  const hasNumberBase = type.types.some((member) => !!(member.flags & ts.TypeFlags.Number));
   if (!hasNumberBase) {
     return false;
   }
@@ -897,9 +907,7 @@ function isStringLikeSemanticType(
   return false;
 }
 
-function getObjectLikeTypeAliasMembers(
-  typeNode: ts.TypeNode
-): readonly ts.TypeElement[] | null {
+function getObjectLikeTypeAliasMembers(typeNode: ts.TypeNode): readonly ts.TypeElement[] | null {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return getObjectLikeTypeAliasMembers(typeNode.type);
   }
@@ -1390,7 +1398,8 @@ function extractReferenceTypeArguments(
   extensionRegistry: ExtensionRegistry | undefined,
   diagnostics: ConstraintSemanticDiagnostic[] | undefined
 ): readonly { readonly tsType: ts.Type; readonly typeNode: TypeNode }[] {
-  const sourceTypeNode = sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
+  const sourceTypeNode =
+    sourceNode === undefined ? undefined : extractTypeNodeFromSource(sourceNode);
   if (sourceTypeNode === undefined) {
     return [];
   }
@@ -1909,8 +1918,8 @@ export function resolveTypeNode(
   if (customType) {
     return customType;
   }
-  // Symbol-based custom type detection (highest priority for extension types
-  // registered via defineCustomType<T>() type parameters).
+  // Symbol-based custom type detection (most precise, checked after name-based;
+  // uses ts.Symbol identity from defineCustomType<T>() type parameters).
   const symbolCustomType = resolveSymbolBasedCustomType(type, extensionRegistry, checker);
   if (symbolCustomType) {
     return symbolCustomType;
@@ -2915,9 +2924,7 @@ function getNamedTypeFieldNodeInfoMap(
     // Try type alias with type literal body
     const typeAliasDecl = declarations.find(ts.isTypeAliasDeclaration);
     const typeAliasMembers =
-      typeAliasDecl === undefined
-        ? null
-        : getObjectLikeTypeAliasMembers(typeAliasDecl.type);
+      typeAliasDecl === undefined ? null : getObjectLikeTypeAliasMembers(typeAliasDecl.type);
     if (typeAliasDecl && typeAliasMembers !== null) {
       return buildFieldNodeInfoMap(
         typeAliasMembers,
@@ -3114,7 +3121,10 @@ function extractTypeAliasConstraintNodes(
   return constraints;
 }
 
-function getAliasedSymbol(symbol: ts.Symbol | undefined, checker: ts.TypeChecker): ts.Symbol | undefined {
+function getAliasedSymbol(
+  symbol: ts.Symbol | undefined,
+  checker: ts.TypeChecker
+): ts.Symbol | undefined {
   if (symbol === undefined) {
     return undefined;
   }

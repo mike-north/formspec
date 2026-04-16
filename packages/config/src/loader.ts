@@ -163,7 +163,11 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
     );
   }
   const enumSerialization: unknown = config.enumSerialization;
-  if (enumSerialization !== undefined && enumSerialization !== "enum" && enumSerialization !== "oneOf") {
+  if (
+    enumSerialization !== undefined &&
+    enumSerialization !== "enum" &&
+    enumSerialization !== "oneOf"
+  ) {
     throw new Error(
       `Invalid config at ${filePath}: "enumSerialization" must be "enum" or "oneOf", got ${JSON.stringify(config.enumSerialization)}`
     );

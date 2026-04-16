@@ -5,7 +5,10 @@ import { join } from "node:path";
 import { loadFormSpecConfig, loadConfig, defineConstraints } from "../index.js";
 
 async function mkTempDir(): Promise<string> {
-  const base = join(tmpdir(), `formspec-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}`);
+  const base = join(
+    tmpdir(),
+    `formspec-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}`
+  );
   await mkdir(base, { recursive: true });
   return base;
 }
@@ -42,7 +45,7 @@ export default defineFormSpecConfig({
   },
 });
 `,
-        "utf-8",
+        "utf-8"
       );
 
       const result = await loadFormSpecConfig({ configPath: filePath });
@@ -61,7 +64,7 @@ export default defineFormSpecConfig({
       await writeFile(
         filePath,
         `export default { constraints: { fieldTypes: { text: "error" } } };`,
-        "utf-8",
+        "utf-8"
       );
 
       const result = await loadFormSpecConfig({ configPath: filePath });
@@ -76,7 +79,7 @@ export default defineFormSpecConfig({
       const nonExistent = join(dir, "does-not-exist.ts");
 
       await expect(loadFormSpecConfig({ configPath: nonExistent })).rejects.toThrow(
-        /Config file not found/,
+        /Config file not found/
       );
     });
 
@@ -98,7 +101,7 @@ export default defineFormSpecConfig({
       await writeFile(filePath, `export default [];`, "utf-8");
 
       await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(
-        /default export must be a FormSpecConfig object/,
+        /default export must be a FormSpecConfig object/
       );
     });
   });
@@ -107,11 +110,7 @@ export default defineFormSpecConfig({
     it("finds formspec.config.ts in the searchFrom directory", async () => {
       const dir = await createTempDir();
       const filePath = join(dir, "formspec.config.ts");
-      await writeFile(
-        filePath,
-        `export default { enumSerialization: "oneOf" };`,
-        "utf-8",
-      );
+      await writeFile(filePath, `export default { enumSerialization: "oneOf" };`, "utf-8");
 
       const result = await loadFormSpecConfig({ searchFrom: dir });
 
@@ -127,11 +126,7 @@ export default defineFormSpecConfig({
       await mkdir(nestedDir, { recursive: true });
 
       const configPath = join(rootDir, "formspec.config.ts");
-      await writeFile(
-        configPath,
-        `export default { vendorPrefix: "x-found" };`,
-        "utf-8",
-      );
+      await writeFile(configPath, `export default { vendorPrefix: "x-found" };`, "utf-8");
 
       const result = await loadFormSpecConfig({ searchFrom: nestedDir });
 
@@ -145,8 +140,16 @@ export default defineFormSpecConfig({
       const dir = await createTempDir();
 
       // Create both variants; .ts should win
-      await writeFile(join(dir, "formspec.config.ts"), `export default { vendorPrefix: "x-ts" };`, "utf-8");
-      await writeFile(join(dir, "formspec.config.js"), `export default { vendorPrefix: "x-js" };`, "utf-8");
+      await writeFile(
+        join(dir, "formspec.config.ts"),
+        `export default { vendorPrefix: "x-ts" };`,
+        "utf-8"
+      );
+      await writeFile(
+        join(dir, "formspec.config.js"),
+        `export default { vendorPrefix: "x-js" };`,
+        "utf-8"
+      );
 
       const result = await loadFormSpecConfig({ searchFrom: dir });
 
@@ -161,7 +164,7 @@ export default defineFormSpecConfig({
       await writeFile(
         join(workspaceRoot, "package.json"),
         JSON.stringify({ name: "monorepo", workspaces: ["packages/*"] }),
-        "utf-8",
+        "utf-8"
       );
 
       // Create a package dir nested inside the workspace root
@@ -194,7 +197,11 @@ export default defineFormSpecConfig({
   describe("config file name priority", () => {
     it("discovers formspec.config.mts when .ts is absent", async () => {
       const dir = await createTempDir();
-      await writeFile(join(dir, "formspec.config.mts"), `export default { vendorPrefix: "x-mts" };`, "utf-8");
+      await writeFile(
+        join(dir, "formspec.config.mts"),
+        `export default { vendorPrefix: "x-mts" };`,
+        "utf-8"
+      );
 
       const result = await loadFormSpecConfig({ searchFrom: dir });
 
@@ -205,7 +212,11 @@ export default defineFormSpecConfig({
 
     it("discovers formspec.config.js when .ts and .mts are absent", async () => {
       const dir = await createTempDir();
-      await writeFile(join(dir, "formspec.config.js"), `export default { vendorPrefix: "x-js" };`, "utf-8");
+      await writeFile(
+        join(dir, "formspec.config.js"),
+        `export default { vendorPrefix: "x-js" };`,
+        "utf-8"
+      );
 
       const result = await loadFormSpecConfig({ searchFrom: dir });
 
@@ -223,7 +234,7 @@ describe("loadConfig (deprecated wrapper)", () => {
     await writeFile(
       filePath,
       `export default { constraints: { fieldTypes: { dynamicEnum: "error" } } };`,
-      "utf-8",
+      "utf-8"
     );
 
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated API

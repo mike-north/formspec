@@ -84,9 +84,9 @@ const extension = defineExtension({
 
 ## Entry Points
 
-| Entry point               | Purpose                                |
-| ------------------------- | -------------------------------------- |
-| `@formspec/core`          | Stable public types and extension APIs |
+| Entry point                | Purpose                                |
+| -------------------------- | -------------------------------------- |
+| `@formspec/core`           | Stable public types and extension APIs |
 | `@formspec/core/internals` | Unstable low-level internal types      |
 
 ## License

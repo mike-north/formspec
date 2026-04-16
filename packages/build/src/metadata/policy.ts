@@ -27,15 +27,11 @@ export type MetadataResolutionContext = MetadataInferenceContext;
 export type EnumMemberResolutionContext = EnumMemberMetadataInferenceContext;
 export type NormalizedMetadataScalarPolicy = NormalizedMetadataValuePolicy;
 
-export function defaultApiNameInference(
-  _context: MetadataResolutionContext
-): string {
+export function defaultApiNameInference(_context: MetadataResolutionContext): string {
   return "";
 }
 
-export function defaultDisplayNameInference(
-  _context: MetadataResolutionContext
-): string {
+export function defaultDisplayNameInference(_context: MetadataResolutionContext): string {
   return "";
 }
 
@@ -133,9 +129,7 @@ function normalizeEnumMemberPolicy(
   };
 }
 
-export function normalizeMetadataPolicy(
-  input?: MetadataPolicyInput
-): NormalizedMetadataPolicy {
+export function normalizeMetadataPolicy(input?: MetadataPolicyInput): NormalizedMetadataPolicy {
   return {
     type: normalizeDeclarationPolicy(input?.type),
     field: normalizeDeclarationPolicy(input?.field),

@@ -14,8 +14,7 @@ function collectTypeAliasPropertySignatures(
 ): TSESTree.TSPropertySignature[] {
   if (typeNode.type === AST_NODE_TYPES.TSTypeLiteral) {
     return typeNode.members.filter(
-      (m): m is TSESTree.TSPropertySignature =>
-        m.type === AST_NODE_TYPES.TSPropertySignature
+      (m): m is TSESTree.TSPropertySignature => m.type === AST_NODE_TYPES.TSPropertySignature
     );
   }
 
@@ -54,15 +53,13 @@ export const noDoubleUnderscoreFields = createRule<[], "phantomField">({
       if (node.type === AST_NODE_TYPES.ClassDeclaration) {
         members.push(
           ...node.body.body.filter(
-            (m): m is TSESTree.PropertyDefinition =>
-              m.type === AST_NODE_TYPES.PropertyDefinition
+            (m): m is TSESTree.PropertyDefinition => m.type === AST_NODE_TYPES.PropertyDefinition
           )
         );
       } else if (node.type === AST_NODE_TYPES.TSInterfaceDeclaration) {
         members.push(
           ...node.body.body.filter(
-            (m): m is TSESTree.TSPropertySignature =>
-              m.type === AST_NODE_TYPES.TSPropertySignature
+            (m): m is TSESTree.TSPropertySignature => m.type === AST_NODE_TYPES.TSPropertySignature
           )
         );
       } else if (node.type === AST_NODE_TYPES.TSTypeAliasDeclaration) {

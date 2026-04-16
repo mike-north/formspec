@@ -46,9 +46,7 @@ function findControlByScope(
   elements: readonly Record<string, unknown>[],
   scope: string
 ): Record<string, unknown> | undefined {
-  return elements.find(
-    (element) => element["type"] === "Control" && element["scope"] === scope
-  );
+  return elements.find((element) => element["type"] === "Control" && element["scope"] === scope);
 }
 
 describe("generateSchemas", () => {
@@ -129,7 +127,11 @@ describe("generateSchemas", () => {
       },
       address: { $ref: "#/$defs/PostalAddress" },
     });
-    expect(Object.keys(result.jsonSchema.properties ?? {})).toEqual(["first_name", "total", "address"]);
+    expect(Object.keys(result.jsonSchema.properties ?? {})).toEqual([
+      "first_name",
+      "total",
+      "address",
+    ]);
     expect(result.jsonSchema.required).toEqual(["first_name", "total", "address"]);
     expect(result.jsonSchema.$defs).toMatchObject({
       PostalAddress: {

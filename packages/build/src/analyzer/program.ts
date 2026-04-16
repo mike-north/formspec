@@ -118,9 +118,7 @@ export function createProgramContext(
     compilerOptions = parsed.options;
     // Include the target file and any additional files in the program.
     // Use Set to eliminate duplicates.
-    fileNames = [
-      ...new Set([...parsed.fileNames, absolutePath, ...(additionalFiles ?? [])]),
-    ];
+    fileNames = [...new Set([...parsed.fileNames, absolutePath, ...(additionalFiles ?? [])])];
   } else {
     // Fallback to default options
     compilerOptions = {

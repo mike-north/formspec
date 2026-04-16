@@ -39,7 +39,11 @@ export interface FormSpecFactory<Policy extends MetadataPolicyInput | undefined 
     ...elements: Elements
   ) => FieldBuilderElement<Policy, Group<Elements>>;
   /** Policy-scoped re-export of `when()`. */
-  readonly when: <const K extends string, const V, const Elements extends readonly FieldBuilderElement<Policy>[]>(
+  readonly when: <
+    const K extends string,
+    const V,
+    const Elements extends readonly FieldBuilderElement<Policy>[],
+  >(
     predicate: Predicate<K, V>,
     ...elements: Elements
   ) => FieldBuilderElement<Policy, Conditional<K, V, Elements>>;
@@ -67,24 +71,28 @@ function scopeElement<Policy, Element extends FormElement>(
  */
 export function createFormSpecFactory<
   const Policy extends MetadataPolicyInput | undefined = undefined,
->(options?: {
-  readonly metadata?: Policy;
-}): FormSpecFactory<Policy> {
+>(options?: { readonly metadata?: Policy }): FormSpecFactory<Policy> {
   const metadataPolicy = options?.metadata;
 
   return {
     field: createFieldBuilders<Policy>(),
-    formspec: <const Elements extends readonly FieldBuilderElement<Policy>[]>(...elements: Elements) =>
-      applyMetadataPolicy(formspec(...elements), metadataPolicy),
+    formspec: <const Elements extends readonly FieldBuilderElement<Policy>[]>(
+      ...elements: Elements
+    ) => applyMetadataPolicy(formspec(...elements), metadataPolicy),
     formspecWithValidation: <const Elements extends readonly FieldBuilderElement<Policy>[]>(
       validationOptions: FormSpecOptions,
       ...elements: Elements
-    ) => applyMetadataPolicy(formspecWithValidation(validationOptions, ...elements), metadataPolicy),
+    ) =>
+      applyMetadataPolicy(formspecWithValidation(validationOptions, ...elements), metadataPolicy),
     group: <const Elements extends readonly FieldBuilderElement<Policy>[]>(
       label: string,
       ...elements: Elements
     ) => scopeElement<Policy, Group<Elements>>(group(label, ...elements)),
-    when: <const K extends string, const V, const Elements extends readonly FieldBuilderElement<Policy>[]>(
+    when: <
+      const K extends string,
+      const V,
+      const Elements extends readonly FieldBuilderElement<Policy>[],
+    >(
       predicate: Predicate<K, V>,
       ...elements: Elements
     ) => scopeElement<Policy, Conditional<K, V, Elements>>(when(predicate, ...elements)),

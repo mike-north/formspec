@@ -70,7 +70,11 @@ export type {
 } from "./json-schema/types.js";
 
 export { createExtensionRegistry } from "./extensions/index.js";
-export type { ExtensionRegistry } from "./extensions/index.js";
+export type {
+  ExtensionRegistry,
+  ExtensionTypeLookupResult,
+  MutableExtensionRegistry,
+} from "./extensions/index.js";
 export type { FormSpecConfig } from "@formspec/config";
 
 export type {

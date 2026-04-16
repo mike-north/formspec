@@ -14,19 +14,13 @@ interface SerializedNameEntry {
   readonly category: "field" | "object property" | "type definition";
 }
 
-function assertUniqueSerializedNames(
-  entries: readonly SerializedNameEntry[],
-  scope: string
-): void {
+function assertUniqueSerializedNames(entries: readonly SerializedNameEntry[], scope: string): void {
   const seen = new Map<string, SerializedNameEntry>();
 
   for (const entry of entries) {
     const previous = seen.get(entry.serializedName);
     if (previous !== undefined) {
-      if (
-        previous.logicalName === entry.logicalName &&
-        previous.category === entry.category
-      ) {
+      if (previous.logicalName === entry.logicalName && previous.category === entry.category) {
         continue;
       }
       throw new Error(

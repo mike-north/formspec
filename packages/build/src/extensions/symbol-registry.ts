@@ -12,22 +12,7 @@
  */
 
 import * as ts from "typescript";
-import type { CustomTypeRegistration } from "@formspec/core";
-import type { ExtensionRegistry } from "./registry.js";
-
-// =============================================================================
-// PUBLIC TYPES
-// =============================================================================
-
-/**
- * Registration entry linking a ts.Symbol to its extension type registration.
- *
- * @public
- */
-export interface SymbolRegistryEntry {
-  readonly extensionId: string;
-  readonly registration: CustomTypeRegistration;
-}
+import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
 
 // =============================================================================
 // IMPLEMENTATION
@@ -55,8 +40,8 @@ export function buildSymbolMapFromConfig(
   program: ts.Program,
   checker: ts.TypeChecker,
   extensionRegistry: ExtensionRegistry
-): Map<ts.Symbol, SymbolRegistryEntry> {
-  const symbolMap = new Map<ts.Symbol, SymbolRegistryEntry>();
+): Map<ts.Symbol, ExtensionTypeLookupResult> {
+  const symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();
 
   const configFile = program.getSourceFile(configPath);
   if (configFile === undefined) {
@@ -65,13 +50,7 @@ export function buildSymbolMapFromConfig(
 
   // Walk AST to find defineCustomType<T>() calls
   function visit(node: ts.Node): void {
-    if (
-      ts.isCallExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === "defineCustomType" &&
-      node.typeArguments !== undefined &&
-      node.typeArguments.length > 0
-    ) {
+    if (ts.isCallExpression(node) && isDefineCustomTypeCall(node, checker)) {
       processDefineCustomTypeCall(node);
     }
     ts.forEachChild(node, visit);
@@ -87,16 +66,11 @@ export function buildSymbolMapFromConfig(
     const resolvedType = checker.getTypeFromTypeNode(typeArgNode);
 
     // Resolve to the canonical symbol, following alias chains.
-    // aliasSymbol tracks type aliases (e.g. `type Foo = Bar`); getSymbol() tracks
-    // the structural symbol. We prefer aliasSymbol when present.
-    const rawSymbol = resolvedType.aliasSymbol ?? resolvedType.getSymbol();
-    if (rawSymbol === undefined) {
+    const canonical = resolveCanonicalSymbol(resolvedType, checker);
+    if (canonical === undefined) {
       // Bare primitive (string, number, etc.) — no symbol, skip.
       return;
     }
-
-    const canonical =
-      rawSymbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(rawSymbol) : rawSymbol;
 
     // Extract the typeName from the call's object literal argument so we can
     // look up the matching runtime registration by name.
@@ -123,6 +97,63 @@ export function buildSymbolMapFromConfig(
 // =============================================================================
 
 /**
+ * Returns true when `node` is a `defineCustomType<T>(...)` call expression, regardless
+ * of how `defineCustomType` was imported (direct import, namespace import, or renamed import).
+ *
+ * Primary strategy: resolve the call expression's symbol through the type checker and
+ * verify the declaration comes from `@formspec/core`. This handles namespace imports
+ * (`core.defineCustomType<T>()`), renamed imports (`dct<T>()`), and re-exports.
+ *
+ * Fallback strategy: if the type checker cannot resolve the symbol (e.g., when the
+ * config file's module resolution cannot locate `@formspec/core` from its directory),
+ * fall back to a syntactic check on the bare identifier name. This covers the common
+ * case of `import { defineCustomType } from "@formspec/core"` in environments where
+ * type-checker-based symbol resolution is unavailable.
+ */
+function isDefineCustomTypeCall(node: ts.CallExpression, checker: ts.TypeChecker): boolean {
+  if (node.typeArguments === undefined || node.typeArguments.length === 0) return false;
+
+  const callSymbol = checker.getSymbolAtLocation(node.expression);
+  if (callSymbol !== undefined) {
+    // Primary path: symbol resolved — verify it's defineCustomType from @formspec/core.
+    const resolved =
+      callSymbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(callSymbol) : callSymbol;
+
+    const decl = resolved.declarations?.[0];
+    if (decl !== undefined) {
+      // Normalize to forward slashes for cross-platform path comparison.
+      const sourceFile = decl.getSourceFile().fileName.replace(/\\/g, "/");
+      return (
+        resolved.name === "defineCustomType" &&
+        // Match whether in node_modules/@formspec/core or monorepo packages/core.
+        (sourceFile.includes("@formspec/core") || sourceFile.includes("/packages/core/"))
+      );
+    }
+  }
+
+  // Fallback path: type checker couldn't resolve the symbol. Fall back to a syntactic
+  // check on the bare identifier name so that
+  // `import { defineCustomType } from "@formspec/core"` still works when
+  // @formspec/core is not resolvable from the config file's directory.
+  return ts.isIdentifier(node.expression) && node.expression.text === "defineCustomType";
+}
+
+/**
+ * Resolves a TypeScript type to its canonical `ts.Symbol`, following alias chains.
+ *
+ * `aliasSymbol` tracks type aliases (e.g. `type Foo = Bar`); `getSymbol()` tracks
+ * the structural symbol. We prefer `aliasSymbol` when present so that aliased types
+ * resolve to the declaration site rather than the structural shape.
+ *
+ * Returns `undefined` for bare primitives and anonymous types, which have no symbol.
+ */
+function resolveCanonicalSymbol(type: ts.Type, checker: ts.TypeChecker): ts.Symbol | undefined {
+  const raw = type.aliasSymbol ?? type.getSymbol();
+  if (raw === undefined) return undefined;
+  return raw.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(raw) : raw;
+}
+
+/**
  * Extracts the `typeName` string from a `defineCustomType({ typeName: "..." })` call.
  *
  * Returns `null` when the first argument is not an object literal or the
@@ -136,9 +167,7 @@ function extractTypeNameFromCallArg(call: ts.CallExpression): string | null {
 
   const typeNameProp = arg.properties.find(
     (p): p is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(p) &&
-      ts.isIdentifier(p.name) &&
-      p.name.text === "typeName"
+      ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === "typeName"
   );
 
   if (typeNameProp === undefined || !ts.isStringLiteral(typeNameProp.initializer)) {
@@ -157,7 +186,7 @@ function extractTypeNameFromCallArg(call: ts.CallExpression): string | null {
 function findRegistrationByTypeName(
   registry: ExtensionRegistry,
   typeName: string
-): SymbolRegistryEntry | undefined {
+): ExtensionTypeLookupResult | undefined {
   for (const ext of registry.extensions) {
     if (ext.types === undefined) {
       continue;

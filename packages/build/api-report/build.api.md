@@ -96,7 +96,7 @@ export interface ControlElement {
 }
 
 // @public
-export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): ExtensionRegistry;
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): MutableExtensionRegistry;
 
 // @public
 export function createStaticBuildContext(filePath: string): StaticBuildContext;
@@ -163,22 +163,15 @@ export interface ExtensionRegistry {
         readonly registration: ConstraintTagRegistration;
     } | undefined;
     findType(typeId: string): CustomTypeRegistration | undefined;
-    findTypeByBrand(brand: string): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
-    findTypeByName(typeName: string): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
-    findTypeBySymbol(symbol: ts.Symbol): {
-        readonly extensionId: string;
-        readonly registration: CustomTypeRegistration;
-    } | undefined;
-    setSymbolMap(map: Map<ts.Symbol, {
-        extensionId: string;
-        registration: CustomTypeRegistration;
-    }>): void;
+    findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
+    findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
+    findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
+}
+
+// @public
+export interface ExtensionTypeLookupResult {
+    readonly extensionId: string;
+    readonly registration: CustomTypeRegistration;
 }
 
 export { FormElement }
@@ -466,6 +459,11 @@ export type MetadataSourceDeclaration = SchemaSourceDeclaration | ts.MethodDecla
 export interface MixedAuthoringSchemas {
     readonly jsonSchema: JsonSchema2020;
     readonly uiSchema: UISchema;
+}
+
+// @public
+export interface MutableExtensionRegistry extends ExtensionRegistry {
+    setSymbolMap(map: Map<ts.Symbol, ExtensionTypeLookupResult>): void;
 }
 
 export { NumberField }

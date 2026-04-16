@@ -32,6 +32,22 @@ import {
 // =============================================================================
 
 /**
+ * The result of a successful extension type lookup.
+ *
+ * Returned by {@link ExtensionRegistry.findTypeByName},
+ * {@link ExtensionRegistry.findTypeByBrand}, and
+ * {@link ExtensionRegistry.findTypeBySymbol}.
+ *
+ * @public
+ */
+export interface ExtensionTypeLookupResult {
+  /** The fully-qualified extension ID (e.g., "x-stripe/monetary"). */
+  readonly extensionId: string;
+  /** The custom type registration matched by this lookup. */
+  readonly registration: CustomTypeRegistration;
+}
+
+/**
  * A registry of extensions that provides lookup by fully-qualified ID.
  *
  * Type IDs follow the format: `<extensionId>/<typeName>`
@@ -57,9 +73,7 @@ export interface ExtensionRegistry {
    * This is used during TSDoc/class analysis to resolve extension-defined
    * custom types from source-level declarations.
    */
-  findTypeByName(
-    typeName: string
-  ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
+  findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
   /**
    * Look up a custom type registration by a brand identifier.
    *
@@ -70,9 +84,7 @@ export interface ExtensionRegistry {
    *
    * @param brand - The identifier text of the `unique symbol` brand variable.
    */
-  findTypeByBrand(
-    brand: string
-  ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
+  findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
 
   /**
    * Look up a custom type by its TypeScript symbol identity.
@@ -81,28 +93,13 @@ export interface ExtensionRegistry {
    * This is the most precise detection path — it uses `ts.Symbol` identity, which is
    * immune to import aliases and name collisions.
    *
-   * Returns `undefined` until {@link ExtensionRegistry.setSymbolMap} has been called
-   * (i.e., before the TypeScript program is available), or when the symbol is not
-   * registered via a type parameter.
+   * Returns `undefined` until {@link MutableExtensionRegistry.setSymbolMap} has been
+   * called (i.e., before the TypeScript program is available), or when the symbol is
+   * not registered via a type parameter.
    *
    * @param symbol - The canonical TypeScript symbol to look up.
    */
-  findTypeBySymbol(
-    symbol: ts.Symbol
-  ): { readonly extensionId: string; readonly registration: CustomTypeRegistration } | undefined;
-
-  /**
-   * Sets the symbol map built from config AST analysis.
-   *
-   * Called after the TypeScript program is created and the config file is analyzed.
-   * Prior to this call, {@link ExtensionRegistry.findTypeBySymbol} always returns
-   * `undefined`.
-   *
-   * @param map - A map from canonical `ts.Symbol` to the matching registry entry.
-   */
-  setSymbolMap(
-    map: Map<ts.Symbol, { extensionId: string; registration: CustomTypeRegistration }>
-  ): void;
+  findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
 
   /**
    * Look up a custom constraint registration by its fully-qualified constraint ID.
@@ -142,6 +139,28 @@ export interface ExtensionRegistry {
   findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
 }
 
+/**
+ * Mutable extension registry used internally by the build pipeline.
+ *
+ * Extends {@link ExtensionRegistry} with `setSymbolMap`, which must be called
+ * after the TypeScript program is created. Consumer code should accept only
+ * the read-only {@link ExtensionRegistry} interface.
+ *
+ * @public
+ */
+export interface MutableExtensionRegistry extends ExtensionRegistry {
+  /**
+   * Sets the symbol map built from config AST analysis.
+   *
+   * Called after the TypeScript program is created and the config file is analyzed.
+   * Prior to this call, {@link ExtensionRegistry.findTypeBySymbol} always returns
+   * `undefined`.
+   *
+   * @param map - A map from canonical `ts.Symbol` to the matching registry entry.
+   */
+  setSymbolMap(map: Map<ts.Symbol, ExtensionTypeLookupResult>): void;
+}
+
 // =============================================================================
 // IMPLEMENTATION
 // =============================================================================
@@ -178,18 +197,12 @@ function buildConstraintTagSources(
  */
 export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]
-): ExtensionRegistry {
+): MutableExtensionRegistry {
   const reservedTagSources = buildConstraintTagSources(extensions);
-  let symbolMap = new Map<ts.Symbol, { extensionId: string; registration: CustomTypeRegistration }>();
+  let symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();
   const typeMap = new Map<string, CustomTypeRegistration>();
-  const typeNameMap = new Map<
-    string,
-    { readonly extensionId: string; readonly registration: CustomTypeRegistration }
-  >();
-  const brandMap = new Map<
-    string,
-    { readonly extensionId: string; readonly registration: CustomTypeRegistration }
-  >();
+  const typeNameMap = new Map<string, ExtensionTypeLookupResult>();
+  const brandMap = new Map<string, ExtensionTypeLookupResult>();
   const constraintMap = new Map<string, CustomConstraintRegistration>();
   const constraintTagMap = new Map<
     string,
@@ -312,7 +325,10 @@ export function createExtensionRegistry(
           );
         }
         if (
-          Object.hasOwn(BUILTIN_CONSTRAINT_DEFINITIONS, normalizeConstraintTagName(canonicalTagName))
+          Object.hasOwn(
+            BUILTIN_CONSTRAINT_DEFINITIONS,
+            normalizeConstraintTagName(canonicalTagName)
+          )
         ) {
           throw new Error(
             `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${normalizeConstraintTagName(canonicalTagName)}".`
@@ -343,8 +359,7 @@ export function createExtensionRegistry(
       symbolMap = map;
     },
     findConstraint: (constraintId: string) => constraintMap.get(constraintId),
-    findConstraintTag: (tagName: string) =>
-      constraintTagMap.get(normalizeFormSpecTagName(tagName)),
+    findConstraintTag: (tagName: string) => constraintTagMap.get(normalizeFormSpecTagName(tagName)),
     findBuiltinConstraintBroadening: (typeId: string, tagName: string) =>
       builtinBroadeningMap.get(`${typeId}:${tagName}`),
     findAnnotation: (annotationId: string) => annotationMap.get(annotationId),

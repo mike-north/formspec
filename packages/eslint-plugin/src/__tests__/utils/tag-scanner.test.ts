@@ -12,11 +12,7 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 import { describe, expect, it } from "vitest";
-import {
-  getTagIdentity,
-  scanFormSpecTags,
-  type ScannedTag,
-} from "../../utils/tag-scanner.js";
+import { getTagIdentity, scanFormSpecTags, type ScannedTag } from "../../utils/tag-scanner.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -30,10 +26,7 @@ import {
  * The comment text must start with `/**` (JSDoc) for `getLeadingJSDocComments`
  * to include it. The `value` field therefore starts with `*`.
  */
-function makeBlockComment(
-  source: string,
-  rangeStart = 0
-): TSESTree.Comment {
+function makeBlockComment(source: string, rangeStart = 0): TSESTree.Comment {
   // source is the full comment text, e.g. "/** @minimum 0 */"
   // value = everything between /* and */
   const value = source.slice(2, source.length - 2);
@@ -230,12 +223,7 @@ describe("scanFormSpecTags — multiple tags on one line", () => {
 // ---------------------------------------------------------------------------
 
 describe("scanFormSpecTags — multiple tags on separate lines", () => {
-  const multilineComment = [
-    "/**",
-    " * @minimum 0",
-    " * @maximum 100",
-    " */",
-  ].join("\n");
+  const multilineComment = ["/**", " * @minimum 0", " * @maximum 100", " */"].join("\n");
 
   it("returns both tags from a multi-line comment", () => {
     const tags = scanTags(multilineComment);

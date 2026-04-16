@@ -205,7 +205,7 @@ export function defineConstraint(reg: CustomConstraintRegistration): CustomConst
 export function defineConstraintTag(reg: ConstraintTagRegistration): ConstraintTagRegistration;
 
 // @public
-export function defineCustomType<_T = unknown>(reg: CustomTypeRegistration): CustomTypeRegistration;
+export function defineCustomType<T = unknown>(reg: CustomTypeRegistration): CustomTypeRegistration;
 
 // @public
 export function defineExtension(def: ExtensionDefinition): ExtensionDefinition;

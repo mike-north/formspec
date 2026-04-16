@@ -78,9 +78,7 @@ function resolveScalar(
   }
 
   const inferredValue = policy.infer(context);
-  return inferredValue.trim() !== ""
-    ? { value: inferredValue, source: "inferred" }
-    : undefined;
+  return inferredValue.trim() !== "" ? { value: inferredValue, source: "inferred" } : undefined;
 }
 
 function resolvePlural(
@@ -105,9 +103,7 @@ function resolvePlural(
   }
 
   const pluralValue = policy.inflect({ ...context, singular: singular.value });
-  return pluralValue.trim() !== ""
-    ? { value: pluralValue, source: "inferred" }
-    : undefined;
+  return pluralValue.trim() !== "" ? { value: pluralValue, source: "inferred" } : undefined;
 }
 
 function resolveResolvedMetadata(
@@ -210,16 +206,17 @@ function resolveEnumTypeMetadata(
       return member;
     }
 
-    return displayName === undefined ? { value: member.value } : { value: member.value, displayName };
+    return displayName === undefined
+      ? { value: member.value }
+      : { value: member.value, displayName };
   });
 
-  return members.some((member, index) => member !== type.members[index]) ? { ...type, members } : type;
+  return members.some((member, index) => member !== type.members[index])
+    ? { ...type, members }
+    : type;
 }
 
-function resolveTypeNodeMetadata(
-  type: TypeNode,
-  options: ResolveFormIRMetadataOptions
-): TypeNode {
+function resolveTypeNodeMetadata(type: TypeNode, options: ResolveFormIRMetadataOptions): TypeNode {
   switch (type.kind) {
     case "array":
       return {
@@ -230,7 +227,9 @@ function resolveTypeNodeMetadata(
     case "object":
       return {
         ...type,
-        properties: type.properties.map((property) => resolveObjectPropertyMetadata(property, options)),
+        properties: type.properties.map((property) =>
+          resolveObjectPropertyMetadata(property, options)
+        ),
       };
 
     case "record":
@@ -393,10 +392,7 @@ export function getDisplayName(metadata: ResolvedMetadata | undefined): string |
   return metadata?.displayName?.value;
 }
 
-export function resolveFormIRMetadata(
-  ir: FormIR,
-  options: ResolveFormIRMetadataOptions
-): FormIR {
+export function resolveFormIRMetadata(ir: FormIR, options: ResolveFormIRMetadataOptions): FormIR {
   const metadata =
     options.resolveRootTypeMetadata === false
       ? ir.metadata

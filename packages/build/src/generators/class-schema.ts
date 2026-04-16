@@ -29,7 +29,11 @@ import {
   type GenerateJsonSchemaFromIROptions,
   type JsonSchema2020,
 } from "../json-schema/ir-generator.js";
-import { createExtensionRegistry, type ExtensionRegistry } from "../extensions/index.js";
+import {
+  createExtensionRegistry,
+  type ExtensionRegistry,
+  type MutableExtensionRegistry,
+} from "../extensions/index.js";
 import { buildSymbolMapFromConfig } from "../extensions/symbol-registry.js";
 import { generateUiSchemaFromIR } from "../ui-schema/ir-generator.js";
 import { validateIR, type ValidationDiagnostic } from "../validate/index.js";
@@ -622,6 +626,12 @@ export function generateSchemasBatch(
 ): readonly DetailedSchemaGenerationTargetResult[] {
   const contextCache = new Map<string, ProgramContext>();
 
+  // Resolve options once and build the symbol map once per batch.
+  // All targets in this batch share the same config, so the config AST walk
+  // only needs to happen once — after the first ProgramContext is created.
+  const resolved = resolveOptions(options);
+  let symbolMapSeeded = false;
+
   return options.targets.map((target) => {
     let ctx: ProgramContext;
     try {
@@ -630,8 +640,7 @@ export function generateSchemasBatch(
         : target.filePath.toLowerCase();
       const cachedContext = contextCache.get(cacheKey);
       if (cachedContext === undefined) {
-        const additionalFiles =
-          options.configPath !== undefined ? [options.configPath] : undefined;
+        const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
         ctx = createProgramContext(target.filePath, additionalFiles);
         contextCache.set(cacheKey, ctx);
       } else {
@@ -644,9 +653,31 @@ export function generateSchemasBatch(
       });
     }
 
+    // Build the symbol map once using the first available ProgramContext.
+    // The registry is shared across all targets in this batch, so subsequent
+    // targets benefit from the already-seeded map without re-walking the config AST.
+    if (!symbolMapSeeded) {
+      symbolMapSeeded = true;
+      if (options.configPath !== undefined && resolved.extensionRegistry !== undefined) {
+        const symbolMap = buildSymbolMapFromConfig(
+          options.configPath,
+          ctx.program,
+          ctx.checker,
+          resolved.extensionRegistry
+        );
+        resolved.extensionRegistry.setSymbolMap(symbolMap);
+      }
+    }
+
     return withTarget(
       target,
-      generateSchemasFromDetailedProgramContext(ctx, target.filePath, target.typeName, options)
+      generateSchemasFromResolvedOptions(
+        ctx,
+        target.filePath,
+        target.typeName,
+        resolved,
+        options.discriminator
+      )
     );
   });
 }
@@ -679,7 +710,7 @@ export function generateSchemasBatchFromProgram(
 }
 
 function resolveOptions(options: StaticSchemaGenerationOptions): {
-  extensionRegistry: ExtensionRegistry | undefined;
+  extensionRegistry: MutableExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
   enumSerialization: "enum" | "oneOf" | undefined;
   metadata: MetadataPolicyInput | undefined;
@@ -689,9 +720,16 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
       ? createExtensionRegistry(options.config.extensions)
       : undefined;
 
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+  const legacyRegistry = options.extensionRegistry;
+
   return {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    extensionRegistry: options.extensionRegistry ?? configRegistry,
+    // When the caller provides the deprecated extensionRegistry field directly,
+    // it is typed as the read-only ExtensionRegistry interface. We cast here
+    // because the legacy path was introduced before MutableExtensionRegistry was
+    // split out; callers using createExtensionRegistry() always get a mutable
+    // registry, and this cast is safe for all registries produced by this module.
+    extensionRegistry: (legacyRegistry as MutableExtensionRegistry | undefined) ?? configRegistry,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
@@ -722,6 +760,33 @@ function generateSchemasFromDetailedProgramContext(
     resolved.extensionRegistry.setSymbolMap(symbolMap);
   }
 
+  return generateSchemasFromResolvedOptions(
+    ctx,
+    filePath,
+    typeName,
+    resolved,
+    options.discriminator
+  );
+}
+
+/**
+ * Inner implementation: generates schemas from a ProgramContext and pre-resolved options.
+ *
+ * Separated so that batch callers can resolve options and seed the symbol map once
+ * outside the per-target loop, then call this directly without repeating that work.
+ */
+function generateSchemasFromResolvedOptions(
+  ctx: ProgramContext,
+  filePath: string,
+  typeName: string,
+  resolved: {
+    extensionRegistry: MutableExtensionRegistry | undefined;
+    vendorPrefix: string | undefined;
+    enumSerialization: "enum" | "oneOf" | undefined;
+    metadata: MetadataPolicyInput | undefined;
+  },
+  discriminator: DiscriminatorResolutionOptions | undefined
+): DetailedClassSchemasResult {
   const analysisResult: AnalyzeNamedTypeToIRDetailedResult =
     analyzeNamedTypeToIRFromProgramContextDetailed(
       ctx,
@@ -729,7 +794,7 @@ function generateSchemasFromDetailedProgramContext(
       typeName,
       resolved.extensionRegistry,
       resolved.metadata,
-      options.discriminator
+      discriminator
     );
   if (!analysisResult.ok) {
     return {

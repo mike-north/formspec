@@ -1,11 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type ts from "typescript";
-import {
-  getStringLiteralUnionValues,
-  getTypeChecker,
-  typeToString,
-} from "./type-utils.js";
+import { getStringLiteralUnionValues, getTypeChecker, typeToString } from "./type-utils.js";
 import type { ScannedTag } from "./tag-scanner.js";
 
 export type SupportedDeclaration =

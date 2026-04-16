@@ -1,13 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import {
-  parseCommentBlock,
-  type ParsedCommentTag,
-} from "@formspec/analysis/internal";
-import {
-  getTagMetadata,
-  type FormSpecTargetKind,
-} from "./tag-metadata.js";
+import { parseCommentBlock, type ParsedCommentTag } from "@formspec/analysis/internal";
+import { getTagMetadata, type FormSpecTargetKind } from "./tag-metadata.js";
 
 export interface ScannedTagTarget {
   readonly kind: Exclude<FormSpecTargetKind, "none">;
@@ -48,7 +42,10 @@ function getLeadingJSDocComments(node: TSESTree.Node, sourceCode: SourceCode): T
  */
 function resolveAmbiguousKind(rawName: string): Exclude<FormSpecTargetKind, "none" | "ambiguous"> {
   const metadata = getTagMetadata(rawName);
-  if (metadata?.supportedTargets.includes("member") && !metadata.supportedTargets.includes("path")) {
+  if (
+    metadata?.supportedTargets.includes("member") &&
+    !metadata.supportedTargets.includes("path")
+  ) {
     return "member";
   }
   return "path";
@@ -59,7 +56,8 @@ function resolveAmbiguousKind(rawName: string): Exclude<FormSpecTargetKind, "non
  * spaces. parseCommentBlock truncates quoted targets at the first space because
  * its path-target logic doesn't support quoted identifiers — we re-parse here.
  */
-const QUOTED_TARGET_REGEX = /^:(["'][^"']*["']|[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)*)(?:\s+(.*))?$/u;
+const QUOTED_TARGET_REGEX =
+  /^:(["'][^"']*["']|[A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)*)(?:\s+(.*))?$/u;
 
 function mapParsedTagToScannedTag(
   tag: ParsedCommentTag,

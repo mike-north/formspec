@@ -13,7 +13,7 @@ This document specifies the complete grammar for TSDoc tags that FormSpec recogn
 | **PP1** (TypeScript-native authoring)             | Tags are valid TSDoc — they pass `tsc` and are rendered by documentation generators without special tooling                                                                                                                       |
 | **PP2** (Inference over declaration)              | Tags are only required when the type system cannot infer the information. `@minimum` on a `number` field adds information TypeScript cannot represent; `@deprecated` on a field already deprecated via `@deprecated` is redundant |
 | **S4** (Type determines applicable constraints)   | The extractor validates that each tag is applied to a compatible type; applying `@minLength` to a `number` field is a static error (D-class diagnostic)                                                                           |
-| **S5** (Few tags, composable grammar)             | Path-target syntax (`:fieldName`) and member-target syntax work across all tags. Declaration-level specialization is added only when the declaration itself carries semantics that cannot be expressed as a field tag |
+| **S5** (Few tags, composable grammar)             | Path-target syntax (`:fieldName`) and member-target syntax work across all tags. Declaration-level specialization is added only when the declaration itself carries semantics that cannot be expressed as a field tag             |
 | **S6** (Reuse ecosystem tags)                     | `@defaultValue`, `@deprecated`, `@example`, `@remarks`, `@see` are standard TSDoc tags reused without modification. FormSpec-specific tags are reserved for concepts with no ecosystem equivalent                                 |
 | **S7** (Embrace TypeScript's full expressiveness) | All four enum patterns (`const enum`, `enum`, string-literal union, `as const` array) are recognized. Tags apply wherever the semantics make sense                                                                                |
 | **PP9** (Configurable surface area)               | Every FormSpec-specific tag can be disabled via `.formspec.yml`. Disabled tags are treated as unknown and produce D4-class warnings if present                                                                                    |
@@ -117,8 +117,8 @@ Structure tags control UI presentation without affecting the data schema (per C2
 
 Declaration tags attach semantics to the object-like declaration itself. They are not field annotations, and they do not introduce a separate IR node kind in the canonical model. Instead, they carry declaration-level metadata that is applied during object lowering.
 
-| Tag              | Applicable declarations                                                   | Semantics                                                                                              | Notes                                                                                                                     |
-| ---------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Tag              | Applicable declarations                                                     | Semantics                                                                                              | Notes                                                                                                    |
+| ---------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `@discriminator` | class/interface/type alias declarations whose analyzed shape is object-like | Specializes one direct property of the declaration from a generic type parameter into a singleton enum | `:fieldName` is a path-target token; direct properties only in v1; source must be a local type parameter |
 
 **`@discriminator` rules:**
@@ -924,13 +924,13 @@ Diagnostic codes are symbolic machine-readable identifiers. The diagnostic struc
 
 The following categories group the symbolic codes conceptually:
 
-| Diagnostic category   | Meaning                                                 |
-| --------------------- | ------------------------------------------------------- |
+| Diagnostic category   | Meaning                                                                     |
+| --------------------- | --------------------------------------------------------------------------- |
 | Tag recognition       | Unknown tags, missing arguments, disabled tags, invalid extension overrides |
-| Value parsing         | Malformed numeric, regex, JSON, or date values          |
-| Type compatibility    | Tags applied to incompatible types                      |
-| Target resolution     | Invalid path-target, member-target, or scope references |
-| Constraint validation | Contradictions, duplicates, conflicts                   |
+| Value parsing         | Malformed numeric, regex, JSON, or date values                              |
+| Type compatibility    | Tags applied to incompatible types                                          |
+| Target resolution     | Invalid path-target, member-target, or scope references                     |
+| Constraint validation | Contradictions, duplicates, conflicts                                       |
 
 ---
 

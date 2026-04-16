@@ -386,17 +386,14 @@ function toStandaloneJsonSchema(
     }
   );
 
-  const schema = generateJsonSchemaFromIR(
-    ir,
-    {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      extensionRegistry: options?.extensionRegistry,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      enumSerialization: options?.enumSerialization,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      vendorPrefix: options?.vendorPrefix,
-    }
-  );
+  const schema = generateJsonSchemaFromIR(ir, {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    extensionRegistry: options?.extensionRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    enumSerialization: options?.enumSerialization,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    vendorPrefix: options?.vendorPrefix,
+  });
 
   const result = schema.properties?.["__result"];
   if (result === undefined) {

@@ -455,9 +455,7 @@ function formatDeclarationFactMarkdown(fact: FormSpecSerializedDeclarationFact):
         parts.push(`maximum length ${String(fact.maxLength)}`);
       }
       if (fact.patterns.length > 0) {
-        const renderedPatterns = fact.patterns
-          .map((pattern) => `\`${pattern}\``)
-          .join(", ");
+        const renderedPatterns = fact.patterns.map((pattern) => `\`${pattern}\``).join(", ");
         parts.push(
           fact.patterns.length === 1
             ? `pattern ${renderedPatterns}`
@@ -596,13 +594,19 @@ function buildDeclarationSummary(
               current.minimum = updateLowerBound(current.minimum, constraint.value);
               break;
             case "exclusiveMinimum":
-              current.exclusiveMinimum = updateLowerBound(current.exclusiveMinimum, constraint.value);
+              current.exclusiveMinimum = updateLowerBound(
+                current.exclusiveMinimum,
+                constraint.value
+              );
               break;
             case "maximum":
               current.maximum = updateUpperBound(current.maximum, constraint.value);
               break;
             case "exclusiveMaximum":
-              current.exclusiveMaximum = updateUpperBound(current.exclusiveMaximum, constraint.value);
+              current.exclusiveMaximum = updateUpperBound(
+                current.exclusiveMaximum,
+                constraint.value
+              );
               break;
             case "multipleOf":
               current.multipleOf = constraint.value;
@@ -678,24 +682,23 @@ function buildDeclarationSummary(
     }
 
     switch (tag.normalizedTagName) {
-      case "defaultValue":
-        {
-          if (tag.argumentText.trim() === "") {
-            break;
-          }
-          const defaultValue = parseDefaultValueTagValue(
-            tag.argumentText,
-            provenanceForTag(sourceFile, tag)
-          );
-          if (defaultValue.annotationKind !== "defaultValue") {
-            break;
-          }
-          facts.push({
-            kind: "default-value",
-            value: defaultValue.value as FormSpecSerializedJsonValue,
-          });
+      case "defaultValue": {
+        if (tag.argumentText.trim() === "") {
           break;
         }
+        const defaultValue = parseDefaultValueTagValue(
+          tag.argumentText,
+          provenanceForTag(sourceFile, tag)
+        );
+        if (defaultValue.annotationKind !== "defaultValue") {
+          break;
+        }
+        facts.push({
+          kind: "default-value",
+          value: defaultValue.value as FormSpecSerializedJsonValue,
+        });
+        break;
+      }
       case "example": {
         const value = (takeBlockTagText("example") ?? tag.argumentText).trim();
         if (value !== "") {
@@ -1387,16 +1390,11 @@ function buildTagDiagnostics(
             ? "SYNTHETIC_SETUP_FAILURE"
             : "TYPE_MISMATCH";
       diagnostics.push(
-        createAnalysisDiagnostic(
-          code,
-          diagnostic.message,
-          globalDiagnosticRange,
-          {
-            placement,
-            tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-            ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-          }
-        )
+        createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
+          placement,
+          tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
+          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
+        })
       );
     }
   }

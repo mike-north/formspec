@@ -230,13 +230,13 @@ Per A7, ESLint owns all validation and auto-fix logic. The `@formspec/eslint-plu
 
 Each rule category maps directly to a diagnostic category from 002 §6:
 
-| Rule category           | Diagnostic families                                              | Responsibility                                    |
-| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| Rule category           | Diagnostic families                                                                                                  | Responsibility                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
-| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related | Malformed numeric, regex, JSON, and date values   |
-| `type-compatibility`    | `TYPE_MISMATCH`                                                  | Tags applied to incompatible field types          |
-| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related          | Invalid path-target and member-target references  |
-| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related             | Contradictions, duplicates, rule effect conflicts |
+| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related                                                     | Malformed numeric, regex, JSON, and date values                              |
+| `type-compatibility`    | `TYPE_MISMATCH`                                                                                                      | Tags applied to incompatible field types                                     |
+| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                                              | Invalid path-target and member-target references                             |
+| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                                                 | Contradictions, duplicates, rule effect conflicts                            |
 
 Rules within each category are named `formspec/<category>/<specific-rule>`, for example:
 
@@ -304,27 +304,27 @@ The built-in rules cover all diagnostic codes defined in 002 §6. They are group
 
 **`formspec/recommended` rule set:**
 
-| Rule                                            | Codes                          | Default severity |
-| ----------------------------------------------- | ------------------------------ | ---------------- |
-| `tag-recognition/no-unknown-tags`               | `UNKNOWN_TAG`                  | warn             |
-| `tag-recognition/require-tag-arguments`         | `MISSING_TAG_ARGUMENT`         | error            |
-| `tag-recognition/no-disabled-tags`              | `TAG_DISABLED`                 | warn             |
-| `value-parsing/valid-numeric-value`             | `INVALID_NUMERIC_VALUE`        | error            |
-| `value-parsing/valid-integer-value`             | `INVALID_NON_NEGATIVE_INTEGER` | error            |
-| `value-parsing/valid-regex-pattern`             | `INVALID_REGEX_PATTERN`        | error            |
-| `value-parsing/valid-json-value`                | `INVALID_JSON_VALUE`           | error            |
-| `type-compatibility/tag-type-check`             | `TYPE_MISMATCH`                | error            |
-| `target-resolution/valid-path-target`           | `UNKNOWN_PATH_TARGET`          | error            |
-| `target-resolution/valid-member-target`         | `UNKNOWN_MEMBER_TARGET`        | error            |
-| `target-resolution/no-unsupported-targeting`    | `UNSUPPORTED_TARGETING_SYNTAX` | error            |
-| `target-resolution/no-member-target-on-object`  | `MEMBER_TARGET_ON_NON_UNION`   | error            |
-| `target-resolution/discriminator-target`        | `INVALID_DISCRIMINATOR_TARGET`, `UNKNOWN_DISCRIMINATOR_TARGET` | error |
-| `type-compatibility/discriminator-source`       | `DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`, `DISCRIMINATOR_VALUE_UNRESOLVABLE` | error |
-| `constraint-validation/no-contradictions`       | `CONSTRAINT_CONTRADICTION`     | error            |
-| `constraint-validation/no-duplicate-tags`       | `DUPLICATE_TAG`                | warn             |
-| `documentation/remarks-without-summary`         | `REMARKS_WITHOUT_SUMMARY`      | info             |
-| `documentation/no-unsupported-description-tag`  | `UNSUPPORTED_DESCRIPTION_TAG`  | error            |
-| `constraint-validation/no-contradictory-rules`  | `CONTRADICTORY_RULE_EFFECTS`   | error            |
+| Rule                                           | Codes                                                                                                                                                                    | Default severity |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `tag-recognition/no-unknown-tags`              | `UNKNOWN_TAG`                                                                                                                                                            | warn             |
+| `tag-recognition/require-tag-arguments`        | `MISSING_TAG_ARGUMENT`                                                                                                                                                   | error            |
+| `tag-recognition/no-disabled-tags`             | `TAG_DISABLED`                                                                                                                                                           | warn             |
+| `value-parsing/valid-numeric-value`            | `INVALID_NUMERIC_VALUE`                                                                                                                                                  | error            |
+| `value-parsing/valid-integer-value`            | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                                                           | error            |
+| `value-parsing/valid-regex-pattern`            | `INVALID_REGEX_PATTERN`                                                                                                                                                  | error            |
+| `value-parsing/valid-json-value`               | `INVALID_JSON_VALUE`                                                                                                                                                     | error            |
+| `type-compatibility/tag-type-check`            | `TYPE_MISMATCH`                                                                                                                                                          | error            |
+| `target-resolution/valid-path-target`          | `UNKNOWN_PATH_TARGET`                                                                                                                                                    | error            |
+| `target-resolution/valid-member-target`        | `UNKNOWN_MEMBER_TARGET`                                                                                                                                                  | error            |
+| `target-resolution/no-unsupported-targeting`   | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                                                           | error            |
+| `target-resolution/no-member-target-on-object` | `MEMBER_TARGET_ON_NON_UNION`                                                                                                                                             | error            |
+| `target-resolution/discriminator-target`       | `INVALID_DISCRIMINATOR_TARGET`, `UNKNOWN_DISCRIMINATOR_TARGET`                                                                                                           | error            |
+| `type-compatibility/discriminator-source`      | `DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`, `DISCRIMINATOR_VALUE_UNRESOLVABLE` | error            |
+| `constraint-validation/no-contradictions`      | `CONSTRAINT_CONTRADICTION`                                                                                                                                               | error            |
+| `constraint-validation/no-duplicate-tags`      | `DUPLICATE_TAG`                                                                                                                                                          | warn             |
+| `documentation/remarks-without-summary`        | `REMARKS_WITHOUT_SUMMARY`                                                                                                                                                | info             |
+| `documentation/no-unsupported-description-tag` | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                                                            | error            |
+| `constraint-validation/no-contradictory-rules` | `CONTRADICTORY_RULE_EFFECTS`                                                                                                                                             | error            |
 
 ### 3.4 Rule Configuration Interface
 
@@ -820,13 +820,13 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 ## Appendix A: Diagnostic Category Quick Reference
 
-| Category              | Representative symbolic codes                             | Responsibility                                    |
-| --------------------- | --------------------------------------------------------- | ------------------------------------------------- |
+| Category              | Representative symbolic codes                                                                                        | Responsibility                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
-| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related | Malformed numeric, regex, JSON, and date values   |
-| Type compatibility    | `TYPE_MISMATCH`                                           | Tags applied to incompatible field types          |
-| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related   | Invalid path-target and member-target references  |
-| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related      | Contradictions, duplicates, rule effect conflicts |
+| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related                                                            | Malformed numeric, regex, JSON, and date values                              |
+| Type compatibility    | `TYPE_MISMATCH`                                                                                                      | Tags applied to incompatible field types                                     |
+| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                                              | Invalid path-target and member-target references                             |
+| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                                                 | Contradictions, duplicates, rule effect conflicts                            |
 
 See 002 §6 for the individual diagnostic code definitions.
 
@@ -834,19 +834,19 @@ See 002 §6 for the individual diagnostic code definitions.
 
 ## Appendix B: ESLint vs. Language Server Responsibility Matrix
 
-| Capability                     | ESLint        | Language Server           | Notes                                                 |
-| ------------------------------ | ------------- | ------------------------- | ----------------------------------------------------- |
-| Parse error detection          | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Type applicability checking    | Yes           | No                        | ESLint rule `tag-type-check`                          |
-| Contradiction detection        | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Auto-fix application           | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
-| Tag name completions           | No            | Yes                       | LS-only authoring experience (A7)                     |
-| Path/member-target completions | No            | Yes                       | LS-only authoring experience (A7)                     |
+| Capability                                | ESLint        | Language Server           | Notes                                                 |
+| ----------------------------------------- | ------------- | ------------------------- | ----------------------------------------------------- |
+| Parse error detection                     | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Type applicability checking               | Yes           | No                        | ESLint rule `tag-type-check`                          |
+| Contradiction detection                   | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
+| Auto-fix application                      | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
+| Tag name completions                      | No            | Yes                       | LS-only authoring experience (A7)                     |
+| Path/member-target completions            | No            | Yes                       | LS-only authoring experience (A7)                     |
 | Direct-property discriminator completions | No            | Yes                       | LS-only authoring experience for `@discriminator`     |
-| Local type-parameter completions | No            | Yes                       | LS-only argument help for declaration-level tags      |
-| Hover (tag docs, provenance)   | No            | Yes                       | Requires cursor position                              |
-| Go-to-definition (`{@link}`)   | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
-| Signature help                 | No            | Yes                       | Requires cursor position and incremental state        |
-| Bulk fix (fix-all)             | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                    |
+| Local type-parameter completions          | No            | Yes                       | LS-only argument help for declaration-level tags      |
+| Hover (tag docs, provenance)              | No            | Yes                       | Requires cursor position                              |
+| Go-to-definition (`{@link}`)              | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
+| Signature help                            | No            | Yes                       | Requires cursor position and incremental state        |
+| Bulk fix (fix-all)                        | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                    |
 
 The asymmetry is intentional (A7): if a capability requires cursor position, incremental typing state, or live feedback during composition, it belongs in the language server. Everything else belongs in ESLint where it can run in CI without an editor.

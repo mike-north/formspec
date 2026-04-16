@@ -5,10 +5,7 @@ import {
 } from "./comment-syntax.js";
 import type * as ts from "typescript";
 import { collectCompatiblePathTargets, getEnumMemberCompletions } from "./ts-binding.js";
-import {
-  getDeclarationTypeParameterNames,
-  getDirectPropertyTargets,
-} from "./source-bindings.js";
+import { getDeclarationTypeParameterNames, getDirectPropertyTargets } from "./source-bindings.js";
 import {
   getAllTagDefinitions,
   getTagDefinition,
@@ -229,7 +226,6 @@ function getSupportedTargets(signatures: readonly TagSignature[]): readonly Form
   return [...supportedTargets];
 }
 
-
 function getTargetCompletions(
   signatures: readonly TagSignature[],
   compatiblePathTargets: readonly string[],
@@ -270,7 +266,9 @@ function getDiscriminatorTargetCompletions(
     return [];
   }
 
-  return getDirectPropertyTargets(options.declaration, options.checker).map((target) => target.name);
+  return getDirectPropertyTargets(options.declaration, options.checker).map(
+    (target) => target.name
+  );
 }
 
 function getDiscriminatorArgumentCompletions(

@@ -122,9 +122,8 @@ export function parseUnifiedComment(
     docComment.remarksBlock !== undefined ? extractBlockText(docComment.remarksBlock).trim() : "";
   const deprecatedBlock = docComment.deprecatedBlock;
   const isDeprecated = deprecatedBlock !== undefined;
-  const deprecationMessage = deprecatedBlock !== undefined
-    ? extractBlockText(deprecatedBlock).trim()
-    : "";
+  const deprecationMessage =
+    deprecatedBlock !== undefined ? extractBlockText(deprecatedBlock).trim() : "";
 
   return {
     commentText,

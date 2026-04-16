@@ -5,4 +5,8 @@
  */
 
 export { createExtensionRegistry } from "./registry.js";
-export type { ExtensionRegistry } from "./registry.js";
+export type {
+  ExtensionRegistry,
+  ExtensionTypeLookupResult,
+  MutableExtensionRegistry,
+} from "./registry.js";

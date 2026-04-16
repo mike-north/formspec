@@ -1,4 +1,9 @@
-import type { FormSpecConfig, FormSpecPackageOverride, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
+import type {
+  FormSpecConfig,
+  FormSpecPackageOverride,
+  ConstraintConfig,
+  ResolvedConstraintConfig,
+} from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
 
 /**
@@ -118,7 +123,10 @@ function deepMergeConstraints(
         ...base.uiSchema?.rules,
         ...override.uiSchema?.rules,
       };
-      if (base.uiSchema?.rules?.effects !== undefined || override.uiSchema?.rules?.effects !== undefined) {
+      if (
+        base.uiSchema?.rules?.effects !== undefined ||
+        override.uiSchema?.rules?.effects !== undefined
+      ) {
         merged.uiSchema.rules.effects = {
           ...base.uiSchema?.rules?.effects,
           ...override.uiSchema?.rules?.effects,
@@ -133,7 +141,10 @@ function deepMergeConstraints(
       ...base.controlOptions,
       ...override.controlOptions,
     };
-    if (base.controlOptions?.custom !== undefined || override.controlOptions?.custom !== undefined) {
+    if (
+      base.controlOptions?.custom !== undefined ||
+      override.controlOptions?.custom !== undefined
+    ) {
       merged.controlOptions.custom = {
         ...base.controlOptions?.custom,
         ...override.controlOptions?.custom,

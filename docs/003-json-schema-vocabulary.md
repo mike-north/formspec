@@ -156,8 +156,8 @@ FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-reg
 | `ExampleAnnotation[]`          | `"examples"` (array)                                                                       |
 | `DeprecatedAnnotation`         | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
 | `ReadOnlyAnnotation`           | `"readOnly"`                                                                               |
-| `WriteOnlyAnnotation`    | `"writeOnly"`                                                                              |
-| `ConstConstraint`        | `"const"`                                                                                  |
+| `WriteOnlyAnnotation`          | `"writeOnly"`                                                                              |
+| `ConstConstraint`              | `"const"`                                                                                  |
 
 ### 2.9 Declaration-Level Discriminator Specialization
 
