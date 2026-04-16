@@ -136,3 +136,6 @@ export type {
   TypeDefinition,
   FormIR,
 } from "./ir.js";
+
+export type { Integer } from "./integer.js";
+export { __integerBrand } from "./integer.js";

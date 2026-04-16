@@ -118,7 +118,10 @@ export type {
 } from "./types/index.js";
 
 // Re-export functions and constants
-export { createInitialFieldState, IR_VERSION } from "./types/index.js";
+export { createInitialFieldState, IR_VERSION, __integerBrand } from "./types/index.js";
+
+// Integer type
+export type { Integer } from "./types/index.js";
 
 // Extension API
 export type {

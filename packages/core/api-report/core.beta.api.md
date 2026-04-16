@@ -4,6 +4,9 @@
 
 ```ts
 
+// @public
+export const __integerBrand: unique symbol;
+
 // @beta
 export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
@@ -479,6 +482,11 @@ export interface GroupLayoutNode {
     readonly label: string;
     readonly provenance: Provenance;
 }
+
+// @public
+export type Integer = number & {
+    readonly [__integerBrand]: true;
+};
 
 // @beta
 export const IR_VERSION: "0.1.0";
