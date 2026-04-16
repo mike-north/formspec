@@ -55,6 +55,76 @@
       "tagName": "@enumOptions",
       "syntaxKind": "block",
       "allowMultiple": true
+    },
+    {
+      "tagName": "@displayName",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@apiName",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@format",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@placeholder",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@order",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@group",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@showWhen",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@hideWhen",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@enableWhen",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@disableWhen",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@defaultValue",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@example",
+      "syntaxKind": "block",
+      "allowMultiple": true
+    },
+    {
+      "tagName": "@discriminator",
+      "syntaxKind": "block",
+      "allowMultiple": false
+    },
+    {
+      "tagName": "@description",
+      "syntaxKind": "block",
+      "allowMultiple": false
     }
   ],
   "supportForTags": {
@@ -68,6 +138,20 @@
     "@minItems": true,
     "@maxItems": true,
     "@pattern": true,
-    "@enumOptions": true
+    "@enumOptions": true,
+    "@displayName": true,
+    "@apiName": true,
+    "@format": true,
+    "@placeholder": true,
+    "@order": true,
+    "@group": true,
+    "@showWhen": true,
+    "@hideWhen": true,
+    "@enableWhen": true,
+    "@disableWhen": true,
+    "@defaultValue": true,
+    "@example": true,
+    "@discriminator": true,
+    "@description": true
   }
 }
