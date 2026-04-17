@@ -176,6 +176,48 @@ describe("generateSchemas", () => {
     expect(getGenerationFailureMessage("BoxForm")).toContain("TYPE_MISMATCH");
   });
 
+  it("appends a path-target hint when an object field has exactly one matching subfield", () => {
+    const message = getGenerationFailureMessage("HintedSingleCandidateForm");
+
+    expect(message).toContain("TYPE_MISMATCH");
+    expect(message).toContain("Hint:");
+    // Single-candidate form: full corrected example with the user's value preserved.
+    expect(message).toContain("@exclusiveMinimum :value 0");
+    // Should NOT use the multi-candidate "(candidates: …)" listing form.
+    expect(message).not.toContain("candidates:");
+  });
+
+  it("lists candidates when an object field has multiple matching subfields", () => {
+    const message = getGenerationFailureMessage("HintedMultipleCandidatesForm");
+
+    expect(message).toContain("TYPE_MISMATCH");
+    expect(message).toContain("Hint:");
+    expect(message).toContain("candidates:");
+    // Both numeric subfields are listed as candidates.
+    expect(message).toContain("width");
+    expect(message).toContain("height");
+    // The non-numeric subfield must NOT appear as a candidate.
+    expect(message).not.toMatch(/candidates: [^)]*\blabel\b/);
+    // Concrete worked example uses one of the candidates.
+    expect(message).toMatch(/e\.g\. @minimum :(width|height) 1/);
+  });
+
+  it("does not append a hint when no subfield satisfies the capability", () => {
+    const message = getGenerationFailureMessage("HintlessNoCandidatesForm");
+
+    expect(message).toContain("TYPE_MISMATCH");
+    expect(message).not.toContain("Hint:");
+  });
+
+  it("does not append a hint when the existing primitive-mismatch is on a non-object field", () => {
+    // Pre-existing fixture: @minimum 0 on `label!: string` — primitive type, no
+    // subfields to suggest. The hint must remain off in this case.
+    const message = getGenerationFailureMessage("MismatchedForm");
+
+    expect(message).toContain("TYPE_MISMATCH");
+    expect(message).not.toContain("Hint:");
+  });
+
   it("throws with INVALID_TAG_PLACEMENT for builtin constraints on class declarations", () => {
     expect(getGenerationFailureMessage("InvalidPlacementForm")).toContain("INVALID_TAG_PLACEMENT");
   });

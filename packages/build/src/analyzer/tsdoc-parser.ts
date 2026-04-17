@@ -352,6 +352,81 @@ function supportsConstraintCapability(
   return false;
 }
 
+const MAX_HINT_CANDIDATES = 5;
+const MAX_HINT_DEPTH = 3;
+
+/**
+ * Collects user-declared subfields whose type satisfies the constraint
+ * `capability`. Only descends into object-like types — never traverses into
+ * primitives' intrinsic properties (e.g. would not surface `string.length`
+ * on a `string` subfield).
+ */
+function collectObjectSubfieldCandidates(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  capability: SemanticCapability
+): readonly string[] {
+  const out: string[] = [];
+  const visit = (current: ts.Type, prefix: readonly string[], depth: number): void => {
+    if (depth > MAX_HINT_DEPTH) {
+      return;
+    }
+    if (!hasTypeSemanticCapability(current, checker, "object-like")) {
+      return;
+    }
+    for (const property of current.getProperties()) {
+      const declaration = property.valueDeclaration ?? property.declarations?.[0];
+      if (declaration === undefined) {
+        continue;
+      }
+      const propertyType = checker.getTypeOfSymbolAtLocation(property, declaration);
+      const path = [...prefix, property.name];
+      if (hasTypeSemanticCapability(propertyType, checker, capability)) {
+        out.push(path.join("."));
+        continue;
+      }
+      if (hasTypeSemanticCapability(propertyType, checker, "object-like")) {
+        visit(propertyType, path, depth + 1);
+      }
+    }
+  };
+  visit(type, [], 0);
+  return out;
+}
+
+function buildPathTargetHint(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  capability: SemanticCapability,
+  tagName: string,
+  argumentText: string | undefined
+): string | null {
+  // Only suggest path targeting when the subject is itself an object — for
+  // primitive mismatches (e.g. `@minimum` on a `string`), the user almost
+  // certainly meant a different constraint, not a path target.
+  if (!hasTypeSemanticCapability(subjectType, checker, "object-like")) {
+    return null;
+  }
+
+  const candidates = collectObjectSubfieldCandidates(subjectType, checker, capability);
+  const primary = candidates[0];
+  if (primary === undefined) {
+    return null;
+  }
+
+  const argText = argumentText?.trim() ?? "";
+  const renderExample = (path: string): string =>
+    argText === "" ? `@${tagName} :${path}` : `@${tagName} :${path} ${argText}`;
+
+  if (candidates.length === 1) {
+    return `Hint: use a path target to constrain a subfield, e.g. ${renderExample(primary)}`;
+  }
+
+  const shown = candidates.slice(0, MAX_HINT_CANDIDATES);
+  const overflow = candidates.length > MAX_HINT_CANDIDATES ? ", …" : "";
+  return `Hint: use a path target to constrain a subfield (candidates: ${shown.join(", ")}${overflow}), e.g. ${renderExample(primary)}`;
+}
+
 function makeDiagnostic(
   code: string,
   message: string,
@@ -560,10 +635,18 @@ function buildCompilerBackedConstraintDiagnostics(
       !supportsConstraintCapability(subjectType, checker, requiredCapability)
     ) {
       const actualType = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      const baseMessage = `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
+      const hint = buildPathTargetHint(
+        subjectType,
+        checker,
+        requiredCapability,
+        tagName,
+        parsedTag?.argumentText
+      );
       return [
         makeDiagnostic(
           "TYPE_MISMATCH",
-          `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+          hint === null ? baseMessage : `${baseMessage}. ${hint}`,
           provenance
         ),
       ];

@@ -108,3 +108,34 @@ export class ThermostatForm {
 export class InvalidPlacementForm {
   value!: number;
 }
+
+interface PriceAmount {
+  value: number;
+  currency: string;
+}
+
+export class HintedSingleCandidateForm {
+  /** @exclusiveMinimum 0 */
+  totalPrice!: PriceAmount;
+}
+
+interface BoundingBox {
+  width: number;
+  height: number;
+  label: string;
+}
+
+export class HintedMultipleCandidatesForm {
+  /** @minimum 1 */
+  region!: BoundingBox;
+}
+
+interface LabeledOnly {
+  label: string;
+  description: string;
+}
+
+export class HintlessNoCandidatesForm {
+  /** @minimum 0 */
+  info!: LabeledOnly;
+}
