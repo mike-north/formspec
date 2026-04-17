@@ -145,10 +145,10 @@ function resolveRef(
   schema: unknown,
   root: Record<string, unknown>
 ): Record<string, unknown> {
-  if (typeof schema !== "object" || schema === null) {
-    return schema as Record<string, unknown>;
-  }
-  const record = schema as Record<string, unknown>;
+  // Fail fast if `schema` isn't an object — silently casting `undefined` here
+  // produces confusing downstream errors (e.g. "cannot read properties of
+  // undefined") that mask missing fields in the test setup.
+  const record = expectRecord(schema, "Expected schema object for resolveRef");
   const ref = record["$ref"];
   if (typeof ref !== "string" || !ref.startsWith("#/$defs/")) {
     return record;
