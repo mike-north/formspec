@@ -418,6 +418,134 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         },
       },
     },
+
+    // -------------------------------------------------------------------------
+    // Non-constraint tags — annotation, structure, ecosystem categories do
+    // NOT impose a field-type requirement. Value-kind describes the tag's
+    // *argument*, not the field.
+    //
+    // Regression: `buildExtraTagDefinition` used to copy the value-kind into
+    // `capabilities`, which `getExpectedTypesForTag` then surfaced as an
+    // expected field type — causing spurious rejections.
+    // -------------------------------------------------------------------------
+
+    // @displayName (annotation / string): any field type is allowed
+    {
+      code: `
+        type MonetaryAmount = { amount: number; currency: string };
+        class Form {
+          /** @displayName Maximum Credit Amount */
+          maximumCreditAmount!: MonetaryAmount;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName Active Flag */
+          isActive!: boolean;
+        }
+      `,
+    },
+
+    // @displayName on the real `@formspec/core` Integer brand — a
+    // `number` intersected with a symbol-keyed brand property. Mirrors
+    // `type Integer = number & { readonly [__integerBrand]: true }`.
+    // This is exactly the shape that would previously have been rejected
+    // under `capabilities: ["string-like"]` via `getFieldTypeCategory`
+    // returning "number" rather than "string".
+    {
+      code: `
+        declare const __integerBrand: unique symbol;
+        type Integer = number & { readonly [__integerBrand]: true };
+        class Form {
+          /** @displayName Item Count */
+          count!: Integer;
+        }
+      `,
+    },
+
+    // @order (annotation / signedInteger): order is a UI ordering hint —
+    // should work on any field regardless of type
+    {
+      code: `
+        class Form {
+          /** @order 3 */
+          created!: Date;
+        }
+      `,
+    },
+
+    // @apiName (annotation / string): API-facing name works on any field
+    {
+      code: `
+        class Form {
+          /** @apiName legacy_amount */
+          amount!: number;
+        }
+      `,
+    },
+
+    // @group (structure / string): UI grouping hint works on any field
+    {
+      code: `
+        type MonetaryAmount = { amount: number; currency: string };
+        class Form {
+          /** @group Advanced */
+          limit!: MonetaryAmount;
+        }
+      `,
+    },
+
+    // @example (ecosystem / string): example text works regardless of type
+    {
+      code: `
+        class Form {
+          /** @example 2024-01-15 */
+          issuedOn!: Date;
+        }
+      `,
+    },
+
+    // @remarks (ecosystem / string): free-form remarks work on any field
+    {
+      code: `
+        class Form {
+          /** @remarks Historical note: migrated from v1. */
+          legacyId!: number;
+        }
+      `,
+    },
+
+    // @see (ecosystem / string): references work on any field
+    {
+      code: `
+        class Form {
+          /** @see https://docs.example.com/fields/count */
+          count!: number;
+        }
+      `,
+    },
+
+    // @placeholder (annotation / string) and @format (annotation / string)
+    // on non-string fields — both placeholder and format are presentational
+    // hints that should not constrain the field type.
+    {
+      code: `
+        class Form {
+          /** @placeholder Enter an amount */
+          amount!: number;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @format date */
+          issuedOn!: Date;
+        }
+      `,
+    },
   ],
   invalid: [
     // -------------------------------------------------------------------------

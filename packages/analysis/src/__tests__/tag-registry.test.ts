@@ -54,6 +54,69 @@ describe("tag-registry", () => {
     expect(getTagDefinition("ApiName")?.canonicalName).toBe("apiName");
   });
 
+  // Regression: prior to fixing `buildExtraTagDefinition`, non-constraint
+  // tags inherited a `capabilities` array derived from their value-kind
+  // (e.g. `@displayName` → "string-like"), which then propagated into the
+  // ESLint rule and narrow synthetic check as a field-type requirement.
+  // Only built-in *constraint* tags should carry field-type capabilities.
+  it("assigns empty capabilities to every non-constraint tag", () => {
+    const NON_CONSTRAINT_TAGS = [
+      // annotation
+      "displayName",
+      "description",
+      "format",
+      "placeholder",
+      "order",
+      "apiName",
+      "discriminator",
+      // structure
+      "group",
+      "showWhen",
+      "hideWhen",
+      "enableWhen",
+      "disableWhen",
+      // ecosystem
+      "defaultValue",
+      "deprecated",
+      "example",
+      "remarks",
+      "see",
+    ] as const;
+
+    for (const tagName of NON_CONSTRAINT_TAGS) {
+      const definition = getTagDefinition(tagName);
+      expect(definition, `expected @${tagName} to be registered`).not.toBeNull();
+      expect(
+        definition?.capabilities,
+        `@${tagName} is non-constraint — its capabilities must be empty`
+      ).toEqual([]);
+    }
+  });
+
+  it("preserves capabilities on built-in constraint tags", () => {
+    // Constraint tags legitimately express a field-type requirement; the
+    // fix must not strip their capabilities.
+    expect(getTagDefinition("minimum")?.capabilities).toEqual(["numeric-comparable"]);
+    expect(getTagDefinition("minLength")?.capabilities).toEqual(["string-like"]);
+    expect(getTagDefinition("minItems")?.capabilities).toEqual(["array-like"]);
+    expect(getTagDefinition("enumOptions")?.capabilities).toEqual(["enum-member-addressable"]);
+  });
+
+  it("assigns empty capabilities to extension metadata tags regardless of value kind", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "ExternalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+
+    expect(getTagDefinition("externalName", [extension])?.capabilities).toEqual([]);
+  });
+
   it("normalizes extension metadata tag registrations to canonical names", () => {
     const extension = defineExtension({
       extensionId: "x-example/metadata",
