@@ -10,4 +10,4 @@
 
 Fix `tag-type-check` false positive for annotation tags on non-string fields
 
-Annotation tags like `@displayName` accept a string *value* but can annotate fields of any type. Previously, `buildExtraTagDefinition` derived `capabilities` from the tag's value kind, so `@displayName` was assigned `string-like` capability and incorrectly rejected on fields like `MonetaryAmount` or `boolean`.
+Annotation tags like `@displayName` accept a string *value* but can annotate fields of any type. Previously, `buildExtraTagDefinition` and `buildExtensionMetadataTagDefinition` both derived `capabilities` from the tag's value kind, so annotation tags were assigned `string-like` capability and incorrectly rejected on fields like `MonetaryAmount` or `boolean`. Both functions now return empty capabilities for annotation-category tags.
