@@ -101,6 +101,7 @@
     "recursive-references-support",
     "refactor-build-type-safety",
     "release-unpublished-followups",
+    "resolve-static-options",
     "semantic-diagnostics-cli-format",
     "sharp-badgers-shine",
     "skip-global-builtins-in-prelude",
