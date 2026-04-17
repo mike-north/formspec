@@ -1,5 +1,22 @@
 # @formspec/build
 
+## 0.1.0-alpha.47
+
+### Patch Changes
+
+- [#281](https://github.com/mike-north/formspec/pull/281) [`b58a0f3`](https://github.com/mike-north/formspec/commit/b58a0f3176016a1740c371470cb9c68eb063ec2d) Thanks [@mike-north](https://github.com/mike-north)! - Fix spurious field-type rejections for non-constraint tags across all non-constraint categories.
+
+  Tags like `@displayName`, `@group`, `@example`, `@remarks`, and `@see` accept a typed argument (usually a string) but describe or decorate a declaration — they are not field-type constraints. `buildExtraTagDefinition` previously derived `capabilities` from the tag's value-kind, so every one of these tags inherited a stray field-type requirement (e.g., `@displayName` → `["string-like"]`), which the `tag-type-check` ESLint rule and the narrow synthetic applicability check both surfaced as a rejection on non-matching fields (objects, numbers, booleans, branded `Integer`, etc.).
+
+  `buildExtraTagDefinition` now emits `capabilities: []` for every non-constraint category (`annotation`, `structure`, `ecosystem`) — only `constraint`-category tags (the built-ins in `BUILTIN_TAG_DEFINITIONS`) carry a field-type capability. `buildExtensionMetadataTagDefinition` is aligned to the same invariant.
+
+  Affected tags that previously produced false positives: `@displayName`, `@description`, `@format`, `@placeholder`, `@order`, `@apiName`, `@group`, `@example`, `@remarks`, `@see`.
+
+- [#278](https://github.com/mike-north/formspec/pull/278) [`812a279`](https://github.com/mike-north/formspec/commit/812a2793a30c759bf71e3ca3d87775a0df408f23) Thanks [@mike-north](https://github.com/mike-north)! - Add Ref<T> JSON Schema serialization tests covering phantom property exclusion, discriminator specialization, oneOf serialization, and apiNamePrefix behavior.
+
+- Updated dependencies [[`b58a0f3`](https://github.com/mike-north/formspec/commit/b58a0f3176016a1740c371470cb9c68eb063ec2d)]:
+  - @formspec/analysis@0.1.0-alpha.47
+
 ## 0.1.0-alpha.46
 
 ### Patch Changes
