@@ -121,8 +121,13 @@ const FIELD_TYPES: readonly FieldTypeCase[] = [
     typeExpression: "{ amount: number; currency: string }",
   },
   {
-    name: "branded Integer (number & symbol brand)",
-    typeExpression: "number & { readonly __integerBrand: unique symbol }",
+    // Approximates a branded numeric intersection. Not the real `Integer`
+    // brand from `@formspec/core` — that one is keyed by a `unique symbol`,
+    // which can't be inlined in a raw type expression without a binding.
+    // This case exercises the general "intersection with a non-numeric
+    // property" shape that branded numerics take.
+    name: "branded/intersection number",
+    typeExpression: "number & { readonly __brand: 'int' }",
   },
   { name: "string[]", typeExpression: "string[]" },
   {
@@ -180,11 +185,11 @@ describe("built-in constraint tags still enforce field-type capabilities", () =>
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
-  it("@minimum is accepted on a branded Integer field", () => {
+  it("@minimum is accepted on a branded/intersection number field", () => {
     const result = checkNarrowSyntheticTagApplicability({
       tagName: "minimum",
       placement: "class-field",
-      resolvedTargetType: "number & { readonly __integerBrand: unique symbol }",
+      resolvedTargetType: "number & { readonly __brand: 'int' }",
       argumentExpression: "0",
     });
 
