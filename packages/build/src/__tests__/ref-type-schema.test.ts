@@ -10,6 +10,7 @@
  *
  * @see packages/build/src/analyzer/class-analyzer.ts — shouldEmitResolvedObjectProperty
  * @see packages/build/src/analyzer/class-analyzer.ts — applyDeclarationDiscriminatorToFields
+ * @see https://json-schema.org/draft/2020-12/json-schema-core — authoritative spec for $ref/enum/oneOf/const semantics
  */
 
 import * as fs from "node:fs";
@@ -77,9 +78,9 @@ export interface CustomObjectRefForm {
 }
 
 export interface MixedRefForm {
-  /** Literal object property — prefix does NOT apply. */
+  // Literal object property — prefix does NOT apply.
   customer: Ref<Customer>;
-  /** @apiName-derived — prefix DOES apply. */
+  // Metadata-derived (apiName) value — prefix DOES apply.
   loyalty: Ref<LoyaltyProgram>;
 }
 
@@ -286,11 +287,14 @@ describe("Ref<T> JSON Schema serialization", () => {
               : customerSchema;
           })();
 
-      const refProps = refSchema["properties"] as Record<string, unknown> | undefined;
-      if (refProps !== undefined) {
-        const typeSchema = expectRecord(refProps["type"], "Missing type property");
-        expect(typeSchema["enum"]).toEqual(["customer"]);
-      }
+      // Assert properties are emitted unconditionally — a regression that drops
+      // the Ref body on optional fields must fail this test, not silently pass.
+      const refProps = expectRecord(
+        refSchema["properties"],
+        "Optional Ref<Customer> is missing its properties (discriminator would be lost)"
+      );
+      const typeSchema = expectRecord(refProps["type"], "Missing type property");
+      expect(typeSchema["enum"]).toEqual(["customer"]);
     });
   });
 
@@ -468,6 +472,29 @@ describe("Ref<T> JSON Schema serialization", () => {
 
       // LoyaltyProgram has @apiName custom_loyalty — metadata-derived, so prefix applies.
       expect(typeSchema["enum"]).toEqual(["v2.extend.objects.custom_loyalty"]);
+    });
+
+    it("mixed form: literal and @apiName-derived Refs coexist with correct prefixing", () => {
+      const result = generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "MixedRefForm",
+        discriminator: { apiNamePrefix: "v2.extend.objects." },
+      });
+
+      const props = result.jsonSchema.properties as Record<string, unknown>;
+      const root = result.jsonSchema as Record<string, unknown>;
+
+      // customer: Ref<Customer> — Customer has literal `object: 'customer'`, so NOT prefixed.
+      const customerRef = resolveRef(props["customer"], root);
+      const customerProps = expectRecord(customerRef["properties"], "Missing customer Ref props");
+      const customerType = expectRecord(customerProps["type"], "Missing customer type");
+      expect(customerType["enum"]).toEqual(["customer"]);
+
+      // loyalty: Ref<LoyaltyProgram> — LoyaltyProgram has @apiName custom_loyalty, so IS prefixed.
+      const loyaltyRef = resolveRef(props["loyalty"], root);
+      const loyaltyProps = expectRecord(loyaltyRef["properties"], "Missing loyalty Ref props");
+      const loyaltyType = expectRecord(loyaltyProps["type"], "Missing loyalty type");
+      expect(loyaltyType["enum"]).toEqual(["v2.extend.objects.custom_loyalty"]);
     });
   });
 });
