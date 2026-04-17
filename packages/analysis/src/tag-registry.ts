@@ -799,7 +799,13 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     allowDuplicates: spec.allowDuplicates,
     category: spec.category,
     placements: spec.placements,
-    capabilities: capabilitiesForValueKind(valueKind),
+    // Capabilities express a *field-type* requirement (e.g. `@minLength` needs
+    // a string-like field). Only constraint-category tags carry that meaning;
+    // annotation, structure, and ecosystem tags describe or decorate the field
+    // regardless of its type, so their value-kind must not leak into a field
+    // constraint. `EXTRA_TAG_SPECS` currently has no constraint entries, but
+    // we keep the `spec.category === "constraint"` check for future-proofing.
+    capabilities: spec.category === "constraint" ? capabilitiesForValueKind(valueKind) : [],
     completionDetail: spec.completionDetail,
     hoverSummary: spec.hoverSummary,
     hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),
@@ -875,7 +881,10 @@ function buildExtensionMetadataTagDefinition(
     allowDuplicates: false,
     category: "annotation",
     placements,
-    capabilities: capabilitiesForValueKind(valueKind),
+    // Extension metadata tags are always annotations — they attach a typed
+    // value to a declaration without constraining the declaration's type.
+    // See `buildExtraTagDefinition` for the rationale.
+    capabilities: [],
     completionDetail: `Extension metadata tag from ${extensionId}`,
     hoverSummary: `Extension-defined metadata tag from \`${extensionId}\`.`,
     hoverMarkdown: [
