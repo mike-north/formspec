@@ -55,10 +55,22 @@ describe("tag-registry", () => {
   });
 
   it("annotation tags have empty capabilities regardless of value kind", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/metadata",
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "externalName",
+          tagName: "ExternalName",
+          declarationKinds: ["field"],
+        }),
+      ],
+    });
+
     // displayName takes a string value but must not be restricted to string fields
     expect(getTagDefinition("displayName")?.capabilities).toEqual([]);
     expect(getTagDefinition("apiName")?.capabilities).toEqual([]);
     expect(getTagDefinition("description")?.capabilities).toEqual([]);
+    expect(getTagDefinition("externalName", [extension])?.capabilities).toEqual([]);
   });
 
   it("normalizes extension metadata tag registrations to canonical names", () => {

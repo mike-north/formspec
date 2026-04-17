@@ -875,7 +875,7 @@ function buildExtensionMetadataTagDefinition(
     allowDuplicates: false,
     category: "annotation",
     placements,
-    capabilities: capabilitiesForValueKind(valueKind),
+    capabilities: [],
     completionDetail: `Extension metadata tag from ${extensionId}`,
     hoverSummary: `Extension-defined metadata tag from \`${extensionId}\`.`,
     hoverMarkdown: [
