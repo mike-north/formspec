@@ -6,7 +6,7 @@ import type {
   TypeDefinition,
   TypeNode,
 } from "@formspec/core/internals";
-import type { ResolvedMetadata } from "@formspec/core";
+import type { MetadataPolicyInput, ResolvedMetadata } from "@formspec/core";
 import type { UISchema } from "../ui-schema/types.js";
 import type { StaticBuildContext } from "../static-build.js";
 import {
@@ -20,6 +20,7 @@ import {
 } from "../analyzer/class-analyzer.js";
 import {
   generateClassSchemas,
+  resolveStaticOptions,
   type ClassSchemas,
   type StaticSchemaGenerationOptions,
 } from "./class-schema.js";
@@ -276,11 +277,10 @@ function enforceRequiredMetadata(
   metadata: ResolvedMetadata | undefined,
   declarationKind: "type" | "field" | "method",
   logicalName: string,
-  options: ResolveDeclarationMetadataOptions
+  metadataPolicy: MetadataPolicyInput | undefined
 ): void {
   const declarationPolicy = getDeclarationMetadataPolicy(
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    normalizeMetadataPolicy(options.metadata),
+    normalizeMetadataPolicy(metadataPolicy),
     declarationKind
   );
 
@@ -347,7 +347,7 @@ function describeRootType(
 function toStandaloneJsonSchema(
   root: RootTypeDescriptor,
   typeRegistry: Record<string, TypeDefinition>,
-  options: StaticSchemaGenerationOptions | undefined
+  resolved: ReturnType<typeof resolveStaticOptions> | undefined
 ): JsonSchema2020 {
   const syntheticFieldMetadata = omitApiName(root.metadata);
   const syntheticField: FieldNode = {
@@ -379,20 +379,16 @@ function toStandaloneJsonSchema(
       provenance: syntheticField.provenance,
     },
     {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      policy: normalizeMetadataPolicy(options?.metadata),
+      policy: normalizeMetadataPolicy(resolved?.metadata),
       surface: "tsdoc",
       rootLogicalName: root.name,
     }
   );
 
   const schema = generateJsonSchemaFromIR(ir, {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    extensionRegistry: options?.extensionRegistry,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    enumSerialization: options?.enumSerialization,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    vendorPrefix: options?.vendorPrefix,
+    extensionRegistry: resolved?.extensionRegistry,
+    enumSerialization: resolved?.enumSerialization,
+    vendorPrefix: resolved?.vendorPrefix,
   });
 
   const result = schema.properties?.["__result"];
@@ -417,21 +413,17 @@ function toStandaloneJsonSchema(
 function generateSchemasFromAnalysis(
   analysis: IRClassAnalysis,
   filePath: string,
-  options: StaticSchemaGenerationOptions | undefined
+  resolved: ReturnType<typeof resolveStaticOptions> | undefined
 ): DiscoveredTypeSchemas {
   return toDiscoveredTypeSchemas(
     generateClassSchemas(
       analysis,
       { file: filePath },
       {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        extensionRegistry: options?.extensionRegistry,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        enumSerialization: options?.enumSerialization,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        metadata: options?.metadata,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        vendorPrefix: options?.vendorPrefix,
+        extensionRegistry: resolved?.extensionRegistry,
+        enumSerialization: resolved?.enumSerialization,
+        metadata: resolved?.metadata,
+        vendorPrefix: resolved?.vendorPrefix,
       }
     ),
     analysis.metadata
@@ -443,6 +435,7 @@ function generateSchemasFromResolvedType(
   skipNamedDeclaration = false,
   rootOverride?: RootTypeOverride
 ): DiscoveredTypeSchemas {
+  const resolved = resolveStaticOptions(options);
   const namedDeclaration =
     skipNamedDeclaration || hasConcreteTypeArguments(options.type, options.context.checker)
       ? undefined
@@ -465,10 +458,8 @@ function generateSchemasFromResolvedType(
     typeRegistry,
     new Set<ts.Type>(),
     options.sourceNode,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    createAnalyzerMetadataPolicy(options.metadata, options.discriminator),
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    options.extensionRegistry,
+    createAnalyzerMetadataPolicy(resolved.metadata, options.discriminator),
+    resolved.extensionRegistry,
     diagnostics
   );
 
@@ -504,12 +495,12 @@ function generateSchemasFromResolvedType(
         root.annotations
       ),
       filePath,
-      options
+      resolved
     );
   }
 
   return {
-    jsonSchema: toStandaloneJsonSchema(root, typeRegistry, options),
+    jsonSchema: toStandaloneJsonSchema(root, typeRegistry, resolved),
     uiSchema: null,
     ...(root.metadata !== undefined && { resolvedMetadata: root.metadata }),
   };
@@ -529,6 +520,7 @@ export function generateSchemasFromDeclaration(
   options: GenerateSchemasFromDeclarationOptions
 ): DiscoveredTypeSchemas {
   const filePath = options.declaration.getSourceFile().fileName;
+  const resolved = resolveStaticOptions(options);
 
   if (ts.isClassDeclaration(options.declaration)) {
     return generateSchemasFromAnalysis(
@@ -536,14 +528,12 @@ export function generateSchemasFromDeclaration(
         options.declaration,
         options.context.checker,
         filePath,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        options.extensionRegistry,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        options.metadata,
+        resolved.extensionRegistry,
+        resolved.metadata,
         options.discriminator
       ),
       filePath,
-      options
+      resolved
     );
   }
 
@@ -553,14 +543,12 @@ export function generateSchemasFromDeclaration(
         options.declaration,
         options.context.checker,
         filePath,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        options.extensionRegistry,
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-        options.metadata,
+        resolved.extensionRegistry,
+        resolved.metadata,
         options.discriminator
       ),
       filePath,
-      options
+      resolved
     );
   }
 
@@ -569,23 +557,19 @@ export function generateSchemasFromDeclaration(
       options.declaration,
       options.context.checker,
       filePath,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      options.extensionRegistry,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      options.metadata,
+      resolved.extensionRegistry,
+      resolved.metadata,
       options.discriminator
     );
     if (analyzedAlias.ok) {
-      return generateSchemasFromAnalysis(analyzedAlias.analysis, filePath, options);
+      return generateSchemasFromAnalysis(analyzedAlias.analysis, filePath, resolved);
     }
     const aliasRootInfo = analyzeDeclarationRootInfo(
       options.declaration,
       options.context.checker,
       filePath,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      options.extensionRegistry,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      options.metadata
+      resolved.extensionRegistry,
+      resolved.metadata
     );
     if (aliasRootInfo.diagnostics.length > 0) {
       const diagnosticDetails = aliasRootInfo.diagnostics
@@ -692,13 +676,12 @@ export function generateSchemasFromReturnType(
 export function resolveDeclarationMetadata(
   options: ResolveDeclarationMetadataOptions
 ): ResolvedMetadata | undefined {
+  const resolved = resolveStaticOptions(options);
   const analysis = analyzeMetadataForNodeWithChecker({
     checker: options.context.checker,
     node: options.declaration,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    metadata: options.metadata,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    extensions: options.extensionRegistry?.extensions,
+    metadata: resolved.metadata,
+    extensions: resolved.extensionRegistry?.extensions,
     buildContext: options.context,
   });
   if (analysis === null) {
@@ -707,7 +690,7 @@ export function resolveDeclarationMetadata(
 
   const metadata = analysis.resolvedMetadata;
 
-  enforceRequiredMetadata(metadata, analysis.declarationKind, analysis.logicalName, options);
+  enforceRequiredMetadata(metadata, analysis.declarationKind, analysis.logicalName, resolved.metadata);
   return metadata;
 }
 

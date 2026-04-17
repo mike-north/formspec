@@ -717,6 +717,44 @@ function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegis
   return "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function";
 }
 
+/**
+ * Resolves the effective extension registry, vendor prefix, enum serialization,
+ * and metadata from a `StaticSchemaGenerationOptions` object.
+ *
+ * Prefers explicit deprecated fields when present, falling back to the
+ * `config` object. This is the migration bridge — once all callers use
+ * `config`, the deprecated field reads can be removed.
+ *
+ * @internal
+ */
+export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
+  extensionRegistry: ExtensionRegistry | undefined;
+  vendorPrefix: string | undefined;
+  enumSerialization: "enum" | "oneOf" | undefined;
+  metadata: MetadataPolicyInput | undefined;
+} {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+  const legacyRegistry = options.extensionRegistry;
+
+  // Only construct the config registry if the deprecated field is absent.
+  // This avoids throwing on invalid config.extensions when the caller
+  // explicitly provided extensionRegistry (which takes precedence).
+  const configRegistry =
+    legacyRegistry === undefined && options.config?.extensions !== undefined
+      ? createExtensionRegistry(options.config.extensions)
+      : undefined;
+
+  return {
+    extensionRegistry: legacyRegistry ?? configRegistry,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    vendorPrefix: options.vendorPrefix ?? options.config?.vendorPrefix,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    enumSerialization: options.enumSerialization ?? options.config?.enumSerialization,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
+    metadata: options.metadata ?? options.config?.metadata,
+  };
+}
+
 function resolveOptions(options: StaticSchemaGenerationOptions): {
   extensionRegistry: MutableExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
