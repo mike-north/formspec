@@ -388,6 +388,94 @@ describe("static build context", () => {
     });
   });
 
+  // Regression: resolveStaticOptions must read metadata from config.metadata
+  // (not only from the deprecated top-level metadata field).
+  it("generates declaration schemas using metadata policy from config (config-only path)", () => {
+    const context = createStaticBuildContext(entryFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentSubmitInput");
+    if (declaration === null) {
+      throw new Error("PaymentSubmitInput export not found");
+    }
+
+    // Pass metadata exclusively via config — the deprecated top-level metadata
+    // field is intentionally absent here to exercise the config fallback in
+    // resolveStaticOptions.
+    const schemas = generateSchemasFromDeclaration({
+      context,
+      declaration,
+      config: {
+        metadata: {
+          field: {
+            apiName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) =>
+                logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+            },
+          },
+        },
+      },
+    });
+
+    // Per the fixture: SubmitInput.amount has explicit @apiName "amount_cents";
+    // SubmitInput.currency has explicit @displayName "Currency" but no @apiName,
+    // so the infer-if-missing policy kicks in and produces "currency".
+    expect(schemas.jsonSchema.title).toBe("Submit Input"); // spec: @displayName on SubmitInput
+    expect(schemas.jsonSchema.properties).toMatchObject({
+      amount_cents: { type: "number" }, // spec: explicit @apiName on amount field
+      currency: { type: "string", title: "Currency" }, // spec: explicit @displayName, inferred apiName
+    });
+    expect(schemas.uiSchema).toMatchObject({
+      type: "VerticalLayout",
+      elements: [
+        { type: "Control", scope: "#/properties/amount_cents" },
+        { type: "Control", scope: "#/properties/currency", label: "Currency" },
+      ],
+    });
+  });
+
+  // Regression: resolveStaticOptions must read metadata from config.metadata
+  // when resolving declaration-level (method) metadata.
+  it("resolves inferred method metadata from config (config-only path)", () => {
+    const context = createStaticBuildContext(targetFixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService export not found");
+    }
+
+    // Pass metadata exclusively via config — the deprecated top-level metadata
+    // field is intentionally absent here to exercise the config fallback in
+    // resolveStaticOptions.
+    const metadata = resolveDeclarationMetadata({
+      context,
+      declaration: getMethod(declaration, "submitAsync"),
+      config: {
+        metadata: {
+          method: {
+            apiName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) =>
+                logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+            },
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) =>
+                logicalName
+                  .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                  .replace(/^./, (char) => char.toUpperCase()),
+            },
+          },
+        },
+      },
+    });
+
+    // submitAsync has no explicit @apiName or @displayName, so both are inferred
+    // by the policy supplied via config.
+    expect(metadata).toEqual({
+      apiName: { value: "submit_async", source: "inferred" },
+      displayName: { value: "Submit Async", source: "inferred" },
+    });
+  });
+
   it("does not infer metadata for computed method names", () => {
     const context = createStaticBuildContext(targetFixturePath);
     const declaration = resolveModuleExportDeclaration(context, "PaymentService");

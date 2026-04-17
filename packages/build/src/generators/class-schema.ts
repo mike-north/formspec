@@ -733,13 +733,16 @@ export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
   enumSerialization: "enum" | "oneOf" | undefined;
   metadata: MetadataPolicyInput | undefined;
 } {
-  const configRegistry =
-    options.config?.extensions !== undefined
-      ? createExtensionRegistry(options.config.extensions)
-      : undefined;
-
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
   const legacyRegistry = options.extensionRegistry;
+
+  // Only construct the config registry if the deprecated field is absent.
+  // This avoids throwing on invalid config.extensions when the caller
+  // explicitly provided extensionRegistry (which takes precedence).
+  const configRegistry =
+    legacyRegistry === undefined && options.config?.extensions !== undefined
+      ? createExtensionRegistry(options.config.extensions)
+      : undefined;
 
   return {
     extensionRegistry: legacyRegistry ?? configRegistry,
