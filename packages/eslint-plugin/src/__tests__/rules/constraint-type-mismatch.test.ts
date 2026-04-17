@@ -448,6 +448,23 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
       `,
     },
 
+    // @displayName on the real `@formspec/core` Integer brand — a
+    // `number` intersected with a symbol-keyed brand property. Mirrors
+    // `type Integer = number & { readonly [__integerBrand]: true }`.
+    // This is exactly the shape that would previously have been rejected
+    // under `capabilities: ["string-like"]` via `getFieldTypeCategory`
+    // returning "number" rather than "string".
+    {
+      code: `
+        declare const __integerBrand: unique symbol;
+        type Integer = number & { readonly [__integerBrand]: true };
+        class Form {
+          /** @displayName Item Count */
+          count!: Integer;
+        }
+      `,
+    },
+
     // @order (annotation / signedInteger): order is a UI ordering hint —
     // should work on any field regardless of type
     {
