@@ -54,6 +54,13 @@ describe("tag-registry", () => {
     expect(getTagDefinition("ApiName")?.canonicalName).toBe("apiName");
   });
 
+  it("annotation tags have empty capabilities regardless of value kind", () => {
+    // displayName takes a string value but must not be restricted to string fields
+    expect(getTagDefinition("displayName")?.capabilities).toEqual([]);
+    expect(getTagDefinition("apiName")?.capabilities).toEqual([]);
+    expect(getTagDefinition("description")?.capabilities).toEqual([]);
+  });
+
   it("normalizes extension metadata tag registrations to canonical names", () => {
     const extension = defineExtension({
       extensionId: "x-example/metadata",

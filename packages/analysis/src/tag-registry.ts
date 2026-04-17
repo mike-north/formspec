@@ -799,7 +799,7 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     allowDuplicates: spec.allowDuplicates,
     category: spec.category,
     placements: spec.placements,
-    capabilities: capabilitiesForValueKind(valueKind),
+    capabilities: spec.category === "annotation" ? [] : capabilitiesForValueKind(valueKind),
     completionDetail: spec.completionDetail,
     hoverSummary: spec.hoverSummary,
     hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),

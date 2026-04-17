@@ -331,6 +331,26 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
     },
+    // @displayName with a value on a non-string field — annotation tags must not
+    // be constrained by the field's type (regression: displayName was in
+    // STRING_VALUE_TAGS, so buildExtraTagDefinition gave it string-like capability)
+    {
+      code: `
+        type MonetaryAmount = { amount: number; currency: string };
+        class Form {
+          /** @displayName Maximum Credit Amount */
+          maximumCreditAmount!: MonetaryAmount;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @displayName Active Flag */
+          isActive!: boolean;
+        }
+      `,
+    },
 
     // -------------------------------------------------------------------------
     // Path-targeted constraints — skipped entirely regardless of field type
