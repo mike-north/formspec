@@ -1,5 +1,14 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.46
+
+### Patch Changes
+
+- [#276](https://github.com/mike-north/formspec/pull/276) [`f15fc69`](https://github.com/mike-north/formspec/commit/f15fc69d0d84e253fec6ade8f0d1f040a8e6e862) Thanks [@mike-north](https://github.com/mike-north)! - Export resolveStaticOptions and migrate discovered-schema functions to resolve config internally. Low-level functions (generateSchemasFromDeclaration, generateSchemasFromType, etc.) now support the `config` field on StaticSchemaGenerationOptions, eliminating the need to pass deprecated individual fields.
+
+- Updated dependencies [[`f15fc69`](https://github.com/mike-north/formspec/commit/f15fc69d0d84e253fec6ade8f0d1f040a8e6e862)]:
+  - @formspec/build@0.1.0-alpha.46
+
 ## 0.1.0-alpha.45
 
 ### Patch Changes
