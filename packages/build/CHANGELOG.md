@@ -1,5 +1,11 @@
 # @formspec/build
 
+## 0.1.0-alpha.48
+
+### Patch Changes
+
+- [#285](https://github.com/mike-north/formspec/pull/285) [`1f30e00`](https://github.com/mike-north/formspec/commit/1f30e0091e6cfec2014dca84554b79b40310051b) Thanks [@mike-north](https://github.com/mike-north)! - Fix toStandaloneJsonSchema failing when metadata policy renames the synthetic \_\_result field
+
 ## 0.1.0-alpha.47
 
 ### Patch Changes
