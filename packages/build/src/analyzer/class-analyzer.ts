@@ -41,7 +41,6 @@ import {
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
 import {
-  collectBrandIdentifiers,
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
   isIntegerBrandedType,

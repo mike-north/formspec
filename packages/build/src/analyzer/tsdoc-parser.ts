@@ -699,7 +699,6 @@ function buildCompilerBackedConstraintDiagnostics(
   const hasBroadening = ((): boolean => {
     if (target === null) {
       if (
-        subjectType !== undefined &&
         isIntegerBrandedType(subjectType) &&
         definition.capabilities.includes("numeric-comparable")
       ) {
