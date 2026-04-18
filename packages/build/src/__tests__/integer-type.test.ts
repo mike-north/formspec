@@ -136,6 +136,17 @@ const IMPORTING_FIXTURE_SOURCE = [
   "  /** @pattern ^[0-9]+$ */",
   "  code: MultiBrandedInteger;",
   "}",
+  "",
+  "export interface CrossFileMixedConfig {",
+  "  /** @minimum 2000 */",
+  "  year: MultiBrandedInteger;",
+  "",
+  "  /**",
+  "   * @minLength 17",
+  "   * @maxLength 17",
+  "   */",
+  "  vin: string;",
+  "}",
 ].join("\n");
 
 beforeAll(() => {
@@ -495,6 +506,34 @@ describe("builtin Integer type", () => {
           typeName: "CrossFilePatternConfig",
         })
       ).toThrow(/TYPE_MISMATCH/);
+    });
+
+    it("does not poison sibling string fields with imported integer type constraints", () => {
+      // Regression: when an interface has both an imported Integer field and a
+      // string field, buildSupportingDeclarations filters out the entire
+      // interface (it references an imported name). The synthetic checker then
+      // can't resolve the string field's type, causing @minLength/@maxLength
+      // to produce spurious TYPE_MISMATCH errors.
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileMixedConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      // Integer field constraints work
+      const yearSchema = properties["year"] as Record<string, unknown>;
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+      });
+
+      // String field constraints must also work — not poisoned by the Integer import
+      const vinSchema = properties["vin"] as Record<string, unknown>;
+      expect(vinSchema).toMatchObject({
+        type: "string",
+        minLength: 17,
+        maxLength: 17,
+      });
     });
   });
 });
