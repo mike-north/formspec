@@ -355,11 +355,57 @@ function supportsConstraintCapability(
 const MAX_HINT_CANDIDATES = 5;
 const MAX_HINT_DEPTH = 3;
 
+function stripHintNullishUnion(type: ts.Type): ts.Type {
+  if (!type.isUnion()) {
+    return type;
+  }
+  const nonNullish = type.types.filter(
+    (member) => (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0
+  );
+  if (nonNullish.length === 1 && nonNullish[0] !== undefined) {
+    return nonNullish[0];
+  }
+  return type;
+}
+
+function isCallableType(type: ts.Type): boolean {
+  return type.getCallSignatures().length > 0 || type.getConstructSignatures().length > 0;
+}
+
+function isUserEmittableHintProperty(
+  property: ts.Symbol,
+  declaration: ts.Declaration
+): boolean {
+  if (property.name.startsWith("__")) {
+    return false;
+  }
+  if ("name" in declaration && declaration.name !== undefined) {
+    const name = declaration.name as ts.PropertyName;
+    if (ts.isComputedPropertyName(name) || ts.isPrivateIdentifier(name)) {
+      return false;
+    }
+    if (
+      !ts.isIdentifier(name) &&
+      !ts.isStringLiteral(name) &&
+      !ts.isNumericLiteral(name)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Collects user-declared subfields whose type satisfies the constraint
  * `capability`. Only descends into object-like types — never traverses into
  * primitives' intrinsic properties (e.g. would not surface `string.length`
- * on a `string` subfield).
+ * on a `string` subfield), into function/call-signature types (which would
+ * surface `Function.prototype` members like `length`, `name`, `apply`), or
+ * through synthetic property names like `__brand` / computed / private ones.
+ * Nullish unions are stripped so `Foo | null` can still surface candidates
+ * declared on `Foo`. Terminal matches use `supportsConstraintCapability` so
+ * the hint aligns with the capability rules used by the TYPE_MISMATCH
+ * diagnostic (for example, `string[]` satisfies `string-like`).
  */
 function collectObjectSubfieldCandidates(
   type: ts.Type,
@@ -371,22 +417,33 @@ function collectObjectSubfieldCandidates(
     if (depth > MAX_HINT_DEPTH) {
       return;
     }
-    if (!hasTypeSemanticCapability(current, checker, "object-like")) {
+    const stripped = stripHintNullishUnion(current);
+    if (isCallableType(stripped)) {
       return;
     }
-    for (const property of current.getProperties()) {
+    if (!hasTypeSemanticCapability(stripped, checker, "object-like")) {
+      return;
+    }
+    for (const property of stripped.getProperties()) {
       const declaration = property.valueDeclaration ?? property.declarations?.[0];
       if (declaration === undefined) {
         continue;
       }
+      if (!isUserEmittableHintProperty(property, declaration)) {
+        continue;
+      }
       const propertyType = checker.getTypeOfSymbolAtLocation(property, declaration);
       const path = [...prefix, property.name];
-      if (hasTypeSemanticCapability(propertyType, checker, capability)) {
+      if (supportsConstraintCapability(propertyType, checker, capability)) {
         out.push(path.join("."));
         continue;
       }
-      if (hasTypeSemanticCapability(propertyType, checker, "object-like")) {
-        visit(propertyType, path, depth + 1);
+      const strippedPropertyType = stripHintNullishUnion(propertyType);
+      if (
+        !isCallableType(strippedPropertyType) &&
+        hasTypeSemanticCapability(strippedPropertyType, checker, "object-like")
+      ) {
+        visit(strippedPropertyType, path, depth + 1);
       }
     }
   };

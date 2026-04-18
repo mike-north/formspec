@@ -139,3 +139,34 @@ export class HintlessNoCandidatesForm {
   /** @minimum 0 */
   info!: LabeledOnly;
 }
+
+// Nullable union: hint should still surface `value` because the non-null
+// member (PriceAmount) has a matching subfield.
+export class HintedNullablePriceForm {
+  /** @exclusiveMinimum 0 */
+  totalPrice!: PriceAmount | null;
+}
+
+// `@pattern` is a string-like constraint. `tags: string[]` satisfies
+// `string-like` via `supportsConstraintCapability`'s array-element unwrap,
+// so the hint should list it; `count: number` should not be listed.
+interface TaggedItem {
+  tags: string[];
+  count: number;
+}
+export class HintedStringLikeArrayCandidateForm {
+  /** @pattern ^[a-z]+$ */
+  item!: TaggedItem;
+}
+
+// Object with a method: the method's type carries intrinsic `Function`
+// members (`length`, `name`, `apply`, …). The hint must not recurse into
+// callable types, so only the user-declared `value` subfield should appear.
+interface WithMethod {
+  helper(): number;
+  value: number;
+}
+export class HintedFiltersCallableMembersForm {
+  /** @minimum 0 */
+  widget!: WithMethod;
+}
