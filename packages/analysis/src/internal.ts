@@ -141,7 +141,7 @@ export {
   type FormSpecSemanticCapability,
   type ResolvedPathTargetType,
 } from "./ts-binding.js";
-export { TAGS_REQUIRING_RAW_TEXT } from "./tsdoc-config.js";
+export { TAGS_REQUIRING_RAW_TEXT, getOrCreateTSDocParser } from "./tsdoc-config.js";
 export { choosePreferredPayloadText } from "./tsdoc-text-extraction.js";
 export type {
   CheckNarrowSyntheticTagApplicabilitiesOptions,

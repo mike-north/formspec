@@ -20,7 +20,10 @@ export interface ScannedTag {
   readonly comment: TSESTree.Comment;
 }
 
-function getLeadingJSDocComments(node: TSESTree.Node, sourceCode: SourceCode): TSESTree.Comment[] {
+export function getLeadingJSDocComments(
+  node: TSESTree.Node,
+  sourceCode: SourceCode
+): TSESTree.Comment[] {
   const comments = [...sourceCode.getCommentsBefore(node)];
   if (node.type === AST_NODE_TYPES.PropertyDefinition && node.decorators.length > 0) {
     const keyComments = sourceCode.getCommentsBefore(node.key);
