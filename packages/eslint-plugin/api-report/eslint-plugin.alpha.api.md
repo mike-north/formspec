@@ -165,6 +165,7 @@ const plugin: {
         };
         readonly "tag-recognition/no-disabled-tags": NamedRuleModule<"disabledTag", NoDisabledTagsOptions>;
         readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<"markdownFormattingForbidden", NoMarkdownFormattingOptions>;
+        readonly "tag-recognition/tsdoc-comment-syntax": NamedRuleModule<"tsdocSyntax", []>;
         readonly "value-parsing/valid-numeric-value": TSESLint.RuleModule<"invalidNumericValue", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
@@ -234,6 +235,7 @@ export const rules: {
     };
     readonly "tag-recognition/no-disabled-tags": NamedRuleModule<"disabledTag", NoDisabledTagsOptions>;
     readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<"markdownFormattingForbidden", NoMarkdownFormattingOptions>;
+    readonly "tag-recognition/tsdoc-comment-syntax": NamedRuleModule<"tsdocSyntax", []>;
     readonly "value-parsing/valid-numeric-value": TSESLint.RuleModule<"invalidNumericValue", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
@@ -285,6 +287,9 @@ export const rules: {
 export const tagTypeCheck: ESLintUtils.RuleModule<"typeMismatch", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export const tsdocCommentSyntax: NamedRuleModule<"tsdocSyntax", []>;
 
 // @public
 export const validIntegerValue: ESLintUtils.RuleModule<"invalidIntegerValue", [], unknown, ESLintUtils.RuleListener> & {

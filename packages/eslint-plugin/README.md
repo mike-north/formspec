@@ -64,6 +64,7 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 - `tag-recognition/require-tag-arguments`
 - `tag-recognition/no-disabled-tags`
 - `tag-recognition/no-markdown-formatting`
+- `tag-recognition/tsdoc-comment-syntax`
 
 ### Value Parsing
 
@@ -135,6 +136,39 @@ export const rule = ESLintUtils.RuleCreator(() => "")({
 });
 ```
 
+## Replacing `tsdoc/syntax`
+
+If you use `eslint-plugin-tsdoc`'s `tsdoc/syntax` rule, you can replace it with
+`formspec/tag-recognition/tsdoc-comment-syntax` for files containing FormSpec constraint tags.
+
+The `tsdoc/syntax` rule produces false positives on FormSpec raw-text tag payloads:
+
+- `@pattern` values containing `{` `}` (regex quantifiers) or `@` (email patterns)
+- `@enumOptions` and `@defaultValue` values containing JSON object literals
+
+The `formspec/tag-recognition/tsdoc-comment-syntax` rule provides the same TSDoc syntax
+validation but understands which FormSpec tags carry raw-text payloads and suppresses
+diagnostics whose source range lies inside those payloads.
+
+**Recommended migration:**
+
+```js
+// eslint.config.js
+import formspec from "@formspec/eslint-plugin";
+
+export default [
+  ...formspec.configs.recommended,
+  {
+    rules: {
+      // Disable the tsdoc plugin's rule for FormSpec-annotated files;
+      // formspec/tag-recognition/tsdoc-comment-syntax (enabled by recommended)
+      // provides equivalent coverage without the false positives.
+      "tsdoc/syntax": "off",
+    },
+  },
+];
+```
+
 ## Rules
 
 <!-- begin auto-generated rules list -->
@@ -155,6 +189,7 @@ export const rule = ESLintUtils.RuleCreator(() => "")({
 | [tag-recognition/no-markdown-formatting](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/no-markdown-formatting.md)                       | Forbids Markdown formatting in configured FormSpec tag values                                      | 🔧  |
 | [tag-recognition/no-unknown-tags](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/no-unknown-tags.md)                                     | Reports FormSpec tags that are not part of the specification                                       |     |
 | [tag-recognition/require-tag-arguments](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/require-tag-arguments.md)                         | Requires arguments for FormSpec tags that need values                                              |     |
+| [tag-recognition/tsdoc-comment-syntax](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/tsdoc-comment-syntax.md)                           | Validates TSDoc comment syntax, suppressing false positives on FormSpec raw-text tag payloads      |     |
 | [target-resolution/no-member-target-on-object](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/no-member-target-on-object.md)           | Disallows member-target syntax on non-string-literal-union fields                                  |     |
 | [target-resolution/no-unsupported-targeting](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/no-unsupported-targeting.md)               | Disallows path or member target syntax on tags that do not support it                              |     |
 | [target-resolution/valid-member-target](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/valid-member-target.md)                         | Validates member-target references against string literal union fields                             |     |

@@ -43,6 +43,7 @@ import {
   noContradictoryRules,
   validDiscriminator,
   noDoubleUnderscoreFields,
+  tsdocCommentSyntax as tsdocCommentSyntaxRule,
 } from "./rules/index.js";
 import {
   noContradictions as noContradictionsRule,
@@ -118,6 +119,17 @@ export const noMarkdownFormatting: NamedRuleModule<
 > = noMarkdownFormattingRule;
 
 /**
+ * Validates TSDoc comment syntax using FormSpec's TSDoc configuration,
+ * suppressing false positives on raw-text FormSpec tag payloads.
+ *
+ * Use this rule in place of `tsdoc/syntax` from `eslint-plugin-tsdoc` for
+ * FormSpec-annotated files.
+ *
+ * @public
+ */
+export const tsdocCommentSyntax: NamedRuleModule<"tsdocSyntax", []> = tsdocCommentSyntaxRule;
+
+/**
  * Validates allowed field types against project constraints.
  *
  * @public
@@ -146,6 +158,7 @@ export const rules = {
   "tag-recognition/require-tag-arguments": requireTagArguments,
   "tag-recognition/no-disabled-tags": noDisabledTags,
   "tag-recognition/no-markdown-formatting": noMarkdownFormatting,
+  "tag-recognition/tsdoc-comment-syntax": tsdocCommentSyntax,
   "value-parsing/valid-numeric-value": validNumericValue,
   "value-parsing/valid-integer-value": validIntegerValue,
   "value-parsing/valid-regex-pattern": validRegexPattern,
@@ -203,6 +216,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/tag-recognition/no-unknown-tags": "warn",
       "formspec/tag-recognition/require-tag-arguments": "error",
       "formspec/tag-recognition/no-disabled-tags": "warn",
+      "formspec/tag-recognition/tsdoc-comment-syntax": "error",
       "formspec/value-parsing/valid-numeric-value": "error",
       "formspec/value-parsing/valid-integer-value": "error",
       "formspec/value-parsing/valid-regex-pattern": "error",
@@ -239,6 +253,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/tag-recognition/no-unknown-tags": "error",
       "formspec/tag-recognition/require-tag-arguments": "error",
       "formspec/tag-recognition/no-disabled-tags": "error",
+      "formspec/tag-recognition/tsdoc-comment-syntax": "error",
       "formspec/value-parsing/valid-numeric-value": "error",
       "formspec/value-parsing/valid-integer-value": "error",
       "formspec/value-parsing/valid-regex-pattern": "error",
