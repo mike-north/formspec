@@ -44,6 +44,7 @@ import {
   collectBrandIdentifiers,
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
+  isIntegerBrandedType,
 } from "../extensions/ts-type-utils.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
@@ -63,28 +64,6 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
-/**
- * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
- *
- * Integer-branded types are intersections of `number` with a brand object
- * containing the `__integerBrand` unique symbol.
- *
- * Extension-registered custom types (name-, brand-, or symbol-based) are
- * resolved separately via `resolveCustomTypeFromTsType` in
- * `extensions/resolve-custom-type.ts`.
- */
-function isIntegerBrandedType(type: ts.Type): boolean {
-  if (!type.isIntersection()) {
-    return false;
-  }
-
-  const hasNumberBase = type.types.some((member) => !!(member.flags & ts.TypeFlags.Number));
-  if (!hasNumberBase) {
-    return false;
-  }
-
-  return collectBrandIdentifiers(type).includes("__integerBrand");
-}
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
   if (ts.isParenthesizedTypeNode(typeNode)) {
