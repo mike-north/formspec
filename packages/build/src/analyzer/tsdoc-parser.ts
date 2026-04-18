@@ -173,55 +173,56 @@ function isNonReferenceIdentifier(node: ts.Identifier): boolean {
   return false;
 }
 
-function statementReferencesImportedName(
-  statement: ts.Statement,
+function astReferencesImportedName(
+  root: ts.Node,
   importedNames: ReadonlySet<string>
 ): boolean {
   if (importedNames.size === 0) {
     return false;
   }
 
-  let referencesImportedName = false;
-
-  const visit = (node: ts.Node): void => {
-    if (referencesImportedName) {
-      return;
-    }
-
-    if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
-      referencesImportedName = true;
-      return;
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(statement);
-  return referencesImportedName;
-}
-
-function typeAnnotationReferencesImport(
-  typeAnnotation: ts.TypeNode,
-  importedNames: ReadonlySet<string>
-): boolean {
   let found = false;
+
   const visit = (node: ts.Node): void => {
     if (found) return;
+
     if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
       found = true;
       return;
     }
+
     ts.forEachChild(node, visit);
   };
-  visit(typeAnnotation);
+
+  visit(root);
   return found;
 }
 
 /**
- * Rewrites an interface declaration so that members whose type annotations
- * reference an imported name have their type replaced with `unknown`. This
- * preserves the declaration in the synthetic program so the checker can
- * resolve sibling members that use non-imported types.
+ * Returns the member list for declarations that have object-like members:
+ * interface declarations and type alias declarations with a type-literal body.
+ * Returns `undefined` for all other node shapes.
+ */
+function getObjectMembers(
+  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+): ts.NodeArray<ts.TypeElement> | undefined {
+  if (ts.isInterfaceDeclaration(statement)) {
+    return statement.members;
+  }
+  if (ts.isTypeLiteralNode(statement.type)) {
+    return statement.type.members;
+  }
+  return undefined;
+}
+
+/**
+ * Rewrites a declaration so that members whose type annotations reference an
+ * imported name have their type replaced with `unknown`. This preserves the
+ * declaration in the synthetic program so the checker can resolve sibling
+ * members that use non-imported types.
+ *
+ * Handles both interface declarations and type alias declarations whose body
+ * is a type literal (e.g. `type Foo = { bar: ImportedType; baz: string }`).
  *
  * Without this, an interface like `{ year: Integer; vin: string }` where
  * `Integer` is imported would be entirely excluded from supporting
@@ -230,18 +231,23 @@ function typeAnnotationReferencesImport(
  * `@minLength`.
  */
 function rewriteImportedMemberTypes(
-  statement: ts.InterfaceDeclaration,
+  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   sourceFile: ts.SourceFile,
   importedNames: ReadonlySet<string>
 ): string {
+  const members = getObjectMembers(statement);
+  if (members === undefined) {
+    return statement.getText(sourceFile);
+  }
+
   const replacements: { start: number; end: number }[] = [];
 
-  for (const member of statement.members) {
+  for (const member of members) {
     const typeAnnotation =
       (ts.isPropertySignature(member) || ts.isPropertyDeclaration(member)) ? member.type : undefined;
     if (typeAnnotation === undefined) continue;
 
-    if (typeAnnotationReferencesImport(typeAnnotation, importedNames)) {
+    if (astReferencesImportedName(typeAnnotation, importedNames)) {
       replacements.push({
         start: typeAnnotation.getStart(sourceFile),
         end: typeAnnotation.getEnd(),
@@ -282,15 +288,16 @@ function buildSupportingDeclarations(
     if (ts.isImportEqualsDeclaration(statement)) continue;
     if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) continue;
 
-    if (!statementReferencesImportedName(statement, importedNamesToSkip)) {
+    if (!astReferencesImportedName(statement, importedNamesToSkip)) {
       result.push(statement.getText(sourceFile));
       continue;
     }
 
-    // For interface declarations that reference imports, rewrite imported
-    // member types to `unknown` instead of dropping the whole declaration.
-    // Other statement types that reference imports are still excluded.
-    if (ts.isInterfaceDeclaration(statement)) {
+    // For interface and type-literal-bodied type alias declarations that
+    // reference imports, rewrite imported member types to `unknown` instead
+    // of dropping the whole declaration. Other statement types that reference
+    // imports are still excluded.
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
       result.push(rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip));
     }
   }

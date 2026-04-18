@@ -147,6 +147,17 @@ const IMPORTING_FIXTURE_SOURCE = [
   "   */",
   "  vin: string;",
   "}",
+  "",
+  "export type CrossFileMixedTypeAlias = {",
+  "  /** @minimum 2000 */",
+  "  year: MultiBrandedInteger;",
+  "",
+  "  /**",
+  "   * @minLength 17",
+  "   * @maxLength 17",
+  "   */",
+  "  vin: string;",
+  "};",
 ].join("\n");
 
 beforeAll(() => {
@@ -528,6 +539,28 @@ describe("builtin Integer type", () => {
       });
 
       // String field constraints must also work — not poisoned by the Integer import
+      const vinSchema = properties["vin"] as Record<string, unknown>;
+      expect(vinSchema).toMatchObject({
+        type: "string",
+        minLength: 17,
+        maxLength: 17,
+      });
+    });
+
+    it("does not poison sibling string fields in type alias declarations", () => {
+      // Same poisoning bug as interfaces, but with `type Foo = { ... }` syntax.
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileMixedTypeAlias",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      const yearSchema = properties["year"] as Record<string, unknown>;
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+      });
+
       const vinSchema = properties["vin"] as Record<string, unknown>;
       expect(vinSchema).toMatchObject({
         type: "string",
