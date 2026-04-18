@@ -506,4 +506,54 @@ describe("static build context", () => {
 
     expect(metadata).toBeUndefined();
   });
+
+  it("generateSchemasFromType succeeds with a field-renaming metadata policy (regression: __result pinning)", () => {
+    const context = createStaticBuildContextFromProgram(createProgram(), entryFixturePath);
+    const serviceDeclaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (serviceDeclaration === null || !ts.isClassDeclaration(serviceDeclaration)) {
+      throw new Error("PaymentService class not found");
+    }
+    const submitMethod = serviceDeclaration.members.find(
+      (m): m is ts.MethodDeclaration =>
+        ts.isMethodDeclaration(m) && ts.isIdentifier(m.name) && m.name.text === "submit"
+    );
+    if (submitMethod === undefined) throw new Error("submit method not found");
+    const parameter = submitMethod.parameters[0];
+    if (parameter === undefined) throw new Error("submit parameter not found");
+
+    // Metadata policy that infers apiName by converting to snake_case —
+    // the same kind of policy that previously renamed the internal
+    // __result synthetic field, causing "FormSpec failed to extract the
+    // standalone schema root from the synthetic IR."
+    const renamingPolicy = {
+      field: {
+        apiName: {
+          mode: "infer-if-missing" as const,
+          infer: ({ logicalName }: { logicalName: string }) =>
+            logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
+        },
+        displayName: {
+          mode: "infer-if-missing" as const,
+          infer: ({ logicalName }: { logicalName: string }) =>
+            logicalName
+              .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+              .replace(/^./, (char) => char.toUpperCase()),
+        },
+      },
+    };
+
+    // This must not throw — the __result synthetic field's apiName should
+    // be pinned as "explicit" and survive the renaming policy.
+    const typeSchemas = generateSchemasFromType({
+      context,
+      type: context.checker.getTypeAtLocation(parameter),
+      sourceNode: parameter,
+      name: "InputWithRenamingPolicy",
+      metadata: renamingPolicy,
+    });
+
+    expect(typeSchemas.jsonSchema.type).toBe("object");
+    // Verify the policy did rename the user-authored fields
+    expect(typeSchemas.jsonSchema.properties).toHaveProperty("amount_cents");
+  });
 });
