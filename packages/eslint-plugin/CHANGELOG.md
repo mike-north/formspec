@@ -1,5 +1,27 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.51
+
+### Minor Changes
+
+- [#292](https://github.com/mike-north/formspec/pull/292) [`0b0c725`](https://github.com/mike-north/formspec/commit/0b0c725edf316f6959a26d8b8c5ec835a2b79441) Thanks [@mike-north](https://github.com/mike-north)! - Add `formspec/tag-recognition/tsdoc-comment-syntax` ESLint rule as a drop-in replacement for `tsdoc/syntax`
+
+  **@formspec/eslint-plugin:**
+  - New `tag-recognition/tsdoc-comment-syntax` rule that validates TSDoc comment syntax using FormSpec's TSDoc configuration
+  - Suppresses false positives on raw-text FormSpec tag payloads (`@pattern` regex values, `@enumOptions` JSON arrays, `@defaultValue` JSON objects) — fixes the false positive reported in issue #291
+  - Enabled as `"error"` in both `recommended` and `strict` configs
+  - Provides equivalent coverage to `tsdoc/syntax` from `eslint-plugin-tsdoc` without the false positives on FormSpec-annotated files
+  - See README section "Replacing `tsdoc/syntax`" for migration guidance
+
+  **@formspec/analysis:**
+  - Export `getOrCreateTSDocParser` from the `@formspec/analysis/internal` subpath
+
+### Patch Changes
+
+- Updated dependencies [[`0b0c725`](https://github.com/mike-north/formspec/commit/0b0c725edf316f6959a26d8b8c5ec835a2b79441)]:
+  - @formspec/analysis@0.1.0-alpha.51
+  - @formspec/build@0.1.0-alpha.51
+
 ## 0.1.0-alpha.50
 
 ### Patch Changes
