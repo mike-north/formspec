@@ -1,6 +1,8 @@
 ---
 "@formspec/build": patch
 "@formspec/analysis": patch
+"@formspec/language-server": patch
+"@formspec/ts-plugin": patch
 ---
 
 Fix TYPE_MISMATCH false positives for numeric constraint tags (`@minimum`, `@maximum`, etc.) on integer-branded types imported from another module, including nullable (`Integer | null`) and optional (`score?: Integer`) variants.
