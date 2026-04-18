@@ -1,5 +1,18 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.49
+
+### Patch Changes
+
+- [#284](https://github.com/mike-north/formspec/pull/284) [`9e79d05`](https://github.com/mike-north/formspec/commit/9e79d05767270ba4f646c96f49b49c2ecdba447f) Thanks [@mike-north](https://github.com/mike-north)! - Surface Promise-unwrap failures and map `void` to null in schema generation.
+  - `unwrapPromiseType` now throws a descriptive error when `checker.getAwaitedType` fails to unwrap a `Promise<T>`-shaped return type. Previously the payload would silently degrade to `{ type: "string" }`; this commonly occurred when the TypeScript compiler host could not locate its default lib files (e.g. after bundling `typescript` with esbuild), as described in #256.
+  - `void` types (e.g. `void`, `Promise<void>` return types) now map to `{ type: "null" }`, matching the treatment of `undefined`. Previously `void` fell through to the string fallback and was indistinguishable from an actual `string` return type (#257).
+
+- [#283](https://github.com/mike-north/formspec/pull/283) [`c4513d6`](https://github.com/mike-north/formspec/commit/c4513d631ea19d029a4cf1282c688f7d18127d32) Thanks [@mike-north](https://github.com/mike-north)! - Improve `TYPE_MISMATCH` diagnostics: when a constraint like `@exclusiveMinimum` is applied to an object field whose type contains a subfield that satisfies the constraint's required capability, the error now includes a `Hint:` showing the corrected path-targeted syntax (e.g., `@exclusiveMinimum :value 0`). When multiple subfields qualify, the hint lists them.
+
+- Updated dependencies [[`9e79d05`](https://github.com/mike-north/formspec/commit/9e79d05767270ba4f646c96f49b49c2ecdba447f), [`c4513d6`](https://github.com/mike-north/formspec/commit/c4513d631ea19d029a4cf1282c688f7d18127d32)]:
+  - @formspec/build@0.1.0-alpha.49
+
 ## 0.1.0-alpha.48
 
 ### Patch Changes
