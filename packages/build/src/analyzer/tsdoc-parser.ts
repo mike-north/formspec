@@ -200,6 +200,23 @@ function statementReferencesImportedName(
   return referencesImportedName;
 }
 
+function typeAnnotationReferencesImport(
+  typeAnnotation: ts.TypeNode,
+  importedNames: ReadonlySet<string>
+): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(typeAnnotation);
+  return found;
+}
+
 /**
  * Rewrites an interface declaration so that members whose type annotations
  * reference an imported name have their type replaced with `unknown`. This
@@ -224,18 +241,7 @@ function rewriteImportedMemberTypes(
       (ts.isPropertySignature(member) || ts.isPropertyDeclaration(member)) ? member.type : undefined;
     if (typeAnnotation === undefined) continue;
 
-    let referencesImport = false;
-    const check = (node: ts.Node): void => {
-      if (referencesImport) return;
-      if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
-        referencesImport = true;
-        return;
-      }
-      ts.forEachChild(node, check);
-    };
-    check(typeAnnotation);
-
-    if (referencesImport) {
+    if (typeAnnotationReferencesImport(typeAnnotation, importedNames)) {
       replacements.push({
         start: typeAnnotation.getStart(sourceFile),
         end: typeAnnotation.getEnd(),
