@@ -705,7 +705,31 @@ function unwrapPromiseType(checker: ts.TypeChecker, type: ts.Type): ts.Type {
     return type;
   }
 
-  return checker.getAwaitedType(type) ?? type;
+  const awaited = checker.getAwaitedType(type) ?? type;
+  if (awaited === type && looksLikePromiseType(checker, type)) {
+    // The type prints as `Promise<T>` but the checker could not await it. The
+    // most common cause is a TypeScript compiler host that cannot locate its
+    // default lib files (e.g. `lib.es2015.promise.d.ts`) — for example after
+    // bundling `typescript` with esbuild. Without this check, the payload type
+    // would silently degrade to `{ type: "string" }` in the generated schema
+    // (see issue #256).
+    throw new Error(
+      `FormSpec could not unwrap the awaited type from "${checker.typeToString(type)}". ` +
+        `This usually indicates the TypeScript compiler host cannot resolve its default ` +
+        `lib files (for example "lib.es2015.promise.d.ts"). Ensure the program is configured ` +
+        `with the standard library available to \`ts.createProgram\`.`
+    );
+  }
+
+  return awaited;
+}
+
+function looksLikePromiseType(checker: ts.TypeChecker, type: ts.Type): boolean {
+  const symbolName = type.getSymbol()?.getName();
+  if (symbolName === "Promise" || symbolName === "PromiseLike") {
+    return true;
+  }
+  return /^(?:Promise|PromiseLike)\b/.test(checker.typeToString(type));
 }
 
 function unwrapPromiseTypeNode(typeNode: ts.TypeNode | undefined): ts.TypeNode | undefined {

@@ -157,6 +157,23 @@ export class PaymentService {
       },
     };
   }
+
+  returnsVoid(): void {
+    return;
+  }
+
+  async returnsVoidAsync(): Promise<void> {
+    await Promise.resolve();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixture intentionally exercises `any` resolution
+  returnsAny(): any {
+    return "anything";
+  }
+
+  returnsUnknown(): unknown {
+    return "anything";
+  }
 }
 
 export function submitPayment(input: SubmitInput): SubmitResult {
