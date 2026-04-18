@@ -70,6 +70,10 @@ import {
   type TypeNode,
 } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import {
+  customTypeIdFromLookup,
+  resolveCustomTypeFromTsType,
+} from "../extensions/resolve-custom-type.js";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -627,7 +631,11 @@ function buildCompilerBackedConstraintDiagnostics(
   }
 
   const target = parsedTag?.target ?? null;
-  const hasBroadening = target === null && hasBuiltinConstraintBroadening(tagName, options);
+
+  // Resolve the type the capability check should run against: the path-target
+  // destination for `:foo` constraints, otherwise the field's own type.
+  let evaluatedType: ts.Type = subjectType;
+  let targetLabel = node.getText(sourceFile);
   if (target !== null) {
     if (target.kind !== "path") {
       return [
@@ -671,35 +679,57 @@ function buildCompilerBackedConstraintDiagnostics(
       ];
     }
 
-    const requiredCapability = definition.capabilities[0];
-    if (
-      requiredCapability !== undefined &&
-      !supportsConstraintCapability(resolution.type, checker, requiredCapability)
-    ) {
-      const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-      return [
-        makeDiagnostic(
-          "TYPE_MISMATCH",
-          `Target "${target.rawText}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
-          provenance
-        ),
-      ];
+    evaluatedType = resolution.type;
+    targetLabel = target.rawText;
+  }
+
+  // Unified broadening check:
+  //  - Direct field (`target === null`): uses the IR-layer `FieldType`
+  //    carried on `options.fieldType`. This is the pre-existing path.
+  //  - Path target (`target !== null`): no IR is available for the
+  //    path-resolved sub-type, so resolve the custom type from the raw
+  //    `ts.Type` via the shared extension-registry resolver and look up
+  //    broadening by `(customTypeId, tagName)`.
+  //
+  // Both variants answer the same question — "is `tagName` broadened onto
+  // the type we're about to validate?" — and short-circuit the capability
+  // check below in favour of the IR-layer validator which understands
+  // extension-defined constraint semantics.
+  const hasBroadening = ((): boolean => {
+    if (target === null) {
+      return hasBuiltinConstraintBroadening(tagName, options);
     }
-  } else if (!hasBroadening) {
+    const registry = options?.extensionRegistry;
+    if (registry === undefined) return false;
+    const resolved = resolveCustomTypeFromTsType(evaluatedType, checker, registry);
+    return (
+      resolved !== null &&
+      registry.findBuiltinConstraintBroadening(customTypeIdFromLookup(resolved), tagName) !==
+        undefined
+    );
+  })();
+
+  if (!hasBroadening) {
     const requiredCapability = definition.capabilities[0];
     if (
       requiredCapability !== undefined &&
-      !supportsConstraintCapability(subjectType, checker, requiredCapability)
+      !supportsConstraintCapability(evaluatedType, checker, requiredCapability)
     ) {
-      const actualType = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-      const baseMessage = `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
-      const hint = buildPathTargetHint(
-        subjectType,
-        checker,
-        requiredCapability,
-        tagName,
-        parsedTag?.argumentText
-      );
+      const actualType = checker.typeToString(evaluatedType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
+      // Path-target hints only apply to direct-field mismatches — the hint
+      // suggests "did you mean a sub-path?" which is nonsensical when the
+      // user is already path-targeting.
+      const hint =
+        target === null
+          ? buildPathTargetHint(
+              subjectType,
+              checker,
+              requiredCapability,
+              tagName,
+              parsedTag?.argumentText
+            )
+          : null;
       return [
         makeDiagnostic(
           "TYPE_MISMATCH",

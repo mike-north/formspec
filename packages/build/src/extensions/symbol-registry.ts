@@ -14,6 +14,7 @@
 import * as ts from "typescript";
 import * as path from "node:path";
 import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
+import { resolveCanonicalSymbol } from "./ts-type-utils.js";
 
 // =============================================================================
 // IMPLEMENTATION
@@ -152,20 +153,6 @@ function isDefineCustomTypeCall(node: ts.CallExpression, checker: ts.TypeChecker
   return ts.isIdentifier(node.expression) && node.expression.text === "defineCustomType";
 }
 
-/**
- * Resolves a TypeScript type to its canonical `ts.Symbol`, following alias chains.
- *
- * `aliasSymbol` tracks type aliases (e.g. `type Foo = Bar`); `getSymbol()` tracks
- * the structural symbol. We prefer `aliasSymbol` when present so that aliased types
- * resolve to the declaration site rather than the structural shape.
- *
- * Returns `undefined` for bare primitives and anonymous types, which have no symbol.
- */
-function resolveCanonicalSymbol(type: ts.Type, checker: ts.TypeChecker): ts.Symbol | undefined {
-  const raw = type.aliasSymbol ?? type.getSymbol();
-  if (raw === undefined) return undefined;
-  return raw.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(raw) : raw;
-}
 
 /**
  * Extracts the `typeName` string from a `defineCustomType({ typeName: "..." })` call.

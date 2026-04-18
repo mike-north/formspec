@@ -20,7 +20,14 @@ export type ResolvedPathTargetType =
       readonly type: ts.Type;
     };
 
-function stripNullishUnion(type: ts.Type): ts.Type {
+/**
+ * Collapses `T | null`, `T | undefined`, and `T | null | undefined` to `T`.
+ *
+ * Only collapses when exactly one non-nullish member remains — wider unions
+ * (e.g. `A | B | null`) pass through unchanged. Used throughout the analysis
+ * layer to normalize nullable fields before capability checks.
+ */
+export function stripNullishUnion(type: ts.Type): ts.Type {
   if (!type.isUnion()) {
     return type;
   }
