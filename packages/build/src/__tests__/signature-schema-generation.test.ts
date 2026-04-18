@@ -248,6 +248,117 @@ describe("method-signature schema generation", () => {
     expect(schemas.uiSchema).toBeNull();
   });
 
+  it("maps `void` return types to null schemas (regression: issue #257)", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "returnsVoid");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    // Before the fix, `void` silently fell through to `{ type: "string" }`,
+    // making it indistinguishable from an actual string return type.
+    expect(schemas.jsonSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "null",
+    });
+  });
+
+  it("maps `Promise<void>` return types to null schemas (regression: issue #257)", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "returnsVoidAsync");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    expect(schemas.jsonSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "null",
+    });
+  });
+
+  it("still maps `any` return types to a permissive string schema", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "returnsAny");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    expect(schemas.jsonSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "string",
+    });
+  });
+
+  it("still maps `unknown` return types to a permissive string schema", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "returnsUnknown");
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+    });
+
+    expect(schemas.jsonSchema).toMatchObject({
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "string",
+    });
+  });
+
+  it("throws when a Promise return type cannot be unwrapped (regression: issue #256)", () => {
+    // Simulate the "missing lib files" scenario from issue #256: when the
+    // TypeScript compiler host cannot locate `lib.es2015.promise.d.ts`,
+    // `checker.getAwaitedType(Promise<T>)` returns the input type unchanged.
+    // Previously the payload would silently degrade to `{ type: "string" }`;
+    // now `unwrapPromiseType` throws with a descriptive error.
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "submitAsync");
+    const brokenChecker: ts.TypeChecker = new Proxy(context.checker, {
+      get(target, prop, receiver): unknown {
+        if (prop === "getAwaitedType") {
+          // Simulate a broken host by returning the Promise type as-is.
+          return (type: ts.Type): ts.Type => type;
+        }
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+
+    const brokenContext = { ...context, checker: brokenChecker };
+
+    expect(() =>
+      generateSchemasFromReturnType({
+        context: brokenContext,
+        declaration: method,
+      })
+    ).toThrow(/could not unwrap the awaited type from "Promise<.*>"/);
+  });
+
   it("preserves concrete generic type arguments for discovered signature types", () => {
     const context = createStaticBuildContext(fixturePath);
     const declaration = resolveModuleExportDeclaration(context, "PaymentService");

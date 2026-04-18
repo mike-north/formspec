@@ -1968,6 +1968,11 @@ export function resolveTypeNode(
     // Undefined maps to null for nullable semantics in JSON Schema
     return { kind: "primitive", primitiveKind: "null" };
   }
+  if (type.flags & ts.TypeFlags.Void) {
+    // Void (e.g. `Promise<void>` return types) maps to null — matches the
+    // treatment of `undefined` and avoids collisions with actual `string` types.
+    return { kind: "primitive", primitiveKind: "null" };
+  }
 
   // --- String literal ---
   if (type.isStringLiteral()) {
@@ -2071,7 +2076,12 @@ export function resolveTypeNode(
     );
   }
 
-  // --- Fallback: treat unknown/any/void as string ---
+  // --- Fallback: treat any/unknown/unresolved types as string ---
+  // This includes `any`, `unknown`, type parameters (e.g. `payload: T` inside
+  // `Envelope<T>` when walking the declaration), conditional types, indexed
+  // access types, and other patterns the analyzer cannot represent in the
+  // canonical IR. Promise-unwrapping failures (see `unwrapPromisePayloadType`)
+  // are caught separately to surface the most common cause of silent data loss.
   return { kind: "primitive", primitiveKind: "string" };
 }
 
