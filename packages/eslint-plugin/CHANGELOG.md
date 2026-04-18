@@ -1,5 +1,15 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.52
+
+### Patch Changes
+
+- [#295](https://github.com/mike-north/formspec/pull/295) [`f065dd5`](https://github.com/mike-north/formspec/commit/f065dd598ec3cc1f9fb4e9e169e85728462bb9bd) Thanks [@mike-north](https://github.com/mike-north)! - Internal: add regression tests covering the synthetic `__result` wrapper rename under an inferring field-level `apiName` metadata policy (guards the fix in `@formspec/build`'s `toStandaloneJsonSchema`).
+
+- Updated dependencies [[`eb67977`](https://github.com/mike-north/formspec/commit/eb67977e2174117e27f7fbff61a803a3df75bda4), [`f065dd5`](https://github.com/mike-north/formspec/commit/f065dd598ec3cc1f9fb4e9e169e85728462bb9bd)]:
+  - @formspec/build@0.1.0-alpha.52
+  - @formspec/analysis@0.1.0-alpha.52
+
 ## 0.1.0-alpha.51
 
 ### Minor Changes
