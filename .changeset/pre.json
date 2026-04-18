@@ -66,6 +66,7 @@
     "fix-path-target-diagnostics",
     "fix-path-target-traversability",
     "fix-prototype-pollution-guard",
+    "fix-standalone-apiname",
     "fix-types-field",
     "fresh-lamps-rest",
     "funny-seas-visit",
