@@ -1,9 +1,12 @@
 ---
 "@formspec/build": patch
+"@formspec/analysis": patch
 ---
 
-Fix TYPE_MISMATCH false positives for numeric constraint tags (`@minimum`, `@maximum`, etc.) on integer-branded types imported from another module.
+Fix TYPE_MISMATCH false positives for numeric constraint tags (`@minimum`, `@maximum`, etc.) on integer-branded types imported from another module, including nullable (`Integer | null`) and optional (`score?: Integer`) variants.
 
-Previously, when a type structurally matching `number & { [__integerBrand]: true }` (e.g. `Integer` or `PositiveInteger` from `@stripe/extensibility-sdk/stdlib`) was imported from an external module, the compiler-backed constraint validator rejected it as a capability mismatch because the synthetic TypeScript program used for validation could not resolve the imported type name.
+Two independent validation layers needed fixes:
 
-The private `isIntegerBrandedType` function in `class-analyzer.ts` is now exported from `ts-type-utils.ts` and shared with `tsdoc-parser.ts`, which uses it to bypass the synthetic check for integer-branded types — consistent with how the IR classification path already treats them.
+1. **`tsdoc-parser.ts`** (compiler-backed constraint validation): The synthetic TypeScript program used for validation couldn't resolve imported type names. The `isIntegerBrandedType` bypass now strips nullish unions before checking, so `Integer | null` is handled correctly.
+
+2. **`semantic-targets.ts`** (IR-level constraint validation): `checkConstraintOnType` checked capabilities against the raw `effectiveType`, which is a `union` IR node for nullable fields. Now unwraps nullable unions to the non-null member before computing type capabilities.
