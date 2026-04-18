@@ -74,6 +74,7 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
+import { isIntegerBrandedType } from "../extensions/ts-type-utils.js";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -697,6 +698,13 @@ function buildCompilerBackedConstraintDiagnostics(
   // extension-defined constraint semantics.
   const hasBroadening = ((): boolean => {
     if (target === null) {
+      if (
+        subjectType !== undefined &&
+        isIntegerBrandedType(subjectType) &&
+        definition.capabilities.includes("numeric-comparable")
+      ) {
+        return true;
+      }
       return hasBuiltinConstraintBroadening(tagName, options);
     }
     const registry = options?.extensionRegistry;
