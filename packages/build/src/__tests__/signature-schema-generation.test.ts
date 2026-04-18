@@ -388,3 +388,84 @@ describe("method-signature schema generation", () => {
     });
   });
 });
+
+describe("metadata policy that would rename the synthetic __result wrapper (regression for PR #285)", () => {
+  // Policy that strips leading underscores from field apiNames — the same
+  // behavior (in miniature) as Stripe's toStripeApiCase. Before the fix,
+  // this transformed the internal synthetic "__result" field to "result",
+  // and toStandaloneJsonSchema's schema.properties["__result"] lookup
+  // threw "FormSpec failed to extract the standalone schema root from
+  // the synthetic IR."
+  const renamingFieldApiNamePolicy = {
+    field: {
+      apiName: {
+        mode: "infer-if-missing" as const,
+        infer: ({ logicalName }: { logicalName: string }): string =>
+          logicalName.replace(/^_+/u, ""),
+      },
+    },
+  };
+
+  function getPaymentService(context: ReturnType<typeof createStaticBuildContext>): ts.ClassDeclaration {
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+    return declaration;
+  }
+
+  it("handles a union-alias return type via generateSchemasFromReturnType", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const method = getMethod(getPaymentService(context), "status");
+
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+      metadata: renamingFieldApiNamePolicy,
+    });
+
+    // The synthetic wrapper must be unwrapped — the root schema is the
+    // union itself, not an object carrying a "__result" or "result" key.
+    expect(schemas.jsonSchema).toMatchObject({ enum: ["ok", "error"] });
+    const properties = (schemas.jsonSchema as { properties?: Record<string, unknown> }).properties;
+    expect(properties?.["__result"]).toBeUndefined();
+    expect(properties?.["result"]).toBeUndefined();
+  });
+
+  it("handles an `any` return type via generateSchemasFromReturnType", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const method = getMethod(getPaymentService(context), "returnsAny");
+
+    // Pre-fix this threw; post-fix it must produce a schema without the
+    // wrapper leaking into properties.
+    expect(() =>
+      generateSchemasFromReturnType({
+        context,
+        declaration: method,
+        metadata: renamingFieldApiNamePolicy,
+      })
+    ).not.toThrow();
+  });
+
+  it("handles a type-alias root via generateSchemasFromType", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const aliasDeclaration = resolveModuleExportDeclaration(context, "PaymentStatus");
+    if (aliasDeclaration === null || !ts.isTypeAliasDeclaration(aliasDeclaration)) {
+      throw new Error("PaymentStatus type alias not found");
+    }
+
+    const type = context.checker.getTypeAtLocation(aliasDeclaration);
+
+    const schemas = generateSchemasFromType({
+      context,
+      type,
+      sourceNode: aliasDeclaration,
+      metadata: renamingFieldApiNamePolicy,
+    });
+
+    expect(schemas.jsonSchema).toMatchObject({ enum: ["ok", "error"] });
+    const properties = (schemas.jsonSchema as { properties?: Record<string, unknown> }).properties;
+    expect(properties?.["__result"]).toBeUndefined();
+    expect(properties?.["result"]).toBeUndefined();
+  });
+});
