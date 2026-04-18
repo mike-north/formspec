@@ -45,6 +45,7 @@ import {
   getTagDefinition,
   hasTypeSemanticCapability,
   normalizeFormSpecTagName,
+  stripNullishUnion,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   parseTagSyntax,
@@ -74,6 +75,7 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
+import { isIntegerBrandedType } from "./builtin-brands.js";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -697,6 +699,12 @@ function buildCompilerBackedConstraintDiagnostics(
   // extension-defined constraint semantics.
   const hasBroadening = ((): boolean => {
     if (target === null) {
+      if (
+        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        definition.capabilities.includes("numeric-comparable")
+      ) {
+        return true;
+      }
       return hasBuiltinConstraintBroadening(tagName, options);
     }
     const registry = options?.extensionRegistry;
