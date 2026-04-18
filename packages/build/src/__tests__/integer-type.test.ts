@@ -41,12 +41,18 @@ function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorRepo
  * `afterAll`.
  */
 let fixturePath: string;
+let importingFixturePath: string;
 let tmpDir: string;
 
 const FIXTURE_SOURCE = [
   // Local unique-symbol brand — structurally identical to @formspec/core's export.
   "declare const __integerBrand: unique symbol;",
   "type Integer = number & { readonly [__integerBrand]: true };",
+  "",
+  // Multi-branded integer — mirrors @stripe/extensibility-sdk/stdlib's Integer/PositiveInteger,
+  // which carry both __integerBrand and a second __stripeType symbol.
+  "declare const __stripeType: unique symbol;",
+  "type MultiBrandedInteger = number & { readonly [__integerBrand]: true; readonly [__stripeType]: 'int' };",
   "",
   // 1. Basic Integer field
   "export interface IntegerFieldsConfig {",
@@ -81,6 +87,40 @@ const FIXTURE_SOURCE = [
   "  integerField: Integer;",
   "  numberField: number;",
   "}",
+  "",
+  // 7. Multi-branded Integer with numeric constraints — mirrors SDK's Integer/PositiveInteger
+  "export interface MultiBrandedConstrainedConfig {",
+  "  /** @minimum 2000 @maximum 2026 */",
+  "  year: MultiBrandedInteger;",
+  "}",
+].join("\n");
+
+/**
+ * Types file that exports MultiBrandedInteger — used by IMPORTING_FIXTURE_SOURCE
+ * to simulate the SDK pattern where Integer/PositiveInteger are imported from an
+ * external module. When the type is imported (not locally declared), its name is
+ * filtered out of supportingDeclarations by buildSupportingDeclarations, so the
+ * synthetic checker cannot resolve it unless isIntegerBrandedType broadens it.
+ */
+const TYPES_SOURCE = [
+  "declare const __integerBrand: unique symbol;",
+  "declare const __stripeType: unique symbol;",
+  "export type MultiBrandedInteger = number & { readonly [__integerBrand]: true; readonly [__stripeType]: 'int' };",
+].join("\n");
+
+/**
+ * Fixture that imports MultiBrandedInteger from a separate module, mirroring the
+ * real-world SDK usage pattern (`import { Integer } from '@stripe/extensibility-sdk/stdlib'`).
+ * The synthetic checker cannot inline-expand the imported type, so without the
+ * isIntegerBrandedType broadening fix this produces a TYPE_MISMATCH diagnostic.
+ */
+const IMPORTING_FIXTURE_SOURCE = [
+  'import type { MultiBrandedInteger } from "./types.js";',
+  "",
+  "export interface CrossFileConstrainedConfig {",
+  "  /** @minimum 2000 @maximum 2026 */",
+  "  year: MultiBrandedInteger;",
+  "}",
 ].join("\n");
 
 beforeAll(() => {
@@ -105,6 +145,10 @@ beforeAll(() => {
 
   fixturePath = path.join(tmpDir, "fixture.ts");
   fs.writeFileSync(fixturePath, FIXTURE_SOURCE);
+
+  fs.writeFileSync(path.join(tmpDir, "types.ts"), TYPES_SOURCE);
+  importingFixturePath = path.join(tmpDir, "importing-fixture.ts");
+  fs.writeFileSync(importingFixturePath, IMPORTING_FIXTURE_SOURCE);
 });
 
 afterAll(() => {
@@ -352,6 +396,51 @@ describe("builtin Integer type", () => {
       // Plain number field → type: "number"
       const numberProp = resolvePropertySchema(result, "numberField");
       expect(numberProp).toHaveProperty("type", "number");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Multi-branded Integer (@minimum / @maximum on a type with extra brand symbols)
+  // -------------------------------------------------------------------------
+  describe("multi-branded Integer (mirrors SDK Integer/PositiveInteger)", () => {
+    it("accepts @minimum and @maximum on a doubly-branded integer type (locally declared)", () => {
+      // MultiBrandedInteger = number & { [__integerBrand]: true } & { [__stripeType]: 'int' }
+      // mirrors @stripe/extensibility-sdk/stdlib Integer and PositiveInteger, which carry
+      // both __integerBrand and __stripeType. The extra brand must not prevent numeric
+      // constraint tags from being accepted.
+      const result = generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "MultiBrandedConstrainedConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+      const yearSchema = properties["year"] as Record<string, unknown>;
+
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+        maximum: 2026,
+      });
+    });
+
+    it("accepts @minimum and @maximum on a doubly-branded integer type imported from another module", () => {
+      // This is the real-world failure mode: Integer / PositiveInteger come from an
+      // external module (e.g. @stripe/extensibility-sdk/stdlib). buildSupportingDeclarations
+      // filters out any statement that references an imported name, so `MultiBrandedInteger`
+      // is not available in the synthetic TypeScript program. Without the
+      // isIntegerBrandedType broadening fix, the synthetic checker fails to resolve the
+      // type and emits a spurious TYPE_MISMATCH diagnostic, causing generateSchemas to throw.
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileConstrainedConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+      const yearSchema = properties["year"] as Record<string, unknown>;
+
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+        maximum: 2026,
+      });
     });
   });
 });
