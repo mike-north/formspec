@@ -40,6 +40,11 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
+import {
+  collectBrandIdentifiers,
+  extractTypeNodeFromSource,
+  getTypeAliasDeclarationFromTypeReference,
+} from "../extensions/ts-type-utils.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
 
@@ -56,36 +61,6 @@ function isObjectType(type: ts.Type): type is ts.ObjectType {
 
 function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
-}
-
-/**
- * Collects all brand identifier texts from an intersection type's computed
- * property names.
- *
- * Shared by both `isIntegerBrandedType` (builtin) and `resolveBrandedCustomType`
- * (extension). Walks `type.getProperties()` looking for computed property names
- * backed by plain identifiers — the standard `unique symbol` brand pattern.
- *
- * Returns all matching identifiers so that types with multiple brands (e.g.,
- * `number & { [__integerBrand]: true } & { [__otherBrand]: true }`) are
- * fully inspected regardless of property order.
- */
-function collectBrandIdentifiers(type: ts.Type): readonly string[] {
-  if (!type.isIntersection()) {
-    return [];
-  }
-
-  const brands: string[] = [];
-  for (const prop of type.getProperties()) {
-    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (decl === undefined) continue;
-    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
-    if (!ts.isComputedPropertyName(decl.name)) continue;
-    if (!ts.isIdentifier(decl.name.expression)) continue;
-    brands.push(decl.name.expression.text);
-  }
-
-  return brands;
 }
 
 /**
@@ -1725,23 +1700,6 @@ function parseEnumMemberDisplayName(value: string): { value: string; label: stri
   return { value: match[1], label };
 }
 
-function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined {
-  if (
-    ts.isPropertyDeclaration(sourceNode) ||
-    ts.isPropertySignature(sourceNode) ||
-    ts.isParameter(sourceNode) ||
-    ts.isTypeAliasDeclaration(sourceNode)
-  ) {
-    return sourceNode.type;
-  }
-
-  if (ts.isTypeNode(sourceNode)) {
-    return sourceNode;
-  }
-
-  return undefined;
-}
-
 // =============================================================================
 // TYPE RESOLUTION — ts.Type → TypeNode
 // =============================================================================
@@ -2947,8 +2905,7 @@ function extractTypeAliasConstraintNodes(
     );
   }
 
-  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  const aliasDecl = getAliasedTypeAliasDeclaration(symbol, checker);
+  const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
   if (!aliasDecl) return [];
 
   // Don't extract from object type aliases
@@ -2980,30 +2937,6 @@ function extractTypeAliasConstraintNodes(
   return constraints;
 }
 
-function getAliasedSymbol(
-  symbol: ts.Symbol | undefined,
-  checker: ts.TypeChecker
-): ts.Symbol | undefined {
-  if (symbol === undefined) {
-    return undefined;
-  }
-
-  return symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
-}
-
-function getAliasedTypeAliasDeclaration(
-  symbol: ts.Symbol | undefined,
-  checker: ts.TypeChecker
-): ts.TypeAliasDeclaration | undefined {
-  return getAliasedSymbol(symbol, checker)?.declarations?.find(ts.isTypeAliasDeclaration);
-}
-
-function getTypeAliasDeclarationFromTypeReference(
-  typeNode: ts.TypeReferenceNode,
-  checker: ts.TypeChecker
-): ts.TypeAliasDeclaration | undefined {
-  return getAliasedTypeAliasDeclaration(checker.getSymbolAtLocation(typeNode.typeName), checker);
-}
 
 // =============================================================================
 // PROVENANCE HELPERS

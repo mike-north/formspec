@@ -1,44 +1,14 @@
-import { stripNullishUnion } from "@formspec/analysis/internal";
 import * as ts from "typescript";
 
+import { stripNullishUnion } from "@formspec/analysis/internal";
+
 import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
-
-/**
- * Collects all brand identifier texts from an intersection type's computed
- * property names. Mirrors the helper in `analyzer/class-analyzer.ts`; kept
- * local so this module has no dependency on the analyzer layer.
- */
-function collectBrandIdentifiers(type: ts.Type): readonly string[] {
-  if (!type.isIntersection()) {
-    return [];
-  }
-  const brands: string[] = [];
-  for (const prop of type.getProperties()) {
-    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (decl === undefined) continue;
-    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
-    if (!ts.isComputedPropertyName(decl.name)) continue;
-    if (!ts.isIdentifier(decl.name.expression)) continue;
-    brands.push(decl.name.expression.text);
-  }
-  return brands;
-}
-
-/**
- * Resolves a `ts.Type` to its canonical symbol, following alias chains.
- *
- * `aliasSymbol` is preferred over `getSymbol()` so that aliased types resolve
- * to the declaration site rather than the structural shape. This matches the
- * convention in `analyzer/class-analyzer.ts`'s `resolveCanonicalSymbol`.
- */
-function resolveCanonicalSymbol(
-  type: ts.Type,
-  checker: ts.TypeChecker
-): ts.Symbol | undefined {
-  const raw = type.aliasSymbol ?? type.getSymbol();
-  if (raw === undefined) return undefined;
-  return raw.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(raw) : raw;
-}
+import {
+  collectBrandIdentifiers,
+  extractTypeNodeFromSource,
+  getTypeAliasDeclarationFromTypeReference,
+  resolveCanonicalSymbol,
+} from "./ts-type-utils.js";
 
 function getTypeNodeRegistrationName(typeNode: ts.TypeNode): string | null {
   if (ts.isTypeReferenceNode(typeNode)) {
@@ -58,32 +28,6 @@ function getTypeNodeRegistrationName(typeNode: ts.TypeNode): string | null {
     return typeNode.getText();
   }
   return null;
-}
-
-function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined {
-  if (
-    ts.isPropertyDeclaration(sourceNode) ||
-    ts.isPropertySignature(sourceNode) ||
-    ts.isParameter(sourceNode) ||
-    ts.isTypeAliasDeclaration(sourceNode)
-  ) {
-    return sourceNode.type;
-  }
-  if (ts.isTypeNode(sourceNode)) {
-    return sourceNode;
-  }
-  return undefined;
-}
-
-function getTypeAliasDeclarationFromTypeReference(
-  typeNode: ts.TypeReferenceNode,
-  checker: ts.TypeChecker
-): ts.TypeAliasDeclaration | undefined {
-  if (!ts.isIdentifier(typeNode.typeName)) return undefined;
-  const symbol = checker.getSymbolAtLocation(typeNode.typeName);
-  if (symbol === undefined) return undefined;
-  const declaration = symbol.declarations?.find(ts.isTypeAliasDeclaration);
-  return declaration;
 }
 
 function resolveByNameFromTypeNode(
@@ -197,48 +141,4 @@ export function resolveCustomTypeFromTsType(
  */
 export function customTypeIdFromLookup(result: ExtensionTypeLookupResult): string {
   return `${result.extensionId}/${result.registration.typeName}`;
-}
-
-/**
- * Checks whether a built-in constraint tag has broadening registered for the
- * given custom type.
- *
- * Broadening declares "this built-in tag (e.g., `@exclusiveMinimum`) is
- * semantically valid on this custom type (e.g., `Decimal`) even though the
- * compiler-backed capability check would reject it." Callers use this to
- * skip capability checks that the IR-layer is better equipped to perform.
- */
-export function hasBroadeningForCustomType(
-  result: ExtensionTypeLookupResult,
-  tagName: string,
-  registry: ExtensionRegistry
-): boolean {
-  return (
-    registry.findBuiltinConstraintBroadening(customTypeIdFromLookup(result), tagName) !==
-    undefined
-  );
-}
-
-/**
- * Composite helper: resolves `type` to a registered custom type and, if one
- * is found, checks whether `tagName` is broadened onto it.
- *
- * Returns `false` when the type is not registered OR when the tag has no
- * broadening registered for the resolved custom type.
- */
-export function isTagBroadenedOnTsType(
-  type: ts.Type,
-  checker: ts.TypeChecker,
-  registry: ExtensionRegistry | undefined,
-  tagName: string,
-  sourceNode?: ts.Node
-): boolean {
-  if (registry === undefined) {
-    return false;
-  }
-  const resolved = resolveCustomTypeFromTsType(type, checker, registry, sourceNode);
-  if (resolved === null) {
-    return false;
-  }
-  return hasBroadeningForCustomType(resolved, tagName, registry);
 }

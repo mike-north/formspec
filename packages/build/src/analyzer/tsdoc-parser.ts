@@ -70,7 +70,10 @@ import {
   type TypeNode,
 } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
-import { isTagBroadenedOnTsType } from "../extensions/resolve-custom-type.js";
+import {
+  customTypeIdFromLookup,
+  resolveCustomTypeFromTsType,
+} from "../extensions/resolve-custom-type.js";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -692,10 +695,19 @@ function buildCompilerBackedConstraintDiagnostics(
   // the type we're about to validate?" — and short-circuit the capability
   // check below in favour of the IR-layer validator which understands
   // extension-defined constraint semantics.
-  const hasBroadening =
-    target === null
-      ? hasBuiltinConstraintBroadening(tagName, options)
-      : isTagBroadenedOnTsType(evaluatedType, checker, options?.extensionRegistry, tagName);
+  const hasBroadening = ((): boolean => {
+    if (target === null) {
+      return hasBuiltinConstraintBroadening(tagName, options);
+    }
+    const registry = options?.extensionRegistry;
+    if (registry === undefined) return false;
+    const resolved = resolveCustomTypeFromTsType(evaluatedType, checker, registry);
+    return (
+      resolved !== null &&
+      registry.findBuiltinConstraintBroadening(customTypeIdFromLookup(resolved), tagName) !==
+        undefined
+    );
+  })();
 
   if (!hasBroadening) {
     const requiredCapability = definition.capabilities[0];

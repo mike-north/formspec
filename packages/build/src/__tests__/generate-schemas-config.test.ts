@@ -1,13 +1,12 @@
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FormSpecConfig } from "@formspec/config";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
 import { type ClassSchemas, generateSchemas } from "../generators/class-schema.js";
+import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { numericExtension } from "./fixtures/example-numeric-extension.js";
-
-type JsonSchemaObject = Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -256,7 +255,24 @@ describe("generateSchemas with FormSpecConfig", () => {
     // A path-target override is emitted as an `allOf` entry with
     // `properties.<segment>.<jsonSchemaKeyword>: <value>`. Asserting via a
     // direct `allOf` shape — then scanning its entries — keeps the Jest
-    // matcher types clean (no unsafe-any from `expect.arrayContaining`).
+    // matcher types clean (no unsafe-any from `expect.arrayContaining`) while
+    // using the real `JsonSchema2020` typing for property access.
+    function findPathOverride(
+      result: ClassSchemas,
+      fieldName: string,
+      predicate: (entry: JsonSchema2020) => boolean
+    ): JsonSchema2020 | undefined {
+      const field = result.jsonSchema.properties?.[fieldName];
+      const allOf = field?.allOf;
+      expect(
+        allOf,
+        `expected allOf on property '${fieldName}' but found ${
+          allOf === undefined ? "none" : "empty"
+        }`
+      ).toBeDefined();
+      return allOf?.find(predicate);
+    }
+
     function expectPathOverride(
       result: ClassSchemas,
       fieldName: string,
@@ -264,15 +280,21 @@ describe("generateSchemas with FormSpecConfig", () => {
       keyword: string,
       value: unknown
     ) {
-      const field = (result.jsonSchema.properties as JsonSchemaObject | undefined)?.[fieldName];
-      const allOf = (field as { allOf?: readonly JsonSchemaObject[] } | undefined)?.allOf;
-      expect(allOf).toBeDefined();
-      const overrideEntry = allOf?.find((entry) => {
-        const properties = entry["properties"] as JsonSchemaObject | undefined;
-        const segmentSchema = properties?.[segment] as JsonSchemaObject | undefined;
-        return segmentSchema !== undefined && segmentSchema[keyword] === value;
-      });
-      expect(overrideEntry).toBeDefined();
+      const override = findPathOverride(
+        result,
+        fieldName,
+        (entry) => {
+          const segmentSchema = entry.properties?.[segment];
+          if (segmentSchema === undefined) return false;
+          return (segmentSchema as Record<string, unknown>)[keyword] === value;
+        }
+      );
+      expect(
+        override,
+        `no allOf entry with properties.${segment}.${keyword} === ${String(
+          value
+        )} on field '${fieldName}'`
+      ).toBeDefined();
     }
 
     // Path-target overrides emit the standard JSON Schema keyword directly
@@ -328,29 +350,27 @@ describe("generateSchemas with FormSpecConfig", () => {
         expectPathOverride(result, "total", "amount", "exclusiveMinimum", 0);
       });
 
-      it("broadens through a deeply-nested path", () => {
+      it("broadens through a deeply-nested path with a distinctive value", () => {
+        // Use 42 (distinctive) rather than 0 to guard against an override
+        // that happens to match a default.
         const source = `
           ${nameBasedDecimal}
           export interface Nested { inner: { amount: Decimal }; }
           export interface PaymentForm {
-            /** @minimum :inner.amount 0 */
+            /** @minimum :inner.amount 42 */
             total: Nested;
           }
         `;
         const result = runSchema(source, nameBasedConfig);
-        // For nested paths, the path override lives inside the top-level
-        // "allOf" entry keyed off the first segment; walk the chain manually
-        // to avoid unsafe-any from `expect.objectContaining`.
-        const total = (result.jsonSchema.properties as JsonSchemaObject | undefined)?.["total"];
-        const allOf = (total as { allOf?: readonly JsonSchemaObject[] } | undefined)?.allOf;
-        const override = allOf?.find((entry) => {
-          const properties = entry["properties"] as JsonSchemaObject | undefined;
-          const inner = properties?.["inner"] as JsonSchemaObject | undefined;
-          const innerProps = inner?.["properties"] as JsonSchemaObject | undefined;
-          const amount = innerProps?.["amount"] as JsonSchemaObject | undefined;
-          return amount?.["minimum"] === 0;
+        const override = findPathOverride(result, "total", (entry) => {
+          const inner = entry.properties?.["inner"];
+          const amount = inner?.properties?.["amount"];
+          return amount?.minimum === 42;
         });
-        expect(override).toBeDefined();
+        expect(
+          override,
+          "expected nested path override properties.inner.properties.amount.minimum === 42"
+        ).toBeDefined();
       });
     });
 
@@ -366,10 +386,21 @@ describe("generateSchemas with FormSpecConfig", () => {
               total: MonetaryAmount;
             }
           `;
-          // We don't assert the x-prefixed keyword value because the
-          // branded extension uses a different vendor prefix; the test only
-          // needs to confirm generation succeeds without TYPE_MISMATCH.
-          expect(() => runSchema(source, brandBasedConfig)).not.toThrow();
+          // Vendor-prefix-agnostic smoke: we don't assert the keyword value
+          // because the branded extension uses a different prefix, but we
+          // DO require an allOf entry that targets `amount`. A regression
+          // that silently drops the override (no throw, no entry) would
+          // otherwise pass.
+          const result = runSchema(source, brandBasedConfig);
+          const override = findPathOverride(
+            result,
+            "total",
+            (entry) => entry.properties?.["amount"] !== undefined
+          );
+          expect(
+            override,
+            `expected a path override entry targeting 'amount' for @${tag}`
+          ).toBeDefined();
         }
       );
 
@@ -382,7 +413,13 @@ describe("generateSchemas with FormSpecConfig", () => {
             total: MonetaryAmount;
           }
         `;
-        expect(() => runSchema(source, brandBasedConfig)).not.toThrow();
+        const result = runSchema(source, brandBasedConfig);
+        const override = findPathOverride(
+          result,
+          "total",
+          (entry) => entry.properties?.["amount"] !== undefined
+        );
+        expect(override).toBeDefined();
       });
     });
 
@@ -415,7 +452,12 @@ describe("generateSchemas with FormSpecConfig", () => {
             total: MonetaryAmount;
           }
         `;
-        expect(() => runSchema(source, nameBasedConfig)).toThrow(/TYPE_MISMATCH/);
+        // Tighten to require both the offending segment (amount) and tag
+        // (pattern) so a TYPE_MISMATCH from an unrelated code path can't
+        // silently pass this assertion.
+        expect(() => runSchema(source, nameBasedConfig)).toThrow(
+          /TYPE_MISMATCH.*amount.*pattern|pattern.*amount/
+        );
       });
 
       it("still rejects direct-field capability mismatches (non-path)", () => {
@@ -430,6 +472,134 @@ describe("generateSchemas with FormSpecConfig", () => {
         expect(() => runSchema(source, { vendorPrefix: "x-formspec" })).toThrow(
           /TYPE_MISMATCH/
         );
+      });
+    });
+
+    // Symbol-based registration is a separate shape from name / brand: it
+    // pairs a `defineCustomType<T>()` type parameter in the config file with
+    // the user-visible alias in the source. `generateSchemas` resolves the
+    // symbol map via the `configPath` option, so the integration test
+    // requires a multi-file fixture (decimal.ts + formspec.config.ts +
+    // model.ts). Uses a `typeName` that does NOT match the alias identifier
+    // so name-based lookup cannot accidentally satisfy the test.
+    describe("symbol-based registration (defineCustomType<T>())", () => {
+      let tmpDir: string;
+      let modelPath: string;
+      let configPath: string;
+
+      beforeAll(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-symbol-broadening-"));
+
+        fs.writeFileSync(
+          path.join(tmpDir, "tsconfig.json"),
+          JSON.stringify(
+            {
+              compilerOptions: {
+                target: "ES2022",
+                module: "NodeNext",
+                moduleResolution: "nodenext",
+                strict: true,
+                skipLibCheck: true,
+              },
+            },
+            null,
+            2
+          )
+        );
+
+        fs.writeFileSync(
+          path.join(tmpDir, "decimal.ts"),
+          [
+            "declare const __sym_decimal: unique symbol;",
+            "export type SymDecimal = string & { readonly [__sym_decimal]: true };",
+          ].join("\n")
+        );
+
+        configPath = path.join(tmpDir, "formspec.config.ts");
+        fs.writeFileSync(
+          configPath,
+          [
+            'import type { SymDecimal } from "./decimal.js";',
+            'import { defineCustomType, defineExtension } from "@formspec/core";',
+            "",
+            "export const extension = defineExtension({",
+            '  extensionId: "x-symtest",',
+            "  types: [",
+            "    defineCustomType<SymDecimal>({",
+            // typeName intentionally does NOT match the alias identifier
+            // ("SymDecimal") — this forces resolution to go through the
+            // symbol map rather than the name map.
+            '      typeName: "OpaqueDecimal",',
+            "      builtinConstraintBroadenings: [",
+            '        { tagName: "minimum", constraintName: "DecimalMinimum" },',
+            '        { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum" },',
+            "      ],",
+            '      toJsonSchema: () => ({ type: "string" }),',
+            "    }),",
+            "  ],",
+            "});",
+          ].join("\n")
+        );
+
+        modelPath = path.join(tmpDir, "model.ts");
+        fs.writeFileSync(
+          modelPath,
+          [
+            'import type { SymDecimal } from "./decimal.js";',
+            "",
+            "export interface MonetaryAmount {",
+            "  amount: SymDecimal;",
+            "  currency: string;",
+            "}",
+            "",
+            "export interface PaymentForm {",
+            "  /** @exclusiveMinimum :amount 0 */",
+            "  total: MonetaryAmount;",
+            "}",
+          ].join("\n")
+        );
+      });
+
+      afterAll(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      });
+
+      it("broadens @exclusiveMinimum through a path target onto a symbol-registered custom type", () => {
+        // The in-memory registration here mirrors the `defineCustomType<SymDecimal>`
+        // in the on-disk config file. `generateSchemas` walks the config
+        // file's AST (via `configPath`) to extract the `SymDecimal` type
+        // parameter and build the symbol map — no runtime import of the
+        // config file occurs. The registry's name map is keyed by
+        // "OpaqueDecimal" (the typeName), NOT by the alias "SymDecimal" —
+        // so only the symbol-based lookup path can satisfy this test.
+        const opaqueDecimal = defineCustomType({
+          typeName: "OpaqueDecimal",
+          builtinConstraintBroadenings: [
+            { tagName: "minimum", constraintName: "DecimalMinimum" },
+            { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum" },
+          ],
+          toJsonSchema: () => ({ type: "string" }),
+        });
+        const extension = defineExtension({
+          extensionId: "x-symtest",
+          types: [opaqueDecimal],
+        });
+        const result = generateSchemas({
+          filePath: modelPath,
+          typeName: "PaymentForm",
+          errorReporting: "throw",
+          config: { extensions: [extension], vendorPrefix: "x-symtest" },
+          configPath,
+        });
+        const override = findPathOverride(
+          result,
+          "total",
+          (entry) => entry.properties?.["amount"] !== undefined
+        );
+        expect(
+          override,
+          "expected a path override entry targeting 'amount' on the symbol-registered custom type"
+        ).toBeDefined();
       });
     });
   });
