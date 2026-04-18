@@ -353,7 +353,13 @@ function toStandaloneJsonSchema(
   const syntheticField: FieldNode = {
     kind: "field",
     name: "__result",
-    ...(syntheticFieldMetadata !== undefined && { metadata: syntheticFieldMetadata }),
+    metadata: {
+      ...syntheticFieldMetadata,
+      // Pin apiName so metadata-policy transforms (e.g. toStripeApiCase)
+      // cannot rename this synthetic wrapper field. The lookup below
+      // expects "__result" in the output schema properties.
+      apiName: { value: "__result", source: "explicit" },
+    },
     type: root.type,
     required: true,
     constraints: [],
