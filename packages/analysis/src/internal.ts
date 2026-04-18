@@ -137,6 +137,7 @@ export {
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
   resolvePathTargetType,
+  stripNullishUnion,
   type FormSpecSemanticCapability,
   type ResolvedPathTargetType,
 } from "./ts-binding.js";

@@ -36,6 +36,10 @@ import {
 } from "./jsdoc-constraints.js";
 import { extractDisplayNameMetadata } from "./tsdoc-parser.js";
 import type { ExtensionRegistry } from "../extensions/index.js";
+import {
+  customTypeIdFromLookup,
+  resolveCustomTypeFromTsType,
+} from "../extensions/resolve-custom-type.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
 
@@ -85,63 +89,14 @@ function collectBrandIdentifiers(type: ts.Type): readonly string[] {
 }
 
 /**
- * Resolves a TypeScript type to its canonical `ts.Symbol`, following alias chains.
- *
- * `aliasSymbol` tracks type aliases (e.g. `type Foo = Bar`); `getSymbol()` tracks
- * the structural symbol. We prefer `aliasSymbol` when present so that aliased types
- * resolve to the declaration site rather than the structural shape.
- *
- * Returns `undefined` for bare primitives and anonymous types, which have no symbol.
- */
-function resolveCanonicalSymbol(type: ts.Type, checker: ts.TypeChecker): ts.Symbol | undefined {
-  const raw = type.aliasSymbol ?? type.getSymbol();
-  if (raw === undefined) return undefined;
-  return raw.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(raw) : raw;
-}
-
-/**
- * Resolves a type to an extension-registered custom type via ts.Symbol identity.
- *
- * This is the most precise detection mechanism — it uses TypeScript's own type
- * identity, immune to import aliases and name collisions. Built from
- * `defineCustomType<T>()` type parameter extraction in the config file.
- *
- * Returns `null` when:
- * - `extensionRegistry` is undefined (no registry provided)
- * - The type has no symbol (bare primitive, anonymous type)
- * - The canonical symbol is not in the registry's symbol map
- */
-function resolveSymbolBasedCustomType(
-  type: ts.Type,
-  extensionRegistry: ExtensionRegistry | undefined,
-  checker: ts.TypeChecker
-): TypeNode | null {
-  if (extensionRegistry === undefined) {
-    return null;
-  }
-
-  const canonical = resolveCanonicalSymbol(type, checker);
-  if (canonical === undefined) {
-    return null;
-  }
-
-  const registration = extensionRegistry.findTypeBySymbol(canonical);
-  if (registration === undefined) {
-    return null;
-  }
-
-  return {
-    kind: "custom",
-    typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-    payload: null,
-  };
-}
-
-/**
  * Checks whether a type is branded with `__integerBrand` from `@formspec/core`.
  *
  * Integer-branded types are intersections of `number` with a brand object
  * containing the `__integerBrand` unique symbol.
+ *
+ * Extension-registered custom types (name-, brand-, or symbol-based) are
+ * resolved separately via `resolveCustomTypeFromTsType` in
+ * `extensions/resolve-custom-type.ts`.
  */
 function isIntegerBrandedType(type: ts.Type): boolean {
   if (!type.isIntersection()) {
@@ -154,42 +109,6 @@ function isIntegerBrandedType(type: ts.Type): boolean {
   }
 
   return collectBrandIdentifiers(type).includes("__integerBrand");
-}
-
-/**
- * Resolves a TypeScript intersection type to an extension-registered custom type
- * by inspecting computed property names for a brand identifier match.
- *
- * This is more robust than name-based lookup because it works even when the
- * type is imported under an alias. Brand detection is attempted after name-based
- * resolution as a structural fallback.
- *
- * Returns `null` if the type is not an intersection, has no branded properties,
- * or no registered brand matches. Note: the builtin `__integerBrand` is reserved
- * and handled separately by `isIntegerBrandedType` — extensions cannot register it.
- */
-function resolveBrandedCustomType(
-  type: ts.Type,
-  extensionRegistry: ExtensionRegistry | undefined
-): TypeNode | null {
-  if (extensionRegistry === undefined) {
-    return null;
-  }
-
-  for (const brand of collectBrandIdentifiers(type)) {
-    const registration = extensionRegistry.findTypeByBrand(brand);
-    if (registration === undefined) {
-      continue;
-    }
-
-    return {
-      kind: "custom",
-      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-      payload: null,
-    };
-  }
-
-  return null;
 }
 
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
@@ -1806,56 +1725,6 @@ function parseEnumMemberDisplayName(value: string): { value: string; label: stri
   return { value: match[1], label };
 }
 
-function resolveRegisteredCustomType(
-  sourceNode: ts.Node | undefined,
-  extensionRegistry: ExtensionRegistry | undefined,
-  checker: ts.TypeChecker
-): TypeNode | null {
-  if (sourceNode === undefined || extensionRegistry === undefined) {
-    return null;
-  }
-
-  const typeNode = extractTypeNodeFromSource(sourceNode);
-  if (typeNode === undefined) {
-    return null;
-  }
-
-  return resolveRegisteredCustomTypeFromTypeNode(typeNode, extensionRegistry, checker);
-}
-
-function resolveRegisteredCustomTypeFromTypeNode(
-  typeNode: ts.TypeNode,
-  extensionRegistry: ExtensionRegistry,
-  checker: ts.TypeChecker
-): TypeNode | null {
-  if (ts.isParenthesizedTypeNode(typeNode)) {
-    return resolveRegisteredCustomTypeFromTypeNode(typeNode.type, extensionRegistry, checker);
-  }
-
-  const typeName = getTypeNodeRegistrationName(typeNode);
-  if (typeName === null) {
-    return null;
-  }
-
-  const registration = extensionRegistry.findTypeByName(typeName);
-  if (registration !== undefined) {
-    return {
-      kind: "custom",
-      typeId: `${registration.extensionId}/${registration.registration.typeName}`,
-      payload: null,
-    };
-  }
-
-  if (ts.isTypeReferenceNode(typeNode) && ts.isIdentifier(typeNode.typeName)) {
-    const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
-    if (aliasDecl !== undefined) {
-      return resolveRegisteredCustomTypeFromTypeNode(aliasDecl.type, extensionRegistry, checker);
-    }
-  }
-
-  return null;
-}
-
 function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined {
   if (
     ts.isPropertyDeclaration(sourceNode) ||
@@ -1871,29 +1740,6 @@ function extractTypeNodeFromSource(sourceNode: ts.Node): ts.TypeNode | undefined
   }
 
   return undefined;
-}
-
-function getTypeNodeRegistrationName(typeNode: ts.TypeNode): string | null {
-  if (ts.isTypeReferenceNode(typeNode)) {
-    return ts.isIdentifier(typeNode.typeName)
-      ? typeNode.typeName.text
-      : typeNode.typeName.right.text;
-  }
-
-  if (ts.isParenthesizedTypeNode(typeNode)) {
-    return getTypeNodeRegistrationName(typeNode.type);
-  }
-
-  if (
-    typeNode.kind === ts.SyntaxKind.BigIntKeyword ||
-    typeNode.kind === ts.SyntaxKind.StringKeyword ||
-    typeNode.kind === ts.SyntaxKind.NumberKeyword ||
-    typeNode.kind === ts.SyntaxKind.BooleanKeyword
-  ) {
-    return typeNode.getText();
-  }
-
-  return null;
 }
 
 // =============================================================================
@@ -1914,19 +1760,21 @@ export function resolveTypeNode(
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
-  const customType = resolveRegisteredCustomType(sourceNode, extensionRegistry, checker);
-  if (customType) {
-    return customType;
-  }
-  // Symbol-based custom type detection (most precise, checked after name-based;
-  // uses ts.Symbol identity from defineCustomType<T>() type parameters).
-  const symbolCustomType = resolveSymbolBasedCustomType(type, extensionRegistry, checker);
-  if (symbolCustomType) {
-    return symbolCustomType;
-  }
-  const brandedCustomType = resolveBrandedCustomType(type, extensionRegistry);
-  if (brandedCustomType) {
-    return brandedCustomType;
+  // Unified custom-type resolution: tries name → symbol → brand in sequence,
+  // strips nullish unions, and returns the first match. Shared with
+  // `tsdoc-parser.ts`'s path-target broadening check.
+  const customTypeLookup = resolveCustomTypeFromTsType(
+    type,
+    checker,
+    extensionRegistry,
+    sourceNode
+  );
+  if (customTypeLookup !== null) {
+    return {
+      kind: "custom",
+      typeId: customTypeIdFromLookup(customTypeLookup),
+      payload: null,
+    };
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(
     type,
