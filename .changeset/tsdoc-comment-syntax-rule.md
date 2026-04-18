@@ -1,6 +1,11 @@
 ---
 "@formspec/eslint-plugin": minor
 "@formspec/analysis": patch
+"@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/language-server": patch
+"@formspec/ts-plugin": patch
+"formspec": patch
 ---
 
 Add `formspec/tag-recognition/tsdoc-comment-syntax` ESLint rule as a drop-in replacement for `tsdoc/syntax`
