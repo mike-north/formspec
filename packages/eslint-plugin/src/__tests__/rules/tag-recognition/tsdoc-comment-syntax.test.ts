@@ -95,6 +95,45 @@ ruleTester.run("tsdoc-comment-syntax", tsdocCommentSyntax, {
         }
       `,
     },
+    // Interface declaration with raw-text tag in a property signature —
+    // confirms coverage extends beyond class PropertyDefinitions.
+    {
+      code: String.raw`
+        /** @displayName Profile */
+        interface Profile {
+          /** @pattern ^[A-Z]{2}$ */
+          countryCode: string;
+        }
+      `,
+    },
+    // Type alias with valid TSDoc.
+    {
+      code: `
+        /** A named string alias. */
+        type Name = string;
+      `,
+    },
+    // Extension-defined constraint tag supplied via settings.formspec.extensionRegistry
+    // must not be reported as unknown by the TSDoc parser.
+    {
+      code: `
+        class Form {
+          /** @afterDate 2025-01-01 */
+          startsAt!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                constraintTags: [{ tagName: "afterDate" }],
+              },
+            ],
+          },
+        },
+      },
+    },
   ],
 
   invalid: [
@@ -120,6 +159,19 @@ ruleTester.run("tsdoc-comment-syntax", tsdocCommentSyntax, {
         }
       `,
       errors: [{ messageId: "tsdocSyntax" }, { messageId: "tsdocSyntax" }],
+    },
+    // Selective suppression: a comment that contains BOTH a raw-text
+    // @pattern payload (with curlies) AND a malformed inline tag in prose.
+    // The @pattern payload must be suppressed, but the {@link opened in
+    // prose must still be reported.
+    {
+      code: String.raw`
+        class Form {
+          /** Hello {@link unterminated @pattern ^[0-9]{5}$ */
+          zip!: string;
+        }
+      `,
+      errors: [{ messageId: "tsdocSyntax" }],
     },
   ],
 });

@@ -138,35 +138,16 @@ export const rule = ESLintUtils.RuleCreator(() => "")({
 
 ## Replacing `tsdoc/syntax`
 
-If you use `eslint-plugin-tsdoc`'s `tsdoc/syntax` rule, you can replace it with
-`formspec/tag-recognition/tsdoc-comment-syntax` for files containing FormSpec constraint tags.
-
-The `tsdoc/syntax` rule produces false positives on FormSpec raw-text tag payloads:
-
-- `@pattern` values containing `{` `}` (regex quantifiers) or `@` (email patterns)
-- `@enumOptions` and `@defaultValue` values containing JSON object literals
-
-The `formspec/tag-recognition/tsdoc-comment-syntax` rule provides the same TSDoc syntax
-validation but understands which FormSpec tags carry raw-text payloads and suppresses
-diagnostics whose source range lies inside those payloads.
-
-**Recommended migration:**
+If you use `eslint-plugin-tsdoc`'s `tsdoc/syntax`, disable it and let
+`formspec/tag-recognition/tsdoc-comment-syntax` (enabled by `recommended`) take
+over — it provides the same TSDoc validation without false positives on
+FormSpec raw-text payloads (`@pattern`, `@enumOptions`, `@defaultValue`). See
+the [rule docs](./docs/rules/tag-recognition/tsdoc-comment-syntax.md) for
+details.
 
 ```js
 // eslint.config.js
-import formspec from "@formspec/eslint-plugin";
-
-export default [
-  ...formspec.configs.recommended,
-  {
-    rules: {
-      // Disable the tsdoc plugin's rule for FormSpec-annotated files;
-      // formspec/tag-recognition/tsdoc-comment-syntax (enabled by recommended)
-      // provides equivalent coverage without the false positives.
-      "tsdoc/syntax": "off",
-    },
-  },
-];
+export default [...formspec.configs.recommended, { rules: { "tsdoc/syntax": "off" } }];
 ```
 
 ## Rules
