@@ -200,6 +200,62 @@ function statementReferencesImportedName(
   return referencesImportedName;
 }
 
+/**
+ * Rewrites an interface declaration so that members whose type annotations
+ * reference an imported name have their type replaced with `unknown`. This
+ * preserves the declaration in the synthetic program so the checker can
+ * resolve sibling members that use non-imported types.
+ *
+ * Without this, an interface like `{ year: Integer; vin: string }` where
+ * `Integer` is imported would be entirely excluded from supporting
+ * declarations, preventing the synthetic checker from knowing that `vin` is
+ * a string — causing spurious TYPE_MISMATCH errors on constraint tags like
+ * `@minLength`.
+ */
+function rewriteImportedMemberTypes(
+  statement: ts.InterfaceDeclaration,
+  sourceFile: ts.SourceFile,
+  importedNames: ReadonlySet<string>
+): string {
+  const replacements: { start: number; end: number }[] = [];
+
+  for (const member of statement.members) {
+    const typeAnnotation =
+      (ts.isPropertySignature(member) || ts.isPropertyDeclaration(member)) ? member.type : undefined;
+    if (typeAnnotation === undefined) continue;
+
+    let referencesImport = false;
+    const check = (node: ts.Node): void => {
+      if (referencesImport) return;
+      if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
+        referencesImport = true;
+        return;
+      }
+      ts.forEachChild(node, check);
+    };
+    check(typeAnnotation);
+
+    if (referencesImport) {
+      replacements.push({
+        start: typeAnnotation.getStart(sourceFile),
+        end: typeAnnotation.getEnd(),
+      });
+    }
+  }
+
+  if (replacements.length === 0) {
+    return statement.getText(sourceFile);
+  }
+
+  // Apply replacements in reverse order to preserve offsets.
+  const stmtStart = statement.getStart(sourceFile);
+  let result = statement.getText(sourceFile);
+  for (const { start, end } of replacements.reverse()) {
+    result = result.slice(0, start - stmtStart) + "unknown" + result.slice(end - stmtStart);
+  }
+  return result;
+}
+
 function buildSupportingDeclarations(
   sourceFile: ts.SourceFile,
   extensionTypeNames: ReadonlySet<string>
@@ -212,24 +268,28 @@ function buildSupportingDeclarations(
     [...importedNames].filter((name) => !extensionTypeNames.has(name))
   );
 
-  return sourceFile.statements
-    .filter((statement) => {
-      // Always exclude imports and re-exports
-      if (ts.isImportDeclaration(statement)) return false;
-      if (ts.isImportEqualsDeclaration(statement)) return false;
-      if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
-        return false;
+  const result: string[] = [];
 
-      // Skip declarations whose AST references an imported identifier,
-      // unless that identifier is an extension-registered type (which will
-      // have a synthetic type alias in the synthetic program).
-      if (statementReferencesImportedName(statement, importedNamesToSkip)) {
-        return false;
-      }
+  for (const statement of sourceFile.statements) {
+    // Always exclude imports and re-exports
+    if (ts.isImportDeclaration(statement)) continue;
+    if (ts.isImportEqualsDeclaration(statement)) continue;
+    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) continue;
 
-      return true;
-    })
-    .map((statement) => statement.getText(sourceFile));
+    if (!statementReferencesImportedName(statement, importedNamesToSkip)) {
+      result.push(statement.getText(sourceFile));
+      continue;
+    }
+
+    // For interface declarations that reference imports, rewrite imported
+    // member types to `unknown` instead of dropping the whole declaration.
+    // Other statement types that reference imports are still excluded.
+    if (ts.isInterfaceDeclaration(statement)) {
+      result.push(rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip));
+    }
+  }
+
+  return result;
 }
 
 function pushUniqueCompilerDiagnostics(
