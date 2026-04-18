@@ -2080,8 +2080,9 @@ export function resolveTypeNode(
   // This includes `any`, `unknown`, type parameters (e.g. `payload: T` inside
   // `Envelope<T>` when walking the declaration), conditional types, indexed
   // access types, and other patterns the analyzer cannot represent in the
-  // canonical IR. Promise-unwrapping failures (see `unwrapPromisePayloadType`)
-  // are caught separately to surface the most common cause of silent data loss.
+  // canonical IR. Promise-unwrapping failures (see `unwrapPromiseType` in
+  // `packages/build/src/generators/discovered-schema.ts`) are caught separately
+  // to surface the most common cause of silent data loss.
   return { kind: "primitive", primitiveKind: "string" };
 }
 
