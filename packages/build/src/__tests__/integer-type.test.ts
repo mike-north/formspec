@@ -121,6 +121,21 @@ const IMPORTING_FIXTURE_SOURCE = [
   "  /** @minimum 2000 @maximum 2026 */",
   "  year: MultiBrandedInteger;",
   "}",
+  "",
+  "export interface CrossFileNullableConfig {",
+  "  /** @minimum 0 */",
+  "  score: MultiBrandedInteger | null;",
+  "}",
+  "",
+  "export interface CrossFileOptionalConfig {",
+  "  /** @minimum 0 */",
+  "  score?: MultiBrandedInteger;",
+  "}",
+  "",
+  "export interface CrossFilePatternConfig {",
+  "  /** @pattern ^[0-9]+$ */",
+  "  code: MultiBrandedInteger;",
+  "}",
 ].join("\n");
 
 beforeAll(() => {
@@ -404,10 +419,9 @@ describe("builtin Integer type", () => {
   // -------------------------------------------------------------------------
   describe("multi-branded Integer (mirrors SDK Integer/PositiveInteger)", () => {
     it("accepts @minimum and @maximum on a doubly-branded integer type (locally declared)", () => {
-      // MultiBrandedInteger = number & { [__integerBrand]: true } & { [__stripeType]: 'int' }
-      // mirrors @stripe/extensibility-sdk/stdlib Integer and PositiveInteger, which carry
-      // both __integerBrand and __stripeType. The extra brand must not prevent numeric
-      // constraint tags from being accepted.
+      // Documents existing behavior: the class-analyzer path already handles
+      // locally-declared multi-branded integers. This test does NOT guard the
+      // cross-file regression — see the imported variant below.
       const result = generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "MultiBrandedConstrainedConfig",
@@ -441,6 +455,46 @@ describe("builtin Integer type", () => {
         minimum: 2000,
         maximum: 2026,
       });
+    });
+
+    it("accepts @minimum on a nullable imported integer type", () => {
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileNullableConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+      const scoreSchema = properties["score"] as Record<string, unknown>;
+
+      expect(scoreSchema).toMatchObject({
+        minimum: 0,
+      });
+    });
+
+    it("accepts @minimum on an optional imported integer type", () => {
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileOptionalConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+      const scoreSchema = properties["score"] as Record<string, unknown>;
+
+      expect(scoreSchema).toMatchObject({
+        minimum: 0,
+      });
+    });
+
+    it("rejects @pattern on an imported integer type (not string-like)", () => {
+      // Pins the scope of the integer bypass: only numeric-comparable
+      // constraints are broadened. @pattern requires string-like capability
+      // and must still produce a TYPE_MISMATCH on integer types.
+      expect(() =>
+        generateSchemasOrThrow({
+          filePath: importingFixturePath,
+          typeName: "CrossFilePatternConfig",
+        })
+      ).toThrow(/TYPE_MISMATCH/);
     });
   });
 });

@@ -1144,15 +1144,27 @@ function checkConstraintOnType(
   extensionRegistry: ConstraintRegistryLike | undefined
 ): void {
   const effectiveType = dereferenceAnalysisType(type, typeRegistry);
+  // For nullable unions (e.g. Integer | null), unwrap to the non-null member
+  // so that constraint compatibility checks work the same as for the non-null
+  // variant. This mirrors the stripNullishUnion pattern used in ts-binding.ts.
+  const unwrapped =
+    effectiveType.kind === "union"
+      ? (() => {
+          const nonNull = effectiveType.members
+            .map((m) => dereferenceAnalysisType(m, typeRegistry))
+            .filter((m) => !isNullType(m));
+          return nonNull.length === 1 && nonNull[0] !== undefined ? nonNull[0] : effectiveType;
+        })()
+      : effectiveType;
   const isNumber =
-    effectiveType.kind === "primitive" &&
-    ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
-  const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
-  const isArray = effectiveType.kind === "array";
-  const isEnum = effectiveType.kind === "enum";
+    unwrapped.kind === "primitive" &&
+    ["number", "integer", "bigint"].includes(unwrapped.primitiveKind);
+  const isString = unwrapped.kind === "primitive" && unwrapped.primitiveKind === "string";
+  const isArray = unwrapped.kind === "array";
+  const isEnum = unwrapped.kind === "enum";
   const arrayItemType =
-    effectiveType.kind === "array"
-      ? dereferenceAnalysisType(effectiveType.items, typeRegistry)
+    unwrapped.kind === "array"
+      ? dereferenceAnalysisType(unwrapped.items, typeRegistry)
       : undefined;
   const isStringArray =
     arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";

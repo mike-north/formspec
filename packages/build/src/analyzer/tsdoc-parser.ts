@@ -45,6 +45,7 @@ import {
   getTagDefinition,
   hasTypeSemanticCapability,
   normalizeFormSpecTagName,
+  stripNullishUnion,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   parseTagSyntax,
@@ -74,7 +75,7 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
-import { isIntegerBrandedType } from "../extensions/ts-type-utils.js";
+import { isIntegerBrandedType } from "./builtin-brands.js";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -699,7 +700,7 @@ function buildCompilerBackedConstraintDiagnostics(
   const hasBroadening = ((): boolean => {
     if (target === null) {
       if (
-        isIntegerBrandedType(subjectType) &&
+        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
         definition.capabilities.includes("numeric-comparable")
       ) {
         return true;

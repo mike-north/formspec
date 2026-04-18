@@ -43,8 +43,8 @@ import {
 import {
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
-  isIntegerBrandedType,
 } from "../extensions/ts-type-utils.js";
+import { isIntegerBrandedType } from "./builtin-brands.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
 

@@ -1,20 +1,6 @@
 import * as ts from "typescript";
 
 /**
- * Returns `true` when `type` is an integer-branded intersection — i.e., it
- * includes a `number` base and a computed property keyed by `__integerBrand`.
- *
- * This structural check mirrors the detection in `class-analyzer.ts` and is
- * used by `tsdoc-parser.ts` to skip the synthetic capability check for imported
- * integer types whose names the synthetic program cannot resolve.
- */
-export function isIntegerBrandedType(type: ts.Type): boolean {
-  if (!type.isIntersection()) return false;
-  if (!type.types.some((member) => !!(member.flags & ts.TypeFlags.Number))) return false;
-  return collectBrandIdentifiers(type).includes("__integerBrand");
-}
-
-/**
  * Collects all brand identifier texts from an intersection type's computed
  * property names.
  *
