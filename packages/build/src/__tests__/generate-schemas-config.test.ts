@@ -184,6 +184,115 @@ describe("generateSchemas with FormSpecConfig", () => {
     }
   });
 
+  describe("path-targeted constraints on broadened custom types", () => {
+    const config: FormSpecConfig = {
+      extensions: [numericExtension],
+      vendorPrefix: "x-formspec",
+    };
+
+    it("allows numeric constraints when path resolves to a broadened custom type", () => {
+      const filePath = writeTempSource(`
+        export type Decimal = string & { __brand: "Decimal" };
+
+        export interface MonetaryAmount {
+          amount: Decimal;
+          currency: string;
+        }
+
+        export interface PaymentForm {
+          /** @exclusiveMinimum :amount 0 */
+          total: MonetaryAmount;
+        }
+      `);
+
+      try {
+        // errorReporting: "throw" guarantees this throws on any TYPE_MISMATCH.
+        const result = generateSchemas({
+          filePath,
+          typeName: "PaymentForm",
+          config,
+          errorReporting: "throw",
+        });
+
+        // The path-targeted constraint should produce an allOf with an
+        // override entry that applies the broadened constraint to `amount`.
+        expect(result.jsonSchema.properties?.["total"]).toMatchObject({
+          allOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: { amount: { exclusiveMinimum: 0 } },
+            }),
+          ]),
+        });
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
+    });
+
+    it("allows numeric constraints when path resolves to a nullable broadened custom type", () => {
+      const filePath = writeTempSource(`
+        export type Decimal = string & { __brand: "Decimal" };
+
+        export interface MonetaryAmount {
+          amount: Decimal | null;
+          currency: string;
+        }
+
+        export interface PaymentForm {
+          /** @exclusiveMinimum :amount 0 */
+          total: MonetaryAmount;
+        }
+      `);
+
+      try {
+        const result = generateSchemas({
+          filePath,
+          typeName: "PaymentForm",
+          config,
+          errorReporting: "throw",
+        });
+
+        expect(result.jsonSchema.properties?.["total"]).toMatchObject({
+          allOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: { amount: { exclusiveMinimum: 0 } },
+            }),
+          ]),
+        });
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
+    });
+
+    it("still rejects numeric constraints when path resolves to a non-numeric, non-custom type", () => {
+      const filePath = writeTempSource(`
+        export type Decimal = string & { __brand: "Decimal" };
+
+        export interface MonetaryAmount {
+          amount: Decimal;
+          currency: string;
+        }
+
+        export interface PaymentForm {
+          /** @exclusiveMinimum :currency 0 */
+          total: MonetaryAmount;
+        }
+      `);
+
+      try {
+        expect(() =>
+          generateSchemas({
+            filePath,
+            typeName: "PaymentForm",
+            config,
+            errorReporting: "throw",
+          })
+        ).toThrow(/TYPE_MISMATCH/);
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
+    });
+  });
+
   it("works without config (backward compatibility)", () => {
     const filePath = writeTempSource(`
       export interface SimpleForm {

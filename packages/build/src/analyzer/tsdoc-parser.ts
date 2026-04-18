@@ -455,6 +455,51 @@ function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOpt
   );
 }
 
+/**
+ * Checks whether a raw `ts.Type` is a registered custom type in the
+ * extension registry. Handles nullable unions by stripping null members.
+ *
+ * When a type is extension-registered, compiler-backed checks (which only
+ * understand native TS types) should defer to the downstream IR-based
+ * analysis in `semantic-targets.ts`, which has full broadening and custom
+ * constraint awareness.
+ *
+ * Relies on the type's symbol name matching a registered `tsTypeName`.
+ * Inline branded intersections (e.g., `string & { __brand: "Decimal" }`)
+ * without a type alias will not match -- the named alias is required.
+ */
+function isRegisteredCustomTsType(
+  type: ts.Type,
+  options?: ParseTSDocOptions
+): boolean {
+  const registry = options?.extensionRegistry;
+  if (registry === undefined) {
+    return false;
+  }
+
+  const lookup = (candidate: ts.Type): boolean => {
+    const symbol = candidate.getSymbol() ?? candidate.aliasSymbol;
+    const typeName = symbol?.getName();
+    return typeName !== undefined && registry.findTypeByName(typeName) !== undefined;
+  };
+
+  if (lookup(type)) {
+    return true;
+  }
+
+  // Handle nullable unions (e.g., Decimal | null)
+  if (type.isUnion()) {
+    return type.types.some(
+      (member) =>
+        !(member.flags & ts.TypeFlags.Null) &&
+        !(member.flags & ts.TypeFlags.Undefined) &&
+        lookup(member)
+    );
+  }
+
+  return false;
+}
+
 function buildCompilerBackedConstraintDiagnostics(
   node: ts.Node,
   sourceFile: ts.SourceFile,
@@ -495,7 +540,10 @@ function buildCompilerBackedConstraintDiagnostics(
   }
 
   const target = parsedTag?.target ?? null;
-  const hasBroadening = target === null && hasBuiltinConstraintBroadening(tagName, options);
+  // Broadening is computed differently depending on whether the constraint
+  // targets a sub-path (ts.Type-level lookup via the extension registry) or
+  // the field itself (IR-level lookup via hasBuiltinConstraintBroadening).
+  let hasBroadening = false;
   if (target !== null) {
     if (target.kind !== "path") {
       return [
@@ -539,10 +587,15 @@ function buildCompilerBackedConstraintDiagnostics(
       ];
     }
 
+    // If the path resolves to a registered custom type, defer all validation
+    // to the IR-based analysis (semantic-targets.ts) which understands
+    // extension semantics like constraint broadening.
+    hasBroadening = isRegisteredCustomTsType(resolution.type, options);
     const requiredCapability = definition.capabilities[0];
     if (
       requiredCapability !== undefined &&
-      !supportsConstraintCapability(resolution.type, checker, requiredCapability)
+      !supportsConstraintCapability(resolution.type, checker, requiredCapability) &&
+      !hasBroadening
     ) {
       const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
       return [
@@ -553,20 +606,23 @@ function buildCompilerBackedConstraintDiagnostics(
         ),
       ];
     }
-  } else if (!hasBroadening) {
-    const requiredCapability = definition.capabilities[0];
-    if (
-      requiredCapability !== undefined &&
-      !supportsConstraintCapability(subjectType, checker, requiredCapability)
-    ) {
-      const actualType = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-      return [
-        makeDiagnostic(
-          "TYPE_MISMATCH",
-          `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
-          provenance
-        ),
-      ];
+  } else {
+    hasBroadening = hasBuiltinConstraintBroadening(tagName, options);
+    if (!hasBroadening) {
+      const requiredCapability = definition.capabilities[0];
+      if (
+        requiredCapability !== undefined &&
+        !supportsConstraintCapability(subjectType, checker, requiredCapability)
+      ) {
+        const actualType = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+        return [
+          makeDiagnostic(
+            "TYPE_MISMATCH",
+            `Target "${node.getText(sourceFile)}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`,
+            provenance
+          ),
+        ];
+      }
     }
   }
 
