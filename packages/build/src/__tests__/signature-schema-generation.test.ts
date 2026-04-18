@@ -437,14 +437,17 @@ describe("metadata policy that would rename the synthetic __result wrapper (regr
     const method = getMethod(getPaymentService(context), "returnsAny");
 
     // Pre-fix this threw; post-fix it must produce a schema without the
-    // wrapper leaking into properties.
-    expect(() =>
-      generateSchemasFromReturnType({
-        context,
-        declaration: method,
-        metadata: renamingFieldApiNamePolicy,
-      })
-    ).not.toThrow();
+    // synthetic wrapper leaking into properties under either the
+    // original or the policy-renamed key.
+    const schemas = generateSchemasFromReturnType({
+      context,
+      declaration: method,
+      metadata: renamingFieldApiNamePolicy,
+    });
+
+    const properties = (schemas.jsonSchema as { properties?: Record<string, unknown> }).properties;
+    expect(properties?.["__result"]).toBeUndefined();
+    expect(properties?.["result"]).toBeUndefined();
   });
 
   it("handles a type-alias root via generateSchemasFromType", () => {
