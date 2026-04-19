@@ -162,10 +162,12 @@ describe("known divergence: @minimum Infinity", () => {
 
     expect(result.diagnostics).not.toHaveLength(0);
     const diagnostic = result.diagnostics[0];
-    // Pin the exact TypeScript message so future signature changes are caught.
-    // The message pattern "Argument of type 'string' is not assignable to
-    // parameter of type 'number'" is produced by the synthetic checker when
-    // '"Infinity"' (a string literal) is passed where number is expected.
+    // Pin key substrings from the TS message so future wording changes remain
+    // visible without over-pinning. TypeScript minor versions sometimes reword
+    // diagnostics, so asserting substrings rather than the full string avoids
+    // brittle failures while still catching signature changes.
+    // Expected pattern: "Argument of type 'string' is not assignable to
+    // parameter of type 'number'"
     expect(diagnostic?.message).toContain("not assignable");
     expect(diagnostic?.message).toContain("number");
   });
@@ -183,10 +185,7 @@ describe("known divergence: @minimum Infinity", () => {
     `;
     const snapshot = runSnapshotConsumer(source);
 
-    const typeMismatch = snapshot.diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    const invalidArg = snapshot.diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(typeMismatch).toBeUndefined();
-    expect(invalidArg).toBeUndefined();
+    expect(snapshot.diagnostics).toEqual([]);
   });
 });
 
@@ -217,7 +216,10 @@ describe("known divergence: @minimum NaN", () => {
 
     expect(result.diagnostics).not.toHaveLength(0);
     const diagnostic = result.diagnostics[0];
-    // Pin the exact TypeScript message so future signature changes are caught.
+    // Pin key substrings from the TS message so future wording changes remain
+    // visible without over-pinning. TypeScript minor versions sometimes reword
+    // diagnostics, so asserting substrings rather than the full string avoids
+    // brittle failures while still catching signature changes.
     // Same string-not-assignable-to-number pattern as the Infinity case above.
     expect(diagnostic?.message).toContain("not assignable");
     expect(diagnostic?.message).toContain("number");
@@ -236,9 +238,6 @@ describe("known divergence: @minimum NaN", () => {
     `;
     const snapshot = runSnapshotConsumer(source);
 
-    const typeMismatch = snapshot.diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    const invalidArg = snapshot.diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(typeMismatch).toBeUndefined();
-    expect(invalidArg).toBeUndefined();
+    expect(snapshot.diagnostics).toEqual([]);
   });
 });
