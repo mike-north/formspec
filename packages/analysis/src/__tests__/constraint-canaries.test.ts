@@ -10,7 +10,8 @@
 // Before writing this file every case was run through
 // buildFormSpecAnalysisFileSnapshot to determine which diagnostics fire
 // today. Cases where no diagnostic fires are pre-existing silent-acceptance
-// gaps and are marked .skip so they visibly track what Phase 2 must fix.
+// gaps and are marked .fails so they track what Phase 2 must fix; once the
+// underlying bug is fixed the test flips to unexpected-pass, failing the suite.
 // Cases that do fire diagnostics today are pinned as live assertions so any
 // future regression is caught immediately.
 //
@@ -19,7 +20,7 @@
 // comments on the same line as the field are not picked up (separate tracking
 // issue); all sources below use the multi-line format.
 //
-// Summary of pre-existing silent acceptances (all marked .skip):
+// Summary of pre-existing silent acceptances (all marked .fails):
 // - @minimum 0 on string / boolean fields (TYPE_MISMATCH not emitted)
 // - @enumOptions with a scalar (5) or object ({}) argument
 // - @enumOptions on a plain number field
@@ -67,7 +68,7 @@ describe("@minimum silent-acceptance canaries", () => {
     expect(diagnostic?.range).toBeDefined();
     expect(typeof diagnostic?.range.start).toBe("number");
     expect(typeof diagnostic?.range.end).toBe("number");
-  }, 20000);
+  });
 
   // @minimum true -- boolean is not a valid numeric argument.
   // The synthetic checker emits TYPE_MISMATCH.
@@ -85,7 +86,7 @@ describe("@minimum silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
     expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @minimum with no argument omits the required numeric value.
   // The synthetic checker emits INVALID_TAG_ARGUMENT.
@@ -103,11 +104,11 @@ describe("@minimum silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @minimum 0 on a string field -- string has no numeric-comparable capability.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @minimum 0 on a string field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -125,7 +126,7 @@ describe("@minimum silent-acceptance canaries", () => {
 
   // @minimum 0 on a boolean field -- boolean has no numeric-comparable capability.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @minimum 0 on a boolean field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -163,7 +164,7 @@ describe("@enumOptions silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @enumOptions [1, -- truncated / malformed JSON.
   // The synthetic checker emits INVALID_TAG_ARGUMENT.
@@ -181,11 +182,11 @@ describe("@enumOptions silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @enumOptions 5 -- scalar number, not a JSON array.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits INVALID_TAG_ARGUMENT for @enumOptions 5 (scalar, not array) [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -203,7 +204,7 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
   // @enumOptions {} -- plain object, not a JSON array.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits INVALID_TAG_ARGUMENT for @enumOptions {} (object, not array) [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -221,7 +222,7 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
   // @enumOptions on a number field -- no enum-member-addressable capability.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits a diagnostic for @enumOptions on a number field (no enum capability) [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -259,13 +260,13 @@ describe("@pattern silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @pattern 42 -- a numeric literal is not a valid regex string.
   // TODAY: silently accepted as a string-like regex argument.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
   // Once typed parser is stricter this should assert INVALID_TAG_ARGUMENT.
-  it.skip(
+  it.fails(
     "emits INVALID_TAG_ARGUMENT for @pattern 42 (numeric literal as regex) [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -283,7 +284,7 @@ describe("@pattern silent-acceptance canaries", () => {
 
   // @pattern on a number field -- numbers are not string-like.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @pattern on a number field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -301,7 +302,7 @@ describe("@pattern silent-acceptance canaries", () => {
 
   // @pattern on a boolean field -- booleans are not string-like.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @pattern on a boolean field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -319,7 +320,7 @@ describe("@pattern silent-acceptance canaries", () => {
 
   // @pattern on a string[] (array) field -- arrays are not string-like.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @pattern on a string[] (array) field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -357,7 +358,7 @@ describe("@uniqueItems silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
     expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @uniqueItems yes -- yes is an invalid payload treated as an identifier
   // target, producing TYPE_MISMATCH.
@@ -375,7 +376,7 @@ describe("@uniqueItems silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
     expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @uniqueItems maybe -- maybe is an invalid payload treated as an
   // identifier target, producing TYPE_MISMATCH.
@@ -393,11 +394,11 @@ describe("@uniqueItems silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
     expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @uniqueItems on a string field -- strings are not arrays.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @uniqueItems on a string field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -415,7 +416,7 @@ describe("@uniqueItems silent-acceptance canaries", () => {
 
   // @uniqueItems on a number field -- numbers are not arrays.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @uniqueItems on a number field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -453,12 +454,12 @@ describe("@const silent-acceptance canaries", () => {
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
-  }, 20000);
+  });
 
   // @const "USD" on an object field -- a string literal constant is not
   // compatible with an object field.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     'emits a diagnostic for @const "USD" on an object field [known silent acceptance, refactor plan S.9.3 #14]',
     () => {
       const diagnostics = diagnosticsFor(
@@ -477,7 +478,7 @@ describe("@const silent-acceptance canaries", () => {
   // @const {"a":1} on a number field -- a JSON object constant is not
   // compatible with a number field.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     'emits TYPE_MISMATCH for @const {"a":1} on a number field [known silent acceptance, refactor plan S.9.3 #14]',
     () => {
       const diagnostics = diagnosticsFor(
@@ -496,7 +497,7 @@ describe("@const silent-acceptance canaries", () => {
   // @const 42 on a string field -- numeric constant mismatches the string
   // field type.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits TYPE_MISMATCH for @const 42 on a string field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
@@ -515,7 +516,7 @@ describe("@const silent-acceptance canaries", () => {
   // @const {"a":{"b":1}} (deeply nested JSON object) on a string field.
   // Also probes that nested JSON values do not cause a parse crash.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.skip(
+  it.fails(
     "emits a diagnostic for @const with a nested object literal on a string field [known silent acceptance, refactor plan S.9.3 #14]",
     () => {
       const diagnostics = diagnosticsFor(
