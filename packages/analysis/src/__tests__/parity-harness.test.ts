@@ -478,7 +478,9 @@ function renderBuildArgumentExpression(
     case undefined:
       return null;
     default:
-      return JSON.stringify(trimmed);
+      // Mirror renderSyntheticArgumentExpression's default: surface the unknown
+      // kind as a bare identifier (triggers TS errors for truly unknown kinds).
+      return valueKind;
   }
 }
 
@@ -536,16 +538,11 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   visit(sourceFile);
 
   if (fieldNode === undefined) {
-    // If the field was not found (can happen for object/complex types), return
-    // a placeholder indicating no diagnostics. The snapshot path will also
-    // produce nothing for a missing field.
-    return {
-      hasDiagnostic: false,
-      diagnosticCode: undefined,
-      diagnosticMessage: undefined,
-      subjectTypeKind: "unknown",
-      placement: "class-field",
-    };
+    // generateFixtureSource always emits a `field` property, so reaching here
+    // indicates an AST traversal bug rather than a valid "no field" scenario.
+    throw new Error(
+      `Invariant violation: generated parity fixture source is missing the 'field' property for tag '${fixture.tagName}'.`,
+    );
   }
 
   const subjectType = getSubjectType(fieldNode, checker);
@@ -625,8 +622,9 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
  * Derives a build-path diagnostic code from a TypeScript compiler diagnostic
  * message string.
  *
- * This mirrors the mapping in `buildCompilerBackedConstraintDiagnostics` at
- * `packages/build/src/analyzer/tsdoc-parser.ts`.
+ * The `includes("Expected")` and `includes("No overload")` pattern mapping
+ * mirrors the per-application result classification in `buildTagDiagnostics`
+ * at `packages/analysis/src/file-snapshots.ts`.
  */
 function deriveBuildDiagnosticCode(message: string): string {
   if (message.includes("No overload")) {
@@ -709,16 +707,27 @@ function snapshotDiagnosticsToEntries(
   placement: string,
   subjectTypeKind: string,
 ): ParityLogEntry[] {
-  // Filter to diagnostics that carry our fixture's tag in their data
+  // Filter to diagnostics that carry our fixture's tag in their data.
+  //
+  // Global/setup diagnostics emitted by the batch checker use `data.tagNames`
+  // (plural array) rather than `data.tagName` (singular string). These are
+  // not scoped to a single fixture tag and must NOT be attributed to every
+  // fixture — returning `false` here prevents false parity divergences caused
+  // by setup-level failures being treated as per-fixture diagnostics.
   const tagDiagnostics = diagnostics.filter((d) => {
     const tagName =
       "tagName" in d.data ? d.data["tagName"] : undefined;
     if (typeof tagName === "string") {
       return tagName === fixture.tagName;
     }
-    // For diagnostics without explicit tagName in data, include them all
-    // when there's exactly one tag in the fixture
-    return true;
+    // Check for the plural tagNames field used by global/setup diagnostics.
+    const tagNames = "tagNames" in d.data ? d.data["tagNames"] : undefined;
+    if (Array.isArray(tagNames)) {
+      return tagNames.includes(fixture.tagName);
+    }
+    // Diagnostics without explicit tag scoping should not be attributed to a
+    // specific fixture in this per-fixture parity model.
+    return false;
   });
 
   if (tagDiagnostics.length === 0) {
