@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
 /**
  * Regression test for a tsserver-plugin load failure introduced in PR #305.
