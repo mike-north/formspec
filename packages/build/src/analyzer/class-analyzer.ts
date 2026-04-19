@@ -2077,8 +2077,33 @@ function resolveUnionType(
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
-  const typeName = getNamedTypeName(type);
-  const namedDecl = getNamedTypeDeclaration(type);
+  let typeName = getNamedTypeName(type);
+  let namedDecl = getNamedTypeDeclaration(type);
+
+  // Recovery for optional properties: TypeScript synthesizes `Currency | undefined`
+  // for `currency?: Currency`, and the synthesized union loses the `aliasSymbol` from
+  // the original `Currency` alias. `getNamedTypeName` returns null in this case, so
+  // the type is never registered in `typeRegistry` and ends up inlined at every usage
+  // site instead of being deduplicated into `$defs`.
+  //
+  // Fix: when `typeName` is null, inspect the source node's type annotation. If it is a
+  // TypeReferenceNode pointing at a TypeAliasDeclaration whose underlying type is a
+  // union (i.e. a string-union enum alias like `Currency`), recover the alias name and
+  // declaration so the rest of `resolveUnionType` can register it normally.
+  //
+  // We deliberately limit recovery to aliases whose underlying type is a union, matching
+  // the semantics that `resolveUnionType` already handles. This avoids interfering with
+  // primitive-alias handling that goes through `tryResolveNamedPrimitiveAlias`.
+  if (typeName === null && sourceNode !== undefined) {
+    const refAliasDecl = getReferencedTypeAliasDeclaration(sourceNode, checker);
+    if (refAliasDecl !== undefined) {
+      const aliasUnderlyingType = checker.getTypeFromTypeNode(refAliasDecl.type);
+      if (aliasUnderlyingType.isUnion()) {
+        typeName = refAliasDecl.name.text;
+        namedDecl = refAliasDecl;
+      }
+    }
+  }
 
   if (typeName && typeName in typeRegistry) {
     return { kind: "reference", name: typeName, typeArguments: [] };
