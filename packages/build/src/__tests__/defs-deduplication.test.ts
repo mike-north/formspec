@@ -37,6 +37,23 @@ function expectRecord(value: unknown, message: string): Record<string, unknown> 
   return value as Record<string, unknown>;
 }
 
+/** Counts occurrences of `needle` in `haystack`. */
+function countOccurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
+
+/**
+ * Asserts that `name` appears as a key in `schema.$defs`, failing with a
+ * message that mentions the expected name and the keys actually present.
+ */
+function expectInDefs(schema: unknown, name: string, reason = ""): void {
+  const root = expectRecord(schema, "schema");
+  const defs = (root.$defs ?? {}) as Record<string, unknown>;
+  const keys = Object.keys(defs);
+  const suffix = reason ? ` — ${reason}` : "";
+  expect(keys, `Expected ${name} in $defs (found [${keys.join(", ")}])${suffix}`).toContain(name);
+}
+
 // ---------------------------------------------------------------------------
 // Fixture sources
 // ---------------------------------------------------------------------------
@@ -140,6 +157,59 @@ const OBJECT_ALIAS_FIXTURE_SOURCE = [
   "}",
 ].join("\n");
 
+/**
+ * Additional edge-case fixtures covering kinds of aliases that the recovery
+ * block either handles (interfaces, nullable) or deliberately excludes
+ * (generic aliases, primitive aliases used via array).
+ *
+ * Also includes a self-referential alias: `Tree` references itself through an
+ * optional `children?: Tree[]` property. Without the fix to `registerNamed`,
+ * resolving `tree?: Tree` overwrites the already-registered `$defs.Tree` body
+ * with a self-reference, producing `{"Tree":{"$ref":"#/$defs/Tree"}}`.
+ */
+const EDGE_CASES_FIXTURE_SOURCE = [
+  // Interface (not type alias) — has its own declaration-symbol path in
+  // resolveNamedTypeWithSourceRecovery, distinct from type-alias resolution.
+  "interface InterfaceAddr { street: string; city: string; }",
+  "",
+  "export class InterfaceOptConfig {",
+  "  homeAddr?: InterfaceAddr;",
+  "  workAddr?: InterfaceAddr;",
+  "}",
+  "",
+  // Recursive type alias — exercises the placeholder / final-body interaction.
+  "type Tree = { value: number; children?: Tree[]; };",
+  "",
+  "export class RecursiveOptConfig {",
+  "  a?: Tree;",
+  "  b?: Tree;",
+  "}",
+  "",
+  // Array-of-alias — element alias should dedup even though the property type
+  // `Currency[]` itself is not a named alias.
+  'type ArrayElemCurrency = "AED" | "USD" | "EUR";',
+  "export class ArrayOfAliasConfig {",
+  "  a?: ArrayElemCurrency[];",
+  "  b?: ArrayElemCurrency[];",
+  "}",
+  "",
+  // Nullable explicit: `T | null` as the declared type, then made optional.
+  "type NullableAddr = { line: string; };",
+  "export class NullableOptConfig {",
+  "  a?: NullableAddr | null;",
+  "  b?: NullableAddr | null;",
+  "}",
+  "",
+  // Generic alias — deliberately excluded from alias recovery because the
+  // recovered name "Ref" would lose the `<T>` binding. Each instantiation
+  // dedups under its own instantiated name (e.g., Ref__string).
+  "type Ref<T> = { id: string; value: T; };",
+  "export class GenericOptConfig {",
+  "  a?: Ref<string>;",
+  "  b?: Ref<number>;",
+  "}",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -147,6 +217,7 @@ const OBJECT_ALIAS_FIXTURE_SOURCE = [
 let tmpDir: string;
 let enumFixturePath: string;
 let objectAliasFixturePath: string;
+let edgeCasesFixturePath: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-defs-dedup-"));
@@ -171,6 +242,9 @@ beforeAll(() => {
 
   objectAliasFixturePath = path.join(tmpDir, "object-alias-fixture.ts");
   fs.writeFileSync(objectAliasFixturePath, OBJECT_ALIAS_FIXTURE_SOURCE);
+
+  edgeCasesFixturePath = path.join(tmpDir, "edge-cases-fixture.ts");
+  fs.writeFileSync(edgeCasesFixturePath, EDGE_CASES_FIXTURE_SOURCE);
 });
 
 afterAll(() => {
@@ -187,6 +261,11 @@ function generateEnum(typeName: string) {
 /** Convenience wrapper to generate and return schemas for a type in the object alias fixture. */
 function generateObj(typeName: string) {
   return generateSchemasOrThrow({ filePath: objectAliasFixturePath, typeName });
+}
+
+/** Convenience wrapper to generate and return schemas for a type in the edge-cases fixture. */
+function generateEdge(typeName: string) {
+  return generateSchemasOrThrow({ filePath: edgeCasesFixturePath, typeName });
 }
 
 // ---------------------------------------------------------------------------
@@ -459,6 +538,77 @@ describe("$defs deduplication — issue #309", () => {
           `than required schema (${String(requiredSize)} chars). Large difference indicates ` +
           `the enum is being inlined for optional fields.`
       ).toBeLessThan(requiredSize + 200);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Edge-case coverage: interface-typed, recursive, array-of-alias, nullable,
+  // and generic aliases. Each documents whether the recovery path handles the
+  // case or whether a different mechanism (generic instantiation, element-type
+  // resolution) is responsible for dedup.
+  // -------------------------------------------------------------------------
+  describe("edge-case alias shapes (#309 follow-up)", () => {
+    it("interface-typed optional (homeAddr?: InterfaceAddr) dedups into $defs", () => {
+      // Interfaces take the non-alias branch of resolveNamedTypeWithSourceRecovery,
+      // which accepts any non-alias named declaration. Positive regression guard
+      // so the interface path doesn't quietly regress.
+      const result = generateEdge("InterfaceOptConfig");
+      expectInDefs(result.jsonSchema, "InterfaceAddr");
+      const str = JSON.stringify(result.jsonSchema);
+      expect(countOccurrences(str, '"$ref":"#/$defs/InterfaceAddr"')).toBeGreaterThanOrEqual(2);
+    });
+
+    it("recursive optional (a?: Tree where Tree references itself) keeps real body in $defs", () => {
+      // Regression: resolveUnionType's registerNamed previously overwrote an
+      // already-finalized registry entry with the synthesized reference node,
+      // producing `$defs.Tree = {"$ref":"#/$defs/Tree"}` — a dangling self-ref
+      // with no underlying shape. The fix skips overwrite when the inner
+      // resolveObjectType has already populated the body.
+      const result = generateEdge("RecursiveOptConfig");
+      const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+      const tree = expectRecord(defs["Tree"], "$defs.Tree");
+      expect(
+        tree["type"],
+        "Expected $defs.Tree to be a real object, not a dangling self-reference"
+      ).toBe("object");
+      const props = expectRecord(tree["properties"], "$defs.Tree.properties");
+      expect(props["value"], "Expected Tree.value property").toBeDefined();
+    });
+
+    it("array-of-alias (a?: Currency[]) dedups the element alias into $defs", () => {
+      // Dedup comes from resolveObjectType seeing the element type `Currency`
+      // directly (element-type reference preserves aliasSymbol), not from the
+      // union-recovery block. The array wrapper `Currency[] | undefined` has
+      // no recoverable alias name.
+      const result = generateEdge("ArrayOfAliasConfig");
+      expectInDefs(result.jsonSchema, "ArrayElemCurrency");
+      const str = JSON.stringify(result.jsonSchema);
+      expect(countOccurrences(str, '"AED"'), "enum literal should appear exactly once").toBe(1);
+    });
+
+    it("nullable optional (a?: Addr | null) dedups and preserves null branch", () => {
+      const result = generateEdge("NullableOptConfig");
+      expectInDefs(result.jsonSchema, "NullableAddr");
+      const str = JSON.stringify(result.jsonSchema);
+      expect(countOccurrences(str, '"$ref":"#/$defs/NullableAddr"')).toBeGreaterThanOrEqual(2);
+      // Each field should still express its null branch.
+      expect(str).toContain('"type":"null"');
+    });
+
+    it("generic alias (a?: Ref<string>, b?: Ref<number>) dedups per instantiation", () => {
+      // Generic aliases are deliberately excluded from source-recovery because
+      // the raw alias name would drop the type arguments. Instead, each
+      // instantiation is registered under its instantiated name (Ref__string,
+      // Ref__number). This test documents the contract so a future change to
+      // resolveNamedTypeWithSourceRecovery doesn't silently collapse the two
+      // distinct $defs entries into a single incorrect one.
+      const result = generateEdge("GenericOptConfig");
+      const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+      const keys = Object.keys(defs).sort();
+      expect(keys).toEqual(expect.arrayContaining(["Ref__number", "Ref__string"]));
+      // Raw "Ref" should NOT appear as a $defs key — that would mean a generic
+      // alias was recovered and collapsed two instantiations into one entry.
+      expect(keys, "Raw 'Ref' would indicate generic recovery regression").not.toContain("Ref");
     });
   });
 });

@@ -27,3 +27,8 @@ primitive/branded aliases.
 This prevents generated schemas from ballooning in size when large enum types (e.g. 157 ISO
 4217 currency codes) are used as optional properties across multiple fields, and also means
 optional shared object aliases are deduplicated into `$defs` instead of being repeatedly inlined.
+
+Additionally fixes a follow-on regression where recovering a self-referential alias for an
+optional property (e.g. `node?: Tree` with `Tree = { children?: Tree[] }`) would overwrite the
+real `$defs.Tree` body with a dangling self-reference. The recovery path now preserves any
+body that the inner resolver has already finalized instead of replacing it.

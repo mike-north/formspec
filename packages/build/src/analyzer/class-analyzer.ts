@@ -2192,6 +2192,14 @@ function resolveUnionType(
     if (!typeName) {
       return result;
     }
+    // If the inner resolution (e.g. resolveObjectType on a recursive alias) already
+    // finalized a proper body under this name, don't overwrite it with the reference
+    // node we synthesized here — that would destroy the real `$defs` entry and leave
+    // a dangling self-reference like `{ "Tree": { "$ref": "#/$defs/Tree" } }`.
+    const existing = typeRegistry[typeName];
+    if (existing !== undefined && existing.type !== RESOLVING_TYPE_PLACEHOLDER) {
+      return { kind: "reference", name: typeName, typeArguments: [] };
+    }
     const annotations = namedDecl
       ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
       : undefined;
