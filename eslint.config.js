@@ -83,6 +83,8 @@ export default [
       // Examples have their own eslint.config.js with formspec plugin rules.
       // They are linted separately via `pnpm -r run lint`.
       "examples/**",
+      // Scratch probe file created during Phase 0.5d development — not project source.
+      "probe-diagnostics.mjs",
     ],
   },
 ];
