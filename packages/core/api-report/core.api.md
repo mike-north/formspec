@@ -515,6 +515,9 @@ export function isField(element: FormElement): element is AnyField;
 export function isGroup(element: FormElement): element is Group<readonly FormElement[]>;
 
 // @public
+export function isNamespaceEnabled(pattern: string, namespace: string): boolean;
+
+// @public
 export function isNumberField(element: FormElement): element is NumberField<string>;
 
 // @public
@@ -541,6 +544,16 @@ export interface LengthConstraintNode {
     readonly path?: PathTarget;
     readonly provenance: Provenance;
     readonly value: number;
+}
+
+// @public
+export interface LoggerLike {
+    child(bindings: Record<string, unknown>): LoggerLike;
+    debug(msg: string, ...args: unknown[]): void;
+    error(msg: string, ...args: unknown[]): void;
+    info(msg: string, ...args: unknown[]): void;
+    trace(msg: string, ...args: unknown[]): void;
+    warn(msg: string, ...args: unknown[]): void;
 }
 
 // @public
@@ -687,6 +700,9 @@ export interface MetadataValueRequireExplicitPolicyInput {
     readonly mode: "require-explicit";
     readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
 }
+
+// @public
+export const noopLogger: LoggerLike;
 
 // @public
 export interface NormalizedDeclarationMetadataPolicy {

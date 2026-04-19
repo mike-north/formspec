@@ -16,6 +16,9 @@
 
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createLogger } from "./cli/logger.js";
+
+const log = createLogger("formspec:build");
 
 interface CliOptions {
   inputFile: string;
@@ -126,6 +129,8 @@ function parseArgs(args: string[]): CliOptions | null {
     name = path.basename(inputFile, path.extname(inputFile));
   }
 
+  log.debug("Arguments parsed", { inputFile, outDir, name, enumSerialization });
+
   return { inputFile, outDir, name, enumSerialization };
 }
 
@@ -141,17 +146,21 @@ async function main(): Promise<void> {
 
   // Resolve input file path
   const absoluteInput = path.resolve(process.cwd(), inputFile);
+  log.debug("Resolved input file", { absoluteInput });
 
   try {
     // Dynamically import the input file
     // Use file URL for cross-platform compatibility (Windows paths need file:// URLs)
     const fileUrl = pathToFileURL(absoluteInput).href;
+    log.debug("Loading form module", { fileUrl });
+
     const module = (await import(fileUrl)) as Record<string, unknown>;
 
     // Look for the form export
     const form = module["default"] ?? module["form"];
 
     if (!form || typeof form !== "object" || !("elements" in form)) {
+      log.error("Input file does not export a valid FormSpec", { fileUrl });
       console.error("Error: Input file must export a FormSpec as default export or as 'form'");
       console.error("Example:");
       console.error('  export default formspec(field.text("name"));');
@@ -159,6 +168,8 @@ async function main(): Promise<void> {
       console.error('  export const form = formspec(field.text("name"));');
       process.exit(1);
     }
+
+    log.debug("Form module loaded, generating schemas");
 
     // Import writeSchemas dynamically to avoid circular deps
     const { writeSchemas } = await import("./index.js");
@@ -168,13 +179,17 @@ async function main(): Promise<void> {
       { outDir, name, enumSerialization }
     );
 
+    log.debug("Schemas written", { jsonSchemaPath, uiSchemaPath });
+
     console.log("Generated:");
     console.log(`  ${jsonSchemaPath}`);
     console.log(`  ${uiSchemaPath}`);
   } catch (error) {
     if (error instanceof Error) {
+      log.child({ err: error.message }).error("Schema generation failed");
       console.error(`Error: ${error.message}`);
     } else {
+      log.error("Schema generation failed with unknown error");
       console.error("Error:", error);
     }
     process.exit(1);

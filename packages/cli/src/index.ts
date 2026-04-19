@@ -50,6 +50,9 @@ import {
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as ts from "typescript";
+import { createLogger } from "./logger.js";
+
+const log = createLogger("formspec:cli");
 
 /**
  * CLI options parsed from arguments.
@@ -369,9 +372,9 @@ async function main(): Promise<void> {
       console.log(`Using config: ${configResult.configPath}`);
     }
   } catch (error) {
-    console.error(
-      `Error loading config: ${error instanceof Error ? error.message : String(error)}`
-    );
+    const msg = `Error loading config: ${error instanceof Error ? error.message : String(error)}`;
+    log.error(msg);
+    console.error(msg);
     process.exit(1);
   }
 
@@ -468,7 +471,9 @@ async function main(): Promise<void> {
       const classDecl = findClassByName(ctx.sourceFile, options.className);
 
       if (!classDecl) {
-        console.error(`Error: Class "${options.className}" not found in ${options.filePath}`);
+        const msg = `Class "${options.className}" not found in ${options.filePath}`;
+        log.error(msg);
+        console.error(`Error: ${msg}`);
         process.exit(1);
       }
 
@@ -663,7 +668,9 @@ async function main(): Promise<void> {
       console.log("Done!");
     }
   } catch (error) {
-    console.error("Error:", error instanceof Error ? error.message : error);
+    const msg = error instanceof Error ? error.message : String(error);
+    log.error(`CLI error: ${msg}`);
+    console.error("Error:", msg);
     process.exit(1);
   }
 }

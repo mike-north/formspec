@@ -140,7 +140,8 @@ export type {
   Predicate,
 } from "@formspec/core";
 
-export { createInitialFieldState } from "@formspec/core";
+export { createInitialFieldState, noopLogger } from "@formspec/core";
+export type { LoggerLike } from "@formspec/core";
 
 // Type guards
 export {

@@ -37,6 +37,7 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+    readonly logger?: LoggerLike | undefined;
 }
 
 // @public
@@ -290,6 +291,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 // @public
 export interface GenerateJsonSchemaOptions {
     readonly enumSerialization?: "enum" | "oneOf";
+    readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
@@ -299,6 +301,7 @@ export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export interface GenerateUiSchemaOptions {
+    readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
 }
 
@@ -420,6 +423,16 @@ export interface LabelElement {
 }
 
 // @public
+export interface LoggerLike {
+    child(bindings: Record<string, unknown>): LoggerLike;
+    debug(msg: string, ...args: unknown[]): void;
+    error(msg: string, ...args: unknown[]): void;
+    info(msg: string, ...args: unknown[]): void;
+    trace(msg: string, ...args: unknown[]): void;
+    warn(msg: string, ...args: unknown[]): void;
+}
+
+// @public
 export function logValidationIssues(result: ValidationResult, formName?: string): void;
 
 // @public
@@ -501,6 +514,9 @@ export interface MetadataValueRequireExplicitPolicyInput {
     readonly mode: "require-explicit";
     readonly pluralization?: MetadataPluralizationPolicyInput | undefined;
 }
+
+// @public
+export const noopLogger: LoggerLike;
 
 // @public
 export interface NumberField<N extends string> {
@@ -667,6 +683,7 @@ export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>
 // @public
 export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
     readonly indent?: number;
+    readonly logger?: LoggerLike | undefined;
     readonly name?: string;
     readonly outDir: string;
 }

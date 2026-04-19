@@ -21,6 +21,7 @@ import { ExtensionDefinition } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
 import { Group } from '@formspec/core';
+import type { LoggerLike } from '@formspec/core';
 import type { MetadataPolicyInput } from '@formspec/core';
 import { NumberField } from '@formspec/core';
 import { ObjectField } from '@formspec/core';
@@ -41,6 +42,7 @@ export function buildFormSchemas<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+    readonly logger?: LoggerLike | undefined;
 }
 
 // @public
@@ -209,6 +211,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 // @public
 export interface GenerateJsonSchemaOptions {
     readonly enumSerialization?: "enum" | "oneOf";
+    readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
 }
@@ -337,6 +340,7 @@ export function generateUiSchema<E extends readonly FormElement[]>(form: FormSpe
 
 // @public
 export interface GenerateUiSchemaOptions {
+    readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
 }
 
@@ -615,6 +619,7 @@ export function writeSchemas<E extends readonly FormElement[]>(form: FormSpec<E>
 // @public
 export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
     readonly indent?: number;
+    readonly logger?: LoggerLike | undefined;
     readonly name?: string;
     readonly outDir: string;
 }

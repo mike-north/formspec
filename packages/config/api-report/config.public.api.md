@@ -198,6 +198,7 @@ export interface LoadConfigNotFoundResult {
 // @public
 export interface LoadConfigOptions {
     configPath?: string;
+    logger?: LoggerLike | undefined;
     searchFrom?: string;
 }
 
@@ -206,6 +207,16 @@ export type LoadConfigResult = LoadConfigFoundResult | LoadConfigNotFoundResult;
 
 // @public
 export function loadFormSpecConfig(options?: LoadConfigOptions): Promise<LoadConfigResult>;
+
+// @public
+export interface LoggerLike {
+    child(bindings: Record<string, unknown>): LoggerLike;
+    debug(msg: string, ...args: unknown[]): void;
+    error(msg: string, ...args: unknown[]): void;
+    info(msg: string, ...args: unknown[]): void;
+    trace(msg: string, ...args: unknown[]): void;
+    warn(msg: string, ...args: unknown[]): void;
+}
 
 // @public
 export interface NumberField<N extends string> {

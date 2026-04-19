@@ -5,6 +5,7 @@
 ```ts
 
 import type { ExtensionDefinition } from '@formspec/core';
+import type { LoggerLike } from '@formspec/core';
 import type { MetadataAnalysisResult } from '@formspec/core';
 import type { MetadataPolicyInput } from '@formspec/core';
 import * as ts from 'typescript';
@@ -28,6 +29,7 @@ export interface AnalyzeMetadataForSourceFileOptions extends AnalyzeMetadataOpti
 // @public
 export interface AnalyzeMetadataOptions {
     readonly extensions?: readonly ExtensionDefinition[] | undefined;
+    readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly program: ts.Program;
 }

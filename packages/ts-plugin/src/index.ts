@@ -40,6 +40,7 @@ export {
   type FormSpecSerializedTagSignature,
 } from "@formspec/analysis";
 import { createLanguageServiceProxy, FormSpecPluginService } from "./service.js";
+import { fromTsLogger } from "./logger.js";
 export {
   createLanguageServiceProxy,
   FormSpecPluginService,
@@ -83,6 +84,8 @@ function readNumberEnvFlag(name: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+const PLUGIN_NAMESPACE = "formspec:ts-plugin";
+
 function getOrCreateService(
   info: tsServer.server.PluginCreateInfo,
   typescriptVersion: string
@@ -95,12 +98,17 @@ function getOrCreateService(
     return existing.service;
   }
 
+  const tsLogger = info.project.projectService.logger;
+  // Build a rich FormSpec LoggerLike that prefixes every line with
+  // [formspec:ts-plugin] and gates on DEBUG=formspec:ts-plugin (or DEBUG=formspec:*).
+  const pluginLogger = fromTsLogger(tsLogger, { namespace: PLUGIN_NAMESPACE });
+
   const performanceLogThresholdMs = readNumberEnvFlag(PERF_LOG_THRESHOLD_ENV_VAR);
   const service = new FormSpecPluginService({
     workspaceRoot,
     typescriptVersion,
     getProgram: () => info.languageService.getProgram(),
-    logger: info.project.projectService.logger,
+    logger: tsLogger,
     enablePerformanceLogging: readBooleanEnvFlag(PERF_LOG_ENV_VAR),
     ...(performanceLogThresholdMs === undefined ? {} : { performanceLogThresholdMs }),
   });
@@ -109,14 +117,24 @@ function getOrCreateService(
     service,
     referenceCount: 1,
   };
-  attachProjectCloseHandler(info, workspaceRoot, serviceEntry);
+  attachProjectCloseHandler(info, workspaceRoot, serviceEntry, pluginLogger);
 
-  service.start().catch((error: unknown) => {
-    info.project.projectService.logger.info(
-      `[FormSpec] Plugin service failed to start for ${workspaceRoot}: ${formatPluginError(error)}`
-    );
-    services.delete(workspaceRoot);
-  });
+  pluginLogger.info(`Plugin activating for workspace: ${workspaceRoot} (TypeScript ${typescriptVersion})`);
+
+  service
+    .start()
+    .then(() => {
+      pluginLogger.info(`IPC socket open for ${workspaceRoot}`);
+    })
+    .catch((error: unknown) => {
+      const msg = `Plugin service failed to start for ${workspaceRoot}: ${formatPluginError(error)}`;
+      pluginLogger.error(msg);
+      // Also write through the raw tsLogger so the error appears even when
+      // DEBUG=formspec:ts-plugin is not set.
+      tsLogger.info(`[FormSpec] ${msg}`);
+      services.delete(workspaceRoot);
+    });
+
   services.set(workspaceRoot, serviceEntry);
   return service;
 }
@@ -124,7 +142,8 @@ function getOrCreateService(
 function attachProjectCloseHandler(
   info: tsServer.server.PluginCreateInfo,
   workspaceRoot: string,
-  serviceEntry: ServiceEntry
+  serviceEntry: ServiceEntry,
+  pluginLogger?: import("@formspec/core").LoggerLike
 ): void {
   const originalClose = info.project.close.bind(info.project);
   let closed = false;
@@ -139,10 +158,14 @@ function attachProjectCloseHandler(
     serviceEntry.referenceCount -= 1;
     if (serviceEntry.referenceCount <= 0) {
       services.delete(workspaceRoot);
+      pluginLogger?.info(`IPC socket closing for ${workspaceRoot}`);
       void serviceEntry.service.stop().catch((error: unknown) => {
-        info.project.projectService.logger.info(
-          `[FormSpec] Failed to stop plugin service for ${workspaceRoot}: ${formatPluginError(error)}`
-        );
+        const msg = `Failed to stop plugin service for ${workspaceRoot}: ${formatPluginError(error)}`;
+        if (pluginLogger !== undefined) {
+          pluginLogger.error(msg);
+        } else {
+          info.project.projectService.logger.info(`[FormSpec] ${msg}`);
+        }
       });
     }
     originalClose();

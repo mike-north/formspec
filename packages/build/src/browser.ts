@@ -16,7 +16,8 @@
  * @packageDocumentation
  */
 
-import type { FormElement, FormSpec } from "@formspec/core";
+import type { FormElement, FormSpec, LoggerLike } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 import { generateUiSchema } from "./ui-schema/generator.js";
 import { type JsonSchema2020 } from "./json-schema/ir-generator.js";
@@ -116,7 +117,13 @@ export interface BuildResult {
  * Currently identical to `GenerateJsonSchemaOptions`. Defined separately so the
  * browser-safe surface can grow independently in the future if needed.
  */
-export type BuildFormSchemasOptions = GenerateJsonSchemaOptions;
+export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions {
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
+}
 
 /**
  * Builds both JSON Schema and UI Schema from a FormSpec.
@@ -140,6 +147,8 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: BuildFormSchemasOptions
 ): BuildResult {
+  const logger = options?.logger ?? noopLogger;
+  logger.debug("buildFormSchemas (browser): starting schema generation");
   return {
     jsonSchema: generateJsonSchema(form, options),
     uiSchema: generateUiSchema(form, options),

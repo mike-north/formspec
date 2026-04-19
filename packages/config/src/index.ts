@@ -73,6 +73,9 @@ export type {
   TextField,
 } from "@formspec/core";
 
+// Logger contract (re-exported so LoadConfigOptions.logger resolves in the API surface)
+export type { LoggerLike } from "@formspec/core";
+
 // Config loading
 export {
   loadFormSpecConfig,

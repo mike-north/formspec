@@ -32,7 +32,9 @@
   "dependencies": {
     "typescript": "^5.0.0",
     "@formspec/build": "workspace:*",
-    "@formspec/config": "workspace:*"
+    "@formspec/config": "workspace:*",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0"
   },
   "devDependencies": {
     "@formspec/core": "workspace:*",

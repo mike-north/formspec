@@ -1,5 +1,6 @@
 import type {
   ExplicitMetadataSource,
+  LoggerLike,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataDeclarationKind,
@@ -10,6 +11,7 @@ import type {
   ResolvedScalarMetadata,
   ExtensionDefinition,
 } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import * as ts from "typescript";
 import { parseCommentBlock, type ParsedCommentTag } from "./comment-syntax.js";
 import { getTagDefinition, normalizeFormSpecTagName } from "./tag-registry.js";
@@ -27,6 +29,11 @@ export interface AnalyzeMetadataOptions {
   readonly metadata?: MetadataPolicyInput | undefined;
   /** Optional extension definitions contributing additional metadata slots. */
   readonly extensions?: readonly ExtensionDefinition[] | undefined;
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
 }
 
 /**
@@ -634,6 +641,9 @@ export function analyzeMetadataForNodeWithChecker(
 export function analyzeMetadataForNode(
   options: AnalyzeMetadataForNodeOptions
 ): MetadataAnalysisResult | null {
+  const logger = (options.logger ?? noopLogger).child({ stage: "analysis" });
+  const logicalName = getLogicalName(options.node);
+  logger.debug("analyzing metadata for node", { logicalName: logicalName ?? "(unnamed)" });
   return analyzeMetadataForNodeWithChecker({
     program: options.program,
     checker: options.program.getTypeChecker(),
@@ -651,6 +661,8 @@ export function analyzeMetadataForNode(
 export function analyzeMetadataForSourceFile(
   options: AnalyzeMetadataForSourceFileOptions
 ): readonly MetadataAnalysisResult[] {
+  const logger = (options.logger ?? noopLogger).child({ stage: "analysis" });
+  const fileName = options.sourceFile.fileName;
   const results: MetadataAnalysisResult[] = [];
   const checker = options.program.getTypeChecker();
 
@@ -672,5 +684,7 @@ export function analyzeMetadataForSourceFile(
   };
 
   visit(options.sourceFile);
+  // One debug record per file: filename + tag count — plan §3 @formspec/analysis
+  logger.debug("analyzed source file", { fileName, tagCount: results.length });
   return results;
 }

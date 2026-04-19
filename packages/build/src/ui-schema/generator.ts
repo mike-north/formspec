@@ -4,7 +4,8 @@
  * Routes through the canonical IR pipeline: Chain DSL → FormIR → UI Schema.
  */
 
-import type { FormElement, FormSpec, MetadataPolicyInput } from "@formspec/core";
+import type { FormElement, FormSpec, LoggerLike, MetadataPolicyInput } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
 import { generateUiSchemaFromIR } from "./ir-generator.js";
 import type { UISchema } from "./types.js";
@@ -17,6 +18,11 @@ import type { UISchema } from "./types.js";
 export interface GenerateUiSchemaOptions {
   /** Metadata resolution policy for chain DSL UI generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
 }
 
 /**
@@ -69,9 +75,13 @@ export function generateUiSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: GenerateUiSchemaOptions
 ): UISchema {
+  const logger = (options?.logger ?? noopLogger).child({ stage: "ir" });
+  logger.debug("canonicalizing chain DSL to IR for UI Schema generation");
   const ir = canonicalizeChainDSL(
     form,
     options?.metadata !== undefined ? { metadata: options.metadata } : undefined
   );
+  const schemaLogger = (options?.logger ?? noopLogger).child({ stage: "schema" });
+  schemaLogger.debug("generating UI Schema from IR");
   return generateUiSchemaFromIR(ir);
 }

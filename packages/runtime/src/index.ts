@@ -35,6 +35,7 @@
 
 export {
   defineResolvers,
+  type DefineResolversOptions,
   type ExtractDynamicSources,
   type ExtractDynamicSourcesFromArray,
   type Resolver,
