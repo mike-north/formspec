@@ -97,7 +97,7 @@ const ENUM_FIXTURE_SOURCE = [
   "  y?: MixedUnion;",
   "}",
   "",
-  // Single-use alias — used only once. Documents the current behaviour.
+  // Single-use alias — used only once. Documents the current behavior.
   'type SingleUseAlias = "only" | "here";',
   "export class SingleUseConfig {",
   "  field?: SingleUseAlias;",
@@ -119,9 +119,10 @@ const ENUM_FIXTURE_SOURCE = [
  * skipped object-shape aliases. The resolved anonymous object has no aliasSymbol,
  * causing `Address` to be inlined rather than registered in `$defs`.
  *
- * Fix: `resolveNamedTypeWithSourceRecovery` no longer filters by underlying type,
- * so object-shape aliases are now recovered too. The single non-null union member
- * is then processed with the correct alias context.
+ * Fix: `resolveNamedTypeWithSourceRecovery` now recovers aliases whose underlying
+ * type is either a union or an object shape, so object-shape aliases like
+ * `Address` are recovered in this optional-property path as well. The single
+ * non-null union member is then processed with the correct alias context.
  */
 const OBJECT_ALIAS_FIXTURE_SOURCE = [
   "type Address = { street: string; city: string; zip: string; };",
@@ -300,7 +301,7 @@ describe("$defs deduplication — issue #309", () => {
   // -------------------------------------------------------------------------
   // Bug: optional object-shape type alias (#309 parallel bug)
   // -------------------------------------------------------------------------
-  describe("optional object-shape type alias (parallel bug in resolveObjectType)", () => {
+  describe("optional object-shape type alias (parallel bug in resolveUnionType)", () => {
     it("places Address in $defs when addr?: Address is optional", () => {
       // This test would fail against the pre-fix code. The recovery block in
       // resolveUnionType previously checked `aliasUnderlyingType.isUnion()` and
@@ -405,7 +406,7 @@ describe("$defs deduplication — issue #309", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Single-use alias — documents current behaviour re: issue #309
+  // Single-use alias — documents current behavior re: issue #309
   // -------------------------------------------------------------------------
   describe("single-use alias contract (issue #309)", () => {
     it("places SingleUseAlias in $defs even when it appears only once as an optional field", () => {
