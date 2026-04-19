@@ -1293,6 +1293,38 @@ function extractReferenceTypeArguments(
 
   return referenceTypeNode.typeArguments.map((argumentNode) => {
     const argumentType = checker.getTypeFromTypeNode(argumentNode);
+
+    // If the type argument is a named type declared outside the current
+    // analysis root file, emit a synthetic opaque reference TypeNode
+    // instead of recursing into its declaration. This preserves the name
+    // for buildInstantiatedReferenceName while avoiding stack overflows on
+    // deeply-nested types (e.g. Stripe.Customer) used as phantom parameters
+    // (e.g. Ref<T>). Note: this path does NOT populate typeRegistry —
+    // callers that need a resolved $defs entry must get it via the parent
+    // type's property walk.
+    const baseSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
+    const argumentSymbol =
+      baseSymbol !== undefined && baseSymbol.flags & ts.SymbolFlags.Alias
+        ? checker.getAliasedSymbol(baseSymbol)
+        : baseSymbol;
+    const argumentDecl = argumentSymbol?.declarations?.[0];
+    if (
+      argumentDecl !== undefined &&
+      argumentDecl.getSourceFile().fileName !== file
+    ) {
+      const argumentName = argumentSymbol?.getName() ?? baseSymbol?.getName();
+      if (argumentName !== undefined) {
+        return {
+          tsType: argumentType,
+          typeNode: {
+            kind: "reference",
+            name: argumentName,
+            typeArguments: [],
+          },
+        };
+      }
+    }
+
     return {
       tsType: argumentType,
       typeNode: resolveTypeNode(
