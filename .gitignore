@@ -148,6 +148,11 @@ vite.config.ts.timestamp-*
 # Claude Code local configuration (auto-added)
 .claude/*.local.*
 
+# Scratch probe files created during agent sessions
+probe-diagnostics.mjs
+*.local.*
+.DS_Store
+
 scratch
 .worktrees
 .cache/

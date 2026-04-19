@@ -399,6 +399,9 @@ describe("compiler-signatures", () => {
     expect(result.globalDiagnostics[0]?.message).toContain(
       "conflicts with a TypeScript global built-in type"
     );
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
+    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    expect(result.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 
   it("preserves prelude-level failures across synthetic batch cache hits", () => {
@@ -428,6 +431,9 @@ describe("compiler-signatures", () => {
     expect(secondResult.globalDiagnostics[0]?.message).toContain(
       "conflicts with a TypeScript global built-in type"
     );
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
+    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    expect(secondResult.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 
   it("classifies invalid custom type registrations as synthetic setup failures", () => {
@@ -455,6 +461,9 @@ describe("compiler-signatures", () => {
     expect(result.globalDiagnostics).toHaveLength(1);
     expect(result.globalDiagnostics[0]?.kind).toBe("synthetic-setup");
     expect(result.globalDiagnostics[0]?.message).toContain("Invalid custom type name");
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
+    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    expect(result.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 
   it("keeps legacy batched synthetic checks non-lossy for setup-level failures", () => {
