@@ -107,6 +107,26 @@ export interface CustomTypeRegistration {
    */
   readonly brand?: string;
   /**
+   * Optional callback to extract a payload from the TypeScript type at
+   * analysis time. The returned value is stored on the custom type node
+   * and later passed to `toJsonSchema`.
+   *
+   * Use this to carry type-level information (e.g., a generic argument's
+   * resolved literal value) through the IR into schema generation.
+   *
+   * Parameters are typed as `unknown` because `@formspec/core` does not
+   * depend on the TypeScript compiler API. Implementations should cast to
+   * `ts.Type` and `ts.TypeChecker`.
+   *
+   * @param type - The resolved TypeScript type (cast to `ts.Type`).
+   * @param checker - The TypeScript type checker (cast to `ts.TypeChecker`).
+   * @returns A JSON-serializable payload, or `null` if no payload can be extracted.
+   */
+  readonly resolvePayload?: (
+    type: unknown,
+    checker: unknown
+  ) => ExtensionPayloadValue;
+  /**
    * Converts the custom type's payload into a JSON Schema fragment.
    *
    * @param payload - The opaque JSON payload stored on the custom type node.

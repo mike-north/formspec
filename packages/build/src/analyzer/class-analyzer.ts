@@ -1706,10 +1706,11 @@ export function resolveTypeNode(
     sourceNode
   );
   if (customTypeLookup !== null) {
+    const payload = customTypeLookup.registration.resolvePayload?.(type, checker) ?? null;
     return {
       kind: "custom",
       typeId: customTypeIdFromLookup(customTypeLookup),
-      payload: null,
+      payload,
     };
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(
