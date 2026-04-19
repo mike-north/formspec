@@ -1304,6 +1304,11 @@ function buildTagDiagnostics(
     };
   }[] = [];
 
+  // subjectType is constant for the whole call (per the early-return guard at
+  // the top of this function). Compute the log-friendly kind once to avoid
+  // re-walking the type on every tag.
+  const subjectTypeKindForLog = describeTypeKind(subjectType, checker);
+
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
     if (semantic.tagDefinition === null) {
@@ -1345,11 +1350,9 @@ function buildTagDiagnostics(
       semantic.compatiblePathTargets
     );
 
-    // §8.3b — record per-tag start time and subject type kind before lowering.
-    // subjectType is non-undefined here: the `if (placement === null ||
-    // subjectType === undefined)` guard at the top of this function returns early.
+    // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
+    // above the loop.
     const tagStartMicros = nowMicros();
-    const subjectTypeKindForLog = describeTypeKind(subjectType, checker);
 
     try {
       const syntheticOptions = {

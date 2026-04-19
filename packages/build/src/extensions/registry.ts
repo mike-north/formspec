@@ -25,7 +25,6 @@ import {
   getTagDefinition,
   normalizeFormSpecTagName,
   getSyntheticLogger,
-  logSetupDiagnostics,
   type ExtensionTagSource,
 } from "@formspec/analysis/internal";
 
@@ -359,12 +358,6 @@ export function createExtensionRegistry(
     }
   }
 
-  // §8.3c — log successful registry construction with type/constraint/broadening counts.
-  // Zero setup diagnostics at this point (construction succeeded without throwing).
-  logSetupDiagnostics(registryLog, {
-    diagnosticCount: 0,
-    codes: [],
-  });
   registryLog.debug("createExtensionRegistry: complete", {
     typeCount: typeMap.size,
     constraintCount: constraintMap.size,

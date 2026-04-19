@@ -19,9 +19,12 @@
  * @packageDocumentation
  */
 
+import { createRequire } from "node:module";
 import * as ts from "typescript";
-import { noopLogger } from "@formspec/core";
+import { isNamespaceEnabled, noopLogger } from "@formspec/core";
 import type { LoggerLike } from "@formspec/core";
+
+const esmRequire = createRequire(import.meta.url);
 
 // =============================================================================
 // §8.3b — Per-tag-application structured log-entry schema
@@ -257,16 +260,21 @@ function buildNamespaceLogger(namespace: string): LoggerLike {
     return noopLogger;
   }
 
-  // Check if namespace is enabled using a simple glob match.
-  if (!isNamespaceActive(debugEnv, namespace)) {
+  if (!isNamespaceEnabled(debugEnv, namespace)) {
     return noopLogger;
   }
+
+  // Allow callers to opt into trace-level detail explicitly. Default to debug
+  // so enabling the namespace produces one record per tag application without
+  // also emitting argument-lowering trace records.
+  const traceEnv =
+    (typeof process !== "undefined" ? process.env["FORMSPEC_LOG_TRACE"] : undefined) ?? "";
+  const level: "trace" | "debug" = traceEnv === "1" ? "trace" : "debug";
 
   // Attempt to load pino lazily. If unavailable (e.g. during unit tests that
   // don't have pino installed), fall back to noopLogger without throwing.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pinoModule = require("pino") as
+    const pinoModule = esmRequire("pino") as
       | { default: typeof import("pino") }
       | typeof import("pino");
     const pino = typeof pinoModule === "function" ? pinoModule : pinoModule.default;
@@ -276,61 +284,24 @@ function buildNamespaceLogger(namespace: string): LoggerLike {
 
     if (isTTY) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pinoPretty = require("pino-pretty") as { default: unknown };
+        const pinoPretty = esmRequire("pino-pretty") as { default: unknown };
         const prettyTransport = (pinoPretty.default ?? pinoPretty) as (
           opts: Record<string, unknown>
         ) => NodeJS.WritableStream;
         const stream = prettyTransport({ destination: 2, colorize: true, sync: true });
-        return pino({ name: namespace, level: "trace" }, stream) as unknown as LoggerLike;
+        return pino({ name: namespace, level }, stream) as unknown as LoggerLike;
       } catch {
         // pino-pretty not available — fall through to plain pino
       }
     }
 
     return pino(
-      { name: namespace, level: "trace" },
+      { name: namespace, level },
       pino.destination({ dest: 2, sync: true })
     ) as unknown as LoggerLike;
   } catch {
     // pino not available — silent fallback
     return noopLogger;
-  }
-}
-
-/**
- * Checks whether `namespace` is enabled by `pattern`, using the same
- * comma-separated glob convention as the `debug` npm package.
- *
- * Duplicates a subset of `isNamespaceEnabled` from `@formspec/core` so this
- * module does not depend on it at runtime (avoids circular-dep risk).
- */
-function isNamespaceActive(pattern: string, namespace: string): boolean {
-  const parts = pattern
-    .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-
-  for (const p of parts) {
-    if (p.startsWith("-") && globMatch(p.slice(1), namespace)) {
-      return false;
-    }
-  }
-  for (const p of parts) {
-    if (!p.startsWith("-") && globMatch(p, namespace)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function globMatch(glob: string, value: string): boolean {
-  if (glob.length === 0) return false;
-  const regexSrc = glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
-  try {
-    return new RegExp(`^${regexSrc}$`).test(value);
-  } catch {
-    return false;
   }
 }
 
@@ -395,7 +366,7 @@ export function logTagApplication(
   logger: LoggerLike,
   entry: ConstraintTagApplicationLogEntry
 ): void {
-  logger.debug("constraint-tag application", entry);
+  logger.child({ ...entry }).debug("constraint-tag application");
 }
 
 /**
@@ -409,7 +380,7 @@ export function logSetupDiagnostics(
   entry: SetupDiagnosticLogEntry
 ): void {
   if (entry.diagnosticCount > 0) {
-    logger.debug("setup diagnostics emitted", entry);
+    logger.child({ ...entry }).debug("setup diagnostics emitted");
   }
 }
 
@@ -424,5 +395,5 @@ export function logExtractPayload(
   logger: LoggerLike,
   entry: ExtractPayloadLogEntry
 ): void {
-  logger.debug("extractPayload invoked", entry);
+  logger.child({ ...entry }).debug("extractPayload invoked");
 }

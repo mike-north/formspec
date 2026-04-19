@@ -70,6 +70,7 @@ import {
   type PathTarget,
   type TypeNode,
 } from "@formspec/core/internals";
+import { noopLogger } from "@formspec/core";
 import type { ExtensionRegistry } from "../extensions/index.js";
 import {
   customTypeIdFromLookup,
@@ -721,15 +722,16 @@ function buildCompilerBackedConstraintDiagnostics(
     return [];
   }
 
-  // §8.3b — start timer and gather context for the structured log entry.
+  // §8.3b — gather structured-log context only when logging is enabled.
   // `placement` is narrowed to non-null above; capture it in a typed constant
   // so TypeScript can see the narrowed type inside the `emit` closure below.
   const nonNullPlacement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>> = placement;
-  const logStart = nowMicros();
   const log = getBuildLogger();
   const broadeningLog = getBroadeningLogger();
   const syntheticLog = getSyntheticLogger();
-  const subjectTypeKind = describeTypeKind(subjectType, checker);
+  const logsEnabled = log !== noopLogger || broadeningLog !== noopLogger;
+  const logStart = logsEnabled ? nowMicros() : 0;
+  const subjectTypeKind = logsEnabled ? describeTypeKind(subjectType, checker) : "";
 
   /**
    * Emits the §8.3b structured log entry and returns the supplied diagnostic
@@ -742,6 +744,9 @@ function buildCompilerBackedConstraintDiagnostics(
     outcome: ConstraintValidatorRoleOutcome,
     result: readonly ConstraintSemanticDiagnostic[]
   ): readonly ConstraintSemanticDiagnostic[] {
+    if (!logsEnabled) {
+      return result;
+    }
     const entry = {
       consumer: "build" as const,
       tag: tagName,
