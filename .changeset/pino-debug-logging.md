@@ -7,6 +7,8 @@
 "@formspec/cli": minor
 "@formspec/language-server": minor
 "@formspec/ts-plugin": minor
+"@formspec/dsl": minor
+"@formspec/eslint-plugin": minor
 "formspec": minor
 ---
 
