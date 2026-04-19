@@ -117,34 +117,6 @@ export interface SetupDiagnosticLogEntry {
 }
 
 // =============================================================================
-// §8.3d — extractPayload invocation log-entry schema
-// =============================================================================
-
-/**
- * Structured log entry emitted when `extractPayload` is invoked on a custom
- * type registration (PR #300).
- *
- * @public
- */
-export interface ExtractPayloadLogEntry {
-  /** The fully-qualified extension ID (e.g., "x-stripe/monetary"). */
-  readonly extensionId: string;
-  /** The custom type name as registered (e.g., "Decimal"). */
-  readonly customTypeName: string;
-  /**
-   * Whether the callback received (or accessed) `ts.Type` / `ts.TypeChecker`
-   * APIs. `true` means the host program's type graph was potentially traversed,
-   * which is the OOM risk the Stripe stress test (§8.4) guards against.
-   *
-   * @remarks
-   * Phase 0 logs `true` unconditionally whenever `extractPayload` is defined,
-   * because PR #300 has not yet landed and access-proxy instrumentation is
-   * out of scope. A future phase can refine this to a real access flag.
-   */
-  readonly tsApisTouched: boolean;
-}
-
-// =============================================================================
 // Type-kind description helper (shared by build and snapshot consumers)
 // =============================================================================
 
@@ -391,16 +363,3 @@ export function logSetupDiagnostics(
   }
 }
 
-/**
- * Emits a extractPayload invocation record (§8.3d).
- *
- * Call at the point where `extractPayload` is invoked on a custom type
- * registration. See `ExtractPayloadLogEntry.tsApisTouched` for the access-flag
- * semantics in Phase 0.
- */
-export function logExtractPayload(
-  logger: LoggerLike,
-  entry: ExtractPayloadLogEntry
-): void {
-  logger.child({ ...entry }).debug("extractPayload invoked");
-}
