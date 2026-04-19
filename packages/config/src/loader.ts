@@ -6,6 +6,8 @@ async function getJiti() {
   const { createJiti } = await import("jiti");
   return createJiti(import.meta.url);
 }
+import type { LoggerLike } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import type { FormSpecConfig, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
 
@@ -36,6 +38,12 @@ export interface LoadConfigOptions {
    * If provided, skips file discovery entirely.
    */
   configPath?: string;
+
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  logger?: LoggerLike | undefined;
 }
 
 /**
@@ -205,7 +213,8 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
 export async function loadFormSpecConfig(
   options: LoadConfigOptions = {}
 ): Promise<LoadConfigResult> {
-  const { searchFrom = process.cwd(), configPath } = options;
+  const { searchFrom = process.cwd(), configPath, logger: rawLogger } = options;
+  const logger = (rawLogger ?? noopLogger).child({ stage: "config" });
 
   let resolvedPath: string | null = null;
 
@@ -221,9 +230,11 @@ export async function loadFormSpecConfig(
   }
 
   if (!resolvedPath) {
+    logger.debug("no config file found", { searchFrom });
     return { found: false };
   }
 
+  logger.debug("loading config file", { configPath: resolvedPath, source: configPath ? "explicit" : "discovered" });
   const config = await loadConfigFile(resolvedPath);
 
   return {
@@ -249,6 +260,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<{
   configPath: string | null;
   found: boolean;
 }> {
+  // Pass the logger through to the underlying implementation
   const result = await loadFormSpecConfig(options);
 
   if (!result.found) {

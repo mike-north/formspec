@@ -198,6 +198,7 @@ export interface LoadConfigNotFoundResult {
 // @public
 export interface LoadConfigOptions {
     configPath?: string;
+    logger?: LoggerLike | undefined;
     searchFrom?: string;
 }
 

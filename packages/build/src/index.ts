@@ -23,7 +23,8 @@
  * @packageDocumentation
  */
 
-import type { FormElement, FormSpec } from "@formspec/core";
+import type { FormElement, FormSpec, LoggerLike } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import { generateJsonSchema, type GenerateJsonSchemaOptions } from "./json-schema/generator.js";
 import { generateUiSchema, type GenerateUiSchemaOptions } from "./ui-schema/generator.js";
 import { type JsonSchema2020 } from "./json-schema/ir-generator.js";
@@ -194,8 +195,13 @@ export interface BuildResult {
  *
  * @public
  */
-export interface BuildFormSchemasOptions
-  extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {}
+export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
+}
 
 /**
  * Builds both JSON Schema and UI Schema from a FormSpec.
@@ -230,6 +236,8 @@ export function buildFormSchemas<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: BuildFormSchemasOptions
 ): BuildResult {
+  const logger = options?.logger ?? noopLogger;
+  logger.debug("buildFormSchemas: starting schema generation");
   return {
     jsonSchema: generateJsonSchema(form, options),
     uiSchema: generateUiSchema(form, options),
@@ -248,6 +256,11 @@ export interface WriteSchemasOptions extends GenerateJsonSchemaOptions {
   readonly name?: string;
   /** Number of spaces for JSON indentation. Defaults to 2 */
   readonly indent?: number;
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
 }
 
 /**
@@ -304,16 +317,19 @@ export function writeSchemas<E extends readonly FormElement[]>(
     vendorPrefix,
     enumSerialization,
     metadata,
+    logger: rawLogger,
   } = options;
+  const logger = (rawLogger ?? noopLogger).child({ stage: "write" });
 
   // Build schemas
   const buildOptions =
     vendorPrefix === undefined && enumSerialization === undefined && metadata === undefined
-      ? undefined
+      ? { logger: rawLogger }
       : {
           ...(vendorPrefix !== undefined && { vendorPrefix }),
           ...(enumSerialization !== undefined && { enumSerialization }),
           ...(metadata !== undefined && { metadata }),
+          logger: rawLogger,
         };
 
   const { jsonSchema, uiSchema } = buildFormSchemas(form, buildOptions);
@@ -327,7 +343,9 @@ export function writeSchemas<E extends readonly FormElement[]>(
   const jsonSchemaPath = path.join(outDir, `${name}-schema.json`);
   const uiSchemaPath = path.join(outDir, `${name}-uischema.json`);
 
+  logger.debug("writing JSON Schema", { path: jsonSchemaPath });
   fs.writeFileSync(jsonSchemaPath, JSON.stringify(jsonSchema, null, indent));
+  logger.debug("writing UI Schema", { path: uiSchemaPath });
   fs.writeFileSync(uiSchemaPath, JSON.stringify(uiSchema, null, indent));
 
   return { jsonSchemaPath, uiSchemaPath };

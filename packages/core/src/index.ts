@@ -147,6 +147,10 @@ export {
   defineAnnotation,
 } from "./extensions/index.js";
 
+// Logger contract
+export type { LoggerLike } from "./logger.js";
+export { noopLogger, isNamespaceEnabled } from "./logger.js";
+
 // Re-export type guards
 export {
   isField,

@@ -4,7 +4,8 @@
  * Routes through the canonical IR pipeline: Chain DSL → FormIR → JSON Schema 2020-12.
  */
 
-import type { FormElement, FormSpec, MetadataPolicyInput } from "@formspec/core";
+import type { FormElement, FormSpec, LoggerLike, MetadataPolicyInput } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 import { canonicalizeChainDSL } from "../canonicalize/index.js";
 import {
   generateJsonSchemaFromIR,
@@ -30,6 +31,11 @@ export interface GenerateJsonSchemaOptions {
   readonly enumSerialization?: "enum" | "oneOf";
   /** Metadata resolution policy for chain DSL generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
 }
 
 /**
@@ -66,10 +72,14 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
+  const logger = (options?.logger ?? noopLogger).child({ stage: "ir" });
   const metadata = options?.metadata;
   const vendorPrefix = options?.vendorPrefix;
   const enumSerialization = options?.enumSerialization;
+  logger.debug("canonicalizing chain DSL to IR");
   const ir = canonicalizeChainDSL(form, metadata !== undefined ? { metadata } : undefined);
+  const schemaLogger = (options?.logger ?? noopLogger).child({ stage: "schema" });
+  schemaLogger.debug("generating JSON Schema from IR");
   const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
     vendorPrefix === undefined && enumSerialization === undefined
       ? undefined

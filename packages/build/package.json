@@ -46,11 +46,17 @@
     "@formspec/core": "workspace:*",
     "zod": "^3.25.0"
   },
+  "optionalDependencies": {
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0"
+  },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "devDependencies": {
     "@formspec/dsl": "workspace:*",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
     "vitest": "^3.0.0"
   },
   "publishConfig": {

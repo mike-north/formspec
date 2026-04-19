@@ -33,6 +33,15 @@ import { formatPerformanceEvent } from "./perf-utils.js";
 /**
  * Minimal logger contract used by the semantic service.
  *
+ * @remarks
+ * This interface is intentionally narrower than `LoggerLike` from
+ * `@formspec/core`. The semantic service only emits informational lines (via
+ * `info`) for profiling/refresh-failure messages, so callers can satisfy it
+ * with a plain `{ info(s: string): void }` object — including `ts.server.Logger`
+ * directly without wrapping. The broader `LoggerLike` from `@formspec/core` is
+ * used at the plugin activation layer (`packages/ts-plugin/src/index.ts`) where
+ * structured levels (debug, warn, error) and child-logger bindings are needed.
+ *
  * @public
  */
 export interface LoggerLike {

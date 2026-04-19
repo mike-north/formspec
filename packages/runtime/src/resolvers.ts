@@ -14,7 +14,9 @@ import type {
   DynamicEnumField,
   Group,
   Conditional,
+  LoggerLike,
 } from "@formspec/core";
+import { noopLogger } from "@formspec/core";
 
 /**
  * A resolver function that fetches options for a data source.
@@ -122,6 +124,19 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
 }
 
 /**
+ * Options for `defineResolvers`.
+ *
+ * @public
+ */
+export interface DefineResolversOptions {
+  /**
+   * Optional logger for diagnostic output. Defaults to a no-op logger so
+   * existing callers produce no output.
+   */
+  readonly logger?: LoggerLike | undefined;
+}
+
+/**
  * Defines resolvers for a form's dynamic data sources.
  *
  * This function provides type-safe resolver definitions that match
@@ -155,6 +170,7 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
  *
  * @param form - The FormSpec containing dynamic enum fields
  * @param resolvers - Map of resolver functions for each data source
+ * @param options - Optional options including a logger
  * @returns A ResolverRegistry for type-safe access to resolvers
  *
  * @public
@@ -162,7 +178,12 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
 export function defineResolvers<
   E extends readonly FormElement[],
   Sources extends string = ResolverSourcesForForm<E>,
->(form: FormSpec<E>, resolvers: ResolverMap<Sources>): ResolverRegistry<Sources> {
+>(
+  form: FormSpec<E>,
+  resolvers: ResolverMap<Sources>,
+  options?: DefineResolversOptions
+): ResolverRegistry<Sources> {
+  const logger = (options?.logger ?? noopLogger).child({ stage: "runtime" });
   const sourceSet = extractSources(form.elements);
   const resolverMap = new Map<string, Resolver<keyof DataSourceRegistry>>(
     Object.entries(resolvers) as [string, Resolver<keyof DataSourceRegistry>][]
@@ -179,8 +200,11 @@ export function defineResolvers<
     get<S extends Sources>(source: S) {
       const resolver = resolverMap.get(source);
       if (resolver === undefined) {
-        throw new Error(`No resolver found for data source: ${source}`);
+        const err = new Error(`No resolver found for data source: ${source}`);
+        logger.error(err.message, { source });
+        throw err;
       }
+      logger.debug("resolver requested", { source });
       return resolver as S extends keyof DataSourceRegistry
         ? Resolver<S>
         : (params?: Record<string, unknown>) => Promise<FetchOptionsResponse>;

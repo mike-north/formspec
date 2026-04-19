@@ -31,6 +31,7 @@ import {
   getPluginCompletionContextForDocument,
   getPluginHoverForDocument,
 } from "./plugin-client.js";
+import { createLogger } from "./logger.js";
 
 const PLUGIN_QUERY_TIMEOUT_ENV_VAR = "FORMSPEC_PLUGIN_QUERY_TIMEOUT_MS";
 
@@ -110,6 +111,7 @@ export interface CreateServerOptions {
  */
 export function createServer(options: CreateServerOptions = {}): Connection {
   const connection = createConnection(ProposedFeatures.all);
+  const log = createLogger("formspec:lsp", connection);
   const documents = new TextDocuments(TextDocument);
   let workspaceRoots = [...(options.workspaceRoots ?? [])];
   const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
@@ -119,6 +121,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const effectiveExtensions: readonly ExtensionDefinition[] =
     options.config?.extensions ?? options.extensions ?? [];
 
+  log.info("FormSpec language server initializing");
   documents.listen(connection);
 
   async function publishDiagnosticsForDocument(document: TextDocument): Promise<void> {
@@ -139,6 +142,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
         pluginQueryTimeoutMs
       )) ?? [];
 
+    log.debug(`Publishing ${String(diagnostics.length)} diagnostic(s) for ${document.uri}`);
     void connection.sendDiagnostics({
       uri: document.uri,
       diagnostics: toLspDiagnostics(document, diagnostics, {
@@ -152,6 +156,7 @@ export function createServer(options: CreateServerOptions = {}): Connection {
       ...getWorkspaceRootsFromInitializeParams(params),
       ...workspaceRoots,
     ]);
+    log.info(`Connection initialized with ${String(workspaceRoots.length)} workspace root(s)`);
 
     return {
       capabilities: {
@@ -222,12 +227,14 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   });
 
   documents.onDidOpen(({ document }) => {
+    log.debug(`Document opened: ${document.uri}`);
     void publishDiagnosticsForDocument(document).catch((error: unknown) => {
       connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
     });
   });
 
   documents.onDidChangeContent(({ document }) => {
+    log.debug(`Document changed: ${document.uri}`);
     void publishDiagnosticsForDocument(document).catch((error: unknown) => {
       connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
     });

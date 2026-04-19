@@ -252,6 +252,8 @@ export interface LoadConfigNotFoundResult {
 // @public
 export interface LoadConfigOptions {
     configPath?: string;
+    // Warning: (ae-forgotten-export) The symbol "LoggerLike" needs to be exported by the entry point index.d.ts
+    logger?: LoggerLike | undefined;
     searchFrom?: string;
 }
 
