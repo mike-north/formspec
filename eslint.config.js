@@ -75,6 +75,9 @@ export default [
       ".Codex/**",
       ".claude/**",
       "packages/ts-plugin/index.cjs",
+      // Unused CJS artifact from Phase 0-C benchmark development — not part of
+      // the TypeScript project and cannot be linted as such.
+      "e2e/benchmarks/ts-intercept-preload.cjs",
       // CI scripts are plain JS, not part of the TypeScript project.
       ".github/**",
       // Examples have their own eslint.config.js with formspec plugin rules.
