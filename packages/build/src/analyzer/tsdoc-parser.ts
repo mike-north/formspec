@@ -730,6 +730,7 @@ function buildCompilerBackedConstraintDiagnostics(
   const broadeningLog = getBroadeningLogger();
   const syntheticLog = getSyntheticLogger();
   const logsEnabled = log !== noopLogger || broadeningLog !== noopLogger;
+  const syntheticTraceEnabled = syntheticLog !== noopLogger;
   const logStart = logsEnabled ? nowMicros() : 0;
   const subjectTypeKind = logsEnabled ? describeTypeKind(subjectType, checker) : "";
 
@@ -905,13 +906,15 @@ function buildCompilerBackedConstraintDiagnostics(
   const hostTypeText = checker.typeToString(hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
 
   // §8.3b — trace-level log before the synthetic program is invoked.
-  syntheticLog.trace("invoking synthetic checker", {
-    consumer: "build",
-    tag: tagName,
-    placement,
-    subjectTypeKind,
-    subjectTypeText,
-  });
+  if (syntheticTraceEnabled) {
+    syntheticLog.trace("invoking synthetic checker", {
+      consumer: "build",
+      tag: tagName,
+      placement,
+      subjectTypeKind,
+      subjectTypeText,
+    });
+  }
 
   const result = checkSyntheticTagApplication({
     tagName,

@@ -56,6 +56,7 @@ import {
   resolveDeclarationPlacement,
   resolvePathTargetType,
 } from "./ts-binding.js";
+import { noopLogger } from "@formspec/core";
 import {
   getSnapshotLogger,
   getSyntheticLogger,
@@ -1283,6 +1284,7 @@ function buildTagDiagnostics(
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
   const syntheticLog = getSyntheticLogger();
+  const snapshotLogsEnabled = snapshotLog !== noopLogger;
 
   const syntheticApplications: {
     readonly tag: (typeof commentTags)[number];
@@ -1305,9 +1307,12 @@ function buildTagDiagnostics(
   }[] = [];
 
   // subjectType is constant for the whole call (per the early-return guard at
-  // the top of this function). Compute the log-friendly kind once to avoid
-  // re-walking the type on every tag.
-  const subjectTypeKindForLog = describeTypeKind(subjectType, checker);
+  // the top of this function). Compute the log-friendly kind once, and only
+  // when structured logging is actually enabled — describeTypeKind is cheap
+  // but this runs on every snapshot diagnostic pass.
+  const subjectTypeKindForLog = snapshotLogsEnabled
+    ? describeTypeKind(subjectType, checker)
+    : "";
 
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
@@ -1351,8 +1356,8 @@ function buildTagDiagnostics(
     );
 
     // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
-    // above the loop.
-    const tagStartMicros = nowMicros();
+    // above the loop. Both are only consumed when logging is enabled.
+    const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
 
     try {
       const syntheticOptions = {
@@ -1378,14 +1383,16 @@ function buildTagDiagnostics(
       });
     } catch (error) {
       // §8.3b — role A reject (placement check failed for snapshot consumer).
-      logTagApplication(snapshotLog, {
-        consumer: "snapshot",
-        tag: tag.normalizedTagName,
-        placement,
-        subjectTypeKind: subjectTypeKindForLog,
-        roleOutcome: "A-reject",
-        elapsedMicros: elapsedMicros(tagStartMicros),
-      });
+      if (snapshotLogsEnabled) {
+        logTagApplication(snapshotLog, {
+          consumer: "snapshot",
+          tag: tag.normalizedTagName,
+          placement,
+          subjectTypeKind: subjectTypeKindForLog,
+          roleOutcome: "A-reject",
+          elapsedMicros: elapsedMicros(tagStartMicros),
+        });
+      }
       diagnostics.push(
         createAnalysisDiagnostic(
           "INVALID_TAG_PLACEMENT",
@@ -1452,21 +1459,23 @@ function buildTagDiagnostics(
     }
 
     // §8.3b — determine role outcome for this tag application and log.
-    const roleOutcome: ConstraintValidatorRoleOutcome =
-      result.diagnostics.length === 0
-        ? "C-pass"
-        : result.diagnostics.some((d) => d.message.includes("No overload"))
-          ? "A-reject"
-          : "C-reject";
+    if (snapshotLogsEnabled) {
+      const roleOutcome: ConstraintValidatorRoleOutcome =
+        result.diagnostics.length === 0
+          ? "C-pass"
+          : result.diagnostics.some((d) => d.message.includes("No overload"))
+            ? "A-reject"
+            : "C-reject";
 
-    logTagApplication(snapshotLog, {
-      consumer: "snapshot",
-      tag: application.tag.normalizedTagName,
-      placement,
-      subjectTypeKind: application.subjectTypeKindForLog,
-      roleOutcome,
-      elapsedMicros: elapsedMicros(application.tagStartMicros),
-    });
+      logTagApplication(snapshotLog, {
+        consumer: "snapshot",
+        tag: application.tag.normalizedTagName,
+        placement,
+        subjectTypeKind: application.subjectTypeKindForLog,
+        roleOutcome,
+        elapsedMicros: elapsedMicros(application.tagStartMicros),
+      });
+    }
 
     for (const diagnostic of result.diagnostics) {
       const code =
