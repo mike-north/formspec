@@ -1,5 +1,8 @@
 ---
 "@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/eslint-plugin": patch
+"formspec": patch
 ---
 
 Fix optional enum properties not being deduplicated into `$defs`
