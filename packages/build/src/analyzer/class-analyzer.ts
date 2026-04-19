@@ -1706,10 +1706,24 @@ export function resolveTypeNode(
     sourceNode
   );
   if (customTypeLookup !== null) {
+    const typeId = customTypeIdFromLookup(customTypeLookup);
+    let payload: import("@formspec/core/internals").ExtensionPayloadValue = null;
+    // extractPayload receives the host program's ts.Type and ts.TypeChecker.
+    if (customTypeLookup.registration.extractPayload !== undefined) {
+      try {
+        payload = customTypeLookup.registration.extractPayload(type, checker) ?? null;
+      } catch (cause) {
+        throw new Error(
+          `extractPayload for custom type "${customTypeLookup.registration.typeName}" ` +
+            `in extension "${customTypeLookup.extensionId}" threw`,
+          { cause }
+        );
+      }
+    }
     return {
       kind: "custom",
-      typeId: customTypeIdFromLookup(customTypeLookup),
-      payload: null,
+      typeId,
+      payload,
     };
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(

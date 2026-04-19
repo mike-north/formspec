@@ -93,6 +93,7 @@ export interface CustomConstraintRegistration {
 export interface CustomTypeRegistration {
     readonly brand?: string;
     readonly builtinConstraintBroadenings?: readonly BuiltinConstraintBroadeningRegistration[];
+    readonly extractPayload?: (type: unknown, checker: unknown) => ExtensionPayloadValue;
     readonly toJsonSchema: (payload: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
     // @deprecated
     readonly tsTypeNames?: readonly string[];
