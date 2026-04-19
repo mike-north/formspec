@@ -111,6 +111,7 @@
     "refactor-build-type-safety",
     "regression-tests-standalone-apiname",
     "release-unpublished-followups",
+    "resolve-payload-custom-types",
     "resolve-static-options",
     "semantic-diagnostics-cli-format",
     "sharp-badgers-shine",

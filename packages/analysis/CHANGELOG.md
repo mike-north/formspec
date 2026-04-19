@@ -1,5 +1,16 @@
 # @formspec/analysis
 
+## 0.1.0-alpha.54
+
+### Minor Changes
+
+- [#300](https://github.com/mike-north/formspec/pull/300) [`7288e3b`](https://github.com/mike-north/formspec/commit/7288e3b105fa49a23db18eb0dda504b0da898239) Thanks [@brooks-stripe](https://github.com/brooks-stripe)! - Add optional `extractPayload` callback to `CustomTypeRegistration`. When defined, the callback is invoked during type analysis with the TypeScript type and checker, and its return value is stored as the custom type node's `payload`. This payload is then passed to `toJsonSchema` during schema generation, enabling extensions to carry type-level information (e.g., a generic argument's resolved literal value) through to JSON Schema output.
+
+### Patch Changes
+
+- Updated dependencies [[`7288e3b`](https://github.com/mike-north/formspec/commit/7288e3b105fa49a23db18eb0dda504b0da898239)]:
+  - @formspec/core@0.1.0-alpha.54
+
 ## 0.1.0-alpha.53
 
 ### Minor Changes
