@@ -1293,6 +1293,31 @@ function extractReferenceTypeArguments(
 
   return referenceTypeNode.typeArguments.map((argumentNode) => {
     const argumentType = checker.getTypeFromTypeNode(argumentNode);
+
+    // If the type argument is a named type from an external module (not
+    // declared in the current file), register it as an opaque reference
+    // rather than resolving its full property tree. This prevents stack
+    // overflows on deeply nested external types (e.g. Stripe.Customer)
+    // that are only used as phantom type parameters (e.g. Ref<T>).
+    const argumentSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
+    const argumentDecl = argumentSymbol?.declarations?.[0];
+    if (
+      argumentDecl !== undefined &&
+      argumentDecl.getSourceFile().fileName !== sourceNode?.getSourceFile().fileName
+    ) {
+      const argumentName = argumentSymbol?.getName();
+      if (argumentName !== undefined) {
+        return {
+          tsType: argumentType,
+          typeNode: {
+            kind: "reference" as const,
+            name: argumentName,
+            typeArguments: [] as TypeNode[],
+          },
+        };
+      }
+    }
+
     return {
       tsType: argumentType,
       typeNode: resolveTypeNode(
