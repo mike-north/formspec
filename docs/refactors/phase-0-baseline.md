@@ -20,7 +20,7 @@ See [`docs/refactors/synthetic-checker-retirement.md`](./synthetic-checker-retir
 | Metric | Value | Notes |
 |--------|-------|-------|
 | `wallTimeMs` (warm median, runs 2–5) | **35.40 ms** | Steady-state `generateSchemasFromProgram` cost; excludes module-load overhead |
-| `wallTimeMs` (cold, run 1) | **1 613 ms** | Includes TypeScript module load + first-run JIT + empty synthetic-batch cache |
+| `wallTimeMs` (cold, run 1) | **1 613 ms** | First invocation of `generateSchemasFromProgram` with an empty synthetic-batch cache (JIT warmup + cold cache); module-load overhead runs before the timer starts |
 | `peakRssBytes` (warm median) | **955.9 MB** (1 002 307 584 bytes) | Peak RSS across runs 2–5 of `generateSchemasFromProgram` |
 | `syntheticProgramCount` (cold) | **20** | Distinct `ts.createProgram` invocations during constraint-tag validation (one per constraint batch) |
 
@@ -32,7 +32,7 @@ See [`docs/refactors/synthetic-checker-retirement.md`](./synthetic-checker-retir
 
 ### Warm vs. cold runs
 
-Run 1 (cold) includes TypeScript module load and JIT compilation. The steady-state wall time (warm median over runs 2–5) is the number that matters for regression detection — it isolates the analysis pipeline cost from process startup overhead.
+Run 1 (cold) measures the first invocation of `generateSchemasFromProgram` — JIT warmup and an empty synthetic-batch cache dominate the number. Module imports happen before the timer starts, so module-load cost is *not* included. The steady-state wall time (warm median over runs 2–5) is the number that matters for regression detection — it isolates the analysis pipeline cost from first-invocation effects.
 
 ### Synthetic-program count
 

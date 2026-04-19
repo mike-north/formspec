@@ -11,12 +11,13 @@
  *
  * ### Run model
  *
- * Five runs are collected per metric path. Run 1 is the **cold run** (module
- * load + empty synthetic-batch cache). Runs 2–5 are **warm runs** (TypeScript
- * module already loaded; synthetic-batch cache populated). Median is computed
- * over warm runs (2–5) for wall time and RSS. The cold-run synthetic-program
- * count is reported separately because subsequent runs hit the module-level
- * LRU cache in @formspec/analysis and produce a count of 0.
+ * Five runs are collected per metric path. Run 1 is the **cold run** for the
+ * measured call (first invocation/JIT effects + empty synthetic-batch cache;
+ * module imports run before the timer starts). Runs 2–5 are **warm runs**
+ * (subsequent invocations with the synthetic-batch cache populated). Median is
+ * computed over warm runs (2–5) for wall time and RSS. The cold-run
+ * synthetic-program count is reported separately because subsequent runs hit
+ * the module-level LRU cache in @formspec/analysis and produce a count of 0.
  *
  * ### Synthetic-program count methodology
  *
@@ -223,6 +224,12 @@ async function main(): Promise<void> {
     const warmPeakRssBytes = allPeakRssBytes.slice(1);
 
     // --- TS-plugin-path measurements (syntheticProgramCount) ---
+    // TODO(phase-0c): this loop shares @formspec/analysis's module-level
+    //   synthetic-batch LRU cache with the build-path loop above. If cache
+    //   keys overlap, the plugin-path "cold" run may observe hits from the
+    //   earlier build-path runs. Add a clearSyntheticBatchCache() hook or run
+    //   the plugin path in a fresh process to make the cold count strictly
+    //   comparable across phases.
     const allSyntheticCounts: PluginRunResult[] = [];
 
     process.stderr.write("\n  Plugin-path (FormSpecSemanticService.getDiagnostics):\n");
@@ -271,7 +278,7 @@ async function main(): Promise<void> {
           warmMedian: medianWarmWallTimeMs,
           all: allWallTimeMs,
           path: "generateSchemasFromProgram",
-          note: "Run 1 (cold) includes TypeScript module load + empty synthetic-batch cache. Warm median (runs 2-5) is the steady-state cost.",
+          note: "Run 1 (cold) measures the first invocation of generateSchemasFromProgram with an empty synthetic-batch cache. Module imports run before the timer starts, so module-load overhead is excluded. Warm median (runs 2-5) is the steady-state cost.",
         },
         peakRssBytes: {
           warmMedian: medianWarmPeakRssBytes,
@@ -284,7 +291,7 @@ async function main(): Promise<void> {
           cacheHits: allSyntheticCounts.map((r) => r.syntheticBatchCacheHits),
           cacheMisses: allSyntheticCounts.map((r) => r.syntheticBatchCacheMisses),
           path: "FormSpecSemanticService.getDiagnostics",
-          note: "TypeScript 5.9+ sealed exports prevent direct monkey-patching. Count from FormSpecSemanticService.getStats().syntheticCompileCount. Only run 1 (cold) produces a non-zero count — subsequent runs hit the module-level LRU cache in @formspec/analysis.",
+          note: "TypeScript 5.9+ sealed exports prevent direct monkey-patching. Count from FormSpecSemanticService.getStats().syntheticCompileCount. Run 1 is labeled 'cold' for this path only; because @formspec/analysis maintains a module-level LRU cache that is shared between build-path and plugin-path call sites, any overlap in cache keys from the build-path loop (which runs earlier in this process) may cause the plugin-path cold run to observe cache hits. For a fully isolated cold measurement, run this benchmark in a fresh process or add a cache-clear hook — subsequent runs in the same process hit the module-level LRU cache and produce a count of 0.",
         },
       },
       commitSha,

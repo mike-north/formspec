@@ -19,7 +19,7 @@ interface MonetaryAmount {
   currency: string;
 }
 
-/** Fulfillment status code (string union). */
+/** Fulfillment status code paired with a human-readable label. */
 interface FulfillmentStatus {
   code: string;
   label: string;
@@ -178,14 +178,14 @@ export interface AnalysisBenchFixture {
   /**
    * Allowed shipping carriers for this order.
    *
-   * @enumOptions [{"value":"fedex","label":"FedEx"},{"value":"ups","label":"UPS"},{"value":"usps","label":"USPS"}]
+   * @enumOptions [{"id":"fedex","label":"FedEx"},{"id":"ups","label":"UPS"},{"id":"usps","label":"USPS"}]
    */
   shippingCarrier: ShippingCarrierOption;
 
   /**
    * Payment method options accepted at checkout.
    *
-   * @enumOptions [{"value":"card","label":"Credit Card"},{"value":"ach","label":"Bank Transfer"},{"value":"wallet","label":"Digital Wallet"}]
+   * @enumOptions [{"id":"card","label":"Credit Card"},{"id":"ach","label":"Bank Transfer"},{"id":"wallet","label":"Digital Wallet"}]
    */
   paymentMethod: PaymentMethodOption;
 
