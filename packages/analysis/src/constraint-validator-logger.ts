@@ -24,7 +24,14 @@ import * as ts from "typescript";
 import { isNamespaceEnabled, noopLogger } from "@formspec/core";
 import type { LoggerLike } from "@formspec/core";
 
-const esmRequire = createRequire(import.meta.url);
+// When this module is bundled to CJS, `import.meta.url` is emitted as an empty
+// object's `.url` (i.e. undefined), and `createRequire(undefined)` throws at
+// module-load time. In CJS `__filename` is defined; in ESM it is not. Prefer
+// `__filename` when available so the same source works in both output formats.
+declare const __filename: string | undefined;
+const moduleUrl: string =
+  typeof __filename === "string" ? __filename : import.meta.url;
+const esmRequire = createRequire(moduleUrl);
 
 // =============================================================================
 // §8.3b — Per-tag-application structured log-entry schema
