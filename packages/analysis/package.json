@@ -1,6 +1,6 @@
 {
   "name": "@formspec/analysis",
-  "version": "0.1.0-alpha.53",
+  "version": "0.1.0-alpha.54",
   "description": "Shared comment-tag analysis utilities for FormSpec tooling",
   "type": "module",
   "main": "./dist/index.cjs",
