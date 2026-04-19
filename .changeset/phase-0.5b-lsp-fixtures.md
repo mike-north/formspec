@@ -8,4 +8,4 @@
 "formspec": patch
 ---
 
-Add three constraint-tag fixtures to ts-plugin/language-server harnesses (Phase 0.5b, §9.1 #2).
+Add two constraint-tag fixtures to the ts-plugin test harness (Phase 0.5b, §9.1 #2).
