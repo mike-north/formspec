@@ -234,17 +234,27 @@ function rewriteImportedMemberTypes(
   statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   sourceFile: ts.SourceFile,
   importedNames: ReadonlySet<string>
-): string {
+): string | null {
   const members = getObjectMembers(statement);
   if (members === undefined) {
-    return statement.getText(sourceFile);
+    return null;
   }
 
   const replacements: { start: number; end: number }[] = [];
 
   for (const member of members) {
-    const typeAnnotation =
-      (ts.isPropertySignature(member) || ts.isPropertyDeclaration(member)) ? member.type : undefined;
+    // Only property signatures have rewritable type annotations. If a
+    // non-property member (method signature, index signature, etc.)
+    // references an imported name, we can't safely rewrite it — return
+    // null to fall back to excluding the whole declaration.
+    if (!ts.isPropertySignature(member)) {
+      if (astReferencesImportedName(member, importedNames)) {
+        return null;
+      }
+      continue;
+    }
+
+    const typeAnnotation = member.type;
     if (typeAnnotation === undefined) continue;
 
     if (astReferencesImportedName(typeAnnotation, importedNames)) {
@@ -260,9 +270,11 @@ function rewriteImportedMemberTypes(
   }
 
   // Apply replacements in reverse order to preserve offsets.
+  // getText(sourceFile) and getStart(sourceFile) use the same base, so
+  // subtracting stmtStart from absolute positions yields correct offsets.
   const stmtStart = statement.getStart(sourceFile);
   let result = statement.getText(sourceFile);
-  for (const { start, end } of replacements.reverse()) {
+  for (const { start, end } of [...replacements].reverse()) {
     result = result.slice(0, start - stmtStart) + "unknown" + result.slice(end - stmtStart);
   }
   return result;
@@ -295,10 +307,14 @@ function buildSupportingDeclarations(
 
     // For interface and type-literal-bodied type alias declarations that
     // reference imports, rewrite imported member types to `unknown` instead
-    // of dropping the whole declaration. Other statement types that reference
-    // imports are still excluded.
+    // of dropping the whole declaration. Returns null when a non-property
+    // member references an import (method/index signatures), in which case
+    // we fall back to excluding the whole declaration.
     if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
-      result.push(rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip));
+      const rewritten = rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip);
+      if (rewritten !== null) {
+        result.push(rewritten);
+      }
     }
   }
 
