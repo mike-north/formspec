@@ -669,7 +669,7 @@ async function main(): Promise<void> {
     }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    log.error("CLI error: %s", msg);
+    log.error(`CLI error: ${msg}`);
     console.error("Error:", msg);
     process.exit(1);
   }

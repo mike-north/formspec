@@ -33,7 +33,11 @@ function formatBindings(bindings: Record<string, unknown>): string {
 }
 
 function buildPrefix(namespace: string, bindings: Record<string, unknown>): string {
-  const bindingStr = Object.keys(bindings).length > 0 ? ` ${formatBindings(bindings)}` : "";
+  const hasBindings = Object.keys(bindings).length > 0;
+  if (namespace.length === 0 && !hasBindings) {
+    return "";
+  }
+  const bindingStr = hasBindings ? ` ${formatBindings(bindings)}` : "";
   return `[${namespace}${bindingStr}] `;
 }
 

@@ -7,8 +7,11 @@
  * negations always win).
  */
 
+import { createRequire } from "node:module";
 import { isNamespaceEnabled, noopLogger } from "@formspec/core";
 import type { LoggerLike } from "@formspec/core";
+
+const require = createRequire(import.meta.url);
 
 /**
  * Creates a logger for the given namespace.
@@ -27,14 +30,12 @@ export function createLogger(namespace: string): LoggerLike {
     return noopLogger;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const pinoModule = require("pino") as { default: typeof import("pino") } | typeof import("pino");
   const pino = typeof pinoModule === "function" ? pinoModule : pinoModule.default;
 
   const isTTY = process.stderr.isTTY;
 
   if (isTTY) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pinoPretty = require("pino-pretty") as { default: unknown };
     const prettyTransport = (pinoPretty.default ?? pinoPretty) as (
       opts: Record<string, unknown>,
