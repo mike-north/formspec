@@ -308,7 +308,9 @@ describe("$defs deduplication — issue #309", () => {
       // skipped object-shape aliases. Without recovery, the anonymous object body
       // has no aliasSymbol, so Address was inlined at every usage site.
       //
-      // Fix: resolveNamedTypeWithSourceRecovery no longer filters by underlying type.
+      // Fix: resolveNamedTypeWithSourceRecovery now recovers aliases whose
+      // underlying type is either a union or an object shape, so object-shape
+      // aliases like Address are recovered in this optional-property path too.
       // See issue #309 (shared object types section).
       const result = generateObj("PersonWithOptionalAddress");
       const defs = result.jsonSchema.$defs ?? {};
