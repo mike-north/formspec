@@ -13,17 +13,27 @@
 // Role-outcome literals
 // ---------------------------------------------------------------------------
 
+/**
+ * Canonical ordered list of all valid `roleOutcome` values.
+ * `RoleOutcome` is derived from this array so the two never diverge.
+ */
+export const ROLE_OUTCOMES = [
+  "A-pass",
+  "A-reject",
+  "B-pass",
+  "B-reject",
+  "C-pass",
+  "C-reject",
+  "D1",
+  "D2",
+  "bypass",
+] as const;
+
 /** All possible values for the `roleOutcome` field of a {@link ParityLogEntry}. */
-export type RoleOutcome =
-  | "A-pass"
-  | "A-reject"
-  | "B-pass"
-  | "B-reject"
-  | "C-pass"
-  | "C-reject"
-  | "D1"
-  | "D2"
-  | "bypass";
+export type RoleOutcome = (typeof ROLE_OUTCOMES)[number];
+
+/** Fast membership test for runtime type-guard use. */
+const ROLE_OUTCOMES_SET: ReadonlySet<string> = new Set<string>(ROLE_OUTCOMES);
 
 // ---------------------------------------------------------------------------
 // Main entry type
@@ -58,7 +68,11 @@ export interface ParityLogEntry {
 // Runtime type-guard
 // ---------------------------------------------------------------------------
 
-/** Returns true when `value` is a plain string-keyed object with no prototype extras. */
+/**
+ * Returns true when `value` is a plain string-keyed object with no prototype
+ * extras.  Excludes null-prototype objects (created via `Object.create(null)`)
+ * because parsed JSON always yields objects with `Object.prototype`.
+ */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return (
     typeof value === "object" &&
@@ -68,18 +82,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
     Object.getOwnPropertySymbols(value).length === 0
   );
 }
-
-const ROLE_OUTCOMES: ReadonlySet<string> = new Set<RoleOutcome>([
-  "A-pass",
-  "A-reject",
-  "B-pass",
-  "B-reject",
-  "C-pass",
-  "C-reject",
-  "D1",
-  "D2",
-  "bypass",
-]);
 
 /**
  * Type-guard: returns true when `value` is a well-formed {@link ParityLogEntry}.
@@ -96,8 +98,13 @@ export function isParityLogEntry(value: unknown): value is ParityLogEntry {
   if (typeof tag !== "string") return false;
   if (typeof placement !== "string") return false;
   if (typeof subjectTypeKind !== "string") return false;
-  if (typeof roleOutcome !== "string" || !ROLE_OUTCOMES.has(roleOutcome)) return false;
-  if (typeof elapsedMicros !== "number") return false;
+  if (typeof roleOutcome !== "string" || !ROLE_OUTCOMES_SET.has(roleOutcome)) return false;
+  if (
+    typeof elapsedMicros !== "number" ||
+    !Number.isFinite(elapsedMicros) ||
+    elapsedMicros < 0
+  )
+    return false;
 
   if (diagnostic !== undefined) {
     if (!isPlainObject(diagnostic)) return false;
