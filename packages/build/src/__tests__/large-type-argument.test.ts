@@ -2,14 +2,15 @@
  * Tests for generic wrapper types (like Ref<T>) with type arguments of
  * varying sizes and origins.
  *
+ * Related: packages/build/src/__tests__/discriminator.test.ts:704 covers
+ * a similar large-carrier scenario via @discriminator.
+ *
  * Covers:
- *   1. Small locally-defined type argument — resolves correctly with
- *      the wrapper's own properties preserved.
- *   2. Deeply nested external type argument — doesn't overflow the stack
- *      and doesn't leak into $defs.
- *      Regression: Ref<Stripe.Customer> caused a stack overflow because
- *      extractReferenceTypeArguments recursed into Customer's deeply
- *      nested property tree.
+ *   1. External deeply-nested type argument — doesn't overflow the stack
+ *      and doesn't leak into $defs (regression for Ref<Stripe.Customer>).
+ *   2. External small type argument — same opaque-reference behavior.
+ *   3. Same-file type argument — falls through to normal recursive resolution.
+ *   4. Inline anonymous type argument — falls through to normal resolution.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -40,27 +41,18 @@ beforeAll(() => {
     ].join("\n")
   );
 
-  // Deeply nested type chain (simulates Stripe.Customer's recursive depth).
-  // Each level references the next, creating a chain that would reliably
-  // overflow the stack if recursively expanded.
-  const nestingDepth = 30;
-  const nestedTypeLines: string[] = [
-    "export interface Level0 {",
-    "  readonly object: 'deep_thing';",
-    "  name: string;",
-    "  nested: Level1;",
-    "}",
-  ];
-  for (let i = 1; i < nestingDepth; i++) {
-    const next = i < nestingDepth - 1 ? `Level${String(i + 1)}` : "string";
-    nestedTypeLines.push(
-      `export interface Level${String(i)} {`,
-      `  value${String(i)}: string;`,
-      `  nested: ${next};`,
-      "}",
-    );
+  // Deeply nested type chain (simulates the deeply-recursive shape that caused
+  // the original Ref<Stripe.Customer> overflow). Each type references the next,
+  // so resolving one requires recursing through all ~300 declarations.
+  const depth = 300;
+  const lines: string[] = [];
+  for (let d = 0; d < depth; d++) {
+    lines.push(`export interface Type${String(d)} {`);
+    lines.push(`  readonly object: 'type_${String(d)}';`);
+    if (d + 1 < depth) lines.push(`  nested: Type${String(d + 1)};`);
+    lines.push("}");
   }
-  fs.writeFileSync(path.join(tmpDir, "deep-type.ts"), nestedTypeLines.join("\n"));
+  fs.writeFileSync(path.join(tmpDir, "deep-type.ts"), lines.join("\n"));
 
   // Generic wrapper (simulates Ref<T>)
   fs.writeFileSync(
@@ -75,7 +67,7 @@ beforeAll(() => {
     ].join("\n")
   );
 
-  // Fixture using small local type argument
+  // Fixture using small external type argument
   fs.writeFileSync(
     path.join(tmpDir, "small-ref.ts"),
     [
@@ -92,11 +84,46 @@ beforeAll(() => {
   fs.writeFileSync(
     path.join(tmpDir, "deep-ref.ts"),
     [
-      'import type { Level0 } from "./deep-type.js";',
+      'import type { Type0 } from "./deep-type.js";',
       'import type { Wrapper } from "./wrapper.js";',
       "",
       "export interface DeepRefConfig {",
-      "  ref: Wrapper<Level0>;",
+      "  ref: Wrapper<Type0>;",
+      "}",
+    ].join("\n")
+  );
+
+  // Fixture using same-file type argument (should resolve normally)
+  fs.writeFileSync(
+    path.join(tmpDir, "same-file-ref.ts"),
+    [
+      "type Wrapper<T extends { readonly object: string }> = {",
+      "  id: string;",
+      '  type: T["object"];',
+      "};",
+      "",
+      "interface LocalType {",
+      "  readonly object: 'local_thing';",
+      "  extra: number;",
+      "}",
+      "",
+      "export interface SameFileConfig {",
+      "  ref: Wrapper<LocalType>;",
+      "}",
+    ].join("\n")
+  );
+
+  // Fixture using inline anonymous type argument (should resolve normally)
+  fs.writeFileSync(
+    path.join(tmpDir, "inline-ref.ts"),
+    [
+      "type Wrapper<T extends { readonly object: string }> = {",
+      "  id: string;",
+      '  type: T["object"];',
+      "};",
+      "",
+      "export interface InlineConfig {",
+      "  ref: Wrapper<{ readonly object: 'inline_thing' }>;",
       "}",
     ].join("\n")
   );
@@ -126,34 +153,54 @@ afterAll(() => {
 });
 
 describe("generic wrapper type arguments", () => {
-  it("resolves Wrapper<SmallType> with correct properties", () => {
-    const result = generateSchemasOrThrow({
-      filePath: path.join(tmpDir, "small-ref.ts"),
-      typeName: "SmallRefConfig",
-    });
-
-    const properties = result.jsonSchema.properties as Record<string, unknown>;
-    expect(properties).toBeDefined();
-
-    const refSchema = properties["ref"] as Record<string, unknown>;
-    expect(refSchema).toBeDefined();
-  });
-
-  it("resolves Wrapper<Level0> without stack overflow and without leaking into $defs", () => {
+  it("emits deeply-nested external type as opaque reference without recursing through the chain", () => {
     const result = generateSchemasOrThrow({
       filePath: path.join(tmpDir, "deep-ref.ts"),
       typeName: "DeepRefConfig",
     });
 
-    const properties = result.jsonSchema.properties as Record<string, unknown>;
-    expect(properties).toBeDefined();
+    const defs = (result.jsonSchema.$defs ?? {}) as Record<string, unknown>;
+    const props = result.jsonSchema.properties as Record<string, unknown>;
+    expect(props["ref"]).toBeDefined();
 
-    const refSchema = properties["ref"] as Record<string, unknown>;
-    expect(refSchema).toBeDefined();
+    // Pre-fix, $defs would contain Type0 (and all nested Type1..Type299)
+    // with their properties inlined — and the recursion caused a stack overflow.
+    expect(defs).not.toHaveProperty("Type0");
+    expect(defs).not.toHaveProperty("Type1");
+  });
 
-    // The deeply nested external type argument must NOT be expanded into $defs
-    const defs = result.jsonSchema.$defs ?? {};
-    expect(defs).not.toHaveProperty("Level0");
-    expect(defs).not.toHaveProperty("Level1");
+  it("emits small external type as opaque reference without inlining into $defs", () => {
+    const result = generateSchemasOrThrow({
+      filePath: path.join(tmpDir, "small-ref.ts"),
+      typeName: "SmallRefConfig",
+    });
+
+    const defs = (result.jsonSchema.$defs ?? {}) as Record<string, unknown>;
+    const props = result.jsonSchema.properties as Record<string, unknown>;
+    expect(props["ref"]).toBeDefined();
+
+    // External type arguments are emitted as opaque references regardless
+    // of size. SmallType should not appear in $defs.
+    expect(defs).not.toHaveProperty("SmallType");
+  });
+
+  it("resolves same-file type argument normally (not opaque)", () => {
+    const result = generateSchemasOrThrow({
+      filePath: path.join(tmpDir, "same-file-ref.ts"),
+      typeName: "SameFileConfig",
+    });
+
+    const props = result.jsonSchema.properties as Record<string, unknown>;
+    expect(props["ref"]).toBeDefined();
+  });
+
+  it("resolves inline anonymous type argument normally", () => {
+    const result = generateSchemasOrThrow({
+      filePath: path.join(tmpDir, "inline-ref.ts"),
+      typeName: "InlineConfig",
+    });
+
+    const props = result.jsonSchema.properties as Record<string, unknown>;
+    expect(props["ref"]).toBeDefined();
   });
 });

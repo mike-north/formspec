@@ -1294,30 +1294,30 @@ function extractReferenceTypeArguments(
   return referenceTypeNode.typeArguments.map((argumentNode) => {
     const argumentType = checker.getTypeFromTypeNode(argumentNode);
 
-    // If the type argument is a named type from an external module (not
-    // declared in the current file), register it as an opaque reference
-    // rather than resolving its full property tree. This prevents stack
-    // overflows on deeply nested external types (e.g. Stripe.Customer)
-    // that are only used as phantom type parameters (e.g. Ref<T>).
-    const rawSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
-    // Resolve through import aliases to the canonical declaration so that
-    // the source-file comparison checks the external module, not the local
-    // import specifier.
+    // If the type argument is a named type declared outside the current
+    // analysis root file, emit a synthetic opaque reference TypeNode
+    // instead of recursing into its declaration. This preserves the name
+    // for buildInstantiatedReferenceName while avoiding stack overflows on
+    // deeply-nested types (e.g. Stripe.Customer) used as phantom parameters
+    // (e.g. Ref<T>). Note: this path does NOT populate typeRegistry —
+    // callers that need a resolved $defs entry must get it via the parent
+    // type's property walk.
+    const baseSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
     const argumentSymbol =
-      rawSymbol !== undefined && (rawSymbol.flags & ts.SymbolFlags.Alias) !== 0
-        ? checker.getAliasedSymbol(rawSymbol)
-        : rawSymbol;
+      baseSymbol !== undefined && baseSymbol.flags & ts.SymbolFlags.Alias
+        ? checker.getAliasedSymbol(baseSymbol)
+        : baseSymbol;
     const argumentDecl = argumentSymbol?.declarations?.[0];
     if (
       argumentDecl !== undefined &&
-      argumentDecl.getSourceFile().fileName !== sourceNode?.getSourceFile().fileName
+      argumentDecl.getSourceFile().fileName !== file
     ) {
-      const argumentName = argumentSymbol?.getName() ?? rawSymbol?.getName();
+      const argumentName = argumentSymbol?.getName() ?? baseSymbol?.getName();
       if (argumentName !== undefined) {
         return {
           tsType: argumentType,
           typeNode: {
-            kind: "reference" as const,
+            kind: "reference",
             name: argumentName,
             typeArguments: [],
           },
