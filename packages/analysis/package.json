@@ -41,10 +41,16 @@
     "@formspec/core": "workspace:*",
     "@microsoft/tsdoc": "^0.16.0"
   },
+  "optionalDependencies": {
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0"
+  },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "devDependencies": {
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
     "vitest": "^3.0.0"
   },
   "publishConfig": {

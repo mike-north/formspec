@@ -274,6 +274,75 @@ Interactive browser-based editor (React + Vite + Monaco Editor):
 - **Pre-release**: Currently on `0.1.0-alpha.*`
 - All publishable packages use `"publishConfig": { "access": "public" }`
 
+## Debugging Constraint Validation
+
+The constraint-validation pipeline emits structured debug logs via the
+`formspec:analysis:constraint-validator` namespace family. Enable them with the
+`DEBUG` environment variable using the same comma-separated glob convention as
+the [`debug`](https://github.com/debug-js/debug) npm package.
+
+### Enabling logs
+
+```bash
+# All constraint-validator namespaces (most verbose)
+DEBUG=formspec:analysis:constraint-validator:* pnpm run build
+
+# Build consumer only (tsdoc-parser.ts)
+DEBUG=formspec:analysis:constraint-validator:build pnpm run build
+
+# Snapshot consumer only (file-snapshots.ts, IDE/LSP path)
+DEBUG=formspec:analysis:constraint-validator:snapshot pnpm run build
+
+# Broadening-bypass decisions only
+DEBUG=formspec:analysis:constraint-validator:broadening pnpm run build
+
+# Synthetic-program invocations and setup diagnostics
+DEBUG=formspec:analysis:constraint-validator:synthetic pnpm run build
+```
+
+### Per-tag-application log-entry schema (§8.3b)
+
+Each constraint-tag evaluation emits one structured record at `debug` level.
+Enabling `trace` adds argument-lowering detail before the synthetic program is
+called.
+
+| Field | Type | Description |
+|---|---|---|
+| `consumer` | `"build" \| "snapshot"` | Which pipeline emitted this entry |
+| `tag` | `string` | Normalized tag name, e.g. `"minimum"` |
+| `placement` | `string` | Declaration placement, e.g. `"class-field"` |
+| `subjectTypeKind` | `string` | Human-readable type description, e.g. `"primitive/string"`, `"object/Decimal"` |
+| `roleOutcome` | `string` | Final role in the validation pipeline (see below) |
+| `elapsedMicros` | `number` | Microseconds for this tag's full validation path |
+
+#### Role outcome values
+
+| Value | Meaning |
+|---|---|
+| `A-pass` | Placement check passed; tag accepted without reaching role C |
+| `A-reject` | Placement check failed (`INVALID_TAG_PLACEMENT`) |
+| `B-pass` | Path/target check passed (for path-targeted constraints) |
+| `B-reject` | Path/target check failed (`UNSUPPORTED_TARGETING_SYNTAX`, `UNKNOWN_PATH_TARGET`) |
+| `C-pass` | Argument type check passed via synthetic program |
+| `C-reject` | Argument type check failed (`TYPE_MISMATCH`, `INVALID_TAG_ARGUMENT`) |
+| `D1` | Direct-field custom-constraint dispatch (no synthetic involvement) |
+| `D2` | Path-target built-in broadening dispatch |
+| `bypass` | Broadening registry short-circuit (tag accepted without role-C check) |
+
+### Sample log excerpt
+
+Running the `integer-type.test.ts` fixture with
+`DEBUG=formspec:analysis:constraint-validator:*` produces entries like:
+
+```json
+{"level":20,"name":"formspec:analysis:constraint-validator:build","msg":"constraint-tag application","consumer":"build","tag":"minimum","placement":"class-field","subjectTypeKind":"primitive/number","roleOutcome":"bypass","elapsedMicros":12}
+{"level":20,"name":"formspec:analysis:constraint-validator:build","msg":"constraint-tag application","consumer":"build","tag":"maximum","placement":"class-field","subjectTypeKind":"primitive/number","roleOutcome":"bypass","elapsedMicros":8}
+```
+
+From the `elapsedMicros` and `roleOutcome` fields alone, a reviewer can
+reconstruct the full A→bypass decision path for every constraint tag without
+consulting source code.
+
 ## TypeScript Configuration
 
 Strict mode with additional strictness flags:

@@ -56,6 +56,15 @@ import {
   resolveDeclarationPlacement,
   resolvePathTargetType,
 } from "./ts-binding.js";
+import {
+  getSnapshotLogger,
+  getSyntheticLogger,
+  describeTypeKind,
+  logTagApplication,
+  nowMicros,
+  elapsedMicros,
+  type ConstraintValidatorRoleOutcome,
+} from "./constraint-validator-logger.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -1271,10 +1280,18 @@ function buildTagDiagnostics(
     ...(hostTypeNeedsDeclarations ? supportingDeclarationsForType(hostType) : []),
     ...(subjectTypeNeedsDeclarations ? supportingDeclarationsForType(subjectType) : []),
   ]);
+  // §8.3b — module-level loggers for the snapshot consumer.
+  const snapshotLog = getSnapshotLogger();
+  const syntheticLog = getSyntheticLogger();
+
   const syntheticApplications: {
     readonly tag: (typeof commentTags)[number];
     readonly target: ReturnType<typeof getSyntheticTargetForTag>;
     readonly pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null;
+    /** §8.3b — microsecond timestamp when this tag's processing started. */
+    readonly tagStartMicros: number;
+    /** §8.3b — human-readable subject type kind for the log entry. */
+    readonly subjectTypeKindForLog: string;
     readonly options: {
       readonly tagName: string;
       readonly placement: FormSpecPlacement;
@@ -1328,6 +1345,12 @@ function buildTagDiagnostics(
       semantic.compatiblePathTargets
     );
 
+    // §8.3b — record per-tag start time and subject type kind before lowering.
+    // subjectType is non-undefined here: the `if (placement === null ||
+    // subjectType === undefined)` guard at the top of this function returns early.
+    const tagStartMicros = nowMicros();
+    const subjectTypeKindForLog = describeTypeKind(subjectType, checker);
+
     try {
       const syntheticOptions = {
         tagName: tag.normalizedTagName,
@@ -1346,9 +1369,20 @@ function buildTagDiagnostics(
         tag,
         target,
         pathTargetResolution,
+        tagStartMicros,
+        subjectTypeKindForLog,
         options: syntheticOptions,
       });
     } catch (error) {
+      // §8.3b — role A reject (placement check failed for snapshot consumer).
+      logTagApplication(snapshotLog, {
+        consumer: "snapshot",
+        tag: tag.normalizedTagName,
+        placement,
+        subjectTypeKind: subjectTypeKindForLog,
+        roleOutcome: "A-reject",
+        elapsedMicros: elapsedMicros(tagStartMicros),
+      });
       diagnostics.push(
         createAnalysisDiagnostic(
           "INVALID_TAG_PLACEMENT",
@@ -1377,6 +1411,15 @@ function buildTagDiagnostics(
       })
   );
 
+  // §8.3c — log any global (setup-level) diagnostics from the batch check.
+  if (batchCheck.globalDiagnostics.length > 0) {
+    const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
+    syntheticLog.debug("synthetic batch: global setup diagnostics", {
+      diagnosticCount: batchCheck.globalDiagnostics.length,
+      codes: setupCodes,
+    });
+  }
+
   const globalDiagnosticRange = combineCommentSpans(
     syntheticApplications.map((application) => application.tag.fullSpan)
   );
@@ -1404,6 +1447,23 @@ function buildTagDiagnostics(
     if (application === undefined) {
       continue;
     }
+
+    // §8.3b — determine role outcome for this tag application and log.
+    const roleOutcome: ConstraintValidatorRoleOutcome =
+      result.diagnostics.length === 0
+        ? "C-pass"
+        : result.diagnostics.some((d) => d.message.includes("No overload"))
+          ? "A-reject"
+          : "C-reject";
+
+    logTagApplication(snapshotLog, {
+      consumer: "snapshot",
+      tag: application.tag.normalizedTagName,
+      placement,
+      subjectTypeKind: application.subjectTypeKindForLog,
+      roleOutcome,
+      elapsedMicros: elapsedMicros(application.tagStartMicros),
+    });
 
     for (const diagnostic of result.diagnostics) {
       const code =

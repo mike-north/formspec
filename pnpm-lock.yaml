@@ -118,6 +118,13 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+    optionalDependencies:
+      pino:
+        specifier: ^9.0.0
+        version: 9.14.0
+      pino-pretty:
+        specifier: ^11.0.0
+        version: 11.3.0
 
   packages/build:
     dependencies:

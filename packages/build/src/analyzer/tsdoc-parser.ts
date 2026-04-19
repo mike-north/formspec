@@ -76,6 +76,16 @@ import {
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
 import { isIntegerBrandedType } from "./builtin-brands.js";
+import {
+  getBuildLogger,
+  getBroadeningLogger,
+  getSyntheticLogger,
+  describeTypeKind,
+  elapsedMicros,
+  nowMicros,
+  logTagApplication,
+  type ConstraintValidatorRoleOutcome,
+} from "@formspec/analysis/internal";
 
 function sharedTagValueOptions(options?: ParseTSDocOptions) {
   return {
@@ -711,14 +721,50 @@ function buildCompilerBackedConstraintDiagnostics(
     return [];
   }
 
+  // §8.3b — start timer and gather context for the structured log entry.
+  // `placement` is narrowed to non-null above; capture it in a typed constant
+  // so TypeScript can see the narrowed type inside the `emit` closure below.
+  const nonNullPlacement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>> = placement;
+  const logStart = nowMicros();
+  const log = getBuildLogger();
+  const broadeningLog = getBroadeningLogger();
+  const syntheticLog = getSyntheticLogger();
+  const subjectTypeKind = describeTypeKind(subjectType, checker);
+
+  /**
+   * Emits the §8.3b structured log entry and returns the supplied diagnostic
+   * array unchanged. All early returns in this function go through this helper.
+   *
+   * Broadening-bypass outcomes are additionally emitted on the `:broadening`
+   * sub-namespace so they are separately filterable.
+   */
+  function emit(
+    outcome: ConstraintValidatorRoleOutcome,
+    result: readonly ConstraintSemanticDiagnostic[]
+  ): readonly ConstraintSemanticDiagnostic[] {
+    const entry = {
+      consumer: "build" as const,
+      tag: tagName,
+      placement: nonNullPlacement,
+      subjectTypeKind,
+      roleOutcome: outcome,
+      elapsedMicros: elapsedMicros(logStart),
+    };
+    logTagApplication(log, entry);
+    if (outcome === "bypass" || outcome === "D1" || outcome === "D2") {
+      logTagApplication(broadeningLog, entry);
+    }
+    return result;
+  }
+
   if (!definition.placements.includes(placement)) {
-    return [
+    return emit("A-reject", [
       makeDiagnostic(
         "INVALID_TAG_PLACEMENT",
         `Tag "@${tagName}" is not allowed on ${placementLabel(placement)}.`,
         provenance
       ),
-    ];
+    ]);
   }
 
   const target = parsedTag?.target ?? null;
@@ -729,45 +775,45 @@ function buildCompilerBackedConstraintDiagnostics(
   let targetLabel = node.getText(sourceFile);
   if (target !== null) {
     if (target.kind !== "path") {
-      return [
+      return emit("B-reject", [
         makeDiagnostic(
           "UNSUPPORTED_TARGETING_SYNTAX",
           `Tag "@${tagName}" does not support ${target.kind} targeting syntax.`,
           provenance
         ),
-      ];
+      ]);
     }
 
     if (!target.valid || target.path === null) {
-      return [
+      return emit("B-reject", [
         makeDiagnostic(
           "UNSUPPORTED_TARGETING_SYNTAX",
           `Tag "@${tagName}" has invalid path targeting syntax.`,
           provenance
         ),
-      ];
+      ]);
     }
 
     const resolution = resolvePathTargetType(subjectType, checker, target.path.segments);
     if (resolution.kind === "missing-property") {
-      return [
+      return emit("B-reject", [
         makeDiagnostic(
           "UNKNOWN_PATH_TARGET",
           `Target "${target.rawText}": path-targeted constraint "${tagName}" references unknown path segment "${resolution.segment}"`,
           provenance
         ),
-      ];
+      ]);
     }
 
     if (resolution.kind === "unresolvable") {
       const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-      return [
+      return emit("B-reject", [
         makeDiagnostic(
           "TYPE_MISMATCH",
           `Target "${target.rawText}": path-targeted constraint "${tagName}" is invalid because type "${actualType}" cannot be traversed`,
           provenance
         ),
-      ];
+      ]);
     }
 
     evaluatedType = resolution.type;
@@ -827,13 +873,13 @@ function buildCompilerBackedConstraintDiagnostics(
               parsedTag?.argumentText
             )
           : null;
-      return [
+      return emit("B-reject", [
         makeDiagnostic(
           "TYPE_MISMATCH",
           hint === null ? baseMessage : `${baseMessage}. ${hint}`,
           provenance
         ),
-      ];
+      ]);
     }
   }
 
@@ -842,16 +888,26 @@ function buildCompilerBackedConstraintDiagnostics(
     parsedTag?.argumentText ?? ""
   );
   if (definition.requiresArgument && argumentExpression === null) {
-    return [];
+    return emit("A-pass", []);
   }
 
   if (hasBroadening) {
-    return [];
+    return emit("bypass", []);
   }
 
   const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
   const hostType = options?.hostType ?? subjectType;
   const hostTypeText = checker.typeToString(hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+
+  // §8.3b — trace-level log before the synthetic program is invoked.
+  syntheticLog.trace("invoking synthetic checker", {
+    consumer: "build",
+    tag: tagName,
+    placement,
+    subjectTypeKind,
+    subjectTypeText,
+  });
+
   const result = checkSyntheticTagApplication({
     tagName,
     placement,
@@ -887,12 +943,12 @@ function buildCompilerBackedConstraintDiagnostics(
   });
 
   if (result.diagnostics.length === 0) {
-    return [];
+    return emit("C-pass", []);
   }
 
   const setupDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.kind !== "typescript");
   if (setupDiagnostic !== undefined) {
-    return [
+    return emit("C-reject", [
       makeDiagnostic(
         setupDiagnostic.kind === "unsupported-custom-type-override"
           ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
@@ -900,18 +956,18 @@ function buildCompilerBackedConstraintDiagnostics(
         setupDiagnostic.message,
         provenance
       ),
-    ];
+    ]);
   }
 
   const expectedLabel =
     definition.valueKind === null ? "compatible argument" : capabilityLabel(definition.valueKind);
-  return [
+  return emit("C-reject", [
     makeDiagnostic(
       "TYPE_MISMATCH",
       `Tag "@${tagName}" received an invalid argument for ${expectedLabel}.`,
       provenance
     ),
-  ];
+  ]);
 }
 
 const parseResultCache = new Map<string, TSDocParseResult>();

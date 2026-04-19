@@ -24,6 +24,8 @@ import {
 import {
   getTagDefinition,
   normalizeFormSpecTagName,
+  getSyntheticLogger,
+  logSetupDiagnostics,
   type ExtensionTagSource,
 } from "@formspec/analysis/internal";
 
@@ -198,6 +200,14 @@ function buildConstraintTagSources(
 export function createExtensionRegistry(
   extensions: readonly ExtensionDefinition[]
 ): MutableExtensionRegistry {
+  // §8.3c — log registry construction at debug so setup-diagnostic emission is
+  // observable across repeated calls (e.g. snapshot-driven consumers per §9 #19).
+  const registryLog = getSyntheticLogger();
+  registryLog.debug("createExtensionRegistry: constructing", {
+    extensionCount: extensions.length,
+    extensionIds: extensions.map((e) => e.extensionId),
+  });
+
   const reservedTagSources = buildConstraintTagSources(extensions);
   let symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();
   const typeMap = new Map<string, CustomTypeRegistration>();
@@ -348,6 +358,21 @@ export function createExtensionRegistry(
       }
     }
   }
+
+  // §8.3c — log successful registry construction with type/constraint/broadening counts.
+  // Zero setup diagnostics at this point (construction succeeded without throwing).
+  logSetupDiagnostics(registryLog, {
+    diagnosticCount: 0,
+    codes: [],
+  });
+  registryLog.debug("createExtensionRegistry: complete", {
+    typeCount: typeMap.size,
+    constraintCount: constraintMap.size,
+    constraintTagCount: constraintTagMap.size,
+    broadeningCount: builtinBroadeningMap.size,
+    annotationCount: annotationMap.size,
+    metadataSlotCount: metadataSlotMap.size,
+  });
 
   return {
     extensions,
