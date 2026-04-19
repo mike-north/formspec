@@ -347,4 +347,78 @@ describe("FormSpecSemanticService", () => {
     expect(logger.info).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
+
+  // ---------------------------------------------------------------------------
+  // §9.1 #2 — Constraint-tag-specific fixtures (Phase 0.5b)
+  // ---------------------------------------------------------------------------
+
+  it("accepts @minimum 0 on a plain numeric field without surfacing TYPE_MISMATCH (fixture 0.5b-2)", async () => {
+    // Fixture: `@minimum 0` on a field declared as plain `number` must not
+    // surface TYPE_MISMATCH through the LSP diagnostic stream.
+    //
+    // The TypeScript program resolves the subject type to `number`, which is
+    // numeric-comparable, so the constraint is accepted. This confirms the
+    // baseline numeric-field acceptance path through the semantic service.
+    //
+    // Cross-file branded intersections (e.g. `number & { readonly [__brand]: true }`
+    // imported from a separate module) require an additional snapshot-path
+    // bypass (tracked under §9.1 #3). This fixture covers the plain `number`
+    // case that the snapshot path already handles correctly.
+    const source = `
+      class Checkout {
+        /** @minimum 0 */
+        count!: number;
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const diagnostics = service.getDiagnostics(context.filePath);
+
+    // A plain numeric field must not trigger TYPE_MISMATCH for a numeric constraint.
+    expect(diagnostics.diagnostics.filter((d) => d.code === "TYPE_MISMATCH")).toHaveLength(0);
+  });
+
+  it("accepts @exclusiveMinimum :amount 0 on an object field via path-target (fixture 0.5b-3, D2)", async () => {
+    // Fixture: path-targeted `@exclusiveMinimum :amount 0` on a field whose
+    // inline object type has a numeric `amount` sub-property must be accepted
+    // (D2 — path-target broadening).
+    //
+    // The path target :amount resolves to `number`, which is numeric-comparable,
+    // so no TYPE_MISMATCH diagnostic should be surfaced. This fixture focuses
+    // on the diagnostic acceptance path — schema emission is not under test here.
+    //
+    // Uses @exclusiveMinimum instead of @minimum to confirm the same D2 path works
+    // for any numeric built-in constraint tag.
+    const source = `
+      class Payment {
+        /** @exclusiveMinimum :amount 0 */
+        price!: {
+          amount: number;
+          currency: string;
+        };
+      }
+    `;
+    const context = await createProgramContext(source);
+    workspaces.push(context.workspaceRoot);
+
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+    });
+    services.push(service);
+
+    const diagnostics = service.getDiagnostics(context.filePath);
+
+    // Path target :amount resolves to `number` — no TYPE_MISMATCH expected.
+    expect(diagnostics.diagnostics.filter((d) => d.code === "TYPE_MISMATCH")).toHaveLength(0);
+  });
 });
