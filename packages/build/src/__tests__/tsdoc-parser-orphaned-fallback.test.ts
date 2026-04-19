@@ -98,16 +98,15 @@ function getPropertyFromSource(source: string): ts.PropertyDeclaration {
 }
 
 /**
- * Returns how many entries remain in the raw-text fallbacks map after parsing.
+ * Counts how many qualifying raw-text tags TypeScript exposes on the node
+ * via `ts.getJSDocTags` BEFORE `parseTSDocTags` has run.
  *
- * This is a white-box probe: it calls `ts.getJSDocTags` directly on the node
- * and counts TAGS_REQUIRING_RAW_TEXT entries, mirroring what
- * `collectRawTextFallbacks` would build.
- *
- * An entry count > 0 after the unified parser has consumed what it can
- * is what feeds the orphaned fallback loop.  We cannot currently produce a
- * non-zero post-consumption count (see module-level docblock), but this helper
- * makes the invariant observable without forking into implementation internals.
+ * This is a white-box probe that measures what the TS compiler API finds —
+ * i.e. the same population that `collectRawTextFallbacks` reads when it builds
+ * the `rawTextFallbacks` map.  Because the count is taken before any consumption
+ * by the unified parser, it tells you whether the TS JSDoc parser saw a given
+ * `TAGS_REQUIRING_RAW_TEXT` tag at all, not how many entries remain after the
+ * unified parser has processed the comment.
  */
 function countRawTagsSeenByTypeScript(
   node: ts.Node,
