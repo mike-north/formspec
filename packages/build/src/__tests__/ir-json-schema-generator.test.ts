@@ -440,7 +440,7 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({ enum: [1, 2, 3] });
     });
 
-    it("supports oneOf serialization with explicit and fallback titles", () => {
+    it("supports oneOf serialization and omits title when it matches the value (issue #310)", () => {
       // Updated for #310: title is only emitted when displayName differs from the const value.
       // "sent" has no displayName, so its title is omitted (was redundant).
       // "draft" has displayName "Draft" (differs from value) → title emitted.

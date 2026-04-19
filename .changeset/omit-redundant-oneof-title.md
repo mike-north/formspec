@@ -1,5 +1,8 @@
 ---
 "@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/eslint-plugin": patch
+"formspec": patch
 ---
 
 Omit redundant `title` in `oneOf` enum serialization when title equals the `const` value.
