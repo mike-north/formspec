@@ -1,12 +1,13 @@
 /**
- * Tests for the `resolvePayload` callback on custom type registrations.
+ * Tests for the `extractPayload` callback on custom type registrations.
  *
  * Verifies that:
- *   1. `resolvePayload` is called during type analysis and its return value
+ *   1. `extractPayload` is called during type analysis and its return value
  *      flows through to `toJsonSchema` as the `payload` argument.
  *   2. The callback receives the TypeScript type and checker, enabling
  *      extraction of type-level information (e.g., generic argument literals).
  *   3. Optional (nullable) fields pass the union type correctly.
+ *   4. Errors thrown by the callback are attributed to the extension.
  */
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -28,7 +29,7 @@ function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorRepo
 let tmpDir: string;
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-resolve-payload-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-extract-payload-"));
 });
 
 afterAll(() => {
@@ -43,8 +44,8 @@ function writeFixture(name: string, lines: string[]): string {
   return filePath;
 }
 
-describe("resolvePayload", () => {
-  it("passes resolved payload through to toJsonSchema", () => {
+describe("extractPayload", () => {
+  it("passes extracted payload through to toJsonSchema", () => {
     const toJsonSchema = vi.fn(
       (payload: unknown, _vendorPrefix: string) => ({
         type: "string",
@@ -59,7 +60,7 @@ describe("resolvePayload", () => {
           defineCustomType({
             typeName: "TestRef",
             tsTypeNames: ["TestRef"],
-            resolvePayload: (type: unknown, checker: unknown) => {
+            extractPayload: (type: unknown, checker: unknown) => {
               const tsType = type as ts.Type;
               const tsChecker = checker as ts.TypeChecker;
               const prop = tsType.getProperty("target");
@@ -73,7 +74,7 @@ describe("resolvePayload", () => {
       }),
     ]);
 
-    const filePath = writeFixture("resolve-payload-basic.ts", [
+    const filePath = writeFixture("extract-payload-basic.ts", [
       "type TestRef<T extends string> = {",
       "  id: string;",
       "  target: T;",
@@ -90,6 +91,7 @@ describe("resolvePayload", () => {
       extensionRegistry: registry,
     });
 
+    // Verify the payload reached toJsonSchema
     expect(toJsonSchema).toHaveBeenCalledWith("customer", expect.any(String));
 
     const props = jsonSchema.properties ?? {};
@@ -99,10 +101,12 @@ describe("resolvePayload", () => {
     });
   });
 
-  it("passes null payload when resolvePayload is not defined", () => {
-    const toJsonSchema = vi.fn((_payload, _vendorPrefix) => ({
-      type: "string",
-    }));
+  it("passes null payload when extractPayload is not defined", () => {
+    const toJsonSchema = vi.fn(
+      (_payload: unknown, _vendorPrefix: string) => ({
+        type: "string",
+      })
+    );
 
     const registry = createExtensionRegistry([
       defineExtension({
@@ -117,7 +121,7 @@ describe("resolvePayload", () => {
       }),
     ]);
 
-    const filePath = writeFixture("resolve-payload-none.ts", [
+    const filePath = writeFixture("extract-payload-none.ts", [
       "type NoPayload = string & { readonly __brand: true };",
       "",
       "export interface Config {",
@@ -134,9 +138,8 @@ describe("resolvePayload", () => {
     expect(toJsonSchema).toHaveBeenCalledWith(null, expect.any(String));
   });
 
-  it("resolvePayload receives the union type for optional fields", () => {
-    const resolvePayload = vi.fn((type: unknown, checker: unknown) => {
-      // Strip nullish union members (same pattern as Ref)
+  it("handles optional fields by passing the union type to extractPayload", () => {
+    const extractPayload = vi.fn((type: unknown, checker: unknown) => {
       let resolved = type as ts.Type;
       const tsChecker = checker as ts.TypeChecker;
 
@@ -162,7 +165,7 @@ describe("resolvePayload", () => {
           defineCustomType({
             typeName: "OptRef",
             tsTypeNames: ["OptRef"],
-            resolvePayload,
+            extractPayload,
             toJsonSchema: (payload, _vendorPrefix) => ({
               type: "string",
               "x-target": payload,
@@ -172,7 +175,7 @@ describe("resolvePayload", () => {
       }),
     ]);
 
-    const filePath = writeFixture("resolve-payload-optional.ts", [
+    const filePath = writeFixture("extract-payload-optional.ts", [
       "type OptRef<T extends string> = {",
       "  id: string;",
       "  target: T;",
@@ -189,12 +192,84 @@ describe("resolvePayload", () => {
       extensionRegistry: registry,
     });
 
-    expect(resolvePayload).toHaveBeenCalled();
+    expect(extractPayload).toHaveBeenCalled();
 
     const props = jsonSchema.properties ?? {};
     expect(props.optional).toMatchObject({
       type: "string",
       "x-target": "invoice",
     });
+  });
+
+  it("attributes errors from extractPayload to the extension", () => {
+    const registry = createExtensionRegistry([
+      defineExtension({
+        extensionId: "x-test/throwing",
+        types: [
+          defineCustomType({
+            typeName: "Throwing",
+            tsTypeNames: ["Throwing"],
+            extractPayload: () => {
+              throw new Error("kaboom");
+            },
+            toJsonSchema: () => ({ type: "string" }),
+          }),
+        ],
+      }),
+    ]);
+
+    const filePath = writeFixture("extract-payload-throwing.ts", [
+      "type Throwing = string & { readonly __brand: true };",
+      "",
+      "export interface Config {",
+      "  value: Throwing;",
+      "}",
+    ]);
+
+    expect(() =>
+      generateSchemasOrThrow({
+        filePath,
+        typeName: "Config",
+        extensionRegistry: registry,
+      })
+    ).toThrow(/extractPayload for custom type "Throwing" in extension "x-test\/throwing" threw/);
+  });
+
+  it("coerces undefined return to null", () => {
+    const toJsonSchema = vi.fn(
+      (_payload: unknown, _vendorPrefix: string) => ({
+        type: "string",
+      })
+    );
+
+    const registry = createExtensionRegistry([
+      defineExtension({
+        extensionId: "x-test/undef-return",
+        types: [
+          defineCustomType({
+            typeName: "UndefReturn",
+            tsTypeNames: ["UndefReturn"],
+            extractPayload: () => undefined as never,
+            toJsonSchema,
+          }),
+        ],
+      }),
+    ]);
+
+    const filePath = writeFixture("extract-payload-undef.ts", [
+      "type UndefReturn = string & { readonly __brand: true };",
+      "",
+      "export interface Config {",
+      "  value: UndefReturn;",
+      "}",
+    ]);
+
+    generateSchemasOrThrow({
+      filePath,
+      typeName: "Config",
+      extensionRegistry: registry,
+    });
+
+    expect(toJsonSchema).toHaveBeenCalledWith(null, expect.any(String));
   });
 });

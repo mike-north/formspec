@@ -114,15 +114,38 @@ export interface CustomTypeRegistration {
    * Use this to carry type-level information (e.g., a generic argument's
    * resolved literal value) through the IR into schema generation.
    *
-   * Parameters are typed as `unknown` because `@formspec/core` does not
+   * **Parameters:** typed as `unknown` because `@formspec/core` does not
    * depend on the TypeScript compiler API. Implementations should cast to
-   * `ts.Type` and `ts.TypeChecker`.
+   * `ts.Type` and `ts.TypeChecker`. Both parameters originate from the
+   * host program's type checker — extensions may rely on host-program
+   * symbol identity.
+   *
+   * **Contract:**
+   * - Must be a pure function of `(type, checker)` — no I/O or shared state.
+   * - May be invoked multiple times for the same type (no memoization is provided).
+   * - Must return a JSON-serializable `ExtensionPayloadValue`. Returning live
+   *   compiler objects (e.g., `ts.Type`) will corrupt any IR caching.
+   * - Errors thrown by the callback are attributed to the extension and
+   *   reported as build diagnostics.
+   * - Returning `undefined` is coerced to `null` at the call site.
    *
    * @param type - The resolved TypeScript type (cast to `ts.Type`).
    * @param checker - The TypeScript type checker (cast to `ts.TypeChecker`).
    * @returns A JSON-serializable payload, or `null` if no payload can be extracted.
+   *
+   * @example
+   * ```typescript
+   * extractPayload: (type: unknown, checker: unknown) => {
+   *   const tsType = type as ts.Type;
+   *   const tsChecker = checker as ts.TypeChecker;
+   *   const prop = tsType.getProperty('target');
+   *   if (!prop) return null;
+   *   const propType = tsChecker.getTypeOfSymbol(prop);
+   *   return propType.isStringLiteral() ? propType.value : null;
+   * }
+   * ```
    */
-  readonly resolvePayload?: (
+  readonly extractPayload?: (
     type: unknown,
     checker: unknown
   ) => ExtensionPayloadValue;
