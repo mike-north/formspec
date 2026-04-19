@@ -177,7 +177,7 @@ v1 had an inversion bug (Phase 3 removed prelude aliases before their consumers 
    - **0.5i** Thin `constraint-tag-semantics.ref.md` with ~15 entries (§9.3 #12).
    - **0.5j** Silent-acceptance negative-case canaries (§9.3 #14).
    - **0.5k** Performance microbenchmark baseline (§9.2 #8) — captures pre-refactor numbers; Phase 4 must not regress.
-   - **0.5l** Stripe `Ref<Customer>` stress-test fixture (§8.4) — build the fixture and record the Phase-0 baseline (peak RSS, wall time, whether it OOMs). The fixture itself requires PR #300 to have landed; if #300 is not yet merged, the fixture can be stubbed with a hand-authored `ts.Type`-observing custom type registration and migrated to `extractPayload` once #300 lands.
+   - **0.5l** Stripe `Ref<Customer>` stress-test fixture (§8.4) — build the fixture and record the Phase-0 baseline (peak RSS, wall time, whether it OOMs). PR #308 fixes the stack overflow by skipping full expansion of large external type arguments in `extractReferenceTypeArguments`, so `Ref<T>` works through formspec's existing object resolution pipeline without custom type registration.
    - **0.5m** Parity-harness structured log schema (§8.3e) — JSON shape definition plus a diffing helper consumed by 0.5a.
    - Items deferred past Phase 2: `@pattern` matrix (§9.2 #6), `@enumOptions` heterogeneous-form test (§9.2 #7), broadening + path-target contradiction combos (§9.2 #9), `tsconfig`-option matrix (§9.2 #10), PR #294 + #297 file-snapshots variant (§9.3 #15). These land before Phase 4.
    - **Deferred to Phase 5:** narrow-applicability invariants migrated to the typed-parser entrypoint (§9.3 #18) — can't write until the typed parser exists.
@@ -213,7 +213,7 @@ Each phase is independently shippable and test-green. Phase 0 validates assumpti
 4. **`isIntegerBrandedType` bypass scope.** Decide whether to generalize it into the broadening registry or keep it as a dedicated bypass. Either is fine; silence is not.
 5. **Performance.** The synthetic program already batches. Removing it should be strictly faster, but only after Phase 3 — Phase 2 runs both paths side-by-side and will be slower. Budget accordingly.
 6. **Option-3 temptation.** If a future tag looks like it needs `ts.createSourceFile` + host checker, resist until at least one real use case forces the issue. The plan explicitly declines to treat this as a migration phase.
-7. **Interaction with PR #297 (imported-type sibling fix)** and **PR #300 (`extractPayload`)**. Both land in the "host checker only" direction; they're compatible with this refactor. But #297 patches the very `buildSupportingDeclarations` that Phase 6 deletes — coordinate timing so we're not patching code that's about to disappear.
+7. **Interaction with PR #297 (imported-type sibling fix)** and **PR #308 (large external type argument fix)**. Both land in the "host checker only" direction; they're compatible with this refactor. But #297 patches the very `buildSupportingDeclarations` that Phase 6 deletes — coordinate timing so we're not patching code that's about to disappear. Note: PR #300 (`extractPayload`) was superseded by #308 and removed in #313.
 8. **Unsupported deep-import risk (not Published API).** `@formspec/analysis`'s `package.json:9-24` exposes only `.` and `./internal`, and `./internal` (`packages/analysis/src/internal.ts:157-164`) does not re-export `checkNarrowSyntheticTagApplicability` / `...Applicabilities`. The helpers are therefore not part of the published API — any external caller would have to deep-import the source file. Before Phase 5 deletion, run `rg checkNarrowSyntheticTagApplicabilit` across the monorepo (sufficient for internal callers) and note in release notes that deep-imports of this symbol are unsupported; no formal deprecation cycle needed.
 9. **`Infinity` / `NaN` in numeric tag arguments.** Build stringifies, snapshot passes through. Codex v2 flagged this as an unresolved semantic. Pick one before Phase 2.
 10. **Relocated setup diagnostics may produce different spans.** Moving `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` from a per-field per-application site to a registry-level site changes *where* the diagnostic anchors. Consumers that rely on the provenance (IDE gutter markers, ESLint fixers) need verification.
@@ -253,7 +253,7 @@ Deliverables, building on the pino logger from #298:
 - **8.3a** A `formspec:analysis:constraint-validator` logger namespace, with sub-namespaces `:build`, `:snapshot`, `:typed-parser`, `:synthetic` (while it still exists), `:broadening`. Each logs at `debug` by default, `trace` for argument-lowering details.
 - **8.3b** Per-tag-application structured log entry with: `consumer` (build/snapshot), `tag`, `placement`, `subjectTypeKind`, `roleOutcome` (A-pass / A-reject / B-pass / B-reject / C-pass / C-reject / D1 / D2 / bypass), `elapsedMicros`. Phase 0 lands this even before any implementation change — it *is* the observability counter from Phase 0.
 - **8.3c** Extension-registry construction logs setup-diagnostic emission (count + codes) at `debug`. This is the runtime evidence behind §9 #19 (emission-count stability across registry rebuilds).
-- **8.3d** `extractPayload` invocations (from PR #300) log the extension id, custom type name, and whether `ts.Type`/`ts.TypeChecker` APIs were touched. Needed to triage the Stripe stress test — a bad `extractPayload` implementation is a likely OOM cause.
+- **8.3d** ~~`extractPayload` invocations~~ — removed. `extractPayload` was superseded by PR #308 and removed in #313. The `Ref<T>` stack overflow is now handled by skipping full expansion of external type arguments in `extractReferenceTypeArguments`.
 - **8.3e** Parity-harness logs are structured JSON consumable by a diffing script, not free-form text. Phase 0.5a must define the schema.
 - **8.3f** Documentation: ARCHITECTURE.md gains a short "Debugging constraint validation" section describing `DEBUG=formspec:analysis:constraint-validator:*` usage.
 
@@ -265,7 +265,7 @@ Motivation: the `stripe` npm SDK exposes very complex, deeply-nested, heavily-ge
 
 **Fixture** (lives in `@formspec/e2e`):
 
-- A form definition that uses a `Ref<T>` extension-provided custom type (enabled by PR #300's `extractPayload`). Example shape: `Ref<Customer>`, `Ref<PaymentIntent>`, `Ref<Subscription>` — each should resolve to a reference-to-entity JSON Schema fragment via `extractPayload` reading the `ts.Type`'s name.
+- A form definition that uses `Ref<T>` wrapper types. Example shape: `Ref<Customer>`, `Ref<PaymentIntent>`, `Ref<Subscription>` — each resolves to a reference-to-entity JSON Schema fragment via formspec's existing object resolution and discriminator pipeline (PR #308 prevents the stack overflow on large external types).
 - A real `import Stripe from "stripe"` in the fixture (peer dep, not bundled) so the host TS program pulls in the full SDK `.d.ts`.
 - 5-10 fields per form covering: a `Ref<Customer>`, a `Ref<PaymentIntent>` with `@description`, a constrained string (`@minLength 1`), a constrained number (`@minimum 0`), a nested object with its own `Ref<>` field.
 
