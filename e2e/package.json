@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "benchmark:hybrid-tooling": "pnpm --filter @formspec/language-server... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && tsx ./benchmarks/hybrid-tooling-comparison.ts"
+    "benchmark:hybrid-tooling": "pnpm --filter @formspec/language-server... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && tsx ./benchmarks/hybrid-tooling-comparison.ts",
+    "bench:analysis": "pnpm --filter @formspec/ts-plugin... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/analysis-bench.ts"
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",
