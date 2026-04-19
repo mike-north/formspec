@@ -47,7 +47,6 @@ import {
 import { isIntegerBrandedType } from "./builtin-brands.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
-import { getBuildLogger, logExtractPayload } from "@formspec/analysis/internal";
 
 // =============================================================================
 // TYPE GUARDS
@@ -1739,32 +1738,10 @@ export function resolveTypeNode(
     sourceNode
   );
   if (customTypeLookup !== null) {
-    const typeId = customTypeIdFromLookup(customTypeLookup);
-    let payload: import("@formspec/core/internals").ExtensionPayloadValue = null;
-    let tsApisTouched = false;
-    // extractPayload receives the host program's ts.Type and ts.TypeChecker.
-    if (customTypeLookup.registration.extractPayload !== undefined) {
-      tsApisTouched = true;
-      try {
-        payload = customTypeLookup.registration.extractPayload(type, checker) ?? null;
-      } catch (cause) {
-        throw new Error(
-          `extractPayload for custom type "${customTypeLookup.registration.typeName}" ` +
-            `in extension "${customTypeLookup.extensionId}" threw`,
-          { cause }
-        );
-      }
-    }
-    // §8.3d — log extractPayload invocation for the Stripe stress-test OOM triage.
-    logExtractPayload(getBuildLogger(), {
-      extensionId: customTypeLookup.extensionId,
-      customTypeName: customTypeLookup.registration.typeName,
-      tsApisTouched,
-    });
     return {
       kind: "custom",
-      typeId,
-      payload,
+      typeId: customTypeIdFromLookup(customTypeLookup),
+      payload: null,
     };
   }
   const primitiveAlias = tryResolveNamedPrimitiveAlias(

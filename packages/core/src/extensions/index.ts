@@ -107,49 +107,6 @@ export interface CustomTypeRegistration {
    */
   readonly brand?: string;
   /**
-   * Optional callback to extract a payload from the TypeScript type at
-   * analysis time. The returned value is stored on the custom type node
-   * and later passed to `toJsonSchema`.
-   *
-   * Use this to carry type-level information (e.g., a generic argument's
-   * resolved literal value) through the IR into schema generation.
-   *
-   * **Parameters:** typed as `unknown` because `@formspec/core` does not
-   * depend on the TypeScript compiler API. Implementations should cast to
-   * `ts.Type` and `ts.TypeChecker`. Both parameters originate from the
-   * host program's type checker — extensions may rely on host-program
-   * symbol identity.
-   *
-   * **Contract:**
-   * - Must be a pure function of `(type, checker)` — no I/O or shared state.
-   * - May be invoked multiple times for the same type (no memoization is provided).
-   * - Must return a JSON-serializable `ExtensionPayloadValue`. Returning live
-   *   compiler objects (e.g., `ts.Type`) will corrupt any IR caching.
-   * - Errors thrown by the callback are attributed to the extension and
-   *   reported as build diagnostics.
-   * - Returning `undefined` is coerced to `null` at the call site.
-   *
-   * @param type - The resolved TypeScript type (cast to `ts.Type`).
-   * @param checker - The TypeScript type checker (cast to `ts.TypeChecker`).
-   * @returns A JSON-serializable payload, or `null` if no payload can be extracted.
-   *
-   * @example
-   * ```typescript
-   * extractPayload: (type: unknown, checker: unknown) => {
-   *   const tsType = type as ts.Type;
-   *   const tsChecker = checker as ts.TypeChecker;
-   *   const prop = tsType.getProperty('target');
-   *   if (!prop) return null;
-   *   const propType = tsChecker.getTypeOfSymbol(prop);
-   *   return propType.isStringLiteral() ? propType.value : null;
-   * }
-   * ```
-   */
-  readonly extractPayload?: (
-    type: unknown,
-    checker: unknown
-  ) => ExtensionPayloadValue;
-  /**
    * Converts the custom type's payload into a JSON Schema fragment.
    *
    * @param payload - The opaque JSON payload stored on the custom type node.
