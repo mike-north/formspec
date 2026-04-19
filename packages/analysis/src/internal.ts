@@ -184,10 +184,10 @@ export {
   describeTypeKind,
   logTagApplication,
   logSetupDiagnostics,
-  logResolvePayload,
+  logExtractPayload,
   type ConstraintValidatorConsumer,
   type ConstraintValidatorRoleOutcome,
   type ConstraintTagApplicationLogEntry,
   type SetupDiagnosticLogEntry,
-  type ResolvePayloadLogEntry,
+  type ExtractPayloadLogEntry,
 } from "./constraint-validator-logger.js";

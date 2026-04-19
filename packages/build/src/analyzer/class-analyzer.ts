@@ -47,7 +47,7 @@ import {
 import { isIntegerBrandedType } from "./builtin-brands.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
-import { getBuildLogger, logResolvePayload } from "@formspec/analysis/internal";
+import { getBuildLogger, logExtractPayload } from "@formspec/analysis/internal";
 
 // =============================================================================
 // TYPE GUARDS
@@ -1724,7 +1724,7 @@ export function resolveTypeNode(
       }
     }
     // §8.3d — log extractPayload invocation for the Stripe stress-test OOM triage.
-    logResolvePayload(getBuildLogger(), {
+    logExtractPayload(getBuildLogger(), {
       extensionId: customTypeLookup.extensionId,
       customTypeName: customTypeLookup.registration.typeName,
       tsApisTouched,

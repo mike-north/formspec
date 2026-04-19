@@ -107,16 +107,16 @@ export interface SetupDiagnosticLogEntry {
 }
 
 // =============================================================================
-// §8.3d — resolvePayload invocation log-entry schema
+// §8.3d — extractPayload invocation log-entry schema
 // =============================================================================
 
 /**
- * Structured log entry emitted when `resolvePayload` is invoked on a custom
+ * Structured log entry emitted when `extractPayload` is invoked on a custom
  * type registration (PR #300).
  *
  * @public
  */
-export interface ResolvePayloadLogEntry {
+export interface ExtractPayloadLogEntry {
   /** The fully-qualified extension ID (e.g., "x-stripe/monetary"). */
   readonly extensionId: string;
   /** The custom type name as registered (e.g., "Decimal"). */
@@ -127,7 +127,7 @@ export interface ResolvePayloadLogEntry {
    * which is the OOM risk the Stripe stress test (§8.4) guards against.
    *
    * @remarks
-   * Phase 0 logs `true` unconditionally whenever `resolvePayload` is defined,
+   * Phase 0 logs `true` unconditionally whenever `extractPayload` is defined,
    * because PR #300 has not yet landed and access-proxy instrumentation is
    * out of scope. A future phase can refine this to a real access flag.
    */
@@ -414,15 +414,15 @@ export function logSetupDiagnostics(
 }
 
 /**
- * Emits a resolvePayload invocation record (§8.3d).
+ * Emits a extractPayload invocation record (§8.3d).
  *
- * Call at the point where `resolvePayload` is invoked on a custom type
- * registration. See `ResolvePayloadLogEntry.tsApisTouched` for the access-flag
+ * Call at the point where `extractPayload` is invoked on a custom type
+ * registration. See `ExtractPayloadLogEntry.tsApisTouched` for the access-flag
  * semantics in Phase 0.
  */
-export function logResolvePayload(
+export function logExtractPayload(
   logger: LoggerLike,
-  entry: ResolvePayloadLogEntry
+  entry: ExtractPayloadLogEntry
 ): void {
-  logger.debug("resolvePayload invoked", entry);
+  logger.debug("extractPayload invoked", entry);
 }
