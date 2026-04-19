@@ -24,9 +24,11 @@
  *
  * If Phase 4 deduplicates by moving validation into a registry object:
  *   - The per-call count might drop to 0 (if validation only runs at registry
- *     construction time) — test step 3 would fail.
+ *     construction time) — the test that asserts a diagnostic is emitted for
+ *     each snapshot build would fail.
  *   - Or the delta for re-construction would increase (e.g. +3 instead of +1
- *     if the diagnostic is emitted per-field again) — test step 5 would fail.
+ *     if the diagnostic is emitted per-field again) — the test that compares
+ *     counts between reused and rebuilt extension configs would fail.
  *
  * @see docs/refactors/synthetic-checker-retirement.md §9.3 #19
  * @see packages/analysis/src/compiler-signatures.ts (runBatchSyntheticCheck)
@@ -41,8 +43,9 @@ import { createProgram } from "./helpers.js";
  * A TypeScript source file that contains exactly one FormSpec comment block
  * with constraint tags. The source is deliberately minimal: one interface with
  * one commented field. This means each `buildFormSpecAnalysisFileSnapshot`
- * call runs exactly one synthetic batch containing exactly one application,
- * so every setup failure produces exactly one global diagnostic per call.
+ * call runs exactly one synthetic batch for that comment block; even though
+ * the block contains multiple tags, every setup failure still produces exactly
+ * one global diagnostic per call.
  */
 const SOURCE_WITH_ONE_COMMENT_BLOCK = `
   interface Foo {
