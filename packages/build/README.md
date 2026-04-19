@@ -74,7 +74,6 @@ Public helpers in this workflow:
 - `createStaticBuildContextFromProgram(program, filePath)` - Reuse a host-owned `ts.Program`.
 - `resolveModuleExport(context, exportName?)` - Resolve any exported symbol, including functions and other non-schema declarations.
 - `resolveModuleExportDeclaration(context, exportName?)` - Resolve only schema-source declarations (`class`, `interface`, `type` alias).
-- `resolveDeclarationMetadata(...)` - Resolve metadata for named types, methods, and properties using FormSpec's active metadata policy.
 - `generateSchemasFromDeclaration(...)` - Generate from a resolved schema-source declaration.
 - `generateSchemasFromParameter(...)` - Generate from a method or function parameter declaration.
 - `generateSchemasFromReturnType(...)` - Generate from a method or function return type, unwrapping awaited `Promise<T>`-style returns before generation.
@@ -92,7 +91,6 @@ import {
   generateSchemasFromDeclaration,
   generateSchemasFromParameter,
   generateSchemasFromReturnType,
-  resolveDeclarationMetadata,
   resolveModuleExport,
   resolveModuleExportDeclaration,
 } from "@formspec/build";
@@ -109,10 +107,6 @@ if (serviceDeclaration && ts.isClassDeclaration(serviceDeclaration)) {
   );
 
   if (submitMethod?.parameters[0]) {
-    const methodMetadata = resolveDeclarationMetadata({
-      context,
-      declaration: submitMethod,
-    });
     const inputSchemas = generateSchemasFromParameter({
       context,
       parameter: submitMethod.parameters[0],
@@ -186,78 +180,6 @@ const result = generateSchemas({
 
 Generation validates canonical IR before emitting schemas. Invalid inputs now fail generation with structured diagnostic codes surfaced in the thrown error.
 
-### Handling Generation Failures
-
-Static generation now uses explicit error reporting on the main entry points:
-
-- `generateSchemas({ ..., errorReporting: "throw" })` and `generateSchemasFromProgram({ ..., errorReporting: "throw" })` keep the simple throw-on-error contract.
-- `generateSchemas({ ..., errorReporting: "diagnostics" })` and `generateSchemasFromProgram({ ..., errorReporting: "diagnostics" })` return structured diagnostics instead of throwing for analysis and validation failures.
-- `generateSchemasBatch()` and `generateSchemasBatchFromProgram()` continue to return per-target diagnostics across multiple targets.
-
-Use the `"throw"` mode when you want "schema or failure" ergonomics. Use the `"diagnostics"` mode when you want to surface as much feedback as possible in one pass, especially in editor, CI, or migration tooling. The older `generateSchemasDetailed()` and `generateSchemasFromProgramDetailed()` wrappers remain available only as deprecated compatibility shims.
-
-```ts
-import { generateSchemas, generateSchemasBatch } from "@formspec/build";
-
-try {
-  const { jsonSchema, uiSchema } = generateSchemas({
-    filePath: "./src/forms.ts",
-    typeName: "Invoice",
-    errorReporting: "throw",
-  });
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-
-  if (message.includes("UNSUPPORTED_CUSTOM_TYPE_OVERRIDE")) {
-    // An extension tried to override a TS global built-in such as Date or Array
-  } else if (message.includes("SYNTHETIC_SETUP_FAILURE")) {
-    // Extension setup failed before tag type-checking could run
-  } else if (message.includes("TYPE_MISMATCH")) {
-    // A tag was applied to an incompatible field or target type
-  }
-
-  throw error;
-}
-
-const detailed = generateSchemas({
-  filePath: "./src/forms.ts",
-  typeName: "Invoice",
-  errorReporting: "diagnostics",
-});
-
-if (!detailed.ok) {
-  for (const diagnostic of detailed.diagnostics) {
-    console.error(`${diagnostic.code}: ${diagnostic.message}`);
-  }
-}
-
-const batch = generateSchemasBatch({
-  targets: [
-    { filePath: "./src/forms.ts", typeName: "Invoice" },
-    { filePath: "./src/forms.ts", typeName: "PaymentTerms" },
-  ],
-});
-
-for (const result of batch) {
-  if (!result.ok) {
-    console.error(
-      `${result.typeName} failed: ${result.diagnostics.map((diagnostic) => diagnostic.code).join(", ")}`
-    );
-  }
-}
-```
-
-The most relevant codes for extension-backed static analysis failures are:
-
-- `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` for extension custom types that conflict with unsupported TypeScript global built-ins.
-- `SYNTHETIC_SETUP_FAILURE` for invalid or conflicting extension custom type registrations and other synthetic compiler setup failures.
-- `TYPE_MISMATCH` for normal tag-on-type incompatibilities in author source.
-- `TYPE_NOT_FOUND` when a requested exported target cannot be resolved.
-- `UNSUPPORTED_ROOT_TYPE` and `DUPLICATE_ROOT_PROPERTIES` when a requested type alias cannot be treated as a schema root.
-- `PROGRAM_CONTEXT_FAILURE` when the package cannot create or reuse a TypeScript program for the requested file.
-
-As a rule of thumb, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` indicate extension configuration problems, while `TYPE_MISMATCH` usually indicates an authoring error in the analyzed source.
-
 ## Internal Entry Point
 
 Low-level canonical IR generators, analyzer primitives, and validation helpers are intentionally no longer exported from the package root. If you need those unstable internals inside the monorepo, import them from `@formspec/build/internals`.
@@ -271,8 +193,6 @@ Low-level canonical IR generators, analyzer primitives, and validation helpers a
 - `generateSchemas(options)`
 - `generateSchemasFromClass(options)`
 - `generateSchemasFromProgram(options)`
-- `generateSchemasBatch(options)`
-- `generateSchemasBatchFromProgram(options)`
 - `buildMixedAuthoringSchemas(options)`
 - `createExtensionRegistry(extensions)`
 

@@ -2,12 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { defineCustomType, defineExtension } from "@formspec/core/internals";
-import {
-  generateSchemas,
-  type GenerateSchemasOptions,
-} from "../generators/class-schema.js";
-import { createExtensionRegistry } from "../extensions/index.js";
+import { generateSchemas } from "../generators/class-schema.js";
 import {
   createDateExtensionRegistry,
   parseCanonicalDateTime,
@@ -19,83 +14,11 @@ interface NullableDateTimeSchema {
   readonly ["x-formspec-after"]?: unknown;
 }
 
-function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
-  return generateSchemas({
-    ...options,
-    errorReporting: "throw",
-  });
-}
-
 function writeTempSource(source: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-date-ext-"));
   const filePath = path.join(dir, "model.ts");
   fs.writeFileSync(filePath, source);
   return filePath;
-}
-
-function createBuiltInDateRegistry() {
-  return createExtensionRegistry([
-    defineExtension({
-      extensionId: "x-example/date-object",
-      types: [
-        defineCustomType({
-          typeName: "DateObject",
-          tsTypeNames: ["Date"],
-          toJsonSchema: () => ({
-            type: "string",
-            format: "date-time",
-            "x-formspec-date-object": true,
-          }),
-        }),
-      ],
-    }),
-  ]);
-}
-
-function createUnsupportedArrayRegistry() {
-  return createExtensionRegistry([
-    defineExtension({
-      extensionId: "x-example/array-object",
-      types: [
-        defineCustomType({
-          typeName: "ArrayObject",
-          tsTypeNames: ["Array"],
-          toJsonSchema: () => ({
-            type: "array",
-            "x-formspec-array-object": true,
-          }),
-        }),
-      ],
-    }),
-  ]);
-}
-
-function createInvalidTypeNameRegistry() {
-  return createExtensionRegistry([
-    defineExtension({
-      extensionId: "x-example/invalid-type",
-      types: [
-        defineCustomType({
-          typeName: "InvalidType",
-          tsTypeNames: ["Not A Type"],
-          toJsonSchema: () => ({
-            type: "string",
-            "x-formspec-invalid-type": true,
-          }),
-        }),
-      ],
-    }),
-  ]);
-}
-
-function getThrownMessage(action: () => void): string {
-  try {
-    action();
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
-
-  throw new Error("Expected action to throw");
 }
 
 describe("date extension integration", () => {
@@ -137,7 +60,7 @@ describe("date extension integration", () => {
     `);
     tempDirs.push(path.dirname(filePath));
 
-    const { jsonSchema, uiSchema } = generateSchemasOrThrow({
+    const { jsonSchema, uiSchema } = generateSchemas({
       filePath,
       typeName: "BookingWindow",
       extensionRegistry: createDateExtensionRegistry(),
@@ -193,151 +116,12 @@ describe("date extension integration", () => {
     tempDirs.push(path.dirname(filePath));
 
     expect(() =>
-      generateSchemasOrThrow({
+      generateSchemas({
         filePath,
         typeName: "InvalidWindow",
         extensionRegistry: createDateExtensionRegistry(),
         vendorPrefix: "x-formspec",
       })
     ).toThrow(/exactly millisecond precision and an explicit timezone/);
-  });
-
-  it("allows a custom type override named Date without poisoning unrelated tag analysis", () => {
-    const filePath = writeTempSource(`
-      export interface BookingMetadata {
-        createdAt: Date;
-
-        /** @minLength 1 */
-        label: string;
-      }
-    `);
-    tempDirs.push(path.dirname(filePath));
-
-    const { jsonSchema } = generateSchemasOrThrow({
-      filePath,
-      typeName: "BookingMetadata",
-      extensionRegistry: createBuiltInDateRegistry(),
-      vendorPrefix: "x-formspec",
-    });
-
-    expect(jsonSchema.properties?.["createdAt"]).toEqual({
-      type: "string",
-      format: "date-time",
-      "x-formspec-date-object": true,
-    });
-    expect(jsonSchema.properties?.["label"]).toMatchObject({
-      type: "string",
-      minLength: 1,
-    });
-  });
-
-  it("reports unsupported global built-in overrides as validation diagnostics", () => {
-    const filePath = writeTempSource(`
-      export interface UnsupportedArrayOverride {
-        items: Array<string>;
-
-        /**
-         * @minLength 1
-         * @maxLength 10
-         */
-        label: string;
-      }
-    `);
-    tempDirs.push(path.dirname(filePath));
-
-    const message = getThrownMessage(() =>
-      generateSchemasOrThrow({
-        filePath,
-        typeName: "UnsupportedArrayOverride",
-        extensionRegistry: createUnsupportedArrayRegistry(),
-        vendorPrefix: "x-formspec",
-      })
-    );
-
-    expect(message).toMatch(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/);
-    expect(message).not.toMatch(/TYPE_MISMATCH/);
-    expect(message.match(/UNSUPPORTED_CUSTOM_TYPE_OVERRIDE/g)).toHaveLength(1);
-  });
-
-  it("returns unsupported global built-in overrides as structured diagnostics", () => {
-    const filePath = writeTempSource(`
-      export interface UnsupportedArrayOverrideDetailed {
-        items: Array<string>;
-
-        /** @minLength 1 */
-        label: string;
-      }
-    `);
-    tempDirs.push(path.dirname(filePath));
-
-    const result = generateSchemas({
-      filePath,
-      typeName: "UnsupportedArrayOverrideDetailed",
-      extensionRegistry: createUnsupportedArrayRegistry(),
-      vendorPrefix: "x-formspec",
-      errorReporting: "diagnostics",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics).toMatchObject([
-      {
-        code: "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
-      },
-    ]);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
-  });
-
-  it("surfaces invalid custom type registrations as setup diagnostics", () => {
-    const filePath = writeTempSource(`
-      export interface InvalidCustomTypeRegistration {
-        /**
-         * @minLength 1
-         * @maxLength 10
-         */
-        label: string;
-      }
-    `);
-    tempDirs.push(path.dirname(filePath));
-
-    const message = getThrownMessage(() =>
-      generateSchemasOrThrow({
-        filePath,
-        typeName: "InvalidCustomTypeRegistration",
-        extensionRegistry: createInvalidTypeNameRegistry(),
-        vendorPrefix: "x-formspec",
-      })
-    );
-
-    expect(message).toMatch(/SYNTHETIC_SETUP_FAILURE/);
-    expect(message).toMatch(/Invalid custom type name "Not A Type"/);
-    expect(message).not.toMatch(/TYPE_MISMATCH/);
-    expect(message.match(/SYNTHETIC_SETUP_FAILURE/g)).toHaveLength(1);
-  });
-
-  it("returns invalid custom type registrations as setup diagnostics without throwing", () => {
-    const filePath = writeTempSource(`
-      export interface InvalidCustomTypeRegistrationDetailed {
-        /** @minLength 1 */
-        label: string;
-      }
-    `);
-    tempDirs.push(path.dirname(filePath));
-
-    const result = generateSchemas({
-      filePath,
-      typeName: "InvalidCustomTypeRegistrationDetailed",
-      extensionRegistry: createInvalidTypeNameRegistry(),
-      vendorPrefix: "x-formspec",
-      errorReporting: "diagnostics",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics).toMatchObject([
-      {
-        code: "SYNTHETIC_SETUP_FAILURE",
-      },
-    ]);
-    expect(result.diagnostics[0]?.message).toMatch(/Invalid custom type name "Not A Type"/);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
   });
 });

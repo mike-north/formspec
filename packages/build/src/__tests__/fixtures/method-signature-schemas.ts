@@ -17,25 +17,12 @@ export interface SubmitResult {
   approved: boolean;
 }
 
-/**
- * @apiName :singular payment_method
- * @apiName :plural payment_methods
- * @displayName :singular Payment Method
- * @displayName :plural Payment Methods
- */
-export interface PaymentMethod {
-  id: string;
-}
-
 export interface Envelope<T> {
   payload: T;
 }
 
 /**
- * @apiName :singular payment_status
- * @apiName :plural payment_statuses
- * @displayName :singular Payment Status
- * @displayName :plural Payment Statuses
+ * @apiName payment_status
  */
 export type PaymentStatus = "ok" | "error";
 
@@ -98,10 +85,6 @@ export interface MergedConfig {
 }
 
 export class PaymentService {
-  /**
-   * @apiName submit_payment
-   * @displayName Submit Payment
-   */
   submit(input: SubmitInput): SubmitResult {
     return {
       approved: input.amount > 0,
@@ -110,12 +93,6 @@ export class PaymentService {
 
   async submitAsync(input: SubmitInput): Promise<SubmitResult> {
     await Promise.resolve();
-    return {
-      approved: input.amount > 0,
-    };
-  }
-
-  ["submitComputed"](input: SubmitInput): SubmitResult {
     return {
       approved: input.amount > 0,
     };

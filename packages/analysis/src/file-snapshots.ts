@@ -1,7 +1,7 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
 import {
-  checkSyntheticTagApplicationsDetailed,
+  checkSyntheticTagApplications,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
 import {
@@ -942,8 +942,6 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
   switch (code) {
     case "INVALID_TAG_ARGUMENT":
     case "INVALID_TAG_PLACEMENT":
-    case "SYNTHETIC_SETUP_FAILURE":
-    case "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE":
     case "TYPE_MISMATCH":
     case "UNKNOWN_PATH_TARGET":
     case "INVALID_PATH_TARGET":
@@ -966,8 +964,6 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
     case "INVALID_TAG_ARGUMENT":
       return "value-parsing";
     case "INVALID_TAG_PLACEMENT":
-    case "SYNTHETIC_SETUP_FAILURE":
-    case "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE":
       return "tag-recognition";
     case "TYPE_MISMATCH":
       return "type-compatibility";
@@ -990,17 +986,6 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
     default:
       return "constraint-validation";
   }
-}
-
-function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
-  const firstSpan = spans[0];
-  if (firstSpan === undefined) {
-    return null;
-  }
-  return {
-    start: firstSpan.start,
-    end: spans[spans.length - 1]?.end ?? firstSpan.end,
-  };
 }
 
 function createAnalysisDiagnostic(
@@ -1360,47 +1345,20 @@ function buildTagDiagnostics(
     }
   }
 
-  const batchCheck = optionalMeasure(
+  const batchResults = optionalMeasure(
     performance,
     "analysis.syntheticCheckBatch",
     {
       tagCount: syntheticApplications.length,
     },
     () =>
-      checkSyntheticTagApplicationsDetailed({
+      checkSyntheticTagApplications({
         applications: syntheticApplications.map((application) => application.options),
         ...(performance === undefined ? {} : { performance }),
       })
   );
 
-  const globalDiagnosticRange = combineCommentSpans(
-    syntheticApplications.map((application) => application.tag.fullSpan)
-  );
-
-  if (globalDiagnosticRange !== null) {
-    for (const diagnostic of batchCheck.globalDiagnostics) {
-      const code =
-        diagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : diagnostic.kind === "synthetic-setup"
-            ? "SYNTHETIC_SETUP_FAILURE"
-            : "TYPE_MISMATCH";
-      diagnostics.push(
-        createAnalysisDiagnostic(
-          code,
-          diagnostic.message,
-          globalDiagnosticRange,
-          {
-            placement,
-            tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-            ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-          }
-        )
-      );
-    }
-  }
-
-  for (const [index, result] of batchCheck.applicationResults.entries()) {
+  for (const [index, result] of batchResults.entries()) {
     const application = syntheticApplications[index];
     if (application === undefined) {
       continue;
@@ -1422,7 +1380,7 @@ function buildTagDiagnostics(
         createAnalysisDiagnostic(code, diagnostic.message, application.tag.fullSpan, {
           tagName: application.tag.normalizedTagName,
           placement,
-          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
+          typescriptDiagnosticCode: diagnostic.code,
           ...(application.target === null
             ? {}
             : {

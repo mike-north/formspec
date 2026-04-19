@@ -13,14 +13,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
-
-function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
-  return generateSchemas({
-    ...options,
-    errorReporting: "throw",
-  });
-}
+import { generateSchemas } from "../generators/class-schema.js";
 
 describe("generateSchemas with noUncheckedIndexedAccess", () => {
   let tmpDir: string;
@@ -79,14 +72,14 @@ describe("generateSchemas with noUncheckedIndexedAccess", () => {
   });
 
   it("does not produce TYPE_MISMATCH on string constraints", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       name: { type: "string", minLength: 1, maxLength: 80, title: "Name" },
     });
   });
 
   it("does not produce TYPE_MISMATCH on numeric constraints", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       score: { type: "number", minimum: 0, maximum: 100 },
     });
@@ -148,14 +141,14 @@ describe("generateSchemas with noUncheckedIndexedAccess + Record<string, unknown
   });
 
   it("does not produce TYPE_MISMATCH on string constraints with Record base", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       name: { type: "string", minLength: 1, maxLength: 80, title: "Name" },
     });
   });
 
   it("does not produce TYPE_MISMATCH on numeric constraints with Record base", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       score: { type: "number", minimum: 0, maximum: 100 },
     });
@@ -231,14 +224,14 @@ describe("generateSchemas with noUncheckedIndexedAccess + cross-module imports",
   });
 
   it("does not produce TYPE_MISMATCH on string constraints with cross-module generics", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       name: { type: "string", minLength: 1, maxLength: 80, title: "Name" },
     });
   });
 
   it("does not produce TYPE_MISMATCH on numeric constraints with cross-module generics", () => {
-    const result = generateSchemasOrThrow({ filePath: fixturePath, typeName: "Config" });
+    const result = generateSchemas({ filePath: fixturePath, typeName: "Config" });
     expect(result.jsonSchema.properties).toMatchObject({
       score: { type: "number", minimum: 0, maximum: 100 },
     });

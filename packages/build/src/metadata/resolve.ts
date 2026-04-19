@@ -29,7 +29,6 @@ export interface ResolveFormIRMetadataOptions {
   readonly surface: MetadataAuthoringSurface;
   readonly buildContext?: unknown;
   readonly rootLogicalName?: string;
-  readonly resolveRootTypeMetadata?: boolean;
 }
 
 function toExplicitScalar(value: string | undefined): ResolvedScalarMetadata | undefined {
@@ -194,6 +193,7 @@ function resolveEnumTypeMetadata(
   type: EnumTypeNode,
   options: ResolveFormIRMetadataOptions
 ): EnumTypeNode {
+  let changed = false;
   const members = type.members.map((member) => {
     const displayName = resolveEnumMemberDisplayName(
       member.displayName,
@@ -210,10 +210,11 @@ function resolveEnumTypeMetadata(
       return member;
     }
 
-    return displayName === undefined ? { value: member.value } : { value: member.value, displayName };
+    changed = true;
+    return displayName !== undefined ? { ...member, displayName } : member;
   });
 
-  return members.some((member, index) => member !== type.members[index]) ? { ...type, members } : type;
+  return changed ? { ...type, members } : type;
 }
 
 function resolveTypeNodeMetadata(
@@ -397,15 +398,13 @@ export function resolveFormIRMetadata(
   ir: FormIR,
   options: ResolveFormIRMetadataOptions
 ): FormIR {
-  const metadata =
-    options.resolveRootTypeMetadata === false
-      ? ir.metadata
-      : resolveResolvedMetadata(ir.metadata, options.policy.type, {
-          surface: options.surface,
-          declarationKind: "type",
-          logicalName: options.rootLogicalName ?? ir.name ?? "FormSpec",
-          ...(options.buildContext !== undefined && { buildContext: options.buildContext }),
-        });
+  const rootLogicalName = options.rootLogicalName ?? ir.name ?? "FormSpec";
+  const metadata = resolveResolvedMetadata(ir.metadata, options.policy.type, {
+    surface: options.surface,
+    declarationKind: "type",
+    logicalName: rootLogicalName,
+    ...(options.buildContext !== undefined && { buildContext: options.buildContext }),
+  });
 
   return {
     ...ir,

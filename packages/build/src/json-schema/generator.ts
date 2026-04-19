@@ -66,19 +66,18 @@ export function generateJsonSchema<E extends readonly FormElement[]>(
   form: FormSpec<E>,
   options?: GenerateJsonSchemaOptions
 ): JsonSchema2020 {
-  const metadata = options?.metadata;
-  const vendorPrefix = options?.vendorPrefix;
-  const enumSerialization = options?.enumSerialization;
   const ir = canonicalizeChainDSL(
     form,
-    metadata !== undefined ? { metadata } : undefined
+    options?.metadata !== undefined ? { metadata: options.metadata } : undefined
   );
   const internalOptions: GenerateJsonSchemaFromIROptions | undefined =
-    vendorPrefix === undefined && enumSerialization === undefined
+    options?.vendorPrefix === undefined && options?.enumSerialization === undefined
       ? undefined
       : {
-          ...(vendorPrefix !== undefined && { vendorPrefix }),
-          ...(enumSerialization !== undefined && { enumSerialization }),
+          ...(options?.vendorPrefix !== undefined && { vendorPrefix: options.vendorPrefix }),
+          ...(options?.enumSerialization !== undefined && {
+            enumSerialization: options.enumSerialization,
+          }),
         };
   return generateJsonSchemaFromIR(ir, internalOptions);
 }

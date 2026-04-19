@@ -1,57 +1,15 @@
 import * as path from "node:path";
 import * as ts from "typescript";
-import { describe, expect, it, vi } from "vitest";
-import type { Provenance } from "@formspec/core/internals";
-import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
-import { createExtensionRegistry } from "../extensions/index.js";
-import {
-  generateClassSchemasDetailed,
-  type GenerateSchemasFromProgramOptions,
-  type GenerateSchemasOptions,
-  generateSchemas,
-  generateSchemasBatch,
-  generateSchemasBatchFromProgram,
-  generateSchemasDetailed,
-  generateSchemasFromProgram,
-  generateSchemasFromProgramDetailed,
-} from "../generators/class-schema.js";
-import * as validateModule from "../validate/index.js";
-import type { ValidationResult } from "../validate/index.js";
+import { describe, expect, it } from "vitest";
+import { generateSchemas, generateSchemasFromProgram } from "../generators/class-schema.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
 const classSchemaRegressionsPath = path.join(fixturesDir, "class-schema-regressions.ts");
-const testFile = "/project/src/class-schema.test.ts";
-
-function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
-  return generateSchemas({
-    ...options,
-    errorReporting: "throw",
-  });
-}
-
-function generateSchemasFromProgramOrThrow(
-  options: Omit<GenerateSchemasFromProgramOptions, "errorReporting">
-) {
-  return generateSchemasFromProgram({
-    ...options,
-    errorReporting: "throw",
-  });
-}
-
-function provenance(line: number, tagName?: string): Provenance {
-  return {
-    surface: "chain-dsl",
-    file: testFile,
-    line,
-    column: 0,
-    ...(tagName !== undefined && { tagName }),
-  };
-}
 
 function getGenerationFailureMessage(typeName: string): string {
   try {
-    generateSchemasOrThrow({
+    generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName,
     });
@@ -64,7 +22,7 @@ function getGenerationFailureMessage(typeName: string): string {
 
 describe("generateSchemas", () => {
   it("emits root title and description from class-level annotations", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: sampleFormsPath,
       typeName: "VehicleRegistration",
     });
@@ -74,7 +32,7 @@ describe("generateSchemas", () => {
   });
 
   it("emits default values from @defaultValue tags", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "NotificationPreferences",
     });
@@ -86,11 +44,11 @@ describe("generateSchemas", () => {
   });
 
   it("emits format and placeholder annotations into schema outputs", () => {
-    const schemaResult = generateSchemasOrThrow({
+    const schemaResult = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "ContactForm",
     });
-    const uiResult = generateSchemasOrThrow({
+    const uiResult = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "SearchForm",
     });
@@ -103,15 +61,15 @@ describe("generateSchemas", () => {
   });
 
   it("emits deprecation messages, uniqueItems, and typed-array item constraints", () => {
-    const deprecatedResult = generateSchemasOrThrow({
+    const deprecatedResult = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "SettingsForm",
     });
-    const uniqueItemsResult = generateSchemasOrThrow({
+    const uniqueItemsResult = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "TagManager",
     });
-    const typedArrayResult = generateSchemasOrThrow({
+    const typedArrayResult = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "SurveyForm",
     });
@@ -129,7 +87,7 @@ describe("generateSchemas", () => {
   }, 15_000);
 
   it("maps summary text to description and @remarks to x-formspec-remarks", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: classSchemaRegressionsPath,
       typeName: "DescriptionPrecedenceForm",
     });
@@ -184,124 +142,6 @@ describe("generateSchemas", () => {
     expect(message).toContain("[related:");
   });
 
-  it("returns structured diagnostics when errorReporting is diagnostics", () => {
-    const result = generateSchemas({
-      filePath: classSchemaRegressionsPath,
-      typeName: "MismatchedForm",
-      errorReporting: "diagnostics",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.jsonSchema).toBeUndefined();
-    expect(result.uiSchema).toBeUndefined();
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-  });
-
-  it("throws when errorReporting is throw", () => {
-    expect(() =>
-      generateSchemasOrThrow({
-        filePath: classSchemaRegressionsPath,
-        typeName: "MismatchedForm",
-      })
-    ).toThrow(/TYPE_MISMATCH/);
-  });
-
-  it("returns structured diagnostics instead of throwing from the detailed API", () => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const result = generateSchemasDetailed({
-      filePath: classSchemaRegressionsPath,
-      typeName: "MismatchedForm",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.jsonSchema).toBeUndefined();
-    expect(result.uiSchema).toBeUndefined();
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-  });
-
-  it("returns target-not-found diagnostics from the detailed API", () => {
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const result = generateSchemasDetailed({
-      filePath: classSchemaRegressionsPath,
-      typeName: "MissingExport",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics).toMatchObject([
-      {
-        code: "TYPE_NOT_FOUND",
-      },
-    ]);
-  });
-
-  it("includes validation warnings in successful detailed generation results", () => {
-    const analysis: IRClassAnalysis = {
-      name: "PriceModel",
-      fields: [
-        {
-          kind: "field",
-          name: "price",
-          type: { kind: "primitive", primitiveKind: "string" },
-          required: true,
-          constraints: [],
-          annotations: [],
-          provenance: provenance(1),
-        },
-      ],
-      fieldLayouts: [{}],
-      typeRegistry: {},
-      instanceMethods: [],
-      staticMethods: [],
-    };
-    const validationResult: ValidationResult = {
-      valid: true,
-      diagnostics: [
-        {
-          code: "UNKNOWN_EXTENSION",
-          message: "warn",
-          severity: "warning",
-          primaryLocation: provenance(1),
-          relatedLocations: [],
-        },
-      ],
-    };
-    const validateSpy = vi
-      .spyOn(validateModule, "validateIR")
-      .mockReturnValueOnce(validationResult);
-
-    const result = generateClassSchemasDetailed(
-      analysis,
-      { file: testFile },
-      {
-        extensionRegistry: createExtensionRegistry([]),
-      }
-    );
-    validateSpy.mockRestore();
-
-    expect(result.ok).toBe(true);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("UNKNOWN_EXTENSION");
-  });
-
-  it("can accumulate mixed results across a batch request", () => {
-    const results = generateSchemasBatch({
-      targets: [
-        { filePath: classSchemaRegressionsPath, typeName: "NotificationPreferences" },
-        { filePath: classSchemaRegressionsPath, typeName: "MismatchedForm" },
-        { filePath: classSchemaRegressionsPath, typeName: "MissingExport" },
-      ],
-    });
-
-    expect(results).toHaveLength(3);
-    expect(results[0]).toMatchObject({
-      filePath: classSchemaRegressionsPath,
-      typeName: "NotificationPreferences",
-      ok: true,
-    });
-    expect(results[0].jsonSchema?.properties?.["channel"]).toMatchObject({ default: "email" });
-    expect(results[1].diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-    expect(results[2].diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_NOT_FOUND");
-  });
-
   it("can analyze within an existing TypeScript program", () => {
     const program = ts.createProgram([sampleFormsPath], {
       target: ts.ScriptTarget.ES2022,
@@ -311,64 +151,12 @@ describe("generateSchemas", () => {
       skipLibCheck: true,
     });
 
-    const result = generateSchemasFromProgramOrThrow({
+    const result = generateSchemasFromProgram({
       program,
       filePath: sampleFormsPath,
       typeName: "VehicleRegistration",
     });
 
     expect(result.jsonSchema.title).toBe("Vehicle Registration");
-  });
-
-  it("returns structured diagnostics from an existing program when requested", () => {
-    const program = ts.createProgram([classSchemaRegressionsPath], {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.NodeNext,
-      moduleResolution: ts.ModuleResolutionKind.NodeNext,
-      strict: true,
-      skipLibCheck: true,
-    });
-
-    const result = generateSchemasFromProgram({
-      program,
-      filePath: classSchemaRegressionsPath,
-      typeName: "MismatchedForm",
-      errorReporting: "diagnostics",
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-  });
-
-  it("returns structured diagnostics from an existing program", () => {
-    const program = ts.createProgram([classSchemaRegressionsPath], {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.NodeNext,
-      moduleResolution: ts.ModuleResolutionKind.NodeNext,
-      strict: true,
-      skipLibCheck: true,
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const result = generateSchemasFromProgramDetailed({
-      program,
-      filePath: classSchemaRegressionsPath,
-      typeName: "MismatchedForm",
-    });
-    const batchResults = generateSchemasBatchFromProgram({
-      program,
-      targets: [
-        { filePath: classSchemaRegressionsPath, typeName: "NotificationPreferences" },
-        { filePath: classSchemaRegressionsPath, typeName: "MissingExport" },
-      ],
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-    expect(batchResults).toHaveLength(2);
-    expect(batchResults[0].ok).toBe(true);
-    expect(batchResults[1].diagnostics.map((diagnostic) => diagnostic.code)).toContain(
-      "TYPE_NOT_FOUND"
-    );
   });
 });

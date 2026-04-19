@@ -124,9 +124,6 @@ export function canonicalizeChainDSL(
   return resolveFormIRMetadata(ir, {
     policy: metadataPolicy,
     surface: "chain-dsl",
-    // Chain DSL has no root/type-metadata authoring surface, so only resolve
-    // field/type-registry metadata and enum-member labels here.
-    resolveRootTypeMetadata: false,
   });
 }
 

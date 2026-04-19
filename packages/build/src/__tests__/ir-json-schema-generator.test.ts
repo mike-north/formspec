@@ -523,31 +523,6 @@ describe("generateJsonSchemaFromIR", () => {
 
       expect(() => generateJsonSchemaFromIR(ir)).toThrow(/display-name key "1"/i);
     });
-
-    it("supports display-name extension keys that match Object prototype properties", () => {
-      const ir = makeIR([
-        makeField("status", {
-          kind: "enum",
-          members: [
-            { value: "__proto__", displayName: "Prototype" },
-            { value: "constructor", displayName: "Constructor" },
-          ],
-        }),
-      ]);
-      const schema = generateJsonSchemaFromIR(ir);
-      const prop = (schema.properties as Record<string, unknown>)["status"];
-      const expectedDisplayNames: Record<string, string> = Object.create(null) as Record<
-        string,
-        string
-      >;
-      expectedDisplayNames["__proto__"] = "Prototype";
-      expectedDisplayNames.constructor = "Constructor";
-
-      expect(prop).toEqual({
-        enum: ["__proto__", "constructor"],
-        "x-formspec-display-names": expectedDisplayNames,
-      });
-    });
   });
 
   // =============================================================================

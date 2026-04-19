@@ -1,14 +1,8 @@
 ---
-"@formspec/analysis": patch
 "@formspec/core": minor
-"@formspec/constraints": patch
 "@formspec/build": minor
 "@formspec/cli": minor
 "@formspec/dsl": minor
-"@formspec/eslint-plugin": patch
-"@formspec/language-server": patch
-"@formspec/runtime": patch
-"@formspec/ts-plugin": patch
 "formspec": minor
 ---
 

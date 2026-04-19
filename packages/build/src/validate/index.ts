@@ -7,8 +7,6 @@
 export { validateIR } from "./constraint-validator.js";
 export type {
   ValidationDiagnostic,
-  ValidationDiagnosticLocation,
-  ValidationDiagnosticSeverity,
   ValidationResult,
   ValidateIROptions,
 } from "./constraint-validator.js";

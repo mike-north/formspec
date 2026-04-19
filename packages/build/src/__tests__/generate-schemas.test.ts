@@ -2,9 +2,9 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { describe, expect, it } from "vitest";
-import type { FormSpec, StaticEnumField, TextField } from "@formspec/core";
+import { field, formspec } from "@formspec/dsl";
+import { generateSchemas } from "../generators/class-schema.js";
 import { generateJsonSchema } from "../json-schema/generator.js";
-import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 
 const namedPrimitiveAliasesFixture = path.join(__dirname, "fixtures", "named-primitive-aliases.ts");
 const nestedArrayPathConstraintsFixture = path.join(
@@ -35,13 +35,6 @@ function writeTempSource(source: string): string {
   return filePath;
 }
 
-function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
-  return generateSchemas({
-    ...options,
-    errorReporting: "throw",
-  });
-}
-
 function findControlByScope(
   elements: readonly Record<string, unknown>[],
   scope: string
@@ -53,7 +46,7 @@ function findControlByScope(
 
 describe("generateSchemas", () => {
   it("emits named primitive aliases into $defs for reused constrained aliases", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: namedPrimitiveAliasesFixture,
       typeName: "ServerConfig",
     });
@@ -85,7 +78,7 @@ describe("generateSchemas", () => {
   });
 
   it("preserves path-targeted uniqueItems on nested array fields", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: nestedArrayPathConstraintsFixture,
       typeName: "BlogConfig",
     });
@@ -114,7 +107,7 @@ describe("generateSchemas", () => {
   }, 15_000);
 
   it("uses resolved apiNames consistently in generated JSON Schema output", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: serializedNameRegressionFixture,
       typeName: "SerializedNameForm",
     });
@@ -150,7 +143,7 @@ describe("generateSchemas", () => {
   });
 
   it("omits consumed metadata tags from descriptions for inline and nested properties", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: metadataDescriptionRegressionFixture,
       typeName: "MetadataDescriptionRegression",
       metadata: {
@@ -189,7 +182,7 @@ describe("generateSchemas", () => {
   });
 
   it("supports direct object aliases through the public generation entry point", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: methodSignatureSchemasFixture,
       typeName: "AliasedSubmitInput",
     });
@@ -207,7 +200,7 @@ describe("generateSchemas", () => {
   });
 
   it("preserves field metadata and optionality for mapped utility aliases", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: methodSignatureSchemasFixture,
       typeName: "PartialSubmitInput",
     });
@@ -228,7 +221,7 @@ describe("generateSchemas", () => {
   });
 
   it("supports Pick aliases without leaking omitted properties", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: methodSignatureSchemasFixture,
       typeName: "AmountOnlySubmitInput",
     });
@@ -244,7 +237,7 @@ describe("generateSchemas", () => {
   });
 
   it("supports utility/intersection aliases that add inline members", () => {
-    const result = generateSchemasOrThrow({
+    const result = generateSchemas({
       filePath: methodSignatureSchemasFixture,
       typeName: "AuditedSubmitInput",
     });
@@ -267,7 +260,7 @@ describe("generateSchemas", () => {
 
   it("rejects mixed alias intersections that duplicate property names", () => {
     expect(() =>
-      generateSchemasOrThrow({
+      generateSchemas({
         filePath: methodSignatureSchemasFixture,
         typeName: "ConflictingSubmitInput",
       })
@@ -276,7 +269,7 @@ describe("generateSchemas", () => {
 
   it("rejects mixed alias intersections that duplicate quoted property names", () => {
     expect(() =>
-      generateSchemasOrThrow({
+      generateSchemas({
         filePath: methodSignatureSchemasFixture,
         typeName: "QuotedConflictingSubmitInput",
       })
@@ -285,7 +278,7 @@ describe("generateSchemas", () => {
 
   it("rejects callable intersections that only look object-like structurally", () => {
     expect(() =>
-      generateSchemasOrThrow({
+      generateSchemas({
         filePath: methodSignatureSchemasFixture,
         typeName: "CallableSubmitInput",
       })
@@ -302,7 +295,7 @@ describe("generateSchemas", () => {
     `);
 
     try {
-      const result = generateSchemasOrThrow({
+      const result = generateSchemas({
         filePath,
         typeName: "InvoiceModel",
         metadata: {
@@ -340,7 +333,7 @@ describe("generateSchemas", () => {
 
     try {
       expect(() =>
-        generateSchemasOrThrow({
+        generateSchemas({
           filePath,
           typeName: "InvoiceModel",
           metadata: {
@@ -359,45 +352,20 @@ describe("generateSchemas", () => {
 });
 
 describe("generateJsonSchema", () => {
-  it("does not require explicit root type metadata for chain-dsl forms", () => {
-    const form: FormSpec<readonly [TextField<"status">]> = {
-      elements: [{ _type: "field", _field: "text", name: "status" }],
-    };
-
-    expect(() =>
-      generateJsonSchema(form, {
+  it("applies enumMember displayName policy to chain-dsl static enums", () => {
+    const schema = generateJsonSchema(
+      formspec(field.enum("status", ["draft", "sent"] as const)),
+      {
         metadata: {
-          type: {
+          enumMember: {
             displayName: {
-              mode: "require-explicit",
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Choice ${logicalName}`,
             },
           },
         },
-      })
-    ).not.toThrow();
-  });
-
-  it("applies enumMember displayName policy to chain-dsl static enums", () => {
-    const form: FormSpec<readonly [StaticEnumField<"status", readonly ["draft", "sent"]>]> = {
-      elements: [
-        {
-          _type: "field",
-          _field: "enum",
-          name: "status",
-          options: ["draft", "sent"] as const,
-        },
-      ],
-    };
-    const schema = generateJsonSchema(form, {
-      metadata: {
-        enumMember: {
-          displayName: {
-            mode: "infer-if-missing",
-            infer: ({ logicalName }) => `Choice ${logicalName}`,
-          },
-        },
-      },
-    });
+      }
+    );
 
     expect(schema.properties).toEqual({
       status: {

@@ -162,22 +162,17 @@ export interface GenerateJsonSchemaFromIROptions {
 
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
-  const rawEnumSerialization = options?.enumSerialization as string | undefined;
+  const enumSerialization = options?.enumSerialization ?? "enum";
   if (!vendorPrefix.startsWith("x-")) {
     throw new Error(
       `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
     );
   }
-  if (
-    rawEnumSerialization !== undefined &&
-    rawEnumSerialization !== "enum" &&
-    rawEnumSerialization !== "oneOf"
-  ) {
+  if (enumSerialization !== "enum" && enumSerialization !== "oneOf") {
     throw new Error(
-      `Invalid enumSerialization "${rawEnumSerialization}". Expected "enum" or "oneOf".`
+      `Invalid enumSerialization "${enumSerialization}". Expected "enum" or "oneOf".`
     );
   }
-  const enumSerialization: GeneratorContext["enumSerialization"] = rawEnumSerialization ?? "enum";
 
   return {
     defs: {},
@@ -602,10 +597,10 @@ function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, strin
     return undefined;
   }
 
-  const displayNames: Record<string, string> = Object.create(null) as Record<string, string>;
+  const displayNames: Record<string, string> = {};
   for (const member of type.members) {
     const key = String(member.value);
-    if (Object.hasOwn(displayNames, key)) {
+    if (key in displayNames) {
       throw new Error(
         `Enum display-name key "${key}" is ambiguous after stringification. ` +
           `Use oneOf serialization for mixed string/number enum values that collide.`

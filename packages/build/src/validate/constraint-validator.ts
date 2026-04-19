@@ -11,79 +11,20 @@
 import {
   analyzeConstraintTargets,
   type ConstraintRegistryLike,
+  type ConstraintSemanticDiagnostic,
 } from "@formspec/analysis/internal";
 import type { FormIR, FormIRElement, FieldNode, ObjectProperty } from "@formspec/core/internals";
 import type { ExtensionRegistry } from "../extensions/index.js";
 
-/**
- * Supported severity levels returned by static build validation.
- *
- * @public
- */
-export type ValidationDiagnosticSeverity = "error" | "warning";
+export type ValidationDiagnostic = ConstraintSemanticDiagnostic;
 
-/**
- * Public source-location shape attached to validation diagnostics.
- *
- * This mirrors the provenance information surfaced by the shared analysis
- * layer without exposing `@formspec/core/internals` through the public API.
- *
- * @public
- */
-export interface ValidationDiagnosticLocation {
-  /** Authoring surface that produced the diagnostic location. */
-  readonly surface: "tsdoc" | "chain-dsl" | "extension" | "inferred";
-  /** Absolute path to the source file. */
-  readonly file: string;
-  /** 1-based line number in the source file. */
-  readonly line: number;
-  /** 0-based column number in the source file. */
-  readonly column: number;
-  /** Optional span length in characters. */
-  readonly length?: number;
-  /** Optional tag or construct associated with the location. */
-  readonly tagName?: string;
-}
-
-/**
- * A machine-readable validation diagnostic returned by static schema analysis.
- *
- * @public
- */
-export interface ValidationDiagnostic {
-  /** Stable machine-readable diagnostic code. */
-  readonly code: string;
-  /** Human-readable explanation of the validation problem. */
-  readonly message: string;
-  /** Severity of the reported validation problem. */
-  readonly severity: ValidationDiagnosticSeverity;
-  /** Primary source location associated with the diagnostic. */
-  readonly primaryLocation: ValidationDiagnosticLocation;
-  /** Related source locations that add context to the diagnostic. */
-  readonly relatedLocations: readonly ValidationDiagnosticLocation[];
-}
-
-/**
- * Result of validating canonical FormIR before schema emission.
- *
- * @public
- */
 export interface ValidationResult {
-  /** Diagnostics produced during validation. */
   readonly diagnostics: readonly ValidationDiagnostic[];
-  /** Whether any error-severity diagnostics were produced. */
   readonly valid: boolean;
 }
 
-/**
- * Options for validating canonical FormIR.
- *
- * @public
- */
 export interface ValidateIROptions {
-  /** Vendor prefix used when resolving extension-backed keywords. */
   readonly vendorPrefix?: string;
-  /** Extension registry used to resolve custom constraints and types. */
   readonly extensionRegistry?: ExtensionRegistry;
 }
 
@@ -162,11 +103,6 @@ function validateElement(ctx: ValidationContext, element: FormIRElement): void {
   }
 }
 
-/**
- * Validates canonical FormIR and returns all discovered diagnostics.
- *
- * @public
- */
 export function validateIR(ir: FormIR, options?: ValidateIROptions): ValidationResult {
   const ctx: ValidationContext = {
     diagnostics: [],

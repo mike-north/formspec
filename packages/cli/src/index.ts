@@ -506,14 +506,10 @@ async function main(): Promise<void> {
         // Generate method schemas
         const loadedSchemasMap = toLoadedSchemas(loadedFormSpecs);
         const instanceMethodSchemas = analysis.instanceMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization: options.enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
         );
         const staticMethodSchemas = analysis.staticMethods.map((m) =>
-          generateMethodSchemas(m, ctx.checker, loadedSchemasMap, {
-            enumSerialization: options.enumSerialization,
-          })
+          generateMethodSchemas(m, ctx.checker, loadedSchemasMap)
         );
 
         if (options.dryRun) {

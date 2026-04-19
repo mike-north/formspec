@@ -8,7 +8,6 @@ import {
   generateSchemasFromParameter,
   generateSchemasFromReturnType,
   generateSchemasFromType,
-  resolveDeclarationMetadata,
   resolveModuleExport,
   resolveModuleExportDeclaration,
 } from "../index.js";
@@ -40,25 +39,6 @@ function getMethod(
 
   if (method === undefined) {
     throw new Error(`Method "${methodName}" not found`);
-  }
-
-  return method;
-}
-
-function getComputedMethod(
-  classDeclaration: ts.ClassDeclaration,
-  methodName: string
-): ts.MethodDeclaration {
-  const method = classDeclaration.members.find(
-    (member): member is ts.MethodDeclaration =>
-      ts.isMethodDeclaration(member) &&
-      ts.isComputedPropertyName(member.name) &&
-      ts.isStringLiteral(member.name.expression) &&
-      member.name.expression.text === methodName
-  );
-
-  if (method === undefined) {
-    throw new Error(`Computed method "${methodName}" not found`);
   }
 
   return method;
@@ -265,62 +245,6 @@ describe("static build context", () => {
     expect(schemas.jsonSchema.title).toBe("Aliased Submit Input");
   });
 
-  it("returns resolved metadata for declaration-driven object roots", () => {
-    const context = createStaticBuildContext(targetFixturePath);
-    const declaration = resolveModuleExportDeclaration(context, "PaymentMethod");
-    if (declaration === null) {
-      throw new Error("PaymentMethod export not found");
-    }
-
-    const schemas = generateSchemasFromDeclaration({
-      context,
-      declaration,
-    });
-
-    expect(schemas.resolvedMetadata).toEqual({
-      apiName: { value: "payment_method", source: "explicit" },
-      apiNamePlural: { value: "payment_methods", source: "explicit" },
-      displayName: { value: "Payment Method", source: "explicit" },
-      displayNamePlural: { value: "Payment Methods", source: "explicit" },
-    });
-    expect(schemas.jsonSchema.title).toBe("Payment Method");
-  });
-
-  it("returns resolved metadata for declaration-driven standalone aliases and type generation", () => {
-    const context = createStaticBuildContext(targetFixturePath);
-    const declaration = resolveModuleExportDeclaration(context, "PaymentStatus");
-    if (declaration === null) {
-      throw new Error("PaymentStatus export not found");
-    }
-
-    const declarationSchemas = generateSchemasFromDeclaration({
-      context,
-      declaration,
-    });
-    const typeSchemas = generateSchemasFromType({
-      context,
-      type: context.checker.getTypeAtLocation(declaration),
-      sourceNode: declaration,
-      name: "PaymentStatus",
-    });
-
-    expect(declarationSchemas.resolvedMetadata).toEqual({
-      apiName: { value: "payment_status", source: "explicit" },
-      apiNamePlural: { value: "payment_statuses", source: "explicit" },
-      displayName: { value: "Payment Status", source: "explicit" },
-      displayNamePlural: { value: "Payment Statuses", source: "explicit" },
-    });
-    expect(declarationSchemas.uiSchema).toBeNull();
-    expect(declarationSchemas.jsonSchema.title).toBe("Payment Status");
-
-    expect(typeSchemas.resolvedMetadata).toEqual({
-      apiName: { value: "payment_status", source: "explicit" },
-      apiNamePlural: { value: "payment_statuses", source: "explicit" },
-      displayName: { value: "Payment Status", source: "explicit" },
-      displayNamePlural: { value: "Payment Statuses", source: "explicit" },
-    });
-  });
-
   it("surfaces declaration diagnostics for fallback alias generation", () => {
     const context = createStaticBuildContext(targetFixturePath);
     const declaration = resolveModuleExportDeclaration(context, "InvalidTaggedStatus");
@@ -334,88 +258,5 @@ describe("static build context", () => {
         declaration,
       })
     ).toThrow(/INVALID_TAG_PLACEMENT/);
-  });
-
-  it("resolves explicit method metadata through the public build context workflow", () => {
-    const context = createStaticBuildContext(targetFixturePath);
-    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
-    if (declaration === null || !ts.isClassDeclaration(declaration)) {
-      throw new Error("PaymentService export not found");
-    }
-
-    const metadata = resolveDeclarationMetadata({
-      context,
-      declaration: getMethod(declaration, "submit"),
-    });
-
-    expect(metadata).toEqual({
-      apiName: { value: "submit_payment", source: "explicit" },
-      displayName: { value: "Submit Payment", source: "explicit" },
-    });
-  });
-
-  it("resolves inferred method metadata through the public build context workflow", () => {
-    const context = createStaticBuildContext(targetFixturePath);
-    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
-    if (declaration === null || !ts.isClassDeclaration(declaration)) {
-      throw new Error("PaymentService export not found");
-    }
-
-    const metadata = resolveDeclarationMetadata({
-      context,
-      declaration: getMethod(declaration, "submitAsync"),
-      metadata: {
-        method: {
-          apiName: {
-            mode: "infer-if-missing",
-            infer: ({ logicalName }) =>
-              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
-          },
-          displayName: {
-            mode: "infer-if-missing",
-            infer: ({ logicalName }) =>
-              logicalName
-                .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-                .replace(/^./, (char) => char.toUpperCase()),
-          },
-        },
-      },
-    });
-
-    expect(metadata).toEqual({
-      apiName: { value: "submit_async", source: "inferred" },
-      displayName: { value: "Submit Async", source: "inferred" },
-    });
-  });
-
-  it("does not infer metadata for computed method names", () => {
-    const context = createStaticBuildContext(targetFixturePath);
-    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
-    if (declaration === null || !ts.isClassDeclaration(declaration)) {
-      throw new Error("PaymentService export not found");
-    }
-
-    const metadata = resolveDeclarationMetadata({
-      context,
-      declaration: getComputedMethod(declaration, "submitComputed"),
-      metadata: {
-        method: {
-          apiName: {
-            mode: "infer-if-missing",
-            infer: ({ logicalName }) =>
-              logicalName.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(),
-          },
-          displayName: {
-            mode: "infer-if-missing",
-            infer: ({ logicalName }) =>
-              logicalName
-                .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-                .replace(/^./, (char) => char.toUpperCase()),
-          },
-        },
-      },
-    });
-
-    expect(metadata).toBeUndefined();
   });
 });
