@@ -12,6 +12,7 @@ import {
   type TagSignature,
   type TagSignatureParameter,
 } from "./tag-registry.js";
+import { getSyntheticLogger, logSetupDiagnostics } from "./constraint-validator-logger.js";
 
 /**
  * Target kinds that can be represented in a synthetic compiler call.
@@ -1101,10 +1102,17 @@ function runBatchSyntheticCheck<TApplication, TResolvedApplication>(
   try {
     batchSource = options.buildBatchSource(resolvedApplications, options.performance);
   } catch (error) {
+    const setupDiagnostic = serializeSyntheticBatchError(error);
+    // §8.3c — log setup-diagnostic emission at debug level so failures during
+    // synthetic-program construction are observable without reading source.
+    logSetupDiagnostics(getSyntheticLogger(), {
+      diagnosticCount: 1,
+      codes: [setupDiagnostic.kind],
+    });
     return {
       sourceText: "",
       applicationResults: createEmptySyntheticTagCheckResults(options.applications.length, ""),
-      globalDiagnostics: [serializeSyntheticBatchError(error)],
+      globalDiagnostics: [setupDiagnostic],
     };
   }
   const cacheKey = buildSyntheticBatchCacheKey(batchSource.sourceText, options.compilerOptions);
