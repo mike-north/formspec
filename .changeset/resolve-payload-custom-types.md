@@ -3,6 +3,12 @@
 "@formspec/build": minor
 "@formspec/cli": minor
 "@formspec/eslint-plugin": minor
+"@formspec/analysis": minor
+"@formspec/config": minor
+"@formspec/dsl": minor
+"@formspec/language-server": minor
+"@formspec/runtime": minor
+"@formspec/ts-plugin": minor
 "formspec": minor
 ---
 

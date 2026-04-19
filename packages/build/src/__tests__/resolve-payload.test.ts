@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import * as ts from "typescript";
 import { defineCustomType, defineExtension } from "@formspec/core/internals";
 import { generateSchemas, type GenerateSchemasOptions } from "../generators/class-schema.js";
 import { createExtensionRegistry } from "../extensions/index.js";
@@ -44,10 +45,12 @@ function writeFixture(name: string, lines: string[]): string {
 
 describe("resolvePayload", () => {
   it("passes resolved payload through to toJsonSchema", () => {
-    const toJsonSchema = vi.fn((_payload, _vendorPrefix) => ({
-      type: "string",
-      "x-ref-target": _payload,
-    }));
+    const toJsonSchema = vi.fn(
+      (payload: unknown, _vendorPrefix: string) => ({
+        type: "string",
+        "x-ref-target": payload,
+      })
+    );
 
     const registry = createExtensionRegistry([
       defineExtension({
@@ -57,13 +60,8 @@ describe("resolvePayload", () => {
             typeName: "TestRef",
             tsTypeNames: ["TestRef"],
             resolvePayload: (type: unknown, checker: unknown) => {
-              const tsType = type as { getProperty(name: string): unknown | undefined };
-              const tsChecker = checker as {
-                getTypeOfSymbol(symbol: unknown): {
-                  isStringLiteral(): boolean;
-                  value: string;
-                };
-              };
+              const tsType = type as ts.Type;
+              const tsChecker = checker as ts.TypeChecker;
               const prop = tsType.getProperty("target");
               if (!prop) return null;
               const propType = tsChecker.getTypeOfSymbol(prop);
@@ -139,25 +137,15 @@ describe("resolvePayload", () => {
   it("resolvePayload receives the union type for optional fields", () => {
     const resolvePayload = vi.fn((type: unknown, checker: unknown) => {
       // Strip nullish union members (same pattern as Ref)
-      const t = type as {
-        isUnion(): boolean;
-        types: Array<{ flags: number; getProperty(name: string): unknown }>;
-        getProperty(name: string): unknown | undefined;
-      };
-      const tsChecker = checker as {
-        getTypeOfSymbol(symbol: unknown): {
-          isStringLiteral(): boolean;
-          value: string;
-        };
-      };
+      let resolved = type as ts.Type;
+      const tsChecker = checker as ts.TypeChecker;
 
-      let resolved = t;
-      if (t.isUnion()) {
-        const nonNullish = t.types.filter(
-          (m) => !(m.flags & (0x10_000 | 0x8_000))
+      if (resolved.isUnion()) {
+        const nonNullish = resolved.types.filter(
+          (m) => !(m.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
         );
         if (nonNullish.length === 1 && nonNullish[0] !== undefined) {
-          resolved = nonNullish[0] as typeof resolved;
+          resolved = nonNullish[0];
         }
       }
 
