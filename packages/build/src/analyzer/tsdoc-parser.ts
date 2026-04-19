@@ -173,31 +173,111 @@ function isNonReferenceIdentifier(node: ts.Identifier): boolean {
   return false;
 }
 
-function statementReferencesImportedName(
-  statement: ts.Statement,
+function astReferencesImportedName(
+  root: ts.Node,
   importedNames: ReadonlySet<string>
 ): boolean {
   if (importedNames.size === 0) {
     return false;
   }
 
-  let referencesImportedName = false;
+  let found = false;
 
   const visit = (node: ts.Node): void => {
-    if (referencesImportedName) {
-      return;
-    }
+    if (found) return;
 
     if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
-      referencesImportedName = true;
+      found = true;
       return;
     }
 
     ts.forEachChild(node, visit);
   };
 
-  visit(statement);
-  return referencesImportedName;
+  visit(root);
+  return found;
+}
+
+/**
+ * Returns the member list for declarations that have object-like members:
+ * interface declarations and type alias declarations with a type-literal body.
+ * Returns `undefined` for all other node shapes.
+ */
+function getObjectMembers(
+  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration
+): ts.NodeArray<ts.TypeElement> | undefined {
+  if (ts.isInterfaceDeclaration(statement)) {
+    return statement.members;
+  }
+  if (ts.isTypeLiteralNode(statement.type)) {
+    return statement.type.members;
+  }
+  return undefined;
+}
+
+/**
+ * Rewrites a declaration so that members whose type annotations reference an
+ * imported name have their type replaced with `unknown`. This preserves the
+ * declaration in the synthetic program so the checker can resolve sibling
+ * members that use non-imported types.
+ *
+ * Handles both interface declarations and type alias declarations whose body
+ * is a type literal (e.g. `type Foo = { bar: ImportedType; baz: string }`).
+ *
+ * Without this, an interface like `{ year: Integer; vin: string }` where
+ * `Integer` is imported would be entirely excluded from supporting
+ * declarations, preventing the synthetic checker from knowing that `vin` is
+ * a string — causing spurious TYPE_MISMATCH errors on constraint tags like
+ * `@minLength`.
+ */
+function rewriteImportedMemberTypes(
+  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  sourceFile: ts.SourceFile,
+  importedNames: ReadonlySet<string>
+): string | null {
+  const members = getObjectMembers(statement);
+  if (members === undefined) {
+    return null;
+  }
+
+  const replacements: { start: number; end: number }[] = [];
+
+  for (const member of members) {
+    // Only property signatures have rewritable type annotations. If a
+    // non-property member (method signature, index signature, etc.)
+    // references an imported name, we can't safely rewrite it — return
+    // null to fall back to excluding the whole declaration.
+    if (!ts.isPropertySignature(member)) {
+      if (astReferencesImportedName(member, importedNames)) {
+        return null;
+      }
+      continue;
+    }
+
+    const typeAnnotation = member.type;
+    if (typeAnnotation === undefined) continue;
+
+    if (astReferencesImportedName(typeAnnotation, importedNames)) {
+      replacements.push({
+        start: typeAnnotation.getStart(sourceFile),
+        end: typeAnnotation.getEnd(),
+      });
+    }
+  }
+
+  if (replacements.length === 0) {
+    return statement.getText(sourceFile);
+  }
+
+  // Apply replacements in reverse order to preserve offsets.
+  // getText(sourceFile) and getStart(sourceFile) use the same base, so
+  // subtracting stmtStart from absolute positions yields correct offsets.
+  const stmtStart = statement.getStart(sourceFile);
+  let result = statement.getText(sourceFile);
+  for (const { start, end } of [...replacements].reverse()) {
+    result = result.slice(0, start - stmtStart) + "unknown" + result.slice(end - stmtStart);
+  }
+  return result;
 }
 
 function buildSupportingDeclarations(
@@ -212,24 +292,33 @@ function buildSupportingDeclarations(
     [...importedNames].filter((name) => !extensionTypeNames.has(name))
   );
 
-  return sourceFile.statements
-    .filter((statement) => {
-      // Always exclude imports and re-exports
-      if (ts.isImportDeclaration(statement)) return false;
-      if (ts.isImportEqualsDeclaration(statement)) return false;
-      if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined)
-        return false;
+  const result: string[] = [];
 
-      // Skip declarations whose AST references an imported identifier,
-      // unless that identifier is an extension-registered type (which will
-      // have a synthetic type alias in the synthetic program).
-      if (statementReferencesImportedName(statement, importedNamesToSkip)) {
-        return false;
+  for (const statement of sourceFile.statements) {
+    // Always exclude imports and re-exports
+    if (ts.isImportDeclaration(statement)) continue;
+    if (ts.isImportEqualsDeclaration(statement)) continue;
+    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) continue;
+
+    if (!astReferencesImportedName(statement, importedNamesToSkip)) {
+      result.push(statement.getText(sourceFile));
+      continue;
+    }
+
+    // For interface and type-literal-bodied type alias declarations that
+    // reference imports, rewrite imported member types to `unknown` instead
+    // of dropping the whole declaration. Returns null when a non-property
+    // member references an import (method/index signatures), in which case
+    // we fall back to excluding the whole declaration.
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
+      const rewritten = rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip);
+      if (rewritten !== null) {
+        result.push(rewritten);
       }
+    }
+  }
 
-      return true;
-    })
-    .map((statement) => statement.getText(sourceFile));
+  return result;
 }
 
 function pushUniqueCompilerDiagnostics(

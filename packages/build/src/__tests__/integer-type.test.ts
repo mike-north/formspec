@@ -136,6 +136,52 @@ const IMPORTING_FIXTURE_SOURCE = [
   "  /** @pattern ^[0-9]+$ */",
   "  code: MultiBrandedInteger;",
   "}",
+  "",
+  "export interface CrossFileMixedConfig {",
+  "  /** @minimum 2000 */",
+  "  year: MultiBrandedInteger;",
+  "",
+  "  /**",
+  "   * @minLength 17",
+  "   * @maxLength 17",
+  "   */",
+  "  vin: string;",
+  "}",
+  "",
+  "export type CrossFileMixedTypeAlias = {",
+  "  /** @minimum 2000 */",
+  "  year: MultiBrandedInteger;",
+  "",
+  "  /**",
+  "   * @minLength 17",
+  "   * @maxLength 17",
+  "   */",
+  "  vin: string;",
+  "};",
+  "",
+  "// Method signature referencing import — should fall back to excluding",
+  "export interface CrossFileMethodSigConfig {",
+  "  getYear(): MultiBrandedInteger;",
+  "  /** @minLength 1 */",
+  "  vin: string;",
+  "}",
+  "",
+  "// Index signature referencing import — should fall back to excluding",
+  "export interface CrossFileIndexSigConfig {",
+  "  [k: string]: MultiBrandedInteger;",
+  "  /** @minLength 1 */",
+  "  vin: string;",
+  "}",
+  "",
+  "// Generic position — Array<ImportedType>",
+  "export interface CrossFileGenericConfig {",
+  "  items: Array<MultiBrandedInteger>;",
+  "  /** @minLength 1 */",
+  "  label: string;",
+  "}",
+  "",
+  "// Const referencing import — should still be excluded",
+  "export const CROSS_FILE_CONST: MultiBrandedInteger = 0 as unknown as MultiBrandedInteger;",
 ].join("\n");
 
 beforeAll(() => {
@@ -495,6 +541,98 @@ describe("builtin Integer type", () => {
           typeName: "CrossFilePatternConfig",
         })
       ).toThrow(/TYPE_MISMATCH/);
+    });
+
+    it("does not poison sibling string fields with imported integer type constraints", () => {
+      // Regression: when an interface has both an imported Integer field and a
+      // string field, buildSupportingDeclarations filters out the entire
+      // interface (it references an imported name). The synthetic checker then
+      // can't resolve the string field's type, causing @minLength/@maxLength
+      // to produce spurious TYPE_MISMATCH errors.
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileMixedConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      // Integer field constraints work
+      const yearSchema = properties["year"] as Record<string, unknown>;
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+      });
+
+      // String field constraints must also work — not poisoned by the Integer import
+      const vinSchema = properties["vin"] as Record<string, unknown>;
+      expect(vinSchema).toMatchObject({
+        type: "string",
+        minLength: 17,
+        maxLength: 17,
+      });
+    });
+
+    it("does not poison sibling string fields in type alias declarations", () => {
+      // Same poisoning bug as interfaces, but with `type Foo = { ... }` syntax.
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileMixedTypeAlias",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+
+      const yearSchema = properties["year"] as Record<string, unknown>;
+      expect(yearSchema).toMatchObject({
+        minimum: 2000,
+      });
+
+      const vinSchema = properties["vin"] as Record<string, unknown>;
+      expect(vinSchema).toMatchObject({
+        type: "string",
+        minLength: 17,
+        maxLength: 17,
+      });
+    });
+
+    it("falls back to excluding interface when a method signature references an import", () => {
+      // Method signatures can't be rewritten to `unknown`, so the whole
+      // interface should be excluded (pre-fix behavior preserved).
+      // This means sibling constraints produce diagnostics, but the build
+      // must not crash or produce invalid synthetic code.
+      const result = generateSchemas({
+        filePath: importingFixturePath,
+        typeName: "CrossFileMethodSigConfig",
+        errorReporting: "diagnostics",
+      });
+
+      // Constraint diagnostics are expected — the interface was excluded
+      expect(result.diagnostics.length).toBeGreaterThan(0);
+      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+    });
+
+    it("falls back to excluding interface when an index signature references an import", () => {
+      const result = generateSchemas({
+        filePath: importingFixturePath,
+        typeName: "CrossFileIndexSigConfig",
+        errorReporting: "diagnostics",
+      });
+
+      expect(result.diagnostics.length).toBeGreaterThan(0);
+      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+    });
+
+    it("rewrites imported types in generic position (Array<ImportedType>)", () => {
+      const result = generateSchemasOrThrow({
+        filePath: importingFixturePath,
+        typeName: "CrossFileGenericConfig",
+      });
+
+      const properties = result.jsonSchema.properties as Record<string, unknown>;
+      // The string sibling field should still have its constraints
+      const labelSchema = properties["label"] as Record<string, unknown>;
+      expect(labelSchema).toMatchObject({
+        type: "string",
+        minLength: 1,
+      });
     });
   });
 });
