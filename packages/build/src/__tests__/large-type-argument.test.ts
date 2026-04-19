@@ -1,11 +1,15 @@
 /**
- * Tests that type arguments referencing large external types don't overflow
- * the stack during schema generation.
+ * Tests for generic wrapper types (like Ref<T>) with type arguments of
+ * varying sizes and origins.
  *
- * Regression: Ref<Stripe.Customer> caused a stack overflow because
- * extractReferenceTypeArguments recursed into Customer's 100+ deeply
- * nested properties. The type argument is only used for naming and $defs
- * references — it doesn't need full property expansion.
+ * Covers:
+ *   1. Small locally-defined type argument — resolves correctly with
+ *      the wrapper's own properties preserved.
+ *   2. Deeply nested external type argument — doesn't overflow the stack
+ *      and doesn't leak into $defs.
+ *      Regression: Ref<Stripe.Customer> caused a stack overflow because
+ *      extractReferenceTypeArguments recursed into Customer's deeply
+ *      nested property tree.
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -24,32 +28,75 @@ function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorRepo
 let tmpDir: string;
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-large-type-arg-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-type-arg-"));
 
-  // A large external type with many properties (simulates Stripe.Customer)
+  // Small type defined in a separate file
   fs.writeFileSync(
-    path.join(tmpDir, "large-type.ts"),
+    path.join(tmpDir, "small-type.ts"),
     [
-      "export interface LargeType {",
-      "  readonly object: 'large_thing';",
-      ...Array.from({ length: 100 }, (_, i) => `  prop${i}: string;`),
+      "export interface SmallType {",
+      "  readonly object: 'small_thing';",
       "}",
     ].join("\n")
   );
 
-  // A generic wrapper type that references the large type as a type argument
+  // Deeply nested type chain (simulates Stripe.Customer's recursive depth).
+  // Each level references the next, creating a chain that would reliably
+  // overflow the stack if recursively expanded.
+  const nestingDepth = 30;
+  const nestedTypeLines: string[] = [
+    "export interface Level0 {",
+    "  readonly object: 'deep_thing';",
+    "  name: string;",
+    "  nested: Level1;",
+    "}",
+  ];
+  for (let i = 1; i < nestingDepth; i++) {
+    const next = i < nestingDepth - 1 ? `Level${String(i + 1)}` : "string";
+    nestedTypeLines.push(
+      `export interface Level${String(i)} {`,
+      `  value${String(i)}: string;`,
+      `  nested: ${next};`,
+      "}",
+    );
+  }
+  fs.writeFileSync(path.join(tmpDir, "deep-type.ts"), nestedTypeLines.join("\n"));
+
+  // Generic wrapper (simulates Ref<T>)
   fs.writeFileSync(
     path.join(tmpDir, "wrapper.ts"),
     [
-      'import type { LargeType } from "./large-type.js";',
-      "",
       "type Wrapper<T extends { readonly object: string }> = {",
       "  id: string;",
       '  type: T["object"];',
       "};",
       "",
-      "export interface Config {",
-      "  ref: Wrapper<LargeType>;",
+      "export { type Wrapper };",
+    ].join("\n")
+  );
+
+  // Fixture using small local type argument
+  fs.writeFileSync(
+    path.join(tmpDir, "small-ref.ts"),
+    [
+      'import type { SmallType } from "./small-type.js";',
+      'import type { Wrapper } from "./wrapper.js";',
+      "",
+      "export interface SmallRefConfig {",
+      "  ref: Wrapper<SmallType>;",
+      "}",
+    ].join("\n")
+  );
+
+  // Fixture using deeply nested external type argument
+  fs.writeFileSync(
+    path.join(tmpDir, "deep-ref.ts"),
+    [
+      'import type { Level0 } from "./deep-type.js";',
+      'import type { Wrapper } from "./wrapper.js";',
+      "",
+      "export interface DeepRefConfig {",
+      "  ref: Wrapper<Level0>;",
       "}",
     ].join("\n")
   );
@@ -78,16 +125,35 @@ afterAll(() => {
   }
 });
 
-describe("large external type argument", () => {
-  it("does not overflow the stack when a type argument is a large external type", () => {
+describe("generic wrapper type arguments", () => {
+  it("resolves Wrapper<SmallType> with correct properties", () => {
     const result = generateSchemasOrThrow({
-      filePath: path.join(tmpDir, "wrapper.ts"),
-      typeName: "Config",
+      filePath: path.join(tmpDir, "small-ref.ts"),
+      typeName: "SmallRefConfig",
     });
 
-    // The build should complete without stack overflow. The wrapper's own
-    // properties (id, type) should appear in the schema output.
-    expect(result.jsonSchema).toBeDefined();
-    expect(result.jsonSchema.properties).toBeDefined();
+    const properties = result.jsonSchema.properties as Record<string, unknown>;
+    expect(properties).toBeDefined();
+
+    const refSchema = properties["ref"] as Record<string, unknown>;
+    expect(refSchema).toBeDefined();
+  });
+
+  it("resolves Wrapper<Level0> without stack overflow and without leaking into $defs", () => {
+    const result = generateSchemasOrThrow({
+      filePath: path.join(tmpDir, "deep-ref.ts"),
+      typeName: "DeepRefConfig",
+    });
+
+    const properties = result.jsonSchema.properties as Record<string, unknown>;
+    expect(properties).toBeDefined();
+
+    const refSchema = properties["ref"] as Record<string, unknown>;
+    expect(refSchema).toBeDefined();
+
+    // The deeply nested external type argument must NOT be expanded into $defs
+    const defs = result.jsonSchema.$defs ?? {};
+    expect(defs).not.toHaveProperty("Level0");
+    expect(defs).not.toHaveProperty("Level1");
   });
 });

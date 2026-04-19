@@ -1299,20 +1299,27 @@ function extractReferenceTypeArguments(
     // rather than resolving its full property tree. This prevents stack
     // overflows on deeply nested external types (e.g. Stripe.Customer)
     // that are only used as phantom type parameters (e.g. Ref<T>).
-    const argumentSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
+    const rawSymbol = argumentType.aliasSymbol ?? argumentType.getSymbol();
+    // Resolve through import aliases to the canonical declaration so that
+    // the source-file comparison checks the external module, not the local
+    // import specifier.
+    const argumentSymbol =
+      rawSymbol !== undefined && (rawSymbol.flags & ts.SymbolFlags.Alias) !== 0
+        ? checker.getAliasedSymbol(rawSymbol)
+        : rawSymbol;
     const argumentDecl = argumentSymbol?.declarations?.[0];
     if (
       argumentDecl !== undefined &&
       argumentDecl.getSourceFile().fileName !== sourceNode?.getSourceFile().fileName
     ) {
-      const argumentName = argumentSymbol?.getName();
+      const argumentName = argumentSymbol?.getName() ?? rawSymbol?.getName();
       if (argumentName !== undefined) {
         return {
           tsType: argumentType,
           typeNode: {
             kind: "reference" as const,
             name: argumentName,
-            typeArguments: [] as TypeNode[],
+            typeArguments: [],
           },
         };
       }
