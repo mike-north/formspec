@@ -115,6 +115,32 @@ describe("isParityLogEntry", () => {
     }
   });
 
+  it("accepts elapsedMicros of 0 (boundary)", () => {
+    expect(
+      isParityLogEntry({
+        consumer: "build",
+        tag: "minimum",
+        placement: "class-field",
+        subjectTypeKind: "number",
+        roleOutcome: "C-pass",
+        elapsedMicros: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("accepts a positive finite elapsedMicros", () => {
+    expect(
+      isParityLogEntry({
+        consumer: "build",
+        tag: "minimum",
+        placement: "class-field",
+        subjectTypeKind: "number",
+        roleOutcome: "C-pass",
+        elapsedMicros: 12345.67,
+      }),
+    ).toBe(true);
+  });
+
   it("rejects null", () => {
     expect(isParityLogEntry(null)).toBe(false);
   });
@@ -162,6 +188,45 @@ describe("isParityLogEntry", () => {
         placement: "class-field",
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects elapsedMicros of NaN", () => {
+    expect(
+      isParityLogEntry({
+        consumer: "build",
+        tag: "minimum",
+        placement: "class-field",
+        subjectTypeKind: "number",
+        roleOutcome: "C-pass",
+        elapsedMicros: NaN,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects elapsedMicros of Infinity", () => {
+    expect(
+      isParityLogEntry({
+        consumer: "build",
+        tag: "minimum",
+        placement: "class-field",
+        subjectTypeKind: "number",
+        roleOutcome: "C-pass",
+        elapsedMicros: Infinity,
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects negative elapsedMicros", () => {
+    expect(
+      isParityLogEntry({
+        consumer: "build",
+        tag: "minimum",
+        placement: "class-field",
+        subjectTypeKind: "number",
+        roleOutcome: "C-pass",
+        elapsedMicros: -1,
       }),
     ).toBe(false);
   });
@@ -332,6 +397,7 @@ describe("diffParityLogs", () => {
       const div = result[0];
       expect(div.kind).toBe("role-outcome-divergence");
       if (div.kind === "role-outcome-divergence") {
+        expect(div.index).toBe(0);
         expect(div.buildOutcome).toBe("C-pass");
         expect(div.snapshotOutcome).toBe("C-reject");
         expect(div.buildEntry).toBe(b[0]);
@@ -359,6 +425,7 @@ describe("diffParityLogs", () => {
       const div = result[0];
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
+        expect(div.index).toBe(0);
         expect(div.buildCode).toBe("TYPE_MISMATCH");
         expect(div.snapshotCode).toBe("INVALID_TAG_ARGUMENT");
       }
@@ -378,6 +445,7 @@ describe("diffParityLogs", () => {
       const div = result[0];
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
+        expect(div.index).toBe(0);
         expect(div.buildCode).toBe("TYPE_MISMATCH");
         expect(div.snapshotCode).toBeUndefined();
       }
@@ -414,6 +482,146 @@ describe("diffParityLogs", () => {
       ];
 
       expect(diffParityLogs(b, s)).toEqual(diffParityLogs(b, s));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Duplicate-key handling
+  // -------------------------------------------------------------------------
+
+  describe("duplicate-key entries (multiple fixtures / fields sharing a tag+placement+type)", () => {
+    it("produces no divergences when both sides have the same count and matching entries for a duplicate key", () => {
+      // Two fixtures both produce a "minimum::class-field::number" entry; both pass.
+      const b = [
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+      const s = [
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+
+      expect(diffParityLogs(b, s)).toEqual([]);
+    });
+
+    it("emits array-length-divergence when build has more entries for a key than snapshot", () => {
+      // Build produced 2 entries for the key; snapshot only produced 1.
+      const b = [
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+      const s = [snapshotEntry("minimum", "class-field", "number", "C-pass")];
+
+      const result = diffParityLogs(b, s);
+
+      expect(result).toHaveLength(1);
+      const div = result[0];
+      expect(div.kind).toBe("array-length-divergence");
+      if (div.kind === "array-length-divergence") {
+        expect(div.key).toBe("minimum::class-field::number");
+        expect(div.buildCount).toBe(2);
+        expect(div.snapshotCount).toBe(1);
+        expect(div.buildEntries).toHaveLength(2);
+        expect(div.snapshotEntries).toHaveLength(1);
+      }
+    });
+
+    it("emits array-length-divergence when snapshot has more entries for a key than build", () => {
+      const b = [buildEntry("minimum", "class-field", "number", "C-pass")];
+      const s = [
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+
+      const result = diffParityLogs(b, s);
+
+      expect(result).toHaveLength(1);
+      const div = result[0];
+      expect(div.kind).toBe("array-length-divergence");
+      if (div.kind === "array-length-divergence") {
+        expect(div.buildCount).toBe(1);
+        expect(div.snapshotCount).toBe(2);
+      }
+    });
+
+    it("skips positional comparison entirely when array lengths differ for a key", () => {
+      // The first entries would match perfectly, but the length divergence should
+      // prevent any role-outcome or diagnostic-code divergence from being emitted.
+      const b = [
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+        buildEntry("minimum", "class-field", "number", "C-reject", {
+          diagnostic: { code: "TYPE_MISMATCH", message: "..." },
+        }),
+      ];
+      const s = [
+        // Only one snapshot entry — lengths differ.
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+
+      const result = diffParityLogs(b, s);
+
+      // Exactly one divergence: the array-length-divergence; no positional divergences.
+      expect(result).toHaveLength(1);
+      const onlyDiv = result[0];
+      expect(onlyDiv?.kind).toBe("array-length-divergence");
+    });
+
+    it("emits role-outcome-divergence at the correct index when the mismatch is at position 1", () => {
+      // Position 0 matches; position 1 diverges.
+      const b = [
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+      const s = [
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+        snapshotEntry("minimum", "class-field", "number", "C-reject"), // mismatch at index 1
+      ];
+
+      const result = diffParityLogs(b, s);
+
+      expect(result).toHaveLength(1);
+      const div = result[0];
+      expect(div.kind).toBe("role-outcome-divergence");
+      if (div.kind === "role-outcome-divergence") {
+        expect(div.index).toBe(1);
+        expect(div.buildOutcome).toBe("C-pass");
+        expect(div.snapshotOutcome).toBe("C-reject");
+      }
+    });
+
+    it("emits missing-in-snapshot for each entry when the key is entirely absent from snapshot (multiple entries)", () => {
+      // Key appears twice on the build side but not at all on the snapshot side.
+      const b = [
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+        buildEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+
+      const result = diffParityLogs(b, []);
+
+      expect(result).toHaveLength(2);
+      for (const div of result) {
+        expect(div.kind).toBe("missing-in-snapshot");
+        if (div.kind === "missing-in-snapshot") {
+          expect(div.key).toBe("minimum::class-field::number");
+        }
+      }
+    });
+
+    it("emits missing-in-build for each entry when the key is entirely absent from build (multiple entries)", () => {
+      const s = [
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+        snapshotEntry("minimum", "class-field", "number", "C-pass"),
+      ];
+
+      const result = diffParityLogs([], s);
+
+      expect(result).toHaveLength(2);
+      for (const div of result) {
+        expect(div.kind).toBe("missing-in-build");
+        if (div.kind === "missing-in-build") {
+          expect(div.key).toBe("minimum::class-field::number");
+        }
+      }
     });
   });
 });
