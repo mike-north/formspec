@@ -575,16 +575,20 @@ function generatePrimitiveType(type: PrimitiveTypeNode): JsonSchema2020 {
  *
  * Enum emission is caller-configurable. The default `enum` mode keeps the
  * compact keyword and adds a complete vendor-prefixed display-name map when
- * any member label is available. The `oneOf` mode always emits per-member
- * `const`/`title` entries so downstream consumers can rely on `title`.
+ * any member label is available. The `oneOf` mode emits per-member `const`
+ * entries, and includes `title` only when the member has an explicit
+ * `@displayName` that differs from the value — omitting redundant titles
+ * such as `{ "const": "USD", "title": "USD" }` (#310).
  */
 function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   if (ctx.enumSerialization === "oneOf") {
     return {
-      oneOf: type.members.map((m) => ({
-        const: m.value,
-        title: m.displayName ?? String(m.value),
-      })),
+      oneOf: type.members.map((m) => {
+        const stringValue = String(m.value);
+        const title =
+          m.displayName !== undefined && m.displayName !== stringValue ? m.displayName : undefined;
+        return title !== undefined ? { const: m.value, title } : { const: m.value };
+      }),
     };
   }
 

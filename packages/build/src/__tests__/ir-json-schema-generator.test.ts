@@ -440,7 +440,11 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({ enum: [1, 2, 3] });
     });
 
-    it("supports oneOf serialization with explicit and fallback titles", () => {
+    it("supports oneOf serialization and omits title when it matches the value (issue #310)", () => {
+      // Updated for #310: title is only emitted when displayName differs from the const value.
+      // "sent" has no displayName, so its title is omitted (was redundant).
+      // "draft" has displayName "Draft" (differs from value) → title emitted.
+      // "paid" has displayName "Paid in Full" (differs from value) → title emitted.
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
@@ -457,13 +461,16 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({
         oneOf: [
           { const: "draft", title: "Draft" },
-          { const: "sent", title: "sent" },
+          { const: "sent" },
           { const: "paid", title: "Paid in Full" },
         ],
       });
     });
 
     it("supports oneOf serialization when no member has a displayName", () => {
+      // Updated for #310: when no member has a displayName, no titles are emitted.
+      // Previously emitted title equal to const (e.g. { const: "draft", title: "draft" }),
+      // which was redundant.
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
@@ -474,12 +481,81 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["status"];
 
       expect(prop).toEqual({
+        oneOf: [{ const: "draft" }, { const: "sent" }],
+      });
+    });
+
+    it("emits title only for members whose displayName differs from the value (issue #310)", () => {
+      // Mixed: some members have a meaningful displayName, others do not (or it matches).
+      const ir = makeIR([
+        makeField("currency", {
+          kind: "enum",
+          members: [
+            { value: "USD" },
+            { value: "EUR", displayName: "Euro" },
+            { value: "GBP", displayName: "GBP" }, // displayName === value → omit title
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+      const prop = (schema.properties as Record<string, unknown>)["currency"];
+
+      expect(prop).toEqual({
         oneOf: [
-          { const: "draft", title: "draft" },
-          { const: "sent", title: "sent" },
+          { const: "USD" },
+          { const: "EUR", title: "Euro" },
+          { const: "GBP" },
         ],
       });
     });
+
+    // Parameterized edge cases for #310: displayName === String(m.value) comparison semantics.
+    // EnumMember.value is `string | number` — boolean values are not part of the IR type,
+    // so there is no boolean edge case to test.
+    it.each([
+      {
+        label: "numeric const matching stringified value — omit title",
+        value: 42 as string | number,
+        displayName: "42",
+        expectedTitle: false,
+      },
+      {
+        label: "numeric const with different displayName — emit title",
+        value: 1 as string | number,
+        displayName: "One",
+        expectedTitle: true,
+      },
+      {
+        label: "empty-string displayName matching empty-string value — omit title",
+        value: "" as string | number,
+        displayName: "",
+        expectedTitle: false,
+      },
+      {
+        label: "case-differing displayName — emit title (strict !== semantics, issue #310)",
+        value: "USD" as string | number,
+        displayName: "usd",
+        expectedTitle: true,
+      },
+    ])(
+      "oneOf title omission edge case: $label",
+      ({ value, displayName, expectedTitle }) => {
+        const ir = makeIR([
+          makeField("f", {
+            kind: "enum",
+            members: [{ value, displayName }],
+          }),
+        ]);
+        const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+        const prop = (schema.properties as Record<string, unknown>)["f"];
+
+        if (expectedTitle) {
+          expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
+        } else {
+          expect(prop).toEqual({ oneOf: [{ const: value }] });
+        }
+      },
+    );
 
     it("uses the configured vendorPrefix for the display-name extension", () => {
       const ir = makeIR([

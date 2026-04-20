@@ -129,17 +129,13 @@ describe("generators", () => {
         enumSerialization: "oneOf",
       });
 
+      // Updated for #310: no title emitted when there is no @displayName
+      // (the fallback title equalling the value is redundant).
       expect(methodSchemas.params?.jsonSchema).toEqual({
-        oneOf: [
-          { const: "draft", title: "draft" },
-          { const: "sent", title: "sent" },
-        ],
+        oneOf: [{ const: "draft" }, { const: "sent" }],
       });
       expect(methodSchemas.returnType).toEqual({
-        oneOf: [
-          { const: "draft", title: "draft" },
-          { const: "sent", title: "sent" },
-        ],
+        oneOf: [{ const: "draft" }, { const: "sent" }],
       });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

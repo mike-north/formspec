@@ -344,14 +344,15 @@ describe("Ref<T> JSON Schema serialization", () => {
       const refProps = expectRecord(refSchema["properties"], "Missing Ref properties");
       const typeSchema = expectRecord(refProps["type"], "Missing type property");
 
-      // oneOf serialization: singleton enum → oneOf with const + title
+      // oneOf serialization: singleton enum → oneOf with const only (no title when
+      // displayName equals the value; #310 — omit redundant title).
       expect(typeSchema).not.toHaveProperty("enum");
       const oneOf = typeSchema["oneOf"] as unknown[];
       expect(oneOf).toBeDefined();
       expect(oneOf).toHaveLength(1);
       const member = oneOf[0] as Record<string, unknown>;
       expect(member["const"]).toBe("customer");
-      expect(member["title"]).toBe("customer");
+      expect(member).not.toHaveProperty("title");
     });
 
     it("multiple Ref fields each get oneOf discriminators with correct const values", () => {
