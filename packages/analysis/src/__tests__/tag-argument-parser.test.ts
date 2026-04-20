@@ -1,10 +1,66 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
+  type TagArgumentLowering,
   parseTagArgument,
   TAG_ARGUMENT_FAMILIES,
   type TagArgumentValue,
 } from "../tag-argument-parser.js";
+
+// ---------------------------------------------------------------------------
+// Test helpers (local — keep in this file, not promoted to a shared helper)
+// ---------------------------------------------------------------------------
+
+/**
+ * Asserts that parseTagArgument returns `{ ok: true, kind: "number", value }`.
+ * Uses `Number.isNaN` comparison for NaN values since `NaN !== NaN`.
+ */
+function expectNumericValue(tag: string, text: string, expectedValue: number): void {
+  const result = parseTagArgument(tag, text, "build");
+  expect(result.ok, `Expected ok:true for @${tag} "${text}"`).toBe(true);
+  if (result.ok) {
+    expect(result.value.kind).toBe("number");
+    if (result.value.kind === "number") {
+      if (Number.isNaN(expectedValue)) {
+        expect(Number.isNaN(result.value.value), "Expected NaN value").toBe(true);
+      } else {
+        expect(result.value.value).toBe(expectedValue);
+      }
+    }
+  }
+}
+
+/**
+ * Asserts that parseTagArgument returns `{ ok: false, code: "MISSING_TAG_ARGUMENT" }`.
+ */
+function expectMissingArgument(tag: string, text: string): void {
+  const result = parseTagArgument(tag, text, "build");
+  expect(result.ok, `Expected ok:false for @${tag} "${text}"`).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostic.code).toBe("MISSING_TAG_ARGUMENT");
+    expect(result.diagnostic.message).toMatch(/^Expected /);
+    expect(result.diagnostic.message).toContain(`@${tag}`);
+  }
+}
+
+/**
+ * Asserts that parseTagArgument returns `{ ok: false, code: "INVALID_TAG_ARGUMENT" }`
+ * with a message that starts with "Expected " (required bridge convention for Phase 2/3
+ * consumer classifier per §1.7 of the retirement plan).
+ */
+function expectInvalidArgument(tag: string, text: string): void {
+  const result = parseTagArgument(tag, text, "build");
+  expect(result.ok, `Expected ok:false for @${tag} "${text}"`).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+    expect(result.diagnostic.message).toMatch(/^Expected /);
+    expect(result.diagnostic.message).toContain("numeric literal");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe("parseTagArgument", () => {
   describe("registry", () => {
@@ -52,12 +108,321 @@ describe("parseTagArgument", () => {
     });
   });
 
-  // Slice A owns these — tests land in Slice A.
+  // ---------------------------------------------------------------------------
+  // Slice A: numeric family
+  // ---------------------------------------------------------------------------
   describe("numeric family", () => {
-    it.todo("Slice A");
+    // Full battery on @minimum; abbreviated per-tag tests for the others.
+
+    describe("@minimum — full battery", () => {
+      it("parses a positive integer", () => {
+        expectNumericValue("minimum", "10", 10);
+      });
+
+      it("parses a positive float (integer erasure: no rejection)", () => {
+        // Per §1.6 of the retirement plan: integer erasure means Role C must NOT
+        // reject non-integer arguments. Rejecting is a Role D concern.
+        expectNumericValue("minimum", "10.5", 10.5);
+      });
+
+      it("parses a negative integer", () => {
+        expectNumericValue("minimum", "-5", -5);
+      });
+
+      it("parses zero", () => {
+        expectNumericValue("minimum", "0", 0);
+      });
+
+      it("accepts Infinity (pins §3 divergence behavior — snapshot path passes through)", () => {
+        expectNumericValue("minimum", "Infinity", Infinity);
+      });
+
+      it("accepts -Infinity", () => {
+        expectNumericValue("minimum", "-Infinity", -Infinity);
+      });
+
+      it("accepts NaN (pins §3 divergence behavior — snapshot path passes through)", () => {
+        // NaN !== NaN, so we cannot use expectNumericValue's toEqual branch here.
+        // The helper uses Number.isNaN internally for this case.
+        expectNumericValue("minimum", "NaN", NaN);
+      });
+
+      it("accepts -0 (pins current behavior — Object.is distinguishes -0 from +0)", () => {
+        const result = parseTagArgument("minimum", "-0", "build");
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.kind).toBe("number");
+          if (result.value.kind === "number") {
+            // Object.is distinguishes -0 from +0; Number("-0") === -0.
+            expect(Object.is(result.value.value, -0)).toBe(true);
+          }
+        }
+      });
+
+      it("accepts .5 (leading-decimal shorthand for 0.5)", () => {
+        expectNumericValue("minimum", ".5", 0.5);
+      });
+
+      it("accepts 5. (trailing-decimal shorthand for 5)", () => {
+        expectNumericValue("minimum", "5.", 5);
+      });
+
+      it("accepts valid small scientific notation (1e-10)", () => {
+        expectNumericValue("minimum", "1e-10", 1e-10);
+      });
+
+      it("returns MISSING_TAG_ARGUMENT for empty string", () => {
+        expectMissingArgument("minimum", "");
+      });
+
+      it("returns MISSING_TAG_ARGUMENT for whitespace-only string", () => {
+        expectMissingArgument("minimum", "   ");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for alphabetic text", () => {
+        expectInvalidArgument("minimum", "hello");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for numeric text with invalid suffix", () => {
+        expectInvalidArgument("minimum", "10x");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for hex literal (0x10 must not silently become 16)", () => {
+        // Regression: Number("0x10") === 16, but @minimum 0x10 is not TSDoc-idiomatic.
+        expectInvalidArgument("minimum", "0x10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for binary literal (0b10 must not silently become 2)", () => {
+        expectInvalidArgument("minimum", "0b10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for octal literal (0o10 must not silently become 8)", () => {
+        expectInvalidArgument("minimum", "0o10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for lowercase 'infinity' (case-sensitive; only 'Infinity' is accepted)", () => {
+        // Pins case-sensitivity: only the exact identifier "Infinity" is accepted.
+        expectInvalidArgument("minimum", "infinity");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for lowercase 'nan' (case-sensitive; only 'NaN' is accepted)", () => {
+        expectInvalidArgument("minimum", "nan");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for scientific overflow (1e400 overflows to Infinity)", () => {
+        // Only the explicit "Infinity" identifier is accepted; decimal overflow is rejected.
+        const result = parseTagArgument("minimum", "1e400", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toMatch(/^Expected /);
+          expect(result.diagnostic.message).toContain("overflows to Infinity");
+        }
+      });
+
+      it("includes tag name in INVALID_TAG_ARGUMENT message", () => {
+        const result = parseTagArgument("minimum", "hello", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.message).toContain("@minimum");
+        }
+      });
+
+      it("includes the bad text in INVALID_TAG_ARGUMENT message", () => {
+        const result = parseTagArgument("minimum", "hello", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.message).toContain('"hello"');
+        }
+      });
+    });
+
+    describe("@maximum — one positive + one negative (shared helper, tag name in message)", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("maximum", "100", 100);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("maximum", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@maximum");
+        }
+      });
+    });
+
+    describe("@exclusiveMinimum", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("exclusiveMinimum", "0.5", 0.5);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("exclusiveMinimum", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@exclusiveMinimum");
+        }
+      });
+    });
+
+    describe("@exclusiveMaximum", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("exclusiveMaximum", "1000", 1000);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("exclusiveMaximum", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@exclusiveMaximum");
+        }
+      });
+    });
+
+    describe("@multipleOf", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("multipleOf", "5", 5);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("multipleOf", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@multipleOf");
+        }
+      });
+    });
+
+    describe("lowering flag is a no-op in Phase 1", () => {
+      it("produces identical output for 'build' and 'snapshot' lowering", () => {
+        const buildResult = parseTagArgument("minimum", "42", "build");
+        const snapshotResult = parseTagArgument("minimum", "42", "snapshot");
+        expect(buildResult).toEqual(snapshotResult);
+      });
+
+      it("produces identical error for 'build' and 'snapshot' lowering on invalid input", () => {
+        const buildResult = parseTagArgument("minimum", "bad", "build");
+        const snapshotResult = parseTagArgument("minimum", "bad", "snapshot");
+        expect(buildResult).toEqual(snapshotResult);
+      });
+    });
   });
+
+  // ---------------------------------------------------------------------------
+  // Slice A: length family
+  // ---------------------------------------------------------------------------
   describe("length family", () => {
-    it.todo("Slice A");
+    // Full battery on @minLength; abbreviated per-tag tests for the others.
+
+    describe("@minLength — full battery", () => {
+      it("parses a positive integer", () => {
+        expectNumericValue("minLength", "1", 1);
+      });
+
+      it("parses zero", () => {
+        expectNumericValue("minLength", "0", 0);
+      });
+
+      it("parses a float — integer erasure, NOT rejected (Role D concern, not Role C)", () => {
+        // Key invariant from §1.6: integer erasure means @minLength 1.5 must
+        // return ok:true with value 1.5. The consumer may later cast to integer,
+        // but the parser must not reject it.
+        expectNumericValue("minLength", "1.5", 1.5);
+      });
+
+      it("accepts Infinity", () => {
+        expectNumericValue("minLength", "Infinity", Infinity);
+      });
+
+      it("accepts -Infinity", () => {
+        expectNumericValue("minLength", "-Infinity", -Infinity);
+      });
+
+      it("accepts NaN", () => {
+        expectNumericValue("minLength", "NaN", NaN);
+      });
+
+      it("returns MISSING_TAG_ARGUMENT for empty string", () => {
+        expectMissingArgument("minLength", "");
+      });
+
+      it("returns MISSING_TAG_ARGUMENT for whitespace-only string", () => {
+        expectMissingArgument("minLength", "   ");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for alphabetic text", () => {
+        expectInvalidArgument("minLength", "hello");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for numeric text with invalid suffix", () => {
+        expectInvalidArgument("minLength", "10x");
+      });
+
+      it("includes tag name in INVALID_TAG_ARGUMENT message", () => {
+        const result = parseTagArgument("minLength", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.message).toContain("@minLength");
+        }
+      });
+    });
+
+    describe("@maxLength", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("maxLength", "255", 255);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("maxLength", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@maxLength");
+        }
+      });
+    });
+
+    describe("@minItems", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("minItems", "2", 2);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("minItems", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@minItems");
+        }
+      });
+    });
+
+    describe("@maxItems", () => {
+      it("parses a valid number", () => {
+        expectNumericValue("maxItems", "10", 10);
+      });
+
+      it("returns INVALID_TAG_ARGUMENT with correct tag name in message", () => {
+        const result = parseTagArgument("maxItems", "bad", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toContain("@maxItems");
+        }
+      });
+    });
+
+    describe("lowering flag is a no-op in Phase 1", () => {
+      it("produces identical output for 'build' and 'snapshot' lowering", () => {
+        const buildResult = parseTagArgument("minLength", "5", "build");
+        const snapshotResult = parseTagArgument("minLength", "5", "snapshot");
+        expect(buildResult).toEqual(snapshotResult);
+      });
+    });
   });
 
   // Slice B owns these.
@@ -228,3 +593,5 @@ describe("parseTagArgument", () => {
 // Suppress unused-import lint for TagArgumentValue — it is imported here so
 // that Slices A/B/C can reference it in tests without adding a new import.
 type _TagArgumentValueUnused = TagArgumentValue;
+// Suppress unused-import lint for TagArgumentLowering.
+type _TagArgumentLoweringUnused = TagArgumentLowering;

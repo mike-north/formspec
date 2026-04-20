@@ -148,7 +148,7 @@ function parseUniqueItemsArgument(rawArgumentText: string): TagArgumentParseResu
 }
 
 /**
- * Parses the argument for `@pattern` (string-opaque family).
+ * Parses the argument for `@pattern` (string family).
  *
  * Preserves current opaque-pass-through behavior per §3 of the retirement
  * plan: the raw text is trimmed and returned as-is. `new RegExp(text)` is
@@ -170,6 +170,105 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
   return { ok: true, value: { kind: "string", value: trimmed } };
 }
 
+/**
+ * Matches decimal numeric literals only: optional sign, decimal digits, optional
+ * fractional part, optional scientific exponent. Does NOT match hex (`0x`),
+ * binary (`0b`), octal (`0o`), or any other non-decimal form.
+ *
+ * Used as a pre-check in {@link parseNumericArgument} to prevent `Number()`
+ * from silently accepting non-TSDoc-idiomatic forms like `0x10` → `16`.
+ */
+const DECIMAL_PATTERN = /^-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;
+
+/**
+ * Parses a numeric argument for both the "numeric" and "length" families.
+ *
+ * Phase 1 semantics (per §3 of the retirement plan):
+ * - Empty/whitespace-only text → MISSING_TAG_ARGUMENT
+ * - `Infinity`, `-Infinity`, `NaN` identifiers → accepted as-is (pins current
+ *   snapshot-consumer behavior; build-consumer stringifies — divergence is
+ *   handled by `lowering` in Phase 2/3)
+ * - Non-decimal numeric forms (hex `0x`, binary `0b`, octal `0o`) → INVALID
+ * - Scientific overflow (e.g. `1e400` → Infinity) → INVALID (only the explicit
+ *   `Infinity` identifier, not overflow, is accepted)
+ * - `Number(text) === NaN` (and text was not the literal "NaN") → INVALID_TAG_ARGUMENT
+ * - Otherwise → `{ kind: "number", value }` with the parsed number
+ *
+ * Integer erasure is preserved: `@minLength 1.5` returns `ok: true` with
+ * `value: 1.5`. Rejecting non-integer values is a Role D concern, not Role C.
+ *
+ * The `family` and `_lowering` parameters are unused in Phase 1 but are
+ * accepted here for forward-compatibility with Phase 2/3 divergence wiring.
+ *
+ * @param tagName - normalized tag name (no "@"), typed as a known registry key
+ * @param rawArgumentText - argument text, already stripped of path-target prefix
+ * @param _family - "numeric" or "length"; reserved for Phase 2/3 message divergence
+ *   (rename to `family` when Phase 2/3 diverges error messages between families)
+ * @param _lowering - build vs snapshot; reserved for Phase 2/3 consumer wiring
+ */
+// TODO Phase 2/5: consolidate numeric parsing with tag-value-parser.ts
+function parseNumericArgument(
+  tagName: keyof typeof TAG_ARGUMENT_FAMILIES,
+  rawArgumentText: string,
+  _family: "numeric" | "length",
+  _lowering: TagArgumentLowering
+): TagArgumentParseResult {
+  const text = rawArgumentText.trim();
+
+  if (text.length === 0) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
+        message: `Expected a numeric literal for @${tagName}.`,
+      },
+    };
+  }
+
+  // Pin current consumer behavior: Infinity, -Infinity, and NaN are accepted
+  // as valid numeric arguments. The synthetic snapshot path passes these
+  // identifiers through as-is. See §3 "Tie-break Infinity/NaN" and §9.3 #16.
+  if (text === "Infinity") {
+    return { ok: true, value: { kind: "number", value: Infinity } };
+  }
+  if (text === "-Infinity") {
+    return { ok: true, value: { kind: "number", value: -Infinity } };
+  }
+  if (text === "NaN") {
+    return { ok: true, value: { kind: "number", value: NaN } };
+  }
+
+  // Reject non-decimal numeric literals (hex, binary, octal) and any other
+  // non-TSDoc-idiomatic form that `Number()` would silently accept.
+  // The explicit `Infinity`/`-Infinity`/`NaN` identifiers are handled above.
+  if (!DECIMAL_PATTERN.test(text)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: `Expected a numeric literal for @${tagName}, got "${text}".`,
+      },
+    };
+  }
+
+  const value = Number(text);
+
+  // A decimal literal that overflows to Infinity (e.g. `1e400`) is not a valid
+  // TSDoc constraint argument. Only the explicit `Infinity` identifier (handled
+  // above) is accepted.
+  if (!isFinite(value)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: `Expected a finite numeric literal for @${tagName}, got ${text} (overflows to Infinity).`,
+      },
+    };
+  }
+
+  return { ok: true, value: { kind: "number", value } };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -188,7 +287,7 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
 export function parseTagArgument(
   tagName: string,
   rawArgumentText: string,
-  _lowering: TagArgumentLowering,
+  _lowering: TagArgumentLowering
 ): TagArgumentParseResult {
   // Guard against prototype-pollution: names like "toString", "constructor", or
   // "__proto__" exist on every plain object's prototype chain and would bypass
@@ -212,9 +311,22 @@ export function parseTagArgument(
   // handled. Slices A, B, C replace the throwNotImplemented calls.
   switch (family) {
     case "numeric":
-      return throwNotImplemented(family);
+      // Cast is safe: Object.hasOwn guard above confirmed tagName ∈ TAG_ARGUMENT_FAMILIES.
+      return parseNumericArgument(
+        tagName as keyof typeof TAG_ARGUMENT_FAMILIES,
+        rawArgumentText,
+        "numeric",
+        _lowering
+      );
     case "length":
-      return throwNotImplemented(family);
+      // Same parse rule as numeric; Phase 2/3 may diverge them if needed.
+      // Cast is safe: same Object.hasOwn guard as the "numeric" arm.
+      return parseNumericArgument(
+        tagName as keyof typeof TAG_ARGUMENT_FAMILIES,
+        rawArgumentText,
+        "length",
+        _lowering
+      );
     case "boolean-marker":
       return parseUniqueItemsArgument(rawArgumentText);
     case "string":
