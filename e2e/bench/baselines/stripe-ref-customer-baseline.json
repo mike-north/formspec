@@ -1,0 +1,33 @@
+{
+  "phase": "0",
+  "description": "Stripe Ref<Customer> stress-test — Phase 0 pre-refactor baseline (§8.4a)",
+  "fixture": "e2e/fixtures/stripe-ref-customer/customer-ref-form.ts",
+  "typeName": "CustomerRefForm",
+  "fieldCount": 30,
+  "runs": 5,
+  "resolvePayloadAvailable": false,
+  "metrics": {
+    "peakRSS_MB": 921.8,
+    "wallTime_ms": 44.8,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      44.51,
+      53.64,
+      45.08,
+      43.75
+    ],
+    "allPeakRSS_MB": [
+      901.8,
+      909.8,
+      918,
+      925.6,
+      933.3
+    ],
+    "coldWallTime_ms": 1657.05
+  },
+  "gitSha": "57437ffa65381db44876480a79482f8e6edf78ac",
+  "timestamp": "2026-04-20T00:20:47.493Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}
