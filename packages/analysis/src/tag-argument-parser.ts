@@ -342,7 +342,12 @@ function parseEnumOptionsArgument(rawArgumentText: string): TagArgumentParseResu
     };
   }
 
-  if (!parsed.every(isJsonValue)) {
+  // Re-bind to unknown[] so the isJsonValue predicate narrows soundly to
+  // JsonValue[] instead of relying on the any-typed Array.isArray narrowing
+  // (Array.isArray(x: unknown) narrows to any[], not unknown[]).
+  const arr: unknown[] = parsed;
+
+  if (!arr.every(isJsonValue)) {
     return {
       ok: false,
       diagnostic: {
@@ -354,7 +359,7 @@ function parseEnumOptionsArgument(rawArgumentText: string): TagArgumentParseResu
 
   return {
     ok: true,
-    value: { kind: "json-array", value: parsed },
+    value: { kind: "json-array", value: arr },
   };
 }
 
