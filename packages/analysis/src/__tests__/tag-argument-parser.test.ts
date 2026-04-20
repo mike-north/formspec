@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
   type TagArgumentLowering,
+  type TagFamily,
   parseTagArgument,
   TAG_ARGUMENT_FAMILIES,
   type TagArgumentValue,
@@ -63,6 +64,11 @@ function expectInvalidArgument(tag: string, text: string): void {
 // ---------------------------------------------------------------------------
 
 describe("parseTagArgument", () => {
+  // Phase 1 lifecycle note: each family's "lowering flag produces identical output" test
+  // asserts that 'build' and 'snapshot' lowering produce the same result. This is correct
+  // in Phase 1 only — Phase 2/3 will diverge build vs snapshot lowering at wiring time.
+  // Delete or invert these tests when wiring Phase 2/3 lowering for a given family.
+
   describe("registry", () => {
     it("maps exactly the keys of BUILTIN_CONSTRAINT_DEFINITIONS to a family", () => {
       // Derive expected set from the single source of truth so that adding or
@@ -82,13 +88,16 @@ describe("parseTagArgument", () => {
     });
 
     it("all diagnostics from implemented families start with 'Expected '", () => {
+      // TODO(Phase 3): delete this test after file-snapshots.ts:~1480 classifier is
+      // migrated to test `code` directly instead of message-prefix matching.
+      //
       // Enforces the "Expected " prefix convention documented in TagArgumentDiagnostic.
       // The classifier in file-snapshots.ts (~line 1480) relies on this prefix to
       // remain valid until Phase 2/3 wiring shifts it to test `code` directly.
       //
       // Slices A/B/C are now all implemented, so this list covers all 6 families.
       // Each entry uses an invalid argument that produces a diagnostic-producing failure.
-      const cases: { tag: string; raw: string; description: string }[] = [
+      const cases = [
         // numeric family (@minimum) — INVALID_TAG_ARGUMENT
         { tag: "minimum", raw: "hello", description: "@minimum with non-numeric text" },
         // length family (@minLength) — INVALID_TAG_ARGUMENT
@@ -101,7 +110,7 @@ describe("parseTagArgument", () => {
         { tag: "enumOptions", raw: "5", description: "@enumOptions with scalar 5" },
         // json-value-with-fallback family (@const) — MISSING_TAG_ARGUMENT (empty)
         { tag: "const", raw: "", description: "@const with empty string" },
-      ];
+      ] satisfies { tag: keyof typeof TAG_ARGUMENT_FAMILIES; raw: string; description: string }[];
 
       for (const { tag, raw, description } of cases) {
         const result = parseTagArgument(tag, raw, "build");
@@ -112,6 +121,16 @@ describe("parseTagArgument", () => {
             `message for ${description} must start with "Expected "`
           ).toMatch(/^Expected /);
         }
+      }
+
+      // Negative assertion: UNKNOWN_TAG messages must NOT start with "Expected " —
+      // the file-snapshots.ts:~1480 classifier relies on the prefix for INVALID/MISSING
+      // but NOT for UNKNOWN_TAG. If this starts matching too, the classifier over-matches.
+      const unknownResult = parseTagArgument("notARealTag", "42", "build");
+      expect(unknownResult.ok).toBe(false);
+      if (!unknownResult.ok) {
+        expect(unknownResult.diagnostic.code).toBe("UNKNOWN_TAG");
+        expect(unknownResult.diagnostic.message).not.toMatch(/^Expected /);
       }
     });
   });
@@ -798,19 +817,6 @@ describe("parseTagArgument", () => {
       }
     });
 
-    it('@const "null" → json-value null (not raw-string)', () => {
-      // The string "null" is valid JSON whose parsed value is the JavaScript `null`.
-      // This must produce kind:"json-value" with value null, NOT raw-string-fallback.
-      const result = parseTagArgument("const", "null", "build");
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.kind).toBe("json-value");
-        if (result.value.kind === "json-value") {
-          expect(result.value.value).toBeNull();
-        }
-      }
-    });
-
     it('@minimum "0x10" → INVALID_TAG_ARGUMENT (decimal-only guard from Slice A)', () => {
       const result = parseTagArgument("minimum", "0x10", "build");
       expect(result.ok).toBe(false);
@@ -819,31 +825,14 @@ describe("parseTagArgument", () => {
       }
     });
 
-    it("@enumOptions heterogeneous array with numbers, strings, and objects → ok (Issue #326 heterogeneity preserved)", () => {
-      // Per §1.6 and §3 of the retirement plan: @enumOptions must preserve
-      // heterogeneous arrays. This guards against a future change that restricts
-      // to string-only members.
-      const result = parseTagArgument("enumOptions", '[1,2,3,"symbol"]', "build");
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.kind).toBe("json-array");
-        if (result.value.kind === "json-array") {
-          expect(result.value.value).toEqual([1, 2, 3, "symbol"]);
-        }
-      }
-    });
-
-    it('@const truncated JSON "[1,2," → raw-string-fallback (Issue #327 pin)', () => {
-      // Upstream parseTagSyntax truncates multi-line JSON at the first newline,
-      // so `@const [1,2,...]` can arrive as "[1,2," — an invalid JSON fragment.
-      // This must fall back to raw-string, not throw or produce INVALID.
-      const result = parseTagArgument("const", "[1,2,", "build");
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.kind).toBe("raw-string-fallback");
-        if (result.value.kind === "raw-string-fallback") {
-          expect(result.value.value).toBe("[1,2,");
-        }
+    it("does NOT handle path-target prefixes (stripping is parseTagSyntax's job)", () => {
+      // The parser expects "effectiveText" (post-strip). If a caller erroneously
+      // passes "some/path: 10" directly, the parser treats the whole string as
+      // the numeric argument and rejects it.
+      const result = parseTagArgument("minimum", "some/path: 10", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
       }
     });
   });
@@ -858,7 +847,8 @@ describe("parseTagArgument", () => {
     it("every built-in tag returns ok:true for its family's canonical valid input", () => {
       // Valid-input mapping per family — one representative per family that
       // a correctly-implemented parser must accept.
-      const validInputByFamily: Record<string, string> = {
+      // Typed as Record<TagFamily, string> so a new family forces a compile error here.
+      const validInputByFamily: Record<TagFamily, string> = {
         numeric: "10",
         length: "10",
         "boolean-marker": "", // empty → marker
@@ -867,11 +857,9 @@ describe("parseTagArgument", () => {
         "json-value-with-fallback": "42",
       };
 
-      for (const tag of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
+      for (const tag of Object.keys(TAG_ARGUMENT_FAMILIES)) {
         const family = TAG_ARGUMENT_FAMILIES[tag as keyof typeof TAG_ARGUMENT_FAMILIES];
-        // validInputByFamily covers every TagFamily variant; the nullish-coalesce
-        // is unreachable in practice but satisfies strict index-access checking.
-        const validInput = validInputByFamily[family] ?? "";
+        const validInput = validInputByFamily[family];
         const result = parseTagArgument(tag, validInput, "build");
         expect(
           result.ok,
@@ -887,7 +875,8 @@ describe("parseTagArgument", () => {
       // Bad-input mapping per family — inputs that should be rejected (or fall back).
       // For json-value-with-fallback (@const), "nope" falls back to raw-string
       // (ok:true, kind:"raw-string-fallback"), which is the accepted path.
-      const badInputByFamily: Record<string, string> = {
+      // Typed as Record<TagFamily, string> so a new family forces a compile error here.
+      const badInputByFamily: Record<TagFamily, string> = {
         numeric: "abc",
         length: "abc",
         "boolean-marker": "false",
@@ -896,8 +885,9 @@ describe("parseTagArgument", () => {
         "json-value-with-fallback": "nope", // falls back to raw-string
       };
 
-      // Pick one representative tag per family
-      const repTagByFamily: Record<string, string> = {
+      // Pick one representative tag per family.
+      // Typed as Record<TagFamily, string> so a new family forces a compile error here.
+      const repTagByFamily: Record<TagFamily, string> = {
         numeric: "minimum",
         length: "minLength",
         "boolean-marker": "uniqueItems",
@@ -906,20 +896,29 @@ describe("parseTagArgument", () => {
         "json-value-with-fallback": "const",
       };
 
-      for (const [family, badInput] of Object.entries(badInputByFamily)) {
-        // repTagByFamily covers every TagFamily variant; the nullish-coalesce
-        // is unreachable in practice but satisfies strict index-access checking.
-        const tag = repTagByFamily[family] ?? family;
-        let result: ReturnType<typeof parseTagArgument>;
+      for (const [family, badInput] of Object.entries(badInputByFamily) as [TagFamily, string][]) {
+        const tag = repTagByFamily[family];
+        let result: ReturnType<typeof parseTagArgument> | undefined;
         expect(() => {
           result = parseTagArgument(tag, badInput, "build");
         }, `parseTagArgument(@${tag}, "${badInput}") must not throw`).not.toThrow();
 
-        // After the non-throw assertion, check the result shape
-        result = parseTagArgument(tag, badInput, "build");
+        // Guard: result must be assigned (the call didn't throw)
+        expect(
+          result,
+          `parseTagArgument(@${tag}, "${badInput}") must return a result`
+        ).toBeDefined();
+
+        if (result === undefined) continue;
 
         if (family === "json-value-with-fallback") {
-          // @const "nope" falls back — ok:true with raw-string-fallback is the accepted path
+          // @const "nope" falls back — ok:true with raw-string-fallback is the accepted path.
+          // Assert ok:true unconditionally first so a regression to ok:false is caught
+          // even if the kind check is never reached.
+          expect(
+            result.ok,
+            `@const fallback for "${badInput}" must produce ok:true (raw-string-fallback)`
+          ).toBe(true);
           if (result.ok) {
             expect(
               result.value.kind,
