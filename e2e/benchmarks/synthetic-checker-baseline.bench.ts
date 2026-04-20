@@ -24,7 +24,7 @@
  * - `syntheticBatchCacheHits` / `syntheticBatchCacheMisses` — LRU cache
  *   behaviour over the warm run window (runs 2-50)
  * - `memoryDeltaBytes` — RSS delta between before and after the run set
- *   (coarse; warm runs only)
+ *   (coarse; includes cold and warm runs)
  *
  * ### Run model
  *
