@@ -2000,6 +2000,46 @@ function getReferencedTypeAliasDeclaration(
   return getTypeAliasDeclarationFromTypeReference(typeNode, checker);
 }
 
+/**
+ * Attempts to recover the original type alias name and declaration for a type
+ * that may have lost its `aliasSymbol` due to TypeScript synthesizing a wrapper
+ * union (e.g. `Currency | undefined` for an optional property `currency?: Currency`).
+ *
+ * First tries the standard `getNamedTypeName` / `getNamedTypeDeclaration` lookup.
+ * When that fails (returns null), falls back to inspecting the source node's type
+ * annotation via `getReferencedTypeAliasDeclaration`.
+ *
+ * The caller decides what to do with the recovered declaration — this function
+ * does NOT filter by whether the alias's underlying type is a union, object, or
+ * anything else. That keeps the helper generic and lets callers apply their own
+ * constraints.
+ *
+ * Returns `{ typeName, namedDecl }` on success, or `null` if no alias can be found.
+ */
+function resolveNamedTypeWithSourceRecovery(
+  type: ts.Type,
+  sourceNode: ts.Node | undefined,
+  checker: ts.TypeChecker
+): { typeName: string; namedDecl: ts.Declaration } | null {
+  const typeName = getNamedTypeName(type);
+  const namedDecl = getNamedTypeDeclaration(type);
+
+  if (typeName !== null && namedDecl !== undefined) {
+    return { typeName, namedDecl };
+  }
+
+  if (sourceNode === undefined) {
+    return null;
+  }
+
+  const refAliasDecl = getReferencedTypeAliasDeclaration(sourceNode, checker);
+  if (refAliasDecl === undefined) {
+    return null;
+  }
+
+  return { typeName: refAliasDecl.name.text, namedDecl: refAliasDecl };
+}
+
 function shouldEmitPrimitiveAliasDefinition(
   typeNode: ts.TypeNode,
   checker: ts.TypeChecker
@@ -2095,8 +2135,46 @@ function resolveUnionType(
   extensionRegistry?: ExtensionRegistry,
   diagnostics?: ConstraintSemanticDiagnostic[]
 ): TypeNode {
-  const typeName = getNamedTypeName(type);
-  const namedDecl = getNamedTypeDeclaration(type);
+  // Recovery for optional properties: TypeScript synthesizes e.g. `Currency | undefined`
+  // for `currency?: Currency`, or `Address | undefined` for `addr?: Address`. The
+  // synthesized wrapper union loses the `aliasSymbol` from the original alias, so
+  // `getNamedTypeName` returns null and the type gets inlined at every usage site
+  // instead of being deduplicated into `$defs`.
+  //
+  // We use the centralized helper to fall back to the source node's type annotation.
+  // We then accept the recovery only when the alias's underlying type is a union or an
+  // object shape — both cases that `resolveUnionType` handles. Primitive-alias cases
+  // (plain primitive flags) and branded intersection types (e.g. `Integer`) are excluded
+  // because they are handled by `tryResolveNamedPrimitiveAlias` on a per-member basis.
+  // See `resolveNamedTypeWithSourceRecovery` for the fallback mechanism.
+  const recovered = resolveNamedTypeWithSourceRecovery(type, sourceNode, checker);
+  let typeName: string | null = null;
+  let namedDecl: ts.Declaration | undefined;
+  if (recovered !== null) {
+    const recoveredAliasDecl = ts.isTypeAliasDeclaration(recovered.namedDecl)
+      ? recovered.namedDecl
+      : undefined;
+    if (recoveredAliasDecl !== undefined) {
+      const aliasUnderlyingType = checker.getTypeFromTypeNode(recoveredAliasDecl.type);
+      // Accept recovery only for non-generic union or object-shape aliases.
+      // - Generic aliases (e.g. `Ref<T>`) are excluded because recovering the raw alias
+      //   name loses type arguments, which would produce an incorrect $ref.
+      // - Primitive-alias and branded intersection types (e.g. `Integer`) are excluded
+      //   because `tryResolveNamedPrimitiveAlias` handles them on a per-member basis.
+      const isNonGeneric =
+        recoveredAliasDecl.typeParameters === undefined ||
+        recoveredAliasDecl.typeParameters.length === 0;
+      if (isNonGeneric && (aliasUnderlyingType.isUnion() || isObjectType(aliasUnderlyingType))) {
+        typeName = recovered.typeName;
+        namedDecl = recovered.namedDecl;
+      }
+    } else {
+      // Non-alias declarations (interfaces, classes): always accept since these
+      // have proper symbol-based names and are not primitive aliases.
+      typeName = recovered.typeName;
+      namedDecl = recovered.namedDecl;
+    }
+  }
 
   if (typeName && typeName in typeRegistry) {
     return { kind: "reference", name: typeName, typeArguments: [] };
@@ -2131,6 +2209,14 @@ function resolveUnionType(
   const registerNamed = (result: TypeNode): TypeNode => {
     if (!typeName) {
       return result;
+    }
+    // If the inner resolution (e.g. resolveObjectType on a recursive alias) already
+    // finalized a proper body under this name, don't overwrite it with the reference
+    // node we synthesized here — that would destroy the real `$defs` entry and leave
+    // a dangling self-reference like `{ "Tree": { "$ref": "#/$defs/Tree" } }`.
+    const existing = typeRegistry[typeName];
+    if (existing !== undefined && existing.type !== RESOLVING_TYPE_PLACEHOLDER) {
+      return { kind: "reference", name: typeName, typeArguments: [] };
     }
     const annotations = namedDecl
       ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
