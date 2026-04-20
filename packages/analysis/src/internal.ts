@@ -170,7 +170,9 @@ export {
 } from "./unified-comment-parser.js";
 export {
   parseTagArgument,
+  mapTypedParserDiagnosticCode,
   TAG_ARGUMENT_DIAGNOSTIC_CODES,
+  type MappedTypedParserCode,
   type TagArgumentValue,
   type TagArgumentParseResult,
   type TagArgumentDiagnostic,

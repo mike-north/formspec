@@ -54,6 +54,8 @@ export type ConstraintValidatorConsumer = "build" | "snapshot";
  *   D1 — direct-field custom-constraint dispatch (no synthetic involvement)
  *   D2 — path-target built-in broadening dispatch
  *   bypass — broadening registry short-circuit (tag accepted without role-C check)
+ *   D-pass — synthetic batch accepted a tag that previously passed Role-C (no diagnostics
+ *             produced by the synthetic checker for this application)
  *
  * @public
  */
@@ -64,6 +66,7 @@ export type ConstraintValidatorRoleOutcome =
   | "B-reject"
   | "C-pass"
   | "C-reject"
+  | "D-pass"
   | "D1"
   | "D2"
   | "bypass";

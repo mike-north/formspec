@@ -55,17 +55,21 @@ import {
   hasTypeSemanticCapability,
   resolveDeclarationPlacement,
   resolvePathTargetType,
+  stripNullishUnion,
 } from "./ts-binding.js";
 import { noopLogger } from "@formspec/core";
+import { isBuiltinConstraintName } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
   getSyntheticLogger,
+  getTypedParserLogger,
   describeTypeKind,
   logTagApplication,
   nowMicros,
   elapsedMicros,
   type ConstraintValidatorRoleOutcome,
 } from "./constraint-validator-logger.js";
+import { mapTypedParserDiagnosticCode, parseTagArgument } from "./tag-argument-parser.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -197,6 +201,64 @@ function createConstraintTagRegistry(
       return undefined;
     },
   };
+}
+
+/**
+ * §4 Phase 3 — snapshot-path broadening check.
+ *
+ * Returns `true` when the given builtin constraint tag has a registered
+ * broadening for the field's TypeScript type. When broadening is active the
+ * tag application bypasses Role C (typed-argument validation) and proceeds
+ * directly to the synthetic batch, which routes it to D1/D2 handling.
+ *
+ * This mirrors the build path's `hasBuiltinConstraintBroadening` function in
+ * `tsdoc-parser.ts`, adapted for the snapshot consumer's data model:
+ *   - The build path holds a full `ExtensionRegistry` with `fieldType` IR data.
+ *   - The snapshot path holds `ExtensionDefinition[]` with TypeScript type names.
+ *   The type is matched by name against `registration.tsTypeNames ?? [typeName]`,
+ *   which is the same string-based detection used elsewhere in file-snapshots.ts.
+ *
+ * Notably, `isIntegerBrandedType` bypass is NOT replicated here. That bypass is
+ * a known build/snapshot divergence (PR #315 / file-snapshots.integer-bypass
+ * test) and is tracked separately. Phase 3 only wires the extension-registry
+ * broadening check.
+ */
+// TODO(Phase 4/5): consolidate with hasBuiltinConstraintBroadening in
+// tsdoc-parser.ts. Same semantic question ("does this tag have a registered
+// broadening for this type?"); different data model (TypeScript type-name
+// strings here, IR FieldType + ExtensionRegistry there). Unify once symbol-
+// based detection replaces name-based detection.
+function hasExtensionBroadening(
+  tagName: string,
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): boolean {
+  if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
+    return false;
+  }
+
+  // Strip nullish union members (| null | undefined) before name-matching,
+  // consistent with how the build path strips before isIntegerBrandedType.
+  const effectiveType = stripNullishUnion(subjectType);
+  const typeName = checker.typeToString(effectiveType);
+
+  for (const extension of extensionDefinitions) {
+    for (const type of extension.types ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
+      const registeredNames = type.tsTypeNames ?? [type.typeName];
+      if (!registeredNames.includes(typeName)) {
+        continue;
+      }
+      for (const broadening of type.builtinConstraintBroadenings ?? []) {
+        if (broadening.tagName === tagName) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 function renderTargetLabel(targetPath: string | null): string {
@@ -954,6 +1016,7 @@ function isIdentifierLikeTagOperand(argumentText: string): boolean {
 
 function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"] {
   switch (code) {
+    case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
     case "INVALID_TAG_PLACEMENT":
     case "SYNTHETIC_SETUP_FAILURE":
@@ -977,6 +1040,7 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
 
 function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"] {
   switch (code) {
+    case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
       return "value-parsing";
     case "INVALID_TAG_PLACEMENT":
@@ -1249,7 +1313,8 @@ function buildTagDiagnostics(
   subjectType: ts.Type | undefined,
   commentTags: ReturnType<typeof parseCommentBlock>["tags"],
   semanticOptions: CommentSemanticContextOptions,
-  performance: FormSpecPerformanceRecorder | undefined
+  performance: FormSpecPerformanceRecorder | undefined,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
 ): FormSpecAnalysisDiagnostic[] {
   if (placement === null || subjectType === undefined) {
     return [];
@@ -1284,7 +1349,9 @@ function buildTagDiagnostics(
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
   const syntheticLog = getSyntheticLogger();
+  const typedParserLog = getTypedParserLogger();
   const snapshotLogsEnabled = snapshotLog !== noopLogger;
+  const typedParserTraceEnabled = typedParserLog !== noopLogger;
 
   const syntheticApplications: {
     readonly tag: (typeof commentTags)[number];
@@ -1358,6 +1425,109 @@ function buildTagDiagnostics(
     // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
     // above the loop. Both are only consumed when logging is enabled.
     const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
+
+    // §4 Phase 3 — Role C: validate argument literal via the typed parser BEFORE
+    // the synthetic-checker call, mirroring the Phase 2 wiring in tsdoc-parser.ts.
+    //
+    // IMPORTANT (Lesson 1 from Phase 2): the broadening check MUST run BEFORE the
+    // typed-parser call. Broadened fields (D1/D2) bypass Role C entirely. Without
+    // this guard a broadened field whose argument the typed parser would reject
+    // (e.g. a custom type with a registered @minimum broadening) would spuriously
+    // emit INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
+    //
+    // Guard: only call parseTagArgument for builtin constraint tags. Extension tags
+    // are not in the typed parser's registry (they would return UNKNOWN_TAG), and
+    // they bypass this path via the `!isBuiltinConstraintName` guard below.
+    //
+    // Behaviour (non-broadened builtin constraint path):
+    //   - ok: false → emit INVALID_TAG_ARGUMENT or MISSING_TAG_ARGUMENT; skip
+    //                 adding this application to syntheticApplications.
+    //   - ok: true (including raw-string-fallback for @const) → proceed to
+    //                 lowerTagApplicationToSyntheticCall as before.
+    if (isBuiltinConstraintName(tag.normalizedTagName)) {
+      const hasBroadening = hasExtensionBroadening(
+        tag.normalizedTagName,
+        subjectType,
+        checker,
+        extensionDefinitions
+      );
+      // TODO(Phase 4): add isIntegerBrandedType bypass here before removing the
+      // synthetic checker. Snapshot consumer does NOT currently have this bypass
+      // (tracked in #325); build consumer's tsdoc-parser.ts does. Phase 4 must
+      // unify before the synthetic checker can be deleted in Phase 5.
+
+      if (!hasBroadening) {
+        // TODO(Phase 4): Snapshot consumer passes tag.argumentText directly; build consumer
+        // re-derives via parseTagSyntax(tagName, rawText).argumentText to handle the
+        // TAGS_REQUIRING_RAW_TEXT compiler-API fallback path. Reconcile in Phase 4
+        // once both consumers use a shared argument-text extraction helper.
+        const typedParseResult = parseTagArgument(
+          tag.normalizedTagName,
+          tag.argumentText,
+          "snapshot"
+        );
+
+        if (!typedParseResult.ok) {
+          // §8.3 — emit typed-parser trace log when enabled.
+          if (typedParserTraceEnabled) {
+            typedParserLog.trace("typed-parser C-reject", {
+              consumer: "snapshot",
+              tag: tag.normalizedTagName,
+              placement,
+              subjectTypeKind: subjectTypeKindForLog !== "" ? subjectTypeKindForLog : "-",
+              roleOutcome: "C-reject",
+              diagnosticCode: typedParseResult.diagnostic.code,
+            });
+          }
+
+          // Map the typed-parser diagnostic code to a snapshot diagnostic code.
+          // UNKNOWN_TAG is structurally unreachable here: parseTagArgument is only
+          // called after isBuiltinConstraintName guard above. If it fires, it's a bug.
+          // mapTypedParserDiagnosticCode provides an exhaustive switch shared with the
+          // build consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
+          const mappedCode = mapTypedParserDiagnosticCode(
+            typedParseResult.diagnostic.code,
+            tag.normalizedTagName,
+          );
+
+          diagnostics.push(
+            createAnalysisDiagnostic(mappedCode, typedParseResult.diagnostic.message, tag.fullSpan, {
+              tagName: tag.normalizedTagName,
+              placement,
+              ...(target === null
+                ? {}
+                : { targetKind: target.kind, targetText: target.text }),
+            })
+          );
+          // Skip adding to syntheticApplications — typed parser already rejected at Role C.
+          continue;
+        }
+
+        // Typed parser accepted the argument. Log at trace level before falling
+        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 4).
+        if (typedParserTraceEnabled) {
+          typedParserLog.trace("typed-parser C-pass", {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog !== "" ? subjectTypeKindForLog : "-",
+            roleOutcome: "C-pass",
+            valueKind: typedParseResult.value.kind,
+          });
+        }
+      } else {
+        // Broadened — bypass typed parser. Log at trace level if enabled.
+        if (typedParserTraceEnabled) {
+          typedParserLog.trace("typed-parser bypass", {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog !== "" ? subjectTypeKindForLog : "-",
+            roleOutcome: "bypass",
+          });
+        }
+      }
+    }
 
     try {
       const syntheticOptions = {
@@ -1459,10 +1629,14 @@ function buildTagDiagnostics(
     }
 
     // §8.3b — determine role outcome for this tag application and log.
+    // "D-pass": the synthetic batch produced no diagnostics for this application.
+    // This is distinct from "C-pass" (typed-parser accepted the argument literal
+    // at Role C before the synthetic batch ran). "D-pass" means the synthetic
+    // checker found nothing wrong after Role C already passed.
     if (snapshotLogsEnabled) {
       const roleOutcome: ConstraintValidatorRoleOutcome =
         result.diagnostics.length === 0
-          ? "C-pass"
+          ? "D-pass"
           : result.diagnostics.some((d) => d.message.includes("No overload"))
             ? "A-reject"
             : "C-reject";
@@ -1654,7 +1828,8 @@ export function buildFormSpecAnalysisFileSnapshot(
                   placement,
                   ...(extensions === undefined ? {} : { extensions }),
                 },
-                options.performance
+                options.performance,
+                options.extensionDefinitions
               )
           )
         );
