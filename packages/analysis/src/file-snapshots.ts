@@ -69,7 +69,7 @@ import {
   elapsedMicros,
   type ConstraintValidatorRoleOutcome,
 } from "./constraint-validator-logger.js";
-import { parseTagArgument } from "./tag-argument-parser.js";
+import { mapTypedParserDiagnosticCode, parseTagArgument } from "./tag-argument-parser.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -223,6 +223,11 @@ function createConstraintTagRegistry(
  * test) and is tracked separately. Phase 3 only wires the extension-registry
  * broadening check.
  */
+// TODO(Phase 4/5): consolidate with hasBuiltinConstraintBroadening in
+// tsdoc-parser.ts. Same semantic question ("does this tag have a registered
+// broadening for this type?"); different data model (TypeScript type-name
+// strings here, IR FieldType + ExtensionRegistry there). Unify once symbol-
+// based detection replaces name-based detection.
 function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
@@ -1011,6 +1016,7 @@ function isIdentifierLikeTagOperand(argumentText: string): boolean {
 
 function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"] {
   switch (code) {
+    case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
     case "INVALID_TAG_PLACEMENT":
     case "SYNTHETIC_SETUP_FAILURE":
@@ -1034,6 +1040,7 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
 
 function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"] {
   switch (code) {
+    case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
       return "value-parsing";
     case "INVALID_TAG_PLACEMENT":
@@ -1444,8 +1451,16 @@ function buildTagDiagnostics(
         checker,
         extensionDefinitions
       );
+      // TODO(Phase 4): add isIntegerBrandedType bypass here before removing the
+      // synthetic checker. Snapshot consumer does NOT currently have this bypass
+      // (tracked in #325); build consumer's tsdoc-parser.ts does. Phase 4 must
+      // unify before the synthetic checker can be deleted in Phase 5.
 
       if (!hasBroadening) {
+        // TODO(Phase 4): Snapshot consumer passes tag.argumentText directly; build consumer
+        // re-derives via parseTagSyntax(tagName, rawText).argumentText to handle the
+        // TAGS_REQUIRING_RAW_TEXT compiler-API fallback path. Reconcile in Phase 4
+        // once both consumers use a shared argument-text extraction helper.
         const typedParseResult = parseTagArgument(
           tag.normalizedTagName,
           tag.argumentText,
@@ -1468,27 +1483,12 @@ function buildTagDiagnostics(
           // Map the typed-parser diagnostic code to a snapshot diagnostic code.
           // UNKNOWN_TAG is structurally unreachable here: parseTagArgument is only
           // called after isBuiltinConstraintName guard above. If it fires, it's a bug.
-          // Lesson 3 from Phase 2: use exhaustive switch, NOT a binary ternary —
-          // a ternary silently collapses UNKNOWN_TAG to INVALID_TAG_ARGUMENT.
-          let mappedCode: "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
-          switch (typedParseResult.diagnostic.code) {
-            case "MISSING_TAG_ARGUMENT":
-              mappedCode = "MISSING_TAG_ARGUMENT";
-              break;
-            case "INVALID_TAG_ARGUMENT":
-              mappedCode = "INVALID_TAG_ARGUMENT";
-              break;
-            case "UNKNOWN_TAG":
-              // Structurally unreachable: parseTagArgument is only called for tags
-              // that passed the isBuiltinConstraintName guard above.
-              throw new Error(
-                `Unexpected UNKNOWN_TAG from parseTagArgument("${tag.normalizedTagName}") — tag passed isBuiltinConstraintName guard.`
-              );
-            default: {
-              const _exhaustive: never = typedParseResult.diagnostic.code;
-              throw new Error(`Unhandled diagnostic code: ${String(_exhaustive)}`);
-            }
-          }
+          // mapTypedParserDiagnosticCode provides an exhaustive switch shared with the
+          // build consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
+          const mappedCode = mapTypedParserDiagnosticCode(
+            typedParseResult.diagnostic.code,
+            tag.normalizedTagName,
+          );
 
           diagnostics.push(
             createAnalysisDiagnostic(mappedCode, typedParseResult.diagnostic.message, tag.fullSpan, {
@@ -1629,10 +1629,14 @@ function buildTagDiagnostics(
     }
 
     // §8.3b — determine role outcome for this tag application and log.
+    // "D-pass": the synthetic batch produced no diagnostics for this application.
+    // This is distinct from "C-pass" (typed-parser accepted the argument literal
+    // at Role C before the synthetic batch ran). "D-pass" means the synthetic
+    // checker found nothing wrong after Role C already passed.
     if (snapshotLogsEnabled) {
       const roleOutcome: ConstraintValidatorRoleOutcome =
         result.diagnostics.length === 0
-          ? "C-pass"
+          ? "D-pass"
           : result.diagnostics.some((d) => d.message.includes("No overload"))
             ? "A-reject"
             : "C-reject";

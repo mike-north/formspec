@@ -46,7 +46,7 @@ function snapshotDiagnosticsFor(
   tagArg: string,
   fieldType: string,
   label: string
-): readonly { code: string; message: string }[] {
+): readonly { code: string; message: string; severity: string; category: string }[] {
   const source = [
     "class TestForm {",
     `  /** @${tagName} ${tagArg} */`,
@@ -72,12 +72,18 @@ describe("@minimum typed-parser Role-C canaries (snapshot consumer)", () => {
     // (typed parser rejects non-numeric argument for @minimum).
     // Before Phase 3 this triggered TYPE_MISMATCH from the synthetic checker.
     // After Phase 3 the typed parser intercepts it at Role C.
+    //
+    // Severity/category canary: INVALID_TAG_ARGUMENT must be severity "error" and
+    // category "value-parsing". This guards against diagnosticSeverity /
+    // diagnosticCategory fall-through regressions (same fix covers MISSING_TAG_ARGUMENT).
     const diagnostics = snapshotDiagnosticsFor("minimum", '"hello"', "number", "string-arg");
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(
-      diagnostic,
-      "Expected INVALID_TAG_ARGUMENT for string-literal argument from typed parser"
-    ).toBeDefined();
+      invalidArgDiags,
+      "Expected exactly one INVALID_TAG_ARGUMENT for string-literal argument from typed parser"
+    ).toHaveLength(1);
+    expect(invalidArgDiags[0]?.severity).toBe("error");
+    expect(invalidArgDiags[0]?.category).toBe("value-parsing");
     // TYPE_MISMATCH must NOT appear — the synthetic checker must not fire.
     expect(
       diagnostics.some((d) => d.code === "TYPE_MISMATCH"),
@@ -128,9 +134,9 @@ describe("@uniqueItems typed-parser Role-C canaries (snapshot consumer)", () => 
     //   - Absence of TYPE_MISMATCH confirms the synthetic checker does NOT fire.
     const diagnostics = snapshotDiagnosticsFor("uniqueItems", "false", "string[]", "false-arg");
     expect(
-      diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT"),
-      "Expected INVALID_TAG_ARGUMENT from typed parser (Role C)"
-    ).toBe(true);
+      diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT"),
+      "Expected exactly one INVALID_TAG_ARGUMENT from typed parser (Role C)"
+    ).toHaveLength(1);
     expect(
       diagnostics.some((d) => d.code === "TYPE_MISMATCH"),
       "Expected no TYPE_MISMATCH — synthetic checker must not run after Role-C rejection"
@@ -149,12 +155,26 @@ describe("@enumOptions typed-parser Role-C canaries (snapshot consumer)", () => 
     // Before Phase 3 this was a `.fails` case (constraint-canaries.test.ts).
     // Phase 3 wires the typed parser into the snapshot path, converting it.
     const diagnostics = snapshotDiagnosticsFor("enumOptions", "5", "string", "scalar");
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(
-      diagnostic,
-      "Expected INVALID_TAG_ARGUMENT for scalar @enumOptions argument"
-    ).toBeDefined();
-    expect(diagnostic?.message).toContain("JSON array");
+      invalidArgDiags,
+      "Expected exactly one INVALID_TAG_ARGUMENT for scalar @enumOptions argument"
+    ).toHaveLength(1);
+    expect(invalidArgDiags[0]?.message).toContain("JSON array");
+  });
+
+  it("emits INVALID_TAG_ARGUMENT for an object argument (@enumOptions {})", () => {
+    // parseTagArgument("enumOptions", "{}", "snapshot") → INVALID_TAG_ARGUMENT
+    // "Expected @enumOptions to be a JSON array, got object."
+    // Mirrors the build-consumer canary for @enumOptions {} (typed-parser-canaries.test.ts).
+    // Phase 3 wires the typed parser into the snapshot path for this case.
+    const diagnostics = snapshotDiagnosticsFor("enumOptions", "{}", "string", "object");
+    const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(
+      invalidArgDiags,
+      "Expected exactly one INVALID_TAG_ARGUMENT for object @enumOptions argument"
+    ).toHaveLength(1);
+    expect(invalidArgDiags[0]?.message).toContain("JSON array");
   });
 });
 
