@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
   parseTagArgument,
   TAG_ARGUMENT_FAMILIES,
@@ -7,23 +8,11 @@ import {
 
 describe("parseTagArgument", () => {
   describe("registry", () => {
-    it("maps all 13 constraint-tag names to a family", () => {
-      // Assert TAG_ARGUMENT_FAMILIES has exactly these entries.
-      const expected = new Set([
-        "minimum",
-        "maximum",
-        "exclusiveMinimum",
-        "exclusiveMaximum",
-        "multipleOf",
-        "minLength",
-        "maxLength",
-        "minItems",
-        "maxItems",
-        "uniqueItems",
-        "pattern",
-        "enumOptions",
-        "const",
-      ]);
+    it("maps exactly the keys of BUILTIN_CONSTRAINT_DEFINITIONS to a family", () => {
+      // Derive expected set from the single source of truth so that adding or
+      // removing a tag in core automatically fails this test instead of silently
+      // drifting out of sync with a hard-coded list.
+      const expected = new Set(Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS));
       expect(new Set(Object.keys(TAG_ARGUMENT_FAMILIES))).toEqual(expected);
     });
 

@@ -141,12 +141,13 @@ export function parseTagArgument(
   _rawArgumentText: string,
   _lowering: TagArgumentLowering,
 ): TagArgumentParseResult {
-  // TAG_ARGUMENT_FAMILIES has literal string keys; tagName is a runtime string,
-  // so the cast is needed to index into the typed map. The `| undefined` is
-  // explicit because noUncheckedIndexedAccess is not enabled in this package.
-  const family = TAG_ARGUMENT_FAMILIES[tagName as keyof typeof TAG_ARGUMENT_FAMILIES] as
-    | TagFamily
-    | undefined;
+  // Guard against prototype-pollution: names like "toString", "constructor", or
+  // "__proto__" exist on every plain object's prototype chain and would bypass
+  // the UNKNOWN_TAG path if indexed directly. Object.hasOwn() confines the
+  // lookup to own properties only.
+  const family: TagFamily | undefined = Object.hasOwn(TAG_ARGUMENT_FAMILIES, tagName)
+    ? TAG_ARGUMENT_FAMILIES[tagName as keyof typeof TAG_ARGUMENT_FAMILIES]
+    : undefined;
 
   if (family === undefined) {
     return {
