@@ -112,16 +112,6 @@ export const TAG_ARGUMENT_FAMILIES = {
 // ---------------------------------------------------------------------------
 
 /**
- * Throws a clearly-labelled "not-implemented" error for a tag family.
- * Slices A, B, and C replace this throw with real implementations.
- *
- * @param family - the family whose parser has not yet been implemented
- */
-function throwNotImplemented(family: TagFamily): never {
-  throw new Error(`not-implemented: tag family "${family}" parser (Slice A/B/C)`);
-}
-
-/**
  * Parses the argument for `@uniqueItems` (boolean-marker family).
  *
  * Preserves current `tag-value-parser.ts` semantics exactly:
@@ -269,6 +259,160 @@ function parseNumericArgument(
   return { ok: true, value: { kind: "number", value } };
 }
 
+/**
+ * Returns true when `value` is a valid JSON domain value.
+ *
+ * `JSON.parse` in standard runtimes only ever produces values in the
+ * JSON domain, but the type system cannot prove that — it returns `any`.
+ * This guard bridges that gap so that we can assign the result to
+ * `JsonValue` without an unsound cast.
+ *
+ * The object branch is intentionally strict:
+ * - rejects arrays (handled by the array branch)
+ * - rejects class instances and wrapped primitives (`Object(10n)`)
+ * - rejects objects with symbol-keyed own properties
+ * - only accepts `Object.prototype` objects with `JsonValue` own values
+ */
+function isJsonValue(value: unknown): value is JsonValue {
+  if (value === null) return true;
+  const t = typeof value;
+  if (t === "string" || t === "number" || t === "boolean") return true;
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  if (t === "object") {
+    // Reject class instances, wrapped primitives, etc.
+    if (Object.getPrototypeOf(value) !== Object.prototype) return false;
+    // Reject symbol-keyed own properties (not expressible in JSON).
+    if (Object.getOwnPropertySymbols(value).length > 0) return false;
+    return Object.values(value as Record<string, unknown>).every(isJsonValue);
+  }
+  return false;
+}
+
+/**
+ * Parses the argument text for `@enumOptions` (json-array family).
+ *
+ * Rules (preserving tag-value-parser.ts:~178-204 semantics):
+ * - Empty or whitespace-only text → MISSING_TAG_ARGUMENT
+ * - Invalid JSON → INVALID_TAG_ARGUMENT
+ * - Valid JSON but not an array → INVALID_TAG_ARGUMENT (reports typeof)
+ * - Valid JSON array with any non-JsonValue member → INVALID_TAG_ARGUMENT
+ * - Valid JSON array of JsonValue members → ok with { kind: "json-array", value: parsed }
+ *
+ * @remarks
+ * Member-type acceptance and filtering beyond the JsonValue domain is Role D
+ * (tag-value-parser.ts:~183-195). Role D accepts `string`, `number`, and
+ * `{id: string|number}` members and silently drops anything else. This parser
+ * (Role C) validates that every element is a legal JSON value; Role D then
+ * further narrows the set to semantically valid enum-option members.
+ */
+function parseEnumOptionsArgument(rawArgumentText: string): TagArgumentParseResult {
+  const trimmed = rawArgumentText.trim();
+
+  if (trimmed === "") {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
+        message: "Expected a JSON array for @enumOptions.",
+      },
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed) as unknown;
+  } catch (e) {
+    if (!(e instanceof SyntaxError)) throw e;
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: "Expected @enumOptions to be a JSON array, got invalid JSON.",
+      },
+    };
+  }
+
+  if (!Array.isArray(parsed)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: `Expected @enumOptions to be a JSON array, got ${typeof parsed}.`,
+      },
+    };
+  }
+
+  if (!parsed.every(isJsonValue)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: "Expected @enumOptions elements to be JSON values, got invalid member type.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    value: { kind: "json-array", value: parsed },
+  };
+}
+
+/**
+ * Parses the argument text for `@const` (json-value-with-fallback family).
+ *
+ * Rules (preserving tag-value-parser.ts:~151-176 semantics):
+ * - Empty or whitespace-only text → MISSING_TAG_ARGUMENT
+ * - Valid JSON → ok with { kind: "json-value", value: parsed }
+ * - Invalid JSON → ok with { kind: "raw-string-fallback", value: trimmedText }
+ *   The raw-string fallback is a SUCCESSFUL outcome, not a diagnostic. The
+ *   downstream IR compatibility check decides if the raw string matches the
+ *   target type (semantic-targets.ts:~1255-1298).
+ *
+ * Note: parseTagSyntax truncates multi-line JSON at the first newline before
+ * this parser runs (upstream issue #327 / PR #314 pin), so `@const [\n1,\n2\n]`
+ * arrives as `"["` and hits the fallback path intentionally.
+ */
+function parseConstArgument(rawArgumentText: string): TagArgumentParseResult {
+  const trimmed = rawArgumentText.trim();
+
+  if (trimmed === "") {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
+        message: "Expected a JSON value for @const.",
+      },
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed) as unknown;
+  } catch (e) {
+    if (!(e instanceof SyntaxError)) throw e;
+    return {
+      ok: true,
+      value: { kind: "raw-string-fallback", value: trimmed },
+    };
+  }
+
+  if (!isJsonValue(parsed)) {
+    // Defensive: JSON.parse in standard runtimes only produces JsonValue-domain
+    // results, but the type system can't prove it. Fall back to raw-string to
+    // preserve current semantics.
+    return {
+      ok: true,
+      value: { kind: "raw-string-fallback", value: trimmed },
+    };
+  }
+
+  return {
+    ok: true,
+    value: { kind: "json-value", value: parsed },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -307,8 +451,8 @@ export function parseTagArgument(
     };
   }
 
-  // Exhaustive switch — TypeScript's `never` check ensures all families are
-  // handled. Slices A, B, C replace the throwNotImplemented calls.
+  // Exhaustive switch — TypeScript's `never` check in the default arm ensures
+  // any new TagFamily variant forces a compile error until all cases are wired.
   switch (family) {
     case "numeric":
       // Cast is safe: Object.hasOwn guard above confirmed tagName ∈ TAG_ARGUMENT_FAMILIES.
@@ -332,9 +476,9 @@ export function parseTagArgument(
     case "string":
       return parsePatternArgument(rawArgumentText);
     case "json-array":
-      return throwNotImplemented(family);
+      return parseEnumOptionsArgument(rawArgumentText);
     case "json-value-with-fallback":
-      return throwNotImplemented(family);
+      return parseConstArgument(rawArgumentText);
     default: {
       // Exhaustiveness guard: if a new TagFamily variant is added without
       // updating this switch, the compiler will flag the assignment below.
