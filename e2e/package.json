@@ -10,7 +10,11 @@
     "bench:analysis": "pnpm -r --filter @formspec/build... --filter @formspec/ts-plugin... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/analysis-bench.ts",
     "bench:synthetic-checker": "pnpm -r --filter @formspec/analysis... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/synthetic-checker-baseline.bench.ts",
     "bench:stripe-ref-customer": "pnpm -r --filter @formspec/build... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-ref-customer-bench.ts",
-    "bench:stripe-real-sdk": "pnpm -r --filter @formspec/build... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-real-sdk-bench.ts"
+    "bench:stripe-real-sdk": "pnpm -r --filter @formspec/build... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-real-sdk-bench.ts",
+    "bench:stripe-realistic-build": "pnpm -r --filter @formspec/build... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-realistic-build-bench.ts",
+    "bench:stripe-realistic-snapshot": "pnpm -r --filter @formspec/analysis... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-realistic-snapshot-bench.ts",
+    "bench:stripe-realistic-eslint": "pnpm -r --filter @formspec/eslint-plugin... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-realistic-eslint-bench.ts",
+    "bench:stripe-realistic-tsserver": "pnpm -r --filter @formspec/ts-plugin... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-realistic-tsserver-bench.ts"
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",
@@ -18,11 +22,14 @@
     "@formspec/cli": "workspace:*",
     "@formspec/core": "workspace:*",
     "@formspec/dsl": "workspace:*",
+    "@formspec/eslint-plugin": "workspace:*",
     "@formspec/language-server": "workspace:*",
     "@formspec/ts-plugin": "workspace:*",
     "@formspec/validator": "workspace:*"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.55.0",
+    "eslint": "^9.39.2",
     "stripe": "^22.0.2",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",

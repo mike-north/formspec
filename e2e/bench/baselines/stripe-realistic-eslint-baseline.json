@@ -1,0 +1,30 @@
+{
+  "phase": "0",
+  "surface": "eslint",
+  "description": "Stripe realistic OOM sweep — ESLint surface (tag-type-check rule, direct Stripe types, no Ref<T> wrapper)",
+  "fixture": "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
+  "runs": 3,
+  "oomHeapCapMB": 1024,
+  "metrics": {
+    "peakRSS_MB": 519.1,
+    "wallTime_ms": 2.78,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      3.37,
+      2.18
+    ],
+    "allPeakRSS_MB": [
+      518.8,
+      519,
+      519.1
+    ],
+    "coldWallTime_ms": 420.19,
+    "errorCount": 0,
+    "warningCount": 0
+  },
+  "gitSha": "unknown",
+  "timestamp": "2026-04-20T01:14:38.081Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}

@@ -80,6 +80,9 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../packages/dsl
+      '@formspec/eslint-plugin':
+        specifier: workspace:*
+        version: link:../packages/eslint-plugin
       '@formspec/language-server':
         specifier: workspace:*
         version: link:../packages/language-server
@@ -90,6 +93,12 @@ importers:
         specifier: workspace:*
         version: link:../packages/validator
     devDependencies:
+      '@typescript-eslint/parser':
+        specifier: ^8.55.0
+        version: 8.55.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.2
+        version: 9.39.2(jiti@2.6.1)
       stripe:
         specifier: ^22.0.2
         version: 22.0.2(@types/node@22.19.7)
