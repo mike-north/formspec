@@ -221,6 +221,94 @@ export const ProductConfigForm = formspec(
       expect(schema.$defs?.["PlanStatus"]?.["enum"]).toBeUndefined();
     });
 
+    it("emits compact enum schemas for smart-size when titles would be redundant", () => {
+      const { tsPath } = writeTempFixture(
+        tempDir,
+        "smart-size-compact",
+        `
+export type Status = "draft" | "sent";
+
+export class SmartSizeCompact {
+  status!: Status;
+}
+`
+      );
+      const outDir = path.join(tempDir, "smart-size-compact");
+      const result = runCli([
+        "generate",
+        tsPath,
+        "SmartSizeCompact",
+        "--enum-serialization",
+        "smart-size",
+        "-o",
+        outDir,
+      ]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schemaFile = findSchemaFile(outDir, "schema.json");
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
+
+      const schema = readJson(schemaFile) as {
+        $defs?: Record<string, Record<string, unknown>>;
+      };
+      expect(schema.$defs?.["Status"]).toMatchObject({
+        enum: ["draft", "sent"],
+      });
+      expect(schema.$defs?.["Status"]?.["oneOf"]).toBeUndefined();
+    });
+
+    it("resolves package override enum serialization from formspec.config.ts", () => {
+      const rootDir = fs.mkdtempSync(path.join(tempDir, "package-override-"));
+      const sourceDir = path.join(rootDir, "packages", "invoice", "src");
+      fs.mkdirSync(sourceDir, { recursive: true });
+
+      const configPath = path.join(rootDir, "formspec.config.ts");
+      fs.writeFileSync(
+        configPath,
+        `
+export default {
+  enumSerialization: "enum",
+  packages: {
+    "packages/invoice/**": {
+      enumSerialization: "oneOf",
+    },
+  },
+};
+`
+      );
+
+      const tsPath = path.join(sourceDir, "invoice.ts");
+      fs.writeFileSync(
+        tsPath,
+        `
+export type InvoiceStatus = "draft" | "sent";
+
+export class InvoiceRecord {
+  status!: InvoiceStatus;
+}
+`
+      );
+
+      const outDir = path.join(rootDir, "generated");
+      const result = runCli(["generate", tsPath, "InvoiceRecord", "-o", outDir]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schemaFile = findSchemaFile(outDir, "schema.json");
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
+
+      const schema = readJson(schemaFile) as {
+        $defs?: Record<string, Record<string, unknown>>;
+      };
+      expect(schema.$defs?.["InvoiceStatus"]).toMatchObject({
+        oneOf: [{ const: "draft" }, { const: "sent" }],
+      });
+      expect(schema.$defs?.["InvoiceStatus"]?.["enum"]).toBeUndefined();
+    });
+
     it("rejects invalid enum serialization values", () => {
       const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
       const result = runCli([

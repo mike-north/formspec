@@ -100,6 +100,26 @@ export default defineFormSpecConfig({
       );
     });
 
+    it("rejects non-object packages config values", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { packages: "smart-size" };`, "utf-8");
+
+      await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(
+        /"packages" must be an object mapping glob patterns to override objects/
+      );
+    });
+
+    it("rejects null package override entries", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { packages: { "packages/*": null } };`, "utf-8");
+
+      await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(
+        /"packages\["packages\/\*"\]" must be an override object/
+      );
+    });
+
     it("throws when configPath file does not exist", async () => {
       const dir = await createTempDir();
       const nonExistent = join(dir, "does-not-exist.ts");

@@ -171,15 +171,39 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
     );
   }
   validateEnumSerializationValue(config.enumSerialization, "enumSerialization", filePath);
-  if (config.packages !== undefined) {
-    for (const [pattern, override] of Object.entries(config.packages)) {
-      validateEnumSerializationValue(
-        override.enumSerialization,
-        `packages[${JSON.stringify(pattern)}].enumSerialization`,
-        filePath
+  validatePackageOverrides(config.packages, filePath);
+}
+
+function validatePackageOverrides(
+  packages: unknown,
+  filePath: string
+): void {
+  if (packages === undefined) {
+    return;
+  }
+  if (!isConfigOverrideRecord(packages)) {
+    throw new Error(
+      `Invalid config at ${filePath}: "packages" must be an object mapping glob patterns to override objects, got ${JSON.stringify(packages)}`
+    );
+  }
+
+  for (const [pattern, override] of Object.entries(packages)) {
+    // Reject null/array/non-object overrides here so later nested validation reports a clear config error.
+    if (!isConfigOverrideRecord(override)) {
+      throw new Error(
+        `Invalid config at ${filePath}: "packages[${JSON.stringify(pattern)}]" must be an override object, got ${JSON.stringify(override)}`
       );
     }
+    validateEnumSerializationValue(
+      override["enumSerialization"],
+      `packages[${JSON.stringify(pattern)}].enumSerialization`,
+      filePath
+    );
   }
+}
+
+function isConfigOverrideRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function validateEnumSerializationValue(
