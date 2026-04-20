@@ -576,12 +576,164 @@ describe("parseTagArgument", () => {
     });
   });
 
-  // Slice C owns these — tests land in Slice C.
   describe("json-array (@enumOptions)", () => {
-    it.todo("Slice C");
+    function expectJsonArray(text: string, expected: readonly unknown[]): void {
+      const result = parseTagArgument("enumOptions", text, "build");
+      expect(result.ok, `expected ok=true for input: ${JSON.stringify(text)}`).toBe(true);
+      if (result.ok) {
+        expect(result.value.kind).toBe("json-array");
+        if (result.value.kind === "json-array") {
+          expect(result.value.value).toEqual(expected);
+        }
+      }
+    }
+
+    function expectInvalidEnumOptions(text: string): void {
+      const result = parseTagArgument("enumOptions", text, "build");
+      expect(result.ok, `expected ok=false for input: ${JSON.stringify(text)}`).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+        expect(result.diagnostic.message).toMatch(/^Expected/);
+        expect(result.diagnostic.message).toContain("@enumOptions");
+      }
+    }
+
+    it("parses a string array", () => {
+      expectJsonArray('["a","b"]', ["a", "b"]);
+    });
+    it("parses a number array", () => {
+      expectJsonArray("[1,2,3]", [1, 2, 3]);
+    });
+    it("preserves heterogeneous array without member filtering", () => {
+      expectJsonArray('[1, "two", {"id": "three"}]', [1, "two", { id: "three" }]);
+    });
+    it("accepts an empty array", () => {
+      expectJsonArray("[]", []);
+    });
+    it("rejects a scalar number", () => {
+      expectInvalidEnumOptions("5");
+    });
+    it("rejects a JSON object", () => {
+      expectInvalidEnumOptions("{}");
+    });
+    it("rejects a JSON string", () => {
+      expectInvalidEnumOptions('"string"');
+    });
+    it("rejects malformed JSON", () => {
+      expectInvalidEnumOptions("[1,");
+    });
+    it("returns MISSING_TAG_ARGUMENT for empty string", () => {
+      const result = parseTagArgument("enumOptions", "", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("MISSING_TAG_ARGUMENT");
+        expect(result.diagnostic.message).toContain("@enumOptions");
+      }
+    });
+    it("returns MISSING_TAG_ARGUMENT for whitespace-only string", () => {
+      const result = parseTagArgument("enumOptions", "   ", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("MISSING_TAG_ARGUMENT");
+      }
+    });
+    it("lowering flag produces identical output for both consumers (Phase 1 no-op)", () => {
+      const buildResult = parseTagArgument("enumOptions", '["x"]', "build");
+      const snapshotResult = parseTagArgument("enumOptions", '["x"]', "snapshot");
+      expect(buildResult).toEqual(snapshotResult);
+    });
   });
+
   describe("json-value-with-fallback (@const)", () => {
-    it.todo("Slice C");
+    // Upstream parseTagSyntax truncates multi-line tag arguments at the first
+    // newline (Issue #327 / PR #314 pin). See the truncation pinning test below.
+
+    function expectJsonValue(text: string, expected: unknown): void {
+      const result = parseTagArgument("const", text, "build");
+      expect(result.ok, `expected ok=true for input: ${JSON.stringify(text)}`).toBe(true);
+      if (result.ok) {
+        expect(result.value.kind).toBe("json-value");
+        if (result.value.kind === "json-value") {
+          expect(result.value.value).toEqual(expected);
+        }
+      }
+    }
+
+    function expectRawFallback(text: string, expected: string): void {
+      const result = parseTagArgument("const", text, "build");
+      // Raw-string fallback is a SUCCESSFUL outcome (ok: true), not a diagnostic.
+      expect(
+        result.ok,
+        `expected ok=true (raw-string fallback) for input: ${JSON.stringify(text)}`,
+      ).toBe(true);
+      if (result.ok) {
+        expect(result.value.kind).toBe("raw-string-fallback");
+        if (result.value.kind === "raw-string-fallback") {
+          expect(result.value.value).toBe(expected);
+        }
+      }
+    }
+
+    it("parses a number", () => {
+      expectJsonValue("42", 42);
+    });
+    it("parses a quoted string", () => {
+      expectJsonValue('"USD"', "USD");
+    });
+    it("parses boolean true", () => {
+      expectJsonValue("true", true);
+    });
+    it("parses boolean false", () => {
+      expectJsonValue("false", false);
+    });
+    it("parses null", () => {
+      expectJsonValue("null", null);
+    });
+    it("parses a JSON object", () => {
+      expectJsonValue('{"a":1}', { a: 1 });
+    });
+    it("parses a JSON array", () => {
+      expectJsonValue("[1,2,3]", [1, 2, 3]);
+    });
+    it("parses a Unicode escape sequence in a string", () => {
+      expectJsonValue('"\\u00e9"', "é");
+    });
+    it("falls back to raw string for non-JSON text", () => {
+      expectRawFallback("not-json", "not-json");
+    });
+    it("falls back to raw string for version-like text", () => {
+      expectRawFallback("1.2.3", "1.2.3");
+    });
+    it("falls back to raw string for trailing-comma array (invalid JSON)", () => {
+      expectRawFallback("[1,2,]", "[1,2,]");
+    });
+    it('truncated-to-"[" (Issue #327): falls back to raw-string', () => {
+      // Upstream parseTagSyntax truncates multi-line JSON at the first newline.
+      // `@const [\n1,\n2\n]` arrives here as just "[" — an incomplete JSON
+      // token that fails to parse. Pin that behavior here so a fix to #327
+      // is immediately visible at this layer.
+      expectRawFallback("[", "[");
+    });
+    it("returns MISSING_TAG_ARGUMENT for empty string", () => {
+      const result = parseTagArgument("const", "", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("MISSING_TAG_ARGUMENT");
+        expect(result.diagnostic.message).toContain("@const");
+      }
+    });
+    it("returns MISSING_TAG_ARGUMENT for whitespace-only string", () => {
+      const result = parseTagArgument("const", "   ", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("MISSING_TAG_ARGUMENT");
+      }
+    });
+    it("lowering flag produces identical output for both consumers (Phase 1 no-op)", () => {
+      const buildResult = parseTagArgument("const", "42", "build");
+      const snapshotResult = parseTagArgument("const", "42", "snapshot");
+      expect(buildResult).toEqual(snapshotResult);
+    });
   });
 
   // Slice D owns this — tests land in Slice D.
