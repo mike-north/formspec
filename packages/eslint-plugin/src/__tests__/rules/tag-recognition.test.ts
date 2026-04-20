@@ -1,3 +1,13 @@
+/**
+ * Tests for tag-recognition rules: no-unknown-tags, require-tag-arguments,
+ * no-disabled-tags, no-markdown-formatting.
+ *
+ * Regression tests for issue #350: extension-registered annotation tags,
+ * constraint tags, and metadata slots supplied via `context.settings` were not
+ * recognized by `no-unknown-tags` and were incorrectly flagged as unknown.
+ *
+ * @see https://github.com/mike-north/formspec/issues/350
+ */
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as vitest from "vitest";
 import { noUnknownTags } from "../../rules/tag-recognition/no-unknown-tags.js";
@@ -70,6 +80,71 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
         }
       `,
     },
+    // Regression test for issue #350: annotation tag registered via
+    // `defineAnnotation()` must not be flagged as unknown by `no-unknown-tags`.
+    // Previously the rule only consulted built-in tags and ignored extension
+    // settings entirely, so `@primaryField` would be reported as unknown.
+    {
+      code: `
+        class Form {
+          /** @primaryField */
+          id!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "primaryField" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // Regression test for issue #350: extension constraint tag recognized via
+    // settings must not be flagged.
+    {
+      code: `
+        class Form {
+          /** @afterDate 2025-01-01 */
+          startsAt!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                constraintTags: [{ tagName: "afterDate" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // Regression test for issue #350: extension metadata slot recognized via
+    // settings must not be flagged.
+    {
+      code: `
+        class Form {
+          /** @fieldLabel First name */
+          firstName!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                metadataSlots: [{ tagName: "fieldLabel" }],
+              },
+            ],
+          },
+        },
+      },
+    },
   ],
   invalid: [
     {
@@ -79,6 +154,27 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
           name!: string;
         }
       `,
+      errors: [{ messageId: "unknownTag" }],
+    },
+    // Extension tag in settings does not exempt unrelated unknown tags.
+    {
+      code: `
+        class Form {
+          /** @wat 1 */
+          name!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "primaryField" }],
+              },
+            ],
+          },
+        },
+      },
       errors: [{ messageId: "unknownTag" }],
     },
   ],

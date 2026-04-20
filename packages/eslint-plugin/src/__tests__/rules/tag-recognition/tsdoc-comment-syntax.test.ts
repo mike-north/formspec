@@ -6,7 +6,12 @@
  * This rule suppresses those false positives while still validating TSDoc syntax
  * outside raw-text tag payloads.
  *
+ * Regression tests for issue #350: extension-registered annotation tags (via
+ * `defineAnnotation()`) were not recognized by the TSDoc parser and were
+ * incorrectly flagged as unknown tags.
+ *
  * @see https://github.com/mike-north/formspec/issues/291
+ * @see https://github.com/mike-north/formspec/issues/350
  * @see https://tsdoc.org/
  */
 import { RuleTester } from "@typescript-eslint/rule-tester";
@@ -128,6 +133,52 @@ ruleTester.run("tsdoc-comment-syntax", tsdocCommentSyntax, {
             extensions: [
               {
                 constraintTags: [{ tagName: "afterDate" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // Regression test for issue #350: extension-registered annotation tags (via
+    // `defineAnnotation()`) must not be flagged as unknown by the TSDoc parser.
+    // Previously, `readExtensionTagNames()` only iterated `constraintTags` and
+    // `metadataSlots`, causing annotation tags like `@primaryField` to be reported
+    // as unknown TSDoc tags.
+    {
+      code: `
+        class Form {
+          /** @primaryField */
+          id!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "primaryField" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // Extension-defined metadata slot alongside an annotation tag — both must be
+    // recognized without either triggering a TSDoc unknown-tag diagnostic.
+    {
+      code: `
+        class Form {
+          /** @secondaryField @fieldLabel Primary key */
+          id!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "secondaryField" }],
+                metadataSlots: [{ tagName: "fieldLabel" }],
               },
             ],
           },

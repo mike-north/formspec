@@ -1,50 +1,12 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
 import { createDeclarationVisitor } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags, getLeadingJSDocComments } from "../../utils/tag-scanner.js";
-import { normalizeFormSpecTagName } from "../../utils/tag-metadata.js";
+import { readExtensionTagNames } from "../../utils/tag-metadata.js";
 import { TAGS_REQUIRING_RAW_TEXT, getOrCreateTSDocParser } from "@formspec/analysis/internal";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
-
-/**
- * Minimal structural view of the `ExtensionRegistry` stored in
- * `context.settings.formspec.extensionRegistry`. Typed locally to avoid
- * pulling `@formspec/build` into this rule.
- */
-interface SettingsExtensionRegistry {
-  readonly extensions: readonly SettingsExtensionDefinition[];
-}
-
-interface SettingsExtensionDefinition {
-  readonly constraintTags?: readonly SettingsTagName[];
-  readonly metadataSlots?: readonly SettingsTagName[];
-}
-
-interface SettingsTagName {
-  readonly tagName: string;
-}
-
-function readExtensionTagNames(settings: Readonly<Record<string, unknown>>): readonly string[] {
-  const formspec = settings["formspec"];
-  if (typeof formspec !== "object" || formspec === null) return [];
-  const registry = (formspec as Record<string, unknown>)["extensionRegistry"];
-  if (typeof registry !== "object" || registry === null) return [];
-  const extensions = (registry as Partial<SettingsExtensionRegistry>).extensions;
-  if (!Array.isArray(extensions)) return [];
-  const typedExtensions: readonly SettingsExtensionDefinition[] = extensions;
-  const names = new Set<string>();
-  for (const extension of typedExtensions) {
-    for (const tag of extension.constraintTags ?? []) {
-      names.add(normalizeFormSpecTagName(tag.tagName));
-    }
-    for (const slot of extension.metadataSlots ?? []) {
-      names.add(normalizeFormSpecTagName(slot.tagName));
-    }
-  }
-  return [...names].sort();
-}
 
 /**
  * ESLint rule that validates TSDoc comment syntax using FormSpec's TSDoc
@@ -71,9 +33,9 @@ export const tsdocCommentSyntax = createRule<[], "tsdocSyntax">({
   },
   defaultOptions: [],
   create(context) {
-    // Thread extension-defined constraint and metadata tag names through to
-    // the TSDoc parser so custom project tags registered via `withConfig()`
-    // aren't reported as unknown.
+    // Thread extension-defined constraint, metadata, and annotation tag names
+    // through to the TSDoc parser so custom project tags registered via
+    // `withConfig()` aren't reported as unknown.
     const extensionTagNames = readExtensionTagNames(context.settings);
     const parser = getOrCreateTSDocParser(extensionTagNames);
 
