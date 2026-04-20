@@ -66,7 +66,6 @@
 
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -227,8 +226,13 @@ function detectOom(fixturePath: string, maxOldSpaceMb = OOM_PROBE_HEAP_MB): bool
     `process.exit(0);`,
   ].join("\n");
 
-  const tmpDir = os.tmpdir();
-  const runnerPath = path.join(tmpDir, `formspec-oom-probe-real-sdk-${String(process.pid)}.mjs`);
+  // The runner script must live inside E2E_ROOT (not OS tmpdir) so that
+  // Node.js ESM package resolution can walk up to E2E_ROOT/node_modules and
+  // find `typescript`, `@formspec/build`, and `stripe`. ESM bare-specifier
+  // resolution walks the directory tree from the **script file's location**,
+  // not from `cwd`, so placing the file in OS tmpdir would fail to find any
+  // of those packages even with cwd set correctly.
+  const runnerPath = path.join(E2E_ROOT, `formspec-oom-probe-real-sdk-${String(process.pid)}.mjs`);
   try {
     fsSync.writeFileSync(runnerPath, runnerScript, "utf8");
   } catch {

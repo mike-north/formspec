@@ -6,23 +6,23 @@
   "runs": 3,
   "stripeVersion": "22.0.2",
   "metrics": {
-    "peakRSS_MB": 946.5,
-    "wallTime_ms": 81.96,
+    "peakRSS_MB": 965.7,
+    "wallTime_ms": 10.51,
     "didOOM": false,
     "warmWallTimes_ms": [
-      83.47,
-      80.45
+      9.77,
+      11.24
     ],
     "allPeakRSS_MB": [
-      927,
-      940.4,
-      952.6
+      946.5,
+      959.7,
+      971.7
     ],
-    "coldWallTime_ms": 1518.56,
+    "coldWallTime_ms": 1403.68,
     "oomHeapCapMb": 1024
   },
-  "gitSha": "aadddc8d12c4d1af14cd8dd0cdef42b713c9ff2a",
-  "timestamp": "2026-04-20T00:53:38.878Z",
+  "gitSha": "9431bf2872e12dde026745840f4dcc871c45301d",
+  "timestamp": "2026-04-20T01:12:17.624Z",
   "nodeVersion": "v24.14.0",
   "platform": "darwin",
   "arch": "arm64"
