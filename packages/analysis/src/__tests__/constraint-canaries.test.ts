@@ -1,35 +1,37 @@
 // Silent-acceptance canary tests (Phase 0.5j, refactor plan S.9.3 #14).
 //
-// These are negative-only tests whose sole purpose is to catch a Phase 2
-// regression in which the typed parser silently accepts invalid tag arguments
-// instead of emitting a diagnostic. Each test exercises one invalid usage of a
-// constraint tag and asserts that a diagnostic IS produced with the expected
-// code.
+// These are negative-only tests whose sole purpose is to catch a regression in
+// which the typed parser silently accepts invalid tag arguments instead of
+// emitting a diagnostic. Each test exercises one invalid usage of a constraint
+// tag and asserts that a diagnostic IS produced with the expected code.
 //
-// Probe methodology (2026-04-19):
-// Before writing this file every case was run through
-// buildFormSpecAnalysisFileSnapshot to determine which diagnostics fire
-// today. Cases where no diagnostic fires are pre-existing silent-acceptance
-// gaps and are marked .fails so they track what Phase 2 must fix; once the
-// underlying bug is fixed the test flips to unexpected-pass, failing the suite.
-// Cases that do fire diagnostics today are pinned as live assertions so any
-// future regression is caught immediately.
+// Phase 3 update (2026-04-20):
+// The snapshot consumer now routes builtin constraint tags through
+// parseTagArgument before the synthetic batch (Role C validation wired in
+// packages/analysis/src/file-snapshots.ts, §4 Phase 3). This shifts several
+// diagnostic codes:
 //
-// IMPORTANT: FormSpec comments must be in multi-line form above a field
-// declaration to be recognised by the analysis pipeline. Inline single-line
-// comments on the same line as the field are not picked up (separate tracking
-// issue); all sources below use the multi-line format.
+//   - Missing required arguments: INVALID_TAG_ARGUMENT → MISSING_TAG_ARGUMENT
+//     (typed parser distinguishes missing vs. wrong-type at Role C)
+//   - Wrong-type arguments on numeric tags: TYPE_MISMATCH → INVALID_TAG_ARGUMENT
+//     (typed parser catches "hello" / true before the synthetic checker does)
+//   - @uniqueItems false/yes/maybe: TYPE_MISMATCH → INVALID_TAG_ARGUMENT
+//     (typed parser rejects non-empty non-"true" arguments for the marker family)
 //
-// Summary of pre-existing silent acceptances (all marked .fails):
-// - @minimum 0 on string / boolean fields (TYPE_MISMATCH not emitted)
-// - @enumOptions with a scalar (5) or object ({}) argument
-// - @enumOptions on a plain number field
-// - @pattern with a numeric literal argument (42)
-// - @pattern on number / boolean / array fields
-// - @uniqueItems on string / number fields
-// - @const with mismatched type (string vs number, object type, nested JSON)
+// Remaining silent acceptances (Role B — placement/capability, Phase 4 target):
+// - @minimum 0 on string / boolean fields (capability check, not argument check)
+// - @enumOptions on a plain number field (enum capability check)
+// - @pattern with a numeric literal argument (typed parser accepts all non-empty text)
+// - @pattern on number / boolean / array fields (capability check)
+// - @uniqueItems on string / number fields (capability check)
+// - @const with mismatched type (IR-level TYPE_MISMATCH from semantic-targets.ts)
+//
+// Phase 3 flips (previously .fails, now passing regular assertions):
+// - @enumOptions 5 (scalar not array) — typed parser catches at Role C
+// - @enumOptions {} (object not array) — typed parser catches at Role C
 //
 // @see docs/refactors/synthetic-checker-retirement.md S.9.3 #14
+// @see docs/refactors/synthetic-checker-retirement.md §4 (Phase 3 scope)
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
 import { createProgram } from "./helpers.js";
@@ -49,9 +51,10 @@ function diagnosticsFor(source: string, label: string) {
 
 describe("@minimum silent-acceptance canaries", () => {
   // @minimum "hello" -- a quoted string is not a valid numeric argument.
-  // The synthetic checker emits TYPE_MISMATCH because the string expression
-  // cannot satisfy the numeric parameter.
-  it('emits TYPE_MISMATCH for @minimum "hello" (string-literal argument on a number field)', () => {
+  // Phase 3: typed parser (Role C) catches the string argument and emits
+  // INVALID_TAG_ARGUMENT before the synthetic checker runs.
+  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
+  it('emits INVALID_TAG_ARGUMENT for @minimum "hello" (string-literal argument on a number field)', () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -62,8 +65,8 @@ describe("@minimum silent-acceptance canaries", () => {
       "minimum-string-arg"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     // range is always present; verify it points somewhere in the source
     expect(diagnostic?.range).toBeDefined();
     expect(typeof diagnostic?.range.start).toBe("number");
@@ -71,8 +74,9 @@ describe("@minimum silent-acceptance canaries", () => {
   });
 
   // @minimum true -- boolean is not a valid numeric argument.
-  // The synthetic checker emits TYPE_MISMATCH.
-  it("emits TYPE_MISMATCH for @minimum true (boolean argument on a number field)", () => {
+  // Phase 3: typed parser (Role C) catches the boolean and emits INVALID_TAG_ARGUMENT.
+  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
+  it("emits INVALID_TAG_ARGUMENT for @minimum true (boolean argument on a number field)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -83,14 +87,15 @@ describe("@minimum silent-acceptance canaries", () => {
       "minimum-true-arg"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
   // @minimum with no argument omits the required numeric value.
-  // The synthetic checker emits INVALID_TAG_ARGUMENT.
-  it("emits INVALID_TAG_ARGUMENT for @minimum with no argument", () => {
+  // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
+  // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  it("emits MISSING_TAG_ARGUMENT for @minimum with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -101,8 +106,8 @@ describe("@minimum silent-acceptance canaries", () => {
       "minimum-empty-arg"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "MISSING_TAG_ARGUMENT");
+    expect(diagnostic, "Expected a MISSING_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
@@ -149,8 +154,9 @@ describe("@minimum silent-acceptance canaries", () => {
 
 describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions with no argument omits the required JSON array.
-  // The synthetic checker emits INVALID_TAG_ARGUMENT.
-  it("emits INVALID_TAG_ARGUMENT for @enumOptions with no argument", () => {
+  // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
+  // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  it("emits MISSING_TAG_ARGUMENT for @enumOptions with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -161,8 +167,8 @@ describe("@enumOptions silent-acceptance canaries", () => {
       "enumOptions-empty"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "MISSING_TAG_ARGUMENT");
+    expect(diagnostic, "Expected a MISSING_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
@@ -185,40 +191,40 @@ describe("@enumOptions silent-acceptance canaries", () => {
   });
 
   // @enumOptions 5 -- scalar number, not a JSON array.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.fails(
-    "emits INVALID_TAG_ARGUMENT for @enumOptions 5 (scalar, not array) [known silent acceptance, refactor plan S.9.3 #14]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @enumOptions 5 */
-          value!: string;
-        }
-        `,
-        "enumOptions-scalar"
-      );
-      expect(diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT")).toBe(true);
-    }
-  );
+  // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
+  // (Previously: silent acceptance — no diagnostic emitted.)
+  it("emits INVALID_TAG_ARGUMENT for @enumOptions 5 (scalar, not array)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @enumOptions 5 */
+        value!: string;
+      }
+      `,
+      "enumOptions-scalar"
+    );
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    expect(diagnostic?.range).toBeDefined();
+  });
 
   // @enumOptions {} -- plain object, not a JSON array.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  it.fails(
-    "emits INVALID_TAG_ARGUMENT for @enumOptions {} (object, not array) [known silent acceptance, refactor plan S.9.3 #14]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @enumOptions {} */
-          value!: string;
-        }
-        `,
-        "enumOptions-object"
-      );
-      expect(diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT")).toBe(true);
-    }
-  );
+  // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
+  // (Previously: silent acceptance — no diagnostic emitted.)
+  it("emits INVALID_TAG_ARGUMENT for @enumOptions {} (object, not array)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @enumOptions {} */
+        value!: string;
+      }
+      `,
+      "enumOptions-object"
+    );
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    expect(diagnostic?.range).toBeDefined();
+  });
 
   // @enumOptions on a number field -- no enum-member-addressable capability.
   // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
@@ -245,8 +251,9 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
 describe("@pattern silent-acceptance canaries", () => {
   // @pattern with no argument omits the required regex string.
-  // The synthetic checker emits INVALID_TAG_ARGUMENT.
-  it("emits INVALID_TAG_ARGUMENT for @pattern with no argument", () => {
+  // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
+  // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  it("emits MISSING_TAG_ARGUMENT for @pattern with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -257,8 +264,8 @@ describe("@pattern silent-acceptance canaries", () => {
       "pattern-empty"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "MISSING_TAG_ARGUMENT");
+    expect(diagnostic, "Expected a MISSING_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
@@ -342,9 +349,11 @@ describe("@pattern silent-acceptance canaries", () => {
 // ---------------------------------------------------------------------------
 
 describe("@uniqueItems silent-acceptance canaries", () => {
-  // @uniqueItems false -- the tag accepts no argument; false is an invalid
-  // payload that is treated as an identifier target, producing TYPE_MISMATCH.
-  it("emits TYPE_MISMATCH for @uniqueItems false (argument treated as invalid target)", () => {
+  // @uniqueItems false -- the boolean-marker family rejects anything that is
+  // not empty or "true". Phase 3: typed parser (Role C) emits INVALID_TAG_ARGUMENT.
+  // (Previously: the synthetic checker treated "false" as an identifier target
+  // and emitted TYPE_MISMATCH.)
+  it("emits INVALID_TAG_ARGUMENT for @uniqueItems false (invalid argument for marker family)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -355,14 +364,15 @@ describe("@uniqueItems silent-acceptance canaries", () => {
       "uniqueItems-false"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
-  // @uniqueItems yes -- yes is an invalid payload treated as an identifier
-  // target, producing TYPE_MISMATCH.
-  it("emits TYPE_MISMATCH for @uniqueItems yes (unknown identifier argument)", () => {
+  // @uniqueItems yes -- the boolean-marker family rejects anything that is not
+  // empty or "true". Phase 3: typed parser (Role C) emits INVALID_TAG_ARGUMENT.
+  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
+  it("emits INVALID_TAG_ARGUMENT for @uniqueItems yes (invalid argument for marker family)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -373,14 +383,15 @@ describe("@uniqueItems silent-acceptance canaries", () => {
       "uniqueItems-yes"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
-  // @uniqueItems maybe -- maybe is an invalid payload treated as an
-  // identifier target, producing TYPE_MISMATCH.
-  it("emits TYPE_MISMATCH for @uniqueItems maybe (unknown identifier argument)", () => {
+  // @uniqueItems maybe -- the boolean-marker family rejects anything that is not
+  // empty or "true". Phase 3: typed parser (Role C) emits INVALID_TAG_ARGUMENT.
+  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
+  it("emits INVALID_TAG_ARGUMENT for @uniqueItems maybe (invalid argument for marker family)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -391,8 +402,8 @@ describe("@uniqueItems silent-acceptance canaries", () => {
       "uniqueItems-maybe"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "TYPE_MISMATCH");
-    expect(diagnostic, "Expected a TYPE_MISMATCH diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
@@ -439,8 +450,9 @@ describe("@uniqueItems silent-acceptance canaries", () => {
 
 describe("@const silent-acceptance canaries", () => {
   // @const with no argument omits the required JSON literal.
-  // The synthetic checker emits INVALID_TAG_ARGUMENT.
-  it("emits INVALID_TAG_ARGUMENT for @const with no argument", () => {
+  // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
+  // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  it("emits MISSING_TAG_ARGUMENT for @const with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -451,8 +463,8 @@ describe("@const silent-acceptance canaries", () => {
       "const-empty"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "MISSING_TAG_ARGUMENT");
+    expect(diagnostic, "Expected a MISSING_TAG_ARGUMENT diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 
