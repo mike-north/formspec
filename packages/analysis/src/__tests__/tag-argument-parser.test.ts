@@ -147,6 +147,30 @@ describe("parseTagArgument", () => {
         expectNumericValue("minimum", "NaN", NaN);
       });
 
+      it("accepts -0 (pins current behavior — Object.is distinguishes -0 from +0)", () => {
+        const result = parseTagArgument("minimum", "-0", "build");
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.value.kind).toBe("number");
+          if (result.value.kind === "number") {
+            // Object.is distinguishes -0 from +0; Number("-0") === -0.
+            expect(Object.is(result.value.value, -0)).toBe(true);
+          }
+        }
+      });
+
+      it("accepts .5 (leading-decimal shorthand for 0.5)", () => {
+        expectNumericValue("minimum", ".5", 0.5);
+      });
+
+      it("accepts 5. (trailing-decimal shorthand for 5)", () => {
+        expectNumericValue("minimum", "5.", 5);
+      });
+
+      it("accepts valid small scientific notation (1e-10)", () => {
+        expectNumericValue("minimum", "1e-10", 1e-10);
+      });
+
       it("returns MISSING_TAG_ARGUMENT for empty string", () => {
         expectMissingArgument("minimum", "");
       });
@@ -161,6 +185,39 @@ describe("parseTagArgument", () => {
 
       it("returns INVALID_TAG_ARGUMENT for numeric text with invalid suffix", () => {
         expectInvalidArgument("minimum", "10x");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for hex literal (0x10 must not silently become 16)", () => {
+        // Regression: Number("0x10") === 16, but @minimum 0x10 is not TSDoc-idiomatic.
+        expectInvalidArgument("minimum", "0x10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for binary literal (0b10 must not silently become 2)", () => {
+        expectInvalidArgument("minimum", "0b10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for octal literal (0o10 must not silently become 8)", () => {
+        expectInvalidArgument("minimum", "0o10");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for lowercase 'infinity' (case-sensitive; only 'Infinity' is accepted)", () => {
+        // Pins case-sensitivity: only the exact identifier "Infinity" is accepted.
+        expectInvalidArgument("minimum", "infinity");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for lowercase 'nan' (case-sensitive; only 'NaN' is accepted)", () => {
+        expectInvalidArgument("minimum", "nan");
+      });
+
+      it("returns INVALID_TAG_ARGUMENT for scientific overflow (1e400 overflows to Infinity)", () => {
+        // Only the explicit "Infinity" identifier is accepted; decimal overflow is rejected.
+        const result = parseTagArgument("minimum", "1e400", "build");
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.message).toMatch(/^Expected /);
+          expect(result.diagnostic.message).toContain("overflows to Infinity");
+        }
       });
 
       it("includes tag name in INVALID_TAG_ARGUMENT message", () => {
