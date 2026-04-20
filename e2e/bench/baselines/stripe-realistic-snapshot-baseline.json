@@ -1,0 +1,28 @@
+{
+  "phase": "0",
+  "surface": "snapshot",
+  "description": "Stripe realistic OOM sweep — snapshot surface (buildFormSpecAnalysisFileSnapshot, direct Stripe types, no Ref<T> wrapper)",
+  "fixture": "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
+  "runs": 3,
+  "oomHeapCapMB": 1024,
+  "metrics": {
+    "peakRSS_MB": 843.8,
+    "wallTime_ms": 7.1,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      7.7,
+      6.5
+    ],
+    "allPeakRSS_MB": [
+      567.2,
+      753.7,
+      933.9
+    ],
+    "coldWallTime_ms": 290.38
+  },
+  "gitSha": "unknown",
+  "timestamp": "2026-04-20T01:12:13.794Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}

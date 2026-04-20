@@ -1,0 +1,29 @@
+{
+  "phase": "0",
+  "surface": "build",
+  "description": "Stripe realistic OOM sweep — build surface (generateSchemasFromProgram, direct Stripe types, no Ref<T> wrapper)",
+  "fixture": "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
+  "typeName": "CheckoutForm",
+  "runs": 3,
+  "oomHeapCapMB": 1024,
+  "metrics": {
+    "peakRSS_MB": 861.3,
+    "wallTime_ms": 81.53,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      84,
+      79.05
+    ],
+    "allPeakRSS_MB": [
+      593.7,
+      776.8,
+      945.7
+    ],
+    "coldWallTime_ms": 432.71
+  },
+  "gitSha": "unknown",
+  "timestamp": "2026-04-20T01:12:09.040Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}

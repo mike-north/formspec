@@ -140,6 +140,101 @@ This benchmark depends on the version of the `stripe` npm package installed in `
 Bumping Stripe may shift the baseline — check `bench/baselines/stripe-real-sdk-baseline.json`
 and re-run if the Stripe version changes.
 
+---
+
+### Stripe realistic OOM sweep — all four consumer surfaces (Phase 0)
+
+**Motivation:** Users report OOM when building forms that import types from the `stripe` npm SDK
+directly. Prior fixtures (`stripe-ref-customer`, `stripe-real-sdk`) used a `Ref<T>` wrapper with
+a `__type` phantom property that deliberately bypasses walking into Stripe types (PR #308's
+external-type bypass). They never exercised the OOM path.
+
+This sweep covers the code path real users hit: `Stripe.Customer`, `Stripe.Invoice`, etc.
+embedded **directly** in the form class — no wrapper — across **all four** consumer surfaces
+(build, LSP snapshot, ESLint, tsserver plugin). One command per surface; all four write their own
+baseline JSON so Phase 4 gate progress can be tracked individually.
+
+**Fixture:** `fixtures/stripe-realistic-oom/checkout-form.ts` — `CheckoutForm` class with
+11 fields including `Stripe.Customer`, `Stripe.PaymentMethod`, `Stripe.Subscription`,
+`Stripe.Invoice`, and `Stripe.TaxId` plus primitive fields with TSDoc constraints.
+
+#### Surface 1 — build (`generateSchemasFromProgram`)
+
+**Script:** `benchmarks/stripe-realistic-build-bench.ts`
+**Baseline:** `bench/baselines/stripe-realistic-build-baseline.json`
+
+```bash
+pnpm --filter @formspec/e2e run bench:stripe-realistic-build
+```
+
+#### Surface 2 — snapshot (`buildFormSpecAnalysisFileSnapshot`)
+
+Models the LSP/editor analysis hot path.
+
+**Script:** `benchmarks/stripe-realistic-snapshot-bench.ts`
+**Baseline:** `bench/baselines/stripe-realistic-snapshot-baseline.json`
+
+```bash
+pnpm --filter @formspec/e2e run bench:stripe-realistic-snapshot
+```
+
+#### Surface 3 — ESLint (`type-compatibility/tag-type-check` rule)
+
+Uses the ESLint JS API with `@typescript-eslint/parser` and `parserOptions.project`. The
+`tag-type-check` rule has its own TypeChecker creation path — separate from the build and
+snapshot surfaces.
+
+**Script:** `benchmarks/stripe-realistic-eslint-bench.ts`
+**Baseline:** `bench/baselines/stripe-realistic-eslint-baseline.json`
+
+```bash
+pnpm --filter @formspec/e2e run bench:stripe-realistic-eslint
+```
+
+#### Surface 4 — tsserver plugin (`FormSpecSemanticService.getDiagnostics`)
+
+Instantiates `FormSpecSemanticService` directly (same code path tsserver loads) and calls
+`getDiagnostics` once cold + twice warm to mimic: open file, first keystroke, second keystroke.
+
+**Script:** `benchmarks/stripe-realistic-tsserver-bench.ts`
+**Baseline:** `bench/baselines/stripe-realistic-tsserver-baseline.json`
+
+```bash
+pnpm --filter @formspec/e2e run bench:stripe-realistic-tsserver
+```
+
+#### Phase 0 baseline numbers (arm64 darwin, Node v24.14.0, 1 GB OOM cap)
+
+| Surface | `peakRSS_MB` warm median | `wallTime_ms` cold | `wallTime_ms` warm median | `didOOM` (1 GB) |
+|---------|--------------------------|-------------------|--------------------------|-----------------|
+| **build** | **861.3 MB** | 432.7 ms | 81.5 ms | **false** |
+| **snapshot** | **843.8 MB** | 290.4 ms | 7.1 ms | **false** |
+| **eslint** | **519.1 MB** | 420.2 ms | 2.8 ms | **false** |
+| **tsserver-plugin** | **846.6 MB** | 370.1 ms | 77.9 ms | **false** |
+
+All four surfaces came in under 1 GB — none OOMed on this machine (M-series arm64, Node v24.14.0).
+However, build / snapshot / tsserver-plugin are all within 160 MB of the 1 GB cap. A machine with
+less available RSS headroom, or a stripe SDK version with larger type graphs, would push these over.
+The ESLint surface is cheaper (~519 MB) because the `@typescript-eslint/parser` creates its own
+TypeScript program and the ESLint rule only inspects the checked file rather than walking the full
+schema emission pipeline.
+
+**Interpretation for Phase 4:**
+These numbers are the acceptance-gate baselines. After the host-checker migration (Phase 4),
+all four surfaces must show `peakRSS_MB` ≤ 50% of the corresponding value above, with `didOOM`
+still `false` at 1 GB cap.
+
+**Reference contrast — prior synthetic-fixture baselines:**
+
+| Fixture | Approach | `peakRSS_MB` | `didOOM` (512 MB cap) |
+|---------|---------|--------------|----------------------|
+| `stripe-ref-customer` | `Ref<T>` wrapper, build only | 921.8 MB | false |
+| `stripe-realistic-oom` (this) | Direct Stripe types, 4 surfaces | 843–861 MB | false |
+
+The `Ref<T>` fixture engaged the external-type bypass (PR #308) which prevented walking Stripe's
+internal type graph. The realistic fixture forces the full walk and lands at similar RSS levels —
+confirming the bypass is not what prevented OOM in prior measurements; it was already under 1 GB.
+
 ## License
 
 This workspace is part of the FormSpec monorepo and is released under the MIT License. See

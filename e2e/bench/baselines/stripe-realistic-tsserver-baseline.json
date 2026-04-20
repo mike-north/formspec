@@ -1,0 +1,33 @@
+{
+  "phase": "0",
+  "surface": "tsserver-plugin",
+  "description": "Stripe realistic OOM sweep — tsserver-plugin surface (FormSpecSemanticService.getDiagnostics, direct Stripe types, no Ref<T> wrapper)",
+  "fixture": "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
+  "runs": 3,
+  "oomHeapCapMB": 1024,
+  "metrics": {
+    "peakRSS_MB": 846.6,
+    "wallTime_ms": 77.91,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      77.09,
+      78.73
+    ],
+    "allPeakRSS_MB": [
+      570.7,
+      756.7,
+      936.5
+    ],
+    "coldWallTime_ms": 370.1,
+    "syntheticCompileCounts": [
+      5,
+      0,
+      0
+    ]
+  },
+  "gitSha": "unknown",
+  "timestamp": "2026-04-20T01:14:43.043Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}
