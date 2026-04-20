@@ -24,9 +24,21 @@ interface SettingsExtensionRegistry {
 }
 
 interface SettingsExtensionDefinition {
-  readonly constraintTags?: readonly { readonly tagName: string }[];
-  readonly metadataSlots?: readonly { readonly tagName: string }[];
-  readonly annotations?: readonly { readonly annotationName: string }[];
+  readonly constraintTags?: readonly { readonly tagName: unknown }[];
+  readonly metadataSlots?: readonly { readonly tagName: unknown }[];
+  readonly annotations?: readonly { readonly annotationName: unknown }[];
+}
+
+/**
+ * Strips a leading `@` from a tag name (if present) then normalizes it.
+ *
+ * Extension registries may store tag names with or without a leading `@`.
+ * The scanner always produces normalized names _without_ the `@`, so we must
+ * strip it before building the lookup set.
+ */
+function normalizeExtensionTagName(rawName: string): string {
+  const stripped = rawName.startsWith("@") ? rawName.slice(1) : rawName;
+  return normalizeFormSpecTagName(stripped);
 }
 
 /**
@@ -35,27 +47,33 @@ interface SettingsExtensionDefinition {
  * Covers constraint tags, metadata slots, and annotation tags — all three
  * can be authored as TSDoc block tags in FormSpec class declarations.
  *
- * Returns a sorted, deduplicated array of normalized tag names (no `@` prefix).
+ * Returns a deduplicated set of normalized tag names (no `@` prefix).
+ * Non-object extensions and entries whose name is not a string are silently
+ * skipped so malformed `context.settings` input does not cause runtime errors.
  */
-export function readExtensionTagNames(settings: Readonly<Record<string, unknown>>): readonly string[] {
+export function readExtensionTagNames(
+  settings: Readonly<Record<string, unknown>>
+): ReadonlySet<string> {
   const formspec = settings["formspec"];
-  if (typeof formspec !== "object" || formspec === null) return [];
+  if (typeof formspec !== "object" || formspec === null) return new Set();
   const registry = (formspec as Record<string, unknown>)["extensionRegistry"];
-  if (typeof registry !== "object" || registry === null) return [];
+  if (typeof registry !== "object" || registry === null) return new Set();
   const extensions = (registry as Partial<SettingsExtensionRegistry>).extensions;
-  if (!Array.isArray(extensions)) return [];
-  const typedExtensions: readonly SettingsExtensionDefinition[] = extensions;
+  if (!Array.isArray(extensions)) return new Set();
   const names = new Set<string>();
-  for (const extension of typedExtensions) {
-    for (const tag of extension.constraintTags ?? []) {
-      names.add(normalizeFormSpecTagName(tag.tagName));
+  for (const extension of extensions) {
+    if (typeof extension !== "object" || extension === null) continue;
+    const typedExtension = extension as SettingsExtensionDefinition;
+    for (const tag of typedExtension.constraintTags ?? []) {
+      if (typeof tag.tagName === "string") names.add(normalizeExtensionTagName(tag.tagName));
     }
-    for (const slot of extension.metadataSlots ?? []) {
-      names.add(normalizeFormSpecTagName(slot.tagName));
+    for (const slot of typedExtension.metadataSlots ?? []) {
+      if (typeof slot.tagName === "string") names.add(normalizeExtensionTagName(slot.tagName));
     }
-    for (const annotation of extension.annotations ?? []) {
-      names.add(normalizeFormSpecTagName(annotation.annotationName));
+    for (const annotation of typedExtension.annotations ?? []) {
+      if (typeof annotation.annotationName === "string")
+        names.add(normalizeExtensionTagName(annotation.annotationName));
     }
   }
-  return [...names].sort();
+  return names;
 }

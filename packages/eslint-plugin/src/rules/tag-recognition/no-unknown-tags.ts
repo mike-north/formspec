@@ -29,7 +29,7 @@ export const noUnknownTags = createRule<[], "unknownTag">({
     // Build a set of extension-defined tag names (constraint tags, metadata
     // slots, and annotation tags) from `context.settings` so they are not
     // incorrectly flagged as unknown.
-    const extensionTagNameSet = new Set(readExtensionTagNames(context.settings));
+    const extensionTagNameSet = readExtensionTagNames(context.settings);
 
     return createDeclarationVisitor((node) => {
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {

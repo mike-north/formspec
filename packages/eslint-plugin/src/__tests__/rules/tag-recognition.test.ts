@@ -145,6 +145,151 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
         },
       },
     },
+    // An annotation whose annotationName shadows a built-in tag name (e.g.
+    // "minimum") must not break built-in handling. `getTagMetadata` for the
+    // built-in is consulted first (before the extension set), so the built-in
+    // tag is still recognized correctly and neither tag produces an "unknown"
+    // error. Registering an annotation named "minimum" is unusual but must not
+    // regress built-in behaviour.
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          count!: number;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "minimum" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // constraintTags with a leading-@ tagName is normalized and recognized.
+    {
+      code: `
+        class Form {
+          /** @someConstraint 5 */
+          count!: number;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                constraintTags: [{ tagName: "@someConstraint" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // metadataSlots with a leading-@ tagName is normalized and recognized.
+    {
+      code: `
+        class Form {
+          /** @someSlot value */
+          name!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                metadataSlots: [{ tagName: "@someSlot" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // Empty extensions array is a no-op — no crash and built-in tags still pass.
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          count!: number;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [],
+          },
+        },
+      },
+    },
+    // Two extensions (one declaring an annotation, another a constraintTag)
+    // used in the same file — both tags must be recognized.
+    {
+      code: `
+        class Form {
+          /** @primaryField */
+          id!: string;
+          /** @afterDate 2025-01-01 */
+          startsAt!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              { annotations: [{ annotationName: "primaryField" }] },
+              { constraintTags: [{ tagName: "afterDate" }] },
+            ],
+          },
+        },
+      },
+    },
+    // annotationName without a leading @ is normalized and recognized —
+    // verifies the normalization path for bare (no-@ prefix) annotation names.
+    {
+      code: `
+        class Form {
+          /** @bareAnno */
+          id!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [{ annotationName: "bareAnno" }],
+              },
+            ],
+          },
+        },
+      },
+    },
+    // settings.formspec is absent — only built-in tags are enforced; no crash.
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          count!: number;
+        }
+      `,
+    },
+    // settings.formspec is null — only built-in tags are enforced; no crash.
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          count!: number;
+        }
+      `,
+      settings: {
+        formspec: null,
+      },
+    },
   ],
   invalid: [
     {
@@ -170,6 +315,72 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
             extensions: [
               {
                 annotations: [{ annotationName: "primaryField" }],
+              },
+            ],
+          },
+        },
+      },
+      errors: [{ messageId: "unknownTag" }],
+    },
+    // constraintTags populated but comment uses a different unknown tag —
+    // the exemption set must not leak to unregistered names.
+    {
+      code: `
+        class Form {
+          /** @unknownTag 1 */
+          count!: number;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                constraintTags: [{ tagName: "someConstraint" }],
+              },
+            ],
+          },
+        },
+      },
+      errors: [{ messageId: "unknownTag" }],
+    },
+    // metadataSlots populated but an unrelated unknown tag is still flagged.
+    {
+      code: `
+        class Form {
+          /** @unknownTag value */
+          name!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                metadataSlots: [{ tagName: "someSlot" }],
+              },
+            ],
+          },
+        },
+      },
+      errors: [{ messageId: "unknownTag" }],
+    },
+    // Empty `extension.annotations: []` must not silently allow-list any tags.
+    // An unknown tag must still be reported even when the extension is registered
+    // with an empty annotations array.
+    {
+      code: `
+        class Form {
+          /** @unknownExtensionTag */
+          name!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            extensions: [
+              {
+                annotations: [],
               },
             ],
           },

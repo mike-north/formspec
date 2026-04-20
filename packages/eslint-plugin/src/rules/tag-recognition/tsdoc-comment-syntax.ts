@@ -36,8 +36,7 @@ export const tsdocCommentSyntax = createRule<[], "tsdocSyntax">({
     // Thread extension-defined constraint, metadata, and annotation tag names
     // through to the TSDoc parser so custom project tags registered via
     // `withConfig()` aren't reported as unknown.
-    const extensionTagNames = readExtensionTagNames(context.settings);
-    const parser = getOrCreateTSDocParser(extensionTagNames);
+    const parser = getOrCreateTSDocParser([...readExtensionTagNames(context.settings)]);
 
     return createDeclarationVisitor((node) => {
       // Collect raw-text payload ranges for tags that allow TSDoc-significant
