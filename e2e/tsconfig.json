@@ -6,10 +6,12 @@
     "baseUrl": "..",
     "paths": {
       "@formspec/analysis": ["packages/analysis/dist/analysis.d.ts"],
+      "@formspec/analysis/internal": ["packages/analysis/dist/internal.d.ts"],
       "@formspec/build": ["packages/build/dist/build.d.ts"],
       "@formspec/build/internals": ["packages/build/dist/internals.d.ts"],
       "@formspec/cli": ["packages/cli/dist/index.d.ts"],
       "@formspec/core/internals": ["packages/core/dist/internals.d.ts"],
+      "@formspec/eslint-plugin": ["packages/eslint-plugin/dist/eslint-plugin.d.ts"],
       "@formspec/language-server": ["packages/language-server/dist/index.d.ts"],
       "@formspec/ts-plugin": ["packages/ts-plugin/dist/index.d.ts"],
       "@formspec/validator": ["packages/validator/dist/validator.d.ts"]
