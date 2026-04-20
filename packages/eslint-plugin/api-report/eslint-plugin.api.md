@@ -60,7 +60,7 @@ export { ExplicitMetadataSource }
 export interface FormSpecConfig {
     // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts

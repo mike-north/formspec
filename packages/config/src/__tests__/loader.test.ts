@@ -74,6 +74,32 @@ export default defineFormSpecConfig({
       expect(result.config.constraints?.fieldTypes?.text).toBe("error");
     });
 
+    it("accepts smart-size enum serialization", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { enumSerialization: "smart-size" };`, "utf-8");
+
+      const result = await loadFormSpecConfig({ configPath: filePath });
+
+      expect(result.found).toBe(true);
+      if (!result.found) throw new Error("Expected found");
+      expect(result.config.enumSerialization).toBe("smart-size");
+    });
+
+    it("rejects invalid package override enum serialization", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(
+        filePath,
+        `export default { packages: { "packages/*": { enumSerialization: "invalid" } } };`,
+        "utf-8"
+      );
+
+      await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(
+        /packages\["packages\/\*"\]\.enumSerialization/
+      );
+    });
+
     it("throws when configPath file does not exist", async () => {
       const dir = await createTempDir();
       const nonExistent = join(dir, "does-not-exist.ts");

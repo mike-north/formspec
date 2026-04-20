@@ -67,7 +67,7 @@ export interface FormSpecAnalysisDiagnosticLocation {
 // @public
 export interface FormSpecConfig {
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition_2[];
     readonly metadata?: MetadataPolicyInput;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;

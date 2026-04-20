@@ -28,7 +28,7 @@ export interface GenerateJsonSchemaOptions {
    * JSON Schema representation to use for static enums.
    * @defaultValue "enum"
    */
-  readonly enumSerialization?: "enum" | "oneOf";
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
   /** Metadata resolution policy for chain DSL generation. */
   readonly metadata?: MetadataPolicyInput | undefined;
   /**

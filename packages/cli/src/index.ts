@@ -65,7 +65,7 @@ interface CliOptions {
   compiledPath: string | undefined;
   /** Explicit path to a formspec config file. */
   configPath: string | undefined;
-  enumSerialization: "enum" | "oneOf" | undefined;
+  enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   /** Emit FormIR JSON alongside generated schemas. */
   emitIr: boolean;
   /** Run constraint validation only; do not write schema files. */
@@ -103,7 +103,7 @@ function parseArgs(args: string[]): CliOptions {
   let outDir = "./generated";
   let compiledPath: string | undefined;
   let configPath: string | undefined;
-  let enumSerialization: "enum" | "oneOf" | undefined;
+  let enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   let emitIr = false;
   let validateOnly = false;
   let dryRun = false;
@@ -125,11 +125,15 @@ function parseArgs(args: string[]): CliOptions {
     } else if (arg === "--enum-serialization") {
       const nextArg = rest[++i];
       if (!nextArg) {
-        console.error('Error: --enum-serialization requires "enum" or "oneOf"');
+        console.error('Error: --enum-serialization requires "enum", "oneOf", or "smart-size"');
         process.exit(1);
       }
-      if (nextArg !== "enum" && nextArg !== "oneOf") {
-        console.error('Error: --enum-serialization must be "enum" or "oneOf"');
+      if (
+        nextArg !== "enum" &&
+        nextArg !== "oneOf" &&
+        nextArg !== "smart-size"
+      ) {
+        console.error('Error: --enum-serialization must be "enum", "oneOf", or "smart-size"');
         process.exit(1);
       }
       enumSerialization = nextArg;
@@ -204,7 +208,7 @@ OPTIONS:
   -o, --output <dir>    Output directory (default: ./generated)
   -c, --compiled <path> Path to compiled JS file (auto-detected if omitted)
   --config <path>       Path to formspec.config.ts (auto-discovered if omitted)
-  --enum-serialization <enum|oneOf>
+  --enum-serialization <enum|oneOf|smart-size>
                        Enum JSON Schema representation (default: enum, or from config)
   --emit-ir             Emit FormIR JSON alongside generated schemas
   --validate-only       Validate constraints only; do not write schema files
@@ -379,7 +383,7 @@ async function main(): Promise<void> {
   }
 
   // CLI flag overrides config; config overrides built-in default of "enum"
-  const enumSerialization: "enum" | "oneOf" =
+  const enumSerialization: "enum" | "oneOf" | "smart-size" =
     options.enumSerialization ?? formSpecConfig?.enumSerialization ?? "enum";
 
   console.log(`Generating schemas from: ${options.filePath}`);

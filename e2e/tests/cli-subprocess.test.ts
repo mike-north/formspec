@@ -191,6 +191,38 @@ export const ProductConfigForm = formspec(
       expect(schema.$defs?.["PlanStatus"]?.["enum"]).toBeUndefined();
     });
 
+    it("emits smart-size oneOf enum schemas when labels would otherwise be lost", () => {
+      const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
+      const outDir = path.join(tempDir, "smart-size-enums");
+      const result = runCli([
+        "generate",
+        fixturePath,
+        "Subscription",
+        "--enum-serialization",
+        "smart-size",
+        "-o",
+        outDir,
+      ]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schemaFile = findSchemaFile(outDir, "schema.json");
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
+
+      const schema = readJson(schemaFile) as {
+        $defs?: Record<string, Record<string, unknown>>;
+      };
+      expect(schema.$defs?.["PlanStatus"]).toMatchObject({
+        oneOf: [
+          { const: "active", title: "Active" },
+          { const: "paused", title: "Paused" },
+          { const: "cancelled", title: "Cancelled" },
+        ],
+      });
+      expect(schema.$defs?.["PlanStatus"]?.["enum"]).toBeUndefined();
+    });
+
     it("rejects invalid enum serialization values", () => {
       const fixturePath = resolveFixture("tsdoc-class", "parity-plan-status.ts");
       const result = runCli([
@@ -205,7 +237,7 @@ export const ProductConfigForm = formspec(
 
       expect(result.exitCode).not.toBe(0);
       const output = result.stdout + result.stderr;
-      expect(output).toContain('--enum-serialization must be "enum" or "oneOf"');
+      expect(output).toContain('--enum-serialization must be "enum", "oneOf", or "smart-size"');
     });
   });
 

@@ -160,7 +160,7 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 // @public
 export interface FormSpecConfig {
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
@@ -172,7 +172,7 @@ export interface FormSpecConfig {
 // @public
 export interface FormSpecPackageOverride {
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly metadata?: MetadataPolicyInput;
 }
 
@@ -316,7 +316,7 @@ export interface ResolvedConstraintConfig {
 // @public
 export interface ResolvedFormSpecConfig {
     readonly constraints: ResolvedConstraintConfig;
-    readonly enumSerialization: "enum" | "oneOf";
+    readonly enumSerialization: "enum" | "oneOf" | "smart-size";
     readonly extensions: readonly ExtensionDefinition[];
     readonly metadata: MetadataPolicyInput | undefined;
     readonly vendorPrefix: string;

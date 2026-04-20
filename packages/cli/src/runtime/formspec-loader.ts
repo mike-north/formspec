@@ -22,7 +22,7 @@ interface FormSpecLike {
 
 interface LoadFormSpecsOptions {
   /** JSON Schema representation to use for static enums. */
-  readonly enumSerialization?: "enum" | "oneOf" | undefined;
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
 }
 
 /**
