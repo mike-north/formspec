@@ -1,5 +1,59 @@
 # formspec
 
+## 0.1.0-alpha.56
+
+### Patch Changes
+
+- [#337](https://github.com/mike-north/formspec/pull/337) [`188677c`](https://github.com/mike-north/formspec/commit/188677c5bfc1866915aa20cfcd1e8fd1339148c7) Thanks [@mike-north](https://github.com/mike-north)! - Add typed argument parser skeleton (Phase 1 Slice 0)
+
+  Introduces `packages/analysis/src/tag-argument-parser.ts` with the public API,
+  tag-family registry, and dispatch stub. Per-family parser bodies are filled
+  in by Slices A/B/C; canary tests land in Slice D. This is a no-wiring change —
+  consumers (`tsdoc-parser.ts`, `file-snapshots.ts`) keep calling the synthetic
+  path as before. Implements §4 "Phase 1" + §9.4 0.5j carryover of
+  `docs/refactors/synthetic-checker-retirement.md`.
+
+- [#342](https://github.com/mike-north/formspec/pull/342) [`66ffe88`](https://github.com/mike-north/formspec/commit/66ffe88f753c2b3aa151599393f20a1a08ba06dd) Thanks [@mike-north](https://github.com/mike-north)! - Implement numeric + length family argument parsers (Phase 1 Slice A)
+
+  Fills in the two `throw throwNotImplemented` sites in tag-argument-parser.ts
+  for the numeric (`@minimum`, `@maximum`, `@exclusiveMinimum`,
+  `@exclusiveMaximum`, `@multipleOf`) and length (`@minLength`, `@maxLength`,
+  `@minItems`, `@maxItems`) constraint-tag families. Pins current behavior
+  for `Infinity`/`NaN`/non-integer values per §3 of the retirement plan. No
+  consumer wiring — `tsdoc-parser.ts` and `file-snapshots.ts` keep calling
+  the synthetic path.
+
+- [#341](https://github.com/mike-north/formspec/pull/341) [`fd38117`](https://github.com/mike-north/formspec/commit/fd38117411652704f2469764cf22f88ee7efe1a9) Thanks [@mike-north](https://github.com/mike-north)! - Implement boolean-marker + string-opaque family argument parsers (Phase 1 Slice B)
+
+  Fills in the `throw throwNotImplemented` sites in tag-argument-parser.ts
+  for `@uniqueItems` (boolean-marker) and `@pattern` (string-opaque).
+  Preserves current opaque-string behavior for `@pattern` (no regex
+  compilation) per §6 risk 2 of the retirement plan. No consumer wiring.
+
+- [#340](https://github.com/mike-north/formspec/pull/340) [`b8aa714`](https://github.com/mike-north/formspec/commit/b8aa714d050c49cd059ecccb9e57c5bf43c024eb) Thanks [@mike-north](https://github.com/mike-north)! - Implement json-array + json-value-with-fallback family argument parsers (Phase 1 Slice C)
+
+  Fills in the `throwNotImplemented` sites in `tag-argument-parser.ts` for
+  `@enumOptions` (JSON array) and `@const` (JSON value with raw-string
+  fallback). Introduces an `isJsonValue` type guard so element validation
+  is sound, not a cast. Narrows `JSON.parse` catches to `SyntaxError`.
+  Preserves heterogeneity in `@enumOptions` and the raw-string fallback
+  path for `@const` per §1.6 of the retirement plan and Phase 0.5e/0.5f
+  pinning tests. Includes a pinning test for Issue #327 (parseTagSyntax
+  newline truncation). No consumer wiring.
+
+- [#344](https://github.com/mike-north/formspec/pull/344) [`a70fbaf`](https://github.com/mike-north/formspec/commit/a70fbafd5282cbc172184ef4c41eca1535683b56) Thanks [@mike-north](https://github.com/mike-north)! - Add canary + registry-sweep tests for the typed argument parser (Phase 1 Slice D)
+
+  Rounds out Phase 1 with cross-family invariant tests, silent-acceptance
+  canaries (tied to Issue #326), an exhaustive 13×3 registry sweep, and
+  expanded "Expected " prefix coverage across all 6 families. Closes out
+  the Phase 1 checklist per §4 of the retirement plan; Phase 2 (build
+  consumer wiring) is now unblocked.
+
+- [#343](https://github.com/mike-north/formspec/pull/343) [`6081427`](https://github.com/mike-north/formspec/commit/60814270e6f6a0e24258590020129f907f4b89f9) Thanks [@mike-north](https://github.com/mike-north)! - Add `enumSerialization: "smart-size"` for compact enum output that preserves distinct labels only when needed.
+
+- Updated dependencies [[`188677c`](https://github.com/mike-north/formspec/commit/188677c5bfc1866915aa20cfcd1e8fd1339148c7), [`66ffe88`](https://github.com/mike-north/formspec/commit/66ffe88f753c2b3aa151599393f20a1a08ba06dd), [`fd38117`](https://github.com/mike-north/formspec/commit/fd38117411652704f2469764cf22f88ee7efe1a9), [`b8aa714`](https://github.com/mike-north/formspec/commit/b8aa714d050c49cd059ecccb9e57c5bf43c024eb), [`a70fbaf`](https://github.com/mike-north/formspec/commit/a70fbafd5282cbc172184ef4c41eca1535683b56), [`6081427`](https://github.com/mike-north/formspec/commit/60814270e6f6a0e24258590020129f907f4b89f9)]:
+  - @formspec/build@0.1.0-alpha.56
+
 ## 0.1.0-alpha.55
 
 ### Minor Changes

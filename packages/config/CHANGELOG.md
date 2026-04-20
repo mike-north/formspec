@@ -1,5 +1,11 @@
 # @formspec/constraints
 
+## 0.1.0-alpha.56
+
+### Patch Changes
+
+- [#343](https://github.com/mike-north/formspec/pull/343) [`6081427`](https://github.com/mike-north/formspec/commit/60814270e6f6a0e24258590020129f907f4b89f9) Thanks [@mike-north](https://github.com/mike-north)! - Add `enumSerialization: "smart-size"` for compact enum output that preserves distinct labels only when needed.
+
 ## 0.1.0-alpha.55
 
 ### Minor Changes
