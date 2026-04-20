@@ -31,10 +31,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
-import {
-  type BuildFixtureDir,
-  createBuildFixtureDir,
-} from "./helpers/build-fixture-dir.js";
+import { type BuildFixtureDir, createBuildFixtureDir } from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
 // Temp directory — shared across all build-consumer probe fixtures
@@ -90,11 +87,15 @@ function buildDiagnosticsFor(
 describe("@minimum typed-parser Role-C canaries (build consumer)", () => {
   it("emits INVALID_TAG_ARGUMENT for non-decimal argument (hex literal 0x10)", () => {
     // parseTagArgument("minimum", "0x10", "build") → INVALID_TAG_ARGUMENT
-    // (DECIMAL_PATTERN rejects hex forms). Before Phase 2, the synthetic checker
-    // would have produced TYPE_MISMATCH for this input.
+    // (DECIMAL_PATTERN rejects hex forms). Before Phase 2, this input was not
+    // rejected here; the synthetic lowering likely accepted 0x10 silently by
+    // passing it through as a numeric literal. Phase 2 now rejects at Role C.
     const diagnostics = buildDiagnosticsFor("minimum", "0x10", "number", "hex-arg");
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected INVALID_TAG_ARGUMENT for hex literal from typed parser").toBeDefined();
+    expect(
+      diagnostic,
+      "Expected INVALID_TAG_ARGUMENT for hex literal from typed parser"
+    ).toBeDefined();
   });
 });
 
@@ -217,11 +218,18 @@ describe("@const typed-parser Role-C canaries (build consumer)", () => {
     // parseTagArgument("const", "not-json", "build") → ok: true, { kind: "raw-string-fallback" }
     // The typed parser deliberately accepts invalid-JSON @const with a raw-string fallback.
     // The downstream IR compatibility check decides if the raw string is compatible.
-    // For a number field, the IR validator produces TYPE_MISMATCH.
-    // Assert the code is NOT INVALID_TAG_ARGUMENT (typed parser passes through).
+    // For a number field, the IR rejects the raw string value as a TYPE_MISMATCH.
+    //
+    // Two assertions are required:
+    //   1. INVALID_TAG_ARGUMENT is absent — typed parser (Role C) passed through.
+    //   2. TYPE_MISMATCH is present — proves the pipeline ran end-to-end and the
+    //      IR-level check fired. Without this a broken/skipped typed-parser invocation
+    //      would also satisfy assertion 1.
     const diagnostics = buildDiagnosticsFor("const", "not-json", "number", "not-json");
     const hasInvalidArg = diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const hasTypeMismatch = diagnostics.some((d) => d.code === "TYPE_MISMATCH");
     expect(hasInvalidArg).toBe(false);
+    expect(hasTypeMismatch).toBe(true);
   });
 });
 

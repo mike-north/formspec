@@ -186,10 +186,7 @@ function isNonReferenceIdentifier(node: ts.Identifier): boolean {
   return false;
 }
 
-function astReferencesImportedName(
-  root: ts.Node,
-  importedNames: ReadonlySet<string>
-): boolean {
+function astReferencesImportedName(root: ts.Node, importedNames: ReadonlySet<string>): boolean {
   if (importedNames.size === 0) {
     return false;
   }
@@ -488,10 +485,7 @@ function isCallableType(type: ts.Type): boolean {
   return type.getCallSignatures().length > 0 || type.getConstructSignatures().length > 0;
 }
 
-function isUserEmittableHintProperty(
-  property: ts.Symbol,
-  declaration: ts.Declaration
-): boolean {
+function isUserEmittableHintProperty(property: ts.Symbol, declaration: ts.Declaration): boolean {
   if (property.name.startsWith("__")) {
     return false;
   }
@@ -500,11 +494,7 @@ function isUserEmittableHintProperty(
     if (ts.isComputedPropertyName(name) || ts.isPrivateIdentifier(name)) {
       return false;
     }
-    if (
-      !ts.isIdentifier(name) &&
-      !ts.isStringLiteral(name) &&
-      !ts.isNumericLiteral(name)
-    ) {
+    if (!ts.isIdentifier(name) && !ts.isStringLiteral(name) && !ts.isNumericLiteral(name)) {
       return false;
     }
   }
@@ -919,10 +909,16 @@ function buildCompilerBackedConstraintDiagnostics(
   //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
-  // TODO: text and parsedTag.argumentText can diverge for TAGS_REQUIRING_RAW_TEXT —
-  // revisit if orphan path becomes reachable. Using rawText as fallback ensures
-  // orphaned-tag arguments are forwarded rather than silently replaced with "".
-  const effectiveArgumentText = parsedTag?.argumentText ?? rawText;
+  // §4 Phase 2 — Option A: always derive argumentText from rawText (the
+  // canonical post-choosePreferredPayloadText string) so the typed parser sees
+  // the same text as parseConstraintTagValue (Role D). For TAGS_REQUIRING_RAW_TEXT,
+  // choosePreferredPayloadText may have selected the compiler-API fallback, making
+  // rawText differ from parsedTag.argumentText (which was derived from
+  // tag.resolvedPayloadText). Re-parsing from rawText also applies the same
+  // path-target prefix stripping that the original parse would have applied.
+  // TODO: once choosePreferredPayloadText is threaded upstream, this can go away.
+  const effectiveArgumentText =
+    parsedTag !== null ? parseTagSyntax(tagName, rawText).argumentText : rawText;
 
   if (hasBroadening) {
     return emit("bypass", []);
