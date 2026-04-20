@@ -232,10 +232,12 @@ export interface Customer {
  * When expanded, the field contains the full resource object.
  *
  * FormSpec treats Ref<T> as an opaque wrapper type. The generic
- * parameter `T` is carried as a phantom type argument and does NOT
- * trigger full expansion of the external type — this is the path
+ * parameter `T` is carried via the `__type` phantom property and does
+ * NOT trigger full expansion of the external type — this is the path
  * guarded by the `extractReferenceTypeArguments` external-type bypass
  * (PR #308, `e2e/fixtures/stripe-ref-customer/STUB_NOTE.md`).
+ * The `__` prefix on `__type` is load-bearing: `class-analyzer.ts`
+ * skips all `__`-prefixed properties during IR emission.
  */
 export interface Ref<T> {
   /**
@@ -249,9 +251,12 @@ export interface Ref<T> {
    */
   readonly expanded: boolean;
   /**
-   * The expanded resource, or undefined when only the ID is available.
-   * This phantom field drives generic-reference resolution in the
-   * FormSpec analyzer.
+   * Phantom field carrying the generic type argument for FormSpec's
+   * external-type bypass (`extractReferenceTypeArguments`, PR #308).
+   * The `__` prefix is load-bearing: `class-analyzer.ts` excludes all
+   * `__`-prefixed properties from Canonical IR emission, so this field
+   * never appears in generated JSON Schema while still making `T`
+   * visible to generic-reference resolution.
    */
-  readonly resource?: T;
+  readonly __type?: T;
 }
