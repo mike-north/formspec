@@ -8,7 +8,8 @@
     "test": "vitest run",
     "benchmark:hybrid-tooling": "pnpm --filter @formspec/language-server... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && tsx ./benchmarks/hybrid-tooling-comparison.ts",
     "bench:analysis": "pnpm -r --filter @formspec/build... --filter @formspec/ts-plugin... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/analysis-bench.ts",
-    "bench:synthetic-checker": "pnpm -r --filter @formspec/analysis... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/synthetic-checker-baseline.bench.ts"
+    "bench:synthetic-checker": "pnpm -r --filter @formspec/analysis... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/synthetic-checker-baseline.bench.ts",
+    "bench:stripe-ref-customer": "pnpm -r --filter @formspec/build... run build && tsc --noEmit -p ./tsconfig.benchmarks.json && TSX_TSCONFIG_PATH=./tsconfig.benchmarks.json tsx ./benchmarks/stripe-ref-customer-bench.ts"
   },
   "dependencies": {
     "@formspec/analysis": "workspace:*",
