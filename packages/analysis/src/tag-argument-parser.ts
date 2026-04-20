@@ -1,5 +1,6 @@
 import type { JsonValue } from "@formspec/core/internals";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
+import { parseTagSyntax, type ParsedCommentTag } from "./comment-syntax.js";
 
 /**
  * Discriminates between "build" (compile-time via tsdoc-parser.ts) and
@@ -522,7 +523,7 @@ export type MappedTypedParserCode = "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUME
  */
 export function mapTypedParserDiagnosticCode(
   code: TagArgumentDiagnosticCode,
-  tagName: string,
+  tagName: string
 ): MappedTypedParserCode {
   switch (code) {
     case "MISSING_TAG_ARGUMENT":
@@ -533,11 +534,67 @@ export function mapTypedParserDiagnosticCode(
       // Structurally unreachable: callers must guard with isBuiltinConstraintName /
       // getTagDefinition before invoking parseTagArgument. If this fires, it's a bug.
       throw new Error(
-        `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`,
+        `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`
       );
     default: {
       const _exhaustive: never = code;
       throw new Error(`Unhandled diagnostic code: ${String(_exhaustive)}`);
     }
   }
+}
+
+// =============================================================================
+// Shared argument-text extraction helper (Phase 4B)
+// =============================================================================
+
+/**
+ * Derives the effective argument text that should be passed to
+ * `parseTagArgument` (Role C of the synthetic-checker retirement plan).
+ *
+ * Both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
+ * (`file-snapshots.ts`) need to extract the same argument text from a tag
+ * payload before Role C validation. The two consumers previously diverged:
+ *
+ * - Build consumer re-derives via `parseTagSyntax(tagName, rawText).argumentText`
+ *   so that path-target prefixes are stripped and `TAGS_REQUIRING_RAW_TEXT`
+ *   compiler-API-fallback payloads are handled correctly. `rawText` is the
+ *   full payload (may include `:field` target prefix) chosen by
+ *   `choosePreferredPayloadText`.
+ * - Snapshot consumer passed `tag.argumentText` directly (which is already
+ *   target-stripped by `parseCommentBlock`).
+ *
+ * This helper encodes the two cases that both consumers must handle:
+ * 1. **Standard path** (`parsedTag` non-null): re-parse `rawText` through
+ *    `parseTagSyntax` to strip any path-target prefix and canonicalize
+ *    the argument text. For the snapshot consumer, `rawText` equals
+ *    `tag.argumentText` (already stripped), so `parseTagSyntax` is a no-op.
+ * 2. **Orphaned fallback** (`parsedTag` null): the unified comment parser
+ *    failed to produce a tag object (e.g. malformed comment), but a raw-text
+ *    fallback from `ts.getJSDocTags()` was recovered. Return `rawText`
+ *    directly — there is no parsed tag to re-derive from.
+ *
+ * Both consumers call this helper with their respective `rawText` and
+ * `parsedTag`, ensuring that the text handed to `parseTagArgument` is derived
+ * identically regardless of consumer.
+ *
+ * @param tagName   - normalized tag name (no leading `@`)
+ * @param rawText   - full payload text, possibly including a path-target
+ *                    prefix (`:field`). For the build consumer this comes from
+ *                    `choosePreferredPayloadText`; for the snapshot consumer
+ *                    this is `tag.argumentText` (already target-stripped).
+ * @param parsedTag - the parsed comment tag from `parseCommentBlock`, or
+ *                    `null` for orphaned compiler-API fallback entries.
+ *
+ * @internal
+ */
+export function extractEffectiveArgumentText(
+  tagName: string,
+  rawText: string,
+  parsedTag: ParsedCommentTag | null
+): string {
+  if (parsedTag !== null) {
+    return parseTagSyntax(tagName, rawText).argumentText;
+  }
+  // Orphaned fallback: no parsed tag object — use rawText as-is.
+  return rawText;
 }
