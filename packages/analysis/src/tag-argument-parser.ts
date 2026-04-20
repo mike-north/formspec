@@ -112,16 +112,6 @@ export const TAG_ARGUMENT_FAMILIES = {
 // ---------------------------------------------------------------------------
 
 /**
- * Throws a clearly-labelled "not-implemented" error for a tag family.
- * Slices A, B, and C replace this throw with real implementations.
- *
- * @param family - the family whose parser has not yet been implemented
- */
-function throwNotImplemented(family: TagFamily): never {
-  throw new Error(`not-implemented: tag family "${family}" parser (Slice A/B/C)`);
-}
-
-/**
  * Parses the argument for `@uniqueItems` (boolean-marker family).
  *
  * Preserves current `tag-value-parser.ts` semantics exactly:
@@ -461,8 +451,8 @@ export function parseTagArgument(
     };
   }
 
-  // Exhaustive switch — TypeScript's `never` check ensures all families are
-  // handled. Slices A, B, C replace the throwNotImplemented calls.
+  // Exhaustive switch — TypeScript's `never` check in the default arm ensures
+  // any new TagFamily variant forces a compile error until all cases are wired.
   switch (family) {
     case "numeric":
       // Cast is safe: Object.hasOwn guard above confirmed tagName ∈ TAG_ARGUMENT_FAMILIES.
