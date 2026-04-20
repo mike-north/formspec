@@ -63,6 +63,7 @@
     "fifty-socks-wonder",
     "fix-broadening-validation",
     "fix-enum-defs-deduplication",
+    "fix-enumoptions-array-narrowing",
     "fix-eslint-path-target-regex",
     "fix-extension-custom-type-declarations",
     "fix-large-type-argument-overflow",
