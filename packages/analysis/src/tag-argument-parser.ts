@@ -148,7 +148,7 @@ function parseUniqueItemsArgument(rawArgumentText: string): TagArgumentParseResu
 }
 
 /**
- * Parses the argument for `@pattern` (string-opaque family).
+ * Parses the argument for `@pattern` (string family).
  *
  * Preserves current opaque-pass-through behavior per §3 of the retirement
  * plan: the raw text is trimmed and returned as-is. `new RegExp(text)` is
@@ -168,6 +168,67 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
     };
   }
   return { ok: true, value: { kind: "string", value: trimmed } };
+}
+
+/**
+ * Parses a numeric argument for both the "numeric" and "length" families.
+ *
+ * Phase 1 semantics (per §3 of the retirement plan):
+ * - Empty/whitespace-only text → MISSING_TAG_ARGUMENT
+ * - `Infinity`, `-Infinity`, `NaN` identifiers → accepted as-is (pins current
+ *   snapshot-consumer behavior; build-consumer stringifies — divergence is
+ *   handled by `lowering` in Phase 2/3)
+ * - `Number(text) === NaN` (and text was not the literal "NaN") → INVALID_TAG_ARGUMENT
+ * - Otherwise → `{ kind: "number", value }` with the parsed number
+ *
+ * Integer erasure is preserved: `@minLength 1.5` returns `ok: true` with
+ * `value: 1.5`. Rejecting non-integer values is a Role D concern, not Role C.
+ *
+ * @param tagName - normalized tag name (no "@") — used only in error messages
+ * @param rawArgumentText - argument text, already stripped of path-target prefix
+ */
+function parseNumericArgument(
+  tagName: string,
+  rawArgumentText: string,
+): TagArgumentParseResult {
+  const text = rawArgumentText.trim();
+
+  if (text.length === 0) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
+        message: `Expected a numeric literal for @${tagName}.`,
+      },
+    };
+  }
+
+  // Pin current consumer behavior: Infinity, -Infinity, and NaN are accepted
+  // as valid numeric arguments. The synthetic snapshot path passes these
+  // identifiers through as-is. See §3 "Tie-break Infinity/NaN" and §9.3 #16.
+  if (text === "Infinity") {
+    return { ok: true, value: { kind: "number", value: Infinity } };
+  }
+  if (text === "-Infinity") {
+    return { ok: true, value: { kind: "number", value: -Infinity } };
+  }
+  if (text === "NaN") {
+    return { ok: true, value: { kind: "number", value: NaN } };
+  }
+
+  const value = Number(text);
+
+  if (Number.isNaN(value)) {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: `Expected a numeric literal for @${tagName}, got "${text}".`,
+      },
+    };
+  }
+
+  return { ok: true, value: { kind: "number", value } };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,9 +273,13 @@ export function parseTagArgument(
   // handled. Slices A, B, C replace the throwNotImplemented calls.
   switch (family) {
     case "numeric":
-      return throwNotImplemented(family);
+      // Numeric constraint tags: @minimum, @maximum, @exclusiveMinimum,
+      // @exclusiveMaximum, @multipleOf
+      return parseNumericArgument(tagName, rawArgumentText);
     case "length":
-      return throwNotImplemented(family);
+      // Length/count constraint tags: @minLength, @maxLength, @minItems, @maxItems
+      // Same parse rule as numeric; Phase 2/3 may diverge them if needed.
+      return parseNumericArgument(tagName, rawArgumentText);
     case "boolean-marker":
       return parseUniqueItemsArgument(rawArgumentText);
     case "string":
