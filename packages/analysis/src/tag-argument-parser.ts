@@ -492,3 +492,52 @@ export function parseTagArgument(
     }
   }
 }
+
+// =============================================================================
+// Shared code-mapping helper used by both consumers
+// =============================================================================
+
+/**
+ * The subset of diagnostic codes that both consumers (build and snapshot) may
+ * emit as a result of a typed-parser rejection at Role C.
+ *
+ * `UNKNOWN_TAG` is never included: it is structurally unreachable in any
+ * consumer that guards the {@link parseTagArgument} call with an
+ * `isBuiltinConstraintName` or `getTagDefinition` check.
+ */
+export type MappedTypedParserCode = "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
+
+/**
+ * Maps a {@link TagArgumentDiagnosticCode} from {@link parseTagArgument} to the
+ * canonical consumer-level code emitted when the typed parser rejects an
+ * argument at Role C.
+ *
+ * Both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
+ * (`file-snapshots.ts`) previously contained identical exhaustive switches for
+ * this mapping. This helper centralises the logic.
+ *
+ * @throws if `code` is `UNKNOWN_TAG` (structurally unreachable after the
+ *   `isBuiltinConstraintName` / `getTagDefinition` guard) or an unrecognised
+ *   value (exhaustiveness guard for future additions).
+ */
+export function mapTypedParserDiagnosticCode(
+  code: TagArgumentDiagnosticCode,
+  tagName: string,
+): MappedTypedParserCode {
+  switch (code) {
+    case "MISSING_TAG_ARGUMENT":
+      return "MISSING_TAG_ARGUMENT";
+    case "INVALID_TAG_ARGUMENT":
+      return "INVALID_TAG_ARGUMENT";
+    case "UNKNOWN_TAG":
+      // Structurally unreachable: callers must guard with isBuiltinConstraintName /
+      // getTagDefinition before invoking parseTagArgument. If this fires, it's a bug.
+      throw new Error(
+        `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`,
+      );
+    default: {
+      const _exhaustive: never = code;
+      throw new Error(`Unhandled diagnostic code: ${String(_exhaustive)}`);
+    }
+  }
+}
