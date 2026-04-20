@@ -11,7 +11,7 @@ pins it. It is NOT a spec — the tests themselves are the spec.
 |---|---|
 | Tag | TSDoc constraint tag name (without `@`) |
 | Subject type | TypeScript type of the annotated field |
-| Argument | Raw tag argument text as it appears in the comment |
+| Argument | Raw tag argument text as it appears in the comment; `—` = no argument |
 | Build outcome | Result of the build-path consumer (`renderSyntheticArgumentExpression` → `checkSyntheticTagApplication` → IR validate) |
 | Snapshot outcome | Result of the snapshot-path consumer (`getArgumentExpression` → batch synthetic check → code translation layer) |
 | Diag code | FormSpec diagnostic code emitted on failure; `—` = no diagnostic |
@@ -33,9 +33,9 @@ Outcome symbols: **pass** = no diagnostic; **TYPE_MISMATCH** / **INVALID_TAG_ARG
 | 8 | `pattern` | `string` | `^\d+$` | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
 | 9 | `pattern` | `number` | `^\d+$` | pass | pass | — (silent gap) | PR #318 `packages/analysis/src/__tests__/constraint-canaries.test.ts` (`.fails`) |
 | 10 | `enumOptions` | `string` | `["a","b"]` | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
-| 11 | `const` | `number` | `42` | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` (`@const "USD"` on number fixture) |
+| 11 | `const` | `number` | `"USD"` | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
 | 12 | `const` | `string` | `"USD"` | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
-| 13 | `uniqueItems` | `string[]` | _(none)_ | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
+| 13 | `uniqueItems` | `string[]` | — | pass | pass | — | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` |
 | 14 | `maximum` | `P` (alias chain: `P = NN = number`, `@minimum 0` on `NN`) | `100` | pass | diverges (alias-name gap) | `TYPE_MISMATCH` (snapshot) | PR #324 `packages/analysis/src/__tests__/parity-harness.test.ts` (known divergence) |
 | 15 | `exclusiveMinimum` | object field with `:amount: number` path-target | `0` (D2) | pass | pass | — | PR #317 `packages/build/src/__tests__/generate-schemas-config.test.ts` lines 340-350 |
 
