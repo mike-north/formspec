@@ -1,5 +1,18 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.57
+
+### Patch Changes
+
+- [#346](https://github.com/mike-north/formspec/pull/346) [`21cbc51`](https://github.com/mike-north/formspec/commit/21cbc511427361709f6ebdac7fb27ff8ab3257db) Thanks [@mike-north](https://github.com/mike-north)! - Tighten Array.isArray narrowing in parseEnumOptionsArgument (#345)
+
+  Re-bind to `unknown[]` after `Array.isArray` so the `isJsonValue`
+  predicate narrows soundly to `JsonValue[]` rather than relying on the
+  `any` escape hatch. No behavior change.
+
+- Updated dependencies [[`21cbc51`](https://github.com/mike-north/formspec/commit/21cbc511427361709f6ebdac7fb27ff8ab3257db)]:
+  - @formspec/analysis@0.1.0-alpha.57
+
 ## 0.1.0-alpha.56
 
 ### Patch Changes
