@@ -10,7 +10,7 @@ Run the end-to-end suite from the monorepo root:
 pnpm run test:e2e
 ```
 
-Run the analysis microbenchmark fixture:
+Run the hybrid-tooling comparison benchmark:
 
 ```bash
 pnpm --filter @formspec/e2e run benchmark:hybrid-tooling

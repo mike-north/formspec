@@ -158,11 +158,20 @@ function runBuildBenchOnce(fixturePath: string, extraFiles: string[]): BuildRunR
 /**
  * Runs a single schema-generation pass in a child Node.js process capped at
  * `maxOldSpaceMb` MB of V8 old-space. Returns `true` if the process ran out
- * of memory (exit code non-zero and stderr contains OOM indicators).
+ * of memory.
  *
- * This is a best-effort check: on some OS/Node combinations, OOM may result
- * in a SIGKILL without the expected stderr message. In those cases, any
- * non-zero exit from the child is conservatively reported as OOM.
+ * Detection strategy (in priority order):
+ * 1. Known OOM stderr indicators (`JavaScript heap out of memory`, `ENOMEM`, etc.)
+ * 2. SIGKILL termination (`result.signal === "SIGKILL"`) — the OS kills the
+ *    process before Node.js can write diagnostic output when heap allocation
+ *    fails at the OS level.
+ * 3. Null exit status with any signal — treated as OOM because the only child
+ *    task is schema generation; a signal-terminated run that succeeded would
+ *    have exited 0.
+ *
+ * Non-signal non-zero exits (e.g. fixture compilation failure, uncaught
+ * exception from the runner script) are returned as `false` because they
+ * indicate a different class of error rather than memory exhaustion.
  */
 function detectOom(fixturePath: string, extraFiles: string[], maxOldSpaceMb = 512): boolean {
   // Write an inline runner script to a temp file that the child process executes.
@@ -228,8 +237,14 @@ function detectOom(fixturePath: string, extraFiles: string[], maxOldSpaceMb = 51
       return true;
     }
 
-    // Non-zero exit without OOM message: likely a different error (e.g. fixture
-    // compilation failure). Do not count this as OOM.
+    // SIGKILL (or any signal with a null status) means the OS terminated the
+    // process before Node.js could write OOM diagnostics — treat as OOM.
+    if (result.status === null && result.signal !== null) {
+      return true;
+    }
+
+    // Non-zero exit without a signal and without known OOM output: likely a
+    // different error (e.g. fixture compilation failure, uncaught exception).
     return false;
   } finally {
     try {
