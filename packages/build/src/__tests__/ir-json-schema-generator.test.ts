@@ -596,6 +596,17 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
+    it("throws when enumSerialization is invalid at runtime", () => {
+      const ir = makeIR([]);
+      const invalidOptions = {
+        enumSerialization: "invalid",
+      } as unknown as Parameters<typeof generateJsonSchemaFromIR>[1];
+
+      expect(() => generateJsonSchemaFromIR(ir, invalidOptions)).toThrow(
+        'Invalid enumSerialization "invalid". Expected "enum", "oneOf", or "smart-size".'
+      );
+    });
+
     it("uses the configured vendorPrefix for the display-name extension", () => {
       const ir = makeIR([
         makeField("status", {

@@ -160,21 +160,32 @@ export interface GenerateJsonSchemaFromIROptions {
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
 }
 
+/**
+ * Normalizes enum serialization input so JavaScript callers still get a
+ * runtime validation error for unsupported values.
+ */
+function parseEnumSerialization(value: unknown): GeneratorContext["enumSerialization"] {
+  switch (value) {
+    case undefined:
+    case "enum":
+      return "enum";
+    case "oneOf":
+      return "oneOf";
+    case "smart-size":
+      return "smart-size";
+    default:
+      throw new Error(
+        `Invalid enumSerialization "${String(value)}". Expected "enum", "oneOf", or "smart-size".`
+      );
+  }
+}
+
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
-  const enumSerialization = options?.enumSerialization ?? "enum";
+  const enumSerialization = parseEnumSerialization(options?.enumSerialization);
   if (!vendorPrefix.startsWith("x-")) {
     throw new Error(
       `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
-    );
-  }
-  if (
-    enumSerialization !== "enum" &&
-    enumSerialization !== "oneOf" &&
-    enumSerialization !== "smart-size"
-  ) {
-    throw new Error(
-      `Invalid enumSerialization "${enumSerialization}". Expected "enum", "oneOf", or "smart-size".`
     );
   }
 
