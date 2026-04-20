@@ -1,5 +1,11 @@
 # @formspec/core
 
+## 0.1.0-alpha.55
+
+### Minor Changes
+
+- [#313](https://github.com/mike-north/formspec/pull/313) [`a59effe`](https://github.com/mike-north/formspec/commit/a59effefdf7d59ecbed7e51cb241f9ddfdd8649d) Thanks [@brooks-stripe](https://github.com/brooks-stripe)! - Remove `extractPayload` from `CustomTypeRegistration`. The callback was added in #300 for `Ref<T>` support but is no longer needed — #308 fixes the underlying stack overflow by skipping full expansion of large external type arguments, allowing formspec's existing object resolution and discriminator pipeline to handle `Ref<T>` correctly.
+
 ## 0.1.0-alpha.54
 
 ### Minor Changes

@@ -1,5 +1,73 @@
 # @formspec/analysis
 
+## 0.1.0-alpha.55
+
+### Minor Changes
+
+- [#313](https://github.com/mike-north/formspec/pull/313) [`a59effe`](https://github.com/mike-north/formspec/commit/a59effefdf7d59ecbed7e51cb241f9ddfdd8649d) Thanks [@brooks-stripe](https://github.com/brooks-stripe)! - Remove `extractPayload` from `CustomTypeRegistration`. The callback was added in #300 for `Ref<T>` support but is no longer needed — #308 fixes the underlying stack overflow by skipping full expansion of large external type arguments, allowing formspec's existing object resolution and discriminator pipeline to handle `Ref<T>` correctly.
+
+### Patch Changes
+
+- [#316](https://github.com/mike-north/formspec/pull/316) [`e716db4`](https://github.com/mike-north/formspec/commit/e716db401c6bc64b7cf6590d86b4256018b1d892) Thanks [@mike-north](https://github.com/mike-north)! - Add parity-harness log schema and diffing helper (Phase 0.5m)
+
+  Introduces two new test-internal helpers in `packages/analysis/src/__tests__/helpers/`:
+  - `parity-log-entry.ts` — the `ParityLogEntry` TypeScript type (with `RoleOutcome` union) and an `isParityLogEntry` runtime type-guard that validates the full shape including the optional `diagnostic` sub-object.
+  - `diff-parity-logs.ts` — `diffParityLogs(buildEntries, snapshotEntries): ParityDivergence[]`, a deterministic diffing function that normalizes entries by `tag + placement + subjectTypeKind` and reports three categories of divergence: one-sided missing entries, differing `roleOutcome` values, and differing diagnostic `code` values.
+
+  These helpers are not exported from the package; they are consumed by the cross-consumer parity harness (Phase 0.5a).
+
+  Implements §8.3e and §9.4 item 0.5m of `docs/refactors/synthetic-checker-retirement.md`.
+
+- [#315](https://github.com/mike-north/formspec/pull/315) [`685b041`](https://github.com/mike-north/formspec/commit/685b041e19bcde50bbe9955e91c6b3d7978847aa) Thanks [@mike-north](https://github.com/mike-north)! - Add snapshot-path test coverage for the integer-brand bypass scenarios (phase 0.5c). Mirrors the 7 build-path scenarios from `integer-type.test.ts` through `buildFormSpecAnalysisFileSnapshot`, pinning current divergences with `KNOWN DIVERGENCE` comments so regressions can be detected in either direction.
+
+- [#317](https://github.com/mike-north/formspec/pull/317) [`2d9b399`](https://github.com/mike-north/formspec/commit/2d9b399f0e7e0ebd3c902af433f209aeb6903a90) Thanks [@mike-north](https://github.com/mike-north)! - Add pinned regression tests for three known build/snapshot consumer divergences (`@const not-json`, `@minimum Infinity`, `@minimum NaN`). These tests anchor Phase 2/3 normalization work in the synthetic-checker retirement plan.
+
+- [#324](https://github.com/mike-north/formspec/pull/324) [`8c17b53`](https://github.com/mike-north/formspec/commit/8c17b53c2bd03d24c027c24c2f6c7168137a313d) Thanks [@mike-north](https://github.com/mike-north)! - Add cross-consumer parity harness (Phase 0.5a, §9.1 #1)
+
+  Introduces `packages/analysis/src/__tests__/parity-harness.test.ts`, a parametric fixture suite (tag × subject type × argument shape) that runs both the build and snapshot consumers on each input and asserts either diagnostic equality or a known-divergence entry. The `KNOWN_DIVERGENCES` list pins the three catalogued lowering differences from §3 of the refactor plan plus the integer-brand snapshot gap surfaced in #315.
+
+  Consumes the parity-log schema + diff helper from #316.
+
+  Test-only change; no source modifications.
+
+- [#323](https://github.com/mike-north/formspec/pull/323) [`5ae592a`](https://github.com/mike-north/formspec/commit/5ae592a4dae2dccf152098e9df86289ac2935562) Thanks [@mike-north](https://github.com/mike-north)! - Add two constraint-tag fixtures to the ts-plugin test harness (Phase 0.5b, §9.1 #2).
+
+- [#322](https://github.com/mike-north/formspec/pull/322) [`7dcc602`](https://github.com/mike-north/formspec/commit/7dcc60268bac47b0c0e44a58960a53fa7cdaea5b) Thanks [@mike-north](https://github.com/mike-north)! - Pin setup-diagnostic primaryLocation (Phase 0.5d, §9.1 #4). Anchors for Phase 4 relocation.
+
+- [#314](https://github.com/mike-north/formspec/pull/314) [`bb33834`](https://github.com/mike-north/formspec/commit/bb33834f259a4c9f3249445d3a96ae590063cb24) Thanks [@mike-north](https://github.com/mike-north)! - Add edge-case behavior-pin tests for `@const` raw-string fallback (Phase 0.5e). Covers invalid number-like input, multi-line JSON truncation, trailing-comma arrays, Unicode escape sequences, and empty-after-trim payloads.
+
+- [#321](https://github.com/mike-north/formspec/pull/321) [`6370ca6`](https://github.com/mike-north/formspec/commit/6370ca6814e888453474269912a2a934c21430d6) Thanks [@mike-north](https://github.com/mike-north)! - Pin orphaned raw-text-fallback behavior (Phase 0.5g, §9.3 #17).
+
+- [#320](https://github.com/mike-north/formspec/pull/320) [`6e32145`](https://github.com/mike-north/formspec/commit/6e32145284cf76bb3c4b97fe9a7a8ecd5ba2a54e) Thanks [@mike-north](https://github.com/mike-north)! - Pin setup-diagnostic emission-count stability (Phase 0.5h, §9.3 #19).
+
+- [#305](https://github.com/mike-north/formspec/pull/305) [`bcff56c`](https://github.com/mike-north/formspec/commit/bcff56c8b3ae83f61f4978905500a7ea8cf3dc3f) Thanks [@mike-north](https://github.com/mike-north)! - Add structured constraint-validator debug logging (Phase 0-A)
+
+  Implements §8.3a–8.3d and §8.3f from the synthetic-checker retirement plan:
+  - Introduces the `formspec:analysis:constraint-validator` namespace family with
+    sub-namespaces `:build`, `:snapshot`, `:typed-parser`, `:synthetic`, and
+    `:broadening` in a new `constraint-validator-logger.ts` module in
+    `@formspec/analysis`.
+  - Emits one structured log entry per constraint-tag application (§8.3b) from
+    both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
+    (`file-snapshots.ts`). Each entry includes `consumer`, `tag`, `placement`,
+    `subjectTypeKind`, `roleOutcome` (A-pass/A-reject/B-pass/B-reject/C-pass/
+    C-reject/D1/D2/bypass), and `elapsedMicros`.
+  - Logs extension-registry construction events and synthetic batch setup
+    diagnostics at `debug` level (§8.3c).
+  - Logs `resolvePayload` invocations with `extensionId`, `customTypeName`, and
+    `tsApisTouched` flag at the custom-type resolution site in `class-analyzer.ts`
+    (§8.3d; `tsApisTouched: false` until PR #300 lands).
+  - Adds a "Debugging constraint validation" section to `ARCHITECTURE.md` (§8.3f)
+    documenting `DEBUG=formspec:analysis:constraint-validator:*` usage and the
+    structured log-entry schema.
+
+  Enable with `DEBUG=formspec:analysis:constraint-validator:*`. No behavior changes.
+
+- [#318](https://github.com/mike-north/formspec/pull/318) [`8bc8299`](https://github.com/mike-north/formspec/commit/8bc82994bf9362125e18fff9ee368628af2bcebb) Thanks [@mike-north](https://github.com/mike-north)! - Add silent-acceptance canary tests (Phase 0.5j, refactor plan S.9.3 #14). 25 negative-only test cases across @minimum, @enumOptions, @pattern, @uniqueItems, and @const identify pre-existing gaps where the analysis pipeline accepts invalid arguments without emitting a diagnostic.
+
+- Updated dependencies [[`a59effe`](https://github.com/mike-north/formspec/commit/a59effefdf7d59ecbed7e51cb241f9ddfdd8649d)]:
+  - @formspec/core@0.1.0-alpha.55
+
 ## 0.1.0-alpha.54
 
 ### Minor Changes
