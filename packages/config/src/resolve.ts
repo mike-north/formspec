@@ -22,7 +22,7 @@ export interface ResolvedFormSpecConfig {
   /** Resolved vendor prefix. */
   readonly vendorPrefix: string;
   /** Resolved enum serialization mode. */
-  readonly enumSerialization: "enum" | "oneOf";
+  readonly enumSerialization: "enum" | "oneOf" | "smart-size";
 }
 
 /**

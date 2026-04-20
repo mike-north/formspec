@@ -113,7 +113,7 @@ describe("CLI", () => {
       expect(result.stdout).toContain("--enum-serialization requires a value");
     });
 
-    it('should fail when --enum-serialization is not "enum" or "oneOf"', () => {
+    it('should fail when --enum-serialization is not "enum", "oneOf", or "smart-size"', () => {
       const formFile = createFormFile(
         "form.js",
         `
@@ -122,7 +122,9 @@ describe("CLI", () => {
       );
       const result = runCli([formFile, "--enum-serialization", "invalid"]);
       expect(result.exitCode).not.toBe(0);
-      expect(result.stdout).toContain('--enum-serialization must be "enum" or "oneOf"');
+      expect(result.stdout).toContain(
+        '--enum-serialization must be "enum", "oneOf", or "smart-size"'
+      );
     });
   });
 
@@ -284,6 +286,44 @@ describe("CLI", () => {
 
       const schema = JSON.parse(
         fs.readFileSync(path.join(outDir, "form-enum-schema.json"), "utf-8")
+      ) as Record<string, { oneOf?: unknown }>;
+      const properties = schema["properties"] as Record<string, unknown>;
+
+      expect(properties["status"]).toEqual({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "sent", title: "Sent to Customer" },
+        ],
+      });
+    });
+
+    it("should support smart-size enum serialization", () => {
+      const formFile = createFormFile(
+        "form-enum-smart-size.js",
+        `
+        export default {
+          elements: [
+            {
+              _type: "field",
+              _field: "enum",
+              name: "status",
+              options: [
+                { id: "draft", label: "Draft" },
+                { id: "sent", label: "Sent to Customer" }
+              ]
+            }
+          ]
+        };
+      `
+      );
+
+      const outDir = path.join(tempDir, "out-smart-size");
+      const result = runCli([formFile, "-o", outDir, "--enum-serialization", "smart-size"]);
+
+      expect(result.exitCode).toBe(0);
+
+      const schema = JSON.parse(
+        fs.readFileSync(path.join(outDir, "form-enum-smart-size-schema.json"), "utf-8")
       ) as Record<string, { oneOf?: unknown }>;
       const properties = schema["properties"] as Record<string, unknown>;
 

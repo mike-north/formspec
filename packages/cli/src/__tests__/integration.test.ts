@@ -141,6 +141,43 @@ describe("generators", () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("threads smart-size enum serialization into static method schemas", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-method-smart-size-"));
+    const filePath = path.join(dir, "enum-methods.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      export class EnumMethods {
+        updateStatus(status: "draft" | "sent"): "draft" | "sent" {
+          return status;
+        }
+      }
+    `
+    );
+
+    try {
+      const ctx = createProgramContext(filePath);
+      const classDecl = findClassByName(ctx.sourceFile, "EnumMethods");
+      if (!classDecl) throw new Error("EnumMethods class not found");
+      const analysis = analyzeClassToIR(classDecl, ctx.checker, filePath);
+      const updateStatus = analysis.instanceMethods[0];
+      if (!updateStatus) throw new Error("updateStatus method not found");
+
+      const methodSchemas = generateMethodSchemas(updateStatus, ctx.checker, new Map(), {
+        enumSerialization: "smart-size",
+      });
+
+      expect(methodSchemas.params?.jsonSchema).toEqual({
+        enum: ["draft", "sent"],
+      });
+      expect(methodSchemas.returnType).toEqual({
+        enum: ["draft", "sent"],
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("isFormSpec", () => {

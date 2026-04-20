@@ -233,7 +233,7 @@ export interface StaticSchemaGenerationOptions {
    * @defaultValue "enum"
    * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
    */
-  readonly enumSerialization?: "enum" | "oneOf";
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
   /**
    * Metadata resolution policy for static schema generation.
    * @deprecated Provide a `FormSpecConfig` via the `config` option instead.
@@ -730,7 +730,7 @@ function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegis
 export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
   extensionRegistry: ExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
-  enumSerialization: "enum" | "oneOf" | undefined;
+  enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   metadata: MetadataPolicyInput | undefined;
 } {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
@@ -758,7 +758,7 @@ export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
 function resolveOptions(options: StaticSchemaGenerationOptions): {
   extensionRegistry: MutableExtensionRegistry | undefined;
   vendorPrefix: string | undefined;
-  enumSerialization: "enum" | "oneOf" | undefined;
+  enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   metadata: MetadataPolicyInput | undefined;
 } {
   const configRegistry =
@@ -832,7 +832,7 @@ function generateSchemasFromResolvedOptions(
   resolved: {
     extensionRegistry: MutableExtensionRegistry | undefined;
     vendorPrefix: string | undefined;
-    enumSerialization: "enum" | "oneOf" | undefined;
+    enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
     metadata: MetadataPolicyInput | undefined;
   },
   discriminator: DiscriminatorResolutionOptions | undefined

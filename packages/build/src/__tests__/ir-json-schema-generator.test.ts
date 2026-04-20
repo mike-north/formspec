@@ -557,6 +557,56 @@ describe("generateJsonSchemaFromIR", () => {
       },
     );
 
+    it("uses compact enum serialization in smart-size mode when titles would be redundant", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [
+            { value: "draft", displayName: "draft" },
+            { value: "sent" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
+      const prop = (schema.properties as Record<string, unknown>)["status"];
+
+      expect(prop).toEqual({
+        enum: ["draft", "sent"],
+      });
+    });
+
+    it("uses oneOf serialization in smart-size mode when any title is distinct", () => {
+      const ir = makeIR([
+        makeField("status", {
+          kind: "enum",
+          members: [
+            { value: "draft", displayName: "Draft" },
+            { value: "sent" },
+          ],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
+      const prop = (schema.properties as Record<string, unknown>)["status"];
+
+      expect(prop).toEqual({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "sent" },
+        ],
+      });
+    });
+
+    it("throws when enumSerialization is invalid at runtime", () => {
+      const ir = makeIR([]);
+      const invalidOptions = {
+        enumSerialization: "invalid",
+      } as unknown as Parameters<typeof generateJsonSchemaFromIR>[1];
+
+      expect(() => generateJsonSchemaFromIR(ir, invalidOptions)).toThrow(
+        'Invalid enumSerialization "invalid". Expected "enum", "oneOf", or "smart-size".'
+      );
+    });
+
     it("uses the configured vendorPrefix for the display-name extension", () => {
       const ir = makeIR([
         makeField("status", {

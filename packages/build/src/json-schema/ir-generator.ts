@@ -132,7 +132,7 @@ interface GeneratorContext {
   /** Vendor prefix passed through to extension toJsonSchema handlers. */
   readonly vendorPrefix: string;
   /** Selected JSON Schema representation for enum-like values. */
-  readonly enumSerialization: "enum" | "oneOf";
+  readonly enumSerialization: "enum" | "oneOf" | "smart-size";
 }
 
 /**
@@ -157,27 +157,37 @@ export interface GenerateJsonSchemaFromIROptions {
    * JSON Schema representation to use for static enums.
    * @defaultValue "enum"
    */
-  readonly enumSerialization?: "enum" | "oneOf" | undefined;
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
+}
+
+/**
+ * Normalizes enum serialization input so JavaScript callers still get a
+ * runtime validation error for unsupported values.
+ */
+function parseEnumSerialization(value: unknown): GeneratorContext["enumSerialization"] {
+  switch (value) {
+    case undefined:
+    case "enum":
+      return "enum";
+    case "oneOf":
+      return "oneOf";
+    case "smart-size":
+      return "smart-size";
+    default:
+      throw new Error(
+        `Invalid enumSerialization "${String(value)}". Expected "enum", "oneOf", or "smart-size".`
+      );
+  }
 }
 
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
-  const rawEnumSerialization = options?.enumSerialization as string | undefined;
+  const enumSerialization = parseEnumSerialization(options?.enumSerialization);
   if (!vendorPrefix.startsWith("x-")) {
     throw new Error(
       `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
     );
   }
-  if (
-    rawEnumSerialization !== undefined &&
-    rawEnumSerialization !== "enum" &&
-    rawEnumSerialization !== "oneOf"
-  ) {
-    throw new Error(
-      `Invalid enumSerialization "${rawEnumSerialization}". Expected "enum" or "oneOf".`
-    );
-  }
-  const enumSerialization: GeneratorContext["enumSerialization"] = rawEnumSerialization ?? "enum";
 
   return {
     defs: {},
@@ -578,10 +588,15 @@ function generatePrimitiveType(type: PrimitiveTypeNode): JsonSchema2020 {
  * any member label is available. The `oneOf` mode emits per-member `const`
  * entries, and includes `title` only when the member has an explicit
  * `@displayName` that differs from the value — omitting redundant titles
- * such as `{ "const": "USD", "title": "USD" }` (#310).
+ * such as `{ "const": "USD", "title": "USD" }` (#310). `smart-size`
+ * chooses `oneOf` only when any effective title differs from the serialized
+ * enum value.
  */
 function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema2020 {
-  if (ctx.enumSerialization === "oneOf") {
+  if (
+    ctx.enumSerialization === "oneOf" ||
+    (ctx.enumSerialization === "smart-size" && shouldSerializeEnumAsOneOf(type))
+  ) {
     return {
       oneOf: type.members.map((m) => {
         const stringValue = String(m.value);
@@ -593,12 +608,27 @@ function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema
   }
 
   const schema: JsonSchema2020 = { enum: type.members.map((m) => m.value) };
+  if (ctx.enumSerialization === "smart-size") {
+    return schema;
+  }
+
   const displayNames = buildEnumDisplayNameExtension(type);
   if (displayNames !== undefined) {
     // Emit either no extension at all or a complete map for every member.
     schema[`${ctx.vendorPrefix}-display-names` as `x-${string}`] = displayNames;
   }
   return schema;
+}
+
+/**
+ * `smart-size` can stay compact when every visible title would only restate
+ * the enum value. Any distinct title requires `oneOf` so that label survives.
+ */
+function shouldSerializeEnumAsOneOf(type: EnumTypeNode): boolean {
+  return type.members.some((member) => {
+    const title = member.displayName ?? String(member.value);
+    return title !== String(member.value);
+  });
 }
 
 function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, string> | undefined {

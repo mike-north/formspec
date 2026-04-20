@@ -129,6 +129,35 @@ describe("writeSchemas", () => {
       expect(statusProperty?.enum).toEqual(["draft", "published", "archived"]);
     });
 
+    it("should support smart-size enum serialization", () => {
+      const form = formspec(
+        field.enum(
+          "status",
+          [
+            { id: "draft", label: "Draft" },
+            { id: "published", label: "Published" },
+          ] as const
+        )
+      );
+
+      const result = writeSchemas(form, {
+        outDir: tempDir,
+        name: "smart-size",
+        enumSerialization: "smart-size",
+      });
+
+      const jsonSchema = JSON.parse(
+        fs.readFileSync(result.jsonSchemaPath, "utf-8")
+      ) as JSONSchema7;
+
+      expect(jsonSchema.properties?.["status"]).toEqual({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "published", title: "Published" },
+        ],
+      });
+    });
+
     it("should handle forms with nested objects", () => {
       const form = formspec(field.object("address", field.text("street"), field.text("city")));
 

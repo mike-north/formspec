@@ -290,7 +290,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;

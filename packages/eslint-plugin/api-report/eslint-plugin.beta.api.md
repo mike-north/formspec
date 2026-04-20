@@ -59,7 +59,7 @@ export { ExplicitMetadataSource }
 // @public
 export interface FormSpecConfig {
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition[];
     readonly metadata?: MetadataPolicyInput;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;

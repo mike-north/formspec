@@ -60,6 +60,29 @@ describe("generateJsonSchema", () => {
     });
   });
 
+  it("should support smart-size enum serialization for distinct option labels", () => {
+    const form = formspec(
+      field.enum(
+        "priority",
+        [
+          { id: "low", label: "Low Priority" },
+          { id: "high", label: "High Priority" },
+        ] as const,
+        { label: "Priority" }
+      )
+    );
+
+    const schema = generateJsonSchema(form, { enumSerialization: "smart-size" });
+
+    expect(schema.properties?.["priority"]).toEqual({
+      title: "Priority",
+      oneOf: [
+        { const: "low", title: "Low Priority" },
+        { const: "high", title: "High Priority" },
+      ],
+    });
+  });
+
   it("should handle required fields", () => {
     const form = formspec(field.text("name", { required: true }), field.text("optional"));
 

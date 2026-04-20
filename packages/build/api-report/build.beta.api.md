@@ -183,7 +183,7 @@ export { FormSpec }
 // @public
 export interface FormSpecConfig {
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition_2[];
     readonly metadata?: MetadataPolicyInput_2;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
@@ -210,7 +210,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
@@ -540,7 +540,7 @@ export interface StaticSchemaGenerationOptions {
     readonly configPath?: string | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
     // @deprecated
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // @deprecated
     readonly extensionRegistry?: ExtensionRegistry | undefined;
     // @deprecated

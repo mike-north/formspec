@@ -184,7 +184,7 @@ export { FormSpec }
 export interface FormSpecConfig {
     // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
     readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition_2[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput_2" needs to be exported by the entry point index.d.ts
@@ -214,7 +214,7 @@ export function generateJsonSchema<E extends readonly FormElement[]>(form: FormS
 
 // @public
 export interface GenerateJsonSchemaOptions {
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly logger?: LoggerLike | undefined;
     readonly metadata?: MetadataPolicyInput | undefined;
     readonly vendorPrefix?: string | undefined;
@@ -544,7 +544,7 @@ export interface StaticSchemaGenerationOptions {
     readonly configPath?: string | undefined;
     readonly discriminator?: DiscriminatorResolutionOptions | undefined;
     // @deprecated
-    readonly enumSerialization?: "enum" | "oneOf";
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // @deprecated
     readonly extensionRegistry?: ExtensionRegistry | undefined;
     // @deprecated

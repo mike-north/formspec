@@ -170,14 +170,26 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
       `Invalid config at ${filePath}: "vendorPrefix" must be a string starting with "x-", got ${JSON.stringify(config.vendorPrefix)}`
     );
   }
-  const enumSerialization: unknown = config.enumSerialization;
-  if (
-    enumSerialization !== undefined &&
-    enumSerialization !== "enum" &&
-    enumSerialization !== "oneOf"
-  ) {
+  validateEnumSerializationValue(config.enumSerialization, "enumSerialization", filePath);
+  if (config.packages !== undefined) {
+    for (const [pattern, override] of Object.entries(config.packages)) {
+      validateEnumSerializationValue(
+        override.enumSerialization,
+        `packages[${JSON.stringify(pattern)}].enumSerialization`,
+        filePath
+      );
+    }
+  }
+}
+
+function validateEnumSerializationValue(
+  value: unknown,
+  label: string,
+  filePath: string
+): void {
+  if (value !== undefined && value !== "enum" && value !== "oneOf" && value !== "smart-size") {
     throw new Error(
-      `Invalid config at ${filePath}: "enumSerialization" must be "enum" or "oneOf", got ${JSON.stringify(config.enumSerialization)}`
+      `Invalid config at ${filePath}: "${label}" must be "enum", "oneOf", or "smart-size", got ${JSON.stringify(value)}`
     );
   }
 }

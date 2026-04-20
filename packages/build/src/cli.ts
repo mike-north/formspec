@@ -24,7 +24,7 @@ interface CliOptions {
   inputFile: string;
   outDir: string;
   name: string;
-  enumSerialization: "enum" | "oneOf";
+  enumSerialization: "enum" | "oneOf" | "smart-size";
 }
 
 function printHelp(): void {
@@ -37,7 +37,7 @@ Usage:
 Options:
   -o, --out-dir <dir>   Output directory (default: ./generated)
   -n, --name <name>     Base name for output files (default: derived from input)
-  --enum-serialization <enum|oneOf>
+  --enum-serialization <enum|oneOf|smart-size>
                          Enum JSON Schema representation (default: enum)
   -h, --help            Show this help message
 
@@ -56,7 +56,7 @@ function parseArgs(args: string[]): CliOptions | null {
   const positional: string[] = [];
   let outDir = "./generated";
   let name = "";
-  let enumSerialization: "enum" | "oneOf" = "enum";
+  let enumSerialization: "enum" | "oneOf" | "smart-size" = "enum";
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -95,8 +95,14 @@ function parseArgs(args: string[]): CliOptions | null {
         console.error("Error: --enum-serialization requires a value");
         return null;
       }
-      if (nextArg !== "enum" && nextArg !== "oneOf") {
-        console.error('Error: --enum-serialization must be "enum" or "oneOf"');
+      if (
+        nextArg !== "enum" &&
+        nextArg !== "oneOf" &&
+        nextArg !== "smart-size"
+      ) {
+        console.error(
+          'Error: --enum-serialization must be "enum", "oneOf", or "smart-size"'
+        );
         return null;
       }
       enumSerialization = nextArg;

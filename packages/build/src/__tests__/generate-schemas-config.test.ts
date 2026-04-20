@@ -125,6 +125,47 @@ describe("generateSchemas with FormSpecConfig", () => {
     }
   });
 
+  it("resolves smart-size enumSerialization from config", () => {
+    const filePath = writeTempSource(`
+      export type PlanStatus = "draft" | "sent";
+
+      export interface InvoiceModel {
+        status: PlanStatus;
+      }
+    `);
+
+    try {
+      const config: FormSpecConfig = {
+        enumSerialization: "smart-size",
+        metadata: {
+          enumMember: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => (logicalName === "draft" ? "Draft" : logicalName),
+            },
+          },
+        },
+      };
+
+      const result = generateSchemas({
+        filePath,
+        typeName: "InvoiceModel",
+        config,
+        errorReporting: "throw",
+      });
+
+      expect(result.jsonSchema.$defs?.["PlanStatus"]).toMatchObject({
+        oneOf: [
+          { const: "draft", title: "Draft" },
+          { const: "sent" },
+        ],
+      });
+      expect(result.jsonSchema.$defs?.["PlanStatus"]).not.toHaveProperty("enum");
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
   it("resolves metadata from config", () => {
     const filePath = writeTempSource(`
       export interface UserForm {
