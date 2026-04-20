@@ -9,5 +9,5 @@
       "@formspec/language-server": ["packages/language-server/src/index.ts"]
     }
   },
-  "include": ["benchmarks", "tests/hybrid-tooling-benchmark.test.ts"]
+  "include": ["benchmarks", "fixtures/stripe-real-sdk", "tests/hybrid-tooling-benchmark.test.ts"]
 }
