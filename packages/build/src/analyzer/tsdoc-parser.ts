@@ -83,7 +83,6 @@ import {
   getSyntheticLogger,
   getTypedParserLogger,
   parseTagArgument,
-  TAG_ARGUMENT_DIAGNOSTIC_CODES,
   describeTypeKind,
   elapsedMicros,
   nowMicros,
@@ -378,6 +377,7 @@ function processConstraintTag(
     sourceFile,
     tagName,
     parsedTag,
+    text,
     provenance,
     supportingDeclarations,
     options
@@ -708,6 +708,7 @@ function buildCompilerBackedConstraintDiagnostics(
   sourceFile: ts.SourceFile,
   tagName: string,
   parsedTag: ParsedCommentTag | null,
+  rawText: string,
   provenance: Provenance,
   supportingDeclarations: readonly string[],
   options?: ParseTSDocOptions
@@ -907,12 +908,26 @@ function buildCompilerBackedConstraintDiagnostics(
   // `@enumOptions` arg?). Roles A/B/D1/D2 remain the synthetic checker's
   // responsibility until Phase 4.
   //
-  // Behaviour:
+  // IMPORTANT: the typed-parser call is guarded by `if (!hasBroadening)` so that
+  // broadened fields (D1/D2) bypass Role C entirely. Without this guard a broadened
+  // field whose argument the typed parser would reject (e.g. a non-JSON @enumOptions
+  // arg on a Decimal path-target) would spuriously emit INVALID_TAG_ARGUMENT instead
+  // of being silently bypassed as Role D1/D2 requires.
+  //
+  // Behaviour (non-broadened path):
   //   - ok: false → emit C-reject with the typed parser's code + message; skip synthetic.
   //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
-  const effectiveArgumentText = parsedTag?.argumentText ?? "";
+  // TODO: text and parsedTag.argumentText can diverge for TAGS_REQUIRING_RAW_TEXT —
+  // revisit if orphan path becomes reachable. Using rawText as fallback ensures
+  // orphaned-tag arguments are forwarded rather than silently replaced with "".
+  const effectiveArgumentText = parsedTag?.argumentText ?? rawText;
+
+  if (hasBroadening) {
+    return emit("bypass", []);
+  }
+
   const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
 
   if (!typedParseResult.ok) {
@@ -927,14 +942,30 @@ function buildCompilerBackedConstraintDiagnostics(
         diagnosticCode: typedParseResult.diagnostic.code,
       });
     }
+    // Map the typed-parser diagnostic code to a ConstraintSemanticDiagnostic code.
+    // UNKNOWN_TAG is structurally unreachable here: parseTagArgument is only called
+    // after the tag was resolved via getTagDefinition above. If it fires, it's a bug.
+    let mappedCode: "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
+    switch (typedParseResult.diagnostic.code) {
+      case "MISSING_TAG_ARGUMENT":
+        mappedCode = "MISSING_TAG_ARGUMENT";
+        break;
+      case "INVALID_TAG_ARGUMENT":
+        mappedCode = "INVALID_TAG_ARGUMENT";
+        break;
+      case "UNKNOWN_TAG":
+        // Structurally unreachable: parseTagArgument is only called for tags
+        // already resolved via getTagDefinition above. If this fires it's a bug.
+        throw new Error(
+          `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`
+        );
+      default: {
+        const _exhaustive: never = typedParseResult.diagnostic.code;
+        throw new Error(`Unknown diagnostic code: ${String(_exhaustive)}`);
+      }
+    }
     return emit("C-reject", [
-      makeDiagnostic(
-        typedParseResult.diagnostic.code === TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT
-          ? "MISSING_TAG_ARGUMENT"
-          : "INVALID_TAG_ARGUMENT",
-        typedParseResult.diagnostic.message,
-        provenance
-      ),
+      makeDiagnostic(mappedCode, typedParseResult.diagnostic.message, provenance),
     ]);
   }
 
@@ -955,13 +986,14 @@ function buildCompilerBackedConstraintDiagnostics(
     definition.valueKind,
     effectiveArgumentText
   );
-  if (definition.requiresArgument && argumentExpression === null) {
-    return emit("A-pass", []);
-  }
-
-  if (hasBroadening) {
-    return emit("bypass", []);
-  }
+  // NOTE (Phase 2): the `requiresArgument && argumentExpression === null` guard
+  // that previously lived here was removed because it is dead code after Phase 2.
+  // For every `requiresArgument: true` tag, the typed parser returns ok: false
+  // (MISSING_TAG_ARGUMENT) when the argument text is empty, so the C-reject
+  // branch above fires before this point can be reached. The guard was labelled
+  // "A-pass" which was misleading — it represented "typed-parser-passed-but-
+  // rendering-returned-null", not a true Role-A miss. Dead branch confirmed by
+  // exhaustive analysis of parseTagArgument return values for all tag families.
 
   const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
   const hostType = options?.hostType ?? subjectType;

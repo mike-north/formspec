@@ -28,42 +28,29 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
+import {
+  type BuildFixtureDir,
+  createBuildFixtureDir,
+} from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
 // Temp directory — shared across all build-consumer probe fixtures
 // =============================================================================
 
+let fixture: BuildFixtureDir;
+/** Convenience alias — test bodies reference `tmpDir` as a string path. */
 let tmpDir: string;
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-typed-parser-canary-"));
-
-  fs.writeFileSync(
-    path.join(tmpDir, "tsconfig.json"),
-    JSON.stringify(
-      {
-        compilerOptions: {
-          target: "ES2022",
-          module: "NodeNext",
-          moduleResolution: "nodenext",
-          strict: true,
-          skipLibCheck: true,
-        },
-      },
-      null,
-      2
-    )
-  );
+  fixture = createBuildFixtureDir("formspec-typed-parser-canary-");
+  tmpDir = fixture.dirPath;
 });
 
 afterAll(() => {
-  if (fs.existsSync(tmpDir)) {
-    fs.rmSync(tmpDir, { recursive: true });
-  }
+  fixture.cleanup();
 });
 
 // =============================================================================
@@ -108,6 +95,49 @@ describe("@minimum typed-parser Role-C canaries (build consumer)", () => {
     const diagnostics = buildDiagnosticsFor("minimum", "0x10", "number", "hex-arg");
     const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(diagnostic, "Expected INVALID_TAG_ARGUMENT for hex literal from typed parser").toBeDefined();
+  });
+});
+
+// =============================================================================
+// Broadening bypass — typed parser must NOT fire for broadened (D1/D2) fields
+//
+// Fix: the hasBroadening check was moved BEFORE the parseTagArgument call
+// (Phase 2 review fix #1). Before the fix, a broadened field with a typed-
+// parser-rejectable argument would spuriously emit INVALID_TAG_ARGUMENT instead
+// of being bypassed. This section guards against that regression.
+// =============================================================================
+
+describe("broadening bypass — typed parser must not fire for D1 broadened fields (build consumer)", () => {
+  it("accepts @minimum 0x10 on an integer-branded type (D1 broadening — no INVALID_TAG_ARGUMENT)", () => {
+    // Integer-branded types receive D1 broadening for numeric-comparable tags.
+    // Before the fix, the typed parser ran before the hasBroadening check and
+    // emitted INVALID_TAG_ARGUMENT for the hex literal. With the fix the field
+    // is bypassed entirely and no diagnostic is emitted.
+    // The brand key MUST be `__integerBrand` — that is what isIntegerBrandedType
+    // (packages/build/src/analyzer/builtin-brands.ts) looks for. Using any other
+    // brand name would not trigger D1 broadening.
+    const source = [
+      "declare const __integerBrand: unique symbol;",
+      "type Integer = number & { readonly [__integerBrand]: true };",
+      "export interface TestForm {",
+      "  /** @minimum 0x10 */",
+      "  value: Integer;",
+      "}",
+    ].join("\n");
+
+    const safeName = "broadening-d1-minimum-hex";
+    const fixturePath = path.join(tmpDir, `canary-${safeName}.ts`);
+    fs.writeFileSync(fixturePath, source);
+
+    const result = generateSchemas({
+      filePath: fixturePath,
+      typeName: "TestForm",
+      errorReporting: "diagnostics",
+    });
+
+    // D1 broadened — the typed parser should not have fired.
+    // The integer-branded bypass absorbs this entirely; no INVALID_TAG_ARGUMENT.
+    expect(result.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT")).toBe(false);
   });
 });
 
@@ -164,11 +194,17 @@ describe("@uniqueItems typed-parser Role-C canaries (build consumer)", () => {
     // parseTagArgument("uniqueItems", "false", "build") → INVALID_TAG_ARGUMENT
     // "false" is not a valid boolean marker (only empty or "true" are accepted).
     // Before Phase 2, the build path emitted TYPE_MISMATCH from the synthetic checker.
+    // This assertion is intentionally strict: INVALID_TAG_ARGUMENT confirms the typed
+    // parser fires (Role C), NOT the synthetic checker (which would emit TYPE_MISMATCH).
     const diagnostics = buildDiagnosticsFor("uniqueItems", "false", "string[]", "false-arg");
-    const diagnostic = diagnostics.find(
-      (d) => d.code === "INVALID_TAG_ARGUMENT" || d.code === "TYPE_MISMATCH"
-    );
-    expect(diagnostic, "Expected a diagnostic for @uniqueItems false").toBeDefined();
+    expect(
+      diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT"),
+      "Expected INVALID_TAG_ARGUMENT from typed parser (Role C)"
+    ).toBe(true);
+    expect(
+      diagnostics.some((d) => d.code === "TYPE_MISMATCH"),
+      "Expected no TYPE_MISMATCH (synthetic checker must not fire)"
+    ).toBe(false);
   });
 });
 
