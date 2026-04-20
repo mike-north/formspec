@@ -1,18 +1,15 @@
-import * as ts from "typescript";
-import { collectBrandIdentifiers } from "../extensions/ts-type-utils.js";
-
 /**
- * Returns `true` when `type` is an integer-branded intersection — i.e., it
- * includes a `number` base and a computed property keyed by `__integerBrand`.
+ * Re-exports {@link isIntegerBrandedType} from the shared
+ * `@formspec/analysis` implementation.
  *
- * Used by both `class-analyzer.ts` (IR classification) and `tsdoc-parser.ts`
- * (constraint validation bypass for imported types whose names the synthetic
- * program cannot resolve).
+ * The detection logic was extracted to `@formspec/analysis` (Phase 4A of the
+ * synthetic-checker retirement) so that both the build consumer
+ * (`tsdoc-parser.ts`) and the snapshot consumer (`file-snapshots.ts`) can use
+ * the same bypass check.
+ *
+ * Callers inside `@formspec/build` continue to import from this module — no
+ * import-site changes required in `class-analyzer.ts` or `tsdoc-parser.ts`.
  *
  * @internal
  */
-export function isIntegerBrandedType(type: ts.Type): boolean {
-  if (!type.isIntersection()) return false;
-  if (!type.types.some((member) => !!(member.flags & ts.TypeFlags.Number))) return false;
-  return collectBrandIdentifiers(type).includes("__integerBrand");
-}
+export { isIntegerBrandedType } from "@formspec/analysis/internal";

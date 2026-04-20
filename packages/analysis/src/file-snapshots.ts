@@ -69,7 +69,12 @@ import {
   elapsedMicros,
   type ConstraintValidatorRoleOutcome,
 } from "./constraint-validator-logger.js";
-import { mapTypedParserDiagnosticCode, parseTagArgument } from "./tag-argument-parser.js";
+import {
+  extractEffectiveArgumentText,
+  mapTypedParserDiagnosticCode,
+  parseTagArgument,
+} from "./tag-argument-parser.js";
+import { isIntegerBrandedType } from "./integer-brand.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -1384,9 +1389,7 @@ function buildTagDiagnostics(
   // the top of this function). Compute the log-friendly kind once, and only
   // when structured logging is actually enabled — describeTypeKind is cheap
   // but this runs on every snapshot diagnostic pass.
-  const subjectTypeKindForLog = snapshotLogsEnabled
-    ? describeTypeKind(subjectType, checker)
-    : "";
+  const subjectTypeKindForLog = snapshotLogsEnabled ? describeTypeKind(subjectType, checker) : "";
 
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
@@ -1452,25 +1455,65 @@ function buildTagDiagnostics(
     //   - ok: true (including raw-string-fallback for @const) → proceed to
     //                 lowerTagApplicationToSyntheticCall as before.
     if (isBuiltinConstraintName(tag.normalizedTagName)) {
-      const hasBroadening = hasExtensionBroadening(
+      // §4 Phase 4A — add the integer-brand bypass that was previously missing
+      // from the snapshot consumer (closes #325).
+      //
+      // Mirrors tsdoc-parser.ts hasBroadening computation (~lines 845-863):
+      //   - target === null: direct-field check only. Path-targeted fields use
+      //     the path-resolved type, not the declared subject type, so the brand
+      //     check does not apply to them.
+      //   - isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
+      //     integer brand after stripping | null / | undefined wrappers.
+      //   - capabilities.includes("numeric-comparable"): only bypass numeric
+      //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
+      //
+      // When true: skip both the typed parser AND the synthetic checker and
+      // emit "bypass" on the structured log — identical to the build consumer.
+      const isIntegerBypass =
+        target === null &&
+        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        semantic.tagDefinition.capabilities.includes("numeric-comparable");
+
+      if (isIntegerBypass) {
+        // §8.3b — log "bypass" roleOutcome on the snapshot consumer channel,
+        // mirroring the build consumer's emit("bypass", []) path.
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "bypass",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
+        // Skip typed parser and synthetic checker — no diagnostic emitted.
+        continue;
+      }
+
+      const hasExtBroadening = hasExtensionBroadening(
         tag.normalizedTagName,
         subjectType,
         checker,
         extensionDefinitions
       );
-      // TODO(Phase 4): add isIntegerBrandedType bypass here before removing the
-      // synthetic checker. Snapshot consumer does NOT currently have this bypass
-      // (tracked in #325); build consumer's tsdoc-parser.ts does. Phase 4 must
-      // unify before the synthetic checker can be deleted in Phase 5.
 
-      if (!hasBroadening) {
-        // TODO(Phase 4): Snapshot consumer passes tag.argumentText directly; build consumer
-        // re-derives via parseTagSyntax(tagName, rawText).argumentText to handle the
-        // TAGS_REQUIRING_RAW_TEXT compiler-API fallback path. Reconcile in Phase 4
-        // once both consumers use a shared argument-text extraction helper.
-        const typedParseResult = parseTagArgument(
+      if (!hasExtBroadening) {
+        // §4 Phase 4B — use shared extractEffectiveArgumentText so both
+        // consumers derive argument text identically. For the snapshot consumer,
+        // tag.argumentText is already target-stripped (parseCommentBlock strips
+        // the path-target prefix before storing argumentText), so passing it as
+        // rawText produces the same result as parseTagSyntax(tagName,
+        // tag.argumentText).argumentText. The helper unifies the code paths so
+        // future changes affect both consumers symmetrically.
+        const effectiveArgumentText = extractEffectiveArgumentText(
           tag.normalizedTagName,
           tag.argumentText,
+          tag
+        );
+        const typedParseResult = parseTagArgument(
+          tag.normalizedTagName,
+          effectiveArgumentText,
           "snapshot"
         );
 
@@ -1494,24 +1537,27 @@ function buildTagDiagnostics(
           // build consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
           const mappedCode = mapTypedParserDiagnosticCode(
             typedParseResult.diagnostic.code,
-            tag.normalizedTagName,
+            tag.normalizedTagName
           );
 
           diagnostics.push(
-            createAnalysisDiagnostic(mappedCode, typedParseResult.diagnostic.message, tag.fullSpan, {
-              tagName: tag.normalizedTagName,
-              placement,
-              ...(target === null
-                ? {}
-                : { targetKind: target.kind, targetText: target.text }),
-            })
+            createAnalysisDiagnostic(
+              mappedCode,
+              typedParseResult.diagnostic.message,
+              tag.fullSpan,
+              {
+                tagName: tag.normalizedTagName,
+                placement,
+                ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+              }
+            )
           );
           // Skip adding to syntheticApplications — typed parser already rejected at Role C.
           continue;
         }
 
         // Typed parser accepted the argument. Log at trace level before falling
-        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 4).
+        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 5).
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser C-pass", {
             consumer: "snapshot",
@@ -1523,7 +1569,9 @@ function buildTagDiagnostics(
           });
         }
       } else {
-        // Broadened — bypass typed parser. Log at trace level if enabled.
+        // Extension-broadened (D1/D2) — bypass the typed parser but still pass
+        // to the synthetic checker, which understands extension-registered types
+        // and handles D1/D2 validation. Log at trace level if enabled.
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",

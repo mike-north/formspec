@@ -20,6 +20,7 @@ import { EnumOptionValue } from '@formspec/core';
 import { ExtensionDefinition } from '@formspec/core';
 import { FormElement } from '@formspec/core';
 import { FormSpec } from '@formspec/core';
+import { FormSpecConfig } from '@formspec/config';
 import { Group } from '@formspec/core';
 import type { LoggerLike } from '@formspec/core';
 import type { MetadataPolicyInput } from '@formspec/core';
@@ -180,19 +181,7 @@ export { FormElement }
 
 export { FormSpec }
 
-// @public
-export interface FormSpecConfig {
-    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
-    readonly constraints?: ConstraintConfig;
-    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
-    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
-    readonly extensions?: readonly ExtensionDefinition_2[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput_2" needs to be exported by the entry point index.d.ts
-    readonly metadata?: MetadataPolicyInput_2;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
-    readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
-    readonly vendorPrefix?: string;
-}
+export { FormSpecConfig }
 
 // @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;

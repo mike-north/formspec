@@ -10,3 +10,8 @@ export type {
   AnalyzeMetadataForNodeOptions,
   AnalyzeMetadataForSourceFileOptions,
 } from "./metadata-analysis.js";
+// @internal exports — excluded from the public API report by api-extractor.
+// These are shared utilities for cross-consumer parity in the build and
+// snapshot constraint-validation paths (synthetic-checker retirement §4).
+export { isIntegerBrandedType } from "./integer-brand.js";
+export { extractEffectiveArgumentText } from "./tag-argument-parser.js";
