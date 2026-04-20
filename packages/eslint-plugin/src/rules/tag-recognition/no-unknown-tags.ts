@@ -1,7 +1,7 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
 import { createDeclarationVisitor } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
-import { getTagMetadata } from "../../utils/tag-metadata.js";
+import { getTagMetadata, readExtensionTagNames } from "../../utils/tag-metadata.js";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -26,9 +26,15 @@ export const noUnknownTags = createRule<[], "unknownTag">({
   },
   defaultOptions: [],
   create(context) {
+    // Build a set of extension-defined tag names (constraint tags, metadata
+    // slots, and annotation tags) from `context.settings` so they are not
+    // incorrectly flagged as unknown.
+    const extensionTagNameSet = readExtensionTagNames(context.settings);
+
     return createDeclarationVisitor((node) => {
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
         if (getTagMetadata(tag.rawName) !== null) continue;
+        if (extensionTagNameSet.has(tag.normalizedName)) continue;
         context.report({
           loc: tag.comment.loc,
           messageId: "unknownTag",
