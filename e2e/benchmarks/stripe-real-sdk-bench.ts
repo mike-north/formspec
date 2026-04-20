@@ -141,6 +141,26 @@ function runBuildBenchOnce(fixturePath: string): BuildRunResult {
   // be on the path so ts.createProgram can resolve the type declarations.
   const program = ts.createProgram([fixturePath], COMPILER_OPTIONS);
 
+  // Verify the program resolves cleanly before measuring. If Stripe imports
+  // fail to resolve (wrong version, missing dev-dep) we would measure against
+  // an incomplete type graph and produce a meaningless baseline.
+  const diagnostics = ts.getPreEmitDiagnostics(program);
+  if (diagnostics.length > 0) {
+    const formatted = ts.formatDiagnosticsWithColorAndContext(
+      [...diagnostics],
+      {
+        getCurrentDirectory: () => E2E_ROOT,
+        getCanonicalFileName: (f) => f,
+        getNewLine: () => "\n",
+      }
+    );
+    throw new Error(
+      `TypeScript diagnostics found for fixture "${fixturePath}" — ` +
+        "baseline measurements would be invalid:\n" +
+        formatted
+    );
+  }
+
   const rssPoller = startRssPoller();
   const start = performance.now();
 
@@ -171,13 +191,16 @@ function runBuildBenchOnce(fixturePath: string): BuildRunResult {
  * 2. SIGKILL termination (`result.signal === "SIGKILL"`) — the OS kills the
  *    process before Node.js can write diagnostic output when heap allocation
  *    fails at the OS level.
- * 3. Null exit status with any signal — treated as OOM because the only child
- *    task is schema generation; a signal-terminated run that succeeded would
- *    have exited 0.
+ * 3. ETIMEDOUT (`result.error?.code === "ETIMEDOUT"`) — `spawnSync` exceeded its
+ *    `timeout` option and sent SIGTERM. This is NOT OOM; the function throws so
+ *    the caller can record a distinct timeout outcome.
+ * 4. Null exit status with SIGKILL — treated as OOM (OS killed before Node.js
+ *    could write diagnostic output).
+ * 5. Other non-zero exits without a signal and without known OOM output — logged
+ *    as a warning (e.g. fixture compilation failure, uncaught exception) and
+ *    returned as `false` so the baseline is not invalidated silently.
  *
- * Non-signal non-zero exits (e.g. fixture compilation failure, uncaught
- * exception from the runner script) are returned as `false` because they
- * indicate a different class of error rather than memory exhaustion.
+ * @throws {Error} If `spawnSync` timed out (`ETIMEDOUT`). Timeout is not OOM.
  */
 function detectOom(fixturePath: string, maxOldSpaceMb = OOM_PROBE_HEAP_MB): boolean {
   // Numeric enum values embedded directly — avoids template-expression type errors.
@@ -220,13 +243,27 @@ function detectOom(fixturePath: string, maxOldSpaceMb = OOM_PROBE_HEAP_MB): bool
       {
         encoding: "utf8",
         timeout: 300_000, // 5 min — real SDK types may take longer
+        // cwd must be E2E_ROOT so Node.js resolves `@formspec/build`, `typescript`,
+        // and `stripe` from the e2e workspace node_modules rather than from the OS
+        // tmpdir (which has none of those packages).
+        cwd: E2E_ROOT,
         env: { ...process.env },
       }
     );
 
     if (result.status === 0) return false;
 
-    // Check for OOM indicators in output.
+    // Tier 0: spawnSync timed out — ETIMEDOUT is NOT OOM.
+    // Throw so the caller records a distinct timeout outcome instead of
+    // silently returning didOOM: false and continuing with an invalid baseline.
+    if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT") {
+      throw new Error(
+        `OOM probe timed out after ${String(300_000 / 60_000)} minutes — ` +
+          "consider raising the timeout if the real SDK is slower than expected."
+      );
+    }
+
+    // Tier 1: Known OOM indicators in stdout/stderr.
     const output = `${result.stdout}${result.stderr}`;
     const oomIndicators = [
       "ENOMEM",
@@ -238,14 +275,27 @@ function detectOom(fixturePath: string, maxOldSpaceMb = OOM_PROBE_HEAP_MB): bool
       return true;
     }
 
-    // SIGKILL (or any signal with a null status) means the OS terminated the
-    // process before Node.js could write OOM diagnostics — treat as OOM.
+    // Tier 2: SIGKILL with null status — OS terminated before Node.js could
+    // write OOM diagnostics.
+    if (result.status === null && result.signal === "SIGKILL") {
+      return true;
+    }
+
+    // Tier 3: Any other null-status signal — treated as OOM because the only
+    // child task is schema generation; a signal-terminated success exits 0.
     if (result.status === null && result.signal !== null) {
       return true;
     }
 
-    // Non-zero exit without a signal and without known OOM output: likely a
-    // different error (e.g. fixture compilation failure, uncaught exception).
+    // Tier 4: Non-signal non-zero exit (fixture compilation failure, uncaught
+    // exception, etc.). This is a distinct class of error — log a warning so
+    // the operator is not left wondering why didOOM is false.
+    process.stderr.write(
+      `\n  WARNING: OOM probe exited with status ${String(result.status)} (not a signal, not OOM indicators found).\n` +
+        `  This may indicate a fixture load error or uncaught exception.\n` +
+        `  stdout: ${result.stdout.slice(0, 500)}\n` +
+        `  stderr: ${result.stderr.slice(0, 500)}\n`
+    );
     return false;
   } finally {
     try {
