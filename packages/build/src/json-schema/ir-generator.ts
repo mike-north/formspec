@@ -273,7 +273,7 @@ export function generateJsonSchemaFromIR(
       applyConstraints(ctx.defs[schemaName], typeDef.constraints, ctx);
     }
     if (typeDef.annotations && typeDef.annotations.length > 0) {
-      applyAnnotations(ctx.defs[schemaName], typeDef.annotations, ctx);
+      applyAnnotations(ctx.defs[schemaName], typeDef.annotations, ctx, typeDef.type);
     }
   }
 
@@ -393,7 +393,7 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   }
 
   applyResolvedMetadata(schema, field.metadata);
-  applyAnnotations(schema, rootAnnotations, ctx);
+  applyAnnotations(schema, rootAnnotations, ctx, field.type);
   if (itemStringSchema !== undefined) {
     applyAnnotations(itemStringSchema, itemAnnotations, ctx);
   }
@@ -718,7 +718,7 @@ function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): Js
   const schema = generateTypeNode(prop.type, ctx);
   applyConstraints(schema, prop.constraints, ctx);
   applyResolvedMetadata(schema, prop.metadata);
-  applyAnnotations(schema, prop.annotations, ctx);
+  applyAnnotations(schema, prop.annotations, ctx, prop.type);
   return schema;
 }
 
@@ -1162,7 +1162,8 @@ function applyConstraints(
 function applyAnnotations(
   schema: JsonSchema2020,
   annotations: readonly AnnotationNode[],
-  ctx: GeneratorContext
+  ctx: GeneratorContext,
+  typeNode?: TypeNode
 ): void {
   for (const annotation of annotations) {
     switch (annotation.annotationKind) {
@@ -1179,7 +1180,7 @@ function applyAnnotations(
         break;
 
       case "defaultValue":
-        schema.default = annotation.value;
+        schema.default = coerceDefaultValue(annotation.value, typeNode, ctx);
         break;
 
       case "format":
@@ -1213,6 +1214,70 @@ function applyAnnotations(
       }
     }
   }
+}
+
+/**
+ * Coerces a `@defaultValue` literal to match the serialized shape of the
+ * field's type.
+ *
+ * `@defaultValue` arguments are parsed as JavaScript literals (numbers,
+ * booleans, strings, etc.) by the TSDoc parser and injected into the emitted
+ * JSON Schema as-is. For custom types whose `toJsonSchema` output differs in
+ * runtime shape from the parsed literal (for example, `Decimal` maps to
+ * `{ type: "string" }` but authors naturally write `@defaultValue 9.99`),
+ * emitting the literal unchanged produces a schema where `default` is
+ * inconsistent with `type` — the emitted `default` would fail validation
+ * against the very schema declaring it (see GitHub issue #358).
+ *
+ * Coercion strategy:
+ * 1. If the underlying type is a custom type with a `serializeDefault` hook,
+ *    delegate fully to the extension.
+ * 2. Otherwise, fall back to best-effort inference based on the `type` keyword
+ *    returned by the extension's `toJsonSchema`: when the emitted schema has
+ *    `type: "string"` and the parsed literal is not already a string, stringify
+ *    the literal via `String(value)`.
+ * 3. For non-custom types, pass the value through unchanged.
+ */
+function coerceDefaultValue(
+  value: unknown,
+  typeNode: TypeNode | undefined,
+  ctx: GeneratorContext
+): unknown {
+  if (typeNode?.kind !== "custom") {
+    return value;
+  }
+  const registration = ctx.extensionRegistry?.findType(typeNode.typeId);
+  if (registration === undefined) {
+    return value;
+  }
+
+  if (registration.serializeDefault !== undefined) {
+    return registration.serializeDefault(value, typeNode.payload);
+  }
+
+  // Inference fallback: examine the shape declared by `toJsonSchema`.
+  let emitted: Record<string, unknown>;
+  try {
+    emitted = registration.toJsonSchema(typeNode.payload, ctx.vendorPrefix);
+  } catch {
+    // Extension serialization errors should not derail default coercion; the
+    // main generator path will surface them through `generateCustomType`.
+    return value;
+  }
+
+  const declaredType = emitted["type"];
+  if (declaredType === "string" && typeof value !== "string" && value !== null) {
+    // Coerce number/boolean/bigint literals into their string form so the
+    // emitted `default` conforms to the custom type's JSON Schema `type`.
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (typeof value === "bigint") {
+      return value.toString();
+    }
+  }
+
+  return value;
 }
 
 function generateCustomType(type: CustomTypeNode, ctx: GeneratorContext): JsonSchema2020 {

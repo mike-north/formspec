@@ -118,6 +118,34 @@ export interface CustomTypeRegistration {
     vendorPrefix: string
   ) => Record<string, unknown>;
   /**
+   * Optional hook that coerces a `@defaultValue` literal into the serialized
+   * form that validates against the schema produced by `toJsonSchema`.
+   *
+   * `@defaultValue` arguments are parsed as JavaScript literals (numbers,
+   * booleans, strings, etc.) and injected into the emitted JSON Schema as-is.
+   * For custom types whose JSON Schema representation has a different runtime
+   * shape than the parsed literal (for example, `Decimal` emits
+   * `{ type: "string" }` but authors write `@defaultValue 9.99`), the literal
+   * must be coerced so that the emitted `default` keyword conforms to the
+   * schema.
+   *
+   * When this hook is omitted, the build pipeline falls back to a best-effort
+   * inference based on the `type` keyword returned by `toJsonSchema`
+   * (e.g., `"string"` output causes non-string literals to be stringified).
+   * Extensions that need bespoke serialization (e.g., Date → ISO-8601 string)
+   * should provide this hook explicitly.
+   *
+   * @param parsed - The JS literal extracted from `@defaultValue` (already
+   *   parsed from TSDoc text; typically `number | string | boolean | null`).
+   * @param payload - The custom-type payload attached to the IR node.
+   * @returns The coerced value to emit as the JSON Schema `default`. Return
+   *   `parsed` unchanged to opt out of coercion for a specific value.
+   */
+  readonly serializeDefault?: (
+    parsed: unknown,
+    payload: ExtensionPayloadValue
+  ) => ExtensionPayloadValue;
+  /**
    * Optional broadening of built-in constraint tags so they can apply to this
    * custom type without modifying the core built-in constraint tables.
    */
