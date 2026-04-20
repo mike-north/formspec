@@ -1,4 +1,5 @@
 import type { JsonValue } from "@formspec/core/internals";
+import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 
 /**
  * Discriminates between "build" (compile-time via tsdoc-parser.ts) and
@@ -14,12 +15,15 @@ export type TagArgumentLowering = "build" | "snapshot";
  *
  * Each variant maps to a distinct constraint-tag semantic:
  * - `number`  — numeric constraints (minimum, maximum, …)
- * - `string`  — string/pattern constraints
+ * - `string`  — validated string result for `@pattern`; never produced for
+ *               `@const` (use `raw-string-fallback` for that)
  * - `boolean` — flag constraints
  * - `marker`  — presence-only constraints (@uniqueItems)
  * - `json-array` — array-valued constraints (@enumOptions)
  * - `json-value` — arbitrary JSON constraints
- * - `raw-string-fallback` — @const with a non-JSON literal value
+ * - `raw-string-fallback` — ONLY produced for `@const` when the argument is
+ *                            not valid JSON; signals that the value should be
+ *                            treated as an opaque string literal
  */
 export type TagArgumentValue =
   | { readonly kind: "number"; readonly value: number }
@@ -28,7 +32,7 @@ export type TagArgumentValue =
   | { readonly kind: "marker" } // for @uniqueItems — empty or "true"
   | { readonly kind: "json-array"; readonly value: readonly JsonValue[] }
   | { readonly kind: "json-value"; readonly value: JsonValue }
-  | { readonly kind: "raw-string-fallback"; readonly value: string }; // @const only
+  | { readonly kind: "raw-string-fallback"; readonly value: string };
 
 /** Diagnostic codes emitted by {@link parseTagArgument}. */
 export const TAG_ARGUMENT_DIAGNOSTIC_CODES = {
@@ -46,6 +50,9 @@ export interface TagArgumentDiagnostic {
    * Messages for INVALID_TAG_ARGUMENT must start with "Expected " so that the
    * "Expected"-based classifier in `packages/analysis/src/file-snapshots.ts`
    * (~line 1480) remains valid when consumer wiring lands in Phase 2/3.
+   *
+   * @remarks Phase 2/3 should shift the classifier to test `code` directly;
+   * the "Expected " prefix is a bridge convention until that wiring lands.
    */
   readonly message: string;
 }
@@ -69,10 +76,22 @@ export type TagFamily =
 
 /**
  * Maps every built-in constraint-tag name (no leading "@") to its parsing
- * family. Unknown tag names return `undefined` at runtime; the parser returns
- * an `UNKNOWN_TAG` diagnostic in that case.
+ * family. Derived from {@link BUILTIN_CONSTRAINT_DEFINITIONS} — the single
+ * source of truth for which constraint tags exist.
+ *
+ * The `satisfies` guard enforces that every key in BUILTIN_CONSTRAINT_DEFINITIONS
+ * is present here and maps to a valid TagFamily. Adding a new tag to core is
+ * therefore either automatic (if the default mapping covers it) or a type
+ * error (prompting the author to add an entry here).
+ *
+ * Family assignment rules:
+ *   "number" core type → "numeric" for value constraints; "length" for size/
+ *     count constraints (minLength, maxLength, minItems, maxItems)
+ *   "boolean" core type → "boolean-marker"
+ *   "string"  core type → "string-opaque"
+ *   "json"    core type → "json-array" for enumOptions; "json-value-with-fallback" for const
  */
-export const TAG_ARGUMENT_FAMILIES: Readonly<Record<string, TagFamily>> = {
+export const TAG_ARGUMENT_FAMILIES = {
   minimum: "numeric",
   maximum: "numeric",
   exclusiveMinimum: "numeric",
@@ -86,7 +105,7 @@ export const TAG_ARGUMENT_FAMILIES: Readonly<Record<string, TagFamily>> = {
   pattern: "string-opaque",
   enumOptions: "json-array",
   const: "json-value-with-fallback",
-};
+} as const satisfies Record<keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS, TagFamily>;
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -111,22 +130,23 @@ function throwNotImplemented(family: TagFamily): never {
  * synthetic-checker retirement plan §1.
  *
  * @param tagName - normalized tag name (no leading "@")
- * @param rawArgumentText - argument text AFTER parseTagSyntax has stripped
- *                          any path-target prefix (i.e. "effectiveText")
- * @param lowering - build vs snapshot. Phase 1 implementations may treat
- *                   this as a no-op; the parameter is accepted for
- *                   forward-compatibility with Phase 2/3 consumer wiring.
+ * @param _rawArgumentText - argument text AFTER parseTagSyntax has stripped
+ *                           any path-target prefix (i.e. "effectiveText")
+ * @param _lowering - build vs snapshot. Phase 1 implementations do not use
+ *                    this; the parameter is accepted for forward-compatibility
+ *                    with Phase 2/3 consumer wiring.
  */
 export function parseTagArgument(
   tagName: string,
-  rawArgumentText: string,
-  lowering: TagArgumentLowering,
+  _rawArgumentText: string,
+  _lowering: TagArgumentLowering,
 ): TagArgumentParseResult {
-  // Suppress unused-parameter lint — `lowering` is intentionally accepted for
-  // Phase 2/3 forward-compatibility even though Phase 1 does not use it.
-  void lowering;
-
-  const family: TagFamily | undefined = TAG_ARGUMENT_FAMILIES[tagName];
+  // TAG_ARGUMENT_FAMILIES has literal string keys; tagName is a runtime string,
+  // so the cast is needed to index into the typed map. The `| undefined` is
+  // explicit because noUncheckedIndexedAccess is not enabled in this package.
+  const family = TAG_ARGUMENT_FAMILIES[tagName as keyof typeof TAG_ARGUMENT_FAMILIES] as
+    | TagFamily
+    | undefined;
 
   if (family === undefined) {
     return {
