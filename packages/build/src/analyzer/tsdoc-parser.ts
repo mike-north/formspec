@@ -81,6 +81,9 @@ import {
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
+  getTypedParserLogger,
+  parseTagArgument,
+  TAG_ARGUMENT_DIAGNOSTIC_CODES,
   describeTypeKind,
   elapsedMicros,
   nowMicros,
@@ -407,6 +410,13 @@ function renderSyntheticArgumentExpression(
     case "number":
     case "integer":
     case "signedInteger":
+      // Pass Infinity, -Infinity, and NaN through as TS identifiers (not quoted
+      // strings). The typed parser (Phase 2) accepts these values; the snapshot
+      // path has always passed them through as identifiers. Aligning the build
+      // path with the snapshot path normalises the §3 Infinity/NaN divergence.
+      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
+        return trimmed;
+      }
       return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
     case "string":
       return JSON.stringify(argumentText);
@@ -729,8 +739,10 @@ function buildCompilerBackedConstraintDiagnostics(
   const log = getBuildLogger();
   const broadeningLog = getBroadeningLogger();
   const syntheticLog = getSyntheticLogger();
+  const typedParserLog = getTypedParserLogger();
   const logsEnabled = log !== noopLogger || broadeningLog !== noopLogger;
   const syntheticTraceEnabled = syntheticLog !== noopLogger;
+  const typedParserTraceEnabled = typedParserLog !== noopLogger;
   const logStart = logsEnabled ? nowMicros() : 0;
   const subjectTypeKind = logsEnabled ? describeTypeKind(subjectType, checker) : "";
 
@@ -889,9 +901,59 @@ function buildCompilerBackedConstraintDiagnostics(
     }
   }
 
+  // §4 Phase 2 — Role C: validate argument literal via the typed parser BEFORE
+  // the synthetic-checker call. The typed parser is the new gatekeeper for
+  // argument-shape validity (is `10.5` a valid `@minLength` arg? is `[]` a valid
+  // `@enumOptions` arg?). Roles A/B/D1/D2 remain the synthetic checker's
+  // responsibility until Phase 4.
+  //
+  // Behaviour:
+  //   - ok: false → emit C-reject with the typed parser's code + message; skip synthetic.
+  //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
+  //     The raw-string-fallback is a successful parse; the downstream IR compatibility
+  //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
+  const effectiveArgumentText = parsedTag?.argumentText ?? "";
+  const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
+
+  if (!typedParseResult.ok) {
+    // §8.3 — emit typed-parser trace log when enabled.
+    if (typedParserTraceEnabled) {
+      typedParserLog.trace("typed-parser C-reject", {
+        consumer: "build",
+        tag: tagName,
+        placement: nonNullPlacement,
+        subjectTypeKind: subjectTypeKind !== "" ? subjectTypeKind : "-",
+        roleOutcome: "C-reject",
+        diagnosticCode: typedParseResult.diagnostic.code,
+      });
+    }
+    return emit("C-reject", [
+      makeDiagnostic(
+        typedParseResult.diagnostic.code === TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT
+          ? "MISSING_TAG_ARGUMENT"
+          : "INVALID_TAG_ARGUMENT",
+        typedParseResult.diagnostic.message,
+        provenance
+      ),
+    ]);
+  }
+
+  // Typed parser accepted the argument. Log at trace level before falling through
+  // to the synthetic checker (which handles Roles A/B/D1/D2 until Phase 4).
+  if (typedParserTraceEnabled) {
+    typedParserLog.trace("typed-parser C-pass", {
+      consumer: "build",
+      tag: tagName,
+      placement: nonNullPlacement,
+      subjectTypeKind: subjectTypeKind !== "" ? subjectTypeKind : "-",
+      roleOutcome: "C-pass",
+      valueKind: typedParseResult.value.kind,
+    });
+  }
+
   const argumentExpression = renderSyntheticArgumentExpression(
     definition.valueKind,
-    parsedTag?.argumentText ?? ""
+    effectiveArgumentText
   );
   if (definition.requiresArgument && argumentExpression === null) {
     return emit("A-pass", []);

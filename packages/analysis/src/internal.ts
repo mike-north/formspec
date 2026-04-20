@@ -169,6 +169,15 @@ export {
   type UnifiedParseOptions,
 } from "./unified-comment-parser.js";
 export {
+  parseTagArgument,
+  TAG_ARGUMENT_DIAGNOSTIC_CODES,
+  type TagArgumentValue,
+  type TagArgumentParseResult,
+  type TagArgumentDiagnostic,
+  type TagArgumentDiagnosticCode,
+  type TagArgumentLowering,
+} from "./tag-argument-parser.js";
+export {
   CONSTRAINT_VALIDATOR_NS,
   CONSTRAINT_VALIDATOR_BUILD_NS,
   CONSTRAINT_VALIDATOR_SNAPSHOT_NS,
@@ -178,6 +187,7 @@ export {
   getBuildLogger,
   getSnapshotLogger,
   getSyntheticLogger,
+  getTypedParserLogger,
   getBroadeningLogger,
   nowMicros,
   elapsedMicros,

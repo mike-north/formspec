@@ -303,6 +303,11 @@ export function getSyntheticLogger(): LoggerLike {
   return getOrCreateLogger(CONSTRAINT_VALIDATOR_SYNTHETIC_NS);
 }
 
+/** Returns the module-level logger for the typed-argument-parser namespace. */
+export function getTypedParserLogger(): LoggerLike {
+  return getOrCreateLogger(CONSTRAINT_VALIDATOR_TYPED_PARSER_NS);
+}
+
 /** Returns the module-level logger for the broadening-bypass namespace. */
 export function getBroadeningLogger(): LoggerLike {
   return getOrCreateLogger(CONSTRAINT_VALIDATOR_BROADENING_NS);

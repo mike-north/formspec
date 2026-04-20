@@ -89,20 +89,14 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
     reason:
       "§3: Build path passes quoted string literal for invalid JSON; snapshot omits argument. See docs/refactors/synthetic-checker-retirement.md §3.",
   },
-  // §3: @minimum Infinity — build stringifies; snapshot passes through as identifier
-  {
-    fixtureLabel: "@minimum Infinity on number",
-    divergenceKind: "any",
-    reason:
-      "§3: Build path stringifies Infinity to '\"Infinity\"'; snapshot passes it through as an identifier. See docs/refactors/synthetic-checker-retirement.md §3.",
-  },
-  // §3: @minimum NaN — build stringifies; snapshot passes through as identifier
-  {
-    fixtureLabel: "@minimum NaN on number",
-    divergenceKind: "any",
-    reason:
-      "§3: Build path stringifies NaN to '\"NaN\"'; snapshot passes it through as an identifier. See docs/refactors/synthetic-checker-retirement.md §3.",
-  },
+  // §3: @minimum Infinity — NORMALIZED in Phase 2.
+  // Build path now passes Infinity as an identifier (same as snapshot). Both
+  // renderSyntheticArgumentExpression (in tsdoc-parser.ts) and renderBuildArgumentExpression
+  // (this harness proxy) were updated to handle Infinity as an identifier.
+  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
+  //
+  // §3: @minimum NaN — NORMALIZED in Phase 2. Same mechanism as Infinity.
+  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
   // Integer-brand snapshot-path gap (PR #315): build has isIntegerBrandedType bypass;
   // snapshot does not replicate it, so numeric constraints on Integer types may diverge.
   {
@@ -435,15 +429,18 @@ function generateFixtureSource(fixture: ParityFixture): string {
  * `packages/build/src/analyzer/tsdoc-parser.ts` — the build-path argument
  * lowering function.
  *
- * Key semantics (§3):
- *   - number/integer/signedInteger: finite numbers pass through; non-finite
- *     values (Infinity, NaN) are JSON-stringified to a string literal.
+ * Key semantics (§3, updated for Phase 2):
+ *   - number/integer/signedInteger: finite numbers pass through; Infinity,
+ *     -Infinity, and NaN pass through as identifiers (Phase 2 fix — no longer
+ *     JSON-stringified). Other non-parseable text is JSON-stringified.
  *   - string: always JSON-quoted.
  *   - json: parses and re-renders valid JSON; falls back to JSON.stringify on
  *     parse error (this is the divergence from the snapshot path for `@const`
  *     with invalid JSON).
  *   - boolean: accepts "true"/"false"; otherwise JSON-stringifies.
  *   - null / condition: pass-through special cases.
+ *
+ * @see packages/build/src/analyzer/tsdoc-parser.ts renderSyntheticArgumentExpression
  */
 function renderBuildArgumentExpression(
   valueKind: string | null | undefined,
@@ -458,6 +455,11 @@ function renderBuildArgumentExpression(
     case "number":
     case "integer":
     case "signedInteger":
+      // Phase 2: Infinity, -Infinity, NaN pass through as identifiers.
+      // Snapshot path has always done this; build path now matches.
+      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
+        return trimmed;
+      }
       return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
     case "string":
       return JSON.stringify(argumentText);
