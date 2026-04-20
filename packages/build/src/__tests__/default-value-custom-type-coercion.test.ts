@@ -27,12 +27,10 @@ import type {
   AnnotationNode,
   Provenance,
   CustomTypeRegistration,
+  ObjectProperty,
+  TypeDefinition,
 } from "@formspec/core/internals";
-import {
-  IR_VERSION,
-  defineCustomType,
-  defineExtension,
-} from "@formspec/core/internals";
+import { IR_VERSION, defineCustomType, defineExtension } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
 import { createExtensionRegistry } from "../extensions/index.js";
 
@@ -57,10 +55,7 @@ const defaultValueAnnotation = (value: unknown): AnnotationNode => ({
   provenance: PROVENANCE,
 });
 
-function makeDecimalField(
-  name: string,
-  annotations: readonly AnnotationNode[]
-): FieldNode {
+function makeDecimalField(name: string, annotations: readonly AnnotationNode[]): FieldNode {
   return {
     kind: "field",
     name,
@@ -123,9 +118,7 @@ const explicitDecimalType: CustomTypeRegistration = defineCustomType({
 });
 
 function registryWith(type: CustomTypeRegistration) {
-  return createExtensionRegistry([
-    defineExtension({ extensionId: EXTENSION_ID, types: [type] }),
-  ]);
+  return createExtensionRegistry([defineExtension({ extensionId: EXTENSION_ID, types: [type] })]);
 }
 
 // =============================================================================
@@ -190,6 +183,111 @@ describe("issue #358: @defaultValue coercion for custom-type fields", () => {
       >;
 
       expect(prop["default"]).toBeNull();
+    });
+
+    it("stringifies a bigint @defaultValue when the custom type emits type: 'string'", () => {
+      // Covers the `typeof value === "bigint"` branch of the inference fallback.
+      const ir = makeIR([makeDecimalField("price", [defaultValueAnnotation(9n)])]);
+      const schema = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registryWith(inferredDecimalType),
+      });
+      const prop = (schema.properties as Record<string, unknown>)["price"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["default"]).toBe("9");
+    });
+
+    it.each([
+      ["NaN", Number.NaN],
+      ["Infinity", Number.POSITIVE_INFINITY],
+      ["-Infinity", Number.NEGATIVE_INFINITY],
+    ])("passes non-finite number %s through unchanged (no String() coercion)", (_label, value) => {
+      // JSON cannot represent NaN/Infinity; stringifying to "NaN"/"Infinity"
+      // would silently mask an authoring mistake. Pass through so downstream
+      // validation surfaces the issue.
+      const ir = makeIR([makeDecimalField("price", [defaultValueAnnotation(value)])]);
+      const schema = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registryWith(inferredDecimalType),
+      });
+      const prop = (schema.properties as Record<string, unknown>)["price"] as Record<
+        string,
+        unknown
+      >;
+
+      expect(prop["default"]).toBe(value);
+      expect(typeof prop["default"]).toBe("number");
+    });
+
+    it("coerces @defaultValue on a custom-typed property inside field.object()", () => {
+      // Exercises the `generatePropertySchema` code path (ObjectProperty
+      // annotations flow through the same `applyAnnotations` → coerceDefaultValue
+      // pipeline as top-level fields).
+      const priceProperty: ObjectProperty = {
+        name: "price",
+        type: { kind: "custom", typeId: DECIMAL_TYPE_ID, payload: null },
+        optional: false,
+        constraints: [],
+        annotations: [defaultValueAnnotation(9.99)],
+        provenance: PROVENANCE,
+      };
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          {
+            kind: "field",
+            name: "line",
+            type: {
+              kind: "object",
+              properties: [priceProperty],
+              additionalProperties: true,
+            },
+            required: false,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registryWith(inferredDecimalType),
+      });
+      const lineProp = (schema.properties as Record<string, unknown>)["line"] as {
+        properties: Record<string, Record<string, unknown>>;
+      };
+      const price = lineProp.properties["price"];
+
+      expect(price?.["type"]).toBe("string");
+      expect(price?.["default"]).toBe("9.99");
+    });
+
+    it("coerces @defaultValue on a named type registered in typeRegistry", () => {
+      // Exercises the typeDef path in generateJsonSchemaFromIR where
+      // applyAnnotations is invoked against the registered $defs entry.
+      const typeDef: TypeDefinition = {
+        name: "Price",
+        type: { kind: "custom", typeId: DECIMAL_TYPE_ID, payload: null },
+        annotations: [defaultValueAnnotation(9.99)],
+        provenance: PROVENANCE,
+      };
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [],
+        typeRegistry: { Price: typeDef },
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir, {
+        extensionRegistry: registryWith(inferredDecimalType),
+      });
+      const defs = schema.$defs as Record<string, Record<string, unknown>>;
+
+      expect(defs["Price"]?.["type"]).toBe("string");
+      expect(defs["Price"]?.["default"]).toBe("9.99");
     });
   });
 

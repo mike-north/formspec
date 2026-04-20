@@ -1266,10 +1266,20 @@ function coerceDefaultValue(
   }
 
   const declaredType = emitted["type"];
-  if (declaredType === "string" && typeof value !== "string" && value !== null) {
+  if (declaredType === "string" && typeof value !== "string") {
     // Coerce number/boolean/bigint literals into their string form so the
     // emitted `default` conforms to the custom type's JSON Schema `type`.
-    if (typeof value === "number" || typeof value === "boolean") {
+    // Non-finite numbers (NaN, Infinity, -Infinity) are not representable in
+    // JSON Schema and would stringify to values like "NaN" that the author
+    // almost certainly did not mean — pass them through unchanged and let
+    // downstream validation surface the issue.
+    if (typeof value === "number") {
+      if (!Number.isFinite(value)) {
+        return value;
+      }
+      return String(value);
+    }
+    if (typeof value === "boolean") {
       return String(value);
     }
     if (typeof value === "bigint") {

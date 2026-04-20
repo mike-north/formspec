@@ -97,8 +97,10 @@ export interface ControlElement {
     readonly type: "Control";
 }
 
+// Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): MutableExtensionRegistry;
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition_2[]): MutableExtensionRegistry;
 
 // @public
 export function createStaticBuildContext(filePath: string): StaticBuildContext;
@@ -153,18 +155,21 @@ export { ExtensionDefinition }
 
 // @public
 export interface ExtensionRegistry {
-    readonly extensions: readonly ExtensionDefinition[];
-    findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
+    readonly extensions: readonly ExtensionDefinition_2[];
+    // Warning: (ae-forgotten-export) The symbol "CustomAnnotationRegistration_2" needs to be exported by the entry point index.d.ts
+    findAnnotation(annotationId: string): CustomAnnotationRegistration_2 | undefined;
     findBuiltinConstraintBroadening(typeId: string, tagName: string): {
         readonly extensionId: string;
-        readonly registration: BuiltinConstraintBroadeningRegistration;
+        readonly registration: BuiltinConstraintBroadeningRegistration_2;
     } | undefined;
-    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
+    // Warning: (ae-forgotten-export) The symbol "CustomConstraintRegistration_2" needs to be exported by the entry point index.d.ts
+    findConstraint(constraintId: string): CustomConstraintRegistration_2 | undefined;
     findConstraintTag(tagName: string): {
         readonly extensionId: string;
-        readonly registration: ConstraintTagRegistration;
+        readonly registration: ConstraintTagRegistration_2;
     } | undefined;
-    findType(typeId: string): CustomTypeRegistration | undefined;
+    // Warning: (ae-forgotten-export) The symbol "CustomTypeRegistration_2" needs to be exported by the entry point index.d.ts
+    findType(typeId: string): CustomTypeRegistration_2 | undefined;
     findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
     findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
     findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
@@ -173,7 +178,7 @@ export interface ExtensionRegistry {
 // @public
 export interface ExtensionTypeLookupResult {
     readonly extensionId: string;
-    readonly registration: CustomTypeRegistration;
+    readonly registration: CustomTypeRegistration_2;
 }
 
 export { FormElement }
@@ -185,8 +190,8 @@ export interface FormSpecConfig {
     // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
     readonly constraints?: ConstraintConfig;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
-    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
-    readonly extensions?: readonly ExtensionDefinition_2[];
+    // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_3" needs to be exported by the entry point index.d.ts
+    readonly extensions?: readonly ExtensionDefinition_3[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput_2" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput_2;
     // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
@@ -633,5 +638,10 @@ export interface WriteSchemasResult {
     readonly jsonSchemaPath: string;
     readonly uiSchemaPath: string;
 }
+
+// Warnings were encountered during analysis:
+//
+// src/extensions/registry.ts:118:9 - (ae-forgotten-export) The symbol "ConstraintTagRegistration_2" needs to be exported by the entry point index.d.ts
+// src/extensions/registry.ts:130:9 - (ae-forgotten-export) The symbol "BuiltinConstraintBroadeningRegistration_2" needs to be exported by the entry point index.d.ts
 
 ```

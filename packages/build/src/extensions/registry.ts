@@ -16,7 +16,7 @@ import type {
   CustomAnnotationRegistration,
   ConstraintTagRegistration,
   BuiltinConstraintBroadeningRegistration,
-} from "@formspec/core";
+} from "@formspec/core/internals";
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
   normalizeConstraintTagName,

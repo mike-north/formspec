@@ -130,21 +130,26 @@ export interface CustomTypeRegistration {
    * schema.
    *
    * When this hook is omitted, the build pipeline falls back to a best-effort
-   * inference based on the `type` keyword returned by `toJsonSchema`
-   * (e.g., `"string"` output causes non-string literals to be stringified).
-   * Extensions that need bespoke serialization (e.g., Date → ISO-8601 string)
-   * should provide this hook explicitly.
+   * inference that only inspects a top-level `type` keyword on the schema
+   * returned by `toJsonSchema` (e.g., `"string"` output causes non-string
+   * literals to be stringified). The fallback does NOT handle `oneOf`,
+   * `anyOf`, or array-form `type` keywords — extensions that emit composite
+   * schemas must provide this hook explicitly. Likewise, extensions that need
+   * bespoke serialization (e.g., Date → ISO-8601 string) should provide the
+   * hook.
+   *
+   * Errors thrown from this hook propagate as build errors; the pipeline does
+   * not catch them.
    *
    * @param parsed - The JS literal extracted from `@defaultValue` (already
    *   parsed from TSDoc text; typically `number | string | boolean | null`).
    * @param payload - The custom-type payload attached to the IR node.
    * @returns The coerced value to emit as the JSON Schema `default`. Return
    *   `parsed` unchanged to opt out of coercion for a specific value.
+   *
+   * @alpha
    */
-  readonly serializeDefault?: (
-    parsed: unknown,
-    payload: ExtensionPayloadValue
-  ) => ExtensionPayloadValue;
+  readonly serializeDefault?: (parsed: unknown, payload: ExtensionPayloadValue) => unknown;
   /**
    * Optional broadening of built-in constraint tags so they can apply to this
    * custom type without modifying the core built-in constraint tables.
