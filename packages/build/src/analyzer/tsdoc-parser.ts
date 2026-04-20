@@ -82,6 +82,7 @@ import {
   getBroadeningLogger,
   getSyntheticLogger,
   getTypedParserLogger,
+  mapTypedParserDiagnosticCode,
   parseTagArgument,
   describeTypeKind,
   elapsedMicros,
@@ -941,25 +942,9 @@ function buildCompilerBackedConstraintDiagnostics(
     // Map the typed-parser diagnostic code to a ConstraintSemanticDiagnostic code.
     // UNKNOWN_TAG is structurally unreachable here: parseTagArgument is only called
     // after the tag was resolved via getTagDefinition above. If it fires, it's a bug.
-    let mappedCode: "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
-    switch (typedParseResult.diagnostic.code) {
-      case "MISSING_TAG_ARGUMENT":
-        mappedCode = "MISSING_TAG_ARGUMENT";
-        break;
-      case "INVALID_TAG_ARGUMENT":
-        mappedCode = "INVALID_TAG_ARGUMENT";
-        break;
-      case "UNKNOWN_TAG":
-        // Structurally unreachable: parseTagArgument is only called for tags
-        // already resolved via getTagDefinition above. If this fires it's a bug.
-        throw new Error(
-          `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`
-        );
-      default: {
-        const _exhaustive: never = typedParseResult.diagnostic.code;
-        throw new Error(`Unknown diagnostic code: ${String(_exhaustive)}`);
-      }
-    }
+    // mapTypedParserDiagnosticCode provides an exhaustive switch shared with the
+    // snapshot consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
+    const mappedCode = mapTypedParserDiagnosticCode(typedParseResult.diagnostic.code, tagName);
     return emit("C-reject", [
       makeDiagnostic(mappedCode, typedParseResult.diagnostic.message, provenance),
     ]);
@@ -1041,7 +1026,10 @@ function buildCompilerBackedConstraintDiagnostics(
   });
 
   if (result.diagnostics.length === 0) {
-    return emit("C-pass", []);
+    // "D-pass": the synthetic batch produced no diagnostics for this application.
+    // This is distinct from "C-pass" (typed-parser accepted the argument at Role C
+    // before the batch ran). "D-pass" means the synthetic checker found nothing wrong.
+    return emit("D-pass", []);
   }
 
   const setupDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.kind !== "typescript");
