@@ -121,6 +121,55 @@ function throwNotImplemented(family: TagFamily): never {
   throw new Error(`not-implemented: tag family "${family}" parser (Slice A/B/C)`);
 }
 
+/**
+ * Parses the argument for `@uniqueItems` (boolean-marker family).
+ *
+ * Preserves current `tag-value-parser.ts` semantics exactly:
+ * - Empty or whitespace-only → ok marker
+ * - Literal `"true"` (after trim) → ok marker
+ * - Anything else (including `"false"`) → INVALID_TAG_ARGUMENT
+ *
+ * Note: `"false"` is invalid because `@uniqueItems` is a presence-only
+ * constraint — there is no "uniqueItems: false" JSON Schema keyword that
+ * FormSpec emits. The value is always serialized as `true`.
+ */
+function parseUniqueItemsArgument(rawArgumentText: string): TagArgumentParseResult {
+  const trimmed = rawArgumentText.trim();
+  if (trimmed === "" || trimmed === "true") {
+    return { ok: true, value: { kind: "marker" } };
+  }
+  return {
+    ok: false,
+    diagnostic: {
+      code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+      message: `Expected @uniqueItems to be either empty or "true", got "${trimmed}".`,
+    },
+  };
+}
+
+/**
+ * Parses the argument for `@pattern` (string-opaque family).
+ *
+ * Preserves current opaque-pass-through behavior per §3 of the retirement
+ * plan: the raw text is trimmed and returned as-is. `new RegExp(text)` is
+ * deliberately NOT called — regex validation is deferred to Phase 2/3 per
+ * §6 risk 2. Quoted vs. unquoted strings produce different values (current
+ * behavior; normalization is a Phase 2/3 concern).
+ */
+function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
+  const trimmed = rawArgumentText.trim();
+  if (trimmed === "") {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
+        message: "Expected a pattern string for @pattern.",
+      },
+    };
+  }
+  return { ok: true, value: { kind: "string", value: trimmed } };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -167,9 +216,9 @@ export function parseTagArgument(
     case "length":
       return throwNotImplemented(family);
     case "boolean-marker":
-      return throwNotImplemented(family);
+      return parseUniqueItemsArgument(_rawArgumentText);
     case "string-opaque":
-      return throwNotImplemented(family);
+      return parsePatternArgument(_rawArgumentText);
     case "json-array":
       return throwNotImplemented(family);
     case "json-value-with-fallback":
