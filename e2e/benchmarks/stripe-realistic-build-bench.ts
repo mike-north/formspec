@@ -1,7 +1,7 @@
 /**
  * Phase 0 baseline: Stripe realistic OOM sweep — build surface.
  *
- * Measures `generateSchemasFromProgram` (from `@formspec/build/internals`)
+ * Measures `generateSchemasFromProgram` (from `@formspec/build`)
  * against a fixture that embeds Stripe types DIRECTLY — no Ref<T> wrapper.
  * This is the code path reported to OOM in real user projects.
  *
@@ -264,27 +264,9 @@ async function main(): Promise<void> {
     const fixturePath = path.join(workspaceRoot, FIXTURE_FILE);
     await fs.writeFile(fixturePath, fixtureSrc, "utf8");
 
-    // Write a tsconfig so the TypeScript compiler can resolve stripe types
-    // from the e2e package's node_modules.
-    const tsconfig = {
-      compilerOptions: {
-        target: "ES2022",
-        module: "NodeNext",
-        moduleResolution: "NodeNext",
-        strict: true,
-        skipLibCheck: true,
-        baseUrl: workspaceRoot,
-        paths: {},
-      },
-    };
-    await fs.writeFile(
-      path.join(workspaceRoot, "tsconfig.json"),
-      JSON.stringify(tsconfig, null, 2),
-      "utf8"
-    );
-
-    // Copy the e2e node_modules stripe types into the temp workspace via symlink
-    // so ts.createProgram can find them.
+    // Symlink e2e node_modules so ts.createProgram can find stripe types.
+    // ts.createProgram is called directly with COMPILER_OPTIONS (not via the
+    // tsconfig on disk), so no tsconfig.json is needed in the temp workspace.
     const e2eNodeModules = path.join(E2E_ROOT, "node_modules");
     const tmpNodeModules = path.join(workspaceRoot, "node_modules");
     await fs.symlink(e2eNodeModules, tmpNodeModules, "dir");

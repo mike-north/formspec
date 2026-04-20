@@ -36,7 +36,7 @@ export class CheckoutForm {
   /** @minimum 0 */
   discountCents!: number;
 
-  /** @pattern "^[A-Z]{3}$" */
+  /** @pattern ^[A-Z]{3}$ */
   currency!: string;
 
   /** @minLength 0 @maxLength 500 */

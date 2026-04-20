@@ -3,8 +3,10 @@
  *
  * Instantiates `FormSpecSemanticService` (from `@formspec/ts-plugin`) against
  * a TypeScript program that includes the fixture file with direct Stripe types.
- * Simulates an editor open-file event by calling the service's diagnostic
- * handler once cold and twice warm (mimicking keystroke re-analysis).
+ * Simulates an editor session by calling `getDiagnostics` on the SAME service
+ * instance three times: once cold (open-file) and twice warm (first and second
+ * keystroke re-analysis). This better models the user-facing editor scenario
+ * than creating a fresh Program + Service per call.
  *
  * Unlike `e2e/fixtures/stripe-ref-customer/` (which uses a Ref<T> wrapper
  * to engage the external-type bypass in PR #308), this fixture forces the
@@ -63,7 +65,7 @@ const FIXTURE_DIR = path.join(E2E_ROOT, "fixtures", "stripe-realistic-oom");
 const BASELINE_DIR = path.join(E2E_ROOT, "bench", "baselines");
 const BASELINE_PATH = path.join(BASELINE_DIR, "stripe-realistic-tsserver-baseline.json");
 const FIXTURE_FILE = "checkout-form.ts";
-// 1 cold + 2 warm to mimic: open file (cold), first keystroke (warm), second keystroke (warm)
+// getDiagnostics invocations per session: call 1 = cold (open-file), calls 2-3 = warm (keystrokes)
 const RUNS = 3;
 const OOM_HEAP_CAP_MB = 1024;
 
@@ -104,20 +106,33 @@ function startRssPoller(intervalMs = 5): RssPoller {
 }
 
 // ---------------------------------------------------------------------------
-// Single benchmark run (tsserver-plugin path)
+// Session benchmark — one Program+Service, multiple getDiagnostics invocations
 // ---------------------------------------------------------------------------
 
-interface TsserverRunResult {
+interface TsserverInvocationResult {
   readonly wallTimeMs: number;
-  readonly peakRssBytes: number;
   readonly syntheticCompileCount: number;
   readonly diagnosticsCount: number;
 }
 
-function runTsserverBenchOnce(
+interface TsserverSessionResult {
+  /** Per-invocation timing: [cold, warm1, warm2, ...] */
+  readonly invocations: readonly TsserverInvocationResult[];
+  /** Peak RSS across the entire session (bytes). */
+  readonly peakRssBytes: number;
+}
+
+/**
+ * Runs a single editor-session simulation: creates one Program + one
+ * FormSpecSemanticService, then calls `getDiagnostics` `runs` times on the
+ * SAME service (run 0 = cold open-file, runs 1+ = warm keystroke re-analysis).
+ * This is more realistic than creating a fresh service per iteration.
+ */
+function runTsserverSession(
   workspaceRoot: string,
-  fixturePath: string
-): TsserverRunResult {
+  fixturePath: string,
+  runs: number
+): TsserverSessionResult {
   const program = ts.createProgram([fixturePath], COMPILER_OPTIONS);
 
   const service = new FormSpecSemanticService({
@@ -126,25 +141,30 @@ function runTsserverBenchOnce(
     getProgram: () => program,
   });
 
+  const rssPoller = startRssPoller();
+
   try {
-    const statsBefore = service.getStats();
-    const rssPoller = startRssPoller();
-    const start = performance.now();
+    const invocations: TsserverInvocationResult[] = [];
 
-    // Simulate editor open-file event: call getDiagnostics once (the full
-    // analysis pass that would run when a file is first opened).
-    const diagnosticsResult = service.getDiagnostics(fixturePath);
+    for (let i = 0; i < runs; i++) {
+      const statsBefore = service.getStats();
+      const start = performance.now();
 
-    const wallTimeMs = performance.now() - start;
+      const diagnosticsResult = service.getDiagnostics(fixturePath);
+
+      const wallTimeMs = performance.now() - start;
+      const statsAfter = service.getStats();
+
+      invocations.push({
+        wallTimeMs,
+        syntheticCompileCount:
+          statsAfter.syntheticCompileCount - statsBefore.syntheticCompileCount,
+        diagnosticsCount: diagnosticsResult.diagnostics.length,
+      });
+    }
+
     const peakRssBytes = rssPoller.stop();
-    const statsAfter = service.getStats();
-
-    return {
-      wallTimeMs,
-      peakRssBytes,
-      syntheticCompileCount: statsAfter.syntheticCompileCount - statsBefore.syntheticCompileCount,
-      diagnosticsCount: diagnosticsResult.diagnostics.length,
-    };
+    return { invocations, peakRssBytes };
   } finally {
     service.dispose();
   }
@@ -301,33 +321,33 @@ async function main(): Promise<void> {
     process.stderr.write(`\n=== Stripe Realistic OOM Sweep — TSServer-Plugin Surface (Phase 0 baseline) ===\n\n`);
     process.stderr.write(`  fixture file: ${FIXTURE_FILE}\n`);
     process.stderr.write(`  surface:      FormSpecSemanticService.getDiagnostics\n`);
-    process.stderr.write(`  runs:         ${String(RUNS)} (run 1 = cold)\n`);
+    process.stderr.write(`  session:      1 service, ${String(RUNS)} getDiagnostics calls (call 1 = cold open-file, calls 2+ = warm keystrokes)\n`);
     process.stderr.write(`  OOM cap:      ${String(OOM_HEAP_CAP_MB)} MB\n\n`);
 
+    process.stderr.write(`  Plugin-path (FormSpecSemanticService.getDiagnostics):\n`);
+    const session = runTsserverSession(workspaceRoot, fixturePath, RUNS);
+
     const allWallTimeMs: number[] = [];
-    const allPeakRssBytes: number[] = [];
     const allSyntheticCompileCounts: number[] = [];
 
-    process.stderr.write(`  Plugin-path (FormSpecSemanticService.getDiagnostics):\n`);
-    for (let i = 0; i < RUNS; i++) {
+    session.invocations.forEach((inv, i) => {
       const label = i === 0 ? "cold" : "warm";
-      process.stderr.write(`    run ${String(i + 1)}/${String(RUNS)} [${label}]...`);
-      const result = runTsserverBenchOnce(workspaceRoot, fixturePath);
-      allWallTimeMs.push(result.wallTimeMs);
-      allPeakRssBytes.push(result.peakRssBytes);
-      allSyntheticCompileCounts.push(result.syntheticCompileCount);
+      allWallTimeMs.push(inv.wallTimeMs);
+      allSyntheticCompileCounts.push(inv.syntheticCompileCount);
       process.stderr.write(
-        ` ${result.wallTimeMs.toFixed(1)}ms  RSS=${(result.peakRssBytes / 1024 / 1024).toFixed(1)}MB syntheticCompile=${String(result.syntheticCompileCount)} diags=${String(result.diagnosticsCount)}\n`
+        `    call ${String(i + 1)}/${String(RUNS)} [${label}]: ${inv.wallTimeMs.toFixed(1)}ms  syntheticCompile=${String(inv.syntheticCompileCount)} diags=${String(inv.diagnosticsCount)}\n`
       );
-    }
+    });
+
+    process.stderr.write(
+      `  session peakRSS: ${(session.peakRssBytes / 1024 / 1024).toFixed(1)} MB\n`
+    );
 
     const warmWallTimeMs = allWallTimeMs.slice(1);
-    const warmPeakRssBytes = allPeakRssBytes.slice(1);
 
     const medianWarmWallTimeMs = warmWallTimeMs.length > 0 ? median(warmWallTimeMs) : (allWallTimeMs[0] ?? 0);
-    const medianWarmPeakRssBytes = warmPeakRssBytes.length > 0 ? median(warmPeakRssBytes) : (allPeakRssBytes[0] ?? 0);
     const coldWallTimeMs = allWallTimeMs[0] ?? 0;
-    const peakRSSMB = medianWarmPeakRssBytes / 1024 / 1024;
+    const peakRSSMB = session.peakRssBytes / 1024 / 1024;
 
     process.stderr.write(`\n  OOM probe (${String(OOM_HEAP_CAP_MB)} MB cap)...\n`);
     const didOOM = detectOom(fixturePath, OOM_HEAP_CAP_MB);
@@ -337,7 +357,7 @@ async function main(): Promise<void> {
     process.stderr.write(`  surface:                     tsserver-plugin\n`);
     process.stderr.write(`  wallTime_ms cold:             ${coldWallTimeMs.toFixed(2)}\n`);
     process.stderr.write(`  wallTime_ms warm (median):    ${medianWarmWallTimeMs.toFixed(2)}\n`);
-    process.stderr.write(`  peakRSS_MB warm (median):    ${peakRSSMB.toFixed(1)} MB\n`);
+    process.stderr.write(`  peakRSS_MB (session):        ${peakRSSMB.toFixed(1)} MB\n`);
     process.stderr.write(`  didOOM (${String(OOM_HEAP_CAP_MB)} MB cap):       ${String(didOOM)}\n`);
     process.stderr.write(`  syntheticCompile counts:     [${allSyntheticCompileCounts.join(", ")}]\n`);
     process.stderr.write(`---------------------------------------------------------\n`);
@@ -349,7 +369,7 @@ async function main(): Promise<void> {
       phase: "0",
       surface: "tsserver-plugin",
       description:
-        "Stripe realistic OOM sweep — tsserver-plugin surface (FormSpecSemanticService.getDiagnostics, direct Stripe types, no Ref<T> wrapper)",
+        "Stripe realistic OOM sweep — tsserver-plugin surface (FormSpecSemanticService.getDiagnostics, 1 service × 3 getDiagnostics calls, direct Stripe types, no Ref<T> wrapper)",
       fixture: "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
       runs: RUNS,
       oomHeapCapMB: OOM_HEAP_CAP_MB,
@@ -358,7 +378,7 @@ async function main(): Promise<void> {
         wallTime_ms: Math.round(medianWarmWallTimeMs * 100) / 100,
         didOOM,
         warmWallTimes_ms: warmWallTimeMs.map((v) => Math.round(v * 100) / 100),
-        allPeakRSS_MB: allPeakRssBytes.map((v) => Math.round((v / 1024 / 1024) * 10) / 10),
+        allPeakRSS_MB: [Math.round(peakRSSMB * 10) / 10],
         coldWallTime_ms: Math.round(coldWallTimeMs * 100) / 100,
         syntheticCompileCounts: allSyntheticCompileCounts,
       },

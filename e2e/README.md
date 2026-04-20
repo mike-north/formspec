@@ -193,8 +193,10 @@ pnpm --filter @formspec/e2e run bench:stripe-realistic-eslint
 
 #### Surface 4 — tsserver plugin (`FormSpecSemanticService.getDiagnostics`)
 
-Instantiates `FormSpecSemanticService` directly (same code path tsserver loads) and calls
-`getDiagnostics` once cold + twice warm to mimic: open file, first keystroke, second keystroke.
+Instantiates `FormSpecSemanticService` directly (same code path tsserver loads) and reuses the
+same service to call `getDiagnostics` three times: once cold (open-file) and twice warm
+(first keystroke, second keystroke). This models a real editor session rather than cold-starting
+a new service per call.
 
 **Script:** `benchmarks/stripe-realistic-tsserver-bench.ts`
 **Baseline:** `bench/baselines/stripe-realistic-tsserver-baseline.json`
@@ -205,19 +207,23 @@ pnpm --filter @formspec/e2e run bench:stripe-realistic-tsserver
 
 #### Phase 0 baseline numbers (arm64 darwin, Node v24.14.0, 1 GB OOM cap)
 
-| Surface | `peakRSS_MB` warm median | `wallTime_ms` cold | `wallTime_ms` warm median | `didOOM` (1 GB) |
-|---------|--------------------------|-------------------|--------------------------|-----------------|
-| **build** | **861.3 MB** | 432.7 ms | 81.5 ms | **false** |
-| **snapshot** | **843.8 MB** | 290.4 ms | 7.1 ms | **false** |
-| **eslint** | **519.1 MB** | 420.2 ms | 2.8 ms | **false** |
-| **tsserver-plugin** | **846.6 MB** | 370.1 ms | 77.9 ms | **false** |
+| Surface | `peakRSS_MB` | `wallTime_ms` cold | `wallTime_ms` warm median | `didOOM` (1 GB) |
+|---------|--------------|-------------------|--------------------------|-----------------|
+| **build** | **861.3 MB** (warm median) | 432.7 ms | 81.5 ms | **false** |
+| **snapshot** | **843.8 MB** (warm median) | 290.4 ms | 7.1 ms | **false** |
+| **eslint** | **519.1 MB** (warm median) | 420.2 ms | 2.8 ms | **false** |
+| **tsserver-plugin** | **567.4 MB** (session) | 373.8 ms | ~0 ms | **false** |
+
+Notes on tsserver-plugin: the bench creates one service and calls `getDiagnostics` 3× (open-file
++ 2 keystrokes) on the same instance. Session RSS is measured across all three calls. Warm
+wall-time is near-zero because the service caches analysis results across calls.
 
 All four surfaces came in under 1 GB — none OOMed on this machine (M-series arm64, Node v24.14.0).
-However, build / snapshot / tsserver-plugin are all within 160 MB of the 1 GB cap. A machine with
-less available RSS headroom, or a stripe SDK version with larger type graphs, would push these over.
-The ESLint surface is cheaper (~519 MB) because the `@typescript-eslint/parser` creates its own
-TypeScript program and the ESLint rule only inspects the checked file rather than walking the full
-schema emission pipeline.
+Build / snapshot are above 840 MB, within 180 MB of the 1 GB cap. A machine with less available
+RSS headroom, or a stripe SDK version with larger type graphs, would push these over. The ESLint
+surface is cheaper (~519 MB) because the `@typescript-eslint/parser` creates its own TypeScript
+program and the ESLint rule only inspects the checked file rather than walking the full schema
+emission pipeline.
 
 **Interpretation for Phase 4:**
 These numbers are the acceptance-gate baselines. After the host-checker migration (Phase 4),
@@ -229,11 +235,11 @@ still `false` at 1 GB cap.
 | Fixture | Approach | `peakRSS_MB` | `didOOM` (512 MB cap) |
 |---------|---------|--------------|----------------------|
 | `stripe-ref-customer` | `Ref<T>` wrapper, build only | 921.8 MB | false |
-| `stripe-realistic-oom` (this) | Direct Stripe types, 4 surfaces | 843–861 MB | false |
+| `stripe-realistic-oom` (this) | Direct Stripe types, 4 surfaces | 567–861 MB | false |
 
 The `Ref<T>` fixture engaged the external-type bypass (PR #308) which prevented walking Stripe's
-internal type graph. The realistic fixture forces the full walk and lands at similar RSS levels —
-confirming the bypass is not what prevented OOM in prior measurements; it was already under 1 GB.
+internal type graph. The realistic fixture forces the full walk and lands at similar RSS levels for
+build/snapshot — confirming the bypass is not what prevented OOM in prior measurements.
 
 ## License
 
