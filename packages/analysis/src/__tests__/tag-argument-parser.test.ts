@@ -24,6 +24,32 @@ describe("parseTagArgument", () => {
         expect(result.diagnostic.message).toContain("notATag");
       }
     });
+
+    it("all diagnostics from implemented families start with 'Expected '", () => {
+      // Enforces the "Expected " prefix convention documented in TagArgumentDiagnostic.
+      // The classifier in file-snapshots.ts (~line 1480) relies on this prefix to
+      // remain valid until Phase 2/3 wiring shifts it to test `code` directly.
+      //
+      // ADD ONE CASE HERE per newly-implemented family when each Slice lands.
+      // Each entry should use an invalid argument that produces a diagnostic.
+      const cases: { tag: string; raw: string; description: string }[] = [
+        // boolean-marker family (@uniqueItems) — INVALID_TAG_ARGUMENT
+        { tag: "uniqueItems", raw: "false", description: "@uniqueItems with 'false'" },
+        // string family (@pattern) — MISSING_TAG_ARGUMENT (empty is the only invalid case)
+        { tag: "pattern", raw: "", description: "@pattern with empty string" },
+      ];
+
+      for (const { tag, raw, description } of cases) {
+        const result = parseTagArgument(tag, raw, "build");
+        expect(result.ok, `expected failure for ${description}`).toBe(false);
+        if (!result.ok) {
+          expect(
+            result.diagnostic.message,
+            `message for ${description} must start with "Expected "`,
+          ).toMatch(/^Expected /);
+        }
+      }
+    });
   });
 
   // Slice A owns these — tests land in Slice A.
@@ -100,6 +126,10 @@ describe("parseTagArgument", () => {
       expectInvalidMarker("TRUE");
     });
 
+    it('"True" → INVALID (case-sensitive — pin current behavior)', () => {
+      expectInvalidMarker("True");
+    });
+
     it('"maybe" → INVALID', () => {
       expectInvalidMarker("maybe");
     });
@@ -115,7 +145,7 @@ describe("parseTagArgument", () => {
     });
   });
 
-  describe("string-opaque (@pattern)", () => {
+  describe("string family (@pattern)", () => {
     // ---------------------------------------------------------------------------
     // Local helpers
     // ---------------------------------------------------------------------------

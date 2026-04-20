@@ -70,7 +70,7 @@ export type TagFamily =
   | "numeric"
   | "length"
   | "boolean-marker"
-  | "string-opaque"
+  | "string"
   | "json-array"
   | "json-value-with-fallback";
 
@@ -88,7 +88,7 @@ export type TagFamily =
  *   "number" core type → "numeric" for value constraints; "length" for size/
  *     count constraints (minLength, maxLength, minItems, maxItems)
  *   "boolean" core type → "boolean-marker"
- *   "string"  core type → "string-opaque"
+ *   "string"  core type → "string"
  *   "json"    core type → "json-array" for enumOptions; "json-value-with-fallback" for const
  */
 export const TAG_ARGUMENT_FAMILIES = {
@@ -102,7 +102,7 @@ export const TAG_ARGUMENT_FAMILIES = {
   minItems: "length",
   maxItems: "length",
   uniqueItems: "boolean-marker",
-  pattern: "string-opaque",
+  pattern: "string",
   enumOptions: "json-array",
   const: "json-value-with-fallback",
 } as const satisfies Record<keyof typeof BUILTIN_CONSTRAINT_DEFINITIONS, TagFamily>;
@@ -179,15 +179,15 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
  * synthetic-checker retirement plan §1.
  *
  * @param tagName - normalized tag name (no leading "@")
- * @param _rawArgumentText - argument text AFTER parseTagSyntax has stripped
- *                           any path-target prefix (i.e. "effectiveText")
+ * @param rawArgumentText - argument text AFTER parseTagSyntax has stripped
+ *                          any path-target prefix (i.e. "effectiveText")
  * @param _lowering - build vs snapshot. Phase 1 implementations do not use
  *                    this; the parameter is accepted for forward-compatibility
  *                    with Phase 2/3 consumer wiring.
  */
 export function parseTagArgument(
   tagName: string,
-  _rawArgumentText: string,
+  rawArgumentText: string,
   _lowering: TagArgumentLowering,
 ): TagArgumentParseResult {
   // Guard against prototype-pollution: names like "toString", "constructor", or
@@ -216,9 +216,9 @@ export function parseTagArgument(
     case "length":
       return throwNotImplemented(family);
     case "boolean-marker":
-      return parseUniqueItemsArgument(_rawArgumentText);
-    case "string-opaque":
-      return parsePatternArgument(_rawArgumentText);
+      return parseUniqueItemsArgument(rawArgumentText);
+    case "string":
+      return parsePatternArgument(rawArgumentText);
     case "json-array":
       return throwNotImplemented(family);
     case "json-value-with-fallback":
