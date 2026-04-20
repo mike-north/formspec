@@ -1,5 +1,24 @@
 # @formspec/analysis
 
+## 0.1.0-alpha.58
+
+### Patch Changes
+
+- [#348](https://github.com/mike-north/formspec/pull/348) [`2ae6463`](https://github.com/mike-north/formspec/commit/2ae646331ef90f3e7b04ee5db117abae3d4e3a62) Thanks [@mike-north](https://github.com/mike-north)! - Wire typed argument parser into the build consumer (Phase 2)
+
+  Calls `parseTagArgument` inside `buildCompilerBackedConstraintDiagnostics`
+  (tsdoc-parser.ts) so Role-C argument-literal validation runs before the
+  synthetic TypeScript checker. Invalid arguments (hex literals, non-array
+  `@enumOptions`, etc.) now produce `INVALID_TAG_ARGUMENT` diagnostics from
+  the typed parser rather than `TYPE_MISMATCH` from the synthetic checker.
+
+  Also normalises the `@minimum Infinity` / `@minimum NaN` build/snapshot
+  divergence (§3): `renderSyntheticArgumentExpression` now passes these
+  values through as TypeScript identifiers instead of JSON-quoted strings,
+  so both consumers accept them without producing a diagnostic. Exports
+  `parseTagArgument` and friends from `@formspec/analysis/internal` and
+  adds `getTypedParserLogger` to the constraint-validator-logger surface.
+
 ## 0.1.0-alpha.57
 
 ### Patch Changes
