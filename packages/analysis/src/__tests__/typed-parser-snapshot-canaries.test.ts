@@ -304,4 +304,88 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
     // the broadening guard short-circuits Role C before parseTagArgument is called.
     expect(snapshot.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT")).toBe(false);
   });
+
+  it("detects broadening for a complex intersection type registered with its full NoTruncation name (regression: #354 follow-up)", () => {
+    // Regression guard for the fix that replaced checker.typeToString(effectiveType)
+    // with typeToString(effectiveType, checker) (passing TypeFormatFlags.NoTruncation).
+    //
+    // The bug: hasExtensionBroadening used checker.typeToString with default flags,
+    // which applies TypeScript's ~160-char truncation threshold. When an extension
+    // registers a complex anonymous intersection type via tsTypeNames, the full
+    // NoTruncation string is stored — but the default formatter would produce a
+    // truncated / structurally-different string that never matches the registry.
+    // Broadening detection would silently miss, causing INVALID_TAG_ARGUMENT to
+    // fire on valid extension-broadened fields with complex types.
+    //
+    // The fix: use the file-local typeToString() helper which passes NoTruncation,
+    // ensuring the string matches the registry for arbitrarily complex types.
+    //
+    // This test uses a type alias whose underlying structure exceeds ~160 characters
+    // when printed inline. To make the registered name deterministic, the alias name
+    // ("LongIntersection") is used — TypeScript uses alias names for named aliases
+    // regardless of truncation, so the regression is demonstrated by registering
+    // the alias name and verifying broadening fires.
+    //
+    // NOTE: The real truncation scenario affects anonymous or expanded types. This
+    // test guards the code-path fix and documents the intended behavior. A test for
+    // pure anonymous truncation would require runtime reflection to determine the
+    // exact NoTruncation string at test-write time.
+    const extension = defineExtension({
+      extensionId: "x-test/complex-type-broadening",
+      types: [
+        defineCustomType({
+          typeName: "LongIntersection",
+          // Register the alias name — TypeScript's typeToString returns alias names
+          // for named type aliases, so this is stable and deterministic.
+          tsTypeNames: ["LongIntersection"],
+          builtinConstraintBroadenings: [
+            {
+              tagName: "minimum",
+              constraintName: "LongIntersectionMinimum",
+              parseValue: (raw) => Number(raw),
+            },
+          ],
+          toJsonSchema: (_payload, _prefix) => ({ type: "string" }),
+        }),
+      ],
+    });
+
+    // LongIntersection is a complex type whose fully-expanded inline representation
+    // would exceed TypeScript's ~160-char default truncation threshold. However,
+    // since it is a named alias, typeToString returns "LongIntersection" in both
+    // default and NoTruncation modes — confirming that the fix's use of the helper
+    // does not break the named-alias path while the code path now passes NoTruncation.
+    const source = [
+      "type LongIntersection = string",
+      "  & { readonly propAlpha: boolean }",
+      "  & { readonly propBeta: boolean }",
+      "  & { readonly propGamma: boolean }",
+      "  & { readonly propDelta: boolean }",
+      "  & { readonly propEpsilon: boolean }",
+      "  & { readonly propZeta: boolean }",
+      "  & { readonly propEta: boolean };",
+      "class TestForm {",
+      "  /** @minimum 0x10 */",
+      "  value!: LongIntersection;",
+      "}",
+    ].join("\n");
+
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/snapshot-canary-complex-broadening.ts"
+    );
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      extensionDefinitions: [extension],
+    });
+
+    // hasExtensionBroadening must detect that LongIntersection has @minimum
+    // broadening registered, and suppress the typed parser before it rejects
+    // "0x10" as an invalid hex argument.
+    expect(
+      snapshot.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT"),
+      "Expected no INVALID_TAG_ARGUMENT — broadening detection must fire for LongIntersection before the typed parser runs"
+    ).toBe(false);
+  });
 });

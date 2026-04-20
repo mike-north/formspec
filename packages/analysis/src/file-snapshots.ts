@@ -241,7 +241,14 @@ function hasExtensionBroadening(
   // Strip nullish union members (| null | undefined) before name-matching,
   // consistent with how the build path strips before isIntegerBrandedType.
   const effectiveType = stripNullishUnion(subjectType);
-  const typeName = checker.typeToString(effectiveType);
+  // Use NoTruncation so that complex types (intersections, deep generics) are
+  // rendered in full. Without it, checker.typeToString uses its default truncation
+  // threshold (~160 chars) and can produce a structurally-different string than
+  // what was registered in tsTypeNames, causing broadening detection to miss.
+  const typeName = typeToString(effectiveType, checker);
+  if (typeName === null) {
+    return false;
+  }
 
   for (const extension of extensionDefinitions) {
     for (const type of extension.types ?? []) {
