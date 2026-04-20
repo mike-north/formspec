@@ -81,6 +81,8 @@ import {
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
+  getTypedParserLogger,
+  parseTagArgument,
   describeTypeKind,
   elapsedMicros,
   nowMicros,
@@ -184,10 +186,7 @@ function isNonReferenceIdentifier(node: ts.Identifier): boolean {
   return false;
 }
 
-function astReferencesImportedName(
-  root: ts.Node,
-  importedNames: ReadonlySet<string>
-): boolean {
+function astReferencesImportedName(root: ts.Node, importedNames: ReadonlySet<string>): boolean {
   if (importedNames.size === 0) {
     return false;
   }
@@ -375,6 +374,7 @@ function processConstraintTag(
     sourceFile,
     tagName,
     parsedTag,
+    text,
     provenance,
     supportingDeclarations,
     options
@@ -407,6 +407,13 @@ function renderSyntheticArgumentExpression(
     case "number":
     case "integer":
     case "signedInteger":
+      // Pass Infinity, -Infinity, and NaN through as TS identifiers (not quoted
+      // strings). The typed parser (Phase 2) accepts these values; the snapshot
+      // path has always passed them through as identifiers. Aligning the build
+      // path with the snapshot path normalises the §3 Infinity/NaN divergence.
+      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
+        return trimmed;
+      }
       return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
     case "string":
       return JSON.stringify(argumentText);
@@ -478,10 +485,7 @@ function isCallableType(type: ts.Type): boolean {
   return type.getCallSignatures().length > 0 || type.getConstructSignatures().length > 0;
 }
 
-function isUserEmittableHintProperty(
-  property: ts.Symbol,
-  declaration: ts.Declaration
-): boolean {
+function isUserEmittableHintProperty(property: ts.Symbol, declaration: ts.Declaration): boolean {
   if (property.name.startsWith("__")) {
     return false;
   }
@@ -490,11 +494,7 @@ function isUserEmittableHintProperty(
     if (ts.isComputedPropertyName(name) || ts.isPrivateIdentifier(name)) {
       return false;
     }
-    if (
-      !ts.isIdentifier(name) &&
-      !ts.isStringLiteral(name) &&
-      !ts.isNumericLiteral(name)
-    ) {
+    if (!ts.isIdentifier(name) && !ts.isStringLiteral(name) && !ts.isNumericLiteral(name)) {
       return false;
     }
   }
@@ -698,6 +698,7 @@ function buildCompilerBackedConstraintDiagnostics(
   sourceFile: ts.SourceFile,
   tagName: string,
   parsedTag: ParsedCommentTag | null,
+  rawText: string,
   provenance: Provenance,
   supportingDeclarations: readonly string[],
   options?: ParseTSDocOptions
@@ -729,8 +730,10 @@ function buildCompilerBackedConstraintDiagnostics(
   const log = getBuildLogger();
   const broadeningLog = getBroadeningLogger();
   const syntheticLog = getSyntheticLogger();
+  const typedParserLog = getTypedParserLogger();
   const logsEnabled = log !== noopLogger || broadeningLog !== noopLogger;
   const syntheticTraceEnabled = syntheticLog !== noopLogger;
+  const typedParserTraceEnabled = typedParserLog !== noopLogger;
   const logStart = logsEnabled ? nowMicros() : 0;
   const subjectTypeKind = logsEnabled ? describeTypeKind(subjectType, checker) : "";
 
@@ -889,17 +892,104 @@ function buildCompilerBackedConstraintDiagnostics(
     }
   }
 
-  const argumentExpression = renderSyntheticArgumentExpression(
-    definition.valueKind,
-    parsedTag?.argumentText ?? ""
-  );
-  if (definition.requiresArgument && argumentExpression === null) {
-    return emit("A-pass", []);
-  }
+  // §4 Phase 2 — Role C: validate argument literal via the typed parser BEFORE
+  // the synthetic-checker call. The typed parser is the new gatekeeper for
+  // argument-shape validity (is `10.5` a valid `@minLength` arg? is `[]` a valid
+  // `@enumOptions` arg?). Roles A/B/D1/D2 remain the synthetic checker's
+  // responsibility until Phase 4.
+  //
+  // IMPORTANT: the typed-parser call is guarded by `if (!hasBroadening)` so that
+  // broadened fields (D1/D2) bypass Role C entirely. Without this guard a broadened
+  // field whose argument the typed parser would reject (e.g. a non-JSON @enumOptions
+  // arg on a Decimal path-target) would spuriously emit INVALID_TAG_ARGUMENT instead
+  // of being silently bypassed as Role D1/D2 requires.
+  //
+  // Behaviour (non-broadened path):
+  //   - ok: false → emit C-reject with the typed parser's code + message; skip synthetic.
+  //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
+  //     The raw-string-fallback is a successful parse; the downstream IR compatibility
+  //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
+  // §4 Phase 2 — Option A: always derive argumentText from rawText (the
+  // canonical post-choosePreferredPayloadText string) so the typed parser sees
+  // the same text as parseConstraintTagValue (Role D). For TAGS_REQUIRING_RAW_TEXT,
+  // choosePreferredPayloadText may have selected the compiler-API fallback, making
+  // rawText differ from parsedTag.argumentText (which was derived from
+  // tag.resolvedPayloadText). Re-parsing from rawText also applies the same
+  // path-target prefix stripping that the original parse would have applied.
+  // TODO: once choosePreferredPayloadText is threaded upstream, this can go away.
+  const effectiveArgumentText =
+    parsedTag !== null ? parseTagSyntax(tagName, rawText).argumentText : rawText;
 
   if (hasBroadening) {
     return emit("bypass", []);
   }
+
+  const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
+
+  if (!typedParseResult.ok) {
+    // §8.3 — emit typed-parser trace log when enabled.
+    if (typedParserTraceEnabled) {
+      typedParserLog.trace("typed-parser C-reject", {
+        consumer: "build",
+        tag: tagName,
+        placement: nonNullPlacement,
+        subjectTypeKind: subjectTypeKind !== "" ? subjectTypeKind : "-",
+        roleOutcome: "C-reject",
+        diagnosticCode: typedParseResult.diagnostic.code,
+      });
+    }
+    // Map the typed-parser diagnostic code to a ConstraintSemanticDiagnostic code.
+    // UNKNOWN_TAG is structurally unreachable here: parseTagArgument is only called
+    // after the tag was resolved via getTagDefinition above. If it fires, it's a bug.
+    let mappedCode: "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
+    switch (typedParseResult.diagnostic.code) {
+      case "MISSING_TAG_ARGUMENT":
+        mappedCode = "MISSING_TAG_ARGUMENT";
+        break;
+      case "INVALID_TAG_ARGUMENT":
+        mappedCode = "INVALID_TAG_ARGUMENT";
+        break;
+      case "UNKNOWN_TAG":
+        // Structurally unreachable: parseTagArgument is only called for tags
+        // already resolved via getTagDefinition above. If this fires it's a bug.
+        throw new Error(
+          `Unexpected UNKNOWN_TAG from parseTagArgument("${tagName}") — tag was resolved via getTagDefinition.`
+        );
+      default: {
+        const _exhaustive: never = typedParseResult.diagnostic.code;
+        throw new Error(`Unknown diagnostic code: ${String(_exhaustive)}`);
+      }
+    }
+    return emit("C-reject", [
+      makeDiagnostic(mappedCode, typedParseResult.diagnostic.message, provenance),
+    ]);
+  }
+
+  // Typed parser accepted the argument. Log at trace level before falling through
+  // to the synthetic checker (which handles Roles A/B/D1/D2 until Phase 4).
+  if (typedParserTraceEnabled) {
+    typedParserLog.trace("typed-parser C-pass", {
+      consumer: "build",
+      tag: tagName,
+      placement: nonNullPlacement,
+      subjectTypeKind: subjectTypeKind !== "" ? subjectTypeKind : "-",
+      roleOutcome: "C-pass",
+      valueKind: typedParseResult.value.kind,
+    });
+  }
+
+  const argumentExpression = renderSyntheticArgumentExpression(
+    definition.valueKind,
+    effectiveArgumentText
+  );
+  // NOTE (Phase 2): the `requiresArgument && argumentExpression === null` guard
+  // that previously lived here was removed because it is dead code after Phase 2.
+  // For every `requiresArgument: true` tag, the typed parser returns ok: false
+  // (MISSING_TAG_ARGUMENT) when the argument text is empty, so the C-reject
+  // branch above fires before this point can be reached. The guard was labelled
+  // "A-pass" which was misleading — it represented "typed-parser-passed-but-
+  // rendering-returned-null", not a true Role-A miss. Dead branch confirmed by
+  // exhaustive analysis of parseTagArgument return values for all tag families.
 
   const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
   const hostType = options?.hostType ?? subjectType;

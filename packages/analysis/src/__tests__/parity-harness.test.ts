@@ -89,20 +89,14 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
     reason:
       "§3: Build path passes quoted string literal for invalid JSON; snapshot omits argument. See docs/refactors/synthetic-checker-retirement.md §3.",
   },
-  // §3: @minimum Infinity — build stringifies; snapshot passes through as identifier
-  {
-    fixtureLabel: "@minimum Infinity on number",
-    divergenceKind: "any",
-    reason:
-      "§3: Build path stringifies Infinity to '\"Infinity\"'; snapshot passes it through as an identifier. See docs/refactors/synthetic-checker-retirement.md §3.",
-  },
-  // §3: @minimum NaN — build stringifies; snapshot passes through as identifier
-  {
-    fixtureLabel: "@minimum NaN on number",
-    divergenceKind: "any",
-    reason:
-      "§3: Build path stringifies NaN to '\"NaN\"'; snapshot passes it through as an identifier. See docs/refactors/synthetic-checker-retirement.md §3.",
-  },
+  // §3: @minimum Infinity — NORMALIZED in Phase 2.
+  // Build path now passes Infinity as an identifier (same as snapshot). Both
+  // renderSyntheticArgumentExpression (in tsdoc-parser.ts) and renderBuildArgumentExpressionProxy
+  // (this harness proxy) were updated to handle Infinity as an identifier.
+  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
+  //
+  // §3: @minimum NaN — NORMALIZED in Phase 2. Same mechanism as Infinity.
+  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
   // Integer-brand snapshot-path gap (PR #315): build has isIntegerBrandedType bypass;
   // snapshot does not replicate it, so numeric constraints on Integer types may diverge.
   {
@@ -428,24 +422,47 @@ function generateFixtureSource(fixture: ParityFixture): string {
 // here (not imported) because the build package is not a dependency of
 // @formspec/analysis. Keeping it in-test ensures it stays in sync with the
 // spec description in §3 of the retirement plan.
+//
+// ============================================================================
+// SYNC CONTRACT — keep this proxy in sync with the canonical implementation:
+//   packages/build/src/analyzer/tsdoc-parser.ts  renderSyntheticArgumentExpression  (lines ~406-419)
+//
+// Branches that MUST stay in sync:
+//   1. "number" / "integer" / "signedInteger" — Infinity/NaN pass through as
+//      identifiers (Phase 2 fix). Other non-parseable text is JSON.stringify'd.
+//   2. "string" — always JSON.stringify(argumentText) (note: full text, not trimmed).
+//   3. "json"   — JSON.parse + wrap in parens on success; JSON.stringify fallback on error.
+//   4. "boolean" — pass "true"/"false" through; JSON.stringify everything else.
+//   5. "condition" — "undefined as unknown as FormSpecCondition" literal.
+//   6. null/undefined — return null (no argument).
+//   7. Infinity/NaN handling — "Infinity", "-Infinity", "NaN" must pass through
+//      as identifiers for the number/integer/signedInteger branch (not stringified).
+// ============================================================================
 // ---------------------------------------------------------------------------
 
 /**
- * Replicates `renderSyntheticArgumentExpression` from
+ * Proxy replicating `renderSyntheticArgumentExpression` from
  * `packages/build/src/analyzer/tsdoc-parser.ts` — the build-path argument
  * lowering function.
  *
- * Key semantics (§3):
- *   - number/integer/signedInteger: finite numbers pass through; non-finite
- *     values (Infinity, NaN) are JSON-stringified to a string literal.
+ * Named `renderBuildArgumentExpressionProxy` to make clear this is a local
+ * copy that must be kept in sync with the canonical implementation. See the
+ * SYNC CONTRACT block above for the exact branches to maintain.
+ *
+ * Key semantics (§3, updated for Phase 2):
+ *   - number/integer/signedInteger: finite numbers pass through; Infinity,
+ *     -Infinity, and NaN pass through as identifiers (Phase 2 fix — no longer
+ *     JSON-stringified). Other non-parseable text is JSON-stringified.
  *   - string: always JSON-quoted.
  *   - json: parses and re-renders valid JSON; falls back to JSON.stringify on
  *     parse error (this is the divergence from the snapshot path for `@const`
  *     with invalid JSON).
  *   - boolean: accepts "true"/"false"; otherwise JSON-stringifies.
  *   - null / condition: pass-through special cases.
+ *
+ * @see packages/build/src/analyzer/tsdoc-parser.ts renderSyntheticArgumentExpression
  */
-function renderBuildArgumentExpression(
+function renderBuildArgumentExpressionProxy(
   valueKind: string | null | undefined,
   argumentText: string,
 ): string | null {
@@ -458,6 +475,11 @@ function renderBuildArgumentExpression(
     case "number":
     case "integer":
     case "signedInteger":
+      // Phase 2: Infinity, -Infinity, NaN pass through as identifiers.
+      // Snapshot path has always done this; build path now matches.
+      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
+        return trimmed;
+      }
       return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
     case "string":
       return JSON.stringify(argumentText);
@@ -514,7 +536,7 @@ interface BuildConsumerResult {
  *
  * Finds the `field` property on `TestClass`, resolves its subject type, and
  * calls {@link checkSyntheticTagApplication} with arguments prepared via
- * {@link renderBuildArgumentExpression} (the build-path lowering function).
+ * {@link renderBuildArgumentExpressionProxy} (the build-path lowering function).
  *
  * Returns a structured result suitable for conversion to a
  * {@link ParityLogEntry}.
@@ -556,7 +578,7 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   const valueKind = definition?.valueKind ?? null;
 
   // Prepare argument expression using build-path lowering
-  const argumentExpression = renderBuildArgumentExpression(valueKind, fixture.tagArgument);
+  const argumentExpression = renderBuildArgumentExpressionProxy(valueKind, fixture.tagArgument);
 
   // subjectType text for the synthetic call
   const subjectTypeText =

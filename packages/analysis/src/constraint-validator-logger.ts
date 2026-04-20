@@ -191,7 +191,7 @@ export const CONSTRAINT_VALIDATOR_BUILD_NS = `${CONSTRAINT_VALIDATOR_NS}:build`;
 /** Sub-namespace for the snapshot consumer (file-snapshots.ts). */
 export const CONSTRAINT_VALIDATOR_SNAPSHOT_NS = `${CONSTRAINT_VALIDATOR_NS}:snapshot`;
 
-/** Sub-namespace for the future typed-argument parser (Phase 1). */
+/** Sub-namespace for the typed-argument parser (active from Phase 2). */
 export const CONSTRAINT_VALIDATOR_TYPED_PARSER_NS = `${CONSTRAINT_VALIDATOR_NS}:typed-parser`;
 
 /** Sub-namespace for synthetic-program invocations. */
@@ -301,6 +301,11 @@ export function getSnapshotLogger(): LoggerLike {
 /** Returns the module-level logger for the synthetic-program namespace. */
 export function getSyntheticLogger(): LoggerLike {
   return getOrCreateLogger(CONSTRAINT_VALIDATOR_SYNTHETIC_NS);
+}
+
+/** Returns the module-level logger for the typed-argument-parser namespace. */
+export function getTypedParserLogger(): LoggerLike {
+  return getOrCreateLogger(CONSTRAINT_VALIDATOR_TYPED_PARSER_NS);
 }
 
 /** Returns the module-level logger for the broadening-bypass namespace. */

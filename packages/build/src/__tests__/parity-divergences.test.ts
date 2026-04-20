@@ -25,44 +25,31 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import * as ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
 import { buildFormSpecAnalysisFileSnapshot } from "@formspec/analysis/internal";
+import {
+  type BuildFixtureDir,
+  createBuildFixtureDir,
+} from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
 // Temp directory — shared across all build-path probe fixtures
 // =============================================================================
 
+let fixture: BuildFixtureDir;
+/** Convenience alias — test bodies reference `tmpDir` as a string path. */
 let tmpDir: string;
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-parity-divergence-"));
-
-  fs.writeFileSync(
-    path.join(tmpDir, "tsconfig.json"),
-    JSON.stringify(
-      {
-        compilerOptions: {
-          target: "ES2022",
-          module: "NodeNext",
-          moduleResolution: "nodenext",
-          strict: true,
-          skipLibCheck: true,
-        },
-      },
-      null,
-      2
-    )
-  );
+  fixture = createBuildFixtureDir("formspec-parity-divergence-");
+  tmpDir = fixture.dirPath;
 });
 
 afterAll(() => {
-  if (fs.existsSync(tmpDir)) {
-    fs.rmSync(tmpDir, { recursive: true });
-  }
+  fixture.cleanup();
 });
 
 // =============================================================================
@@ -241,44 +228,42 @@ describe("known divergence: @const not-json", () => {
 // =============================================================================
 // Divergence case 2: @minimum Infinity
 //
-// Build path (renderSyntheticArgumentExpression, valueKind="number"):
+// PHASE 2 UPDATE — divergence NORMALIZED:
+//
+// Before Phase 2 (build path, renderSyntheticArgumentExpression, valueKind="number"):
 //   Number.isFinite(Infinity) = false → JSON.stringify("Infinity") = '"Infinity"' (a string).
 //   checkSyntheticTagApplication sees tag_minimum(ctx, "Infinity").
-//   tag_minimum expects number; string is not assignable to number → TypeScript error.
-//   buildCompilerBackedConstraintDiagnostics wraps the TypeScript error into:
-//     code: TYPE_MISMATCH, message: 'Tag "@minimum" received an invalid argument for number.'
+//   tag_minimum expects number; string is not assignable to number → TYPE_MISMATCH.
 //
-// Snapshot path (getArgumentExpression):
+// After Phase 2 (build path):
+//   parseTagArgument("minimum", "Infinity", "build") → ok: true, { kind: "number", value: Infinity }
+//   renderSyntheticArgumentExpression now passes "Infinity" through as an identifier
+//   (not a quoted string), aligning with the snapshot path.
+//   checkSyntheticTagApplication sees tag_minimum(ctx, Infinity).
+//   Infinity is typed as number → no diagnostic.
+//
+// Snapshot path (getArgumentExpression, unchanged):
 //   number-label branch → returns "Infinity" unchanged (passed as identifier).
 //   Synthetic call: tag_minimum(ctx, Infinity). Infinity is typed as number → no diagnostic.
 //
-// KNOWN DIVERGENCE (refactor plan §3):
-//   build:    Infinity stringified to '"Infinity"'; TYPE_MISMATCH from synthetic checker
-//   snapshot: Infinity passed as identifier; no diagnostic
-// Phase 2/3 normalization must pick one: treat Infinity as valid number, or reject it.
+// NORMALIZED (refactor plan §3, Phase 2): both consumers now accept Infinity.
+// The §3 catalogue entry is resolved. The §4 Phase 2 work (typed-parser wiring +
+// renderSyntheticArgumentExpression fix) aligned the build path with snapshot.
 // =============================================================================
 
-describe("known divergence: @minimum Infinity", () => {
-  it("BUILD consumer: emits TYPE_MISMATCH (Infinity stringified to '\"Infinity\"', a string)", () => {
-    // KNOWN DIVERGENCE (refactor plan §3): build produces TYPE_MISMATCH here.
-    // renderSyntheticArgumentExpression (build path, valueKind="number"):
-    //   Number.isFinite(Infinity) = false → JSON.stringify("Infinity") = '"Infinity"' (string).
-    // tag_minimum expects number; string is not assignable to number → TypeScript error.
-    // buildCompilerBackedConstraintDiagnostics wraps this into:
-    //   code: TYPE_MISMATCH, message: 'Tag "@minimum" received an invalid argument for number.'
+describe("normalized: @minimum Infinity (both consumers accept, Phase 2)", () => {
+  it("BUILD consumer: no diagnostic (Infinity passed as identifier after Phase 2 fix)", () => {
+    // NORMALIZED (refactor plan §3): build now produces NO diagnostic here.
+    // Phase 2 changes:
+    //   1. parseTagArgument("minimum", "Infinity", "build") → ok: true (typed parser accepts)
+    //   2. renderSyntheticArgumentExpression now passes "Infinity" as-is (not quoted)
+    //   3. checkSyntheticTagApplication sees tag_minimum(ctx, Infinity) → number → no error
     const result = runBuildConsumer("minimum", "Infinity");
-
-    expect(result.diagnostics.length).toBeGreaterThan(0);
-    const diagnostic = result.diagnostics[0];
-    expect(diagnostic?.code).toBe("TYPE_MISMATCH");
-    // The FormSpec-level message is the stable contract, not the raw TypeScript message.
-    // The message contains "invalid argument" and "number" (from capabilityLabel("number")).
-    expect(diagnostic?.message).toContain("invalid argument");
-    expect(diagnostic?.message).toContain("number");
+    expect(result.diagnostics).toEqual([]);
   });
 
   it("SNAPSHOT consumer: no diagnostic (Infinity passed as identifier, typed as number)", () => {
-    // KNOWN DIVERGENCE (refactor plan §3): snapshot produces NO diagnostic here.
+    // UNCHANGED (refactor plan §3): snapshot produces NO diagnostic here.
     // getArgumentExpression: number-label branch → returns "Infinity" unchanged.
     // In the synthetic program, Infinity is a well-known global of type `number`,
     // so tag_minimum(ctx, Infinity) type-checks correctly.
@@ -289,7 +274,6 @@ describe("known divergence: @minimum Infinity", () => {
       }
     `;
     const snapshot = runSnapshotConsumer(source);
-
     expect(snapshot.diagnostics).toEqual([]);
   });
 });
@@ -297,43 +281,41 @@ describe("known divergence: @minimum Infinity", () => {
 // =============================================================================
 // Divergence case 3: @minimum NaN
 //
-// Build path (renderSyntheticArgumentExpression, valueKind="number"):
+// PHASE 2 UPDATE — divergence NORMALIZED:
+//
+// Before Phase 2 (build path, renderSyntheticArgumentExpression, valueKind="number"):
 //   Number.isFinite(NaN) = false → JSON.stringify("NaN") = '"NaN"' (a string).
 //   checkSyntheticTagApplication sees tag_minimum(ctx, "NaN").
-//   tag_minimum expects number; string is not assignable to number → TypeScript error.
-//   buildCompilerBackedConstraintDiagnostics wraps the TypeScript error into:
-//     code: TYPE_MISMATCH, message: 'Tag "@minimum" received an invalid argument for number.'
+//   tag_minimum expects number; string is not assignable to number → TYPE_MISMATCH.
 //
-// Snapshot path (getArgumentExpression):
+// After Phase 2 (build path):
+//   parseTagArgument("minimum", "NaN", "build") → ok: true, { kind: "number", value: NaN }
+//   renderSyntheticArgumentExpression now passes "NaN" through as an identifier
+//   (not a quoted string), aligning with the snapshot path.
+//   checkSyntheticTagApplication sees tag_minimum(ctx, NaN).
+//   NaN is typed as number → no diagnostic.
+//
+// Snapshot path (getArgumentExpression, unchanged):
 //   number-label branch → returns "NaN" unchanged (passed as identifier).
 //   Synthetic call: tag_minimum(ctx, NaN). NaN is typed as number → no diagnostic.
 //
-// KNOWN DIVERGENCE (refactor plan §3):
-//   build:    NaN stringified to '"NaN"'; TYPE_MISMATCH from synthetic checker
-//   snapshot: NaN passed as identifier; no diagnostic
-// Phase 2/3 normalization must pick one: treat NaN as valid number arg, or reject it.
+// NORMALIZED (refactor plan §3, Phase 2): both consumers now accept NaN.
+// The §3 catalogue entry is resolved. Same mechanism as the Infinity case above.
 // =============================================================================
 
-describe("known divergence: @minimum NaN", () => {
-  it("BUILD consumer: emits TYPE_MISMATCH (NaN stringified to '\"NaN\"', a string)", () => {
-    // KNOWN DIVERGENCE (refactor plan §3): build produces TYPE_MISMATCH here.
-    // renderSyntheticArgumentExpression (build path, valueKind="number"):
-    //   Number.isFinite(NaN) = false → JSON.stringify("NaN") = '"NaN"' (string).
-    // tag_minimum expects number; string is not assignable to number → TypeScript error.
-    // buildCompilerBackedConstraintDiagnostics wraps this into:
-    //   code: TYPE_MISMATCH, message: 'Tag "@minimum" received an invalid argument for number.'
-    // Same pattern as the Infinity case above.
+describe("normalized: @minimum NaN (both consumers accept, Phase 2)", () => {
+  it("BUILD consumer: no diagnostic (NaN passed as identifier after Phase 2 fix)", () => {
+    // NORMALIZED (refactor plan §3): build now produces NO diagnostic here.
+    // Phase 2 changes:
+    //   1. parseTagArgument("minimum", "NaN", "build") → ok: true (typed parser accepts)
+    //   2. renderSyntheticArgumentExpression now passes "NaN" as-is (not quoted)
+    //   3. checkSyntheticTagApplication sees tag_minimum(ctx, NaN) → number → no error
     const result = runBuildConsumer("minimum", "NaN");
-
-    expect(result.diagnostics.length).toBeGreaterThan(0);
-    const diagnostic = result.diagnostics[0];
-    expect(diagnostic?.code).toBe("TYPE_MISMATCH");
-    expect(diagnostic?.message).toContain("invalid argument");
-    expect(diagnostic?.message).toContain("number");
+    expect(result.diagnostics).toEqual([]);
   });
 
   it("SNAPSHOT consumer: no diagnostic (NaN passed as identifier, typed as number)", () => {
-    // KNOWN DIVERGENCE (refactor plan §3): snapshot produces NO diagnostic here.
+    // UNCHANGED (refactor plan §3): snapshot produces NO diagnostic here.
     // getArgumentExpression: number-label branch → returns "NaN" unchanged.
     // In the synthetic program, NaN is a well-known global of type `number`,
     // so tag_minimum(ctx, NaN) type-checks correctly.
@@ -344,7 +326,6 @@ describe("known divergence: @minimum NaN", () => {
       }
     `;
     const snapshot = runSnapshotConsumer(source);
-
     expect(snapshot.diagnostics).toEqual([]);
   });
 });
