@@ -1,0 +1,29 @@
+{
+  "phase": "0",
+  "description": "Real Stripe SDK Ref<Customer> stress-test — Phase 0 pre-refactor baseline",
+  "fixture": "e2e/fixtures/stripe-real-sdk/customer-ref-form.ts",
+  "typeName": "RealSdkCustomerRefForm",
+  "runs": 3,
+  "stripeVersion": "22.0.2",
+  "metrics": {
+    "peakRSS_MB": 946.5,
+    "wallTime_ms": 81.96,
+    "didOOM": false,
+    "warmWallTimes_ms": [
+      83.47,
+      80.45
+    ],
+    "allPeakRSS_MB": [
+      927,
+      940.4,
+      952.6
+    ],
+    "coldWallTime_ms": 1518.56,
+    "oomHeapCapMb": 1024
+  },
+  "gitSha": "aadddc8d12c4d1af14cd8dd0cdef42b713c9ff2a",
+  "timestamp": "2026-04-20T00:53:38.878Z",
+  "nodeVersion": "v24.14.0",
+  "platform": "darwin",
+  "arch": "arm64"
+}
