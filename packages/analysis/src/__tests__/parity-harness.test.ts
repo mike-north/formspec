@@ -91,7 +91,7 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
   },
   // §3: @minimum Infinity — NORMALIZED in Phase 2.
   // Build path now passes Infinity as an identifier (same as snapshot). Both
-  // renderSyntheticArgumentExpression (in tsdoc-parser.ts) and renderBuildArgumentExpression
+  // renderSyntheticArgumentExpression (in tsdoc-parser.ts) and renderBuildArgumentExpressionProxy
   // (this harness proxy) were updated to handle Infinity as an identifier.
   // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
   //
@@ -422,12 +422,32 @@ function generateFixtureSource(fixture: ParityFixture): string {
 // here (not imported) because the build package is not a dependency of
 // @formspec/analysis. Keeping it in-test ensures it stays in sync with the
 // spec description in §3 of the retirement plan.
+//
+// ============================================================================
+// SYNC CONTRACT — keep this proxy in sync with the canonical implementation:
+//   packages/build/src/analyzer/tsdoc-parser.ts  renderSyntheticArgumentExpression  (lines ~406-419)
+//
+// Branches that MUST stay in sync:
+//   1. "number" / "integer" / "signedInteger" — Infinity/NaN pass through as
+//      identifiers (Phase 2 fix). Other non-parseable text is JSON.stringify'd.
+//   2. "string" — always JSON.stringify(argumentText) (note: full text, not trimmed).
+//   3. "json"   — JSON.parse + wrap in parens on success; JSON.stringify fallback on error.
+//   4. "boolean" — pass "true"/"false" through; JSON.stringify everything else.
+//   5. "condition" — "undefined as unknown as FormSpecCondition" literal.
+//   6. null/undefined — return null (no argument).
+//   7. Infinity/NaN handling — "Infinity", "-Infinity", "NaN" must pass through
+//      as identifiers for the number/integer/signedInteger branch (not stringified).
+// ============================================================================
 // ---------------------------------------------------------------------------
 
 /**
- * Replicates `renderSyntheticArgumentExpression` from
+ * Proxy replicating `renderSyntheticArgumentExpression` from
  * `packages/build/src/analyzer/tsdoc-parser.ts` — the build-path argument
  * lowering function.
+ *
+ * Named `renderBuildArgumentExpressionProxy` to make clear this is a local
+ * copy that must be kept in sync with the canonical implementation. See the
+ * SYNC CONTRACT block above for the exact branches to maintain.
  *
  * Key semantics (§3, updated for Phase 2):
  *   - number/integer/signedInteger: finite numbers pass through; Infinity,
@@ -442,7 +462,7 @@ function generateFixtureSource(fixture: ParityFixture): string {
  *
  * @see packages/build/src/analyzer/tsdoc-parser.ts renderSyntheticArgumentExpression
  */
-function renderBuildArgumentExpression(
+function renderBuildArgumentExpressionProxy(
   valueKind: string | null | undefined,
   argumentText: string,
 ): string | null {
@@ -516,7 +536,7 @@ interface BuildConsumerResult {
  *
  * Finds the `field` property on `TestClass`, resolves its subject type, and
  * calls {@link checkSyntheticTagApplication} with arguments prepared via
- * {@link renderBuildArgumentExpression} (the build-path lowering function).
+ * {@link renderBuildArgumentExpressionProxy} (the build-path lowering function).
  *
  * Returns a structured result suitable for conversion to a
  * {@link ParityLogEntry}.
@@ -558,7 +578,7 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   const valueKind = definition?.valueKind ?? null;
 
   // Prepare argument expression using build-path lowering
-  const argumentExpression = renderBuildArgumentExpression(valueKind, fixture.tagArgument);
+  const argumentExpression = renderBuildArgumentExpressionProxy(valueKind, fixture.tagArgument);
 
   // subjectType text for the synthetic call
   const subjectTypeText =

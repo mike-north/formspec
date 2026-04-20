@@ -25,44 +25,31 @@
  */
 
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import * as ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
 import { buildFormSpecAnalysisFileSnapshot } from "@formspec/analysis/internal";
+import {
+  type BuildFixtureDir,
+  createBuildFixtureDir,
+} from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
 // Temp directory — shared across all build-path probe fixtures
 // =============================================================================
 
+let fixture: BuildFixtureDir;
+/** Convenience alias — test bodies reference `tmpDir` as a string path. */
 let tmpDir: string;
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-parity-divergence-"));
-
-  fs.writeFileSync(
-    path.join(tmpDir, "tsconfig.json"),
-    JSON.stringify(
-      {
-        compilerOptions: {
-          target: "ES2022",
-          module: "NodeNext",
-          moduleResolution: "nodenext",
-          strict: true,
-          skipLibCheck: true,
-        },
-      },
-      null,
-      2
-    )
-  );
+  fixture = createBuildFixtureDir("formspec-parity-divergence-");
+  tmpDir = fixture.dirPath;
 });
 
 afterAll(() => {
-  if (fs.existsSync(tmpDir)) {
-    fs.rmSync(tmpDir, { recursive: true });
-  }
+  fixture.cleanup();
 });
 
 // =============================================================================
