@@ -483,15 +483,25 @@ function applyPathTargetedConstraints(
 
   // Inline object schema: merge property overrides directly where possible.
   if (schema.type === "object" && schema.properties) {
+    // When additionalProperties is explicitly false, adding a new key to
+    // schema.properties would not make the base object accept that key —
+    // validators still reject it under the closed schema. Use allOf composition
+    // as the least-wrong behavior and rely on a future diagnostic to surface
+    // the misuse of path-targeted constraints on closed objects.
+    const additionalPropertiesIsFalse = schema.additionalProperties === false;
     const missingOverrides: Record<string, JsonSchema2020> = {};
 
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
       if (schema.properties[target]) {
         mergeSchemaOverride(schema.properties[target], overrideSchema);
-      } else {
-        // Do not introduce new properties directly; compose via allOf instead
-        // to preserve additionalProperties semantics on the base object.
+      } else if (additionalPropertiesIsFalse) {
+        // Closed schema: collect for allOf composition (see comment above).
         missingOverrides[target] = overrideSchema;
+      } else {
+        // Open schema (additionalProperties true/undefined/schema): merge
+        // directly into properties. Under 2020-12 this is semantically
+        // equivalent to allOf composition and avoids the wrapper.
+        schema.properties[target] = overrideSchema;
       }
     }
 

@@ -2662,7 +2662,7 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
-    it("uses allOf for inline object path targets that don't exist in properties", () => {
+    it("merges missing inline object path-target constraint flat when additionalProperties is not false (fix #366)", () => {
       const ir: FormIR = {
         kind: "form-ir",
         irVersion: IR_VERSION,
@@ -2709,10 +2709,12 @@ describe("generateJsonSchemaFromIR", () => {
         string,
         unknown
       >;
-      // Missing property should NOT be added directly — uses allOf to preserve
-      // additionalProperties semantics on the base object.
-      expect(address["allOf"]).toBeDefined();
-      expect(address["type"]).toBeUndefined(); // base object is inside allOf[0]
+      // Fix #366: missing property override is merged flat — no allOf wrapper.
+      expect(address["allOf"]).toBeUndefined();
+      expect(address["type"]).toBe("object");
+      expect((address["properties"] as Record<string, unknown>)["missing"]).toEqual({
+        minLength: 1,
+      });
     });
 
     it("returns schema unchanged for path-targeted constraints on non-traversable types", () => {
