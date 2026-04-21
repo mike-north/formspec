@@ -480,4 +480,168 @@ describe("$ref with sibling keywords — issue #364", () => {
       expect(totalProp?.allOf).toBeUndefined();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Top-level nullable $ref: `field: SomeRef | null` with a path-targeted
+  // constraint. Exercises the `nullableValueBranch` recursion at
+  // ir-generator.ts:467-480 where the $ref branch inside the nullable oneOf
+  // must still emit as $ref + siblings (not allOf). Nested-nullable is
+  // already covered in ir-json-schema-generator.test.ts; this fills the
+  // top-level gap identified in the PR review.
+  // ---------------------------------------------------------------------------
+  describe("top-level nullable $ref with path-targeted constraint", () => {
+    const NULLABLE_REGISTRY: FormIR["typeRegistry"] = {
+      PostalAddress: {
+        name: "PostalAddress",
+        type: {
+          kind: "object",
+          properties: [
+            {
+              name: "postalCode",
+              type: { kind: "primitive", primitiveKind: "string" },
+              optional: false,
+              constraints: [],
+              annotations: [],
+              provenance: PROVENANCE,
+            },
+          ],
+          additionalProperties: true,
+        },
+        provenance: PROVENANCE,
+      },
+    };
+
+    it("emits $ref + sibling properties on the non-null oneOf branch", () => {
+      // Scenario: a top-level field typed `PostalAddress | null` carries a
+      // path-targeted constraint on a subfield of the non-null branch.
+      // The schema must be a nullable oneOf where the $ref branch has the
+      // override as a sibling keyword — not wrapped in allOf.
+      const ir = makeIR(
+        [
+          {
+            kind: "field",
+            name: "billing",
+            type: {
+              kind: "union",
+              members: [
+                { kind: "reference", name: "PostalAddress", typeArguments: [] },
+                { kind: "primitive", primitiveKind: "null" },
+              ],
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["postalCode"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@pattern",
+                },
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+        NULLABLE_REGISTRY
+      );
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const billingProp = schema.properties?.["billing"];
+
+      // Nullable oneOf: the $ref branch carries sibling `properties`; the null
+      // branch is `{ type: "null" }`. The $ref branch must NOT be wrapped in
+      // allOf — that's the regression guard.
+      expect(billingProp).toMatchObject({
+        oneOf: [
+          {
+            $ref: "#/$defs/PostalAddress",
+            properties: { postalCode: { pattern: "^\\d{5}$" } },
+          },
+          { type: "null" },
+        ],
+      });
+
+      const refBranch = billingProp?.oneOf?.[0] as Record<string, unknown> | undefined;
+      expect(refBranch?.["allOf"]).toBeUndefined();
+    });
+
+    it("preserves $defs deduplication for top-level nullable $ref overrides", () => {
+      // Two independent top-level nullable $ref fields must still share the
+      // same $defs entry — siblings attach to each $ref branch, not to the
+      // deduplicated definition itself.
+      const ir = makeIR(
+        [
+          {
+            kind: "field",
+            name: "billing",
+            type: {
+              kind: "union",
+              members: [
+                { kind: "reference", name: "PostalAddress", typeArguments: [] },
+                { kind: "primitive", primitiveKind: "null" },
+              ],
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "pattern",
+                pattern: "^\\d{5}$",
+                path: { segments: ["postalCode"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+          {
+            kind: "field",
+            name: "shipping",
+            type: {
+              kind: "union",
+              members: [
+                { kind: "reference", name: "PostalAddress", typeArguments: [] },
+                { kind: "primitive", primitiveKind: "null" },
+              ],
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 5,
+                path: { segments: ["postalCode"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+        NULLABLE_REGISTRY
+      );
+
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.$defs).toHaveProperty("PostalAddress");
+      const billingBranch = (schema.properties?.["billing"]?.oneOf?.[0] ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const shippingBranch = (schema.properties?.["shipping"]?.oneOf?.[0] ?? {}) as Record<
+        string,
+        unknown
+      >;
+      expect(billingBranch["$ref"]).toBe("#/$defs/PostalAddress");
+      expect(shippingBranch["$ref"]).toBe("#/$defs/PostalAddress");
+      expect(billingBranch["allOf"]).toBeUndefined();
+      expect(shippingBranch["allOf"]).toBeUndefined();
+    });
+  });
 });

@@ -358,6 +358,98 @@ describe("generateSchemas", () => {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
     }
   });
+
+  // ---------------------------------------------------------------------------
+  // Narrowing type alias with a path-targeted constraint (issue #364).
+  //
+  // Scenario from user feedback on PR #365:
+  //
+  //   interface MonetaryAmount { amount: number; currency: string; }
+  //   /** @minimum :amount 0 */
+  //   type PositiveMonetaryAmount = MonetaryAmount;
+  //
+  //   class Form { price!: PositiveMonetaryAmount; }
+  //
+  // The emitter MUST produce `$ref` + sibling keywords at the field use site —
+  // never an `allOf` wrapper — because downstream renderers (Stripe dashboard
+  // config UI) do not unwrap `allOf` and the constraints would be silently
+  // dropped from the rendered view.
+  //
+  // Spec 003 §5.4 — sibling keywords alongside `$ref` are canonical.
+  // ---------------------------------------------------------------------------
+  it("emits $ref + sibling keywords for a narrowing alias whose constraint uses path targeting (issue #364)", () => {
+    const filePath = writeTempSource(`
+      export interface MonetaryAmount {
+        amount: number;
+        currency: string;
+      }
+
+      /** @minimum :amount 0 */
+      export type PositiveMonetaryAmount = MonetaryAmount;
+
+      export class Form {
+        price!: PositiveMonetaryAmount;
+      }
+    `);
+
+    try {
+      const result = generateSchemasOrThrow({
+        filePath,
+        typeName: "Form",
+      });
+
+      const priceProp = (result.jsonSchema.properties as Record<string, unknown>)["price"] as
+        | Record<string, unknown>
+        | undefined;
+
+      // $ref + siblings shape — spec 003 §5.4.
+      expect(priceProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
+      expect(priceProp?.["properties"]).toEqual({ amount: { minimum: 0 } });
+
+      // The regression guard: no allOf wrapping anywhere in the price subschema.
+      expect(priceProp?.["allOf"]).toBeUndefined();
+
+      // $defs entry for the base type must still be present (dedup preserved).
+      expect(result.jsonSchema.$defs).toHaveProperty("MonetaryAmount");
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("composes alias-level and use-site path targets as siblings on a single $ref (issue #364)", () => {
+    // Alias carries `@minimum :amount 0`; the field annotation adds
+    // `@maximum :amount 9999`. Both bounds must land as siblings on the same
+    // `amount` subschema — no allOf layering, no duplication across members.
+    const filePath = writeTempSource(`
+      export interface MonetaryAmount {
+        amount: number;
+        currency: string;
+      }
+
+      /** @minimum :amount 0 */
+      export type PositiveMonetaryAmount = MonetaryAmount;
+
+      export class Form {
+        /** @maximum :amount 9999 */
+        cap!: PositiveMonetaryAmount;
+      }
+    `);
+
+    try {
+      const result = generateSchemasOrThrow({ filePath, typeName: "Form" });
+      const capProp = (result.jsonSchema.properties as Record<string, unknown>)["cap"] as
+        | Record<string, unknown>
+        | undefined;
+
+      expect(capProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
+      expect(capProp?.["properties"]).toEqual({
+        amount: { minimum: 0, maximum: 9999 },
+      });
+      expect(capProp?.["allOf"]).toBeUndefined();
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
 });
 
 describe("generateJsonSchema", () => {
