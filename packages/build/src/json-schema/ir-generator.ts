@@ -426,19 +426,29 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 }
 
 /**
- * Applies path-targeted constraints to a schema using sibling keywords
- * (JSON Schema 2020-12) or allOf composition for inline schemas.
+ * Applies path-targeted constraints to a schema using JSON Schema 2020-12
+ * sibling keywords wherever possible.
  *
  * For $ref schemas: merges property overrides as sibling keywords alongside
- * `$ref`. JSON Schema 2020-12 (§10.2.1) allows all keywords to appear next
- * to `$ref`; the draft-07 restriction that made allOf necessary no longer
- * applies. Using sibling keywords preserves `$defs` deduplication and
- * produces leaner output that downstream renderers can consume directly.
+ * `$ref`. JSON Schema 2020-12 §10.2.1 allows keywords to appear next to
+ * `$ref`; the draft-07 restriction that required `allOf` composition no
+ * longer applies. Sibling emission preserves `$defs` deduplication and
+ * produces leaner output downstream renderers can consume directly (#364).
  *
- * For inline object schemas: applies directly to nested properties.
- * For array schemas: applies path constraints to the items sub-schema.
+ * For inline object schemas: merges property overrides flat into
+ * `properties`. Declaring the key in `properties` legitimizes it regardless
+ * of `additionalProperties`, so no `allOf` wrapper is needed even when the
+ * base is closed (#366, #382 Site 1).
+ *
+ * For already-composed `allOf` schemas: flatten to siblings when the
+ * composition is expressible that way under 2020-12; otherwise append the
+ * override as another `allOf` member (#382 Site 2).
+ *
+ * For array schemas: recurse into the `items` sub-schema.
  *
  * @see https://github.com/mike-north/formspec/issues/364
+ * @see https://github.com/mike-north/formspec/issues/366
+ * @see https://github.com/mike-north/formspec/issues/382
  * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
  */
 function applyPathTargetedConstraints(
@@ -504,7 +514,7 @@ function applyPathTargetedConstraints(
   // `properties` (which legitimizes the key even under
   // `additionalProperties: false`) and preserve `additionalProperties`/`type`
   // as siblings. Downstream renderers that do not unwrap `allOf` can now see
-  // the override. (Fixes #382 Site 1.)
+  // the override. (Fixes #366 and #382 Site 1.)
   if (schema.type === "object" && schema.properties) {
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
       // Own-property lookup + defineProperty guard against prototype-pollution
