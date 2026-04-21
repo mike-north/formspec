@@ -241,12 +241,13 @@ describe("inline object: path-targeted constraints on missing properties (issue 
   });
 
   /**
-   * Two path-targeted constraints on the SAME missing property. First
-   * insertion writes the override into `schema.properties[target]`; the
-   * second pass sees the now-present property and routes through
-   * `mergeSchemaOverride`, which mutates in place. The override object owned
-   * by the caller must not be aliased into the emitted IR, or the mutation
-   * would leak back. Guards against a shared-reference regression.
+   * Two path-targeted constraints on the SAME missing property.
+   * `buildPropertyOverrides` groups them by first path segment, so both
+   * keywords are combined into a single override schema before application.
+   * The emitted object should therefore stay flat — no allOf — with both
+   * constraints present on `properties.street`. The flat-merge branch does a
+   * shallow clone of the override so the caller's object is not aliased into
+   * the emitted IR; this test guards against a shared-reference regression.
    */
   it("accumulates multiple missing-property overrides on the same path without aliasing", () => {
     const ir = makeIR([

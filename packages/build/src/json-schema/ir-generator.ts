@@ -428,25 +428,28 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 /**
  * Applies path-targeted constraints to a schema.
  *
- * Emission-shape policy (see issues #364, #366):
+ * Emission-shape policy (see issue #366; `$ref` flattening tracked by #364):
  *
  * | Base schema shape                                        | Emission            |
  * |----------------------------------------------------------|---------------------|
  * | array                                                    | recurse into items  |
  * | nullable oneOf                                           | recurse into value  |
- * | `$ref`                                                   | $ref + siblings     |
+ * | `$ref`                                                   | `allOf` wrap        |
  * | inline object, override targets an existing property     | flat in-place merge |
  * | inline object, missing property, open base               | flat merge          |
- * | inline object, missing property, `additionalProperties:  | `allOf` composition |
- * |     false` (closed)                                      |                     |
+ * | inline object, missing property, closed base             | `allOf` composition |
+ * |   (`additionalProperties: false` or a schema)            |                     |
  * | already-composed `allOf`                                 | append `allOf` arm  |
  * | other (non-object, non-$ref)                             | unchanged           |
  *
- * Under 2020-12 §10.2.1 sibling keywords are permitted next to `$ref`, which
- * is what lets the `$ref` and open-object branches emit flat output. The
- * closed-object and already-composed branches retain `allOf` because
- * collapsing them would silently widen the base schema. Both remain tracked
- * by issue #366 and may surface a build-time diagnostic in the future.
+ * A base is "closed" when `additionalProperties` is either `false` (no extra
+ * keys permitted) OR a schema that constrains extra keys: in both cases a
+ * flat merge into `properties` would silently change validation semantics for
+ * the added key. Only `true` / `undefined` are treated as open.
+ *
+ * Under 2020-12 §10.2.1 sibling keywords are permitted next to `$ref`, so the
+ * `$ref` branch could in principle emit a flat shape too; that work is out of
+ * scope here and remains tracked by #364.
  */
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
@@ -499,30 +502,34 @@ function applyPathTargetedConstraints(
 
   // Inline object schema: merge property overrides directly where possible.
   if (schema.type === "object" && schema.properties) {
-    // Policy matrix for missing-property overrides (see issue #366):
-    //   - open base (additionalProperties true/undefined/schema) → flat merge
-    //     into `schema.properties`. Under 2020-12 this is semantically
-    //     equivalent to allOf composition and avoids the wrapper.
-    //   - closed base (additionalProperties === false) → retain allOf
-    //     composition. Adding a key to `properties` would not make the base
-    //     accept it under its closed schema; a flat merge would silently
-    //     misrepresent the constraint. This is the least-wrong behavior until
-    //     a build-time diagnostic flags path-targeted constraints on closed
-    //     objects — tracked by issue #366.
-    const additionalPropertiesIsFalse = schema.additionalProperties === false;
+    // Policy for missing-property overrides (see issue #366 and the
+    // function-level docstring):
+    //   - open base (additionalProperties true/undefined) → flat merge into
+    //     `schema.properties`. Under 2020-12 this is semantically equivalent
+    //     to allOf composition and avoids the wrapper.
+    //   - closed base (additionalProperties === false OR a schema) → retain
+    //     allOf composition. For `false`, a flat merge cannot make the base
+    //     accept the key. For a schema, the missing key was constrained by
+    //     the additionalProperties sub-schema; a flat merge would drop that
+    //     intersection. This is the least-wrong behavior until a build-time
+    //     diagnostic flags path-targeted constraints on closed objects —
+    //     tracked by issue #366.
+    const additionalPropertiesIsClosed =
+      schema.additionalProperties === false || typeof schema.additionalProperties === "object";
     const missingOverrides: Record<string, JsonSchema2020> = {};
 
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
       if (schema.properties[target]) {
         mergeSchemaOverride(schema.properties[target], overrideSchema);
-      } else if (additionalPropertiesIsFalse) {
+      } else if (additionalPropertiesIsClosed) {
         // Closed schema: collect for allOf composition (see policy comment).
         // Shallow-clone to avoid aliasing `overrideSchema` into the emitted IR.
         missingOverrides[target] = { ...overrideSchema };
       } else {
-        // Open schema: merge directly. Shallow-clone so subsequent overrides
-        // on the same key route through mergeSchemaOverride against an
-        // independently-owned object rather than mutating the caller's input.
+        // Open schema: merge directly. Shallow-clone so re-application on the
+        // same schema (not reachable today, but cheap defense) routes through
+        // mergeSchemaOverride against an independently-owned object rather
+        // than mutating the caller's input.
         schema.properties[target] = { ...overrideSchema };
       }
     }
