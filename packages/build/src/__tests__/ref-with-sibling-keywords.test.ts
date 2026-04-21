@@ -679,44 +679,38 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       // `additionalProperties` and `type` preserved as siblings.
       //
       // @see https://github.com/mike-north/formspec/issues/382 Site 1
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "address",
-            type: {
-              kind: "object",
-              properties: [
-                {
-                  name: "city",
-                  type: { kind: "primitive", primitiveKind: "string" },
-                  optional: false,
-                  constraints: [],
-                  annotations: [],
-                  provenance: PROVENANCE,
-                },
-              ],
-              additionalProperties: true,
-            },
-            required: true,
-            constraints: [
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
               {
-                kind: "constraint",
-                constraintKind: "minLength",
-                value: 1,
-                path: { segments: ["missing"] },
-                provenance: TSDOC_PROVENANCE,
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
               },
             ],
-            annotations: [],
-            provenance: PROVENANCE,
+            additionalProperties: true,
           },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["missing"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir);
       const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
@@ -747,44 +741,38 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       // legitimizes the property so additionalProperties: false stays safe.
       //
       // @see https://github.com/mike-north/formspec/issues/382 Site 1
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "address",
-            type: {
-              kind: "object",
-              properties: [
-                {
-                  name: "city",
-                  type: { kind: "primitive", primitiveKind: "string" },
-                  optional: false,
-                  constraints: [],
-                  annotations: [],
-                  provenance: PROVENANCE,
-                },
-              ],
-              additionalProperties: false,
-            },
-            required: true,
-            constraints: [
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
               {
-                kind: "constraint",
-                constraintKind: "minLength",
-                value: 1,
-                path: { segments: ["missing"] },
-                provenance: TSDOC_PROVENANCE,
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
               },
             ],
-            annotations: [],
-            provenance: PROVENANCE,
+            additionalProperties: false,
           },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["missing"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir);
       const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
@@ -801,51 +789,45 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       // Mix: one path-target hits an existing property and another hits a
       // missing property. Both must end up merged into a single sibling
       // properties map on the flat object (no allOf in either case).
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "address",
-            type: {
-              kind: "object",
-              properties: [
-                {
-                  name: "city",
-                  type: { kind: "primitive", primitiveKind: "string" },
-                  optional: false,
-                  constraints: [],
-                  annotations: [],
-                  provenance: PROVENANCE,
-                },
-              ],
-              additionalProperties: true,
-            },
-            required: true,
-            constraints: [
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
               {
-                kind: "constraint",
-                constraintKind: "minLength",
-                value: 2,
-                path: { segments: ["city"] },
-                provenance: TSDOC_PROVENANCE,
-              },
-              {
-                kind: "constraint",
-                constraintKind: "minLength",
-                value: 1,
-                path: { segments: ["postalCode"] },
-                provenance: TSDOC_PROVENANCE,
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
               },
             ],
-            annotations: [],
-            provenance: PROVENANCE,
+            additionalProperties: true,
           },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 2,
+              path: { segments: ["city"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["postalCode"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir);
       const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
@@ -1022,31 +1004,25 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         allOf: [{ $ref: "#/$defs/BaseMoney" }],
       });
 
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "total",
-            type: moneyNode(),
-            required: true,
-            constraints: [
-              {
-                kind: "constraint",
-                constraintKind: "minimum",
-                value: 0,
-                path: { segments: ["value"] },
-                provenance: TSDOC_PROVENANCE,
-              },
-            ],
-            annotations: [],
-            provenance: PROVENANCE,
-          },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
       const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
@@ -1066,31 +1042,25 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         allOf: [{ $ref: "#/$defs/BaseA" }, { $ref: "#/$defs/BaseB" }],
       });
 
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "total",
-            type: moneyNode(),
-            required: true,
-            constraints: [
-              {
-                kind: "constraint",
-                constraintKind: "minimum",
-                value: 0,
-                path: { segments: ["value"] },
-                provenance: TSDOC_PROVENANCE,
-              },
-            ],
-            annotations: [],
-            provenance: PROVENANCE,
-          },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
       const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
@@ -1120,31 +1090,25 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         ],
       });
 
-      const ir: FormIR = {
-        kind: "form-ir",
-        irVersion: IR_VERSION,
-        elements: [
-          {
-            kind: "field",
-            name: "total",
-            type: moneyNode(),
-            required: true,
-            constraints: [
-              {
-                kind: "constraint",
-                constraintKind: "minimum",
-                value: 0,
-                path: { segments: ["value"] },
-                provenance: TSDOC_PROVENANCE,
-              },
-            ],
-            annotations: [],
-            provenance: PROVENANCE,
-          },
-        ],
-        typeRegistry: {},
-        provenance: PROVENANCE,
-      };
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
 
       const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
       const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
