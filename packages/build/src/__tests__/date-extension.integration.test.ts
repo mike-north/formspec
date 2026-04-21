@@ -276,6 +276,11 @@ describe("date extension integration", () => {
     });
 
     expect(result.ok).toBe(false);
+    // Phase 4 Slice C: diagnostics are pre-emitted ONCE per registry
+    // construction. `toHaveLength(1)` pins the count explicitly — without it,
+    // `toMatchObject([...])` would silently accept extra diagnostics if a
+    // regression reintroduced per-field emission.
+    expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics).toMatchObject([
       {
         code: "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
@@ -345,6 +350,11 @@ describe("date extension integration", () => {
     });
 
     expect(result.ok).toBe(false);
+    // Phase 4 Slice C: diagnostics are pre-emitted ONCE per registry
+    // construction. `toHaveLength(1)` pins the count explicitly — without it,
+    // `toMatchObject([...])` would silently accept extra diagnostics if a
+    // regression reintroduced per-field emission.
+    expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics).toMatchObject([
       {
         code: "SYNTHETIC_SETUP_FAILURE",

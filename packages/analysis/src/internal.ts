@@ -157,7 +157,6 @@ export type {
 } from "./compiler-signatures.js";
 export {
   _emitSetupDiagnostics,
-  _extensionRegistryProvenance,
   _mapSetupDiagnosticCode,
   _validateExtensionSetup,
   buildSyntheticHelperPrelude,

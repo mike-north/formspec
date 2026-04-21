@@ -46,8 +46,18 @@ function getFirstProperty(source: string): ts.Node {
   throw new Error("No property declaration found in source");
 }
 
-/** A class with a constraint tag placement error AND a setup-invalid extension. */
-const CLASS_WITH_CONSTRAINT_ON_CLASS_FIELD = `
+/**
+ * A class with valid constraint tags (@minLength, @maxLength on a string field).
+ *
+ * This fixture is used with a registry that has setup failures. Under
+ * silent-drop the parser returns ONLY the setup diagnostic and extracts no
+ * constraints — silent-drop is proven by asserting
+ * `result.constraints.length === 0` (the valid constraints would otherwise be
+ * extracted), not by checking for absence of placement errors. The fixture
+ * intentionally has no placement error to keep the test focused on the
+ * "full parse suppressed" behavior rather than error-forwarding mechanics.
+ */
+const CLASS_WITH_VALID_CONSTRAINTS_ON_STRING_FIELD = `
   class MyForm {
     /**
      * Valid summary text.
@@ -75,7 +85,7 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
     expect(invalidRegistry.setupDiagnostics).toHaveLength(1);
     expect(invalidRegistry.setupDiagnostics[0]?.kind).toBe("synthetic-setup");
 
-    const prop = getFirstProperty(CLASS_WITH_CONSTRAINT_ON_CLASS_FIELD);
+    const prop = getFirstProperty(CLASS_WITH_VALID_CONSTRAINTS_ON_STRING_FIELD);
     const result = parseTSDocTags(prop, "/virtual/test.ts", {
       extensionRegistry: invalidRegistry,
     });
@@ -112,18 +122,16 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
       "unsupported-custom-type-override"
     );
 
-    const prop = getFirstProperty(CLASS_WITH_CONSTRAINT_ON_CLASS_FIELD);
+    const prop = getFirstProperty(CLASS_WITH_VALID_CONSTRAINTS_ON_STRING_FIELD);
     const result = parseTSDocTags(prop, "/virtual/test.ts", {
       extensionRegistry: unsupportedBuiltinRegistry,
     });
 
-    // Only the setup diagnostic surfaces — no TYPE_MISMATCH or INVALID_TAG_PLACEMENT.
+    // Only the setup diagnostic surfaces. Silent-drop is proven by the
+    // absence of the valid @minLength/@maxLength constraints — they would be
+    // extracted if the parser had not short-circuited on setup failure.
     expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics[0]?.code).toBe("UNSUPPORTED_CUSTOM_TYPE_OVERRIDE");
-    expect(result.diagnostics.map((d) => d.code)).not.toContain("TYPE_MISMATCH");
-    expect(result.diagnostics.map((d) => d.code)).not.toContain("INVALID_TAG_PLACEMENT");
-
-    // No constraints or annotations extracted.
     expect(result.constraints).toHaveLength(0);
     expect(result.annotations).toHaveLength(0);
   });
@@ -139,7 +147,7 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
 
     expect(validRegistry.setupDiagnostics).toHaveLength(0);
 
-    const prop = getFirstProperty(CLASS_WITH_CONSTRAINT_ON_CLASS_FIELD);
+    const prop = getFirstProperty(CLASS_WITH_VALID_CONSTRAINTS_ON_STRING_FIELD);
     const result = parseTSDocTags(prop, "/virtual/test.ts", {
       extensionRegistry: validRegistry,
     });

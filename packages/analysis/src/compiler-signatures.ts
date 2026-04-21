@@ -528,9 +528,8 @@ export function _mapSetupDiagnosticCode(kind: SyntheticCompilerDiagnostic["kind"
  * diagnostics.
  *
  * @param file - The source file path being analyzed when the diagnostic fires.
- * @internal
  */
-export function _extensionRegistryProvenance(file: string): Provenance {
+function _extensionRegistryProvenance(file: string): Provenance {
   return { surface: "extension", file, line: 1, column: 0 };
 }
 
