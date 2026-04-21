@@ -156,6 +156,9 @@ export type {
   SyntheticTagTargetSpecifier,
 } from "./compiler-signatures.js";
 export {
+  _emitSetupDiagnostics,
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   buildSyntheticHelperPrelude,
   checkSyntheticTagApplication,
   checkSyntheticTagApplications,

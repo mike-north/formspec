@@ -399,8 +399,11 @@ describe("compiler-signatures", () => {
     expect(result.globalDiagnostics[0]?.message).toContain(
       "conflicts with a TypeScript global built-in type"
     );
-    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
-    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span by design.
+    // Phase 4 Slice C relocated setup diagnostics to the registry/snapshot level as
+    // ConstraintSemanticDiagnostic (with provenance anchored at surface:"extension",
+    // line:1, column:0). This lower-level SyntheticCompilerDiagnostic type intentionally
+    // remains span-free — its callers are responsible for attaching provenance.
     expect(result.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 
@@ -431,8 +434,9 @@ describe("compiler-signatures", () => {
     expect(secondResult.globalDiagnostics[0]?.message).toContain(
       "conflicts with a TypeScript global built-in type"
     );
-    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
-    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span by design.
+    // Phase 4 Slice C relocated setup diagnostics to the registry/snapshot level —
+    // see the first test in this group for the full annotation.
     expect(secondResult.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 
@@ -461,8 +465,9 @@ describe("compiler-signatures", () => {
     expect(result.globalDiagnostics).toHaveLength(1);
     expect(result.globalDiagnostics[0]?.kind).toBe("synthetic-setup");
     expect(result.globalDiagnostics[0]?.message).toContain("Invalid custom type name");
-    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span in the synthetic path.
-    // TODO Phase 4: relocation should anchor this at the extension registration site.
+    // §9.1 #4 — SyntheticCompilerDiagnostic carries no span by design.
+    // Phase 4 Slice C relocated setup diagnostics to the registry/snapshot level —
+    // see the first test in this group for the full annotation.
     expect(result.globalDiagnostics[0]).not.toHaveProperty("primaryLocation");
   });
 

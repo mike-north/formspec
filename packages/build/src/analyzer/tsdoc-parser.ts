@@ -78,6 +78,8 @@ import {
 } from "../extensions/resolve-custom-type.js";
 import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
+  _emitSetupDiagnostics,
+  _mapSetupDiagnosticCode,
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
@@ -1035,9 +1037,7 @@ function buildCompilerBackedConstraintDiagnostics(
   if (setupDiagnostic !== undefined) {
     return emit("C-reject", [
       makeDiagnostic(
-        setupDiagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : "SYNTHETIC_SETUP_FAILURE",
+        _mapSetupDiagnosticCode(setupDiagnostic.kind),
         setupDiagnostic.message,
         provenance
       ),
@@ -1198,6 +1198,29 @@ export function parseTSDocTags(
   const cached = parseResultCache.get(cacheKey);
   if (cached !== undefined) {
     return cached;
+  }
+
+  // §4 Phase 4 Slice C — when the registry has setup failures, emit them ONCE
+  // per parseTSDocTags call (anchored at the extension registration site) and
+  // skip all further tag parsing for this node.
+  //
+  // Rationale for the early-return: an invalid registry means constraint types
+  // cannot be resolved, so placement validation and summary-text extraction
+  // for every field in the class would be based on incomplete type information.
+  // Surfacing only the setup diagnostic — rather than potentially spurious
+  // placement errors — keeps the user's feedback loop focused on fixing the
+  // broken extension configuration first. See test
+  // "parseTSDocTags silent-drop: only setup diagnostics surface when registry
+  // has setup failures" in tsdoc-parser-setup-diagnostic-silent-drop.test.ts.
+  const setupDiags = options?.extensionRegistry?.setupDiagnostics;
+  if (setupDiags !== undefined && setupDiags.length > 0) {
+    const result: TSDocParseResult = {
+      constraints: [],
+      annotations: [],
+      diagnostics: _emitSetupDiagnostics(setupDiags, file),
+    };
+    parseResultCache.set(cacheKey, result);
+    return result;
   }
 
   const constraints: ConstraintNode[] = [];

@@ -1,6 +1,8 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
 import {
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   checkSyntheticTagApplicationsDetailed,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
@@ -61,9 +63,9 @@ import { noopLogger } from "@formspec/core";
 import { isBuiltinConstraintName } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
-  getSyntheticLogger,
   getTypedParserLogger,
   describeTypeKind,
+  logSetupDiagnostics,
   logTagApplication,
   nowMicros,
   elapsedMicros,
@@ -1085,17 +1087,6 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
   }
 }
 
-function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
-  const firstSpan = spans[0];
-  if (firstSpan === undefined) {
-    return null;
-  }
-  return {
-    start: firstSpan.start,
-    end: spans[spans.length - 1]?.end ?? firstSpan.end,
-  };
-}
-
 function createAnalysisDiagnostic(
   code: string,
   message: string,
@@ -1363,7 +1354,6 @@ function buildTagDiagnostics(
   ]);
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
-  const syntheticLog = getSyntheticLogger();
   const typedParserLog = getTypedParserLogger();
   const snapshotLogsEnabled = snapshotLog !== noopLogger;
   const typedParserTraceEnabled = typedParserLog !== noopLogger;
@@ -1658,37 +1648,6 @@ function buildTagDiagnostics(
       })
   );
 
-  // §8.3c — log any global (setup-level) diagnostics from the batch check.
-  if (batchCheck.globalDiagnostics.length > 0) {
-    const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
-    syntheticLog.debug("synthetic batch: global setup diagnostics", {
-      diagnosticCount: batchCheck.globalDiagnostics.length,
-      codes: setupCodes,
-    });
-  }
-
-  const globalDiagnosticRange = combineCommentSpans(
-    syntheticApplications.map((application) => application.tag.fullSpan)
-  );
-
-  if (globalDiagnosticRange !== null) {
-    for (const diagnostic of batchCheck.globalDiagnostics) {
-      const code =
-        diagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : diagnostic.kind === "synthetic-setup"
-            ? "SYNTHETIC_SETUP_FAILURE"
-            : "TYPE_MISMATCH";
-      diagnostics.push(
-        createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
-          placement,
-          tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-        })
-      );
-    }
-  }
-
   for (const [index, result] of batchCheck.applicationResults.entries()) {
     const application = syntheticApplications[index];
     if (application === undefined) {
@@ -1855,6 +1814,37 @@ export function buildFormSpecAnalysisFileSnapshot(
   const comments: FormSpecAnalysisCommentSnapshot[] = [];
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
   const extensions = options.extensions ?? toExtensionTagSources(options.extensionDefinitions);
+
+  // §4 Phase 4 Slice C — pre-validate extension setup once per snapshot call.
+  // Previously, setup failures (UNSUPPORTED_CUSTOM_TYPE_OVERRIDE /
+  // SYNTHETIC_SETUP_FAILURE) were emitted inside buildTagDiagnostics for each
+  // commented declaration. In a file with N commented declarations, a broken
+  // extension config would produce N identical diagnostics. Pre-validating here
+  // emits each setup diagnostic exactly once per buildFormSpecAnalysisFileSnapshot
+  // call, anchored at the start of the file (no tag-site location available for
+  // registry-level failures).
+  const snapshotLog = getSnapshotLogger();
+  const setupDiagnosticResults = _validateExtensionSetup(extensions);
+  if (setupDiagnosticResults.length > 0) {
+    logSetupDiagnostics(snapshotLog, {
+      diagnosticCount: setupDiagnosticResults.length,
+      codes: setupDiagnosticResults.map((d) => d.kind),
+    });
+    // Emit each setup diagnostic anchored at the start of the file.
+    // The file-start span (0,0) is the closest we can get to a
+    // "registry-level" location in the snapshot transport format.
+    const fileStartSpan: CommentSpan = { start: 0, end: 0 };
+    for (const setupDiag of setupDiagnosticResults) {
+      diagnostics.push(
+        createAnalysisDiagnostic(
+          _mapSetupDiagnosticCode(setupDiag.kind),
+          setupDiag.message,
+          fileStartSpan,
+          {}
+        )
+      );
+    }
+  }
 
   const visit = (node: ts.Node): void => {
     const placement = resolveDeclarationPlacement(node);
