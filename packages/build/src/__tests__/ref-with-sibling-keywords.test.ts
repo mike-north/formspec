@@ -857,6 +857,126 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         postalCode: { minLength: 1 },
       });
     });
+
+    // -------------------------------------------------------------------------
+    // Prototype-pollution hardening
+    // -------------------------------------------------------------------------
+    //
+    // Path-targeted constraints accept arbitrary strings as path segments
+    // (they come from user TSDoc tags like `@minimum :<segment> 0`). When a
+    // segment is named `__proto__` or `constructor`, a naive `obj[segment] = ...`
+    // assignment would either invoke the `Object.prototype.__proto__` setter
+    // (dropping the constraint and mutating prototypes) or match an inherited
+    // `Object.prototype` member (mis-merging the constraint into prototype
+    // methods). Both cases are closed by:
+    //
+    //   - `buildPropertyOverrides`: null-prototype `overrides` map populated
+    //     via `Object.defineProperty`, so `__proto__`-named segments survive
+    //     as own properties all the way to Site 1.
+    //   - `applyPathTargetedConstraints` Site 1: `Object.hasOwn` +
+    //     `Object.defineProperty` on `schema.properties`, so neither
+    //     inherited-member matching nor the `__proto__` setter can trigger.
+    //
+    // @see https://github.com/mike-north/formspec/issues/382
+    describe("prototype-pollution hardening (#382)", () => {
+      it("declares a path target named `constructor` as an own property without touching Object.prototype.constructor", () => {
+        // Without `Object.hasOwn`, `"constructor" in schema.properties` would
+        // match the inherited `Object.prototype.constructor` and the override
+        // would take the existing-property branch, merging the schema into the
+        // `constructor` function. With `Object.hasOwn`, inherited members are
+        // rejected and the override lands as an own property instead.
+        const ir: FormIR = makeIR([
+          {
+            kind: "field",
+            name: "payload",
+            type: {
+              kind: "object",
+              properties: [],
+              additionalProperties: true,
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 1,
+                path: { segments: ["constructor"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ]);
+
+        const schema = generateJsonSchemaFromIR(ir);
+        const payload = schema.properties?.["payload"] as
+          | Record<string, unknown>
+          | undefined;
+        const props = payload?.["properties"] as Record<string, unknown> | undefined;
+
+        // Object.prototype.constructor still points at Object — we did not
+        // mutate or shadow the inherited method.
+        expect(Object.prototype.constructor).toBe(Object);
+        // The override landed as an own property on the properties map, not
+        // on the prototype.
+        expect(Object.hasOwn(props ?? {}, "constructor")).toBe(true);
+        expect(props?.["constructor"]).toEqual({ minLength: 1 });
+      });
+
+      it("declares a path target named `__proto__` as an own property without mutating the prototype chain", () => {
+        // Without `Object.create(null)` + `Object.defineProperty`, this test
+        // would either drop the constraint silently (plain `{}` map +
+        // bracket-assign invokes the `__proto__` setter and
+        // `Object.entries(...)` returns `[]`) or mutate `schema.properties`'s
+        // `[[Prototype]]`. The hardening produces a real own property.
+        const protoSnapshot = Object.getOwnPropertyNames(Object.prototype).sort();
+        const ir: FormIR = makeIR([
+          {
+            kind: "field",
+            name: "payload",
+            type: {
+              kind: "object",
+              properties: [],
+              additionalProperties: true,
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 1,
+                path: { segments: ["__proto__"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ]);
+
+        const schema = generateJsonSchemaFromIR(ir);
+        const payload = schema.properties?.["payload"] as
+          | Record<string, unknown>
+          | undefined;
+        const props = payload?.["properties"] as Record<string, unknown> | undefined;
+
+        // The override landed as a real own property — Object.hasOwn returns
+        // true and the value is the expected override schema. This is the
+        // signature of a successful `Object.defineProperty` path; a plain
+        // `obj["__proto__"] = value` would have replaced [[Prototype]]
+        // instead, leaving no own property.
+        expect(Object.hasOwn(props ?? {}, "__proto__")).toBe(true);
+        expect(
+          Object.getOwnPropertyDescriptor(props, "__proto__")?.value
+        ).toEqual({ minLength: 1 });
+        // Object.prototype is untouched — the global prototype chain is not
+        // mutated as a side-effect of emission.
+        expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(
+          protoSnapshot
+        );
+      });
+    });
   });
 
   // ---------------------------------------------------------------------------
