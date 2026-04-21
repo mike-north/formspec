@@ -1,5 +1,93 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.59
+
+### Patch Changes
+
+- [#390](https://github.com/mike-north/formspec/pull/390) [`42f0898`](https://github.com/mike-north/formspec/commit/42f08983f68ee488d2b4a16c26ee6f15308a2767) Thanks [@mike-north](https://github.com/mike-north)! - Document `@format` inheritance through `extends` heritage in `docs/002-tsdoc-grammar.md`. The new "Inheritance through `extends` heritage" subsection under `@format` covers the inheritable-kinds allow-list, heritage-clause scope (`extends` yes, `implements` no), the "nearest annotation by BFS wins, ties broken by declaration order" precedence rule, empty-payload non-override semantics, a worked asymmetric-diamond example, and known limitations (derived-side type-alias case tracked in #374; allow-list expansion tracked in #380). No code change.
+
+- [#359](https://github.com/mike-north/formspec/pull/359) [`90434b6`](https://github.com/mike-north/formspec/commit/90434b64a631ba4c909d9f9a0455d10ffdb8d34d) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@defaultValue` on custom-type fields emitting a value whose runtime type does not conform to the field's JSON Schema type.
+
+  For example, `@defaultValue 9.99` on a `Decimal` field (which maps to `{ type: "string" }`) previously produced `{ "default": 9.99 }` — a numeric default on a string-typed schema. The build pipeline now coerces the parsed literal through the custom-type registration before emitting it as the JSON Schema `default` keyword.
+
+  Coercion strategy (in priority order):
+  1. **Explicit hook**: if the `CustomTypeRegistration` provides a `serializeDefault` function, it is called with the parsed literal and the type payload. Extensions needing bespoke serialization (e.g., Date → ISO-8601 string) should use this hook.
+  2. **Inference fallback**: when no `serializeDefault` hook is present, the pipeline inspects the `type` keyword returned by `toJsonSchema`. If the emitted type is `"string"` and the parsed literal is a `number`, `boolean`, or `bigint`, it is coerced to a string. Other literal shapes (including objects and arrays) are left unchanged unless an explicit `serializeDefault` hook handles them.
+  3. **Pass-through**: non-custom types are unaffected; custom types without a matching registration are also passed through unchanged, as are custom-type literals not covered by the inference fallback.
+
+- [#365](https://github.com/mike-north/formspec/pull/365) [`90e415b`](https://github.com/mike-north/formspec/commit/90e415b8c57f78fab7e8781df5d82914756f66fc) Thanks [@mike-north](https://github.com/mike-north)! - Fix unnecessary `allOf` composition when field-level constraints or annotations are applied to `$ref`-based types. JSON Schema 2020-12 (§10.2.1) allows sibling keywords next to `$ref`, so the generator now emits `{ "$ref": "#/$defs/X", "properties": {...} }` directly instead of wrapping in `allOf`. This preserves `$defs` deduplication and produces output that downstream renderers can consume without needing to unwrap `allOf` as a workaround.
+
+- [#373](https://github.com/mike-north/formspec/pull/373) [`0e3ca17`](https://github.com/mike-north/formspec/commit/0e3ca175bcc530fb1ab0fcf488134a19e836484f) Thanks [@mike-north](https://github.com/mike-north)! - Add dedicated regression coverage for issue #366 — path-targeted constraints on missing properties of inline object schemas now consistently emit a flat `{ type: "object", properties: { ...existing, newProp: ... } }` with no `allOf` wrapper, including when the base is closed (`additionalProperties: false`). The emission-policy change itself was made in the broader #382 Site 1 fix; this adds spec-grounded tests covering nested paths, array-wrapped inline objects, and nullable-union branches.
+
+- [#386](https://github.com/mike-north/formspec/pull/386) [`d70b55e`](https://github.com/mike-north/formspec/commit/d70b55e82027c76faa3d4459428f8fe5c547c9d6) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@format` annotation inheritance through type-alias derivation chains (issue #374). When a type alias is derived from another type (`type WorkEmail = BaseEmail`, `type AliasedMonetary = MonetaryAmount`), the derived alias now preserves its own `$defs` identity and inherits `@format` from the base type's declaration chain. Explicit `@format` on the derived alias overrides the inherited value, matching the semantics of interface-extends inheritance from issue #367.
+
+- [#385](https://github.com/mike-north/formspec/pull/385) [`0892d3b`](https://github.com/mike-north/formspec/commit/0892d3b37d7312b8ca260aa007238dea4fab5a3c) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@format` inheritance when an interface (or class) `extends` a type-alias base. The BFS walker in `collectInheritedTypeAnnotations` previously enqueued only `ClassDeclaration` and `InterfaceDeclaration` bases, silently dropping any `TypeAliasDeclaration` base whose resolved type is object-shaped. The walker now also traverses type-alias bases, extracting JSDoc annotations from them and, when the alias's RHS is a named type, continuing up the heritage chain through the alias.
+
+- [#388](https://github.com/mike-north/formspec/pull/388) [`4419d24`](https://github.com/mike-north/formspec/commit/4419d24016bbce71c32dbeb872ccda6cc372564e) Thanks [@mike-north](https://github.com/mike-north)! - Clarify the precedence rule documented in the heritage-annotation inheritance tests: the actual rule is "nearest annotation by BFS wins, with ties broken by declaration order in the `extends` clause", not "first-listed `extends` wins in every case". Adds an asymmetric-diamond (Case D) regression test pinning the behavior so a future refactor cannot silently flip resolution. No emitter behavior changes.
+
+- [#389](https://github.com/mike-north/formspec/pull/389) [`78c97e1`](https://github.com/mike-north/formspec/commit/78c97e15cabc2623480450143ca03b7e2380108d) Thanks [@mike-north](https://github.com/mike-north)! - Flatten remaining `allOf` emission sites in the JSON Schema emitter to sibling keywords under JSON Schema 2020-12 (§10.2.1), so downstream renderers (e.g., the Stripe dashboard) that do not unwrap `allOf` no longer silently drop path-targeted overrides.
+  - **Inline-object missing-property fallback**: when a path-target override names a property not declared on an inline-object base, the override is now merged into the base's `properties` as siblings (with `additionalProperties`/`type` preserved), instead of wrapping the base in `allOf`.
+  - **Pre-composed `allOf` append**: when the base schema is already an `allOf` with a single member whose keys do not conflict with the override, the composition is flattened to siblings. `allOf` is retained only when the composition genuinely cannot be expressed as siblings (multiple members, or key collisions).
+
+  Follow-up to #364/#365; closes #382.
+
+- [#357](https://github.com/mike-north/formspec/pull/357) [`ddfaca6`](https://github.com/mike-north/formspec/commit/ddfaca6d6838e09d88a1715685c182d72982b5f5) Thanks [@mike-north](https://github.com/mike-north)! - Fix `hasExtensionBroadening` to use NoTruncation when matching extension type names, preventing false INVALID_TAG_ARGUMENT on complex types (Copilot follow-up on PR #354).
+
+- [#369](https://github.com/mike-north/formspec/pull/369) [`abc56dc`](https://github.com/mike-north/formspec/commit/abc56dc390f280cfef9ee72eaf2c3e9683065ccb) Thanks [@mike-north](https://github.com/mike-north)! - Fix type-level `@format` inheritance on derived interfaces and classes (issue #367). When an interface or class extends a base that declares a type-level `@format`, the derived type's `$defs` entry now carries the inherited `format` keyword. Explicit `@format` on the derived type continues to win over the inherited value.
+
+- [#356](https://github.com/mike-north/formspec/pull/356) [`4716b37`](https://github.com/mike-north/formspec/commit/4716b37494f56c7d110cae6c3ef9ab4a130d45da) Thanks [@mike-north](https://github.com/mike-north)! - Fix `enumSerialization` handling after the smart-size release by validating malformed per-package overrides in `formspec.config.*` files and by making the CLI honor package-scoped `enumSerialization` overrides when generating schemas. `@formspec/build` no longer constructs an empty extension registry when a caller passes a config with `extensions: []`, so a resolved config can be handed to schema generation without paying for registry setup that was never configured.
+
+- [#354](https://github.com/mike-north/formspec/pull/354) [`5cb3433`](https://github.com/mike-north/formspec/commit/5cb3433d1b209304a021620fd3891554db339ed7) Thanks [@mike-north](https://github.com/mike-north)! - Wire typed argument parser into snapshot consumer (Phase 3)
+
+  Routes the snapshot consumer's Role C (argument-literal validation)
+  through parseTagArgument. The synthetic TypeScript checker still handles
+  Roles A/B/D1/D2 until Phase 4. Fixes the snapshot-side subset of
+  silent-acceptance bugs tracked in #326 and completes normalization of
+  build/snapshot divergences #329/#330 that Phase 2 began. Implements §4
+  Phase 3 of docs/refactors/synthetic-checker-retirement.md.
+
+- [#361](https://github.com/mike-north/formspec/pull/361) [`af895d4`](https://github.com/mike-north/formspec/commit/af895d4a7aa923d0bd8f41731157dbe8db5a992f) Thanks [@mike-north](https://github.com/mike-north)! - Phase 4 Slice A+B — integer-brand bypass parity + shared argument-text extraction
+  - Closes #325: snapshot consumer now has the same isIntegerBrandedType bypass
+    as the build consumer. Build+snapshot fully converge on integer-branded
+    types; the KNOWN DIVERGENCE entries from Phase 0.5c are promoted to
+    asserted-equal.
+  - Resolves Copilot review finding from PRs #348 and #354: extracts
+    extractEffectiveArgumentText to a shared helper in @formspec/analysis
+    (main entry, @internal tag). Both consumers now derive argument text
+    identically, correctly handling TAGS_REQUIRING_RAW_TEXT compiler-API
+    fallback.
+
+  Implements §4 Phase 4 Slice A+B of docs/refactors/synthetic-checker-retirement.md.
+
+- [#384](https://github.com/mike-north/formspec/pull/384) [`87fac02`](https://github.com/mike-north/formspec/commit/87fac024c7cda6340b4b15644dcdae7979ce1099) Thanks [@mike-north](https://github.com/mike-north)! - Relocate setup diagnostics to registry construction time.
+
+  `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` and `SYNTHETIC_SETUP_FAILURE` diagnostics are now emitted exactly once per `createExtensionRegistry` call (build consumer) or `buildFormSpecAnalysisFileSnapshot` call (snapshot consumer), anchored at the extension registration site (`surface: "extension"`, line 1, column 0). Previously, these diagnostics fired on every tag-application validation call, bypassing the LRU cache entirely.
+
+- [#392](https://github.com/mike-north/formspec/pull/392) [`f195a58`](https://github.com/mike-north/formspec/commit/f195a580b03e3b60193f5183374cd95ba42b7d15) Thanks [@mike-north](https://github.com/mike-north)! - Restore emission of `TYPE_MISMATCH` diagnostics for batch-level synthetic TypeScript errors.
+
+  The Phase 4 Slice C refactor (#384) unintentionally dropped the emission of `kind: "typescript"` diagnostics from `batchCheck.globalDiagnostics` — any TypeScript diagnostic produced by the synthetic check that had no source position or fell outside every tag application's line range was silently dropped instead of surfacing as `TYPE_MISMATCH`. This restores the emission via a new `_mapGlobalSyntheticTsDiagnostics` helper, anchored at a span covering every tag application in the batch. Setup-kind globals continue to be pre-emitted at the file-level span by the snapshot entry path and are filtered out of this secondary emission to prevent double-surface.
+
+- [#372](https://github.com/mike-north/formspec/pull/372) [`23b4977`](https://github.com/mike-north/formspec/commit/23b497729defcaa5e909223dd97a055e20d077f0) Thanks [@mike-north](https://github.com/mike-north)! - Strengthen NoTruncation regression coverage with anonymous-intersection case
+
+  Follow-up to PR #357. The prior `LongIntersection` test used a named alias —
+  TypeScript's `typeToString` renders those identically with or without
+  `NoTruncation`, so the test passed pre- and post-fix, providing zero regression
+  coverage. This adds an anonymous-intersection fixture (276 chars `NoTruncation`
+  vs 228 chars default — structurally different) that actually demonstrates the
+  fix. Verified by reverting the fix locally: the new test fails as expected.
+
+  Also clarifies the null-guard comment in `hasExtensionBroadening` and softens
+  the specific character-count claim (the truncation threshold varies by type
+  structure).
+
+- [#375](https://github.com/mike-north/formspec/pull/375) [`3a90e08`](https://github.com/mike-north/formspec/commit/3a90e08c522dca31776f7c718261ab465b764208) Thanks [@mike-north](https://github.com/mike-north)! - Add test-only regression coverage for issue #367 and skipped markers for issue #374. One passing bug-report-verbatim test and four `it.skip` tests for the type-alias derivation gap live in `packages/build/src/__tests__/format-inheritance-derived-types.test.ts`. No published-package behavior changes; the patch bumps are required by the changesets workflow for any touched `packages/build` file.
+
+- Updated dependencies [[`42f0898`](https://github.com/mike-north/formspec/commit/42f08983f68ee488d2b4a16c26ee6f15308a2767), [`90434b6`](https://github.com/mike-north/formspec/commit/90434b64a631ba4c909d9f9a0455d10ffdb8d34d), [`90e415b`](https://github.com/mike-north/formspec/commit/90e415b8c57f78fab7e8781df5d82914756f66fc), [`0e3ca17`](https://github.com/mike-north/formspec/commit/0e3ca175bcc530fb1ab0fcf488134a19e836484f), [`d70b55e`](https://github.com/mike-north/formspec/commit/d70b55e82027c76faa3d4459428f8fe5c547c9d6), [`0892d3b`](https://github.com/mike-north/formspec/commit/0892d3b37d7312b8ca260aa007238dea4fab5a3c), [`4419d24`](https://github.com/mike-north/formspec/commit/4419d24016bbce71c32dbeb872ccda6cc372564e), [`78c97e1`](https://github.com/mike-north/formspec/commit/78c97e15cabc2623480450143ca03b7e2380108d), [`ddfaca6`](https://github.com/mike-north/formspec/commit/ddfaca6d6838e09d88a1715685c182d72982b5f5), [`abc56dc`](https://github.com/mike-north/formspec/commit/abc56dc390f280cfef9ee72eaf2c3e9683065ccb), [`4716b37`](https://github.com/mike-north/formspec/commit/4716b37494f56c7d110cae6c3ef9ab4a130d45da), [`5cb3433`](https://github.com/mike-north/formspec/commit/5cb3433d1b209304a021620fd3891554db339ed7), [`af895d4`](https://github.com/mike-north/formspec/commit/af895d4a7aa923d0bd8f41731157dbe8db5a992f), [`87fac02`](https://github.com/mike-north/formspec/commit/87fac024c7cda6340b4b15644dcdae7979ce1099), [`f195a58`](https://github.com/mike-north/formspec/commit/f195a580b03e3b60193f5183374cd95ba42b7d15), [`23b4977`](https://github.com/mike-north/formspec/commit/23b497729defcaa5e909223dd97a055e20d077f0), [`3a90e08`](https://github.com/mike-north/formspec/commit/3a90e08c522dca31776f7c718261ab465b764208)]:
+  - @formspec/build@0.1.0-alpha.59
+  - @formspec/core@0.1.0-alpha.59
+  - @formspec/analysis@0.1.0-alpha.59
+  - @formspec/config@0.1.0-alpha.59
+
 ## 0.1.0-alpha.58
 
 ### Patch Changes
