@@ -185,7 +185,7 @@ v1 had an inversion bug (Phase 3 removed prelude aliases before their consumers 
 3. **Phase 1 — typed-argument parser in `@formspec/analysis`.** New module `tag-argument-parser.ts` with per-tag schemas. Test parity against every row in the §3 table. No wiring. Ship green.
 4. **Phase 2 — route role-C off synthetic in the build path only.** `buildCompilerBackedConstraintDiagnostics` calls the new parser; keeps the synthetic call as a fallback for any tag not yet covered. Snapshot consumer unchanged. Ship green.
 5. **Phase 3 — route role-C off synthetic in the snapshot path.** Mirror Phase 2 in `file-snapshots.ts:1300-1390`, preserving the diagnostic-code translation layer. This is where semantic-preservation testing is most critical: the ts-plugin/LSP consume these codes. Ship green.
-6. **Phase 4 — relocate setup diagnostics.** This phase runs *before* any deletion. The setup-validation diagnostics (`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE`) currently live in `compiler-signatures.ts:446-585` — validation of invalid TS identifiers, built-in name conflicts, duplicate custom type names. They surface in real user-facing tests (`compiler-signatures.test.ts:334-458`, `file-snapshots.test.ts:174-204`, `date-extension.integration.test.ts:287-339`). Relocate them to a registry-validation pass that runs once inside `createExtensionRegistry` (`packages/build/src/extensions/index.ts`, with a mirror pass invoked by the snapshot consumer's extension-loading site). Preserve diagnostic `code` and message shape exactly; *capture* current provenance in Phase 0's observability work (do not attempt to preserve it). Span **will** change (per-field → registry-level); this is unavoidable and must be explicitly signed off as a documented behavior change with release-notes entry, not a silent drift.
+6. **Phase 4 — integer-brand bypass unification + argument-text helper + setup-diagnostic relocation.** *(Slices 4A/B/C landed; setup-diagnostic relocation and snapshot-path Role-B capability check are continuing work.)* Slice 4A added `isIntegerBrandedType` bypass to the snapshot consumer (`file-snapshots.ts:buildTagDiagnostics`), resolving the six known parity-harness divergences on integer-branded types (#325). Slice 4B extracted the shared `effectiveArgumentText` helper, unifying argument-text derivation across both consumers and eliminating `TAGS_REQUIRING_RAW_TEXT` parity divergences. Slice 4C relocated setup-validation diagnostics (`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE`) from lazy first-batch emission in `compiler-signatures.ts:446-585` to eager emission at `createExtensionRegistry` time. Slice 4D: canary-flip investigation found that the 13 remaining `.fails` canaries in `constraint-canaries.test.ts` require Phase 5 work (snapshot-path Role-B capability check, IR-validation pass for snapshot consumer) — no canaries flipped in Phase 4. The §8.4b acceptance gate was grounded to **≤ 700 MB peak RSS on `stripe-realistic-build`** (see #336). *Remaining for Phase 4 follow-up or Phase 5:* (a) add host-checker Role-B capability guard to snapshot consumer's `buildTagDiagnostics` (mirrors `supportsConstraintCapability()` in the build path), (b) add IR-validation pass to snapshot consumer for `@const` type-mismatch detection.
 7. **Phase 5 — delete synthetic callers and narrow-applicability surface.** Once both consumers route role C through the typed parser, delete: `runSyntheticProgram`, `buildSyntheticBatchSource`, `checkSyntheticTagApplication`, `checkSyntheticTagApplications` (the snapshot batch entrypoint at `compiler-signatures.ts:1113`, imported at `file-snapshots.ts:4,1355`), `lowerTagApplicationToSyntheticCall`, and the custom `CompilerHost`. Also handle `checkNarrowSyntheticTagApplicability` / `checkNarrowSyntheticTagApplicabilities` — they're module-internal (not re-exported from `@formspec/analysis/internal` per `packages/analysis/src/internal.ts:157-164`), so a monorepo-wide `rg` sweep is sufficient; no deprecation cycle needed. Their tests (`tag-capability-applicability.test.ts`, `compiler-signatures.test.ts:737-845`) must migrate to assert the same invariants against the new typed-parser surface before deletion.
 8. **Phase 6 — delete prelude and supporting declarations.** Only now: remove `buildSyntheticHelperPrelude`, `buildSupportingDeclarations` (the thing #294/#297 has been patching), and the extension-type `unknown` aliases. Confirm `isIntegerBrandedType` bypass is preserved or explicitly replaced.
 9. **Phase 7 — tidy `class-analyzer.ts` and `file-snapshots.ts`.** Remove unused `hostType`/`subjectType` plumbing if no longer needed. Document in ARCHITECTURE.md.
@@ -272,7 +272,7 @@ Motivation: the `stripe` npm SDK exposes very complex, deeply-nested, heavily-ge
 **Gates:**
 
 - **8.4a** Pre-refactor baseline (Phase 0): run the fixture, record peak RSS, wall time, and whether it OOMs at all. Expected: measurable memory pressure; possibly OOM on CI runners with <2 GB.
-- **8.4b** Post-Phase 4 gate: the same fixture completes with peak RSS ≤ 50% of the Phase-0 baseline and zero OOM on a 1 GB runner. If it fails, Phase 5/6 deletion is blocked until root-caused.
+- **8.4b** Post-Phase 4 gate: peak RSS ≤ **700 MB** on the `stripe-realistic-build` surface (the build consumer driven against the Stripe-realistic fixture). Grounding rationale: the tsserver-plugin Phase 0 baseline is 567 MB — that surface uses the host TypeScript program with zero synthetic `ts.createProgram` calls, so it is the empirically measured cost of loading Stripe's `.d.ts` once. Post-Phase-5 the build surface must do the same work plus schema generation; 700 MB gives 133 MB of headroom above that floor. The current build baseline is 861 MB; the ~294 MB gap corresponds exactly to the synthetic parallel-program cost (consistent with `coldProgramCount: 20` in the synthetic microbenchmark). The previous "≤50% of Phase-0 baseline" target was physically impossible — it would require dropping below the host-checker floor. This gate was grounded in Phase 4 Slice D (see issue #336 comment https://github.com/mike-north/formspec/issues/336#issuecomment-4290907383). If it fails, Phase 5/6 deletion is blocked until root-caused.
 - **8.4c** Post-Phase 6 gate (synthetic fully deleted): same fixture again. No `ts.createProgram` call recorded in the debug logs (§8.3 counter for `:synthetic` namespace reads zero for the whole run).
 - **8.4d** Bench it in CI as a guard against regressions, not just during the refactor.
 
@@ -332,20 +332,21 @@ The refactor will silently regress behavior unless the test surface is hardened 
 
 This list is the source of truth; **Phase 0.5 in §4 is the execution plan** that schedules each item as a separately-mergeable PR. Before any Phase 2 code lands:
 
-- [ ] Cross-consumer parity harness (9.1 #1)
-- [ ] Three LSP/ts-plugin constraint fixtures added to existing harnesses (9.1 #2)
-- [ ] Mirror `isIntegerBrandedType` cases in snapshot tests (9.1 #3)
-- [ ] Span/provenance assertions for setup diagnostics (9.1 #4)
-- [ ] `@const` raw-fallback edge cases (9.1 #5)
-- [ ] Pinned tests for the three known build/snapshot divergences (9.3 #16)
-- [ ] Orphaned raw-text fallback integration test (9.3 #17)
-- [ ] Narrow-applicability invariants migrated to the typed-parser entrypoint before Phase 5 (9.3 #18)
-- [ ] Setup-diagnostic emission-count stability test (9.3 #19)
-- [ ] Thin `constraint-tag-semantics.ref.md` with ~15 entries (9.3 #12)
-- [ ] Silent-acceptance negative-case canaries (9.3 #14)
-- [ ] §8.3 debug-logging namespaces landed + ARCHITECTURE.md "Debugging constraint validation" section
-- [ ] Stripe `Ref<Customer>` stress-test fixture + Phase-0 baseline (§8.4 / 0.5l)
-- [ ] Parity-harness structured log schema + diffing helper (§8.3e / 0.5m)
+- [x] Cross-consumer parity harness (9.1 #1) — landed in 0.5a (#324)
+- [x] Three LSP/ts-plugin constraint fixtures added to existing harnesses (9.1 #2) — landed in 0.5b (#323)
+- [x] Mirror `isIntegerBrandedType` cases in snapshot tests (9.1 #3) — landed in 0.5c (#315); bypass wired in Phase 4A (#361)
+- [x] Span/provenance assertions for setup diagnostics (9.1 #4) — landed in 0.5d (#322); setup diagnostics relocated in Phase 4C (#384)
+- [x] `@const` raw-fallback edge cases (9.1 #5) — landed in 0.5e (#314)
+- [x] Pinned tests for the three known build/snapshot divergences (9.3 #16) — landed in 0.5f (#317)
+- [x] Orphaned raw-text fallback integration test (9.3 #17) — landed in 0.5g (#321)
+- [ ] Narrow-applicability invariants migrated to the typed-parser entrypoint before Phase 5 (9.3 #18) — deferred to Phase 5
+- [x] Setup-diagnostic emission-count stability test (9.3 #19) — landed in 0.5h (#320)
+- [x] Thin `constraint-tag-semantics.ref.md` with ~15 entries (9.3 #12) — landed in 0.5i (#328)
+- [x] Silent-acceptance negative-case canaries (9.3 #14) — landed in 0.5j (#318); labels updated in Phase 4D (this PR)
+- [x] §8.3 debug-logging namespaces landed + ARCHITECTURE.md "Debugging constraint validation" section — Phase 0-A (#305)
+- [x] Stripe `Ref<Customer>` stress-test fixture + Phase-0 baseline (§8.4 / 0.5l) — landed in 0.5l (#333)
+- [x] Parity-harness structured log schema + diffing helper (§8.3e / 0.5m) — landed in 0.5m (#316)
+- [x] §8.4b acceptance gate grounded to ≤ 700 MB peak RSS on `stripe-realistic-build` — Phase 4D (this PR; see #336)
 
 Budget: ~1-2 weeks of focused test work. Skipping it turns this refactor into a game of whack-a-mole with user bug reports.
 
