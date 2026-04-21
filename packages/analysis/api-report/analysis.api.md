@@ -46,12 +46,6 @@ export type CommentSpan = CommentSourceSpan;
 // @public
 export function computeFormSpecTextHash(text: string): string;
 
-// Warning: (ae-forgotten-export) The symbol "ParsedCommentTag" needs to be exported by the entry point index.d.ts
-// Warning: (ae-internal-missing-underscore) The name "extractEffectiveArgumentText" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
-export function extractEffectiveArgumentText(tagName: string, rawText: string, parsedTag: ParsedCommentTag | null): string;
-
 // @public
 export const FORMSPEC_ANALYSIS_PROTOCOL_VERSION = 4;
 

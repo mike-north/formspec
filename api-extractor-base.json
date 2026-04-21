@@ -38,6 +38,9 @@
       "ae-forgotten-export": {
         "logLevel": "error"
       },
+      "ae-internal-missing-underscore": {
+        "logLevel": "none"
+      },
       "ae-undocumented": {
         "logLevel": "error"
       },
