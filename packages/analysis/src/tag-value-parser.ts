@@ -62,6 +62,17 @@ export interface ConstraintTagParseRegistryLike {
 export interface ParseConstraintTagValueOptions {
   readonly registry?: ConstraintTagParseRegistryLike;
   readonly fieldType?: TypeNode;
+  /**
+   * For path-targeted built-in constraint tags, the custom type ID that the
+   * path resolves to (if the terminal sub-type is a registered custom type).
+   * When present, this is consulted for built-in constraint broadening in
+   * place of `fieldType` — the field's own type describes the wrong thing
+   * for a path-targeted tag.
+   *
+   * Only the build consumer has the compiler-level resolution needed to
+   * compute this value; other consumers may safely omit it.
+   */
+  readonly pathResolvedCustomTypeId?: string;
 }
 
 function syntaxOptions(
@@ -274,7 +285,17 @@ function parseExtensionConstraintTagValue(
     return null;
   }
 
-  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  // For path-targeted built-in tags, the field's own type describes the
+  // wrong thing — the broadening lookup must target the path-resolved
+  // terminal type. The caller (the build consumer) is the only layer with
+  // compiler-level access to resolve this, and supplies the result via
+  // `pathResolvedCustomTypeId`. When `path` is present we consult only
+  // that input; when `path` is absent (direct-field case) we consult the
+  // IR `fieldType` as before.
+  const broadenedTypeId =
+    path !== undefined
+      ? options?.pathResolvedCustomTypeId
+      : getBroadenedCustomTypeId(options?.fieldType);
   if (broadenedTypeId === undefined) {
     return null;
   }

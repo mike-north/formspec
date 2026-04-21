@@ -3,10 +3,15 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FormSpecConfig } from "@formspec/config";
-import { defineCustomType, defineExtension } from "@formspec/core/internals";
+import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core/internals";
 import { type ClassSchemas, generateSchemas } from "../generators/class-schema.js";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
 import { numericExtension } from "./fixtures/example-numeric-extension.js";
+import {
+  vocabDecimalByNameExtension,
+  vocabDecimalByBrandExtension,
+} from "./fixtures/example-vocabulary-decimal-extension.js";
+import { vocabStringExtension } from "./fixtures/example-vocabulary-string-extension.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -228,53 +233,54 @@ describe("generateSchemas with FormSpecConfig", () => {
   // Path-targeted broadening on extension-registered custom types.
   //
   // A built-in constraint tag (e.g. `@exclusiveMinimum`) applied through a
-  // path target (`@exclusiveMinimum :amount 0`) must defer to the IR-layer
-  // validator when the path resolves to an extension-registered custom type
-  // that has broadening for that tag. Previously the compiler-backed
-  // validator rejected these at the capability check, silently shadowing
-  // legitimate broadening.
+  // path target (`@exclusiveMinimum :amount 0`) must defer to the broadening
+  // registration when the path resolves to an extension-registered custom type
+  // that has broadening for that tag.
   //
-  // This suite exercises the full matrix of registration mechanisms
-  // (name / brand) × tag kinds × wrapping shapes.
+  // After the fix (issue #395), the emitted schema must use the custom
+  // constraint's vocabulary keyword (e.g. `decimalExclusiveMinimum: "0"`)
+  // rather than the raw built-in keyword (`exclusiveMinimum: 0`). The payload
+  // is a string because the vocabulary-mode fixture's `parseValue` is
+  // `trimmedString` — no numeric coercion.
+  //
+  // This suite uses the vocabulary-decimal fixture (`example-vocabulary-decimal-
+  // extension.ts`) so assertions can pin the exact camelCase keyword without
+  // accounting for vendor-prefix construction. The existing `numericExtension`
+  // is preserved for non-path-broadening tests elsewhere.
+  //
+  // Matrix: registration mechanism (name / brand / symbol) × tag kind × shape
+  // (direct, nullable, nested).
   // =========================================================================
   describe("path-targeted broadening on registered custom types", () => {
-    // Separate `Decimal` extension registered via `brand`. Same broadenings
-    // as `numericExtension`'s name-registered Decimal, but detected
-    // structurally through the computed-property brand key rather than the
-    // alias identifier.
-    const brandedDecimalExtension = defineExtension({
-      extensionId: "x-test/branded-decimal",
-      types: [
-        defineCustomType({
-          typeName: "Decimal",
-          brand: "__decimalBrand",
-          builtinConstraintBroadenings: [
-            { tagName: "minimum", constraintName: "DecimalMinimum" },
-            { tagName: "maximum", constraintName: "DecimalMaximum" },
-            { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum" },
-            { tagName: "exclusiveMaximum", constraintName: "DecimalExclusiveMaximum" },
-            { tagName: "multipleOf", constraintName: "DecimalMultipleOf" },
-          ],
-          toJsonSchema: () => ({ type: "string" }),
-        }),
-      ],
-    });
+    // -----------------------------------------------------------------------
+    // Source declarations under each registration mechanism
+    // -----------------------------------------------------------------------
+
+    /**
+     * Name-based: resolved via `tsTypeNames: ["VocabDecimal"]`.
+     * The alias name matches the registered `tsTypeName` exactly.
+     */
+    const nameBasedDecimal =
+      `export type VocabDecimal = string & { readonly __brand: "VocabDecimal" };`;
+
+    /**
+     * Brand-based: resolved structurally via `brand: "__vocabDecimalBrand"`.
+     * The unique-symbol computed property key is what the extension registry
+     * detects, not the alias name.
+     */
+    const brandBasedDecimal = [
+      "declare const __vocabDecimalBrand: unique symbol;",
+      "export type Decimal = string & { readonly [__vocabDecimalBrand]: true };",
+    ].join("\n");
 
     const nameBasedConfig: FormSpecConfig = {
-      extensions: [numericExtension],
-      vendorPrefix: "x-formspec",
-    };
-    const brandBasedConfig: FormSpecConfig = {
-      extensions: [brandedDecimalExtension],
+      extensions: [vocabDecimalByNameExtension],
       vendorPrefix: "x-test",
     };
-
-    // Source declarations for Decimal under each registration mechanism.
-    const nameBasedDecimal = `export type Decimal = string & { readonly __brand: "Decimal" };`;
-    const brandBasedDecimal = [
-      "declare const __decimalBrand: unique symbol;",
-      "export type Decimal = string & { readonly [__decimalBrand]: true };",
-    ].join("\n");
+    const brandBasedConfig: FormSpecConfig = {
+      extensions: [vocabDecimalByBrandExtension],
+      vendorPrefix: "x-test",
+    };
 
     function runSchema(source: string, config: FormSpecConfig) {
       const filePath = writeTempSource(source);
@@ -290,12 +296,19 @@ describe("generateSchemas with FormSpecConfig", () => {
       }
     }
 
+    // -----------------------------------------------------------------------
+    // Path-override navigation helpers
+    //
     // Path-target overrides are emitted as sibling keywords alongside `$ref`
     // (JSON Schema 2020-12 §10.2.1). The `properties` override appears directly
-    // on the field schema, not wrapped in `allOf`. Asserting via the sibling
-    // `properties` key keeps the Jest matcher types clean while using the real
-    // `JsonSchema2020` typing for property access.
+    // on the field schema, not wrapped in `allOf`.
     // See: https://github.com/mike-north/formspec/issues/364
+    // -----------------------------------------------------------------------
+
+    /**
+     * Locate the first field schema that satisfies `predicate`. Returns the
+     * field schema object, or `undefined` if the predicate never matches.
+     */
     function findPathOverride(
       result: ClassSchemas,
       fieldName: string,
@@ -303,15 +316,17 @@ describe("generateSchemas with FormSpecConfig", () => {
     ): JsonSchema2020 | undefined {
       const field = result.jsonSchema.properties?.[fieldName];
       expect(field, `expected a schema for property '${fieldName}'`).toBeDefined();
-      // The field schema itself is the "override container" — sibling keywords
-      // sit directly on it alongside $ref. Wrap in an array to keep the predicate
-      // interface compatible with callers that previously scanned allOf entries.
       if (field !== undefined && predicate(field)) {
         return field;
       }
       return undefined;
     }
 
+    /**
+     * Assert that `result.jsonSchema.properties[fieldName].properties[segment][keyword] === value`.
+     *
+     * Used for one-segment path targets (`:amount`).
+     */
     function expectPathOverride(
       result: ClassSchemas,
       fieldName: string,
@@ -332,66 +347,114 @@ describe("generateSchemas with FormSpecConfig", () => {
       ).toBe(value);
     }
 
-    // Path-target overrides emit the standard JSON Schema keyword directly
-    // on the sub-path — not the vendor-prefixed custom-constraint keyword
-    // that's used for the type's own direct-target broadening. The emitted
-    // shape is `{ "$ref": "#/$defs/X", "properties": { amount: { minimum: 0 } } }`
-    // per JSON Schema 2020-12 §10.2.1 (sibling keywords next to $ref are valid).
-    // See: https://github.com/mike-north/formspec/issues/364
+    /**
+     * Assert that a broadened vocabulary keyword appears on the path-override
+     * segment schema. This is the post-fix form: the keyword is the camelCase
+     * vocabulary keyword (e.g. `decimalExclusiveMinimum`) and the payload is
+     * a string (e.g. `"0"`).
+     *
+     * This helper is a named alias for `expectPathOverride` with clearer
+     * intent at the call site when asserting broadened output.
+     *
+     * @param result - The schema generation result.
+     * @param fieldName - The field whose path override is being checked.
+     * @param segment - The final path segment (e.g. `"amount"`).
+     * @param vocabularyKeyword - The camelCase vocabulary keyword (e.g. `"decimalExclusiveMinimum"`).
+     * @param payload - The string payload (e.g. `"0"`).
+     */
+    function expectBroadenedPathOverride(
+      result: ClassSchemas,
+      fieldName: string,
+      segment: string,
+      vocabularyKeyword: string,
+      payload: string
+    ) {
+      expectPathOverride(result, fieldName, segment, vocabularyKeyword, payload);
+    }
+
+    // -----------------------------------------------------------------------
+    // Tag test matrix
+    //
+    // Each entry describes one built-in tag and its expected broadened output
+    // after the fix (issue #395). The `vocabKeyword` is the camelCase keyword
+    // emitted by the vocabulary-decimal extension; `payload` is the string
+    // value from `trimmedString(argument)`.
+    // -----------------------------------------------------------------------
     const numericTagCases: readonly {
       tag: string;
       argument: string;
-      jsonKeyword: string;
-      jsonValue: number;
+      vocabKeyword: string;
+      payload: string;
     }[] = [
-      { tag: "minimum", argument: "0", jsonKeyword: "minimum", jsonValue: 0 },
-      { tag: "maximum", argument: "100", jsonKeyword: "maximum", jsonValue: 100 },
-      { tag: "exclusiveMinimum", argument: "0", jsonKeyword: "exclusiveMinimum", jsonValue: 0 },
+      // @see https://github.com/mike-north/formspec/issues/395
+      // Each tag must produce the broadened vocabulary keyword (not the raw
+      // built-in keyword) when the path terminal type is a registered custom
+      // type with a broadening for that tag.
+      { tag: "minimum", argument: "0", vocabKeyword: "decimalMinimum", payload: "0" },
+      { tag: "maximum", argument: "100", vocabKeyword: "decimalMaximum", payload: "100" },
+      {
+        tag: "exclusiveMinimum",
+        argument: "0",
+        vocabKeyword: "decimalExclusiveMinimum",
+        payload: "0",
+      },
       {
         tag: "exclusiveMaximum",
         argument: "1000",
-        jsonKeyword: "exclusiveMaximum",
-        jsonValue: 1000,
+        vocabKeyword: "decimalExclusiveMaximum",
+        payload: "1000",
       },
-      { tag: "multipleOf", argument: "0.01", jsonKeyword: "multipleOf", jsonValue: 0.01 },
+      {
+        tag: "multipleOf",
+        argument: "0.01",
+        vocabKeyword: "decimalMultipleOf",
+        payload: "0.01",
+      },
     ];
 
+    // -----------------------------------------------------------------------
+    // Name-based registration
+    // -----------------------------------------------------------------------
     describe("name-based registration (tsTypeNames)", () => {
       it.each(numericTagCases)(
-        "broadens @$tag through a path target onto a Decimal subfield",
-        ({ tag, argument, jsonKeyword, jsonValue }) => {
+        "broadens @$tag through a path target onto a VocabDecimal subfield",
+        ({ tag, argument, vocabKeyword, payload }) => {
           const source = `
             ${nameBasedDecimal}
-            export interface MonetaryAmount { amount: Decimal; currency: string; }
+            export interface MonetaryAmount { amount: VocabDecimal; currency: string; }
             export interface PaymentForm {
               /** @${tag} :amount ${argument} */
               total: MonetaryAmount;
             }
           `;
           const result = runSchema(source, nameBasedConfig);
-          expectPathOverride(result, "total", "amount", jsonKeyword, jsonValue);
+          // Post-fix (#395): must emit the broadened vocabulary keyword, not
+          // the raw built-in keyword.
+          expectBroadenedPathOverride(result, "total", "amount", vocabKeyword, payload);
         }
       );
 
-      it("broadens across a nullable Decimal", () => {
+      it("broadens across a nullable VocabDecimal", () => {
+        // Nullability of the path-terminal type must not suppress broadening.
         const source = `
           ${nameBasedDecimal}
-          export interface MonetaryAmount { amount: Decimal | null; currency: string; }
+          export interface MonetaryAmount { amount: VocabDecimal | null; currency: string; }
           export interface PaymentForm {
             /** @exclusiveMinimum :amount 0 */
             total: MonetaryAmount;
           }
         `;
         const result = runSchema(source, nameBasedConfig);
-        expectPathOverride(result, "total", "amount", "exclusiveMinimum", 0);
+        expectBroadenedPathOverride(result, "total", "amount", "decimalExclusiveMinimum", "0");
       });
 
       it("broadens through a deeply-nested path with a distinctive value", () => {
         // Use 42 (distinctive) rather than 0 to guard against an override
         // that happens to match a default.
+        // Post-fix (#395): nested path terminals must also produce broadened keywords.
         const source = `
           ${nameBasedDecimal}
-          export interface Nested { inner: { amount: Decimal }; }
+          export interface Nested { inner: { amount: VocabDecimal }; }
           export interface PaymentForm {
             /** @minimum :inner.amount 42 */
             total: Nested;
@@ -401,19 +464,23 @@ describe("generateSchemas with FormSpecConfig", () => {
         const override = findPathOverride(result, "total", (entry) => {
           const inner = entry.properties?.["inner"];
           const amount = inner?.properties?.["amount"];
-          return amount?.minimum === 42;
+          // Post-fix: broadened keyword with string payload, not numeric minimum
+          return (amount as Record<string, unknown> | undefined)?.["decimalMinimum"] === "42";
         });
         expect(
           override,
-          "expected nested path override properties.inner.properties.amount.minimum === 42"
+          "expected nested path override properties.inner.properties.amount.decimalMinimum === '42'"
         ).toBeDefined();
       });
     });
 
+    // -----------------------------------------------------------------------
+    // Brand-based registration
+    // -----------------------------------------------------------------------
     describe("brand-based registration", () => {
       it.each(numericTagCases)(
-        "broadens @$tag through a path target onto a brand-registered Decimal",
-        ({ tag, argument }) => {
+        "broadens @$tag through a path target onto a brand-registered VocabDecimal",
+        ({ tag, argument, vocabKeyword, payload }) => {
           const source = `
             ${brandBasedDecimal}
             export interface MonetaryAmount { amount: Decimal; currency: string; }
@@ -422,25 +489,14 @@ describe("generateSchemas with FormSpecConfig", () => {
               total: MonetaryAmount;
             }
           `;
-          // Vendor-prefix-agnostic smoke: we don't assert the keyword value
-          // because the branded extension uses a different prefix, but we
-          // DO require an allOf entry that targets `amount`. A regression
-          // that silently drops the override (no throw, no entry) would
-          // otherwise pass.
           const result = runSchema(source, brandBasedConfig);
-          const override = findPathOverride(
-            result,
-            "total",
-            (entry) => entry.properties?.["amount"] !== undefined
-          );
-          expect(
-            override,
-            `expected a path override entry targeting 'amount' for @${tag}`
-          ).toBeDefined();
+          // Post-fix (#395): brand-registered custom types must also produce
+          // the broadened vocabulary keyword, not a raw built-in keyword.
+          expectBroadenedPathOverride(result, "total", "amount", vocabKeyword, payload);
         }
       );
 
-      it("broadens across a nullable brand-registered Decimal", () => {
+      it("broadens across a nullable brand-registered VocabDecimal", () => {
         const source = `
           ${brandBasedDecimal}
           export interface MonetaryAmount { amount: Decimal | null; currency: string; }
@@ -450,20 +506,20 @@ describe("generateSchemas with FormSpecConfig", () => {
           }
         `;
         const result = runSchema(source, brandBasedConfig);
-        const override = findPathOverride(
-          result,
-          "total",
-          (entry) => entry.properties?.["amount"] !== undefined
-        );
-        expect(override).toBeDefined();
+        expectBroadenedPathOverride(result, "total", "amount", "decimalExclusiveMinimum", "0");
       });
     });
 
+    // -----------------------------------------------------------------------
+    // Negative cases (fix must not paper over real type mismatches)
+    // -----------------------------------------------------------------------
     describe("negative cases (fix must not paper over real type mismatches)", () => {
       it("rejects numeric constraints when the path resolves to a non-custom string", () => {
+        // `currency: string` has no broadening registered — the fix must NOT
+        // silently fall through when the terminal type is a plain string.
         const source = `
           ${nameBasedDecimal}
-          export interface MonetaryAmount { amount: Decimal; currency: string; }
+          export interface MonetaryAmount { amount: VocabDecimal; currency: string; }
           export interface PaymentForm {
             /** @exclusiveMinimum :currency 0 */
             total: MonetaryAmount;
@@ -476,13 +532,13 @@ describe("generateSchemas with FormSpecConfig", () => {
         );
       });
 
-      it("rejects a string-only tag (@pattern) on a numeric-only Decimal path", () => {
-        // `@pattern` is a string-like constraint. Decimal has numeric
+      it("rejects a string-only tag (@pattern) on a numeric-only VocabDecimal path", () => {
+        // `@pattern` is a string-like constraint. VocabDecimal has numeric
         // broadenings registered but no string-pattern broadening, so the
         // deferral must not kick in and the capability check must reject.
         const source = `
           ${nameBasedDecimal}
-          export interface MonetaryAmount { amount: Decimal; currency: string; }
+          export interface MonetaryAmount { amount: VocabDecimal; currency: string; }
           export interface PaymentForm {
             /** @pattern :amount ^[0-9]+$ */
             total: MonetaryAmount;
@@ -509,6 +565,9 @@ describe("generateSchemas with FormSpecConfig", () => {
       });
     });
 
+    // -----------------------------------------------------------------------
+    // Symbol-based registration
+    //
     // Symbol-based registration is a separate shape from name / brand: it
     // pairs a `defineCustomType<T>()` type parameter in the config file with
     // the user-visible alias in the source. `generateSchemas` resolves the
@@ -516,6 +575,7 @@ describe("generateSchemas with FormSpecConfig", () => {
     // requires a multi-file fixture (decimal.ts + formspec.config.ts +
     // model.ts). Uses a `typeName` that does NOT match the alias identifier
     // so name-based lookup cannot accidentally satisfy the test.
+    // -----------------------------------------------------------------------
     describe("symbol-based registration (defineCustomType<T>())", () => {
       let tmpDir: string;
       let modelPath: string;
@@ -565,8 +625,8 @@ describe("generateSchemas with FormSpecConfig", () => {
             // symbol map rather than the name map.
             '      typeName: "OpaqueDecimal",',
             "      builtinConstraintBroadenings: [",
-            '        { tagName: "minimum", constraintName: "DecimalMinimum" },',
-            '        { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum" },',
+            '        { tagName: "minimum", constraintName: "DecimalMinimum", parseValue: (raw) => raw.trim() },',
+            '        { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum", parseValue: (raw) => raw.trim() },',
             "      ],",
             '      toJsonSchema: () => ({ type: "string" }),',
             "    }),",
@@ -609,14 +669,33 @@ describe("generateSchemas with FormSpecConfig", () => {
         const opaqueDecimal = defineCustomType({
           typeName: "OpaqueDecimal",
           builtinConstraintBroadenings: [
-            { tagName: "minimum", constraintName: "DecimalMinimum" },
-            { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum" },
+            { tagName: "minimum", constraintName: "DecimalMinimum", parseValue: (raw: string) => raw.trim() },
+            { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum", parseValue: (raw: string) => raw.trim() },
           ],
           toJsonSchema: () => ({ type: "string" }),
         });
         const extension = defineExtension({
           extensionId: "x-symtest",
           types: [opaqueDecimal],
+          // Constraints must be registered for the broadening to complete — the
+          // broadening references constraintName and the registry must find the
+          // constraint definition to build the constraint node.
+          constraints: [
+            defineConstraint({
+              constraintName: "DecimalMinimum",
+              compositionRule: "intersect",
+              applicableTypes: ["custom"],
+              emitsVocabularyKeywords: true,
+              toJsonSchema: (payload) => ({ symDecimalMinimum: payload }),
+            }),
+            defineConstraint({
+              constraintName: "DecimalExclusiveMinimum",
+              compositionRule: "intersect",
+              applicableTypes: ["custom"],
+              emitsVocabularyKeywords: true,
+              toJsonSchema: (payload) => ({ symDecimalExclusiveMinimum: payload }),
+            }),
+          ],
         });
         const result = generateSchemas({
           filePath: modelPath,
@@ -635,6 +714,141 @@ describe("generateSchemas with FormSpecConfig", () => {
           "expected a path override entry targeting 'amount' on the symbol-registered custom type"
         ).toBeDefined();
       });
+    });
+
+    // -----------------------------------------------------------------------
+    // Mixed direct + path constraints
+    //
+    // When a field has both a direct constraint and a path-targeted constraint,
+    // both must broaden independently.
+    // -----------------------------------------------------------------------
+    describe("mixed direct and path constraints", () => {
+      it("applies both a path-targeted broadened constraint and a custom constraint tag independently", () => {
+        // `@exclusiveMinimum :amount 0` broadens to decimalExclusiveMinimum on the amount path.
+        // `@maximum :amount 100` broadens to decimalMaximum on the amount path.
+        // Both must appear on the same amount segment schema.
+        const source = `
+          ${nameBasedDecimal}
+          export interface MonetaryAmount { amount: VocabDecimal; currency: string; }
+          export interface PaymentForm {
+            /** @exclusiveMinimum :amount 0 @maximum :amount 100 */
+            total: MonetaryAmount;
+          }
+        `;
+        const result = runSchema(source, nameBasedConfig);
+        const amountSchema = result.jsonSchema.properties?.["total"]?.properties?.["amount"];
+        expect(amountSchema, "expected properties.total.properties.amount").toBeDefined();
+        expect(
+          (amountSchema as Record<string, unknown>)["decimalExclusiveMinimum"],
+          "expected decimalExclusiveMinimum: '0'"
+        ).toBe("0");
+        expect(
+          (amountSchema as Record<string, unknown>)["decimalMaximum"],
+          "expected decimalMaximum: '100'"
+        ).toBe("100");
+      });
+    });
+  });
+
+  // =========================================================================
+  // Path-targeted broadening on string-backed custom types.
+  //
+  // The `@minLength`, `@maxLength`, and `@pattern` built-in tags must also
+  // broadened when the path terminal resolves to a string-backed custom type
+  // with broadenings registered (here: `PostalCode`).
+  // =========================================================================
+  describe("path-targeted broadening on string-backed custom types", () => {
+    const postalCodeDecl =
+      `export type PostalCode = string & { readonly __brand: "PostalCode" };`;
+
+    const postalConfig: FormSpecConfig = {
+      extensions: [vocabStringExtension],
+      vendorPrefix: "x-test",
+    };
+
+    function runPostalSchema(source: string) {
+      const filePath = writeTempSource(source);
+      try {
+        return generateSchemas({
+          filePath,
+          typeName: "DeliveryForm",
+          config: postalConfig,
+          errorReporting: "throw",
+        });
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
+    }
+
+    it("broadens @minLength through a path target onto a PostalCode subfield", () => {
+      // @minLength :code 5 on Envelope.code: PostalCode should emit
+      // postalMinLength: "5" (vocabulary keyword, string payload).
+      const source = `
+        ${postalCodeDecl}
+        export interface Envelope { code: PostalCode; name: string; }
+        export interface DeliveryForm {
+          /** @minLength :code 5 */
+          address: Envelope;
+        }
+      `;
+      const result = runPostalSchema(source);
+      const codeSchema = result.jsonSchema.properties?.["address"]?.properties?.["code"];
+      expect(codeSchema, "expected properties.address.properties.code").toBeDefined();
+      expect((codeSchema as Record<string, unknown>)["postalMinLength"]).toBe("5");
+    });
+
+    it("broadens @maxLength through a path target onto a PostalCode subfield", () => {
+      const source = `
+        ${postalCodeDecl}
+        export interface Envelope { code: PostalCode; name: string; }
+        export interface DeliveryForm {
+          /** @maxLength :code 10 */
+          address: Envelope;
+        }
+      `;
+      const result = runPostalSchema(source);
+      const codeSchema = result.jsonSchema.properties?.["address"]?.properties?.["code"];
+      expect((codeSchema as Record<string, unknown>)["postalMaxLength"]).toBe("10");
+    });
+
+    it("broadens @pattern through a path target onto a PostalCode subfield", () => {
+      const source = `
+        ${postalCodeDecl}
+        export interface Envelope { code: PostalCode; name: string; }
+        export interface DeliveryForm {
+          /** @pattern :code ^\\\\d{5}$ */
+          address: Envelope;
+        }
+      `;
+      const result = runPostalSchema(source);
+      const codeSchema = result.jsonSchema.properties?.["address"]?.properties?.["code"];
+      expect((codeSchema as Record<string, unknown>)["postalPattern"]).toBeDefined();
+    });
+
+    it("does not broadens @minimum (numeric) onto a string-backed PostalCode (no registration)", () => {
+      // PostalCode has no broadening for `@minimum`, so this must produce a
+      // TYPE_MISMATCH — not silent fallthrough, not raw keyword emission.
+      const source = `
+        ${postalCodeDecl}
+        export interface Envelope { code: PostalCode; name: string; }
+        export interface DeliveryForm {
+          /** @minimum :code 0 */
+          address: Envelope;
+        }
+      `;
+      const filePath = writeTempSource(source);
+      try {
+        expect(() =>
+          generateSchemas({
+            filePath,
+            typeName: "DeliveryForm",
+            config: postalConfig,
+            errorReporting: "throw",
+          })
+        ).toThrow(/TYPE_MISMATCH/);
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
     });
   });
 

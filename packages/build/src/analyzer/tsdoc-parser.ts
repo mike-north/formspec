@@ -94,11 +94,53 @@ import {
   type ConstraintValidatorRoleOutcome,
 } from "@formspec/analysis/internal";
 
-function sharedTagValueOptions(options?: ParseTSDocOptions) {
+function sharedTagValueOptions(
+  options?: ParseTSDocOptions,
+  pathResolvedCustomTypeId?: string
+) {
   return {
     ...(options?.extensionRegistry !== undefined ? { registry: options.extensionRegistry } : {}),
     ...(options?.fieldType !== undefined ? { fieldType: options.fieldType } : {}),
+    ...(pathResolvedCustomTypeId !== undefined ? { pathResolvedCustomTypeId } : {}),
   };
+}
+
+/**
+ * For a parsed tag whose target is a valid path (`:foo.bar`), resolves the
+ * terminal sub-type through the TypeScript compiler and looks up whether that
+ * sub-type is a registered custom type. Returns the fully-qualified type ID
+ * (`extensionId/typeName`) used by the broadening registry, or `undefined`
+ * when any precondition is missing or the terminal type is not a registered
+ * custom type.
+ *
+ * This is the build-consumer-only hook that enables path-targeted broadening
+ * in the analysis layer — see {@link ParseConstraintTagValueOptions.pathResolvedCustomTypeId}.
+ */
+function resolvePathTargetCustomTypeId(
+  parsedTag: ParsedCommentTag | null,
+  subjectType: ts.Type | undefined,
+  checker: ts.TypeChecker | undefined,
+  registry: ExtensionRegistry | undefined
+): string | undefined {
+  if (parsedTag === null) return undefined;
+  const target = parsedTag.target;
+  if (target?.kind !== "path" || !target.valid || target.path === null) {
+    return undefined;
+  }
+  if (subjectType === undefined || checker === undefined || registry === undefined) {
+    return undefined;
+  }
+
+  const resolution = resolvePathTargetType(subjectType, checker, target.path.segments);
+  if (resolution.kind !== "resolved") {
+    return undefined;
+  }
+
+  const lookup = resolveCustomTypeFromTsType(resolution.type, checker, registry);
+  if (lookup === null) {
+    return undefined;
+  }
+  return customTypeIdFromLookup(lookup);
 }
 
 const SYNTHETIC_TYPE_FORMAT_FLAGS =
@@ -387,11 +429,21 @@ function processConstraintTag(
     pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
     return;
   }
+  // Resolve the path-targeted custom type ID (if any) so the analysis layer
+  // can apply broadening to the path-resolved terminal type — fixes #395
+  // where path-targeted built-in constraints (e.g. `@exclusiveMinimum :amount 0`
+  // on a `MonetaryAmount` field) previously emitted raw numeric constraints.
+  const pathResolvedCustomTypeId = resolvePathTargetCustomTypeId(
+    parsedTag,
+    options?.subjectType,
+    options?.checker,
+    options?.extensionRegistry
+  );
   const constraintNode = parseConstraintTagValue(
     tagName,
     text,
     provenance,
-    sharedTagValueOptions(options)
+    sharedTagValueOptions(options, pathResolvedCustomTypeId)
   );
   if (constraintNode) {
     constraints.push(constraintNode);

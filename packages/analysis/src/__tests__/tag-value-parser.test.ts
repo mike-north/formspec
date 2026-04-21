@@ -213,4 +213,114 @@ describe("tag-value-parser", () => {
       provenance: PROVENANCE,
     });
   });
+
+  describe("path-targeted broadening (issue #395)", () => {
+    // Regression tests for the contract between the build consumer and the
+    // analysis layer: when a constraint tag carries a path target
+    // (`@minimum :amount 1.25`), the field's own IR type describes the wrong
+    // thing. The build consumer is the only layer with compiler-level access
+    // to resolve what type the terminal path segment points at, and it
+    // communicates that via `pathResolvedCustomTypeId`. Without this option,
+    // path-targeted constraints on custom types (e.g. Decimal-valued
+    // sub-fields) emit raw numeric constraints, which are invalid under JSON
+    // Schema 2020-12 when the terminal type is not numeric.
+
+    it("broadens path-targeted built-in tags onto the path-resolved custom type", () => {
+      const parsed = parseConstraintTagValue("minimum", ":amount 1.25", PROVENANCE, {
+        registry: createRegistry(),
+        pathResolvedCustomTypeId: "Decimal",
+      });
+
+      expect(parsed).toEqual({
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/decimal/MinScaled",
+        payload: 125,
+        compositionRule: "override",
+        path: { segments: ["amount"] },
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("falls back to a raw numeric constraint when pathResolvedCustomTypeId is omitted", () => {
+      // Without the build-consumer-supplied type ID, the analysis layer has
+      // no way to look up broadening for the path-resolved terminal type.
+      // Emitting a raw NumericConstraintNode is the documented fallback
+      // behavior (the build consumer is responsible for path-aware broadening).
+      const parsed = parseConstraintTagValue("minimum", ":amount 1.25", PROVENANCE, {
+        registry: createRegistry(),
+      });
+
+      expect(parsed).toEqual({
+        kind: "constraint",
+        constraintKind: "minimum",
+        value: 1.25,
+        path: { segments: ["amount"] },
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("falls back to a raw numeric constraint when the tag has no broadening registration", () => {
+      // The fixture registry only registers `Decimal` + `minimum`. When the
+      // terminal type has a registered custom type ID but no broadening for
+      // this specific tag, behavior must match "no broadening" — a raw
+      // NumericConstraintNode with the path preserved.
+      const parsed = parseConstraintTagValue("maximum", ":amount 10", PROVENANCE, {
+        registry: createRegistry(),
+        pathResolvedCustomTypeId: "Decimal",
+      });
+
+      expect(parsed).toEqual({
+        kind: "constraint",
+        constraintKind: "maximum",
+        value: 10,
+        path: { segments: ["amount"] },
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("direct (non-path) tags still use fieldType, ignoring pathResolvedCustomTypeId", () => {
+      // Regression pin: passing `pathResolvedCustomTypeId` alongside a
+      // direct-field tag must not shadow the existing direct-field broadening
+      // path. The direct-tag case uses `fieldType` exactly as before.
+      const parsed = parseConstraintTagValue("minimum", "1.25", PROVENANCE, {
+        registry: createRegistry(),
+        fieldType: { kind: "custom", typeId: "Decimal", payload: null },
+        // This value is irrelevant for direct tags and must be ignored.
+        pathResolvedCustomTypeId: "SomeOtherType",
+      });
+
+      expect(parsed).toEqual({
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/decimal/MinScaled",
+        payload: 125,
+        compositionRule: "override",
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("path-targeted tags use pathResolvedCustomTypeId, ignoring fieldType", () => {
+      // When both are supplied and the tag has a path, `pathResolvedCustomTypeId`
+      // wins. `fieldType` describes the enclosing field (e.g. a MonetaryAmount
+      // object/reference type), which is the wrong thing to broaden against
+      // for a path-targeted tag.
+      const parsed = parseConstraintTagValue("minimum", ":amount 1.25", PROVENANCE, {
+        registry: createRegistry(),
+        // Enclosing field type — not a custom type that would broaden.
+        fieldType: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+        pathResolvedCustomTypeId: "Decimal",
+      });
+
+      expect(parsed).toEqual({
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-test/decimal/MinScaled",
+        payload: 125,
+        compositionRule: "override",
+        path: { segments: ["amount"] },
+        provenance: PROVENANCE,
+      });
+    });
+  });
 });
