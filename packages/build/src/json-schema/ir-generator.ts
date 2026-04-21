@@ -992,6 +992,11 @@ function buildPathOverrideSchema(
  * would silently overwrite one contribution), returns `undefined` and the
  * caller falls back to appending an `allOf` member.
  *
+ * The single-member restriction reflects what the emitter produces today
+ * (external `toJsonSchema` hooks may legitimately return single-member
+ * `allOf` for wrapping). Generalising to N-member flattening is possible
+ * via pairwise key-disjointness but is not needed by any current caller.
+ *
  * Mirrors the `$ref`-sibling fix at `ir-generator.ts:492-497` (issue #364).
  *
  * @see https://github.com/mike-north/formspec/issues/382 Site 2
@@ -1005,6 +1010,7 @@ function tryFlattenAllOfToSiblings(
     return undefined;
   }
 
+  // Defensive-only; required under `noUncheckedIndexedAccess`.
   const [soleMember] = schema.allOf;
   if (soleMember === undefined) {
     return undefined;
@@ -1014,13 +1020,13 @@ function tryFlattenAllOfToSiblings(
   const { allOf: _allOf, ...outerRest } = schema;
 
   const outerKeys = new Set(Object.keys(outerRest));
-  const memberKeys = Object.keys(soleMember);
-  const overrideKeys = Object.keys(overrideMember);
+  const memberKeys = new Set(Object.keys(soleMember));
+  const overrideKeys = new Set(Object.keys(overrideMember));
 
   // Any overlap between the three contributions would silently overwrite
   // one side — keep `allOf` to preserve both under 2020-12 evaluation.
   for (const key of memberKeys) {
-    if (outerKeys.has(key) || overrideKeys.includes(key)) {
+    if (outerKeys.has(key) || overrideKeys.has(key)) {
       return undefined;
     }
   }
