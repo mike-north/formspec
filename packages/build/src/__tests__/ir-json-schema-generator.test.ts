@@ -501,11 +501,7 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["currency"];
 
       expect(prop).toEqual({
-        oneOf: [
-          { const: "USD" },
-          { const: "EUR", title: "Euro" },
-          { const: "GBP" },
-        ],
+        oneOf: [{ const: "USD" }, { const: "EUR", title: "Euro" }, { const: "GBP" }],
       });
     });
 
@@ -537,34 +533,28 @@ describe("generateJsonSchemaFromIR", () => {
         displayName: "usd",
         expectedTitle: true,
       },
-    ])(
-      "oneOf title omission edge case: $label",
-      ({ value, displayName, expectedTitle }) => {
-        const ir = makeIR([
-          makeField("f", {
-            kind: "enum",
-            members: [{ value, displayName }],
-          }),
-        ]);
-        const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
-        const prop = (schema.properties as Record<string, unknown>)["f"];
+    ])("oneOf title omission edge case: $label", ({ value, displayName, expectedTitle }) => {
+      const ir = makeIR([
+        makeField("f", {
+          kind: "enum",
+          members: [{ value, displayName }],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+      const prop = (schema.properties as Record<string, unknown>)["f"];
 
-        if (expectedTitle) {
-          expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
-        } else {
-          expect(prop).toEqual({ oneOf: [{ const: value }] });
-        }
-      },
-    );
+      if (expectedTitle) {
+        expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
+      } else {
+        expect(prop).toEqual({ oneOf: [{ const: value }] });
+      }
+    });
 
     it("uses compact enum serialization in smart-size mode when titles would be redundant", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [
-            { value: "draft", displayName: "draft" },
-            { value: "sent" },
-          ],
+          members: [{ value: "draft", displayName: "draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
@@ -579,20 +569,14 @@ describe("generateJsonSchemaFromIR", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [
-            { value: "draft", displayName: "Draft" },
-            { value: "sent" },
-          ],
+          members: [{ value: "draft", displayName: "Draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
       const prop = (schema.properties as Record<string, unknown>)["status"];
 
       expect(prop).toEqual({
-        oneOf: [
-          { const: "draft", title: "Draft" },
-          { const: "sent" },
-        ],
+        oneOf: [{ const: "draft", title: "Draft" }, { const: "sent" }],
       });
     });
 

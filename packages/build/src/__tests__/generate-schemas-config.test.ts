@@ -155,10 +155,7 @@ describe("generateSchemas with FormSpecConfig", () => {
       });
 
       expect(result.jsonSchema.$defs?.["PlanStatus"]).toMatchObject({
-        oneOf: [
-          { const: "draft", title: "Draft" },
-          { const: "sent" },
-        ],
+        oneOf: [{ const: "draft", title: "Draft" }, { const: "sent" }],
       });
       expect(result.jsonSchema.$defs?.["PlanStatus"]).not.toHaveProperty("enum");
     } finally {
@@ -305,10 +302,7 @@ describe("generateSchemas with FormSpecConfig", () => {
       predicate: (schema: JsonSchema2020) => boolean
     ): JsonSchema2020 | undefined {
       const field = result.jsonSchema.properties?.[fieldName];
-      expect(
-        field,
-        `expected a schema for property '${fieldName}'`
-      ).toBeDefined();
+      expect(field, `expected a schema for property '${fieldName}'`).toBeDefined();
       // The field schema itself is the "override container" — sibling keywords
       // sit directly on it alongside $ref. Wrap in an array to keep the predicate
       // interface compatible with callers that previously scanned allOf entries.
@@ -511,9 +505,7 @@ describe("generateSchemas with FormSpecConfig", () => {
             label: string;
           }
         `;
-        expect(() => runSchema(source, { vendorPrefix: "x-formspec" })).toThrow(
-          /TYPE_MISMATCH/
-        );
+        expect(() => runSchema(source, { vendorPrefix: "x-formspec" })).toThrow(/TYPE_MISMATCH/);
       });
     });
 

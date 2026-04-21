@@ -484,6 +484,11 @@ function applyPathTargetedConstraints(
   // $ref, unlike draft-07 where $ref caused all siblings to be ignored. Using
   // sibling keywords avoids unnecessary allOf composition and preserves $defs
   // deduplication. (Fixes #364.)
+  //
+  // Invariant: upstream reference resolution produces `$ref` schemas that do
+  // not carry their own `properties` key, so this spread-then-overwrite is
+  // safe today. If that ever changes, the override must still win — merge
+  // explicitly via `properties: { ...schema.properties, ...propertyOverrides }`.
   if (schema.$ref) {
     return {
       ...schema,

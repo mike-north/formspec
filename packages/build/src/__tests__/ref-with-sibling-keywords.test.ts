@@ -307,9 +307,7 @@ describe("$ref with sibling keywords — issue #364", () => {
       const schema = generateJsonSchemaFromIR(ir);
       const lineItemsItems = schema.properties?.["lineItems"]?.items;
 
-      expect((lineItemsItems as Record<string, unknown>)["$ref"]).toBe(
-        "#/$defs/MonetaryAmount"
-      );
+      expect((lineItemsItems as Record<string, unknown>)["$ref"]).toBe("#/$defs/MonetaryAmount");
       expect((lineItemsItems as Record<string, unknown>)["properties"]).toEqual({
         value: { minimum: 0 },
       });
@@ -360,6 +358,124 @@ describe("$ref with sibling keywords — issue #364", () => {
       expect(totalProp?.properties).toEqual({
         value: { minimum: 0 },
         currency: { maxLength: 3 },
+      });
+      expect(totalProp?.allOf).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Annotation-only: metadata on a $ref field with no path-targeted constraint
+  // ---------------------------------------------------------------------------
+  describe("annotations on a $ref-based field without path-targeted constraints", () => {
+    it("emits $ref + sibling title without allOf", () => {
+      // Ensures the no-constraint annotation path also avoids allOf. Path-target
+      // constraints are what trigger `applyPathTargetedConstraints`, but
+      // annotations flow through `applyAnnotations` on the same schema — the
+      // resulting shape should still be flat siblings, never `allOf`.
+      const ir = makeIR(
+        [
+          {
+            kind: "field",
+            name: "total",
+            type: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            required: true,
+            constraints: [],
+            annotations: [
+              {
+                kind: "annotation",
+                annotationKind: "displayName",
+                value: "Total Amount",
+                provenance: PROVENANCE,
+              },
+            ],
+            provenance: PROVENANCE,
+          },
+        ],
+        MONETARY_AMOUNT_REGISTRY
+      );
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const totalProp = schema.properties?.["total"];
+
+      expect(totalProp?.$ref).toBe("#/$defs/MonetaryAmount");
+      expect(totalProp?.title).toBe("Total Amount");
+      expect(totalProp?.allOf).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Deeply-nested path targets: constraint segments more than one level deep
+  // ---------------------------------------------------------------------------
+  describe("deeply-nested path-targeted constraints on a $ref field", () => {
+    it("emits nested sibling properties for multi-segment path targets", () => {
+      // Exercises the `buildPropertyOverrides` logic for path segments longer
+      // than 1. Registers a type where `value` is itself an object with an
+      // `amount` property, then applies a constraint at `value.amount`.
+      const registry: FormIR["typeRegistry"] = {
+        NestedMonetary: {
+          name: "NestedMonetary",
+          type: {
+            kind: "object",
+            properties: [
+              {
+                name: "value",
+                type: {
+                  kind: "object",
+                  properties: [
+                    {
+                      name: "amount",
+                      type: { kind: "primitive", primitiveKind: "number" },
+                      optional: false,
+                      constraints: [],
+                      annotations: [],
+                      provenance: PROVENANCE,
+                    },
+                  ],
+                  additionalProperties: true,
+                },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
+              },
+            ],
+            additionalProperties: true,
+          },
+          provenance: PROVENANCE,
+        },
+      };
+
+      const ir = makeIR(
+        [
+          {
+            kind: "field",
+            name: "total",
+            type: { kind: "reference", name: "NestedMonetary", typeArguments: [] },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value", "amount"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+        registry
+      );
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const totalProp = schema.properties?.["total"];
+
+      expect(totalProp?.$ref).toBe("#/$defs/NestedMonetary");
+      // The constraint lives two levels deep — once inside sibling
+      // `properties.value`, and again inside that schema's `properties.amount`.
+      expect(totalProp?.properties).toEqual({
+        value: { properties: { amount: { minimum: 0 } } },
       });
       expect(totalProp?.allOf).toBeUndefined();
     });
