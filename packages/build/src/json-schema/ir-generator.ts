@@ -426,11 +426,20 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 }
 
 /**
- * Applies path-targeted constraints to a schema via allOf composition.
+ * Applies path-targeted constraints to a schema using sibling keywords
+ * (JSON Schema 2020-12) or allOf composition for inline schemas.
  *
- * For $ref schemas: wraps in allOf with property overrides.
+ * For $ref schemas: merges property overrides as sibling keywords alongside
+ * `$ref`. JSON Schema 2020-12 (§10.2.1) allows all keywords to appear next
+ * to `$ref`; the draft-07 restriction that made allOf necessary no longer
+ * applies. Using sibling keywords preserves `$defs` deduplication and
+ * produces leaner output that downstream renderers can consume directly.
+ *
  * For inline object schemas: applies directly to nested properties.
  * For array schemas: applies path constraints to the items sub-schema.
+ *
+ * @see https://github.com/mike-north/formspec/issues/364
+ * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
  */
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
@@ -470,15 +479,16 @@ function applyPathTargetedConstraints(
     return schema;
   }
 
-  // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
+  // $ref schema: add property overrides as sibling keywords alongside $ref.
+  // JSON Schema 2020-12 §10.2.1 explicitly permits sibling keywords next to
+  // $ref, unlike draft-07 where $ref caused all siblings to be ignored. Using
+  // sibling keywords avoids unnecessary allOf composition and preserves $defs
+  // deduplication. (Fixes #364.)
   if (schema.$ref) {
-    const { $ref, ...rest } = schema;
-    const refPart: JsonSchema2020 = { $ref };
-    const overridePart: JsonSchema2020 = {
+    return {
+      ...schema,
       properties: propertyOverrides,
-      ...rest,
     };
-    return { allOf: [refPart, overridePart] };
   }
 
   // Inline object schema: merge property overrides directly where possible.

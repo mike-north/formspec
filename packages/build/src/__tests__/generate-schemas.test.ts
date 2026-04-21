@@ -88,24 +88,23 @@ describe("generateSchemas", () => {
       typeName: "BlogConfig",
     });
 
+    // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+    // Path-targeted constraints on a $ref-based items schema must emit sibling
+    // keywords rather than allOf composition. (Fixes #364.)
     expect(result.jsonSchema.properties).toMatchObject({
       articles: {
         type: "array",
         minItems: 1,
         maxItems: 50,
         items: {
-          allOf: [
-            { $ref: "#/$defs/Article" },
-            {
-              properties: {
-                tags: {
-                  minItems: 1,
-                  maxItems: 20,
-                  uniqueItems: true,
-                },
-              },
+          $ref: "#/$defs/Article",
+          properties: {
+            tags: {
+              minItems: 1,
+              maxItems: 20,
+              uniqueItems: true,
             },
-          ],
+          },
         },
       },
     });
@@ -117,13 +116,14 @@ describe("generateSchemas", () => {
       typeName: "SerializedNameForm",
     });
 
+    // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+    // The path-targeted constraint on `total` must appear as a sibling
+    // `properties` keyword alongside `$ref`, not wrapped in allOf. (#364.)
     expect(result.jsonSchema.properties).toMatchObject({
       first_name: { type: "string" },
       total: {
-        allOf: [
-          { $ref: "#/$defs/RenamedAmount" },
-          { properties: { amount_value: { minimum: 0 } } },
-        ],
+        $ref: "#/$defs/RenamedAmount",
+        properties: { amount_value: { minimum: 0 } },
       },
       address: { $ref: "#/$defs/PostalAddress" },
     });

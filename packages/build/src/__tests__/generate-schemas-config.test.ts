@@ -293,25 +293,29 @@ describe("generateSchemas with FormSpecConfig", () => {
       }
     }
 
-    // A path-target override is emitted as an `allOf` entry with
-    // `properties.<segment>.<jsonSchemaKeyword>: <value>`. Asserting via a
-    // direct `allOf` shape — then scanning its entries — keeps the Jest
-    // matcher types clean (no unsafe-any from `expect.arrayContaining`) while
-    // using the real `JsonSchema2020` typing for property access.
+    // Path-target overrides are emitted as sibling keywords alongside `$ref`
+    // (JSON Schema 2020-12 §10.2.1). The `properties` override appears directly
+    // on the field schema, not wrapped in `allOf`. Asserting via the sibling
+    // `properties` key keeps the Jest matcher types clean while using the real
+    // `JsonSchema2020` typing for property access.
+    // See: https://github.com/mike-north/formspec/issues/364
     function findPathOverride(
       result: ClassSchemas,
       fieldName: string,
-      predicate: (entry: JsonSchema2020) => boolean
+      predicate: (schema: JsonSchema2020) => boolean
     ): JsonSchema2020 | undefined {
       const field = result.jsonSchema.properties?.[fieldName];
-      const allOf = field?.allOf;
       expect(
-        allOf,
-        `expected allOf on property '${fieldName}' but found ${
-          allOf === undefined ? "none" : "empty"
-        }`
+        field,
+        `expected a schema for property '${fieldName}'`
       ).toBeDefined();
-      return allOf?.find(predicate);
+      // The field schema itself is the "override container" — sibling keywords
+      // sit directly on it alongside $ref. Wrap in an array to keep the predicate
+      // interface compatible with callers that previously scanned allOf entries.
+      if (field !== undefined && predicate(field)) {
+        return field;
+      }
+      return undefined;
     }
 
     function expectPathOverride(
@@ -321,28 +325,25 @@ describe("generateSchemas with FormSpecConfig", () => {
       keyword: string,
       value: unknown
     ) {
-      const override = findPathOverride(
-        result,
-        fieldName,
-        (entry) => {
-          const segmentSchema = entry.properties?.[segment];
-          if (segmentSchema === undefined) return false;
-          return (segmentSchema as Record<string, unknown>)[keyword] === value;
-        }
-      );
+      const field = result.jsonSchema.properties?.[fieldName];
+      expect(field, `expected schema for field '${fieldName}'`).toBeDefined();
+      const segmentSchema = field?.properties?.[segment];
       expect(
-        override,
-        `no allOf entry with properties.${segment}.${keyword} === ${String(
-          value
-        )} on field '${fieldName}'`
+        segmentSchema,
+        `expected field '${fieldName}' to have sibling properties.${segment} (path override)`
       ).toBeDefined();
+      expect(
+        (segmentSchema as Record<string, unknown>)[keyword],
+        `expected properties.${segment}.${keyword} === ${String(value)} on field '${fieldName}'`
+      ).toBe(value);
     }
 
     // Path-target overrides emit the standard JSON Schema keyword directly
     // on the sub-path — not the vendor-prefixed custom-constraint keyword
-    // that's used for the type's own direct-target broadening. See the
-    // `allOf: [{ $ref }, { properties: { amount: { minimum: 0 } } }]`
-    // shape asserted by `expectPathOverride`.
+    // that's used for the type's own direct-target broadening. The emitted
+    // shape is `{ "$ref": "#/$defs/X", "properties": { amount: { minimum: 0 } } }`
+    // per JSON Schema 2020-12 §10.2.1 (sibling keywords next to $ref are valid).
+    // See: https://github.com/mike-north/formspec/issues/364
     const numericTagCases: readonly {
       tag: string;
       argument: string;

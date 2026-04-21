@@ -135,14 +135,14 @@ describe("$ref with sibling keywords — issue #364", () => {
       const totalProp = schema.properties?.["total"];
 
       // The $ref must appear as a sibling keyword, not inside allOf.
-      expect(totalProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
+      expect(totalProp?.$ref).toBe("#/$defs/MonetaryAmount");
 
       // The property override must appear alongside $ref, not wrapped in allOf.
-      expect(totalProp?.["properties"]).toEqual({ value: { exclusiveMinimum: 0 } });
+      expect(totalProp?.properties).toEqual({ value: { exclusiveMinimum: 0 } });
 
       // The allOf wrapper must NOT be present — this is the key regression guard.
       // spec: JSON Schema 2020-12 §10.2.1 allows sibling keywords next to $ref.
-      expect(totalProp?.["allOf"]).toBeUndefined();
+      expect(totalProp?.allOf).toBeUndefined();
     });
 
     it("emits $ref + sibling properties for @minimum constraint on nested field", () => {
@@ -172,9 +172,9 @@ describe("$ref with sibling keywords — issue #364", () => {
       const schema = generateJsonSchemaFromIR(ir);
       const totalProp = schema.properties?.["total"];
 
-      expect(totalProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
-      expect(totalProp?.["properties"]).toEqual({ value: { minimum: 0 } });
-      expect(totalProp?.["allOf"]).toBeUndefined();
+      expect(totalProp?.$ref).toBe("#/$defs/MonetaryAmount");
+      expect(totalProp?.properties).toEqual({ value: { minimum: 0 } });
+      expect(totalProp?.allOf).toBeUndefined();
     });
 
     it("emits $ref + sibling title keyword when metadata is also present", () => {
@@ -214,10 +214,10 @@ describe("$ref with sibling keywords — issue #364", () => {
       const totalProp = schema.properties?.["total"];
 
       // Both $ref and title must appear as siblings on the same object.
-      expect(totalProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
-      expect(totalProp?.["title"]).toBe("Total Amount");
-      expect(totalProp?.["properties"]).toEqual({ value: { exclusiveMinimum: 0 } });
-      expect(totalProp?.["allOf"]).toBeUndefined();
+      expect(totalProp?.$ref).toBe("#/$defs/MonetaryAmount");
+      expect(totalProp?.title).toBe("Total Amount");
+      expect(totalProp?.properties).toEqual({ value: { exclusiveMinimum: 0 } });
+      expect(totalProp?.allOf).toBeUndefined();
     });
 
     it("preserves $defs deduplication — MonetaryAmount still appears in $defs", () => {
@@ -268,8 +268,8 @@ describe("$ref with sibling keywords — issue #364", () => {
       expect(schema.$defs).toHaveProperty("MonetaryAmount");
 
       // Both fields reference it — deduplication preserved.
-      expect(schema.properties?.["subtotal"]?.["$ref"]).toBe("#/$defs/MonetaryAmount");
-      expect(schema.properties?.["total"]?.["$ref"]).toBe("#/$defs/MonetaryAmount");
+      expect(schema.properties?.["subtotal"]?.$ref).toBe("#/$defs/MonetaryAmount");
+      expect(schema.properties?.["total"]?.$ref).toBe("#/$defs/MonetaryAmount");
     });
   });
 
@@ -305,16 +305,16 @@ describe("$ref with sibling keywords — issue #364", () => {
       );
 
       const schema = generateJsonSchemaFromIR(ir);
-      const lineItemsItems = schema.properties?.["lineItems"]?.["items"];
+      const lineItemsItems = schema.properties?.["lineItems"]?.items;
 
-      expect((lineItemsItems as Record<string, unknown>)?.["$ref"]).toBe(
+      expect((lineItemsItems as Record<string, unknown>)["$ref"]).toBe(
         "#/$defs/MonetaryAmount"
       );
-      expect((lineItemsItems as Record<string, unknown>)?.["properties"]).toEqual({
+      expect((lineItemsItems as Record<string, unknown>)["properties"]).toEqual({
         value: { minimum: 0 },
       });
       // No allOf wrapping on the items schema either.
-      expect((lineItemsItems as Record<string, unknown>)?.["allOf"]).toBeUndefined();
+      expect((lineItemsItems as Record<string, unknown>)["allOf"]).toBeUndefined();
     });
   });
 
@@ -356,12 +356,12 @@ describe("$ref with sibling keywords — issue #364", () => {
       const schema = generateJsonSchemaFromIR(ir);
       const totalProp = schema.properties?.["total"];
 
-      expect(totalProp?.["$ref"]).toBe("#/$defs/MonetaryAmount");
-      expect(totalProp?.["properties"]).toEqual({
+      expect(totalProp?.$ref).toBe("#/$defs/MonetaryAmount");
+      expect(totalProp?.properties).toEqual({
         value: { minimum: 0 },
         currency: { maxLength: 3 },
       });
-      expect(totalProp?.["allOf"]).toBeUndefined();
+      expect(totalProp?.allOf).toBeUndefined();
     });
   });
 });
