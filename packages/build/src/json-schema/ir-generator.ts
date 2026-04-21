@@ -507,12 +507,23 @@ function applyPathTargetedConstraints(
   // the override. (Fixes #382 Site 1.)
   if (schema.type === "object" && schema.properties) {
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
-      const existing = schema.properties[target];
-      if (existing) {
-        mergeSchemaOverride(existing, overrideSchema);
-      } else {
-        schema.properties[target] = overrideSchema;
+      // Own-property check + defineProperty guard against prototype-pollution
+      // vectors (e.g. `__proto__`, `constructor`) if a path-targeted override
+      // ever names one of those keys. Using `in` or `[target]` assignment
+      // would traverse / mutate Object.prototype.
+      if (Object.hasOwn(schema.properties, target)) {
+        const existing = schema.properties[target];
+        if (existing) {
+          mergeSchemaOverride(existing, overrideSchema);
+          continue;
+        }
       }
+      Object.defineProperty(schema.properties, target, {
+        value: overrideSchema,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     return schema;
   }
