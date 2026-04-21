@@ -25,7 +25,7 @@ import {
   getTagDefinition,
   normalizeFormSpecTagName,
   getSyntheticLogger,
-  validateExtensionSetup,
+  _validateExtensionSetup,
   logSetupDiagnostics,
   type ExtensionTagSource,
   type SyntheticCompilerDiagnostic,
@@ -201,13 +201,13 @@ function buildConstraintTagSources(
           })),
         }
       : {}),
-    // Include customTypes so validateExtensionSetup can check tsTypeNames for
+    // Include customTypes so _validateExtensionSetup can check tsTypeNames for
     // unsupported built-in overrides and invalid identifier patterns.
     ...(extension.types !== undefined
       ? {
           customTypes: extension.types.map((type) => ({
             // tsTypeNames: deprecated in favour of symbol-based detection, but
-            // still required for name-based validation in validateExtensionSetup
+            // still required for name-based validation in _validateExtensionSetup
             // until the bridge is fully retired (see §synthetic-checker-retirement §4C).
             tsTypeNames: type.tsTypeNames ?? [type.typeName],
           })),
@@ -244,13 +244,13 @@ export function createExtensionRegistry(
   // construction time. Consumers pull `registry.setupDiagnostics` at the start
   // of each analysis pass instead of re-running validation per synthetic batch.
   const extensionTagSources = buildConstraintTagSources(extensions);
-  const setupDiagnostics = validateExtensionSetup(extensionTagSources);
+  const setupDiagnostics = _validateExtensionSetup(extensionTagSources);
   logSetupDiagnostics(registryLog, {
     diagnosticCount: setupDiagnostics.length,
     codes: setupDiagnostics.map((d) => d.kind),
   });
 
-  // extensionTagSources is already computed above for validateExtensionSetup;
+  // extensionTagSources is already computed above for _validateExtensionSetup;
   // reuse it here to avoid a second pass over the extensions array.
   const reservedTagSources = extensionTagSources;
   let symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();

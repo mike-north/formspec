@@ -76,6 +76,18 @@ export type {
   ExtensionTypeLookupResult,
   MutableExtensionRegistry,
 } from "./extensions/index.js";
+/**
+ * A simplified TypeScript diagnostic surfaced from the synthetic compiler pass.
+ *
+ * Re-exported here because {@link ExtensionRegistry.setupDiagnostics} (an
+ * `@internal` field on a `@public` interface) references this type directly.
+ * API Extractor requires every type transitively referenced through a public
+ * surface to be exported from the package entry point, even when the field
+ * carrying it is marked `@internal`.
+ *
+ * @internal
+ */
+export type { SyntheticCompilerDiagnostic } from "@formspec/analysis/internal";
 export type { FormSpecConfig } from "@formspec/config";
 
 export type {
@@ -195,7 +207,8 @@ export interface BuildResult {
  *
  * @public
  */
-export interface BuildFormSchemasOptions extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
+export interface BuildFormSchemasOptions
+  extends GenerateJsonSchemaOptions, GenerateUiSchemaOptions {
   /**
    * Optional logger for diagnostic output. Defaults to a no-op logger so
    * existing callers produce no output.

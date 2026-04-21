@@ -156,12 +156,15 @@ export type {
   SyntheticTagTargetSpecifier,
 } from "./compiler-signatures.js";
 export {
+  _emitSetupDiagnostics,
+  _extensionRegistryProvenance,
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   buildSyntheticHelperPrelude,
   checkSyntheticTagApplication,
   checkSyntheticTagApplications,
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
-  validateExtensionSetup,
 } from "./compiler-signatures.js";
 export {
   parseUnifiedComment,
