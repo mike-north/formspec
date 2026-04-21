@@ -27,7 +27,6 @@ import { parseTSDocTags } from "../analyzer/tsdoc-parser.js";
 // =============================================================================
 
 /**
-/**
  * Creates an in-memory TypeScript source file and returns the first property
  * declaration in the first class or interface. Type-alias declarations do not
  * have `members` with `PropertyDeclaration` / `PropertySignature` nodes, so
