@@ -173,6 +173,10 @@ export interface ExtensionRegistry {
     findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
     findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
     findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
+    // Warning: (ae-forgotten-export) The symbol "SyntheticCompilerDiagnostic" needs to be exported by the entry point index.d.ts
+    //
+    // @internal
+    readonly setupDiagnostics: readonly SyntheticCompilerDiagnostic[];
 }
 
 // @public
@@ -641,7 +645,7 @@ export interface WriteSchemasResult {
 
 // Warnings were encountered during analysis:
 //
-// src/extensions/registry.ts:118:9 - (ae-forgotten-export) The symbol "ConstraintTagRegistration_2" needs to be exported by the entry point index.d.ts
-// src/extensions/registry.ts:130:9 - (ae-forgotten-export) The symbol "BuiltinConstraintBroadeningRegistration_2" needs to be exported by the entry point index.d.ts
+// src/extensions/registry.ts:139:9 - (ae-forgotten-export) The symbol "ConstraintTagRegistration_2" needs to be exported by the entry point index.d.ts
+// src/extensions/registry.ts:151:9 - (ae-forgotten-export) The symbol "BuiltinConstraintBroadeningRegistration_2" needs to be exported by the entry point index.d.ts
 
 ```
