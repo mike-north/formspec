@@ -39,11 +39,20 @@
 // Category 2 — IR-level TYPE_MISMATCH in semantic-targets.ts:
 //   @const mismatches are caught at IR validation (validateIR / semantic-targets.ts)
 //   in the build path, but the snapshot consumer does not run IR validation.
-//   Both the build AND snapshot synthetic checkers accept @const "USD" for any
-//   field type because the synthetic prelude declares JsonValue = unknown (any
-//   JSON value is assignable). The IR validator catches the mismatch, but the
-//   snapshot consumer doesn't surface it. Phase 5 (synthetic retirement) or a
+//   Both synthetic checkers accept the raw @const tag call (before IR validation)
+//   because the prelude declares JsonValue = unknown (any JSON value is assignable).
+//   The build path later catches the mismatch in validateIR, but the snapshot
+//   consumer never reaches that layer. Phase 5 (synthetic retirement) or a
 //   separate IR-validation pass for the snapshot consumer is needed.
+//
+// Category 3 — Intentional (not a gap): cases where the canary asserts an error
+//   but the retirement plan intentionally accepts the input. Tracked here as
+//   `.fails` purely as a regression guard — if a future change starts rejecting
+//   one of these, this test will flip and force a review of the design decision.
+//   - @pattern with non-string argument (e.g., 42): plan §3 — opaque pass-through.
+//   - @pattern on string[]: both paths treat string[] as string-like for @pattern
+//     (supportsConstraintCapability in tsdoc-parser.ts:464-467 returns true when
+//     the array element type is string-like).
 //
 // Phase 3 flips (previously .fails, now passing regular assertions):
 // - @enumOptions 5 (scalar not array) — typed parser catches at Role C
@@ -368,14 +377,22 @@ describe("@pattern silent-acceptance canaries", () => {
     }
   );
 
-  // @pattern on a string[] (array) field -- arrays are not string-like.
+  // @pattern on a string[] (array) field -- arrays are not string-like...or are they?
   //
-  // Phase 4D audit: same root cause as @pattern on number. Phase 5 target.
-  // Note: supportsConstraintCapability for "string-like" includes arrays whose
-  // item type is string-like (see tsdoc-parser.ts supportsConstraintCapability).
-  // string[] element type IS string-like so the build path may also accept this.
+  // [intentional: string[] is string-like for @pattern]
+  //
+  // Phase 4D audit: this canary asserts TYPE_MISMATCH, but NEITHER consumer emits one.
+  // Root cause: supportsConstraintCapability() in the build path (tsdoc-parser.ts:464-467)
+  // treats string[] as satisfying "string-like" when the array element type is itself
+  // string-like — so string[] passes the Role-B capability check in the build path.
+  // The snapshot path's synthetic prelude has no capability constraint either, so it also
+  // accepts without error. Both consumers agree: @pattern on string[] is valid.
+  // The TYPE_MISMATCH assertion in this test is a bug in the original canary spec.
+  // Phase 5 will NOT flip this canary; this test is kept as a regression guard only —
+  // if a future change causes either path to start rejecting @pattern on string[],
+  // this test will flip and force a review of the design decision.
   it.fails(
-    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [Phase 5 target: snapshot Role-B capability check]",
+    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [intentional: string[] is string-like for @pattern; tsdoc-parser.ts:464-467]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -523,14 +540,13 @@ describe("@const silent-acceptance canaries", () => {
   // compatible with an object field.
   //
   // Phase 4D audit: IR-level mismatch — not surfaced by snapshot consumer.
-  // Root cause: the synthetic prelude declares `type JsonValue = unknown`, so
-  // any JSON value (including "USD") is assignable to the Subject type parameter
-  // of tag_const. Both the build-path synthetic checker AND the snapshot-path
-  // synthetic checker accept the call. The mismatch IS caught in the build path
-  // by the IR validator (validateIR / semantic-targets.ts) after schema generation,
-  // but the snapshot consumer (buildFormSpecAnalysisFileSnapshot) does not run
-  // IR validation. Phase 5 target: retire the synthetic checker and/or add
-  // IR-validation pass to the snapshot consumer.
+  // Root cause: both synthetic checkers accept the raw tag call (before IR
+  // validation) because the prelude declares `type JsonValue = unknown` — any
+  // JSON value (including "USD") is assignable to the Subject type parameter of
+  // tag_const. The build path later catches the mismatch in validateIR
+  // (semantic-targets.ts), but the snapshot consumer never reaches that layer.
+  // Phase 5 target: retire the synthetic checker and/or add IR-validation pass
+  // to the snapshot consumer.
   it.fails(
     'emits a diagnostic for @const "USD" on an object field [Phase 5 target: IR-validation pass in snapshot consumer]',
     () => {
@@ -550,10 +566,11 @@ describe("@const silent-acceptance canaries", () => {
   // @const {"a":1} on a number field -- a JSON object constant is not
   // compatible with a number field.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object — the synthetic
-  // prelude's `JsonValue = unknown` means the synthetic checker accepts any JSON
-  // value for any field type. IR validator in build path catches this, but
-  // snapshot consumer does not run IR validation. Phase 5 target.
+  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
+  // checkers accept the raw tag call (before IR validation) because
+  // `JsonValue = unknown` in the prelude makes any JSON value assignable. The
+  // build path later catches the mismatch in validateIR (semantic-targets.ts),
+  // but the snapshot consumer never reaches that layer. Phase 5 target.
   it.fails(
     'emits TYPE_MISMATCH for @const {"a":1} on a number field [Phase 5 target: IR-validation pass in snapshot consumer]',
     () => {
@@ -573,7 +590,11 @@ describe("@const silent-acceptance canaries", () => {
   // @const 42 on a string field -- numeric constant mismatches the string
   // field type.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object. Phase 5 target.
+  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
+  // checkers accept the raw tag call (before IR validation) because
+  // `JsonValue = unknown` in the prelude; the build path catches the mismatch
+  // in validateIR (semantic-targets.ts), but the snapshot consumer does not run
+  // IR validation. Phase 5 target.
   it.fails(
     "emits TYPE_MISMATCH for @const 42 on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
     () => {
@@ -593,8 +614,11 @@ describe("@const silent-acceptance canaries", () => {
   // @const {"a":{"b":1}} (deeply nested JSON object) on a string field.
   // Also probes that nested JSON values do not cause a parse crash.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object — JsonValue = unknown
-  // in synthetic prelude. Phase 5 target: IR-validation pass in snapshot consumer.
+  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
+  // checkers accept the raw tag call (before IR validation) because
+  // `JsonValue = unknown` in the prelude; the build path catches the mismatch
+  // in validateIR (semantic-targets.ts), but the snapshot consumer never reaches
+  // that layer. Phase 5 target: IR-validation pass in snapshot consumer.
   it.fails(
     "emits a diagnostic for @const with a nested object literal on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
     () => {
