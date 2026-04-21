@@ -188,13 +188,14 @@ Generated `$defs`:
   "$defs": {
     "Integer": { "type": "integer" },
     "USDCents": {
-      "allOf": [{ "$ref": "#/$defs/Integer" }, { "minimum": 0 }]
+      "$ref": "#/$defs/Integer",
+      "minimum": 0
     }
   }
 }
 ```
 
-The `allOf` + `$ref` pattern (003 §7.2) handles constraint narrowing at each level of the alias chain. `USDCents` inherits the integer type from `Integer` and adds `@minimum 0`. A field of type `USDCents` inherits both (PP3, S1, C1).
+The `$ref` + sibling keyword pattern (003 §7.2) handles constraint narrowing at each level of the alias chain. `USDCents` inherits the integer type from `Integer` and adds `@minimum 0` as a sibling keyword. A field of type `USDCents` inherits both (PP3, S1, C1).
 
 ### 3.4 Type Alias Patterns
 
@@ -673,22 +674,16 @@ Generated JSON Schema:
       "required": ["value", "currency"]
     },
     "USDAmount": {
-      "allOf": [
-        { "$ref": "#/$defs/MonetaryAmount" },
-        { "properties": { "currency": { "const": "USD" } } }
-      ]
+      "$ref": "#/$defs/MonetaryAmount",
+      "properties": { "currency": { "const": "USD" } }
     }
   },
   "properties": {
     "charge": {
-      "allOf": [
-        { "$ref": "#/$defs/USDAmount" },
-        {
-          "properties": {
-            "value": { "minimum": 0.01, "maximum": 9999999.99, "multipleOf": 0.01 }
-          }
-        }
-      ],
+      "$ref": "#/$defs/USDAmount",
+      "properties": {
+        "value": { "minimum": 0.01, "maximum": 9999999.99, "multipleOf": 0.01 }
+      },
       "title": "Total Amount"
     }
   },
@@ -696,7 +691,7 @@ Generated JSON Schema:
 }
 ```
 
-Subfield constraint targeting (S5) directs `:value` constraints to the `value: number` property; constraint applicability is evaluated against the subfield's type, not the parent. The `allOf` + `$ref` chain accumulates constraints from each alias level — `USDAmount` fixes the currency, and the use-site annotation adds the numeric bounds on the value.
+Subfield constraint targeting (S5) directs `:value` constraints to the `value: number` property; constraint applicability is evaluated against the subfield's type, not the parent. Sibling keywords alongside `$ref` accumulate constraints from each alias level — `USDAmount` fixes the currency, and the use-site annotation adds the numeric bounds on the value. The `$ref` and its siblings are evaluated together under JSON Schema 2020-12.
 
 ---
 
@@ -785,4 +780,4 @@ This composition is performed in the Validate phase of the pipeline (A5), after 
 | OD-1 | §3.1    | Should type alias resolution be eager (at analysis time) or lazy (at generation time)?                                                                               | Eager — resolved at Canonicalize phase to enable Validate phase contradiction detection                                                                           |
 | OD-2 | §3.3    | Should the generator emit `{ "type": "integer" }` or `{ "type": "number", "multipleOf": 1 }` for aliases with `MultipleOfConstraint(1)`?                             | **DECIDED:** `{ "type": "integer" }`. Integer is a first-class FormSpec numeric kind; `number + @multipleOf 1` is a TSDoc authoring path that canonicalizes to it |
 | OD-3 | §4.3    | Should `broadenConstraintTag` be a compile-time registration or a runtime registration?                                                                              | Compile-time, via extension npm package loaded at build time (E5)                                                                                                 |
-| OD-4 | §6      | When a type alias inherits subfield constraints, should the generator always emit `allOf` + `$ref`, or inline when the alias adds only a single subfield constraint? | Always `allOf` + `$ref` for consistency and high-fidelity output (PP7)                                                                                            |
+| OD-4 | §6      | When a type alias inherits subfield constraints, how should the generator emit the composed shape?                                                                   | Sibling keywords alongside `$ref` (see 003 §5.4) — no `allOf` wrapping. Renderer-compatible and consistent across the alias chain (PP7)                          |

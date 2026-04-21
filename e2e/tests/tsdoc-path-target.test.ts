@@ -47,31 +47,28 @@ describe("TSDoc Path-Target Constraints", () => {
   });
 
   describe("path-targeted constraints on reference type", () => {
-    it("total field uses allOf with $ref and value constraints", () => {
+    it("total field uses $ref + sibling properties with value constraints (issue #364)", () => {
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // The path-targeted constraints appear as a sibling `properties` keyword,
+      // not wrapped in allOf. See: https://github.com/mike-north/formspec/issues/364
       const properties = schema["properties"] as Record<string, unknown>;
       const total = properties["total"] as Record<string, unknown>;
-      expect(total).toHaveProperty("allOf");
-      const allOf = total["allOf"] as Record<string, unknown>[];
-      expect(allOf).toContainEqual({ $ref: "#/$defs/MonetaryAmount" });
-      const override = allOf.find((m) => m["properties"] !== undefined);
-      expect(override).toBeDefined();
-      if (!override) throw new Error("override not found");
-      const overrideProps = override["properties"] as Record<string, unknown>;
+      expect(total).toHaveProperty("$ref", "#/$defs/MonetaryAmount");
+      expect(total).not.toHaveProperty("allOf");
+      const overrideProps = total["properties"] as Record<string, unknown>;
       expect(overrideProps["value"]).toMatchObject({ minimum: 0, maximum: 9999999.99 });
     });
   });
 
   describe("path-targeted string constraints", () => {
-    it("discount field targets currency subproperty via allOf", () => {
+    it("discount field targets currency subproperty via sibling properties (issue #364)", () => {
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // See: https://github.com/mike-north/formspec/issues/364
       const properties = schema["properties"] as Record<string, unknown>;
       const discount = properties["discount"] as Record<string, unknown>;
-      expect(discount).toHaveProperty("allOf");
-      const allOf = discount["allOf"] as Record<string, unknown>[];
-      expect(allOf).toContainEqual({ $ref: "#/$defs/MonetaryAmount" });
-      const override = allOf.find((m) => m["properties"] !== undefined);
-      expect(override).toBeDefined();
-      if (!override) throw new Error("override not found");
-      const overrideProps = override["properties"] as Record<string, unknown>;
+      expect(discount).toHaveProperty("$ref", "#/$defs/MonetaryAmount");
+      expect(discount).not.toHaveProperty("allOf");
+      const overrideProps = discount["properties"] as Record<string, unknown>;
       const currency = overrideProps["currency"] as Record<string, unknown>;
       expect(currency).toMatchObject({
         minLength: 3,
@@ -82,18 +79,16 @@ describe("TSDoc Path-Target Constraints", () => {
   });
 
   describe("array transparency", () => {
-    it("lineItems applies path-targeted constraints to items via allOf", () => {
+    it("lineItems applies path-targeted constraints to items via sibling properties (issue #364)", () => {
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // The items schema uses sibling keywords, not allOf. (#364)
       const properties = schema["properties"] as Record<string, unknown>;
       const lineItems = properties["lineItems"] as Record<string, unknown>;
       expect(lineItems).toHaveProperty("type", "array");
       const items = lineItems["items"] as Record<string, unknown>;
-      expect(items).toHaveProperty("allOf");
-      const allOf = items["allOf"] as Record<string, unknown>[];
-      expect(allOf).toContainEqual({ $ref: "#/$defs/MonetaryAmount" });
-      const override = allOf.find((m) => m["properties"] !== undefined);
-      expect(override).toBeDefined();
-      if (!override) throw new Error("override not found");
-      const overrideProps = override["properties"] as Record<string, unknown>;
+      expect(items).toHaveProperty("$ref", "#/$defs/MonetaryAmount");
+      expect(items).not.toHaveProperty("allOf");
+      const overrideProps = items["properties"] as Record<string, unknown>;
       expect(overrideProps["value"]).toMatchObject({ minimum: 0 });
     });
   });
