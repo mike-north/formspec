@@ -26,10 +26,12 @@ import type {
   FieldNode,
   ConstraintNode,
   AnnotationNode,
+  CustomTypeNode,
   Provenance,
 } from "@formspec/core/internals";
-import { IR_VERSION } from "@formspec/core/internals";
+import { defineCustomType, defineExtension, IR_VERSION } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
+import { createExtensionRegistry } from "../extensions/index.js";
 
 // =============================================================================
 // TEST HELPERS
@@ -642,6 +644,562 @@ describe("$ref with sibling keywords — issue #364", () => {
       expect(shippingBranch["$ref"]).toBe("#/$defs/PostalAddress");
       expect(billingBranch["allOf"]).toBeUndefined();
       expect(shippingBranch["allOf"]).toBeUndefined();
+    });
+  });
+});
+
+// =============================================================================
+// REGRESSION TESTS — issue #382
+// =============================================================================
+//
+// Follow-up to #365/#364: two `allOf` emission sites in
+// `applyPathTargetedConstraints` remained after the primary fix. These tests
+// guard against their regressions.
+//
+//   Site 1: inline-object missing-property fallback — must emit a single flat
+//           object (base properties merged with missing overrides, sibling
+//           `additionalProperties`/`type`), not an `allOf` wrapper.
+//   Site 2: pre-composed `allOf` base — must flatten to siblings when the
+//           composition is expressible as siblings under JSON Schema 2020-12
+//           (§10.2.1). `allOf` is retained only for genuine non-sibling cases.
+//
+// @see https://github.com/mike-north/formspec/issues/382
+
+describe("remaining allOf emission sites flattened to siblings — issue #382", () => {
+  // ---------------------------------------------------------------------------
+  // Site 1: inline-object missing-property fallback
+  // ---------------------------------------------------------------------------
+  describe("Site 1: inline-object with path target naming a property that does not exist (#382)", () => {
+    it("emits a single flat object (no allOf wrapper) with sibling properties and preserved additionalProperties", () => {
+      // Scenario: an inline object field has `additionalProperties: true` and
+      // receives a path-targeted constraint pointing at a property that is not
+      // declared on the base type. Historically this wrapped the base in
+      // `allOf: [base, { properties: { missing: ... } }]`. The fix emits a
+      // flat object: base props merged with the missing override, with
+      // `additionalProperties` and `type` preserved as siblings.
+      //
+      // @see https://github.com/mike-north/formspec/issues/382 Site 1
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
+              {
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
+              },
+            ],
+            additionalProperties: true,
+          },
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["missing"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
+
+      // Regression guard: no allOf wrapping.
+      expect(address?.["allOf"]).toBeUndefined();
+
+      // Flat object: type is a sibling key, not buried inside allOf[0].
+      expect(address?.["type"]).toBe("object");
+
+      // `additionalProperties: true` is the default and is intentionally
+      // omitted from output (spec 003 §2.5); the semantics are preserved by
+      // absence of the keyword, not by its explicit presence.
+      expect(address?.["additionalProperties"]).toBeUndefined();
+
+      // Base property ("city") and the missing-override property ("missing")
+      // both appear in a single sibling properties map.
+      expect(address?.["properties"]).toEqual({
+        city: { type: "string" },
+        missing: { minLength: 1 },
+      });
+    });
+
+    it("preserves additionalProperties: false from the base when merging missing overrides", () => {
+      // Variant: base has `additionalProperties: false`. The fix must still
+      // preserve this semantic, otherwise the new flat property would be
+      // rejected against the base schema. Merging into the base properties
+      // legitimizes the property so additionalProperties: false stays safe.
+      //
+      // @see https://github.com/mike-north/formspec/issues/382 Site 1
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
+              {
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
+              },
+            ],
+            additionalProperties: false,
+          },
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["missing"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
+
+      expect(address?.["allOf"]).toBeUndefined();
+      expect(address?.["additionalProperties"]).toBe(false);
+      expect(address?.["properties"]).toEqual({
+        city: { type: "string" },
+        missing: { minLength: 1 },
+      });
+    });
+
+    it("merges declared and missing property overrides in the same flat object", () => {
+      // Mix: one path-target hits an existing property and another hits a
+      // missing property. Both must end up merged into a single sibling
+      // properties map on the flat object (no allOf in either case).
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "address",
+          type: {
+            kind: "object",
+            properties: [
+              {
+                name: "city",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: [],
+                provenance: PROVENANCE,
+              },
+            ],
+            additionalProperties: true,
+          },
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 2,
+              path: { segments: ["city"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+            {
+              kind: "constraint",
+              constraintKind: "minLength",
+              value: 1,
+              path: { segments: ["postalCode"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const address = schema.properties?.["address"] as Record<string, unknown> | undefined;
+
+      expect(address?.["allOf"]).toBeUndefined();
+      expect(address?.["type"]).toBe("object");
+      expect(address?.["properties"]).toEqual({
+        city: { type: "string", minLength: 2 },
+        postalCode: { minLength: 1 },
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Prototype-pollution hardening
+    // -------------------------------------------------------------------------
+    //
+    // Path-targeted constraints accept arbitrary strings as path segments
+    // (they come from user TSDoc tags like `@minimum :<segment> 0`). When a
+    // segment is named `__proto__` or `constructor`, a naive `obj[segment] = ...`
+    // assignment would either invoke the `Object.prototype.__proto__` setter
+    // (dropping the constraint and mutating prototypes) or match an inherited
+    // `Object.prototype` member (mis-merging the constraint into prototype
+    // methods). Both cases are closed by:
+    //
+    //   - `buildPropertyOverrides`: null-prototype `overrides` map populated
+    //     via `Object.defineProperty`, so `__proto__`-named segments survive
+    //     as own properties all the way to Site 1.
+    //   - `applyPathTargetedConstraints` Site 1: `Object.hasOwn` +
+    //     `Object.defineProperty` on `schema.properties`, so neither
+    //     inherited-member matching nor the `__proto__` setter can trigger.
+    //
+    // @see https://github.com/mike-north/formspec/issues/382
+    describe("prototype-pollution hardening (#382)", () => {
+      it("declares a path target named `constructor` as an own property without touching Object.prototype.constructor", () => {
+        // Without `Object.hasOwn`, `"constructor" in schema.properties` would
+        // match the inherited `Object.prototype.constructor` and the override
+        // would take the existing-property branch, merging the schema into the
+        // `constructor` function. With `Object.hasOwn`, inherited members are
+        // rejected and the override lands as an own property instead.
+        const ir: FormIR = makeIR([
+          {
+            kind: "field",
+            name: "payload",
+            type: {
+              kind: "object",
+              properties: [],
+              additionalProperties: true,
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 1,
+                path: { segments: ["constructor"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ]);
+
+        const schema = generateJsonSchemaFromIR(ir);
+        const payload = schema.properties?.["payload"] as Record<string, unknown> | undefined;
+        const props = payload?.["properties"] as Record<string, unknown> | undefined;
+
+        // Object.prototype.constructor still points at Object — we did not
+        // mutate or shadow the inherited method.
+        expect(Object.prototype.constructor).toBe(Object);
+        // The override landed as an own property on the properties map, not
+        // on the prototype.
+        expect(Object.hasOwn(props ?? {}, "constructor")).toBe(true);
+        expect(props?.["constructor"]).toEqual({ minLength: 1 });
+      });
+
+      it("declares a path target named `__proto__` as an own property without mutating the prototype chain", () => {
+        // Without `Object.create(null)` + `Object.defineProperty`, this test
+        // would either drop the constraint silently (plain `{}` map +
+        // bracket-assign invokes the `__proto__` setter and
+        // `Object.entries(...)` returns `[]`) or mutate `schema.properties`'s
+        // `[[Prototype]]`. The hardening produces a real own property.
+        const protoSnapshot = Object.getOwnPropertyNames(Object.prototype).sort();
+        const ir: FormIR = makeIR([
+          {
+            kind: "field",
+            name: "payload",
+            type: {
+              kind: "object",
+              properties: [],
+              additionalProperties: true,
+            },
+            required: true,
+            constraints: [
+              {
+                kind: "constraint",
+                constraintKind: "minLength",
+                value: 1,
+                path: { segments: ["__proto__"] },
+                provenance: TSDOC_PROVENANCE,
+              },
+            ],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ]);
+
+        const schema = generateJsonSchemaFromIR(ir);
+        const payload = schema.properties?.["payload"] as Record<string, unknown> | undefined;
+        const props = payload?.["properties"] as Record<string, unknown> | undefined;
+
+        // The override landed as a real own property — Object.hasOwn returns
+        // true and the value is the expected override schema. This is the
+        // signature of a successful `Object.defineProperty` path; a plain
+        // `obj["__proto__"] = value` would have replaced [[Prototype]]
+        // instead, leaving no own property.
+        expect(Object.hasOwn(props ?? {}, "__proto__")).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(props, "__proto__")?.value).toEqual({
+          minLength: 1,
+        });
+        // Object.prototype is untouched — the global prototype chain is not
+        // mutated as a side-effect of emission.
+        expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(protoSnapshot);
+      });
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Site 2: pre-composed `allOf` base schema
+  // ---------------------------------------------------------------------------
+  //
+  // Pre-composed `allOf` schemas reach `applyPathTargetedConstraints` when a
+  // custom-type extension returns an `allOf` schema from `toJsonSchema`. The
+  // fix flattens to siblings when expressible under JSON Schema 2020-12 (i.e.,
+  // the allOf has exactly one member that is a `$ref`-shaped schema whose
+  // keys do not conflict with the overrides), and retains `allOf` only when
+  // the composition cannot be expressed as siblings.
+  //
+  // @see https://github.com/mike-north/formspec/issues/382 Site 2
+  describe("Site 2: pre-composed allOf base (#382)", () => {
+    function makeCustomTypeRegistry(jsonSchema: Record<string, unknown>) {
+      const customType = defineCustomType({
+        typeName: "ComposedMoney",
+        toJsonSchema: () => jsonSchema,
+      });
+      const extension = defineExtension({
+        extensionId: "x-test/composed",
+        types: [customType],
+      });
+      return createExtensionRegistry([extension]);
+    }
+
+    function moneyNode(): CustomTypeNode {
+      return {
+        kind: "custom",
+        typeId: "x-test/composed/ComposedMoney",
+        payload: undefined,
+      };
+    }
+
+    it("flattens allOf with a single $ref member into sibling keywords", () => {
+      // Base: custom type returns `{ allOf: [{ $ref: "#/$defs/X" }] }`.
+      // With a path-targeted override, pre-fix output is
+      // `{ allOf: [{ $ref: ... }, { properties: ... }] }`. The fix lifts the
+      // $ref up and attaches the override as a sibling:
+      // `{ $ref: "#/$defs/X", properties: {...} }`.
+      const registry = makeCustomTypeRegistry({
+        allOf: [{ $ref: "#/$defs/BaseMoney" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Regression guard — must not be wrapped in allOf.
+      expect(totalProp?.["allOf"]).toBeUndefined();
+      // Siblings must be lifted: $ref and properties both at the top level.
+      expect(totalProp?.["$ref"]).toBe("#/$defs/BaseMoney");
+      expect(totalProp?.["properties"]).toEqual({ value: { minimum: 0 } });
+    });
+
+    it("retains allOf when the composition has multiple members (not expressible as siblings)", () => {
+      // Genuine non-sibling composition: two independent $ref members cannot
+      // both appear as siblings — one $ref per schema. `allOf` is the correct
+      // shape here. This guards against over-flattening.
+      const registry = makeCustomTypeRegistry({
+        allOf: [{ $ref: "#/$defs/BaseA" }, { $ref: "#/$defs/BaseB" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // allOf is genuinely required here, and the override is appended.
+      expect(totalProp?.["allOf"]).toBeDefined();
+      const allOf = totalProp?.["allOf"] as Record<string, unknown>[];
+      // Original members preserved, override appended.
+      expect(allOf).toEqual([
+        { $ref: "#/$defs/BaseA" },
+        { $ref: "#/$defs/BaseB" },
+        { properties: { value: { minimum: 0 } } },
+      ]);
+    });
+
+    it("retains allOf when the single member has a conflicting `properties` key", () => {
+      // The single allOf member declares its own `properties`, so lifting it
+      // up alongside the override's `properties` would silently overwrite one
+      // side. Keep `allOf` to preserve both contributions under 2020-12
+      // evaluation semantics.
+      const registry = makeCustomTypeRegistry({
+        allOf: [
+          {
+            $ref: "#/$defs/BaseMoney",
+            properties: { currency: { type: "string" } },
+          },
+        ],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Flattening would conflict — allOf must remain.
+      expect(totalProp?.["allOf"]).toBeDefined();
+    });
+
+    it("retains allOf when an outer sibling keyword would collide with a member key", () => {
+      // Custom type returns an outer schema that already carries a top-level
+      // keyword (`type`) alongside its `allOf`, and the sole member declares
+      // the same keyword with a different value. Flattening would lift the
+      // member's `type` up and silently overwrite the outer's version —
+      // `tryFlattenAllOfToSiblings` must detect the outer↔member overlap and
+      // fall back to appending the override as an `allOf` member.
+      //
+      // This branch is reachable only from external `toJsonSchema` hooks
+      // (the in-tree emitter never produces outer keywords beside allOf),
+      // so without this test a regression in the outer↔member check would
+      // go unnoticed.
+      const registry = makeCustomTypeRegistry({
+        type: "object",
+        allOf: [{ type: "string" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Flattening would clobber `type: "object"` with `type: "string"` —
+      // allOf must remain.
+      expect(totalProp?.["allOf"]).toBeDefined();
+      // Outer `type` is preserved as a top-level sibling (not replaced by
+      // the member's value).
+      expect(totalProp?.["type"]).toBe("object");
+    });
+
+    it("retains allOf when an outer sibling keyword would collide with the override key", () => {
+      // Custom type returns an outer schema carrying `properties` alongside
+      // its `allOf`, and the path-targeted override also contributes
+      // `properties`. Flattening would lift the member up and then overwrite
+      // the outer's `properties` with the override — losing the outer's
+      // declared members. `tryFlattenAllOfToSiblings` must detect the
+      // outer↔override overlap and fall back to appending to `allOf`.
+      const registry = makeCustomTypeRegistry({
+        properties: { currency: { type: "string" } },
+        allOf: [{ $ref: "#/$defs/BaseMoney" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Flattening would clobber the outer's `properties.currency` with the
+      // override's `properties.value` — allOf must remain.
+      expect(totalProp?.["allOf"]).toBeDefined();
+      // Outer `properties.currency` survives as a top-level sibling,
+      // unmodified by the override contribution.
+      expect(totalProp?.["properties"]).toEqual({ currency: { type: "string" } });
     });
   });
 });

@@ -426,40 +426,29 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 }
 
 /**
- * Applies path-targeted constraints to a schema.
+ * Applies path-targeted constraints to a schema using JSON Schema 2020-12
+ * sibling keywords wherever possible.
  *
- * Emission-shape policy (see issues #364 and #366):
+ * For $ref schemas: merges property overrides as sibling keywords alongside
+ * `$ref`. JSON Schema 2020-12 §10.2.1 allows keywords to appear next to
+ * `$ref`; the draft-07 restriction that required `allOf` composition no
+ * longer applies. Sibling emission preserves `$defs` deduplication and
+ * produces leaner output downstream renderers can consume directly (#364).
  *
- * | Base schema shape                                        | Emission            |
- * |----------------------------------------------------------|---------------------|
- * | array                                                    | recurse into items  |
- * | nullable oneOf                                           | recurse into value  |
- * | `$ref`                                                   | sibling keywords    |
- * | inline object, override targets an existing property     | flat in-place merge |
- * | inline object, missing property, open base               | flat merge          |
- * | inline object, missing property, closed base             | `allOf` composition |
- * |   (`additionalProperties: false` or a schema)            |                     |
- * | already-composed `allOf`                                 | append `allOf` arm  |
- * | other (non-object, non-$ref)                             | unchanged           |
+ * For inline object schemas: merges property overrides flat into
+ * `properties`. Declaring the key in `properties` legitimizes it regardless
+ * of `additionalProperties`, so no `allOf` wrapper is needed even when the
+ * base is closed (#366, #382 Site 1).
  *
- * JSON Schema 2020-12 §10.2.1 permits every keyword to appear alongside
- * `$ref`, so the `$ref` branch emits overrides as siblings — the draft-07
- * restriction that forced `allOf` composition no longer applies (#364).
- * Sibling emission also preserves `$defs` deduplication and produces leaner
- * output downstream renderers can consume directly.
+ * For already-composed `allOf` schemas: flatten to siblings when the
+ * composition is expressible that way under 2020-12; otherwise append the
+ * override as another `allOf` member (#382 Site 2).
  *
- * "Closed" is treated as two distinct cases that both prevent a safe flat
- * merge, for different reasons:
- *   - `additionalProperties: false` — the new key is outright rejected by the
- *     base, so a flat merge would change the allowed-key set silently.
- *   - `additionalProperties: <schema>` — the new key is permitted but must
- *     also validate against the sub-schema; a flat merge would drop that
- *     intersection. (Today's IR does not emit this shape on an inline
- *     `properties`-bearing object, but the check is defensive against future
- *     emitters and custom extension `toJsonSchema` output.)
+ * For array schemas: recurse into the `items` sub-schema.
  *
  * @see https://github.com/mike-north/formspec/issues/364
  * @see https://github.com/mike-north/formspec/issues/366
+ * @see https://github.com/mike-north/formspec/issues/382
  * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
  */
 function applyPathTargetedConstraints(
@@ -517,43 +506,55 @@ function applyPathTargetedConstraints(
     };
   }
 
-  // Inline object schema: merge property overrides directly where possible.
-  // See the function-level docstring for the emission-shape policy.
+  // Inline object schema: merge property overrides directly into siblings.
+  //
+  // Previously missing-property overrides were composed via `allOf` to keep
+  // `additionalProperties` semantics intact. JSON Schema 2020-12 (§10.2.1)
+  // lets us express this as a single flat object: merge the override into
+  // `properties` (which legitimizes the key even under
+  // `additionalProperties: false`) and preserve `additionalProperties`/`type`
+  // as siblings. Downstream renderers that do not unwrap `allOf` can now see
+  // the override. (Fixes #366 and #382 Site 1.)
   if (schema.type === "object" && schema.properties) {
-    const baseProperties = schema.properties;
-    const isClosed = isClosedObjectSchema(schema);
-    const missingOverrides: Record<string, JsonSchema2020> = {};
-
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
-      const existing = baseProperties[target];
-      if (existing !== undefined) {
-        // Existing property: merge override into the existing sub-schema.
-        mergeSchemaOverride(existing, overrideSchema);
-      } else if (isClosed) {
-        // Closed base: defer to allOf composition so the base's closed-ness
-        // is preserved. Shallow-clone so the emitted IR does not alias the
-        // override object produced by `buildPropertyOverrides`.
-        missingOverrides[target] = { ...overrideSchema };
-      } else {
-        // Open base: flat-merge by materialising the override onto a fresh
-        // slot in the base's `properties`. Equivalent to allOf composition
-        // under 2020-12 when `additionalProperties` is true/undefined.
-        baseProperties[target] = { ...overrideSchema };
+      // Own-property lookup + defineProperty guard against prototype-pollution
+      // vectors when a path target names a key like `__proto__`:
+      //   - Plain `obj[target] = value` assignment with target === "__proto__"
+      //     invokes the Object.prototype `__proto__` setter, replacing the
+      //     object's [[Prototype]] instead of adding an own property.
+      //   - `Object.defineProperty` bypasses the setter and writes an own
+      //     data property, so the override lands where we expect.
+      // `Object.hasOwn` (not `in`) rejects inherited members like
+      // `constructor`, avoiding a mis-merge into Object.prototype.constructor.
+      if (Object.hasOwn(schema.properties, target)) {
+        const existing = schema.properties[target];
+        if (existing) {
+          mergeSchemaOverride(existing, overrideSchema);
+          continue;
+        }
       }
+      Object.defineProperty(schema.properties, target, {
+        value: overrideSchema,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
-
-    if (Object.keys(missingOverrides).length === 0) {
-      return schema;
-    }
-
-    return {
-      allOf: [schema, { properties: missingOverrides }],
-    };
+    return schema;
   }
 
-  // allOf schema (already composed): add property overrides as another member.
+  // Pre-composed allOf base: flatten to siblings when the composition is
+  // expressible that way under 2020-12; otherwise append as a new allOf
+  // member. Expressible-as-siblings means the allOf has a single member whose
+  // keys do not conflict with the override's keys (mirrors the $ref-sibling
+  // fix in #365 above). (Fixes #382 Site 2.)
   if (schema.allOf) {
-    schema.allOf = [...schema.allOf, { properties: propertyOverrides }];
+    const overrideMember: JsonSchema2020 = { properties: propertyOverrides };
+    const flattened = tryFlattenAllOfToSiblings(schema, overrideMember);
+    if (flattened !== undefined) {
+      return flattened;
+    }
+    schema.allOf = [...schema.allOf, overrideMember];
     return schema;
   }
 
@@ -958,13 +959,27 @@ function buildPropertyOverrides(
     byTarget.set(target, grouped);
   }
 
-  const overrides: Record<string, JsonSchema2020> = {};
+  // Null-prototype map so path-targeted keys like `__proto__` or `constructor`
+  // become own properties rather than invoking Object.prototype setters or
+  // matching inherited members. This is the upstream half of the
+  // prototype-pollution hardening at Site 1 in `applyPathTargetedConstraints`:
+  // without it, `overrides["__proto__"] = ...` replaces this map's own
+  // [[Prototype]] and `Object.entries(overrides)` yields `[]`, silently
+  // dropping the constraint before the Site 1 guard can run.
+  const overrides = Object.create(null) as Record<string, JsonSchema2020>;
   for (const [target, constraints] of byTarget) {
-    overrides[resolveSerializedPropertyName(target, typeNode, ctx)] = buildPathOverrideSchema(
+    const resolvedName = resolveSerializedPropertyName(target, typeNode, ctx);
+    const schema = buildPathOverrideSchema(
       constraints.map(stripLeadingPathSegment),
       resolveTargetTypeNode(target, typeNode, ctx),
       ctx
     );
+    Object.defineProperty(overrides, resolvedName, {
+      value: schema,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
 
   return overrides;
@@ -1003,6 +1018,75 @@ function buildPathOverrideSchema(
   return schema;
 }
 
+/**
+ * Attempts to flatten a pre-composed `allOf` schema into sibling keywords
+ * when the JSON Schema 2020-12 evaluation semantics allow it.
+ *
+ * Flattening is safe when the allOf has **exactly one** member and that
+ * member's keys do not collide with either the outer schema's keys or the
+ * new override member's keys. In that case we lift the single member's
+ * keys up alongside the outer schema and attach the override as siblings —
+ * producing `{ <outer keys...>, <member keys...>, <override keys...> }`.
+ *
+ * When flattening is not safe (multiple members, or key collisions that
+ * would silently overwrite one contribution), returns `undefined` and the
+ * caller falls back to appending an `allOf` member.
+ *
+ * The single-member restriction is a conservative scope choice, not a
+ * JSON Schema 2020-12 semantic constraint. In-tree emission paths only
+ * ever produce single-member `allOf` wrappers. Multi-member `allOf`
+ * reaches this helper only from user-supplied `toJsonSchema` hooks,
+ * where the multiple members typically represent intentional composition
+ * that should not be silently flattened. Pairwise-disjoint N-member
+ * flattening is semantically valid but is not performed today because
+ * no current producer requires it.
+ *
+ * Mirrors the `$ref`-sibling fix at `ir-generator.ts:492-497` (issue #364).
+ *
+ * @see https://github.com/mike-north/formspec/issues/382 Site 2
+ * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
+ */
+function tryFlattenAllOfToSiblings(
+  schema: JsonSchema2020,
+  overrideMember: JsonSchema2020
+): JsonSchema2020 | undefined {
+  if (schema.allOf?.length !== 1) {
+    return undefined;
+  }
+
+  // Defensive-only; required under `noUncheckedIndexedAccess`.
+  const [soleMember] = schema.allOf;
+  if (soleMember === undefined) {
+    return undefined;
+  }
+
+  // Outer schema sans allOf — what the siblings would sit next to.
+  const { allOf: _allOf, ...outerRest } = schema;
+
+  const outerKeys = new Set(Object.keys(outerRest));
+  const memberKeys = new Set(Object.keys(soleMember));
+  const overrideKeys = new Set(Object.keys(overrideMember));
+
+  // Any overlap between the three contributions would silently overwrite
+  // one side — keep `allOf` to preserve both under 2020-12 evaluation.
+  for (const key of memberKeys) {
+    if (outerKeys.has(key) || overrideKeys.has(key)) {
+      return undefined;
+    }
+  }
+  for (const key of overrideKeys) {
+    if (outerKeys.has(key)) {
+      return undefined;
+    }
+  }
+
+  return {
+    ...outerRest,
+    ...soleMember,
+    ...overrideMember,
+  };
+}
+
 function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): void {
   const nullableValueBranch = getNullableUnionValueSchema(target);
   if (nullableValueBranch !== undefined) {
@@ -1011,11 +1095,25 @@ function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): 
   }
 
   if (override.properties !== undefined) {
-    const mergedProperties = target.properties ?? {};
+    // Fresh maps use a null prototype so `__proto__`-named path segments can
+    // land as own properties. Existing maps are preserved as-is — when they
+    // came from `buildPropertyOverrides` they are already null-prototype; when
+    // they came from an external `toJsonSchema` hook they are a plain object
+    // whose own-property shape we do not modify.
+    const mergedProperties =
+      target.properties ?? (Object.create(null) as Record<string, JsonSchema2020>);
     for (const [name, propertyOverride] of Object.entries(override.properties)) {
-      const existing = mergedProperties[name];
+      const existing = Object.hasOwn(mergedProperties, name) ? mergedProperties[name] : undefined;
       if (existing === undefined) {
-        mergedProperties[name] = propertyOverride;
+        // `defineProperty` bypasses the `__proto__` setter on regular-prototype
+        // maps; safe no-op on null-prototype maps. See the hardening comment
+        // at Site 1 in `applyPathTargetedConstraints` for the full rationale.
+        Object.defineProperty(mergedProperties, name, {
+          value: propertyOverride,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
       } else {
         mergeSchemaOverride(existing, propertyOverride);
       }
@@ -1035,7 +1133,17 @@ function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): 
     if (key === "properties" || key === "items") {
       continue;
     }
-    (target as Record<string, unknown>)[key] = value;
+    // `defineProperty` guards against the same prototype-pollution vector as
+    // the nested-properties branch above, for completeness. Schema keywords
+    // like `minimum`/`type` are never `__proto__`, but callers reach this
+    // code path through recursion from path-targeted overrides where the
+    // boundary is not locally enforceable.
+    Object.defineProperty(target, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
 }
 
@@ -1055,27 +1163,6 @@ function stripLeadingPathSegment(constraint: ConstraintNode): ConstraintNode {
     ...constraint,
     path: { segments: rest },
   };
-}
-
-/**
- * Returns true if the given object schema cannot safely absorb a new property
- * via a flat merge — either because `additionalProperties: false` rejects
- * unknown keys, or because `additionalProperties: <schema>` would drop the
- * validation intersection on the newly merged key.
- *
- * `JsonSchema2020.additionalProperties` is typed `boolean | JsonSchema2020 |
- * undefined`, so only `false` and a sub-schema object are "closed"; `true` /
- * `undefined` are treated as open. The `typeof === "object"` case is
- * defensive — today's IR emitters do not produce an inline
- * `properties`-bearing object with a sub-schema `additionalProperties`, but
- * custom extension `toJsonSchema` hooks can.
- */
-function isClosedObjectSchema(schema: JsonSchema2020): boolean {
-  const additional = schema.additionalProperties;
-  if (additional === false) {
-    return true;
-  }
-  return typeof additional === "object";
 }
 
 function getNullableUnionValueSchema(schema: JsonSchema2020): JsonSchema2020 | undefined {

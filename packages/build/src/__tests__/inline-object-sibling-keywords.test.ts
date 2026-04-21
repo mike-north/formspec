@@ -1,16 +1,18 @@
 /**
  * Regression tests for issue #366: path-targeted constraints on missing
- * properties of an inline object schema should merge flat into `properties`
- * (no `allOf`) when `additionalProperties` is not `false`.
+ * properties of an inline object schema must merge flat into `properties`
+ * — no `allOf` wrapper — under JSON Schema 2020-12.
  *
  * Prior to the fix, any path-targeted constraint whose target property was
  * absent from `schema.properties` was composed via `allOf`, producing:
  *   { allOf: [<base>, { properties: { missing: ... } }] }
- * Under JSON Schema 2020-12, when `additionalProperties` is `true` or
- * omitted, merging directly into `properties` is semantically equivalent
- * and avoids the `allOf` wrapper.
+ * JSON Schema 2020-12 §10.2.1 lets us express this as a single flat
+ * schema: declaring the key in `properties` legitimizes it regardless of
+ * the `additionalProperties` value, so the `allOf` wrapper is never needed
+ * (the broader policy is tracked by #382 Site 1).
  *
  * @see https://github.com/mike-north/formspec/issues/366
+ * @see https://github.com/mike-north/formspec/issues/382
  * @see https://json-schema.org/draft/2020-12/json-schema-core
  */
 
@@ -95,9 +97,8 @@ function getProperty(schema: JsonSchema2020, name: string): JsonSchema2020 {
 describe("inline object: path-targeted constraints on missing properties (issue #366)", () => {
   /**
    * Case 1 (the fix): missing property, additionalProperties: true.
-   * The constraint target ("street") does not exist in schema.properties,
-   * but additionalProperties allows extra keys. The fix merges the override
-   * directly into properties — no allOf wrapper.
+   * The constraint target ("street") does not exist in schema.properties.
+   * The fix merges the override directly into properties — no allOf wrapper.
    */
   it("merges missing-property override flat into properties when additionalProperties is true", () => {
     const ir = makeIR([
@@ -139,13 +140,14 @@ describe("inline object: path-targeted constraints on missing properties (issue 
   });
 
   /**
-   * Case 2: additionalProperties: false — must retain allOf wrapping.
-   * Merging a new property into `properties` on an additionalProperties:false
-   * base still rejects values that provide that property (unless explicitly
-   * listed), so we keep the pre-fix allOf composition as the least-wrong
-   * behavior until a follow-up introduces a proper warning.
+   * Case 2: additionalProperties: false — still flat-merges (no allOf).
+   * Under 2020-12, declaring the new key in `properties` legitimizes it
+   * regardless of the `additionalProperties` value — `additionalProperties`
+   * only governs keys NOT listed in `properties` / `patternProperties`. The
+   * flat merge is therefore semantically sound even on a closed base
+   * (#382 Site 1 subsumes the conservative #366 allOf retention).
    */
-  it("retains allOf wrapping when additionalProperties is false (intended pre-fix behavior)", () => {
+  it("flat-merges a missing-property override even when additionalProperties is false", () => {
     const ir = makeIR([
       {
         kind: "field",
@@ -174,21 +176,14 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     const schema = generateJsonSchemaFromIR(ir);
     const address = getProperty(schema, "address");
 
-    // Retained behavior: allOf composition is used to avoid widening the
-    // additionalProperties:false constraint on the base object.
-    const allOf = address.allOf;
-    if (allOf === undefined) throw new Error("expected allOf composition to be emitted");
-    expect(allOf).toHaveLength(2);
-    // The base object lives inside allOf[0] with its closed-schema marker.
-    const [base, overridesArm] = allOf;
-    if (base === undefined) throw new Error("expected base schema in allOf[0]");
-    if (overridesArm === undefined) throw new Error("expected override arm in allOf[1]");
-    expect(base.type).toBe("object");
-    expect(base.additionalProperties).toBe(false);
-    // The second arm carries the missing-property override.
-    expect(overridesArm.properties).toEqual({ street: { minLength: 1 } });
-    // The outer object must not duplicate the base `type` keyword.
-    expect(address.type).toBeUndefined();
+    // No allOf wrapper — the override is merged flat into `properties`.
+    expect(address.allOf).toBeUndefined();
+    expect(address.type).toBe("object");
+    // `additionalProperties: false` is preserved as a sibling — the newly
+    // declared property in `properties` is accepted by the base.
+    expect(address.additionalProperties).toBe(false);
+    expect(getProperty(address, "city")).toEqual({ type: "string" });
+    expect(getProperty(address, "street")).toEqual({ minLength: 1 });
   });
 
   /**
