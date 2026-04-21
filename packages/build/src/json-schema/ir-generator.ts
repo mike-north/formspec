@@ -496,32 +496,39 @@ function applyPathTargetedConstraints(
     };
   }
 
-  // Inline object schema: merge property overrides directly where possible.
+  // Inline object schema: merge property overrides directly into siblings.
+  //
+  // Previously missing-property overrides were composed via `allOf` to keep
+  // `additionalProperties` semantics intact. JSON Schema 2020-12 (§10.2.1)
+  // lets us express this as a single flat object: merge the override into
+  // `properties` (which legitimizes the key even under
+  // `additionalProperties: false`) and preserve `additionalProperties`/`type`
+  // as siblings. Downstream renderers that do not unwrap `allOf` can now see
+  // the override. (Fixes #382 Site 1.)
   if (schema.type === "object" && schema.properties) {
-    const missingOverrides: Record<string, JsonSchema2020> = {};
-
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
-      if (schema.properties[target]) {
-        mergeSchemaOverride(schema.properties[target], overrideSchema);
+      const existing = schema.properties[target];
+      if (existing) {
+        mergeSchemaOverride(existing, overrideSchema);
       } else {
-        // Do not introduce new properties directly; compose via allOf instead
-        // to preserve additionalProperties semantics on the base object.
-        missingOverrides[target] = overrideSchema;
+        schema.properties[target] = overrideSchema;
       }
     }
-
-    if (Object.keys(missingOverrides).length === 0) {
-      return schema;
-    }
-
-    return {
-      allOf: [schema, { properties: missingOverrides }],
-    };
+    return schema;
   }
 
-  // allOf schema (already composed): add property overrides as another member.
+  // Pre-composed allOf base: flatten to siblings when the composition is
+  // expressible that way under 2020-12; otherwise append as a new allOf
+  // member. Expressible-as-siblings means the allOf has a single member whose
+  // keys do not conflict with the override's keys (mirrors the $ref-sibling
+  // fix in #365 above). (Fixes #382 Site 2.)
   if (schema.allOf) {
-    schema.allOf = [...schema.allOf, { properties: propertyOverrides }];
+    const overrideMember: JsonSchema2020 = { properties: propertyOverrides };
+    const flattened = tryFlattenAllOfToSiblings(schema, overrideMember);
+    if (flattened !== undefined) {
+      return flattened;
+    }
+    schema.allOf = [...schema.allOf, overrideMember];
     return schema;
   }
 
@@ -969,6 +976,65 @@ function buildPathOverrideSchema(
 
   schema.properties = buildPropertyOverrides(nestedConstraints, effectiveType, ctx);
   return schema;
+}
+
+/**
+ * Attempts to flatten a pre-composed `allOf` schema into sibling keywords
+ * when the JSON Schema 2020-12 evaluation semantics allow it.
+ *
+ * Flattening is safe when the allOf has **exactly one** member and that
+ * member's keys do not collide with either the outer schema's keys or the
+ * new override member's keys. In that case we lift the single member's
+ * keys up alongside the outer schema and attach the override as siblings —
+ * producing `{ <outer keys...>, <member keys...>, <override keys...> }`.
+ *
+ * When flattening is not safe (multiple members, or key collisions that
+ * would silently overwrite one contribution), returns `undefined` and the
+ * caller falls back to appending an `allOf` member.
+ *
+ * Mirrors the `$ref`-sibling fix at `ir-generator.ts:492-497` (issue #364).
+ *
+ * @see https://github.com/mike-north/formspec/issues/382 Site 2
+ * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
+ */
+function tryFlattenAllOfToSiblings(
+  schema: JsonSchema2020,
+  overrideMember: JsonSchema2020
+): JsonSchema2020 | undefined {
+  if (schema.allOf?.length !== 1) {
+    return undefined;
+  }
+
+  const [soleMember] = schema.allOf;
+  if (soleMember === undefined) {
+    return undefined;
+  }
+
+  // Outer schema sans allOf — what the siblings would sit next to.
+  const { allOf: _allOf, ...outerRest } = schema;
+
+  const outerKeys = new Set(Object.keys(outerRest));
+  const memberKeys = Object.keys(soleMember);
+  const overrideKeys = Object.keys(overrideMember);
+
+  // Any overlap between the three contributions would silently overwrite
+  // one side — keep `allOf` to preserve both under 2020-12 evaluation.
+  for (const key of memberKeys) {
+    if (outerKeys.has(key) || overrideKeys.includes(key)) {
+      return undefined;
+    }
+  }
+  for (const key of overrideKeys) {
+    if (outerKeys.has(key)) {
+      return undefined;
+    }
+  }
+
+  return {
+    ...outerRest,
+    ...soleMember,
+    ...overrideMember,
+  };
 }
 
 function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): void {
