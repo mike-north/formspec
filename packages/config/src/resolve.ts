@@ -29,6 +29,9 @@ export interface ResolvedFormSpecConfig {
  * Resolves the effective config for a specific file by matching against
  * the `packages` glob map and merging with root-level settings.
  *
+ * Package overrides are evaluated in declaration order — the first matching
+ * pattern wins. Declare more specific patterns before broader ones.
+ *
  * @param config - The root FormSpecConfig
  * @param filePath - Absolute or relative path to the file being processed
  * @param configDir - Directory containing the config file (for relative path resolution)
@@ -41,7 +44,8 @@ export function resolveConfigForFile(
   filePath: string,
   configDir: string
 ): ResolvedFormSpecConfig {
-  const merged = mergePackageOverridesForFile(config, filePath, configDir);
+  const override = findMatchingOverride(config.packages, filePath, configDir);
+  const merged = applyOverride(config, override);
 
   return {
     extensions: merged.extensions ?? [],
@@ -50,30 +54,6 @@ export function resolveConfigForFile(
     vendorPrefix: merged.vendorPrefix ?? "x-formspec",
     enumSerialization: merged.enumSerialization ?? "enum",
   };
-}
-
-/**
- * Merges matching package overrides into the root `FormSpecConfig` without
- * filling in defaults. Unlike {@link resolveConfigForFile}, this preserves the
- * original shape of optional fields — most importantly, `extensions` stays
- * `undefined` when the user did not configure any. Callers that hand the
- * result to schema-generation APIs as `options.config` should use this helper
- * so that omitted fields remain omitted.
- *
- * @param config - The root FormSpecConfig
- * @param filePath - Absolute or relative path to the file being processed
- * @param configDir - Directory containing the config file (for relative path resolution)
- * @returns A `FormSpecConfig` with the first matching package override applied
- *
- * @public
- */
-export function mergePackageOverridesForFile(
-  config: FormSpecConfig,
-  filePath: string,
-  configDir: string
-): FormSpecConfig {
-  const override = findMatchingOverride(config.packages, filePath, configDir);
-  return applyOverride(config, override);
 }
 
 /**

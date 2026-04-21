@@ -32,8 +32,8 @@ import {
 } from "@formspec/build/internals";
 import type { LoadedFormSpecSchemas, ValidationResult } from "@formspec/build/internals";
 import type { FormIR } from "@formspec/core/internals";
-import { loadFormSpecConfig, mergePackageOverridesForFile } from "@formspec/config";
-import type { FormSpecConfig } from "@formspec/config";
+import { loadFormSpecConfig, resolveConfigForFile } from "@formspec/config";
+import type { ResolvedFormSpecConfig } from "@formspec/config";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,
@@ -364,13 +364,9 @@ async function main(): Promise<void> {
   const options = parseArgs(args);
 
   // Load FormSpec config: explicit path takes precedence, otherwise auto-discover.
-  // We keep the merged config in its original `FormSpecConfig` shape so that
-  // fields the user did not configure (notably `extensions`) stay `undefined`
-  // when we hand the config off to schema-generation APIs. The build side
-  // treats `config.extensions !== undefined` as the signal to construct an
-  // extension registry — passing a shape that fills `extensions` with `[]`
-  // would force an empty registry to be built on every CLI run.
-  let effectiveConfig: FormSpecConfig | undefined;
+  // Per-file package-override resolution happens here so downstream schema
+  // generation sees the effective config for the specific source file.
+  let effectiveConfig: ResolvedFormSpecConfig | undefined;
   try {
     const configResult = await loadFormSpecConfig(
       options.configPath
@@ -378,8 +374,7 @@ async function main(): Promise<void> {
         : { searchFrom: path.dirname(path.resolve(options.filePath)) }
     );
     if (configResult.found) {
-      // Resolve package-scoped overrides against the specific source file the CLI is generating.
-      effectiveConfig = mergePackageOverridesForFile(
+      effectiveConfig = resolveConfigForFile(
         configResult.config,
         path.resolve(options.filePath),
         path.dirname(configResult.configPath)

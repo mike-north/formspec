@@ -116,6 +116,8 @@ export default defineFormSpecConfig({
       { label: "a string", source: `"smart-size"` },
       { label: "null", source: `null` },
       { label: "an array", source: `[]` },
+      { label: "a number", source: `42` },
+      { label: "a boolean", source: `true` },
     ] as const;
 
     for (const { label, source } of invalidTopLevelPackages) {
@@ -131,6 +133,7 @@ export default defineFormSpecConfig({
       { label: "null", source: `null` },
       { label: "an array", source: `[]` },
       { label: "a number", source: `42` },
+      { label: "a boolean", source: `true` },
       { label: "a string", source: `"oneOf"` },
     ] as const;
 

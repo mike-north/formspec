@@ -174,22 +174,20 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
   validatePackageOverrides(config.packages, filePath);
 }
 
-function validatePackageOverrides(
-  packages: unknown,
-  filePath: string
-): void {
+function validatePackageOverrides(packages: unknown, filePath: string): void {
   if (packages === undefined) {
     return;
   }
-  if (!isConfigOverrideRecord(packages)) {
+  if (!isStringKeyedRecord(packages)) {
     throw new Error(
       `Invalid config at ${filePath}: "packages" must be an object mapping glob patterns to override objects, got ${JSON.stringify(packages)}`
     );
   }
 
   for (const [pattern, override] of Object.entries(packages)) {
-    // Reject null/array/non-object overrides here so later nested validation reports a clear config error.
-    if (!isConfigOverrideRecord(override)) {
+    // Fail fast with a precise pointer rather than letting a later property access
+    // throw a raw `TypeError` against a non-object override value.
+    if (!isStringKeyedRecord(override)) {
       throw new Error(
         `Invalid config at ${filePath}: "packages[${JSON.stringify(pattern)}]" must be an override object, got ${JSON.stringify(override)}`
       );
@@ -202,15 +200,21 @@ function validatePackageOverrides(
   }
 }
 
-function isConfigOverrideRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+/**
+ * Full plain-object guard. Rejects arrays, wrapped primitives
+ * (`Object(10n)`), class instances (`new Map()`, `new Date()`), and
+ * symbol-keyed objects — shapes that would otherwise slip past a naive
+ * `typeof === "object"` check and silently defeat validation.
+ */
+function isStringKeyedRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null) return false;
+  if (Array.isArray(value)) return false;
+  if (Object.getPrototypeOf(value) !== Object.prototype) return false;
+  if (Object.getOwnPropertySymbols(value).length > 0) return false;
+  return true;
 }
 
-function validateEnumSerializationValue(
-  value: unknown,
-  label: string,
-  filePath: string
-): void {
+function validateEnumSerializationValue(value: unknown, label: string, filePath: string): void {
   if (value !== undefined && value !== "enum" && value !== "oneOf" && value !== "smart-size") {
     throw new Error(
       `Invalid config at ${filePath}: "${label}" must be "enum", "oneOf", or "smart-size", got ${JSON.stringify(value)}`
@@ -270,7 +274,10 @@ export async function loadFormSpecConfig(
     return { found: false };
   }
 
-  logger.debug("loading config file", { configPath: resolvedPath, source: configPath ? "explicit" : "discovered" });
+  logger.debug("loading config file", {
+    configPath: resolvedPath,
+    source: configPath ? "explicit" : "discovered",
+  });
   const config = await loadConfigFile(resolvedPath);
 
   return {

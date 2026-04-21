@@ -714,7 +714,9 @@ export function generateSchemasBatchFromProgram(
 }
 
 function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegistry {
-  return "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function";
+  return (
+    "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function"
+  );
 }
 
 /**
@@ -736,11 +738,15 @@ export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
   const legacyRegistry = options.extensionRegistry;
 
-  // Only construct the config registry if the deprecated field is absent.
-  // This avoids throwing on invalid config.extensions when the caller
-  // explicitly provided extensionRegistry (which takes precedence).
+  // Only construct the config registry if the deprecated field is absent and
+  // extensions were actually configured. Treating an empty array as "no
+  // registry" avoids building an empty registry (and emitting its debug log)
+  // when callers pass a defaults-filled `ResolvedFormSpecConfig` that sets
+  // `extensions: []` on behalf of users who never configured any.
   const configRegistry =
-    legacyRegistry === undefined && options.config?.extensions !== undefined
+    legacyRegistry === undefined &&
+    options.config?.extensions !== undefined &&
+    options.config.extensions.length > 0
       ? createExtensionRegistry(options.config.extensions)
       : undefined;
 
@@ -761,8 +767,11 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
   enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   metadata: MetadataPolicyInput | undefined;
 } {
+  // Treat `extensions: []` as "no registry" — see `resolveStaticOptions`
+  // above for the motivation (avoids building an empty registry when the
+  // caller passes a defaults-filled `ResolvedFormSpecConfig`).
   const configRegistry =
-    options.config?.extensions !== undefined
+    options.config?.extensions !== undefined && options.config.extensions.length > 0
       ? createExtensionRegistry(options.config.extensions)
       : undefined;
 

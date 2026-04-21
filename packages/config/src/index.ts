@@ -90,11 +90,7 @@ export {
 
 // Config factory + resolution
 export { defineFormSpecConfig } from "./define.js";
-export {
-  resolveConfigForFile,
-  mergePackageOverridesForFile,
-  type ResolvedFormSpecConfig,
-} from "./resolve.js";
+export { resolveConfigForFile, type ResolvedFormSpecConfig } from "./resolve.js";
 
 // Defaults
 export { DEFAULT_CONSTRAINTS, DEFAULT_CONFIG, mergeWithDefaults } from "./defaults.js";

@@ -4,24 +4,23 @@
  * @see ../resolve.ts
  */
 import { describe, it, expect } from "vitest";
-import { mergePackageOverridesForFile, resolveConfigForFile } from "../index.js";
+import { resolveConfigForFile } from "../index.js";
 import type { FormSpecConfig } from "../index.js";
 
 const CONFIG_DIR = "/fake/project";
 
-describe("mergePackageOverridesForFile", () => {
-  it("returns root config untouched when no packages overrides exist", () => {
+describe("resolveConfigForFile", () => {
+  it("returns root enumSerialization when no packages overrides exist", () => {
     const config: FormSpecConfig = { enumSerialization: "oneOf" };
 
-    const merged = mergePackageOverridesForFile(config, `${CONFIG_DIR}/src/forms.ts`, CONFIG_DIR);
+    const resolved = resolveConfigForFile(config, `${CONFIG_DIR}/src/forms.ts`, CONFIG_DIR);
 
-    expect(merged).toEqual(config);
+    expect(resolved.enumSerialization).toBe("oneOf");
   });
 
-  it("preserves undefined `extensions` when the user did not configure any", () => {
-    // Regression: callers that hand the merged config to schema-generation APIs
-    // rely on `extensions` remaining `undefined` so the build side does not
-    // construct an empty extension registry on every invocation.
+  it("fills in `extensions` with an empty array when the user did not configure any", () => {
+    // The build side treats `extensions: []` the same as `extensions: undefined`
+    // (no registry constructed), so filling this in is safe.
     const config: FormSpecConfig = {
       enumSerialization: "enum",
       packages: {
@@ -29,14 +28,22 @@ describe("mergePackageOverridesForFile", () => {
       },
     };
 
-    const merged = mergePackageOverridesForFile(
+    const resolved = resolveConfigForFile(
       config,
       `${CONFIG_DIR}/packages/api/src/forms.ts`,
       CONFIG_DIR
     );
 
-    expect(merged.extensions).toBeUndefined();
-    expect(merged.enumSerialization).toBe("oneOf");
+    expect(resolved.extensions).toEqual([]);
+    expect(resolved.enumSerialization).toBe("oneOf");
+  });
+
+  it("fills in the default vendorPrefix when not configured", () => {
+    const config: FormSpecConfig = { enumSerialization: "oneOf" };
+
+    const resolved = resolveConfigForFile(config, `${CONFIG_DIR}/src/forms.ts`, CONFIG_DIR);
+
+    expect(resolved.vendorPrefix).toBe("x-formspec");
   });
 
   it("applies the first matching package override's enumSerialization", () => {
@@ -48,13 +55,13 @@ describe("mergePackageOverridesForFile", () => {
       },
     };
 
-    const merged = mergePackageOverridesForFile(
+    const resolved = resolveConfigForFile(
       config,
       `${CONFIG_DIR}/packages/web/src/forms.ts`,
       CONFIG_DIR
     );
 
-    expect(merged.enumSerialization).toBe("smart-size");
+    expect(resolved.enumSerialization).toBe("smart-size");
   });
 
   it("falls back to the root value when no override pattern matches", () => {
@@ -65,34 +72,21 @@ describe("mergePackageOverridesForFile", () => {
       },
     };
 
-    const merged = mergePackageOverridesForFile(
+    const resolved = resolveConfigForFile(
       config,
       `${CONFIG_DIR}/packages/web/src/forms.ts`,
       CONFIG_DIR
     );
 
-    expect(merged.enumSerialization).toBe("oneOf");
-  });
-});
-
-describe("resolveConfigForFile", () => {
-  it("fills in `extensions` with an empty array when not configured", () => {
-    // `resolveConfigForFile` is the defaults-filled variant; it intentionally
-    // produces an always-defined `extensions` array. Consumers that need the
-    // pre-defaults shape should use `mergePackageOverridesForFile` instead.
-    const config: FormSpecConfig = { enumSerialization: "oneOf" };
-
-    const resolved = resolveConfigForFile(config, `${CONFIG_DIR}/src/forms.ts`, CONFIG_DIR);
-
-    expect(resolved.extensions).toEqual([]);
     expect(resolved.enumSerialization).toBe("oneOf");
-    expect(resolved.vendorPrefix).toBe("x-formspec");
   });
 
-  it("applies package overrides before filling defaults", () => {
+  it("returns the first matching override when two patterns both match (declaration order wins)", () => {
+    // Documents the first-match-wins contract on `resolveConfigForFile`.
     const config: FormSpecConfig = {
       enumSerialization: "enum",
       packages: {
+        "packages/**": { enumSerialization: "oneOf" },
         "packages/api/**": { enumSerialization: "smart-size" },
       },
     };
@@ -103,6 +97,6 @@ describe("resolveConfigForFile", () => {
       CONFIG_DIR
     );
 
-    expect(resolved.enumSerialization).toBe("smart-size");
+    expect(resolved.enumSerialization).toBe("oneOf");
   });
 });

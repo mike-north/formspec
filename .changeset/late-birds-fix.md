@@ -7,4 +7,4 @@
 "formspec": patch
 ---
 
-Fix `enumSerialization` handling after the smart-size release by validating malformed per-package overrides in `formspec.config.*` files and by making the CLI honor package-scoped `enumSerialization` overrides when generating schemas. The CLI now passes a merged `FormSpecConfig` (preserving the original `extensions` shape) to schema generation so an empty extension registry is not built on every run when no extensions are configured. `@formspec/config` gains a new `mergePackageOverridesForFile` helper that returns the merged config in its original shape without filling in defaults.
+Fix `enumSerialization` handling after the smart-size release by validating malformed per-package overrides in `formspec.config.*` files and by making the CLI honor package-scoped `enumSerialization` overrides when generating schemas. `@formspec/build` no longer constructs an empty extension registry when a caller passes a config with `extensions: []`, so a resolved config can be handed to schema generation without paying for registry setup that was never configured.
