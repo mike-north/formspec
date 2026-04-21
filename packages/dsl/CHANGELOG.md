@@ -1,5 +1,23 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.59
+
+### Patch Changes
+
+- [#359](https://github.com/mike-north/formspec/pull/359) [`90434b6`](https://github.com/mike-north/formspec/commit/90434b64a631ba4c909d9f9a0455d10ffdb8d34d) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@defaultValue` on custom-type fields emitting a value whose runtime type does not conform to the field's JSON Schema type.
+
+  For example, `@defaultValue 9.99` on a `Decimal` field (which maps to `{ type: "string" }`) previously produced `{ "default": 9.99 }` — a numeric default on a string-typed schema. The build pipeline now coerces the parsed literal through the custom-type registration before emitting it as the JSON Schema `default` keyword.
+
+  Coercion strategy (in priority order):
+  1. **Explicit hook**: if the `CustomTypeRegistration` provides a `serializeDefault` function, it is called with the parsed literal and the type payload. Extensions needing bespoke serialization (e.g., Date → ISO-8601 string) should use this hook.
+  2. **Inference fallback**: when no `serializeDefault` hook is present, the pipeline inspects the `type` keyword returned by `toJsonSchema`. If the emitted type is `"string"` and the parsed literal is a `number`, `boolean`, or `bigint`, it is coerced to a string. Other literal shapes (including objects and arrays) are left unchanged unless an explicit `serializeDefault` hook handles them.
+  3. **Pass-through**: non-custom types are unaffected; custom types without a matching registration are also passed through unchanged, as are custom-type literals not covered by the inference fallback.
+
+- [#369](https://github.com/mike-north/formspec/pull/369) [`abc56dc`](https://github.com/mike-north/formspec/commit/abc56dc390f280cfef9ee72eaf2c3e9683065ccb) Thanks [@mike-north](https://github.com/mike-north)! - Fix type-level `@format` inheritance on derived interfaces and classes (issue #367). When an interface or class extends a base that declares a type-level `@format`, the derived type's `$defs` entry now carries the inherited `format` keyword. Explicit `@format` on the derived type continues to win over the inherited value.
+
+- Updated dependencies [[`90434b6`](https://github.com/mike-north/formspec/commit/90434b64a631ba4c909d9f9a0455d10ffdb8d34d), [`abc56dc`](https://github.com/mike-north/formspec/commit/abc56dc390f280cfef9ee72eaf2c3e9683065ccb)]:
+  - @formspec/core@0.1.0-alpha.59
+
 ## 0.1.0-alpha.55
 
 ### Minor Changes

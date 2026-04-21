@@ -1,5 +1,19 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.59
+
+### Patch Changes
+
+- Updated dependencies [[`42f0898`](https://github.com/mike-north/formspec/commit/42f08983f68ee488d2b4a16c26ee6f15308a2767), [`90434b6`](https://github.com/mike-north/formspec/commit/90434b64a631ba4c909d9f9a0455d10ffdb8d34d), [`90e415b`](https://github.com/mike-north/formspec/commit/90e415b8c57f78fab7e8781df5d82914756f66fc), [`0e3ca17`](https://github.com/mike-north/formspec/commit/0e3ca175bcc530fb1ab0fcf488134a19e836484f), [`d70b55e`](https://github.com/mike-north/formspec/commit/d70b55e82027c76faa3d4459428f8fe5c547c9d6), [`0892d3b`](https://github.com/mike-north/formspec/commit/0892d3b37d7312b8ca260aa007238dea4fab5a3c), [`4419d24`](https://github.com/mike-north/formspec/commit/4419d24016bbce71c32dbeb872ccda6cc372564e), [`78c97e1`](https://github.com/mike-north/formspec/commit/78c97e15cabc2623480450143ca03b7e2380108d), [`ddfaca6`](https://github.com/mike-north/formspec/commit/ddfaca6d6838e09d88a1715685c182d72982b5f5), [`abc56dc`](https://github.com/mike-north/formspec/commit/abc56dc390f280cfef9ee72eaf2c3e9683065ccb), [`4716b37`](https://github.com/mike-north/formspec/commit/4716b37494f56c7d110cae6c3ef9ab4a130d45da), [`5cb3433`](https://github.com/mike-north/formspec/commit/5cb3433d1b209304a021620fd3891554db339ed7), [`af895d4`](https://github.com/mike-north/formspec/commit/af895d4a7aa923d0bd8f41731157dbe8db5a992f), [`87fac02`](https://github.com/mike-north/formspec/commit/87fac024c7cda6340b4b15644dcdae7979ce1099), [`f195a58`](https://github.com/mike-north/formspec/commit/f195a580b03e3b60193f5183374cd95ba42b7d15), [`23b4977`](https://github.com/mike-north/formspec/commit/23b497729defcaa5e909223dd97a055e20d077f0), [`3a90e08`](https://github.com/mike-north/formspec/commit/3a90e08c522dca31776f7c718261ab465b764208)]:
+  - @formspec/build@0.1.0-alpha.59
+  - @formspec/cli@0.1.0-alpha.59
+  - @formspec/eslint-plugin@0.1.0-alpha.59
+  - @formspec/core@0.1.0-alpha.59
+  - @formspec/analysis@0.1.0-alpha.59
+  - @formspec/dsl@0.1.0-alpha.59
+  - @formspec/language-server@0.1.0-alpha.59
+  - @formspec/ts-plugin@0.1.0-alpha.59
+
 ## 0.1.0-alpha.58
 
 ### Patch Changes
