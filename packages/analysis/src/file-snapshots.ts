@@ -1468,6 +1468,15 @@ function buildTagDiagnostics(
       //
       // When true: skip both the typed parser AND the synthetic checker and
       // emit "bypass" on the structured log — identical to the build consumer.
+      //
+      // TODO(Phase 5, residual from #325): this bypass prevents TYPE_MISMATCH
+      // on the integer field itself, but the synthetic batch checker can still
+      // fail to resolve the imported integer type in its supporting
+      // declarations — which pollutes *sibling* string-field constraints
+      // (@minLength/@maxLength) in the same declaration with spurious
+      // TYPE_MISMATCH. Scenarios 6 and 7 in file-snapshots.integer-bypass.test.ts
+      // pin the current behavior. Full resolution lands with Phase 5
+      // (synthetic-checker retirement) per docs/refactors/synthetic-checker-retirement.md.
       const isIntegerBypass =
         target === null &&
         _isIntegerBrandedType(stripNullishUnion(subjectType)) &&

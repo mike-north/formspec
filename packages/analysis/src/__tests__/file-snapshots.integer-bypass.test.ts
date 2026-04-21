@@ -32,6 +32,7 @@ import * as path from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
+import { createProgram } from "./helpers.js";
 
 // ---------------------------------------------------------------------------
 // Virtual multi-file program helper
@@ -170,37 +171,8 @@ const PRIMARY_FILE = "/virtual/importing.ts";
  * Build a snapshot from a single-file inline source string.
  */
 function snapshotFromSource(source: string): ReturnType<typeof buildFormSpecAnalysisFileSnapshot> {
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-  };
-  const host = ts.createCompilerHost(compilerOptions, true);
-  const originalGetSourceFile = host.getSourceFile.bind(host);
-  const originalReadFile = host.readFile.bind(host);
-  const originalFileExists = host.fileExists.bind(host);
-  const fileName = "/virtual/formspec-integer.ts";
-
-  host.getSourceFile = (requestedFileName, languageVersion) => {
-    if (requestedFileName === fileName) {
-      return ts.createSourceFile(fileName, source, languageVersion, true, ts.ScriptKind.TS);
-    }
-    return originalGetSourceFile(requestedFileName, languageVersion);
-  };
-  host.readFile = (requestedFileName) =>
-    requestedFileName === fileName ? source : originalReadFile(requestedFileName);
-  host.fileExists = (requestedFileName) =>
-    requestedFileName === fileName || originalFileExists(requestedFileName);
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  host.writeFile = () => {};
-
-  const program = ts.createProgram([fileName], compilerOptions, host);
-  const sourceFile = program.getSourceFile(fileName);
-  if (sourceFile === undefined) throw new Error("Expected virtual source file");
-
-  return buildFormSpecAnalysisFileSnapshot(sourceFile, {
-    checker: program.getTypeChecker(),
-  });
+  const { checker, sourceFile } = createProgram(source, "/virtual/formspec-integer.ts");
+  return buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
 }
 
 /**
@@ -240,17 +212,42 @@ function typeMismatchTagNames(snapshot: Snapshot): string[] {
       // Global batch diagnostics carry data.tagNames (string[]). Return each
       // member individually so callers see one entry per affected tag.
       const tagNames = d.data["tagNames"];
-      if (Array.isArray(tagNames)) return (tagNames as string[]).join(",");
+      if (Array.isArray(tagNames)) return tagNames.map(String).join(",");
       // Fallback for any future diagnostic shapes.
       return "<unknown>";
     });
+}
+
+/**
+ * Returns every declaration-level `numeric-constraints` fact recorded in the
+ * snapshot (one per field that had @minimum/@maximum/etc applied). Empty array
+ * means no numeric constraints were captured — which, in these scenarios, is
+ * the failure shape we want to guard against: a future regression that silently
+ * drops integer-field processing would make the TYPE_MISMATCH diagnostic check
+ * pass while losing the constraint entirely.
+ */
+function declarationNumericConstraints(
+  snapshot: Snapshot
+): { minimum?: number; maximum?: number }[] {
+  const results: { minimum?: number; maximum?: number }[] = [];
+  for (const comment of snapshot.comments) {
+    for (const fact of comment.declarationSummary.facts) {
+      if (fact.kind === "numeric-constraints" && fact.targetPath === null) {
+        const entry: { minimum?: number; maximum?: number } = {};
+        if (fact.minimum !== undefined) entry.minimum = fact.minimum;
+        if (fact.maximum !== undefined) entry.maximum = fact.maximum;
+        results.push(entry);
+      }
+    }
+  }
+  return results;
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("integer-brand bypass: snapshot path mirrors build path", () => {
+describe("integer-brand bypass: snapshot path mirrors build path (regression for #325)", () => {
   // -------------------------------------------------------------------------
   // Scenario 1: locally-declared doubly-branded integer with @minimum/@maximum
   //
@@ -279,6 +276,13 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
     // No TYPE_MISMATCH should be emitted for @minimum/@maximum on integer-branded types.
     const tagNames = typeMismatchTagNames(snapshot);
     expect(tagNames.filter((n) => n === "minimum" || n === "maximum")).toHaveLength(0);
+
+    // Positive check: the bypass must not drop the constraint — the snapshot
+    // must record the 2000/2026 bounds derived from @minimum/@maximum.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({
+      minimum: 2000,
+      maximum: 2026,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -306,6 +310,12 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
     // Phase 4A: no TYPE_MISMATCH for @minimum/@maximum on imported integer brands.
     const tagNames = typeMismatchTagNames(snapshot);
     expect(tagNames.filter((n) => n === "minimum" || n === "maximum")).toHaveLength(0);
+
+    // Positive check: bounds are recorded in the declaration summary.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({
+      minimum: 2000,
+      maximum: 2026,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -432,6 +442,12 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
     const tagNames = typeMismatchTagNames(snapshot);
     expect(tagNames).not.toContain("minimum");
 
+    // Positive check: the integer field's @minimum 2000 must be recorded in
+    // the declaration summary. Guards against a future regression where the
+    // pipeline silently drops integer-field processing — the diagnostic check
+    // alone would not catch that.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({ minimum: 2000 });
+
     // The sibling string fields may still be affected by the synthetic batch
     // checker (supporting declarations include the unresolvable imported type).
     // Any remaining mismatches must only be from the string constraint tags —
@@ -474,6 +490,9 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
     // @minimum.
     const tagNames = typeMismatchTagNames(snapshot);
     expect(tagNames).not.toContain("minimum");
+
+    // Positive check: @minimum 2000 was recorded on the integer field.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({ minimum: 2000 });
 
     // Sibling string fields may still be affected. Remaining mismatches must
     // only be from string constraint tags.

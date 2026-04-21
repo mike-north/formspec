@@ -362,7 +362,4 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
-// @internal
-export function _isIntegerBrandedType(type: ts.Type): boolean;
-
 ```
