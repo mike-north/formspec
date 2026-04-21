@@ -91,6 +91,7 @@ export {
   getFormSpecWorkspaceRuntimeDirectory,
 } from "./workspace-runtime.js";
 export {
+  _mapGlobalSyntheticTsDiagnostics,
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,
 } from "./file-snapshots.js";
