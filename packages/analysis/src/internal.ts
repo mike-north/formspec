@@ -35,7 +35,11 @@ export type {
   ConstraintTagParseRegistryLike,
   ParseConstraintTagValueOptions,
 } from "./tag-value-parser.js";
-export { parseConstraintTagValue, parseDefaultValueTagValue } from "./tag-value-parser.js";
+export {
+  parseConstraintTagValue,
+  parseDefaultValueTagValue,
+  getBroadenedCustomTypeId,
+} from "./tag-value-parser.js";
 export { extractPathTarget, formatPathTarget, type ParsedPathTarget } from "./path-target.js";
 export type {
   AnalysisTypeDefinition,

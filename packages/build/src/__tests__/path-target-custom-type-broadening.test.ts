@@ -22,8 +22,8 @@
  *     `(raw) => raw.trim()`.
  *   - "Correct terminal" means the keyword lands on `properties.<last-segment>`
  *     within any intermediate `properties` nesting, not on an enclosing level.
- *   - Array traversal via path-targeting (`:items.amount`) is not currently
- *     supported; tests for that feature are deferred.
+ *   - Array traversal is transparent: path segments walk through `items`
+ *     without consuming a segment — see the "mixed shape composition" tests.
  *   - Records/dictionaries are not currently traversable via path targeting;
  *     a TODO is included below.
  *
@@ -35,236 +35,54 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core/internals";
 import type { FormSpecConfig } from "@formspec/config";
 import { type ClassSchemas, generateSchemas } from "../generators/class-schema.js";
 import type { JsonSchema2020 } from "../json-schema/ir-generator.js";
-
-// =============================================================================
-// EXTENSION FIXTURES
-//
-// All fixtures use `emitsVocabularyKeywords: true` so broadened output is a
-// camelCase keyword + string payload. This lets tests pin exact values without
-// accounting for vendor-prefix construction.
-// =============================================================================
-
-/** Identity parser: returns the raw tag argument as a trimmed string. */
-const trimmedString = (raw: string): string => raw.trim();
-
-/**
- * Name-based Decimal: detected by the TypeScript alias name "Decimal".
- * Broadenings map @minimum → decimalMinimum, @maximum → decimalMaximum, etc.
- * Payload is a string (the raw tag argument).
- */
-const nameBasedDecimalExtension = defineExtension({
-  extensionId: "x-test/decimal-name",
-  types: [
-    defineCustomType({
-      typeName: "Decimal",
-      tsTypeNames: ["Decimal"],
-      builtinConstraintBroadenings: [
-        { tagName: "minimum", constraintName: "DecimalMinimum", parseValue: trimmedString },
-        { tagName: "maximum", constraintName: "DecimalMaximum", parseValue: trimmedString },
-        {
-          tagName: "exclusiveMinimum",
-          constraintName: "DecimalExclusiveMinimum",
-          parseValue: trimmedString,
-        },
-        {
-          tagName: "exclusiveMaximum",
-          constraintName: "DecimalExclusiveMaximum",
-          parseValue: trimmedString,
-        },
-        { tagName: "multipleOf", constraintName: "DecimalMultipleOf", parseValue: trimmedString },
-      ],
-      toJsonSchema: () => ({ type: "string", format: "decimal" }),
-    }),
-  ],
-  constraints: [
-    defineConstraint({
-      constraintName: "DecimalMinimum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      isApplicableToType: (t) => t.kind === "custom",
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "lower", inclusive: true },
-      toJsonSchema: (payload) => ({ decimalMinimum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalMaximum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      isApplicableToType: (t) => t.kind === "custom",
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "upper", inclusive: true },
-      toJsonSchema: (payload) => ({ decimalMaximum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalExclusiveMinimum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      isApplicableToType: (t) => t.kind === "custom",
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "lower", inclusive: false },
-      toJsonSchema: (payload) => ({ decimalExclusiveMinimum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalExclusiveMaximum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      isApplicableToType: (t) => t.kind === "custom",
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "upper", inclusive: false },
-      toJsonSchema: (payload) => ({ decimalExclusiveMaximum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalMultipleOf",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      isApplicableToType: (t) => t.kind === "custom",
-      emitsVocabularyKeywords: true,
-      toJsonSchema: (payload) => ({ decimalMultipleOf: payload }),
-    }),
-  ],
-});
-
-/**
- * Brand-based Decimal: detected via the `__decimalBrand` unique-symbol
- * computed property key. Same broadenings as the name-based version.
- */
-const brandBasedDecimalExtension = defineExtension({
-  extensionId: "x-test/decimal-brand",
-  types: [
-    defineCustomType({
-      typeName: "Decimal",
-      brand: "__decimalBrand",
-      builtinConstraintBroadenings: [
-        { tagName: "minimum", constraintName: "DecimalMinimum", parseValue: trimmedString },
-        { tagName: "maximum", constraintName: "DecimalMaximum", parseValue: trimmedString },
-        {
-          tagName: "exclusiveMinimum",
-          constraintName: "DecimalExclusiveMinimum",
-          parseValue: trimmedString,
-        },
-        {
-          tagName: "exclusiveMaximum",
-          constraintName: "DecimalExclusiveMaximum",
-          parseValue: trimmedString,
-        },
-        { tagName: "multipleOf", constraintName: "DecimalMultipleOf", parseValue: trimmedString },
-      ],
-      toJsonSchema: () => ({ type: "string", format: "decimal" }),
-    }),
-  ],
-  constraints: [
-    defineConstraint({
-      constraintName: "DecimalMinimum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "lower", inclusive: true },
-      toJsonSchema: (payload) => ({ decimalMinimum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalMaximum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "upper", inclusive: true },
-      toJsonSchema: (payload) => ({ decimalMaximum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalExclusiveMinimum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "lower", inclusive: false },
-      toJsonSchema: (payload) => ({ decimalExclusiveMinimum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalExclusiveMaximum",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "decimal-bound", bound: "upper", inclusive: false },
-      toJsonSchema: (payload) => ({ decimalExclusiveMaximum: payload }),
-    }),
-    defineConstraint({
-      constraintName: "DecimalMultipleOf",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      toJsonSchema: (payload) => ({ decimalMultipleOf: payload }),
-    }),
-  ],
-});
-
-/**
- * String-backed PostalCode: detected by the TypeScript alias name "PostalCode".
- * Broadens `maxLength` → postalMaxLength, `pattern` → postalPattern.
- */
-const postalCodeExtension = defineExtension({
-  extensionId: "x-test/postal-code",
-  types: [
-    defineCustomType({
-      typeName: "PostalCode",
-      tsTypeNames: ["PostalCode"],
-      builtinConstraintBroadenings: [
-        { tagName: "maxLength", constraintName: "PostalCodeMaxLength", parseValue: trimmedString },
-        { tagName: "pattern", constraintName: "PostalCodePattern", parseValue: trimmedString },
-      ],
-      toJsonSchema: () => ({ type: "string", format: "postal-code" }),
-    }),
-  ],
-  constraints: [
-    defineConstraint({
-      constraintName: "PostalCodeMaxLength",
-      compositionRule: "intersect",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      semanticRole: { family: "postal-length", bound: "upper", inclusive: true },
-      toJsonSchema: (payload) => ({ postalMaxLength: payload }),
-    }),
-    defineConstraint({
-      constraintName: "PostalCodePattern",
-      compositionRule: "override",
-      applicableTypes: ["custom"],
-      emitsVocabularyKeywords: true,
-      toJsonSchema: (payload) => ({ postalPattern: payload }),
-    }),
-  ],
-});
+import {
+  vocabDecimalByNameExtension,
+  vocabDecimalByBrandExtension,
+} from "./fixtures/example-vocabulary-decimal-extension.js";
+import { vocabStringExtension } from "./fixtures/example-vocabulary-string-extension.js";
 
 // =============================================================================
 // CONFIG OBJECTS
+//
+// All three configs reuse the shared vocabulary-mode fixtures under
+// `fixtures/example-vocabulary-*.ts`. A single authoritative registration set
+// keeps this file and `generate-schemas-config.test.ts` from drifting — see
+// the simplicity-review note on issue #395 / PR #398.
 // =============================================================================
 
 const nameBasedConfig: FormSpecConfig = {
-  extensions: [nameBasedDecimalExtension],
+  extensions: [vocabDecimalByNameExtension],
   vendorPrefix: "x-formspec",
 };
 
 const brandBasedConfig: FormSpecConfig = {
-  extensions: [brandBasedDecimalExtension],
+  extensions: [vocabDecimalByBrandExtension],
   vendorPrefix: "x-test",
 };
 
 const postalCodeConfig: FormSpecConfig = {
-  extensions: [postalCodeExtension],
+  extensions: [vocabStringExtension],
   vendorPrefix: "x-formspec",
 };
 
 // =============================================================================
 // SOURCE DECLARATIONS
+//
+// Source strings reference the same type/alias/brand names the shared fixtures
+// register: `Decimal` resolves through `tsTypeNames` (which accepts both
+// `VocabDecimal` and `Decimal`); brand-based sources use `__vocabDecimalBrand`.
 // =============================================================================
 
-/** TypeScript source for the name-based Decimal type. */
+/** TypeScript source for the name-based Decimal type (accepted by the shared fixture). */
 const NAME_DECIMAL_DECL = `export type Decimal = string & { readonly __brand: "Decimal" };`;
 
-/** TypeScript source for the brand-based Decimal type. */
+/** TypeScript source for the brand-based Decimal type using the shared fixture's brand key. */
 const BRAND_DECIMAL_DECL = [
-  "declare const __decimalBrand: unique symbol;",
-  "export type Decimal = string & { readonly [__decimalBrand]: true };",
+  "declare const __vocabDecimalBrand: unique symbol;",
+  "export type Decimal = string & { readonly [__vocabDecimalBrand]: true };",
 ].join("\n");
 
 /** TypeScript source for the PostalCode type. */
@@ -601,12 +419,12 @@ describe("multi-level path-target nesting", () => {
 // =============================================================================
 // ARRAY TRAVERSAL AT MULTIPLE DEPTHS
 //
-// NOTE: Array path traversal (`:items.amount`) is NOT currently supported.
-// `@minimum :items.amount 0` on an array field produces `UNKNOWN_PATH_TARGET`.
-// Tests for array traversal are deferred until the feature is implemented.
-//
-// TODO: Implement array traversal and add tests here once supported.
-// See: https://github.com/mike-north/formspec/issues/395 (follow-up)
+// Array path traversal is transparent: `:items.amount` on `Cart { items:
+// MonetaryAmount[] }` walks through the array element without consuming a
+// segment. Both `resolvePathTargetType` (TS-level) and `resolveProperty`
+// (IR-level) recurse into `ArrayTypeNode.items` when they encounter one.
+// Concrete array-traversal cases live in the "mixed shape composition"
+// describe block below (single wrapper, mid-path, nested arrays).
 // =============================================================================
 
 // =============================================================================
@@ -650,7 +468,10 @@ describe("nullable at various depths", () => {
 
     const result = runSchema(source, nameBasedConfig);
     const terminal = getTerminal(result, "line", "money", "amount");
-    expect(terminal, "expected money.amount sub-schema through nullable intermediate").toBeDefined();
+    expect(
+      terminal,
+      "expected money.amount sub-schema through nullable intermediate"
+    ).toBeDefined();
     expect(terminal?.["decimalMinimum"]).toBe("0");
   });
 
@@ -670,7 +491,10 @@ describe("nullable at various depths", () => {
 
     const result = runSchema(source, nameBasedConfig);
     const terminal = getTerminal(result, "order", "line", "money", "amount");
-    expect(terminal, "expected line.money.amount sub-schema through nullable root segment").toBeDefined();
+    expect(
+      terminal,
+      "expected line.money.amount sub-schema through nullable root segment"
+    ).toBeDefined();
     expect(terminal?.["decimalMinimum"]).toBe("0");
   });
 
@@ -725,9 +549,9 @@ describe("mixed shape composition", () => {
       | Record<string, unknown>
       | undefined;
     const arrayItemSchema = itemsField?.["items"] as Record<string, unknown> | undefined;
-    const amountSchema = (
-      arrayItemSchema?.["properties"] as Record<string, unknown> | undefined
-    )?.["amount"] as Record<string, unknown> | undefined;
+    const amountSchema = (arrayItemSchema?.["properties"] as Record<string, unknown> | undefined)?.[
+      "amount"
+    ] as Record<string, unknown> | undefined;
     expect(amountSchema, "expected items[].amount override schema").toBeDefined();
     expect(amountSchema?.["decimalMinimum"]).toBe("0");
   });
@@ -882,7 +706,10 @@ describe("multiple sub-paths on the same field", () => {
     const fieldSchema = result.jsonSchema.properties?.["total"] as
       | Record<string, unknown>
       | undefined;
-    expect(fieldSchema?.["decimalMinimum"], "decimalMinimum must not appear at field level").toBeUndefined();
+    expect(
+      fieldSchema?.["decimalMinimum"],
+      "decimalMinimum must not appear at field level"
+    ).toBeUndefined();
     expect(fieldSchema?.["minimum"], "minimum must not appear at field level").toBeUndefined();
     expect(fieldSchema?.["maxLength"], "maxLength must not appear at field level").toBeUndefined();
   });
@@ -931,6 +758,9 @@ describe("direct constraint + path-targeted constraints on the same field", () =
       amountTerminal?.["decimalMinimum"],
       "decimalMinimum must not appear on amount"
     ).toBeUndefined();
-    expect(countTerminal?.["decimalMaximum"], "decimalMaximum must not appear on count").toBeUndefined();
+    expect(
+      countTerminal?.["decimalMaximum"],
+      "decimalMaximum must not appear on count"
+    ).toBeUndefined();
   });
 });

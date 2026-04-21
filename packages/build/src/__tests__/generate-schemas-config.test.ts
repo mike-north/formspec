@@ -260,8 +260,7 @@ describe("generateSchemas with FormSpecConfig", () => {
      * Name-based: resolved via `tsTypeNames: ["VocabDecimal"]`.
      * The alias name matches the registered `tsTypeName` exactly.
      */
-    const nameBasedDecimal =
-      `export type VocabDecimal = string & { readonly __brand: "VocabDecimal" };`;
+    const nameBasedDecimal = `export type VocabDecimal = string & { readonly __brand: "VocabDecimal" };`;
 
     /**
      * Brand-based: resolved structurally via `brand: "__vocabDecimalBrand"`.
@@ -669,8 +668,16 @@ describe("generateSchemas with FormSpecConfig", () => {
         const opaqueDecimal = defineCustomType({
           typeName: "OpaqueDecimal",
           builtinConstraintBroadenings: [
-            { tagName: "minimum", constraintName: "DecimalMinimum", parseValue: (raw: string) => raw.trim() },
-            { tagName: "exclusiveMinimum", constraintName: "DecimalExclusiveMinimum", parseValue: (raw: string) => raw.trim() },
+            {
+              tagName: "minimum",
+              constraintName: "DecimalMinimum",
+              parseValue: (raw: string) => raw.trim(),
+            },
+            {
+              tagName: "exclusiveMinimum",
+              constraintName: "DecimalExclusiveMinimum",
+              parseValue: (raw: string) => raw.trim(),
+            },
           ],
           toJsonSchema: () => ({ type: "string" }),
         });
@@ -713,6 +720,19 @@ describe("generateSchemas with FormSpecConfig", () => {
           override,
           "expected a path override entry targeting 'amount' on the symbol-registered custom type"
         ).toBeDefined();
+        // Pin the broadened keyword + payload rather than just presence — a regression to
+        // raw `exclusiveMinimum: 0` emission would otherwise pass the shape-only check.
+        const amountSchema = override?.properties?.["amount"] as
+          | Record<string, unknown>
+          | undefined;
+        expect(
+          amountSchema?.["symDecimalExclusiveMinimum"],
+          "expected broadened vocabulary keyword symDecimalExclusiveMinimum === '0'"
+        ).toBe("0");
+        expect(
+          amountSchema?.["exclusiveMinimum"],
+          "raw numeric `exclusiveMinimum` must NOT appear — path broadening regressed"
+        ).toBeUndefined();
       });
     });
 
@@ -758,8 +778,7 @@ describe("generateSchemas with FormSpecConfig", () => {
   // with broadenings registered (here: `PostalCode`).
   // =========================================================================
   describe("path-targeted broadening on string-backed custom types", () => {
-    const postalCodeDecl =
-      `export type PostalCode = string & { readonly __brand: "PostalCode" };`;
+    const postalCodeDecl = `export type PostalCode = string & { readonly __brand: "PostalCode" };`;
 
     const postalConfig: FormSpecConfig = {
       extensions: [vocabStringExtension],
@@ -812,20 +831,31 @@ describe("generateSchemas with FormSpecConfig", () => {
     });
 
     it("broadens @pattern through a path target onto a PostalCode subfield", () => {
+      // Source-level @pattern arg: ^\d{5}$ — doubled in the source template so it
+      // reaches the tag parser as a single backslash before the `d`. Per spec 002,
+      // the raw tag text after stripping the leading `:code ` segment is the
+      // pattern payload; the fixture's parseValue is `raw.trim()`, so the payload
+      // is the exact JSON-Schema-style regex literal.
       const source = `
         ${postalCodeDecl}
         export interface Envelope { code: PostalCode; name: string; }
         export interface DeliveryForm {
-          /** @pattern :code ^\\\\d{5}$ */
+          /** @pattern :code ^\\d{5}$ */
           address: Envelope;
         }
       `;
       const result = runPostalSchema(source);
-      const codeSchema = result.jsonSchema.properties?.["address"]?.properties?.["code"];
-      expect((codeSchema as Record<string, unknown>)["postalPattern"]).toBeDefined();
+      const codeSchema = result.jsonSchema.properties?.["address"]?.properties?.["code"] as
+        | Record<string, unknown>
+        | undefined;
+      // Pin the exact payload so a payload-mangling regression (e.g. lost
+      // backslash, accidental JSON-stringification) is caught.
+      expect(codeSchema?.["postalPattern"]).toBe("^\\d{5}$");
+      // Raw `pattern` keyword must NOT appear — that would mean broadening regressed.
+      expect(codeSchema?.["pattern"]).toBeUndefined();
     });
 
-    it("does not broadens @minimum (numeric) onto a string-backed PostalCode (no registration)", () => {
+    it("does not broaden @minimum (numeric) onto a string-backed PostalCode (no registration)", () => {
       // PostalCode has no broadening for `@minimum`, so this must produce a
       // TYPE_MISMATCH — not silent fallthrough, not raw keyword emission.
       const source = `

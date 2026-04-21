@@ -315,7 +315,18 @@ function parseExtensionConstraintTagValue(
   );
 }
 
-function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+/**
+ * Resolves the broadening-eligible custom type ID for a field's IR type.
+ *
+ * Returns the `CustomTypeNode.typeId` when the field type is directly custom,
+ * OR when it's a nullable-single-custom union (`T | null`). Returns `undefined`
+ * for any other shape — the caller's broadening lookup then falls through.
+ *
+ * Exported from `@formspec/analysis/internal` so the build consumer can reuse
+ * exactly the same "what counts as a broadenable custom field type" rule
+ * without maintaining a drift-prone duplicate. See PR #398 / issue #395.
+ */
+export function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
   if (fieldType?.kind === "custom") {
     return fieldType.typeId;
   }

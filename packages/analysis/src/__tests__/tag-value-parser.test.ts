@@ -159,7 +159,7 @@ describe("tag-value-parser", () => {
       });
     });
 
-    it("successfully parses Unicode escape sequences in strings (@const \"\\u00e9\")", () => {
+    it('successfully parses Unicode escape sequences in strings (@const "\\u00e9")', () => {
       // JSON.parse resolves \u00e9 to "é", so the try branch wins.
       // The stored value must be the resolved character, not the escape sequence.
       const parsed = parseConstraintTagValue("const", '"\\u00e9"', PROVENANCE);

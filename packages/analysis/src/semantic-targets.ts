@@ -132,14 +132,21 @@ export function dereferenceAnalysisType(
 }
 
 /**
- * Unwraps a `T | null | undefined` nullable union down to its single non-null
- * member. Unions with multiple non-null members are returned unchanged.
+ * Unwraps a `T | null` nullable union down to its single non-null member.
+ * Unions with multiple non-null members are returned unchanged.
  *
- * Mirrors the TS-level behavior of `stripNullishUnion` in `ts-binding.ts` so
- * IR-level path traversal matches what the compiler-backed resolver already
- * does. Without this, a path walking through a nullable intermediate (e.g.
- * `LineItem { money: MonetaryAmount | null }` with `:money.amount`) would be
- * rejected at the union boundary even though the TS resolver accepts it.
+ * IR-only: the canonical `TypeNode` has no `"undefined"` primitive kind —
+ * optionality is carried by the `ObjectProperty.optional` flag, not by
+ * a union member. So only `null` participates here; any attempt to "sync"
+ * this helper with the TS-level `stripNullishUnion` by adding an `undefined`
+ * check would be dead code.
+ *
+ * Mirrors the nullable-stripping behavior of `stripNullishUnion` in
+ * `ts-binding.ts` so IR-level path traversal matches what the compiler-backed
+ * resolver already does. Without this, a path walking through a nullable
+ * intermediate (e.g. `LineItem { money: MonetaryAmount | null }` with
+ * `:money.amount`) would be rejected at the union boundary even though the
+ * TS resolver accepts it.
  */
 function stripNullableUnion(type: TypeNode): TypeNode {
   if (type.kind !== "union") {
@@ -1209,9 +1216,7 @@ function checkConstraintOnType(
   const isArray = unwrapped.kind === "array";
   const isEnum = unwrapped.kind === "enum";
   const arrayItemType =
-    unwrapped.kind === "array"
-      ? dereferenceAnalysisType(unwrapped.items, typeRegistry)
-      : undefined;
+    unwrapped.kind === "array" ? dereferenceAnalysisType(unwrapped.items, typeRegistry) : undefined;
   const isStringArray =
     arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
 

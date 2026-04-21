@@ -20,13 +20,12 @@ import {
   type CustomConstraintRegistration,
   type CustomTypeRegistration,
 } from "@formspec/core/internals";
-import { createExtensionRegistry } from "../../extensions/index.js";
 
 // ---------------------------------------------------------------------------
 // Extension ID
 // ---------------------------------------------------------------------------
 
-export const VOCAB_STRING_EXTENSION_ID = "x-test/vocabulary-string";
+const VOCAB_STRING_EXTENSION_ID = "x-test/vocabulary-string";
 
 // ---------------------------------------------------------------------------
 // Payload parsers
@@ -89,11 +88,3 @@ export const vocabStringExtension = defineExtension({
   types: [postalCodeType],
   constraints: [postalMinLengthConstraint, postalMaxLengthConstraint, postalPatternConstraint],
 });
-
-/**
- * Create an extension registry containing the vocabulary-mode string extension.
- * Custom type `PostalCode` is resolved by `tsTypeNames`.
- */
-export function createVocabularyStringExtensionRegistry() {
-  return createExtensionRegistry([vocabStringExtension]);
-}

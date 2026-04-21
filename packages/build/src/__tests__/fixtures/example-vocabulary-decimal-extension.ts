@@ -12,13 +12,13 @@
  *
  * Two variants are exported:
  *
- * - **Name-based** (`createVocabularyDecimalByNameRegistry`): the custom type
- *   is registered via `tsTypeNames: ["VocabDecimal"]` so the build resolves
- *   it by source-level type alias name.
+ * - **Name-based** (`vocabDecimalByNameExtension`): the custom type is
+ *   registered via `tsTypeNames: ["VocabDecimal", "Decimal"]` so the build
+ *   resolves it by either source-level type alias name.
  *
- * - **Brand-based** (`createVocabularyDecimalByBrandRegistry`): the custom
- *   type is registered via `brand: "__vocabDecimalBrand"` so the build
- *   resolves it structurally through the unique-symbol computed property key.
+ * - **Brand-based** (`vocabDecimalByBrandExtension`): the custom type is
+ *   registered via `brand: "__vocabDecimalBrand"` so the build resolves it
+ *   structurally through the unique-symbol computed property key.
  *
  * Both variants use the same 5 constraint broadenings and the same vocabulary
  * constraint registrations; only the type detection mechanism differs.
@@ -33,13 +33,12 @@ import {
   type CustomConstraintRegistration,
   type CustomTypeRegistration,
 } from "@formspec/core/internals";
-import { createExtensionRegistry } from "../../extensions/index.js";
 
 // ---------------------------------------------------------------------------
 // Extension ID
 // ---------------------------------------------------------------------------
 
-export const VOCAB_DECIMAL_EXTENSION_ID = "x-test/vocabulary-decimal";
+const VOCAB_DECIMAL_EXTENSION_ID = "x-test/vocabulary-decimal";
 
 // ---------------------------------------------------------------------------
 // Constraint payload identity parser
@@ -129,7 +128,11 @@ const BUILTIN_BROADENINGS = [
     constraintName: "DecimalExclusiveMaximum",
     parseValue: trimmedString,
   },
-  { tagName: "multipleOf" as const, constraintName: "DecimalMultipleOf", parseValue: trimmedString },
+  {
+    tagName: "multipleOf" as const,
+    constraintName: "DecimalMultipleOf",
+    parseValue: trimmedString,
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -138,7 +141,9 @@ const BUILTIN_BROADENINGS = [
 
 const vocabDecimalByNameType: CustomTypeRegistration = defineCustomType({
   typeName: "VocabDecimal",
-  tsTypeNames: ["VocabDecimal"],
+  // Accept both "VocabDecimal" and "Decimal" source aliases so all path-target
+  // and schema-generation tests can share this single registration.
+  tsTypeNames: ["VocabDecimal", "Decimal"],
   builtinConstraintBroadenings: [...BUILTIN_BROADENINGS],
   toJsonSchema: () => ({ type: "string", format: "decimal" }),
 });
@@ -154,14 +159,6 @@ export const vocabDecimalByNameExtension = defineExtension({
     decimalMultipleOfConstraint,
   ],
 });
-
-/**
- * Create an extension registry containing the name-based vocabulary-decimal
- * extension. Custom type `VocabDecimal` is resolved by `tsTypeNames`.
- */
-export function createVocabularyDecimalByNameRegistry() {
-  return createExtensionRegistry([vocabDecimalByNameExtension]);
-}
 
 // ---------------------------------------------------------------------------
 // Brand-based custom type (resolved by unique-symbol computed property key)
@@ -187,12 +184,3 @@ export const vocabDecimalByBrandExtension = defineExtension({
     decimalMultipleOfConstraint,
   ],
 });
-
-/**
- * Create an extension registry containing the brand-based vocabulary-decimal
- * extension. Custom type `VocabDecimalBranded` is resolved by the
- * `__vocabDecimalBrand` unique-symbol brand key.
- */
-export function createVocabularyDecimalByBrandRegistry() {
-  return createExtensionRegistry([vocabDecimalByBrandExtension]);
-}
