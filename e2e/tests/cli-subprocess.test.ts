@@ -259,10 +259,22 @@ export class SmartSizeCompact {
       expect(schema.$defs?.["Status"]?.["oneOf"]).toBeUndefined();
     });
 
-    it("resolves package override enum serialization from formspec.config.ts", () => {
+    /**
+     * Regression: the CLI used to read only the root `formspec.config.*`
+     * and ignore `packages[...]` overrides. The fix resolves per-file
+     * config. This test also generates for a file OUTSIDE the override
+     * glob to prove the override is actually scoped — otherwise the first
+     * assertion would pass even for a buggy implementation that applied
+     * the override tree-wide.
+     *
+     * @see https://github.com/mike-north/formspec/pull/356
+     */
+    it("applies package override within scope and root config outside scope", () => {
       const rootDir = fs.mkdtempSync(path.join(tempDir, "package-override-"));
-      const sourceDir = path.join(rootDir, "packages", "invoice", "src");
-      fs.mkdirSync(sourceDir, { recursive: true });
+      const invoiceDir = path.join(rootDir, "packages", "invoice", "src");
+      const otherDir = path.join(rootDir, "packages", "other", "src");
+      fs.mkdirSync(invoiceDir, { recursive: true });
+      fs.mkdirSync(otherDir, { recursive: true });
 
       const configPath = path.join(rootDir, "formspec.config.ts");
       fs.writeFileSync(
@@ -279,9 +291,9 @@ export default {
 `
       );
 
-      const tsPath = path.join(sourceDir, "invoice.ts");
+      const invoiceTsPath = path.join(invoiceDir, "invoice.ts");
       fs.writeFileSync(
-        tsPath,
+        invoiceTsPath,
         `
 export type InvoiceStatus = "draft" | "sent";
 
@@ -291,22 +303,51 @@ export class InvoiceRecord {
 `
       );
 
-      const outDir = path.join(rootDir, "generated");
-      const result = runCli(["generate", tsPath, "InvoiceRecord", "-o", outDir]);
+      const otherTsPath = path.join(otherDir, "other.ts");
+      fs.writeFileSync(
+        otherTsPath,
+        `
+export type OtherStatus = "open" | "closed";
 
-      expect(result.exitCode).toBe(0);
+export class OtherRecord {
+  status!: OtherStatus;
+}
+`
+      );
 
-      const schemaFile = findSchemaFile(outDir, "schema.json");
-      expect(schemaFile).toBeDefined();
-      if (!schemaFile) throw new Error("schema.json not found");
+      const invoiceOut = path.join(rootDir, "generated-invoice");
+      const invoiceResult = runCli(["generate", invoiceTsPath, "InvoiceRecord", "-o", invoiceOut]);
+      expect(invoiceResult.exitCode).toBe(0);
 
-      const schema = readJson(schemaFile) as {
+      const invoiceSchemaFile = findSchemaFile(invoiceOut, "schema.json");
+      expect(invoiceSchemaFile).toBeDefined();
+      if (!invoiceSchemaFile) throw new Error("invoice schema.json not found");
+
+      const invoiceSchema = readJson(invoiceSchemaFile) as {
         $defs?: Record<string, Record<string, unknown>>;
       };
-      expect(schema.$defs?.["InvoiceStatus"]).toMatchObject({
+      // Override applies: oneOf shape, no enum.
+      expect(invoiceSchema.$defs?.["InvoiceStatus"]).toMatchObject({
         oneOf: [{ const: "draft" }, { const: "sent" }],
       });
-      expect(schema.$defs?.["InvoiceStatus"]?.["enum"]).toBeUndefined();
+      expect(invoiceSchema.$defs?.["InvoiceStatus"]?.["enum"]).toBeUndefined();
+
+      const otherOut = path.join(rootDir, "generated-other");
+      const otherResult = runCli(["generate", otherTsPath, "OtherRecord", "-o", otherOut]);
+      expect(otherResult.exitCode).toBe(0);
+
+      const otherSchemaFile = findSchemaFile(otherOut, "schema.json");
+      expect(otherSchemaFile).toBeDefined();
+      if (!otherSchemaFile) throw new Error("other schema.json not found");
+
+      const otherSchema = readJson(otherSchemaFile) as {
+        $defs?: Record<string, Record<string, unknown>>;
+      };
+      // No override applies: root "enum" mode wins — enum present, no oneOf.
+      expect(otherSchema.$defs?.["OtherStatus"]).toMatchObject({
+        enum: ["open", "closed"],
+      });
+      expect(otherSchema.$defs?.["OtherStatus"]?.["oneOf"]).toBeUndefined();
     });
 
     it("rejects invalid enum serialization values", () => {
