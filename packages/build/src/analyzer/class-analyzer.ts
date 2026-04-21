@@ -2218,9 +2218,17 @@ function resolveUnionType(
     if (existing !== undefined && existing.type !== RESOLVING_TYPE_PLACEHOLDER) {
       return { kind: "reference", name: typeName, typeArguments: [] };
     }
-    const annotations = namedDecl
-      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+    const parseOptions = makeParseOptions(extensionRegistry);
+    const ownAnnotations = namedDecl
+      ? extractJSDocAnnotationNodes(namedDecl, file, parseOptions)
       : undefined;
+    const annotations =
+      namedDecl !== undefined && ts.isInterfaceDeclaration(namedDecl)
+        ? mergeAnnotations(
+            collectInheritedInterfaceAnnotations(namedDecl, checker, file, parseOptions),
+            ownAnnotations ?? []
+          )
+        : ownAnnotations;
     const metadata =
       namedDecl !== undefined
         ? resolveNodeMetadata(
@@ -2437,6 +2445,126 @@ function typeNodeContainsReference(type: TypeNode, targetName: string): boolean 
   }
 }
 
+// =============================================================================
+// INTERFACE HERITAGE ANNOTATION INHERITANCE (#367)
+// =============================================================================
+
+/**
+ * Walks the full `extends` heritage chain of an interface declaration and
+ * collects all type-level annotation nodes from ancestor interfaces.
+ *
+ * Precedence (closest wins on same `annotationKind`):
+ *   derived > immediate base > grandparent > …
+ *
+ * For multiple `extends` clauses (`extends A, B`), A and B are merged with A
+ * taking precedence over B when both declare the same `annotationKind`. The
+ * derived interface always wins over both.
+ *
+ * Only `InterfaceDeclaration` nodes in the heritage chain are visited — class
+ * `extends` and `implements` are not traversed.
+ *
+ * @param decl - The derived interface declaration to walk upward from
+ * @param checker - TypeScript type checker used to resolve heritage expressions
+ * @param file - Source file path for provenance (passed to extractJSDocAnnotationNodes)
+ * @param parseOptions - TSDoc parse options (extension tags etc.)
+ * @param visited - Guards against infinite loops in unlikely circular heritage
+ * @returns Merged ancestor annotations (without the derived interface's own annotations)
+ */
+function collectInheritedInterfaceAnnotations(
+  decl: ts.InterfaceDeclaration,
+  checker: ts.TypeChecker,
+  file: string,
+  parseOptions?: import("./tsdoc-parser.js").ParseTSDocOptions,
+  visited = new Set<ts.InterfaceDeclaration>()
+): AnnotationNode[] {
+  if (visited.has(decl)) return [];
+  visited.add(decl);
+
+  const extendsClause = decl.heritageClauses?.find(
+    (hc) => hc.token === ts.SyntaxKind.ExtendsKeyword
+  );
+  if (!extendsClause) return [];
+
+  // Merge annotations from each base in left-to-right order.
+  // Earlier (left) bases take precedence over later (right) ones on conflict.
+  // We build a merged set from right to left so left overrides right.
+  const merged: AnnotationNode[] = [];
+
+  for (let i = extendsClause.types.length - 1; i >= 0; i--) {
+    const baseTypeExpr = extendsClause.types[i];
+    if (!baseTypeExpr) continue;
+
+    const baseType = checker.getTypeAtLocation(baseTypeExpr.expression);
+    const baseSymbol = baseType.getSymbol();
+    if (!baseSymbol?.declarations) continue;
+
+    const baseInterfaceDecl = baseSymbol.declarations.find(ts.isInterfaceDeclaration);
+    if (!baseInterfaceDecl) continue;
+
+    // First collect annotations inherited by the base itself (ancestors come first)
+    const ancestorAnnotations = collectInheritedInterfaceAnnotations(
+      baseInterfaceDecl,
+      checker,
+      file,
+      parseOptions,
+      visited
+    );
+
+    // Then the base's own annotations
+    const ownAnnotations = extractJSDocAnnotationNodes(baseInterfaceDecl, file, parseOptions);
+
+    // Merge: own base annotations override ancestor annotations for the same kind
+    const baseLayer = mergeAnnotations(ancestorAnnotations, ownAnnotations);
+
+    // Merge the accumulated result so far; left bases override right bases
+    mergeAnnotationsInto(merged, baseLayer);
+  }
+
+  return merged;
+}
+
+/**
+ * Merges two annotation arrays, with `overrides` taking precedence over `base`
+ * when both contain the same `annotationKind`. Returns a new array.
+ *
+ * For custom annotations, `annotationKind` is `"custom"` and the tag name is
+ * in `tagName` — custom annotations with different tag names are kept separately.
+ */
+function mergeAnnotations(base: AnnotationNode[], overrides: AnnotationNode[]): AnnotationNode[] {
+  const result = [...base];
+  mergeAnnotationsInto(result, overrides);
+  return result;
+}
+
+/**
+ * Merges `incoming` annotations into the `target` array in place.
+ * An incoming annotation replaces a same-kind annotation already in `target`.
+ * For custom annotations the dedup key includes the tag name.
+ */
+function mergeAnnotationsInto(target: AnnotationNode[], incoming: AnnotationNode[]): void {
+  for (const annotation of incoming) {
+    const dedupeKey = annotationDedupeKey(annotation);
+    const existingIdx = target.findIndex((a) => annotationDedupeKey(a) === dedupeKey);
+    if (existingIdx >= 0) {
+      target.splice(existingIdx, 1, annotation);
+    } else {
+      target.push(annotation);
+    }
+  }
+}
+
+/**
+ * Returns a deduplication key for an annotation node.
+ * Custom annotations are keyed by `"custom:<annotationId>"` to allow multiple
+ * custom annotations with different annotation IDs on the same declaration.
+ */
+function annotationDedupeKey(annotation: AnnotationNode): string {
+  if (annotation.annotationKind === "custom") {
+    return `custom:${annotation.annotationId}`;
+  }
+  return annotation.annotationKind;
+}
+
 /**
  * Determines which resolved object properties are emitted into the Canonical IR.
  * Properties starting with `__` are excluded — they are reserved for phantom/brand type markers
@@ -2580,9 +2708,17 @@ function resolveObjectType(
         clearNamedTypeRegistration();
         return recordNode;
       }
-      const annotations = namedDecl
-        ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+      const parseOptions = makeParseOptions(extensionRegistry);
+      const ownAnnotations = namedDecl
+        ? extractJSDocAnnotationNodes(namedDecl, file, parseOptions)
         : undefined;
+      const annotations =
+        namedDecl !== undefined && ts.isInterfaceDeclaration(namedDecl)
+          ? mergeAnnotations(
+              collectInheritedInterfaceAnnotations(namedDecl, checker, file, parseOptions),
+              ownAnnotations ?? []
+            )
+          : ownAnnotations;
       const metadata =
         namedDecl !== undefined
           ? resolveNodeMetadata(
@@ -2718,9 +2854,20 @@ function resolveObjectType(
 
   // Register named types
   if (registryTypeName !== undefined && shouldRegisterNamedType) {
-    const annotations = namedDecl
-      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+    const parseOptions = makeParseOptions(extensionRegistry);
+    const ownAnnotations = namedDecl
+      ? extractJSDocAnnotationNodes(namedDecl, file, parseOptions)
       : undefined;
+    // For interface declarations, inherit type-level annotations from base interfaces.
+    // Derived annotations take precedence over inherited ones for the same annotationKind
+    // (e.g., @format on the derived interface overrides @format on the base).
+    const annotations =
+      namedDecl !== undefined && ts.isInterfaceDeclaration(namedDecl)
+        ? mergeAnnotations(
+            collectInheritedInterfaceAnnotations(namedDecl, checker, file, parseOptions),
+            ownAnnotations ?? []
+          )
+        : ownAnnotations;
     const metadata =
       namedDecl !== undefined
         ? resolveNodeMetadata(
