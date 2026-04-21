@@ -18,13 +18,32 @@
 //   - @uniqueItems false/yes/maybe: TYPE_MISMATCH → INVALID_TAG_ARGUMENT
 //     (typed parser rejects non-empty non-"true" arguments for the marker family)
 //
-// Remaining silent acceptances (Role B — placement/capability, Phase 4 target):
-// - @minimum 0 on string / boolean fields (capability check, not argument check)
-// - @enumOptions on a plain number field (enum capability check)
-// - @pattern with a numeric literal argument (typed parser accepts all non-empty text)
-// - @pattern on number / boolean / array fields (capability check)
-// - @uniqueItems on string / number fields (capability check)
-// - @const with mismatched type (IR-level TYPE_MISMATCH from semantic-targets.ts)
+// Phase 4 Slice D audit (2026-04-21):
+// No additional canaries flipped in Phase 4 A/B/C. Investigation shows that
+// the 13 remaining .fails cases fall into two structural categories that
+// require Phase 5 work to resolve:
+//
+// Category 1 — Role B (capability check) still goes through synthetic path:
+//   The snapshot consumer (buildFormSpecAnalysisFileSnapshot) does NOT have a
+//   host-checker Role-B capability guard. The build consumer (tsdoc-parser.ts)
+//   DOES have supportsConstraintCapability() check at ~line 872 and produces
+//   TYPE_MISMATCH for these cases. The synthetic prelude's direct-field
+//   tag_minimum / tag_pattern / tag_uniqueItems / tag_enumOptions functions
+//   are declared as `<Host, Subject>` with NO capability constraint on Subject
+//   for the direct-field overload — so the synthetic TypeScript checker does
+//   not reject @minimum 0 on a string field.
+//   Target: Phase 5 adds host-checker Role B to the snapshot consumer, or
+//   Phase 5 retirement of the synthetic checker forces these onto the build
+//   path's supportsConstraintCapability() guard.
+//
+// Category 2 — IR-level TYPE_MISMATCH in semantic-targets.ts:
+//   @const mismatches are caught at IR validation (validateIR / semantic-targets.ts)
+//   in the build path, but the snapshot consumer does not run IR validation.
+//   Both the build AND snapshot synthetic checkers accept @const "USD" for any
+//   field type because the synthetic prelude declares JsonValue = unknown (any
+//   JSON value is assignable). The IR validator catches the mismatch, but the
+//   snapshot consumer doesn't surface it. Phase 5 (synthetic retirement) or a
+//   separate IR-validation pass for the snapshot consumer is needed.
 //
 // Phase 3 flips (previously .fails, now passing regular assertions):
 // - @enumOptions 5 (scalar not array) — typed parser catches at Role C
@@ -32,6 +51,7 @@
 //
 // @see docs/refactors/synthetic-checker-retirement.md S.9.3 #14
 // @see docs/refactors/synthetic-checker-retirement.md §4 (Phase 3 scope)
+// @see packages/build/src/analyzer/tsdoc-parser.ts supportsConstraintCapability (Role B — build path only)
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
 import { createProgram } from "./helpers.js";
@@ -112,9 +132,16 @@ describe("@minimum silent-acceptance canaries", () => {
   });
 
   // @minimum 0 on a string field -- string has no numeric-comparable capability.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: SNAPSHOT PATH ONLY — still silently accepted.
+  // Root cause: the synthetic prelude's direct-field tag_minimum overload has no
+  // capability constraint on Subject. The build path (tsdoc-parser.ts) catches
+  // this via supportsConstraintCapability() at Role B, but the snapshot consumer
+  // (buildFormSpecAnalysisFileSnapshot) does not have an equivalent Role-B guard.
+  // Phase 5 target: add host-checker Role-B capability check to snapshot consumer,
+  // or retire the synthetic prelude in favour of the build path's guard.
   it.fails(
-    "emits TYPE_MISMATCH for @minimum 0 on a string field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @minimum 0 on a string field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -130,9 +157,11 @@ describe("@minimum silent-acceptance canaries", () => {
   );
 
   // @minimum 0 on a boolean field -- boolean has no numeric-comparable capability.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @minimum on string above.
+  // Phase 5 target: snapshot Role-B capability check.
   it.fails(
-    "emits TYPE_MISMATCH for @minimum 0 on a boolean field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @minimum 0 on a boolean field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -227,9 +256,13 @@ describe("@enumOptions silent-acceptance canaries", () => {
   });
 
   // @enumOptions on a number field -- no enum-member-addressable capability.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
+  // direct-field tag_enumOptions has no capability constraint on Subject.
+  // The build path does emit TYPE_MISMATCH (supportsConstraintCapability returns
+  // false for number with "enum-member-addressable"). Phase 5 target.
   it.fails(
-    "emits a diagnostic for @enumOptions on a number field (no enum capability) [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits a diagnostic for @enumOptions on a number field (no enum capability) [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -270,11 +303,17 @@ describe("@pattern silent-acceptance canaries", () => {
   });
 
   // @pattern 42 -- a numeric literal is not a valid regex string.
-  // TODAY: silently accepted as a string-like regex argument.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
-  // Once typed parser is stricter this should assert INVALID_TAG_ARGUMENT.
+  //
+  // Phase 4D audit: INTENTIONAL non-strict acceptance in the typed parser.
+  // The typed parser (tag-argument-parser.ts) accepts all non-empty text as
+  // @pattern argument (raw string passthrough per §3 table: "Do not run
+  // new RegExp(text) in Phase 2/3"). Numeric literal "42" is accepted as an
+  // opaque string. This is a deliberate semantics choice per the retirement plan
+  // (docs/refactors/synthetic-checker-retirement.md §3: "Do not run
+  // new RegExp(text) — that is a new rejection. Defer regex validation.").
+  // Changing this requires a separate opt-in improvement PR, not Phase 5.
   it.fails(
-    "emits INVALID_TAG_ARGUMENT for @pattern 42 (numeric literal as regex) [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits INVALID_TAG_ARGUMENT for @pattern 42 (numeric literal as regex) [intentional: typed parser accepts all non-empty text for @pattern; regex validation deferred]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -290,9 +329,12 @@ describe("@pattern silent-acceptance canaries", () => {
   );
 
   // @pattern on a number field -- numbers are not string-like.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
+  // direct-field tag_pattern has no capability constraint on Subject.
+  // Phase 5 target: snapshot Role-B capability check.
   it.fails(
-    "emits TYPE_MISMATCH for @pattern on a number field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @pattern on a number field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -308,9 +350,10 @@ describe("@pattern silent-acceptance canaries", () => {
   );
 
   // @pattern on a boolean field -- booleans are not string-like.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @pattern on number. Phase 5 target.
   it.fails(
-    "emits TYPE_MISMATCH for @pattern on a boolean field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @pattern on a boolean field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -326,9 +369,13 @@ describe("@pattern silent-acceptance canaries", () => {
   );
 
   // @pattern on a string[] (array) field -- arrays are not string-like.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @pattern on number. Phase 5 target.
+  // Note: supportsConstraintCapability for "string-like" includes arrays whose
+  // item type is string-like (see tsdoc-parser.ts supportsConstraintCapability).
+  // string[] element type IS string-like so the build path may also accept this.
   it.fails(
-    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -408,9 +455,12 @@ describe("@uniqueItems silent-acceptance canaries", () => {
   });
 
   // @uniqueItems on a string field -- strings are not arrays.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
+  // direct-field tag_uniqueItems has no capability constraint on Subject.
+  // Phase 5 target: snapshot Role-B capability check.
   it.fails(
-    "emits TYPE_MISMATCH for @uniqueItems on a string field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @uniqueItems on a string field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -426,9 +476,10 @@ describe("@uniqueItems silent-acceptance canaries", () => {
   );
 
   // @uniqueItems on a number field -- numbers are not arrays.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @uniqueItems on string. Phase 5 target.
   it.fails(
-    "emits TYPE_MISMATCH for @uniqueItems on a number field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @uniqueItems on a number field [Phase 5 target: snapshot Role-B capability check]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -470,9 +521,18 @@ describe("@const silent-acceptance canaries", () => {
 
   // @const "USD" on an object field -- a string literal constant is not
   // compatible with an object field.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: IR-level mismatch — not surfaced by snapshot consumer.
+  // Root cause: the synthetic prelude declares `type JsonValue = unknown`, so
+  // any JSON value (including "USD") is assignable to the Subject type parameter
+  // of tag_const. Both the build-path synthetic checker AND the snapshot-path
+  // synthetic checker accept the call. The mismatch IS caught in the build path
+  // by the IR validator (validateIR / semantic-targets.ts) after schema generation,
+  // but the snapshot consumer (buildFormSpecAnalysisFileSnapshot) does not run
+  // IR validation. Phase 5 target: retire the synthetic checker and/or add
+  // IR-validation pass to the snapshot consumer.
   it.fails(
-    'emits a diagnostic for @const "USD" on an object field [known silent acceptance, refactor plan S.9.3 #14]',
+    'emits a diagnostic for @const "USD" on an object field [Phase 5 target: IR-validation pass in snapshot consumer]',
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -489,9 +549,13 @@ describe("@const silent-acceptance canaries", () => {
 
   // @const {"a":1} on a number field -- a JSON object constant is not
   // compatible with a number field.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @const "USD" on object — the synthetic
+  // prelude's `JsonValue = unknown` means the synthetic checker accepts any JSON
+  // value for any field type. IR validator in build path catches this, but
+  // snapshot consumer does not run IR validation. Phase 5 target.
   it.fails(
-    'emits TYPE_MISMATCH for @const {"a":1} on a number field [known silent acceptance, refactor plan S.9.3 #14]',
+    'emits TYPE_MISMATCH for @const {"a":1} on a number field [Phase 5 target: IR-validation pass in snapshot consumer]',
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -508,9 +572,10 @@ describe("@const silent-acceptance canaries", () => {
 
   // @const 42 on a string field -- numeric constant mismatches the string
   // field type.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @const "USD" on object. Phase 5 target.
   it.fails(
-    "emits TYPE_MISMATCH for @const 42 on a string field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits TYPE_MISMATCH for @const 42 on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -527,9 +592,11 @@ describe("@const silent-acceptance canaries", () => {
 
   // @const {"a":{"b":1}} (deeply nested JSON object) on a string field.
   // Also probes that nested JSON values do not cause a parse crash.
-  // SILENT ACCEPTANCE today -- pre-existing gap; Phase 2 must address.
+  //
+  // Phase 4D audit: same root cause as @const "USD" on object — JsonValue = unknown
+  // in synthetic prelude. Phase 5 target: IR-validation pass in snapshot consumer.
   it.fails(
-    "emits a diagnostic for @const with a nested object literal on a string field [known silent acceptance, refactor plan S.9.3 #14]",
+    "emits a diagnostic for @const with a nested object literal on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
     () => {
       const diagnostics = diagnosticsFor(
         `

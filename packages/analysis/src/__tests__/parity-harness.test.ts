@@ -115,7 +115,7 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
   // synthetic helper prelude does not include the alias chain declaration, the
   // snapshot rejects the constraint as a TYPE_MISMATCH while the build passes.
   // This is a pre-existing divergence, not introduced by this harness.
-  // Phase 0.5c / future normalization PR should address this.
+  // Phase 4D decision deferred: see #363 for tracking and resolution approach.
   {
     fixtureLabel: "alias-chain: @maximum 100 on derived alias (P = NN = number, @minimum 0 on NN)",
     divergenceKind: "role-outcome-divergence",
@@ -124,7 +124,7 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
       "build consumer resolves subject type to primitive base (number) before synthetic call; " +
       "snapshot consumer uses the alias name from the declared type node (P), which the synthetic " +
       "prelude does not have supporting declarations for, causing a TYPE_MISMATCH rejection. " +
-      "This is a pre-existing divergence — to be addressed in a future normalization PR.",
+      "This is a pre-existing divergence — Phase 4D deferred, tracked in #363.",
   },
 ];
 
