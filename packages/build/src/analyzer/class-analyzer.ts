@@ -362,7 +362,6 @@ function collectInheritedTypeAnnotations(
   derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration,
   existingAnnotations: readonly AnnotationNode[],
   checker: ts.TypeChecker,
-  file: string,
   extensionRegistry: ExtensionRegistry | undefined
 ): AnnotationNode[] {
   // A local annotation only suppresses heritage inheritance when it carries a
@@ -418,11 +417,13 @@ function collectInheritedTypeAnnotations(
 
   enqueueBasesOf(derivedDecl);
 
-  while (queue.length > 0 && needed.size > 0) {
-    const baseDecl = queue.shift();
-    if (baseDecl === undefined) break;
+  // Index-pointer traversal (vs `queue.shift()`) keeps the BFS O(n) for deep
+  // heritage graphs — array shift is O(n) in V8.
+  for (let queueIndex = 0; queueIndex < queue.length && needed.size > 0; queueIndex++) {
+    const baseDecl = queue[queueIndex];
+    if (baseDecl === undefined) continue;
     // Use the base declaration's own source file for provenance / pos-mapping.
-    // The BFS may cross file boundaries, so the derived type's `file` is not
+    // The BFS may cross file boundaries, so the derived type's file is not
     // the right reference point for annotations parsed off a base declaration.
     const baseFile = baseDecl.getSourceFile().fileName;
     const baseAnnotations = extractJSDocAnnotationNodes(
@@ -469,7 +470,6 @@ function extractNamedTypeAnnotations(
     namedDecl,
     local,
     checker,
-    file,
     extensionRegistry
   );
   if (inherited.length === 0) return [...local];
@@ -551,7 +551,6 @@ export function analyzeClassToIR(
     classDecl,
     classDoc.annotations,
     checker,
-    file,
     extensionRegistry
   );
   const annotations: AnnotationNode[] = [...classDoc.annotations, ...inheritedClassAnnotations];
@@ -659,7 +658,6 @@ export function analyzeInterfaceToIR(
     interfaceDecl,
     interfaceDoc.annotations,
     checker,
-    file,
     extensionRegistry
   );
   const annotations: AnnotationNode[] = [
