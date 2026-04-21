@@ -426,11 +426,27 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 }
 
 /**
- * Applies path-targeted constraints to a schema via allOf composition.
+ * Applies path-targeted constraints to a schema.
  *
- * For $ref schemas: wraps in allOf with property overrides.
- * For inline object schemas: applies directly to nested properties.
- * For array schemas: applies path constraints to the items sub-schema.
+ * Emission-shape policy (see issues #364, #366):
+ *
+ * | Base schema shape                                        | Emission            |
+ * |----------------------------------------------------------|---------------------|
+ * | array                                                    | recurse into items  |
+ * | nullable oneOf                                           | recurse into value  |
+ * | `$ref`                                                   | $ref + siblings     |
+ * | inline object, override targets an existing property     | flat in-place merge |
+ * | inline object, missing property, open base               | flat merge          |
+ * | inline object, missing property, `additionalProperties:  | `allOf` composition |
+ * |     false` (closed)                                      |                     |
+ * | already-composed `allOf`                                 | append `allOf` arm  |
+ * | other (non-object, non-$ref)                             | unchanged           |
+ *
+ * Under 2020-12 §10.2.1 sibling keywords are permitted next to `$ref`, which
+ * is what lets the `$ref` and open-object branches emit flat output. The
+ * closed-object and already-composed branches retain `allOf` because
+ * collapsing them would silently widen the base schema. Both remain tracked
+ * by issue #366 and may surface a build-time diagnostic in the future.
  */
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
@@ -483,11 +499,16 @@ function applyPathTargetedConstraints(
 
   // Inline object schema: merge property overrides directly where possible.
   if (schema.type === "object" && schema.properties) {
-    // When additionalProperties is explicitly false, adding a new key to
-    // schema.properties would not make the base object accept that key —
-    // validators still reject it under the closed schema. Use allOf composition
-    // as the least-wrong behavior and rely on a future diagnostic to surface
-    // the misuse of path-targeted constraints on closed objects.
+    // Policy matrix for missing-property overrides (see issue #366):
+    //   - open base (additionalProperties true/undefined/schema) → flat merge
+    //     into `schema.properties`. Under 2020-12 this is semantically
+    //     equivalent to allOf composition and avoids the wrapper.
+    //   - closed base (additionalProperties === false) → retain allOf
+    //     composition. Adding a key to `properties` would not make the base
+    //     accept it under its closed schema; a flat merge would silently
+    //     misrepresent the constraint. This is the least-wrong behavior until
+    //     a build-time diagnostic flags path-targeted constraints on closed
+    //     objects — tracked by issue #366.
     const additionalPropertiesIsFalse = schema.additionalProperties === false;
     const missingOverrides: Record<string, JsonSchema2020> = {};
 
@@ -495,13 +516,14 @@ function applyPathTargetedConstraints(
       if (schema.properties[target]) {
         mergeSchemaOverride(schema.properties[target], overrideSchema);
       } else if (additionalPropertiesIsFalse) {
-        // Closed schema: collect for allOf composition (see comment above).
-        missingOverrides[target] = overrideSchema;
+        // Closed schema: collect for allOf composition (see policy comment).
+        // Shallow-clone to avoid aliasing `overrideSchema` into the emitted IR.
+        missingOverrides[target] = { ...overrideSchema };
       } else {
-        // Open schema (additionalProperties true/undefined/schema): merge
-        // directly into properties. Under 2020-12 this is semantically
-        // equivalent to allOf composition and avoids the wrapper.
-        schema.properties[target] = overrideSchema;
+        // Open schema: merge directly. Shallow-clone so subsequent overrides
+        // on the same key route through mergeSchemaOverride against an
+        // independently-owned object rather than mutating the caller's input.
+        schema.properties[target] = { ...overrideSchema };
       }
     }
 

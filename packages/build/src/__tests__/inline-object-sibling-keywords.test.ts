@@ -175,8 +175,16 @@ describe("inline object: path-targeted constraints on missing properties (issue 
 
     // Retained behavior: allOf composition is used to avoid widening the
     // additionalProperties:false constraint on the base object.
-    expect(address["allOf"]).toBeDefined();
-    // The base object lives inside allOf[0], not at top level.
+    const allOf = address["allOf"] as Record<string, unknown>[] | undefined;
+    if (allOf === undefined) throw new Error("expected allOf composition to be emitted");
+    expect(allOf).toHaveLength(2);
+    // The base object lives inside allOf[0] with its closed-schema marker.
+    const [base, overridesArm] = allOf;
+    expect(base["type"]).toBe("object");
+    expect(base["additionalProperties"]).toBe(false);
+    // The second arm carries the missing-property override.
+    expect(overridesArm["properties"]).toEqual({ street: { minLength: 1 } });
+    // The outer object must not duplicate the base `type` keyword.
     expect(address["type"]).toBeUndefined();
   });
 
@@ -230,5 +238,75 @@ describe("inline object: path-targeted constraints on missing properties (issue 
 
     // Missing property gets added directly to properties.
     expect(properties["street"]).toEqual({ minLength: 1 });
+  });
+
+  /**
+   * Two path-targeted constraints on the SAME missing property. First
+   * insertion writes the override into `schema.properties[target]`; the
+   * second pass sees the now-present property and routes through
+   * `mergeSchemaOverride`, which mutates in place. The override object owned
+   * by the caller must not be aliased into the emitted IR, or the mutation
+   * would leak back. Guards against a shared-reference regression.
+   */
+  it("accumulates multiple missing-property overrides on the same path without aliasing", () => {
+    const ir = makeIR([
+      {
+        kind: "field",
+        name: "address",
+        type: {
+          kind: "object",
+          properties: [],
+          additionalProperties: true,
+        },
+        required: true,
+        constraints: [makePathMinLength(["street"], 1), makePathPattern(["street"], "^\\d+")],
+        annotations: NO_ANNOTATIONS,
+        provenance: PROVENANCE,
+      },
+    ]);
+
+    const schema = generateJsonSchemaFromIR(ir);
+    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
+      string,
+      unknown
+    >;
+    const properties = address["properties"] as Record<string, unknown>;
+
+    expect(address["allOf"]).toBeUndefined();
+    // Both constraints must land on the same property.
+    expect(properties["street"]).toEqual({ minLength: 1, pattern: "^\\d+" });
+  });
+
+  /**
+   * Multiple distinct missing-property overrides in a single call. Each
+   * should land flat in `properties`, with no stray `allOf`.
+   */
+  it("merges multiple distinct missing-property overrides flat into properties", () => {
+    const ir = makeIR([
+      {
+        kind: "field",
+        name: "address",
+        type: {
+          kind: "object",
+          properties: [],
+          additionalProperties: true,
+        },
+        required: true,
+        constraints: [makePathMinLength(["street"], 1), makePathMinLength(["city"], 2)],
+        annotations: NO_ANNOTATIONS,
+        provenance: PROVENANCE,
+      },
+    ]);
+
+    const schema = generateJsonSchemaFromIR(ir);
+    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
+      string,
+      unknown
+    >;
+    const properties = address["properties"] as Record<string, unknown>;
+
+    expect(address["allOf"]).toBeUndefined();
+    expect(properties["street"]).toEqual({ minLength: 1 });
+    expect(properties["city"]).toEqual({ minLength: 2 });
   });
 });
