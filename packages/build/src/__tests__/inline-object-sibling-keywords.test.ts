@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest";
 import type { AnnotationNode, ConstraintNode, FormIR, Provenance } from "@formspec/core/internals";
 import { IR_VERSION } from "@formspec/core/internals";
-import { generateJsonSchemaFromIR } from "../json-schema/ir-generator.js";
+import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../json-schema/ir-generator.js";
 
 // =============================================================================
 // TEST HELPERS
@@ -79,6 +79,15 @@ function makePathPattern(segments: string[], pattern: string): ConstraintNode {
 /** Empty annotation list for brevity. */
 const NO_ANNOTATIONS: AnnotationNode[] = [];
 
+/** Looks up a property on a schema and asserts it exists — returns the typed sub-schema. */
+function getProperty(schema: JsonSchema2020, name: string): JsonSchema2020 {
+  const value = schema.properties?.[name];
+  if (value === undefined) {
+    throw new Error(`expected property "${name}" to be present on schema`);
+  }
+  return value;
+}
+
 // =============================================================================
 // TESTS
 // =============================================================================
@@ -117,21 +126,16 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     ]);
 
     const schema = generateJsonSchemaFromIR(ir);
-    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
-      string,
-      unknown
-    >;
+    const address = getProperty(schema, "address");
 
     // Fix: missing property override must be merged flat — no allOf.
-    expect(address["allOf"]).toBeUndefined();
+    expect(address.allOf).toBeUndefined();
     // The base object type keyword must remain at the top level.
-    expect(address["type"]).toBe("object");
+    expect(address.type).toBe("object");
     // Existing property preserved.
-    expect((address["properties"] as Record<string, unknown>)["city"]).toEqual({
-      type: "string",
-    });
+    expect(getProperty(address, "city")).toEqual({ type: "string" });
     // Missing property added directly to properties.
-    expect((address["properties"] as Record<string, unknown>)["street"]).toEqual({ minLength: 1 });
+    expect(getProperty(address, "street")).toEqual({ minLength: 1 });
   });
 
   /**
@@ -168,24 +172,23 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     ]);
 
     const schema = generateJsonSchemaFromIR(ir);
-    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
-      string,
-      unknown
-    >;
+    const address = getProperty(schema, "address");
 
     // Retained behavior: allOf composition is used to avoid widening the
     // additionalProperties:false constraint on the base object.
-    const allOf = address["allOf"] as Record<string, unknown>[] | undefined;
+    const allOf = address.allOf;
     if (allOf === undefined) throw new Error("expected allOf composition to be emitted");
     expect(allOf).toHaveLength(2);
     // The base object lives inside allOf[0] with its closed-schema marker.
     const [base, overridesArm] = allOf;
-    expect(base["type"]).toBe("object");
-    expect(base["additionalProperties"]).toBe(false);
+    if (base === undefined) throw new Error("expected base schema in allOf[0]");
+    if (overridesArm === undefined) throw new Error("expected override arm in allOf[1]");
+    expect(base.type).toBe("object");
+    expect(base.additionalProperties).toBe(false);
     // The second arm carries the missing-property override.
-    expect(overridesArm["properties"]).toEqual({ street: { minLength: 1 } });
+    expect(overridesArm.properties).toEqual({ street: { minLength: 1 } });
     // The outer object must not duplicate the base `type` keyword.
-    expect(address["type"]).toBeUndefined();
+    expect(address.type).toBeUndefined();
   });
 
   /**
@@ -223,21 +226,17 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     ]);
 
     const schema = generateJsonSchemaFromIR(ir);
-    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
-      string,
-      unknown
-    >;
-    const properties = address["properties"] as Record<string, unknown>;
+    const address = getProperty(schema, "address");
 
     // No allOf — the whole result is a single flat object.
-    expect(address["allOf"]).toBeUndefined();
-    expect(address["type"]).toBe("object");
+    expect(address.allOf).toBeUndefined();
+    expect(address.type).toBe("object");
 
     // Existing property gets the override merged in.
-    expect(properties["zip"]).toEqual({ type: "string", pattern: "^\\d{5}$" });
+    expect(getProperty(address, "zip")).toEqual({ type: "string", pattern: "^\\d{5}$" });
 
     // Missing property gets added directly to properties.
-    expect(properties["street"]).toEqual({ minLength: 1 });
+    expect(getProperty(address, "street")).toEqual({ minLength: 1 });
   });
 
   /**
@@ -267,15 +266,11 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     ]);
 
     const schema = generateJsonSchemaFromIR(ir);
-    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
-      string,
-      unknown
-    >;
-    const properties = address["properties"] as Record<string, unknown>;
+    const address = getProperty(schema, "address");
 
-    expect(address["allOf"]).toBeUndefined();
+    expect(address.allOf).toBeUndefined();
     // Both constraints must land on the same property.
-    expect(properties["street"]).toEqual({ minLength: 1, pattern: "^\\d+" });
+    expect(getProperty(address, "street")).toEqual({ minLength: 1, pattern: "^\\d+" });
   });
 
   /**
@@ -300,14 +295,151 @@ describe("inline object: path-targeted constraints on missing properties (issue 
     ]);
 
     const schema = generateJsonSchemaFromIR(ir);
-    const address = (schema.properties as Record<string, unknown>)["address"] as Record<
-      string,
-      unknown
-    >;
-    const properties = address["properties"] as Record<string, unknown>;
+    const address = getProperty(schema, "address");
 
-    expect(address["allOf"]).toBeUndefined();
-    expect(properties["street"]).toEqual({ minLength: 1 });
-    expect(properties["city"]).toEqual({ minLength: 2 });
+    expect(address.allOf).toBeUndefined();
+    expect(getProperty(address, "street")).toEqual({ minLength: 1 });
+    expect(getProperty(address, "city")).toEqual({ minLength: 2 });
+  });
+
+  /**
+   * Multi-segment path where the FIRST segment is a missing top-level property.
+   * `buildPropertyOverrides` produces a nested override
+   * (`{ address: { properties: { street: { minLength: 1 } } } }`); the
+   * open-base branch must materialise that whole nested structure flat under
+   * `schema.properties` without generating an `allOf`.
+   */
+  it("flat-merges a nested override when the first path segment is missing", () => {
+    const ir = makeIR([
+      {
+        kind: "field",
+        name: "profile",
+        type: {
+          kind: "object",
+          properties: [],
+          additionalProperties: true,
+        },
+        required: true,
+        constraints: [makePathMinLength(["address", "street"], 1)],
+        annotations: NO_ANNOTATIONS,
+        provenance: PROVENANCE,
+      },
+    ]);
+
+    const schema = generateJsonSchemaFromIR(ir);
+    const profile = getProperty(schema, "profile");
+
+    expect(profile.allOf).toBeUndefined();
+    expect(profile.type).toBe("object");
+    // The nested override must be flat at .properties.address.properties.street.
+    const address = getProperty(profile, "address");
+    expect(getProperty(address, "street")).toEqual({ minLength: 1 });
+  });
+
+  /**
+   * Path-targeted constraint on a missing property of an inline object
+   * embedded inside an array. `applyPathTargetedConstraints` recurses through
+   * the array branch into `items`, which is the inline object we fix here.
+   * The item schema should flat-merge the missing override — no stray
+   * `allOf` at either the array or item level.
+   */
+  it("flat-merges a missing-property override on an inline object inside an array", () => {
+    const ir = makeIR([
+      {
+        kind: "field",
+        name: "contacts",
+        type: {
+          kind: "array",
+          items: {
+            kind: "object",
+            properties: [
+              {
+                name: "name",
+                type: { kind: "primitive", primitiveKind: "string" },
+                optional: false,
+                constraints: [],
+                annotations: NO_ANNOTATIONS,
+                provenance: PROVENANCE,
+              },
+            ],
+            additionalProperties: true,
+          },
+        },
+        required: true,
+        constraints: [makePathMinLength(["email"], 1)],
+        annotations: NO_ANNOTATIONS,
+        provenance: PROVENANCE,
+      },
+    ]);
+
+    const schema = generateJsonSchemaFromIR(ir);
+    const contacts = getProperty(schema, "contacts");
+
+    expect(contacts.allOf).toBeUndefined();
+    expect(contacts.type).toBe("array");
+    const items = contacts.items;
+    if (items === undefined) throw new Error("expected items schema to be present");
+    expect(items.allOf).toBeUndefined();
+    expect(items.type).toBe("object");
+    expect(getProperty(items, "name")).toEqual({ type: "string" });
+    expect(getProperty(items, "email")).toEqual({ minLength: 1 });
+  });
+
+  /**
+   * Nullable union (`T | null`) wrapping an inline object. The nullable
+   * branch in `applyPathTargetedConstraints` recurses into the non-null arm;
+   * that arm then takes the open-object path and must flat-merge the
+   * missing-property override. The outer schema stays a `oneOf` with two
+   * branches (object + null) — no `allOf` is introduced.
+   */
+  it("flat-merges a missing-property override inside a nullable-union branch", () => {
+    const ir = makeIR([
+      {
+        kind: "field",
+        name: "address",
+        type: {
+          kind: "union",
+          members: [
+            {
+              kind: "object",
+              properties: [
+                {
+                  name: "city",
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: NO_ANNOTATIONS,
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: true,
+            },
+            { kind: "primitive", primitiveKind: "null" },
+          ],
+        },
+        required: true,
+        constraints: [makePathMinLength(["street"], 1)],
+        annotations: NO_ANNOTATIONS,
+        provenance: PROVENANCE,
+      },
+    ]);
+
+    const schema = generateJsonSchemaFromIR(ir);
+    const address = getProperty(schema, "address");
+
+    expect(address.allOf).toBeUndefined();
+    const oneOf = address.oneOf;
+    if (oneOf === undefined) throw new Error("expected nullable oneOf to be preserved");
+    expect(oneOf).toHaveLength(2);
+
+    const objectBranch = oneOf.find((branch) => branch.type === "object");
+    const nullBranch = oneOf.find((branch) => branch.type === "null");
+    if (objectBranch === undefined) throw new Error("expected non-null object branch");
+    if (nullBranch === undefined) throw new Error("expected null branch to be preserved");
+
+    // The non-null arm carries the flat merge of the existing and missing properties.
+    expect(objectBranch.allOf).toBeUndefined();
+    expect(getProperty(objectBranch, "city")).toEqual({ type: "string" });
+    expect(getProperty(objectBranch, "street")).toEqual({ minLength: 1 });
   });
 });

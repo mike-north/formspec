@@ -442,10 +442,15 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
  * | already-composed `allOf`                                 | append `allOf` arm  |
  * | other (non-object, non-$ref)                             | unchanged           |
  *
- * A base is "closed" when `additionalProperties` is either `false` (no extra
- * keys permitted) OR a schema that constrains extra keys: in both cases a
- * flat merge into `properties` would silently change validation semantics for
- * the added key. Only `true` / `undefined` are treated as open.
+ * "Closed" is treated as two distinct cases that both prevent a safe flat
+ * merge, for different reasons:
+ *   - `additionalProperties: false` — the new key is outright rejected by the
+ *     base, so a flat merge would change the allowed-key set silently.
+ *   - `additionalProperties: <schema>` — the new key is permitted but must
+ *     also validate against the sub-schema; a flat merge would drop that
+ *     intersection. (Today's IR does not emit this shape on an inline
+ *     `properties`-bearing object, but the check is defensive against future
+ *     emitters and custom extension `toJsonSchema` output.)
  *
  * Under 2020-12 §10.2.1 sibling keywords are permitted next to `$ref`, so the
  * `$ref` branch could in principle emit a flat shape too; that work is out of
@@ -501,36 +506,27 @@ function applyPathTargetedConstraints(
   }
 
   // Inline object schema: merge property overrides directly where possible.
+  // See the function-level docstring for the emission-shape policy.
   if (schema.type === "object" && schema.properties) {
-    // Policy for missing-property overrides (see issue #366 and the
-    // function-level docstring):
-    //   - open base (additionalProperties true/undefined) → flat merge into
-    //     `schema.properties`. Under 2020-12 this is semantically equivalent
-    //     to allOf composition and avoids the wrapper.
-    //   - closed base (additionalProperties === false OR a schema) → retain
-    //     allOf composition. For `false`, a flat merge cannot make the base
-    //     accept the key. For a schema, the missing key was constrained by
-    //     the additionalProperties sub-schema; a flat merge would drop that
-    //     intersection. This is the least-wrong behavior until a build-time
-    //     diagnostic flags path-targeted constraints on closed objects —
-    //     tracked by issue #366.
-    const additionalPropertiesIsClosed =
-      schema.additionalProperties === false || typeof schema.additionalProperties === "object";
+    const baseProperties = schema.properties;
+    const isClosed = isClosedObjectSchema(schema);
     const missingOverrides: Record<string, JsonSchema2020> = {};
 
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
-      if (schema.properties[target]) {
-        mergeSchemaOverride(schema.properties[target], overrideSchema);
-      } else if (additionalPropertiesIsClosed) {
-        // Closed schema: collect for allOf composition (see policy comment).
-        // Shallow-clone to avoid aliasing `overrideSchema` into the emitted IR.
+      const existing = baseProperties[target];
+      if (existing !== undefined) {
+        // Existing property: merge override into the existing sub-schema.
+        mergeSchemaOverride(existing, overrideSchema);
+      } else if (isClosed) {
+        // Closed base: defer to allOf composition so the base's closed-ness
+        // is preserved. Shallow-clone so the emitted IR does not alias the
+        // override object produced by `buildPropertyOverrides`.
         missingOverrides[target] = { ...overrideSchema };
       } else {
-        // Open schema: merge directly. Shallow-clone so re-application on the
-        // same schema (not reachable today, but cheap defense) routes through
-        // mergeSchemaOverride against an independently-owned object rather
-        // than mutating the caller's input.
-        schema.properties[target] = { ...overrideSchema };
+        // Open base: flat-merge by materialising the override onto a fresh
+        // slot in the base's `properties`. Equivalent to allOf composition
+        // under 2020-12 when `additionalProperties` is true/undefined.
+        baseProperties[target] = { ...overrideSchema };
       }
     }
 
@@ -1047,6 +1043,27 @@ function stripLeadingPathSegment(constraint: ConstraintNode): ConstraintNode {
     ...constraint,
     path: { segments: rest },
   };
+}
+
+/**
+ * Returns true if the given object schema cannot safely absorb a new property
+ * via a flat merge — either because `additionalProperties: false` rejects
+ * unknown keys, or because `additionalProperties: <schema>` would drop the
+ * validation intersection on the newly merged key.
+ *
+ * `JsonSchema2020.additionalProperties` is typed `boolean | JsonSchema2020 |
+ * undefined`, so only `false` and a sub-schema object are "closed"; `true` /
+ * `undefined` are treated as open. The `typeof === "object"` case is
+ * defensive — today's IR emitters do not produce an inline
+ * `properties`-bearing object with a sub-schema `additionalProperties`, but
+ * custom extension `toJsonSchema` hooks can.
+ */
+function isClosedObjectSchema(schema: JsonSchema2020): boolean {
+  const additional = schema.additionalProperties;
+  if (additional === false) {
+    return true;
+  }
+  return typeof additional === "object";
 }
 
 function getNullableUnionValueSchema(schema: JsonSchema2020): JsonSchema2020 | undefined {
