@@ -556,10 +556,12 @@ export function mapTypedParserDiagnosticCode(
  * payload before Role C validation. The two consumers previously diverged:
  *
  * - Build consumer re-derives via `parseTagSyntax(tagName, rawText).argumentText`
- *   so that path-target prefixes are stripped and `TAGS_REQUIRING_RAW_TEXT`
- *   compiler-API-fallback payloads are handled correctly. `rawText` is the
- *   full payload (may include `:field` target prefix) chosen by
- *   `choosePreferredPayloadText`.
+ *   so that path-target prefixes are stripped. `rawText` is the full payload
+ *   (may include `:field` target prefix) already chosen by
+ *   `choosePreferredPayloadText` upstream — including `TAGS_REQUIRING_RAW_TEXT`
+ *   compiler-API fallback selection. By the time this helper is called, the
+ *   preferred payload has already been selected; this helper only strips the
+ *   path-target prefix and canonicalizes the argument text.
  * - Snapshot consumer passed `tag.argumentText` directly (which is already
  *   target-stripped by `parseCommentBlock`).
  *
@@ -578,10 +580,11 @@ export function mapTypedParserDiagnosticCode(
  * identically regardless of consumer.
  *
  * @param tagName   - normalized tag name (no leading `@`)
- * @param rawText   - full payload text, possibly including a path-target
- *                    prefix (`:field`). For the build consumer this comes from
- *                    `choosePreferredPayloadText`; for the snapshot consumer
- *                    this is `tag.argumentText` (already target-stripped).
+ * @param rawText   - the post-`choosePreferredPayloadText` payload string,
+ *                    possibly including a path-target prefix (`:field`).
+ *                    `TAGS_REQUIRING_RAW_TEXT` selection is handled upstream
+ *                    by `choosePreferredPayloadText` before this helper is
+ *                    called.
  * @param parsedTag - the parsed comment tag from `parseCommentBlock`, or
  *                    `null` for orphaned compiler-API fallback entries.
  *

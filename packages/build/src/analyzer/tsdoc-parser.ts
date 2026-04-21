@@ -911,17 +911,18 @@ function buildCompilerBackedConstraintDiagnostics(
   //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
+  if (hasBroadening) {
+    return emit("bypass", []);
+  }
+
   // §4 Phase 4B — use shared extractEffectiveArgumentText so both consumers
   // derive argument text identically. Extracts the argument from rawText (the
   // canonical post-choosePreferredPayloadText string), which for
   // TAGS_REQUIRING_RAW_TEXT may have been selected via the compiler-API
   // fallback. Re-parsing from rawText applies path-target prefix stripping and
   // canonicalisation consistently with the snapshot consumer.
+  // Computed after the bypass check so broadened fields skip this work entirely.
   const effectiveArgumentText = extractEffectiveArgumentText(tagName, rawText, parsedTag);
-
-  if (hasBroadening) {
-    return emit("bypass", []);
-  }
 
   const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
 

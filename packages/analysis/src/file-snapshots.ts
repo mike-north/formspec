@@ -223,10 +223,9 @@ function createConstraintTagRegistry(
  *   The type is matched by name against `registration.tsTypeNames ?? [typeName]`,
  *   which is the same string-based detection used elsewhere in file-snapshots.ts.
  *
- * Notably, `isIntegerBrandedType` bypass is NOT replicated here. That bypass is
- * a known build/snapshot divergence (PR #315 / file-snapshots.integer-bypass
- * test) and is tracked separately. Phase 3 only wires the extension-registry
- * broadening check.
+ * The isIntegerBrandedType bypass is handled in buildTagDiagnostics (Phase 4A,
+ * closes #325) before this function is called. This function handles only the
+ * extension-registry broadening path.
  */
 // TODO(Phase 4/5): consolidate with hasBuiltinConstraintBroadening in
 // tsdoc-parser.ts. Same semantic question ("does this tag have a registered
