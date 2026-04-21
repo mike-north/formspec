@@ -949,13 +949,27 @@ function buildPropertyOverrides(
     byTarget.set(target, grouped);
   }
 
-  const overrides: Record<string, JsonSchema2020> = {};
+  // Null-prototype map so path-targeted keys like `__proto__` or `constructor`
+  // become own properties rather than invoking Object.prototype setters or
+  // matching inherited members. This is the upstream half of the
+  // prototype-pollution hardening at Site 1 in `applyPathTargetedConstraints`:
+  // without it, `overrides["__proto__"] = ...` replaces this map's own
+  // [[Prototype]] and `Object.entries(overrides)` yields `[]`, silently
+  // dropping the constraint before the Site 1 guard can run.
+  const overrides = Object.create(null) as Record<string, JsonSchema2020>;
   for (const [target, constraints] of byTarget) {
-    overrides[resolveSerializedPropertyName(target, typeNode, ctx)] = buildPathOverrideSchema(
+    const resolvedName = resolveSerializedPropertyName(target, typeNode, ctx);
+    const schema = buildPathOverrideSchema(
       constraints.map(stripLeadingPathSegment),
       resolveTargetTypeNode(target, typeNode, ctx),
       ctx
     );
+    Object.defineProperty(overrides, resolvedName, {
+      value: schema,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
 
   return overrides;
@@ -1071,11 +1085,27 @@ function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): 
   }
 
   if (override.properties !== undefined) {
-    const mergedProperties = target.properties ?? {};
+    // Fresh maps use a null prototype so `__proto__`-named path segments can
+    // land as own properties. Existing maps are preserved as-is — when they
+    // came from `buildPropertyOverrides` they are already null-prototype; when
+    // they came from an external `toJsonSchema` hook they are a plain object
+    // whose own-property shape we do not modify.
+    const mergedProperties =
+      target.properties ?? (Object.create(null) as Record<string, JsonSchema2020>);
     for (const [name, propertyOverride] of Object.entries(override.properties)) {
-      const existing = mergedProperties[name];
+      const existing = Object.hasOwn(mergedProperties, name)
+        ? mergedProperties[name]
+        : undefined;
       if (existing === undefined) {
-        mergedProperties[name] = propertyOverride;
+        // `defineProperty` bypasses the `__proto__` setter on regular-prototype
+        // maps; safe no-op on null-prototype maps. See the hardening comment
+        // at Site 1 in `applyPathTargetedConstraints` for the full rationale.
+        Object.defineProperty(mergedProperties, name, {
+          value: propertyOverride,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
       } else {
         mergeSchemaOverride(existing, propertyOverride);
       }
@@ -1095,7 +1125,17 @@ function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): 
     if (key === "properties" || key === "items") {
       continue;
     }
-    (target as Record<string, unknown>)[key] = value;
+    // `defineProperty` guards against the same prototype-pollution vector as
+    // the nested-properties branch above, for completeness. Schema keywords
+    // like `minimum`/`type` are never `__proto__`, but callers reach this
+    // code path through recursion from path-targeted overrides where the
+    // boundary is not locally enforceable.
+    Object.defineProperty(target, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
 }
 
