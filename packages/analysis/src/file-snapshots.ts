@@ -1,9 +1,10 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
 import {
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   checkSyntheticTagApplicationsDetailed,
   lowerTagApplicationToSyntheticCall,
-  validateExtensionSetup,
 } from "./compiler-signatures.js";
 import {
   extractCommentBlockTagTexts,
@@ -62,7 +63,6 @@ import { noopLogger } from "@formspec/core";
 import { isBuiltinConstraintName } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
-  getSyntheticLogger,
   getTypedParserLogger,
   describeTypeKind,
   logSetupDiagnostics,
@@ -1087,17 +1087,6 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
   }
 }
 
-function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
-  const firstSpan = spans[0];
-  if (firstSpan === undefined) {
-    return null;
-  }
-  return {
-    start: firstSpan.start,
-    end: spans[spans.length - 1]?.end ?? firstSpan.end,
-  };
-}
-
 function createAnalysisDiagnostic(
   code: string,
   message: string,
@@ -1331,12 +1320,7 @@ function buildTagDiagnostics(
   commentTags: ReturnType<typeof parseCommentBlock>["tags"],
   semanticOptions: CommentSemanticContextOptions,
   performance: FormSpecPerformanceRecorder | undefined,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
-  /** Phase 4 Slice C: when `true`, setup diagnostics were already emitted at
-   * the snapshot level (once per {@link buildFormSpecAnalysisFileSnapshot} call).
-   * Skip re-emitting `batchCheck.globalDiagnostics` in this function so the
-   * caller-level emit and the per-batch emit do not double-count. */
-  setupDiagnosticsPreEmitted = false
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
 ): FormSpecAnalysisDiagnostic[] {
   if (placement === null || subjectType === undefined) {
     return [];
@@ -1370,7 +1354,6 @@ function buildTagDiagnostics(
   ]);
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
-  const syntheticLog = getSyntheticLogger();
   const typedParserLog = getTypedParserLogger();
   const snapshotLogsEnabled = snapshotLog !== noopLogger;
   const typedParserTraceEnabled = typedParserLog !== noopLogger;
@@ -1665,48 +1648,6 @@ function buildTagDiagnostics(
       })
   );
 
-  // §4 Phase 4 Slice C — when setup diagnostics were pre-emitted at the
-  // snapshot level, skip re-emitting them from the per-batch path. Without
-  // this guard, a file with N commented declarations would produce N copies of
-  // each setup diagnostic (one per `buildTagDiagnostics` call), undoing the
-  // "emit-once-per-snapshot-call" guarantee established at the caller level.
-  //
-  // When setup diagnostics were NOT pre-emitted (legacy call sites or callers
-  // that don't pass the flag), retain the old per-batch behaviour so existing
-  // consumers are not silently broken.
-  if (!setupDiagnosticsPreEmitted) {
-    // §8.3c — log any global (setup-level) diagnostics from the batch check.
-    if (batchCheck.globalDiagnostics.length > 0) {
-      const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
-      syntheticLog.debug("synthetic batch: global setup diagnostics", {
-        diagnosticCount: batchCheck.globalDiagnostics.length,
-        codes: setupCodes,
-      });
-    }
-
-    const globalDiagnosticRange = combineCommentSpans(
-      syntheticApplications.map((application) => application.tag.fullSpan)
-    );
-
-    if (globalDiagnosticRange !== null) {
-      for (const diagnostic of batchCheck.globalDiagnostics) {
-        const code =
-          diagnostic.kind === "unsupported-custom-type-override"
-            ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-            : diagnostic.kind === "synthetic-setup"
-              ? "SYNTHETIC_SETUP_FAILURE"
-              : "TYPE_MISMATCH";
-        diagnostics.push(
-          createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
-            placement,
-            tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-            ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-          })
-        );
-      }
-    }
-  }
-
   for (const [index, result] of batchCheck.applicationResults.entries()) {
     const application = syntheticApplications[index];
     if (application === undefined) {
@@ -1881,12 +1822,10 @@ export function buildFormSpecAnalysisFileSnapshot(
   // extension config would produce N identical diagnostics. Pre-validating here
   // emits each setup diagnostic exactly once per buildFormSpecAnalysisFileSnapshot
   // call, anchored at the start of the file (no tag-site location available for
-  // registry-level failures). buildTagDiagnostics skips its own global-diagnostic
-  // emission when setupDiagnosticsPreEmitted is true.
+  // registry-level failures).
   const snapshotLog = getSnapshotLogger();
-  const setupDiagnosticResults = validateExtensionSetup(extensions);
-  const setupDiagnosticsPreEmitted = setupDiagnosticResults.length > 0;
-  if (setupDiagnosticsPreEmitted) {
+  const setupDiagnosticResults = _validateExtensionSetup(extensions);
+  if (setupDiagnosticResults.length > 0) {
     logSetupDiagnostics(snapshotLog, {
       diagnosticCount: setupDiagnosticResults.length,
       codes: setupDiagnosticResults.map((d) => d.kind),
@@ -1896,11 +1835,14 @@ export function buildFormSpecAnalysisFileSnapshot(
     // "registry-level" location in the snapshot transport format.
     const fileStartSpan: CommentSpan = { start: 0, end: 0 };
     for (const setupDiag of setupDiagnosticResults) {
-      const code =
-        setupDiag.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : "SYNTHETIC_SETUP_FAILURE";
-      diagnostics.push(createAnalysisDiagnostic(code, setupDiag.message, fileStartSpan, {}));
+      diagnostics.push(
+        createAnalysisDiagnostic(
+          _mapSetupDiagnosticCode(setupDiag.kind),
+          setupDiag.message,
+          fileStartSpan,
+          {}
+        )
+      );
     }
   }
 
@@ -1944,8 +1886,7 @@ export function buildFormSpecAnalysisFileSnapshot(
                   ...(extensions === undefined ? {} : { extensions }),
                 },
                 options.performance,
-                options.extensionDefinitions,
-                setupDiagnosticsPreEmitted
+                options.extensionDefinitions
               )
           )
         );

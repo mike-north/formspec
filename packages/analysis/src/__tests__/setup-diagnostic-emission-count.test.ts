@@ -7,8 +7,8 @@
  * Before relocation the same count held, but for a different reason — setup
  * failures threw before the LRU cache key was computed, so each call produced
  * a new diagnostic. After relocation, setup validation runs once per snapshot
- * call via `validateExtensionSetup`, and `buildTagDiagnostics` skips re-emitting
- * global batch diagnostics when `setupDiagnosticsPreEmitted` is true.
+ * call via `_validateExtensionSetup`, and `buildTagDiagnostics` no longer
+ * participates in setup-diagnostic emission.
  *
  * Post-Phase-4 Slice C emission model: PER-SNAPSHOT-CALL (pre-emitted at file level)
  *   - One `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` or `SYNTHETIC_SETUP_FAILURE` diagnostic
@@ -19,10 +19,10 @@
  *   - Consequence: N snapshot refreshes → N diagnostics; re-creating the
  *     "extensions" array (constructing a new config object and running again)
  *     produces the same count-per-call as using the original config, since
- *     `validateExtensionSetup` always runs per call.
+ *     `_validateExtensionSetup` always runs per call.
  *
  * @see docs/refactors/synthetic-checker-retirement.md §4 Phase 4 Slice C
- * @see packages/analysis/src/compiler-signatures.ts (validateExtensionSetup)
+ * @see packages/analysis/src/compiler-signatures.ts (_validateExtensionSetup)
  * @see packages/analysis/src/__tests__/compiler-signatures.test.ts lines 404-431
  */
 
@@ -98,7 +98,7 @@ describe("setup-diagnostic emission-count stability (Phase 4 Slice C)", () => {
 
     // Simulate three IDE snapshot refreshes on the same file with the same
     // extension config. After Phase 4 Slice C, each call independently
-    // invokes validateExtensionSetup (at the top of buildFormSpecAnalysisFileSnapshot)
+    // invokes _validateExtensionSetup (at the top of buildFormSpecAnalysisFileSnapshot)
     // and pre-emits any setup diagnostics before visiting nodes. The per-call
     // count remains 1 — the mechanism changed (pre-emit instead of batch-emit)
     // but the observable behaviour (one diagnostic per refresh) is preserved.
@@ -141,7 +141,7 @@ describe("setup-diagnostic emission-count stability (Phase 4 Slice C)", () => {
 
     // "Recreate the registry": construct a fresh extension config object with
     // identical values and run one additional snapshot refresh. After Phase 4
-    // Slice C, validateExtensionSetup always runs per buildFormSpecAnalysisFileSnapshot
+    // Slice C, _validateExtensionSetup always runs per buildFormSpecAnalysisFileSnapshot
     // call — there is no cross-call deduplication. Each call with a broken
     // extension config produces exactly one setup diagnostic regardless of
     // whether the extensions array is the same reference or a new object.
@@ -173,7 +173,7 @@ describe("setup-diagnostic emission-count stability (Phase 4 Slice C)", () => {
   });
 
   it("pins the same per-snapshot-call emission model for SYNTHETIC_SETUP_FAILURE (invalid type name)", () => {
-    // SYNTHETIC_SETUP_FAILURE uses the same validateExtensionSetup code-path as
+    // SYNTHETIC_SETUP_FAILURE uses the same _validateExtensionSetup code-path as
     // UNSUPPORTED_CUSTOM_TYPE_OVERRIDE. Pin this separately so a future change
     // cannot silently drop the second setup-error kind.
     //

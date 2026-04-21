@@ -78,6 +78,8 @@ import {
 } from "../extensions/resolve-custom-type.js";
 import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
+  _emitSetupDiagnostics,
+  _mapSetupDiagnosticCode,
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
@@ -1035,9 +1037,7 @@ function buildCompilerBackedConstraintDiagnostics(
   if (setupDiagnostic !== undefined) {
     return emit("C-reject", [
       makeDiagnostic(
-        setupDiagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : "SYNTHETIC_SETUP_FAILURE",
+        _mapSetupDiagnosticCode(setupDiagnostic.kind),
         setupDiagnostic.message,
         provenance
       ),
@@ -1200,36 +1200,24 @@ export function parseTSDocTags(
     return cached;
   }
 
-  // §4 Phase 4 Slice C — emit setup diagnostics ONCE per parseTSDocTags call
-  // (anchored at the extension registration site, not at the tag use site).
-  // Previously, setup diagnostics fired once per synthetic-batch call inside
-  // buildSyntheticHelperPrelude, bypassing the LRU cache. Now they are
-  // pre-computed in createExtensionRegistry and read here, producing exactly
-  // one diagnostic per node analysis pass rather than one per tag application.
+  // §4 Phase 4 Slice C — when the registry has setup failures, emit them ONCE
+  // per parseTSDocTags call (anchored at the extension registration site) and
+  // skip all further tag parsing for this node.
+  //
+  // Rationale for the early-return: an invalid registry means constraint types
+  // cannot be resolved, so placement validation and summary-text extraction
+  // for every field in the class would be based on incomplete type information.
+  // Surfacing only the setup diagnostic — rather than potentially spurious
+  // placement errors — keeps the user's feedback loop focused on fixing the
+  // broken extension configuration first. See test
+  // "parseTSDocTags silent-drop: only setup diagnostics surface when registry
+  // has setup failures" in tsdoc-parser-setup-diagnostic-silent-drop.test.ts.
   const setupDiags = options?.extensionRegistry?.setupDiagnostics;
   if (setupDiags !== undefined && setupDiags.length > 0) {
-    // Anchor at the "extension" surface with the current file path.
-    // We do not have source-location info for the extension registration site,
-    // so we use line 1, column 0 as the registry-level provenance.
-    const extensionProvenance: Provenance = {
-      surface: "extension",
-      file,
-      line: 1,
-      column: 0,
-    };
-    const diagnostics: ConstraintSemanticDiagnostic[] = setupDiags.map((d) =>
-      makeDiagnostic(
-        d.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : "SYNTHETIC_SETUP_FAILURE",
-        d.message,
-        extensionProvenance
-      )
-    );
     const result: TSDocParseResult = {
       constraints: [],
       annotations: [],
-      diagnostics,
+      diagnostics: _emitSetupDiagnostics(setupDiags, file),
     };
     parseResultCache.set(cacheKey, result);
     return result;
