@@ -5,6 +5,7 @@
  * derived type must win over the inherited value.
  *
  * @see https://github.com/mike-north/formspec/issues/367
+ * @see https://github.com/mike-north/formspec/issues/374 — type-alias derivation gap (skipped tests below)
  * @see packages/build/src/analyzer/class-analyzer.ts — named-type annotation
  *      extraction is the enforcement point.
  */
@@ -244,6 +245,119 @@ const CLASS_INHERITANCE_SOURCE = [
   "}",
 ].join("\n");
 
+/**
+ * Verbatim reproduction of the code in issue #367's "Reproduction" section
+ * (with `Decimal`/`Currency` replaced by `number`/`string` to keep the
+ * fixture free of extension-registered custom types). The root container
+ * is the same `MinAmountConfig` interface the bug report uses, and the
+ * derived type narrows `amount` with a property-level constraint
+ * (`@exclusiveMinimum 0`) in the same declaration that the bug says loses
+ * its inherited `@format`.
+ *
+ * Guards three things the bug report binds together that the generic
+ * fixtures above test only individually:
+ *
+ * 1. The derived `$defs` entry carries the base's `format`.
+ * 2. The property-level constraint added on the derived type
+ *    (`@exclusiveMinimum 0` on `amount`) is preserved in the same run —
+ *    a regression that keeps `format` but drops the narrowing constraint
+ *    would silently re-introduce the bug the derived-type pattern was
+ *    chosen to avoid.
+ * 3. The usage site emits a `$ref` to the derived definition, so
+ *    downstream renderers that follow `$ref` land on an entry that has
+ *    both `format` and the narrowed constraint.
+ */
+const BUG_REPORT_VERBATIM_SOURCE = [
+  "/** @format monetary-amount */",
+  "interface MonetaryAmount {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+  "",
+  "interface PositiveMonetaryAmount extends MonetaryAmount {",
+  "  /** @exclusiveMinimum 0 */",
+  "  amount: number;",
+  "}",
+  "",
+  "// The bug report's container is `export interface MinAmountConfig { ... }`.",
+  "// This file's convention is class roots (generateSchemas takes a class name).",
+  "// Using a class root changes nothing about the derived-type inheritance path",
+  "// under test — the heritage chain on PositiveMonetaryAmount is what matters.",
+  "export class MinAmountConfig {",
+  "  minimumAmount!: PositiveMonetaryAmount;",
+  "}",
+].join("\n");
+
+/**
+ * Fixtures for the type-alias-derivation gap (skipped tests). Each fixture
+ * mirrors the bug-report shape but expresses the derivation through a
+ * `type` alias rather than an `interface extends` clause. PR #369's
+ * heritage-chain BFS is gated on `HeritageClause`-bearing declarations and
+ * does not run for type aliases, so each scenario below currently drops
+ * the `@format` annotation somewhere between the base declaration and the
+ * generated schema. The skipped tests assert the target behavior; they
+ * become the acceptance criterion for a future fix.
+ */
+
+/** Primitive-alias chain: `BaseEmail` (string + `@format email`) → `WorkEmail`. */
+const TYPE_ALIAS_PRIMITIVE_CHAIN_SOURCE = [
+  "/** @format email */",
+  "type BaseEmail = string;",
+  "",
+  "type WorkEmail = BaseEmail;",
+  "",
+  "export class Container {",
+  "  addr!: WorkEmail;",
+  "}",
+].join("\n");
+
+/** Object-literal alias → object-literal alias, no local override on derived. */
+const TYPE_ALIAS_OBJECT_CHAIN_SOURCE = [
+  "/** @format monetary-amount */",
+  "type MonetaryAmount = { amount: number; currency: string };",
+  "",
+  "type PositiveMonetaryAmount = MonetaryAmount;",
+  "",
+  "export class Container {",
+  "  value!: PositiveMonetaryAmount;",
+  "}",
+].join("\n");
+
+/**
+ * Type alias of an interface — the alias name should be preserved as its
+ * own `$defs` entry that inherits the base's `@format`, not silently
+ * resolved to the interface's entry.
+ */
+const TYPE_ALIAS_OF_INTERFACE_SOURCE = [
+  "/** @format monetary-amount */",
+  "interface MonetaryAmount {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+  "",
+  "type AliasedMonetary = MonetaryAmount;",
+  "",
+  "export class Container {",
+  "  value!: AliasedMonetary;",
+  "}",
+].join("\n");
+
+/**
+ * Chain with a local `@format` on the derived alias — the override must
+ * win over the inherited value, just as it does for interface-extends.
+ */
+const TYPE_ALIAS_OWN_OVERRIDE_SOURCE = [
+  "/** @format monetary-amount */",
+  "type MonetaryAmount = { amount: number; currency: string };",
+  "",
+  "/** @format positive-monetary-amount */",
+  "type PositiveMonetaryAmount = MonetaryAmount;",
+  "",
+  "export class Container {",
+  "  value!: PositiveMonetaryAmount;",
+  "}",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -258,6 +372,11 @@ let cyclicFixturePath: string;
 let emptyOverrideFixturePath: string;
 let diamondConflictFixturePath: string;
 let nonFormatAnnotationFixturePath: string;
+let bugReportVerbatimFixturePath: string;
+let typeAliasPrimitiveChainFixturePath: string;
+let typeAliasObjectChainFixturePath: string;
+let typeAliasOfInterfaceFixturePath: string;
+let typeAliasOwnOverrideFixturePath: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-fmt-inherit-"));
@@ -303,6 +422,21 @@ beforeAll(() => {
 
   nonFormatAnnotationFixturePath = path.join(tmpDir, "non-format-annotation.ts");
   fs.writeFileSync(nonFormatAnnotationFixturePath, NON_FORMAT_ANNOTATION_SOURCE);
+
+  bugReportVerbatimFixturePath = path.join(tmpDir, "bug-report-verbatim.ts");
+  fs.writeFileSync(bugReportVerbatimFixturePath, BUG_REPORT_VERBATIM_SOURCE);
+
+  typeAliasPrimitiveChainFixturePath = path.join(tmpDir, "type-alias-primitive-chain.ts");
+  fs.writeFileSync(typeAliasPrimitiveChainFixturePath, TYPE_ALIAS_PRIMITIVE_CHAIN_SOURCE);
+
+  typeAliasObjectChainFixturePath = path.join(tmpDir, "type-alias-object-chain.ts");
+  fs.writeFileSync(typeAliasObjectChainFixturePath, TYPE_ALIAS_OBJECT_CHAIN_SOURCE);
+
+  typeAliasOfInterfaceFixturePath = path.join(tmpDir, "type-alias-of-interface.ts");
+  fs.writeFileSync(typeAliasOfInterfaceFixturePath, TYPE_ALIAS_OF_INTERFACE_SOURCE);
+
+  typeAliasOwnOverrideFixturePath = path.join(tmpDir, "type-alias-own-override.ts");
+  fs.writeFileSync(typeAliasOwnOverrideFixturePath, TYPE_ALIAS_OWN_OVERRIDE_SOURCE);
 });
 
 afterAll(() => {
@@ -452,5 +586,153 @@ describe("type-level @format inheritance on derived types — issue #367", () =>
     // annotation field) on the derived type's $defs entry.
     expect(derived["description"]).toBeUndefined();
     expect(derived["format"]).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — bug-report verbatim scenario
+//
+// Issue #367's repro binds two concerns together: the derived type adds a
+// property-level constraint (`@exclusiveMinimum 0` on `amount`) AND the
+// base's `@format` must survive on the derived type. The generic fixtures
+// above assert each concern individually; this test asserts them in a
+// single run against the issue's own declaration shape, and adds the
+// `$ref` reference-site assertion that the issue's expected output shows.
+// ---------------------------------------------------------------------------
+
+describe("issue #367 — bug-report verbatim scenario", () => {
+  it("emits inherited @format AND preserves the derived type's narrowing constraint, with a $ref at the usage site", () => {
+    const result = generateSchemasOrThrow({
+      filePath: bugReportVerbatimFixturePath,
+      typeName: "MinAmountConfig",
+    });
+
+    // spec: issue #367 "Expected output" — the usage site emits a $ref to
+    // the derived definition, not an inline schema. Downstream renderers
+    // resolve the $ref and read `format` off the target.
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const minimumAmount = expectRecord(props["minimumAmount"], "properties.minimumAmount");
+    expect(minimumAmount["$ref"]).toBe("#/$defs/PositiveMonetaryAmount");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["PositiveMonetaryAmount"], "$defs.PositiveMonetaryAmount");
+
+    // spec: issue #367 — base-declared @format must flow to derived $defs
+    // entry. This is the core bug.
+    expect(derived["format"]).toBe("monetary-amount");
+
+    // spec: issue #367 binds the format-inheritance fix to the
+    // derived-type-narrowing pattern (the "recommended pattern for
+    // constraining MonetaryAmount fields"). The property-level
+    // `@exclusiveMinimum 0` declared on the derived type's `amount` must
+    // survive in the same run — a regression that kept `format` while
+    // dropping the narrowing constraint would silently re-introduce the
+    // failure mode the derived-type pattern was chosen to avoid.
+    const derivedProps = expectRecord(
+      derived["properties"] ?? {},
+      "$defs.PositiveMonetaryAmount.properties"
+    );
+    const amount = expectRecord(
+      derivedProps["amount"],
+      "$defs.PositiveMonetaryAmount.properties.amount"
+    );
+    expect(amount["exclusiveMinimum"]).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — type-alias derivation gap (skipped / future work)
+//
+// PR #369's heritage-chain BFS is gated on `HeritageClause`-bearing
+// declarations (interfaces/classes). Type aliases have no heritage clauses,
+// so the fix never runs for them. Each skipped test asserts the target
+// behavior so a future implementation has an unambiguous acceptance
+// criterion — unskip and verify, no new test authoring required.
+//
+// See https://github.com/mike-north/formspec/issues/374 (filed alongside
+// this test file) for the tracking issue.
+// ---------------------------------------------------------------------------
+
+describe("type-alias derivation — `@format` inheritance gap (future work)", () => {
+  it.skip("primitive alias chain: `type WorkEmail = BaseEmail` inherits `@format` from BaseEmail", () => {
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasPrimitiveChainFixturePath,
+      typeName: "Container",
+    });
+
+    // Target: either the derived alias gets its own $defs entry carrying
+    // the inherited format, or the property emits `format` inline. Either
+    // shape is acceptable; today neither occurs (format is dropped
+    // entirely).
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const addr = expectRecord(props["addr"], "properties.addr");
+    const defs = result.jsonSchema.$defs as Record<string, { format?: string }> | undefined;
+
+    const inlineFormat = (addr as { format?: string }).format;
+    const refTarget =
+      typeof (addr as { $ref?: string }).$ref === "string" &&
+      (addr as { $ref: string }).$ref.startsWith("#/$defs/")
+        ? (addr as { $ref: string }).$ref.slice("#/$defs/".length)
+        : undefined;
+    const defsFormat = refTarget !== undefined ? defs?.[refTarget]?.format : undefined;
+
+    expect(inlineFormat ?? defsFormat).toBe("email");
+  });
+
+  it.skip("object-alias → object-alias: derived alias's $defs entry inherits base's `@format`", () => {
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasObjectChainFixturePath,
+      typeName: "Container",
+    });
+
+    // Target: PositiveMonetaryAmount is registered in $defs as its own
+    // entity (derived alias identity preserved) and carries the base's
+    // format. Today the derived alias is erased and the property's $ref
+    // points directly at MonetaryAmount.
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const value = expectRecord(props["value"], "properties.value");
+    expect(value["$ref"]).toBe("#/$defs/PositiveMonetaryAmount");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["PositiveMonetaryAmount"], "$defs.PositiveMonetaryAmount");
+    expect(derived["format"]).toBe("monetary-amount");
+  });
+
+  it.skip("type-alias of interface: the alias name is preserved as its own $defs entry carrying inherited `@format`", () => {
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasOfInterfaceFixturePath,
+      typeName: "Container",
+    });
+
+    // Target: AliasedMonetary gets its own $defs entry that carries the
+    // base interface's format. Today AliasedMonetary collapses into
+    // MonetaryAmount — the format is user-visible by accident, but the
+    // alias identity is lost (breaks any consumer that expects $defs to
+    // reflect the declared alias names).
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const value = expectRecord(props["value"], "properties.value");
+    expect(value["$ref"]).toBe("#/$defs/AliasedMonetary");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const aliased = expectRecord(defs["AliasedMonetary"], "$defs.AliasedMonetary");
+    expect(aliased["format"]).toBe("monetary-amount");
+  });
+
+  it.skip("derived type-alias with its own `@format` overrides the inherited base format", () => {
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasOwnOverrideFixturePath,
+      typeName: "Container",
+    });
+
+    // Target: derived alias keeps its identity AND its own @format wins.
+    // Today both the derived alias name and its annotation are dropped —
+    // the property's $ref points at the base and emits the base's format.
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const value = expectRecord(props["value"], "properties.value");
+    expect(value["$ref"]).toBe("#/$defs/PositiveMonetaryAmount");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["PositiveMonetaryAmount"], "$defs.PositiveMonetaryAmount");
+    expect(derived["format"]).toBe("positive-monetary-amount");
   });
 });
