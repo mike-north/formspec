@@ -1,32 +1,6 @@
 import * as ts from "typescript";
 
 /**
- * Collects all brand identifier texts from an intersection type's computed
- * property names.
- *
- * Walks `type.getProperties()` looking for computed property names backed
- * by plain identifiers — the standard `unique symbol` brand pattern. Returns
- * all matching identifiers so that types with multiple brands (e.g.,
- * `number & { [__integerBrand]: true } & { [__otherBrand]: true }`) are
- * fully inspected regardless of property order.
- */
-export function collectBrandIdentifiers(type: ts.Type): readonly string[] {
-  if (!type.isIntersection()) {
-    return [];
-  }
-  const brands: string[] = [];
-  for (const prop of type.getProperties()) {
-    const decl = prop.valueDeclaration ?? prop.declarations?.[0];
-    if (decl === undefined) continue;
-    if (!ts.isPropertySignature(decl) && !ts.isPropertyDeclaration(decl)) continue;
-    if (!ts.isComputedPropertyName(decl.name)) continue;
-    if (!ts.isIdentifier(decl.name.expression)) continue;
-    brands.push(decl.name.expression.text);
-  }
-  return brands;
-}
-
-/**
  * Resolves a TypeScript type to its canonical `ts.Symbol`, following alias chains.
  *
  * `aliasSymbol` tracks type aliases (e.g. `type Foo = Bar`); `getSymbol()` tracks

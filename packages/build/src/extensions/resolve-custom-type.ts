@@ -1,10 +1,9 @@
 import * as ts from "typescript";
 
-import { stripNullishUnion } from "@formspec/analysis/internal";
+import { collectBrandIdentifiers, stripNullishUnion } from "@formspec/analysis/internal";
 
 import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
 import {
-  collectBrandIdentifiers,
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
   resolveCanonicalSymbol,

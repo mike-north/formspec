@@ -9,8 +9,14 @@ import * as ts from "typescript";
  * matching identifiers so types with multiple brands (e.g.,
  * `number & { [__integerBrand]: true } & { [__otherBrand]: true }`) are fully
  * inspected regardless of property order.
+ *
+ * Used by `isIntegerBrandedType` (analysis package) and by the build
+ * consumer's extension-type resolver (`resolve-custom-type.ts`) for
+ * brand-based custom-type lookup.
+ *
+ * @internal
  */
-function collectBrandIdentifiers(type: ts.Type): readonly string[] {
+export function collectBrandIdentifiers(type: ts.Type): readonly string[] {
   if (!type.isIntersection()) {
     return [];
   }

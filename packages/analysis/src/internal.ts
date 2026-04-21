@@ -180,7 +180,7 @@ export {
   type TagArgumentDiagnosticCode,
   type TagArgumentLowering,
 } from "./tag-argument-parser.js";
-export { isIntegerBrandedType } from "./integer-brand.js";
+export { isIntegerBrandedType, collectBrandIdentifiers } from "./integer-brand.js";
 export {
   CONSTRAINT_VALIDATOR_NS,
   CONSTRAINT_VALIDATOR_BUILD_NS,
