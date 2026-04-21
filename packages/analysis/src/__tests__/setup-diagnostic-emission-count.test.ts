@@ -1,37 +1,28 @@
 /**
- * Pins the current setup-diagnostic emission-count model (§9.3 #19).
+ * Pins the setup-diagnostic emission-count model after Phase 4 Slice C relocation.
  *
- * Phase 4 of the synthetic-checker retirement plan proposes relocating
- * UNSUPPORTED_CUSTOM_TYPE_OVERRIDE and SYNTHETIC_SETUP_FAILURE from the
- * per-batch `runBatchSyntheticCheck` call site into an extension-registry
- * construction pass. Before that relocation the test below pins the *current*
- * behavior so a regression is immediately visible: if Phase 4 changes when
- * and how many times setup diagnostics are emitted, these tests will fail and
- * the delta must be explicitly signed off.
+ * Phase 4 Slice C relocated UNSUPPORTED_CUSTOM_TYPE_OVERRIDE and
+ * SYNTHETIC_SETUP_FAILURE from the per-batch `runBatchSyntheticCheck` call site
+ * into a pre-validation pass at the top of `buildFormSpecAnalysisFileSnapshot`.
+ * Before relocation the same count held, but for a different reason — setup
+ * failures threw before the LRU cache key was computed, so each call produced
+ * a new diagnostic. After relocation, setup validation runs once per snapshot
+ * call via `validateExtensionSetup`, and `buildTagDiagnostics` skips re-emitting
+ * global batch diagnostics when `setupDiagnosticsPreEmitted` is true.
  *
- * Current emission model: PER-BATCH / PER-CALL
- *   - One `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` diagnostic is produced each time
- *     `buildFormSpecAnalysisFileSnapshot` is called with an extension that
- *     attempts to override a TypeScript built-in type ("Array").
- *   - The setup failure occurs during synthetic-prelude construction, which
- *     throws before the LRU cache key can be computed. Therefore the cache is
- *     bypassed entirely for setup failures — each call re-triggers the throw
- *     and emits a fresh diagnostic regardless of whether the extension config
- *     object is the same reference or a newly-constructed one.
+ * Post-Phase-4 Slice C emission model: PER-SNAPSHOT-CALL (pre-emitted at file level)
+ *   - One `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` or `SYNTHETIC_SETUP_FAILURE` diagnostic
+ *     is produced each time `buildFormSpecAnalysisFileSnapshot` is called with an
+ *     extension that has a broken setup.
+ *   - The diagnostic is anchored at the file start (span {start:0, end:0}), not at
+ *     any individual tag location, because the failure is registry-level.
  *   - Consequence: N snapshot refreshes → N diagnostics; re-creating the
- *     "registry" (constructing a new extension config object and running again)
- *     produces the same count-per-call as using the original config.
+ *     "extensions" array (constructing a new config object and running again)
+ *     produces the same count-per-call as using the original config, since
+ *     `validateExtensionSetup` always runs per call.
  *
- * If Phase 4 deduplicates by moving validation into a registry object:
- *   - The per-call count might drop to 0 (if validation only runs at registry
- *     construction time) — the test that asserts a diagnostic is emitted for
- *     each snapshot build would fail.
- *   - Or the delta for re-construction would increase (e.g. +3 instead of +1
- *     if the diagnostic is emitted per-field again) — the test that compares
- *     counts between reused and rebuilt extension configs would fail.
- *
- * @see docs/refactors/synthetic-checker-retirement.md §9.3 #19
- * @see packages/analysis/src/compiler-signatures.ts (runBatchSyntheticCheck)
+ * @see docs/refactors/synthetic-checker-retirement.md §4 Phase 4 Slice C
+ * @see packages/analysis/src/compiler-signatures.ts (validateExtensionSetup)
  * @see packages/analysis/src/__tests__/compiler-signatures.test.ts lines 404-431
  */
 
@@ -76,13 +67,12 @@ function countSetupDiagnostics(
   code: string
 ): number {
   return snapshots.reduce(
-    (acc, snapshot) =>
-      acc + snapshot.diagnostics.filter((d) => d.code === code).length,
+    (acc, snapshot) => acc + snapshot.diagnostics.filter((d) => d.code === code).length,
     0
   );
 }
 
-describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
+describe("setup-diagnostic emission-count stability (Phase 4 Slice C)", () => {
   it("emits exactly one UNSUPPORTED_CUSTOM_TYPE_OVERRIDE per snapshot-refresh call", () => {
     const { checker, sourceFile } = createProgram(
       SOURCE_WITH_ONE_COMMENT_BLOCK,
@@ -100,21 +90,18 @@ describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
     ).toHaveLength(1);
   });
 
-  it("accumulates one diagnostic per call across three repeated snapshot refreshes (per-batch model)", () => {
+  it("accumulates one diagnostic per call across three repeated snapshot refreshes (pre-emitted at snapshot level)", () => {
     const { checker, sourceFile } = createProgram(
       SOURCE_WITH_ONE_COMMENT_BLOCK,
       "/virtual/emission-count-repeat.ts"
     );
 
     // Simulate three IDE snapshot refreshes on the same file with the same
-    // extension config. In the current per-batch model each call independently
-    // invokes buildSyntheticHelperPrelude, which throws for "Array", bypassing
-    // the LRU cache and producing a fresh diagnostic.
-    //
-    // Current emission model: per-batch / per-call — one diagnostic per call.
-    // If this changes to per-registry (emitting only once per registry
-    // construction), the total would be 1 rather than 3, and this assertion
-    // would fail — which is the signal Phase 4 must explicitly handle.
+    // extension config. After Phase 4 Slice C, each call independently
+    // invokes validateExtensionSetup (at the top of buildFormSpecAnalysisFileSnapshot)
+    // and pre-emits any setup diagnostics before visiting nodes. The per-call
+    // count remains 1 — the mechanism changed (pre-emit instead of batch-emit)
+    // but the observable behaviour (one diagnostic per refresh) is preserved.
     const extensions = [...ARRAY_OVERRIDE_EXTENSION];
     const snapshots = [
       buildFormSpecAnalysisFileSnapshot(sourceFile, { checker, extensions }),
@@ -122,7 +109,8 @@ describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
       buildFormSpecAnalysisFileSnapshot(sourceFile, { checker, extensions }),
     ];
 
-    // Each call produces exactly one diagnostic; three calls total = 3.
+    // Each call still produces exactly one diagnostic (pre-emitted at file level);
+    // three calls total = 3.
     for (const snapshot of snapshots) {
       expect(
         snapshot.diagnostics.filter((d) => d.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE")
@@ -152,15 +140,13 @@ describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
     expect(countAfterThree).toBe(3);
 
     // "Recreate the registry": construct a fresh extension config object with
-    // identical values and run one additional snapshot refresh. In the current
-    // model this is semantically identical to the previous calls — the setup
-    // failure path bypasses the LRU cache, so there is no deduplication across
-    // "registry" lifetimes.
+    // identical values and run one additional snapshot refresh. After Phase 4
+    // Slice C, validateExtensionSetup always runs per buildFormSpecAnalysisFileSnapshot
+    // call — there is no cross-call deduplication. Each call with a broken
+    // extension config produces exactly one setup diagnostic regardless of
+    // whether the extensions array is the same reference or a new object.
     //
     // Expected delta: +1 (same per-call cost regardless of config object identity).
-    // If Phase 4 moves validation into registry construction and deduplicates
-    // at that level, the delta might be 0 (diagnostic consumed at construction,
-    // not at refresh time) — which is the behavior change to sign off on.
     const freshExtensions = [
       {
         extensionId: "x-example/array",
@@ -186,13 +172,12 @@ describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
     expect(totalCount).toBe(4);
   });
 
-  it("pins the same per-batch emission model for SYNTHETIC_SETUP_FAILURE (invalid type name)", () => {
-    // SYNTHETIC_SETUP_FAILURE uses the same code-path as
-    // UNSUPPORTED_CUSTOM_TYPE_OVERRIDE: both throw from
-    // collectExtensionCustomTypeNames before the LRU cache key is built.
-    // Pin this separately so Phase 4 cannot forget the second setup-error kind.
+  it("pins the same per-snapshot-call emission model for SYNTHETIC_SETUP_FAILURE (invalid type name)", () => {
+    // SYNTHETIC_SETUP_FAILURE uses the same validateExtensionSetup code-path as
+    // UNSUPPORTED_CUSTOM_TYPE_OVERRIDE. Pin this separately so a future change
+    // cannot silently drop the second setup-error kind.
     //
-    // Current emission model: per-batch / per-call — one diagnostic per call.
+    // Post-Phase-4 Slice C emission model: pre-emitted at snapshot level — one diagnostic per call.
     const invalidTypeExtension = [
       {
         extensionId: "x-example/invalid-type",
@@ -212,9 +197,9 @@ describe("setup-diagnostic emission-count stability (§9.3 #19)", () => {
     ];
 
     for (const snapshot of snapshots) {
-      expect(
-        snapshot.diagnostics.filter((d) => d.code === "SYNTHETIC_SETUP_FAILURE")
-      ).toHaveLength(1);
+      expect(snapshot.diagnostics.filter((d) => d.code === "SYNTHETIC_SETUP_FAILURE")).toHaveLength(
+        1
+      );
     }
 
     expect(countSetupDiagnostics(snapshots, "SYNTHETIC_SETUP_FAILURE")).toBe(3);
