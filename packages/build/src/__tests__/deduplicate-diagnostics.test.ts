@@ -5,7 +5,7 @@
  * N-fold duplication of setup diagnostics when a declaration with N fields is
  * analyzed under an extension registry that has setup failures. The root-cause
  * restructure is tracked in
- * `scratch/deferred-deduplicate-diagnostics-root-fix.md`.
+ * `docs/refactors/phase-4-slice-c-deduplicate-diagnostics-root-fix.md`.
  *
  * These tests pin the invariants that make the helper safe to ship:
  *

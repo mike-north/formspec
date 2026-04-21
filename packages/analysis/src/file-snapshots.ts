@@ -5,6 +5,7 @@ import {
   _validateExtensionSetup,
   checkSyntheticTagApplicationsDetailed,
   lowerTagApplicationToSyntheticCall,
+  type SyntheticCompilerDiagnostic,
 } from "./compiler-signatures.js";
 import {
   extractCommentBlockTagTexts,
@@ -1310,6 +1311,69 @@ function buildDiscriminatorDiagnostics(
   return diagnostics;
 }
 
+/**
+ * Combines a sequence of comment spans into a single span covering from the
+ * first span's start to the last span's end. Returns `null` when the input is
+ * empty (no meaningful span to anchor a diagnostic at).
+ *
+ * Used to anchor batch-level (global) synthetic diagnostics at a span that
+ * covers every tag application in a batch — the diagnostic is not tied to any
+ * single application, so the combined span is the closest meaningful location.
+ */
+function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
+  const firstSpan = spans[0];
+  if (firstSpan === undefined) {
+    return null;
+  }
+  return {
+    start: firstSpan.start,
+    end: spans[spans.length - 1]?.end ?? firstSpan.end,
+  };
+}
+
+/**
+ * Maps `kind: "typescript"` global synthetic diagnostics to
+ * `TYPE_MISMATCH`-coded {@link FormSpecAnalysisDiagnostic}s anchored at the
+ * given span.
+ *
+ * Setup-kind globals (`unsupported-custom-type-override`, `synthetic-setup`)
+ * are pre-emitted at the file-level span by
+ * {@link buildFormSpecAnalysisFileSnapshot} via `_validateExtensionSetup`
+ * before tag diagnostics run, so this helper filters them out to prevent
+ * double-emission.
+ *
+ * TS-kind globals arise when the synthetic TypeScript program produces a
+ * diagnostic that either (a) has no file/start position or (b) falls outside
+ * every tag application's line range — see `mapBatchDiagnostics` in
+ * `compiler-signatures.ts`. These used to surface as `TYPE_MISMATCH` before
+ * Phase 4 Slice C; the original refactor removed the emission path by
+ * mistake. Restoring it closes the silent-drop regression flagged in
+ * post-merge review feedback for #384.
+ *
+ * @internal
+ */
+export function _mapGlobalSyntheticTsDiagnostics(
+  globalDiagnostics: readonly SyntheticCompilerDiagnostic[],
+  anchorSpan: CommentSpan,
+  data: FormSpecAnalysisDiagnostic["data"]
+): FormSpecAnalysisDiagnostic[] {
+  const result: FormSpecAnalysisDiagnostic[] = [];
+  for (const diagnostic of globalDiagnostics) {
+    if (diagnostic.kind !== "typescript") {
+      // Setup-kind globals are already emitted at the file-level span by the
+      // snapshot entry path. Skip to avoid double-emission.
+      continue;
+    }
+    result.push(
+      createAnalysisDiagnostic("TYPE_MISMATCH", diagnostic.message, anchorSpan, {
+        ...data,
+        ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
+      })
+    );
+  }
+  return result;
+}
+
 function buildTagDiagnostics(
   node: ts.Node,
   sourceFile: ts.SourceFile,
@@ -1706,6 +1770,26 @@ function buildTagDiagnostics(
         })
       );
     }
+  }
+
+  // §4 Phase 4 Slice C follow-up — batch-level diagnostics that were not tied
+  // to any single application (either position-less or outside all tag line
+  // ranges; see `mapBatchDiagnostics` in `compiler-signatures.ts`) previously
+  // surfaced as TYPE_MISMATCH. Emission was dropped by the original refactor
+  // and is restored here. Setup-kind globals are filtered out because they
+  // are pre-emitted at the file-level span by the snapshot entry path.
+  const globalAnchorSpan = combineCommentSpans(
+    syntheticApplications.map((application) => application.tag.fullSpan)
+  );
+  if (globalAnchorSpan !== null && batchCheck.globalDiagnostics.length > 0) {
+    diagnostics.push(
+      ..._mapGlobalSyntheticTsDiagnostics(batchCheck.globalDiagnostics, globalAnchorSpan, {
+        placement,
+        tagNames: syntheticApplications.map(
+          (application) => application.tag.normalizedTagName
+        ),
+      })
+    );
   }
 
   return diagnostics;
