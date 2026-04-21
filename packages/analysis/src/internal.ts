@@ -156,6 +156,9 @@ export type {
   SyntheticTagTargetSpecifier,
 } from "./compiler-signatures.js";
 export {
+  _emitSetupDiagnostics,
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   buildSyntheticHelperPrelude,
   checkSyntheticTagApplication,
   checkSyntheticTagApplications,
@@ -171,6 +174,7 @@ export {
 export {
   parseTagArgument,
   mapTypedParserDiagnosticCode,
+  extractEffectiveArgumentText,
   TAG_ARGUMENT_DIAGNOSTIC_CODES,
   type MappedTypedParserCode,
   type TagArgumentValue,
@@ -179,6 +183,7 @@ export {
   type TagArgumentDiagnosticCode,
   type TagArgumentLowering,
 } from "./tag-argument-parser.js";
+export { _isIntegerBrandedType, _collectBrandIdentifiers } from "./integer-brand.js";
 export {
   CONSTRAINT_VALIDATOR_NS,
   CONSTRAINT_VALIDATOR_BUILD_NS,

@@ -29,12 +29,10 @@
  * @see packages/build/src/__tests__/typed-parser-canaries.test.ts (build-consumer mirror)
  */
 
+import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
-import {
-  defineCustomType,
-  defineExtension,
-} from "@formspec/core";
+import { defineCustomType, defineExtension } from "@formspec/core";
 import { createProgram } from "./helpers.js";
 
 // =============================================================================
@@ -54,10 +52,7 @@ function snapshotDiagnosticsFor(
     "}",
   ].join("\n");
 
-  const { checker, sourceFile } = createProgram(
-    source,
-    `/virtual/snapshot-canary-${label}.ts`
-  );
+  const { checker, sourceFile } = createProgram(source, `/virtual/snapshot-canary-${label}.ts`);
   const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
   return snapshot.diagnostics;
 }
@@ -203,12 +198,9 @@ describe("@const typed-parser Role-C canaries (snapshot consumer)", () => {
     //   The typed parser's own rejection messages say e.g. "Expected @const to be ..."
     //   so the arity message confirms that Role C passed through and the rejection
     //   came from the synthetic checker.
-    const source = [
-      "class Form {",
-      "  /** @const not-json */",
-      "  value!: number;",
-      "}",
-    ].join("\n");
+    const source = ["class Form {", "  /** @const not-json */", "  value!: number;", "}"].join(
+      "\n"
+    );
 
     const { checker, sourceFile } = createProgram(
       source,
@@ -305,38 +297,23 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
     expect(snapshot.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT")).toBe(false);
   });
 
-  it("detects broadening for a complex intersection type registered with its full NoTruncation name (regression: #354 follow-up)", () => {
-    // Regression guard for the fix that replaced checker.typeToString(effectiveType)
+  it("detects broadening for a named-alias intersection type registered by alias name (named-alias sub-path of NoTruncation fix)", () => {
+    // Sub-path guard for the fix that replaced checker.typeToString(effectiveType)
     // with typeToString(effectiveType, checker) (passing TypeFormatFlags.NoTruncation).
     //
-    // The bug: hasExtensionBroadening used checker.typeToString with default flags,
-    // which applies TypeScript's ~160-char truncation threshold. When an extension
-    // registers a complex anonymous intersection type via tsTypeNames, the full
-    // NoTruncation string is stored — but the default formatter would produce a
-    // truncated / structurally-different string that never matches the registry.
-    // Broadening detection would silently miss, causing INVALID_TAG_ARGUMENT to
-    // fire on valid extension-broadened fields with complex types.
+    // Named type aliases: TypeScript's typeToString returns the alias name ("LongIntersection")
+    // in BOTH default-flag mode AND NoTruncation mode. This test confirms the fix does not
+    // break the named-alias path — it is NOT a demonstration of the truncation bug itself.
     //
-    // The fix: use the file-local typeToString() helper which passes NoTruncation,
-    // ensuring the string matches the registry for arbitrarily complex types.
-    //
-    // This test uses a type alias whose underlying structure exceeds ~160 characters
-    // when printed inline. To make the registered name deterministic, the alias name
-    // ("LongIntersection") is used — TypeScript uses alias names for named aliases
-    // regardless of truncation, so the regression is demonstrated by registering
-    // the alias name and verifying broadening fires.
-    //
-    // NOTE: The real truncation scenario affects anonymous or expanded types. This
-    // test guards the code-path fix and documents the intended behavior. A test for
-    // pure anonymous truncation would require runtime reflection to determine the
-    // exact NoTruncation string at test-write time.
+    // The real truncation scenario (anonymous/expanded types) is exercised in the
+    // companion test below: "detects broadening for an anonymous intersection ...".
     const extension = defineExtension({
       extensionId: "x-test/complex-type-broadening",
       types: [
         defineCustomType({
           typeName: "LongIntersection",
-          // Register the alias name — TypeScript's typeToString returns alias names
-          // for named type aliases, so this is stable and deterministic.
+          // Register the alias name — TypeScript's typeToString returns the alias name
+          // for named type aliases regardless of truncation flags, so this path is stable.
           tsTypeNames: ["LongIntersection"],
           builtinConstraintBroadenings: [
             {
@@ -350,11 +327,6 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
       ],
     });
 
-    // LongIntersection is a complex type whose fully-expanded inline representation
-    // would exceed TypeScript's ~160-char default truncation threshold. However,
-    // since it is a named alias, typeToString returns "LongIntersection" in both
-    // default and NoTruncation modes — confirming that the fix's use of the helper
-    // does not break the named-alias path while the code path now passes NoTruncation.
     const source = [
       "type LongIntersection = string",
       "  & { readonly propAlpha: boolean }",
@@ -380,12 +352,95 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
       extensionDefinitions: [extension],
     });
 
-    // hasExtensionBroadening must detect that LongIntersection has @minimum
-    // broadening registered, and suppress the typed parser before it rejects
-    // "0x10" as an invalid hex argument.
     expect(
       snapshot.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT"),
       "Expected no INVALID_TAG_ARGUMENT — broadening detection must fire for LongIntersection before the typed parser runs"
+    ).toBe(false);
+  });
+
+  it("detects broadening for an anonymous intersection type whose NoTruncation string differs from the default-flags string (regression: PR #357 review)", () => {
+    // TRUE regression guard for PR #357's NoTruncation fix in hasExtensionBroadening.
+    //
+    // The bug: the pre-fix call `checker.typeToString(effectiveType)` used default
+    // flags, which truncate long anonymous types by replacing trailing members with
+    // "{ ...; }". When an extension registers the FULL NoTruncation string in
+    // tsTypeNames, the truncated default-flags string never matches — broadening
+    // detection silently misses and INVALID_TAG_ARGUMENT fires on valid fields.
+    //
+    // Approach: compute the full NoTruncation string at test-setup time, register
+    // that exact string in tsTypeNames, and assert no INVALID_TAG_ARGUMENT fires.
+    // This keeps the test TS-version-independent; the probe below asserts that the
+    // two renderings actually differ, so the test fails loudly rather than silently
+    // degrading if TypeScript's truncation heuristic changes.
+    //
+    // The 10-member intersection (a–j) comfortably exceeds TypeScript's default
+    // truncation threshold (empirically ~7 members as of TS 5.x).
+    const anonymousIntersectionSource = [
+      "class TestForm {",
+      "  /** @minimum 0x10 */",
+      "  value!: string",
+      "    & { readonly a: boolean } & { readonly b: boolean }",
+      "    & { readonly c: boolean } & { readonly d: boolean }",
+      "    & { readonly e: boolean } & { readonly f: boolean }",
+      "    & { readonly g: boolean } & { readonly h: boolean }",
+      "    & { readonly i: boolean } & { readonly j: boolean };",
+      "}",
+    ].join("\n");
+
+    const { checker, sourceFile } = createProgram(
+      anonymousIntersectionSource,
+      "/virtual/snapshot-canary-anonymous-intersection.ts"
+    );
+
+    const classDecl = sourceFile.statements.find(ts.isClassDeclaration);
+    const propDecl = classDecl?.members.find(ts.isPropertyDeclaration);
+    if (propDecl === undefined) throw new Error("Expected property declaration in fixture source");
+
+    const fieldType = checker.getTypeAtLocation(propDecl);
+    const noTruncationName = checker.typeToString(
+      fieldType,
+      undefined,
+      ts.TypeFormatFlags.NoTruncation
+    );
+    const defaultFlagsName = checker.typeToString(fieldType);
+
+    // Precondition: the two renderings must differ for this test to demonstrate
+    // the truncation bug. If TypeScript's threshold ever changes so they match,
+    // this assertion fails loudly rather than the test silently degenerating.
+    expect(
+      noTruncationName,
+      "TypeScript's truncation heuristic may have changed — anonymous intersection renders identically with and without NoTruncation; fixture needs more members"
+    ).not.toEqual(defaultFlagsName);
+
+    // Register the FULL NoTruncation string. Pre-fix code compared this against
+    // the truncated default-flags string — no match, broadening missed. Post-fix
+    // code renders both sides with NoTruncation — match succeeds.
+    const extension = defineExtension({
+      extensionId: "x-test/anonymous-intersection-broadening",
+      types: [
+        defineCustomType({
+          typeName: "AnonymousIntersection",
+          tsTypeNames: [noTruncationName],
+          builtinConstraintBroadenings: [
+            {
+              tagName: "minimum",
+              constraintName: "AnonymousIntersectionMinimum",
+              parseValue: (raw) => Number(raw),
+            },
+          ],
+          toJsonSchema: (_payload, _prefix) => ({ type: "object" }),
+        }),
+      ],
+    });
+
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      extensionDefinitions: [extension],
+    });
+
+    expect(
+      snapshot.diagnostics.some((d) => d.code === "INVALID_TAG_ARGUMENT"),
+      "Expected no INVALID_TAG_ARGUMENT — broadening detection must match the anonymous intersection via NoTruncation (regression in hasExtensionBroadening)"
     ).toBe(false);
   });
 });

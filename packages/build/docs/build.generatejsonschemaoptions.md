@@ -33,6 +33,57 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[enumSerialization?](./build.generatejsonschemaoptions.enumserialization.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+"enum" \| "oneOf" \| "smart-size"
+
+</td><td>
+
+_(Optional)_ JSON Schema representation to use for static enums.
+
+</td></tr>
+<tr><td>
+
+[logger?](./build.generatejsonschemaoptions.logger.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+LoggerLike \| undefined
+
+</td><td>
+
+_(Optional)_ Optional logger for diagnostic output. Defaults to a no-op logger so existing callers produce no output.
+
+</td></tr>
+<tr><td>
+
+[metadata?](./build.generatejsonschemaoptions.metadata.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+MetadataPolicyInput \| undefined
+
+</td><td>
+
+_(Optional)_ Metadata resolution policy for chain DSL generation.
+
+</td></tr>
+<tr><td>
+
 [vendorPrefix?](./build.generatejsonschemaoptions.vendorprefix.md)
 
 </td><td>

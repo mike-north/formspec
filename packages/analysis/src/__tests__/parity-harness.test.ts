@@ -80,6 +80,11 @@ interface KnownDivergenceEntry {
  *     integer-branded types without a synthetic call. The snapshot path does
  *     not replicate this bypass today, so the two consumers may diverge on
  *     integer-branded subject types.
+ *
+ * Phase 4A update: the integer-brand snapshot-path gap (#325) is now resolved.
+ * `isIntegerBrandedType` bypass was added to the snapshot consumer in Phase 4A,
+ * so the `@minimum 0 on Integer` KNOWN_DIVERGENCES entry is removed. Both
+ * consumers now converge on integer-branded types with numeric-comparable tags.
  */
 const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
   // §3: @const not-json — build passes quoted string; snapshot omits argument
@@ -97,14 +102,11 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
   //
   // §3: @minimum NaN — NORMALIZED in Phase 2. Same mechanism as Infinity.
   // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
-  // Integer-brand snapshot-path gap (PR #315): build has isIntegerBrandedType bypass;
-  // snapshot does not replicate it, so numeric constraints on Integer types may diverge.
-  {
-    fixtureLabel: "@minimum 0 on Integer",
-    divergenceKind: "any",
-    reason:
-      "Integer-brand snapshot-path gap (PR #315): build has isIntegerBrandedType bypass; snapshot path does not replicate it.",
-  },
+  //
+  // Integer-brand snapshot-path gap (PR #325): RESOLVED in Phase 4A.
+  // The isIntegerBrandedType bypass was added to the snapshot consumer.
+  // Both consumers now converge on numeric-comparable tags for integer-branded types.
+  // This entry is intentionally removed; no divergence expected for "@minimum 0 on Integer".
   // Alias-chain type-resolution divergence (newly discovered by this harness):
   // The build consumer resolves subject type to its primitive base (number) before
   // invoking checkSyntheticTagApplication; supporting declarations include the alias
@@ -115,8 +117,7 @@ const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
   // This is a pre-existing divergence, not introduced by this harness.
   // Phase 0.5c / future normalization PR should address this.
   {
-    fixtureLabel:
-      "alias-chain: @maximum 100 on derived alias (P = NN = number, @minimum 0 on NN)",
+    fixtureLabel: "alias-chain: @maximum 100 on derived alias (P = NN = number, @minimum 0 on NN)",
     divergenceKind: "role-outcome-divergence",
     reason:
       "Alias-chain type-resolution divergence (newly discovered by Phase 0.5a harness): " +
@@ -347,11 +348,7 @@ const FIXTURES: readonly ParityFixture[] = [
     tagName: "maximum",
     subjectType: "P",
     tagArgument: "100",
-    preamble: [
-      "/** @minimum 0 */",
-      "type NN = number;",
-      "type P = NN;",
-    ].join("\n"),
+    preamble: ["/** @minimum 0 */", "type NN = number;", "type P = NN;"].join("\n"),
   },
 
   // -------------------------------------------------------------------------
@@ -397,14 +394,16 @@ const FIXTURES: readonly ParityFixture[] = [
 function generateFixtureSource(fixture: ParityFixture): string {
   const { tagName, subjectType, tagArgument, preamble } = fixture;
   // Build the doc comment: @tagName [tagArgument]
-  const tagLine =
-    tagArgument.trim() === "" ? `@${tagName}` : `@${tagName} ${tagArgument}`;
+  const tagLine = tagArgument.trim() === "" ? `@${tagName}` : `@${tagName} ${tagArgument}`;
   const comment = `/** ${tagLine} */`;
 
   // Detect optional: `number | undefined` → use `?` modifier with `number`
   const isOptional = subjectType.includes("| undefined") || subjectType.includes("undefined |");
   const declaredType = isOptional
-    ? subjectType.replace(/\s*\|\s*undefined\s*/g, "").replace(/\s*undefined\s*\|\s*/g, "").trim()
+    ? subjectType
+        .replace(/\s*\|\s*undefined\s*/g, "")
+        .replace(/\s*undefined\s*\|\s*/g, "")
+        .trim()
     : subjectType;
   const fieldDecl = isOptional
     ? `  ${comment}\n  field?: ${declaredType};`
@@ -464,7 +463,7 @@ function generateFixtureSource(fixture: ParityFixture): string {
  */
 function renderBuildArgumentExpressionProxy(
   valueKind: string | null | undefined,
-  argumentText: string,
+  argumentText: string
 ): string | null {
   const trimmed = argumentText.trim();
   if (trimmed === "") {
@@ -514,9 +513,7 @@ function renderBuildArgumentExpressionProxy(
  * Runs the SNAPSHOT consumer on the fixture's source text and returns the
  * full list of {@link FormSpecAnalysisDiagnostic} emitted for the file.
  */
-function runSnapshotConsumer(
-  fixture: ParityFixture,
-): FormSpecAnalysisDiagnostic[] {
+function runSnapshotConsumer(fixture: ParityFixture): FormSpecAnalysisDiagnostic[] {
   const source = generateFixtureSource(fixture);
   const { checker, sourceFile } = createProgram(source);
   const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
@@ -563,7 +560,7 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
     // generateFixtureSource always emits a `field` property, so reaching here
     // indicates an AST traversal bug rather than a valid "no field" scenario.
     throw new Error(
-      `Invariant violation: generated parity fixture source is missing the 'field' property for tag '${fixture.tagName}'.`,
+      `Invariant violation: generated parity fixture source is missing the 'field' property for tag '${fixture.tagName}'.`
     );
   }
 
@@ -583,11 +580,7 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   // subjectType text for the synthetic call
   const subjectTypeText =
     subjectType !== undefined
-      ? checker.typeToString(
-          subjectType,
-          undefined,
-          ts.TypeFormatFlags.NoTruncation,
-        )
+      ? checker.typeToString(subjectType, undefined, ts.TypeFormatFlags.NoTruncation)
       : "unknown";
 
   // Collect supporting declarations from source (the preamble type aliases)
@@ -694,10 +687,7 @@ function deriveSnapshotRoleOutcome(code: string): RoleOutcome {
 /**
  * Converts a build-consumer proxy result to a {@link ParityLogEntry}.
  */
-function buildResultToEntry(
-  fixture: ParityFixture,
-  result: BuildConsumerResult,
-): ParityLogEntry {
+function buildResultToEntry(fixture: ParityFixture, result: BuildConsumerResult): ParityLogEntry {
   return {
     consumer: "build",
     tag: fixture.tagName,
@@ -727,7 +717,7 @@ function snapshotDiagnosticsToEntries(
   fixture: ParityFixture,
   diagnostics: FormSpecAnalysisDiagnostic[],
   placement: string,
-  subjectTypeKind: string,
+  subjectTypeKind: string
 ): ParityLogEntry[] {
   // Filter to diagnostics that carry our fixture's tag in their data.
   //
@@ -737,8 +727,7 @@ function snapshotDiagnosticsToEntries(
   // fixture — returning `false` here prevents false parity divergences caused
   // by setup-level failures being treated as per-fixture diagnostics.
   const tagDiagnostics = diagnostics.filter((d) => {
-    const tagName =
-      "tagName" in d.data ? d.data["tagName"] : undefined;
+    const tagName = "tagName" in d.data ? d.data["tagName"] : undefined;
     if (typeof tagName === "string") {
       return tagName === fixture.tagName;
     }
@@ -805,14 +794,11 @@ function snapshotDiagnosticsToEntries(
  * Returns true when `divergence` matches a known-divergence entry for the
  * given `fixtureLabel`.
  */
-function isKnownDivergence(
-  fixtureLabel: string,
-  divergence: ParityDivergence,
-): boolean {
+function isKnownDivergence(fixtureLabel: string, divergence: ParityDivergence): boolean {
   return KNOWN_DIVERGENCES.some(
     (kd) =>
       kd.fixtureLabel === fixtureLabel &&
-      (kd.divergenceKind === "any" || kd.divergenceKind === divergence.kind),
+      (kd.divergenceKind === "any" || kd.divergenceKind === divergence.kind)
   );
 }
 
@@ -843,7 +829,7 @@ describe("cross-consumer parity harness (Phase 0.5a)", () => {
         fixture,
         snapshotDiagnostics,
         placement,
-        subjectTypeKind,
+        subjectTypeKind
       );
 
       // -----------------------------------------------------------------------
@@ -854,9 +840,7 @@ describe("cross-consumer parity harness (Phase 0.5a)", () => {
       // -----------------------------------------------------------------------
       // 5. Assert: every divergence must be in KNOWN_DIVERGENCES
       // -----------------------------------------------------------------------
-      const unexplainedDivergences = diffs.filter(
-        (d) => !isKnownDivergence(fixture.label, d),
-      );
+      const unexplainedDivergences = diffs.filter((d) => !isKnownDivergence(fixture.label, d));
 
       if (unexplainedDivergences.length > 0) {
         // Produce a descriptive failure with the actual divergences so the root
@@ -884,7 +868,7 @@ describe("cross-consumer parity harness (Phase 0.5a)", () => {
           `Fixture "${fixture.label}" produced unexpected divergences between ` +
             `build and snapshot consumers:\n${descriptions.join("\n")}\n\n` +
             `If this is intentional, add an entry to KNOWN_DIVERGENCES in ` +
-            `parity-harness.test.ts citing the relevant §3 catalogue entry.`,
+            `parity-harness.test.ts citing the relevant §3 catalogue entry.`
         );
       }
 
@@ -902,7 +886,7 @@ describe("cross-consumer parity harness (Phase 0.5a)", () => {
       expect(
         fixtureLabels.has(kd.fixtureLabel),
         `KNOWN_DIVERGENCES entry "${kd.fixtureLabel}" has no matching fixture. ` +
-          `Either add the fixture or remove the stale known-divergence entry.`,
+          `Either add the fixture or remove the stale known-divergence entry.`
       ).toBe(true);
     }
   });

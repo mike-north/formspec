@@ -429,26 +429,22 @@ All `$defs` entries are placed at the root schema level. Nested schemas do not h
 
 When an author applies subfield constraints (via `@minimum :value 0` on a `MonetaryAmount` field — see document 002 §4), the generator must decide whether to:
 
-**Option A: Inline refinement at the use site** — emit the `$ref` wrapped in an `allOf` that adds the constraints:
+**Option A: Sibling keywords alongside `$ref`** — emit the `$ref` with the refinement keywords as siblings of the reference:
 
 ```json
 {
-  "allOf": [
-    { "$ref": "#/$defs/MonetaryAmount" },
-    {
-      "properties": {
-        "value": { "minimum": 0 }
-      }
-    }
-  ]
+  "$ref": "#/$defs/MonetaryAmount",
+  "properties": {
+    "value": { "minimum": 0 }
+  }
 }
 ```
 
-**Option B: Derived `$defs` entry** — create a new named `$defs` entry (e.g., `MonetaryAmount_constrained_discount`) that `allOf`s the base type with the refinements.
+**Option B: Derived `$defs` entry** — create a new named `$defs` entry (e.g., `MonetaryAmount_constrained_discount`) that composes the base type with the refinements.
 
-**Decision: Option A (inline `allOf` at the use site) is the default.** Option B is reserved for future work when multiple fields share the same constraint profile and deduplication is beneficial. Option A is simpler, more readable, and correctly represents that the constraints are field-specific, not type-specific.
+**Decision: Option A (sibling keywords alongside `$ref`) is the default.** Option B is reserved for future work when multiple fields share the same constraint profile and deduplication is beneficial. Option A is simpler, more readable, and correctly represents that the constraints are field-specific, not type-specific.
 
-The `allOf` + `$ref` pattern is standard 2020-12 and is the idiomatic way to express "this type, but with additional constraints." Standards-compliant validators handle it correctly.
+Sibling keywords alongside `$ref` are standard JSON Schema 2020-12. Draft 2019-09 changed `$ref` so it no longer ignores adjacent keywords — the `$ref` and its siblings are evaluated together. Standards-compliant 2020-12 validators honor both halves. This is also the shape that downstream renderers expect: wrapping in `allOf` adds a layer of composition that many renderers do not unwrap, resulting in the constraints being silently dropped from the rendered view.
 
 ### 5.5 Circular Reference Handling
 
@@ -536,9 +532,9 @@ As described in §5, named types use `$ref` to the `$defs` entry:
 { "$ref": "#/$defs/Address" }
 ```
 
-### 7.2 `allOf` for Progressive Refinement
+### 7.2 Sibling Keywords for Progressive Refinement
 
-When a TypeScript type extends another (or when subfield constraints are applied), the generator uses `allOf` to compose the base type with refinements:
+When subfield constraints are applied to a `$ref`-based field, the generator emits the refinement keywords as siblings of the `$ref` — not wrapped in an `allOf`:
 
 ```typescript
 interface BaseAmount {
@@ -546,23 +542,22 @@ interface BaseAmount {
   currency: string;
 }
 
-interface PositiveAmount extends BaseAmount {
-  // Constraints applied at the use site via @minimum :value 0
+interface Invoice {
+  /** @minimum :value 0 */
+  total: BaseAmount;
 }
 ```
 
 ```json
 {
-  "allOf": [
-    { "$ref": "#/$defs/BaseAmount" },
-    {
-      "properties": {
-        "value": { "minimum": 0 }
-      }
-    }
-  ]
+  "$ref": "#/$defs/BaseAmount",
+  "properties": {
+    "value": { "minimum": 0 }
+  }
 }
 ```
+
+Sibling keywords are the canonical shape for `$ref` refinements in 2020-12 (see §5.4). `allOf` is reserved for composition cases that cannot be expressed as siblings — for example, when the base schema itself is already an `allOf` that must be extended.
 
 ### 7.3 `oneOf` for Discriminated Unions
 
@@ -795,18 +790,14 @@ interface InvoiceFormData {
       "default": "draft"
     },
     "total": {
-      "allOf": [
-        { "$ref": "#/$defs/MonetaryAmount" },
-        {
-          "properties": {
-            "value": {
-              "minimum": 0.01,
-              "maximum": 9999999.99,
-              "multipleOf": 0.01
-            }
-          }
+      "$ref": "#/$defs/MonetaryAmount",
+      "properties": {
+        "value": {
+          "minimum": 0.01,
+          "maximum": 9999999.99,
+          "multipleOf": 0.01
         }
-      ],
+      },
       "title": "Total Amount"
     },
     "billingAddress": {
@@ -848,7 +839,7 @@ interface InvoiceFormData {
 }
 ```
 
-**Note on `$ref` + sibling keywords:** JSON Schema 2020-12 allows sibling keywords alongside `$ref` (unlike draft-07, where siblings were ignored). The `"title"` alongside `"$ref"` in `billingAddress` and the `allOf` + `"title"` in `total` are valid 2020-12. This is a deliberate 2020-12 feature used by FormSpec for clean output.
+**Note on `$ref` + sibling keywords:** JSON Schema 2020-12 allows sibling keywords alongside `$ref` (unlike draft-07, where siblings were ignored). `billingAddress` pairs a bare `$ref` with a sibling `title`; `total` adds path-targeted subfield overrides as siblings (`properties`) plus a `title`. Both shapes are valid 2020-12 and are emitted directly by FormSpec — no `allOf` wrapping is introduced for these cases (see §5.4).
 
 ---
 

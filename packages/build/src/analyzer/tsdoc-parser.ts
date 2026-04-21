@@ -76,12 +76,15 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
-import { isIntegerBrandedType } from "./builtin-brands.js";
+import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
+  _emitSetupDiagnostics,
+  _mapSetupDiagnosticCode,
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
   getTypedParserLogger,
+  extractEffectiveArgumentText,
   mapTypedParserDiagnosticCode,
   parseTagArgument,
   describeTypeKind,
@@ -845,7 +848,7 @@ function buildCompilerBackedConstraintDiagnostics(
   const hasBroadening = ((): boolean => {
     if (target === null) {
       if (
-        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
         definition.capabilities.includes("numeric-comparable")
       ) {
         return true;
@@ -910,20 +913,18 @@ function buildCompilerBackedConstraintDiagnostics(
   //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
-  // §4 Phase 2 — Option A: always derive argumentText from rawText (the
-  // canonical post-choosePreferredPayloadText string) so the typed parser sees
-  // the same text as parseConstraintTagValue (Role D). For TAGS_REQUIRING_RAW_TEXT,
-  // choosePreferredPayloadText may have selected the compiler-API fallback, making
-  // rawText differ from parsedTag.argumentText (which was derived from
-  // tag.resolvedPayloadText). Re-parsing from rawText also applies the same
-  // path-target prefix stripping that the original parse would have applied.
-  // TODO: once choosePreferredPayloadText is threaded upstream, this can go away.
-  const effectiveArgumentText =
-    parsedTag !== null ? parseTagSyntax(tagName, rawText).argumentText : rawText;
-
   if (hasBroadening) {
     return emit("bypass", []);
   }
+
+  // §4 Phase 4B — use shared extractEffectiveArgumentText so both consumers
+  // derive argument text identically. Extracts the argument from rawText (the
+  // canonical post-choosePreferredPayloadText string), which for
+  // TAGS_REQUIRING_RAW_TEXT may have been selected via the compiler-API
+  // fallback. Re-parsing from rawText applies path-target prefix stripping and
+  // canonicalisation consistently with the snapshot consumer.
+  // Computed after the bypass check so broadened fields skip this work entirely.
+  const effectiveArgumentText = extractEffectiveArgumentText(tagName, rawText, parsedTag);
 
   const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
 
@@ -1036,9 +1037,7 @@ function buildCompilerBackedConstraintDiagnostics(
   if (setupDiagnostic !== undefined) {
     return emit("C-reject", [
       makeDiagnostic(
-        setupDiagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : "SYNTHETIC_SETUP_FAILURE",
+        _mapSetupDiagnosticCode(setupDiagnostic.kind),
         setupDiagnostic.message,
         provenance
       ),
@@ -1199,6 +1198,29 @@ export function parseTSDocTags(
   const cached = parseResultCache.get(cacheKey);
   if (cached !== undefined) {
     return cached;
+  }
+
+  // §4 Phase 4 Slice C — when the registry has setup failures, emit them ONCE
+  // per parseTSDocTags call (anchored at the extension registration site) and
+  // skip all further tag parsing for this node.
+  //
+  // Rationale for the early-return: an invalid registry means constraint types
+  // cannot be resolved, so placement validation and summary-text extraction
+  // for every field in the class would be based on incomplete type information.
+  // Surfacing only the setup diagnostic — rather than potentially spurious
+  // placement errors — keeps the user's feedback loop focused on fixing the
+  // broken extension configuration first. See test
+  // "parseTSDocTags silent-drop: only setup diagnostics surface when registry
+  // has setup failures" in tsdoc-parser-setup-diagnostic-silent-drop.test.ts.
+  const setupDiags = options?.extensionRegistry?.setupDiagnostics;
+  if (setupDiags !== undefined && setupDiags.length > 0) {
+    const result: TSDocParseResult = {
+      constraints: [],
+      annotations: [],
+      diagnostics: _emitSetupDiagnostics(setupDiags, file),
+    };
+    parseResultCache.set(cacheKey, result);
+    return result;
   }
 
   const constraints: ConstraintNode[] = [];

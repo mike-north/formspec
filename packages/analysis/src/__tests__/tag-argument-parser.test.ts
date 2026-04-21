@@ -3,10 +3,12 @@ import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
   type TagArgumentLowering,
   type TagFamily,
+  extractEffectiveArgumentText,
   parseTagArgument,
   TAG_ARGUMENT_FAMILIES,
   type TagArgumentValue,
 } from "../tag-argument-parser.js";
+import { parseCommentBlock } from "../comment-syntax.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers (local — keep in this file, not promoted to a shared helper)
@@ -1037,6 +1039,109 @@ describe("parseTagArgument", () => {
           }
         }
       }
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractEffectiveArgumentText unit tests (Phase 4B)
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: build a ParsedCommentTag for a simple `@<tagName> <payload>` comment.
+ * The full comment is wrapped with leading-whitespace-stripped payload so that
+ * parseCommentBlock can parse it and extract argumentText correctly.
+ */
+function parsedTagFor(
+  tagName: string,
+  payload: string
+): ReturnType<typeof parseCommentBlock>["tags"][number] {
+  const sep = payload === "" || payload.startsWith(" ") ? "" : " ";
+  const block = parseCommentBlock(`/** @${tagName}${sep}${payload} */`);
+  const tag = block.tags[0];
+  if (tag === undefined) {
+    throw new Error(
+      `Failed to parse comment tag @${tagName} with payload ${JSON.stringify(payload)}`
+    );
+  }
+  return tag;
+}
+
+describe("extractEffectiveArgumentText", () => {
+  // -------------------------------------------------------------------------
+  // Case 1: Standard path — parsedTag non-null, rawText = full payload
+  //
+  // When parsedTag is provided, the helper calls parseTagSyntax(tagName, rawText)
+  // which strips the path-target prefix and returns the pure argument text.
+  // For simple payloads (no target prefix), the result equals the argumentText
+  // the caller would get from tag.argumentText directly.
+  // -------------------------------------------------------------------------
+  describe("case 1: parsedTag non-null (standard path)", () => {
+    it("strips path-target prefix from rawText for a path-targeted tag", () => {
+      // rawText includes the path-target prefix `:amount`; tag.argumentText would
+      // only have the value part. The helper must produce just the argument (e.g. "0").
+      const tag = parsedTagFor("minimum", ":amount 0");
+      // tag.argumentText is already target-stripped by parseCommentBlock
+      expect(tag.argumentText).toBe("0");
+      // helper should produce the same result when rawText = full payload
+      const result = extractEffectiveArgumentText("minimum", ":amount 0", tag);
+      expect(result).toBe("0");
+    });
+
+    it("returns the plain argument text for a direct (non-path-targeted) tag", () => {
+      const tag = parsedTagFor("minimum", "42");
+      expect(tag.argumentText).toBe("42");
+      const result = extractEffectiveArgumentText("minimum", "42", tag);
+      expect(result).toBe("42");
+    });
+
+    it("handles TAGS_REQUIRING_RAW_TEXT (@pattern) rawText correctly", () => {
+      // For @pattern, rawText is the raw span text (e.g. from choosePreferredPayloadText).
+      // parseTagSyntax re-parses it to extract the argument.
+      const tag = parsedTagFor("pattern", "^abc@def$");
+      const result = extractEffectiveArgumentText("pattern", "^abc@def$", tag);
+      // The argument is the text after stripping any prefix (none here).
+      expect(result).toBe("^abc@def$");
+    });
+
+    it("handles empty argument (e.g. @uniqueItems with no value)", () => {
+      const tag = parsedTagFor("uniqueItems", "");
+      const result = extractEffectiveArgumentText("uniqueItems", "", tag);
+      expect(result).toBe("");
+    });
+
+    it("snapshot consumer path: rawText = tag.argumentText, already target-stripped", () => {
+      // In the snapshot consumer, rawText IS tag.argumentText (already stripped).
+      // parseTagSyntax(tagName, tag.argumentText).argumentText must equal
+      // tag.argumentText — the helper is a pass-through in this case.
+      const tag = parsedTagFor("minimum", "100");
+      const result = extractEffectiveArgumentText("minimum", tag.argumentText, tag);
+      expect(result).toBe(tag.argumentText);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Case 2 (orphaned fallback): parsedTag null — fall back to rawText directly
+  //
+  // When the unified parser fails to produce a tag object but a raw-text
+  // fallback from ts.getJSDocTags() is recovered, parsedTag is null and
+  // rawText is the raw text from the compiler API. The helper must return it
+  // as-is — there is nothing to re-parse.
+  // -------------------------------------------------------------------------
+  describe("case 2: parsedTag null (orphaned fallback path)", () => {
+    it("returns rawText directly when parsedTag is null", () => {
+      const result = extractEffectiveArgumentText("minimum", "99", null);
+      expect(result).toBe("99");
+    });
+
+    it("returns rawText for TAGS_REQUIRING_RAW_TEXT when parsedTag is null", () => {
+      const result = extractEffectiveArgumentText("pattern", "^[0-9]+$", null);
+      expect(result).toBe("^[0-9]+$");
+    });
+
+    it("returns empty string when rawText is empty and parsedTag is null", () => {
+      const result = extractEffectiveArgumentText("uniqueItems", "", null);
+      expect(result).toBe("");
     });
   });
 });

@@ -428,19 +428,25 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 /**
  * Applies path-targeted constraints to a schema.
  *
- * Emission-shape policy (see issue #366; `$ref` flattening tracked by #364):
+ * Emission-shape policy (see issues #364 and #366):
  *
  * | Base schema shape                                        | Emission            |
  * |----------------------------------------------------------|---------------------|
  * | array                                                    | recurse into items  |
  * | nullable oneOf                                           | recurse into value  |
- * | `$ref`                                                   | `allOf` wrap        |
+ * | `$ref`                                                   | sibling keywords    |
  * | inline object, override targets an existing property     | flat in-place merge |
  * | inline object, missing property, open base               | flat merge          |
  * | inline object, missing property, closed base             | `allOf` composition |
  * |   (`additionalProperties: false` or a schema)            |                     |
  * | already-composed `allOf`                                 | append `allOf` arm  |
  * | other (non-object, non-$ref)                             | unchanged           |
+ *
+ * JSON Schema 2020-12 §10.2.1 permits every keyword to appear alongside
+ * `$ref`, so the `$ref` branch emits overrides as siblings — the draft-07
+ * restriction that forced `allOf` composition no longer applies (#364).
+ * Sibling emission also preserves `$defs` deduplication and produces leaner
+ * output downstream renderers can consume directly.
  *
  * "Closed" is treated as two distinct cases that both prevent a safe flat
  * merge, for different reasons:
@@ -452,9 +458,9 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
  *     `properties`-bearing object, but the check is defensive against future
  *     emitters and custom extension `toJsonSchema` output.)
  *
- * Under 2020-12 §10.2.1 sibling keywords are permitted next to `$ref`, so the
- * `$ref` branch could in principle emit a flat shape too; that work is out of
- * scope here and remains tracked by #364.
+ * @see https://github.com/mike-north/formspec/issues/364
+ * @see https://github.com/mike-north/formspec/issues/366
+ * @see https://json-schema.org/draft/2020-12/json-schema-core — §10.2.1 sibling keywords
  */
 function applyPathTargetedConstraints(
   schema: JsonSchema2020,
@@ -494,15 +500,21 @@ function applyPathTargetedConstraints(
     return schema;
   }
 
-  // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
+  // $ref schema: add property overrides as sibling keywords alongside $ref.
+  // JSON Schema 2020-12 §10.2.1 explicitly permits sibling keywords next to
+  // $ref, unlike draft-07 where $ref caused all siblings to be ignored. Using
+  // sibling keywords avoids unnecessary allOf composition and preserves $defs
+  // deduplication. (Fixes #364.)
+  //
+  // Invariant: upstream reference resolution produces `$ref` schemas that do
+  // not carry their own `properties` key, so this spread-then-overwrite is
+  // safe today. If that ever changes, the override must still win — merge
+  // explicitly via `properties: { ...schema.properties, ...propertyOverrides }`.
   if (schema.$ref) {
-    const { $ref, ...rest } = schema;
-    const refPart: JsonSchema2020 = { $ref };
-    const overridePart: JsonSchema2020 = {
+    return {
+      ...schema,
       properties: propertyOverrides,
-      ...rest,
     };
-    return { allOf: [refPart, overridePart] };
   }
 
   // Inline object schema: merge property overrides directly where possible.

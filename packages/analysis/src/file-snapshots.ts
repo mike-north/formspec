@@ -1,6 +1,8 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
 import {
+  _mapSetupDiagnosticCode,
+  _validateExtensionSetup,
   checkSyntheticTagApplicationsDetailed,
   lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
@@ -61,15 +63,20 @@ import { noopLogger } from "@formspec/core";
 import { isBuiltinConstraintName } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
-  getSyntheticLogger,
   getTypedParserLogger,
   describeTypeKind,
+  logSetupDiagnostics,
   logTagApplication,
   nowMicros,
   elapsedMicros,
   type ConstraintValidatorRoleOutcome,
 } from "./constraint-validator-logger.js";
-import { mapTypedParserDiagnosticCode, parseTagArgument } from "./tag-argument-parser.js";
+import {
+  extractEffectiveArgumentText,
+  mapTypedParserDiagnosticCode,
+  parseTagArgument,
+} from "./tag-argument-parser.js";
+import { _isIntegerBrandedType } from "./integer-brand.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -218,10 +225,9 @@ function createConstraintTagRegistry(
  *   The type is matched by name against `registration.tsTypeNames ?? [typeName]`,
  *   which is the same string-based detection used elsewhere in file-snapshots.ts.
  *
- * Notably, `isIntegerBrandedType` bypass is NOT replicated here. That bypass is
- * a known build/snapshot divergence (PR #315 / file-snapshots.integer-bypass
- * test) and is tracked separately. Phase 3 only wires the extension-registry
- * broadening check.
+ * The _isIntegerBrandedType bypass is handled in buildTagDiagnostics (Phase 4A,
+ * closes #325) before this function is called. This function handles only the
+ * extension-registry broadening path.
  */
 // TODO(Phase 4/5): consolidate with hasBuiltinConstraintBroadening in
 // tsdoc-parser.ts. Same semantic question ("does this tag have a registered
@@ -239,14 +245,18 @@ function hasExtensionBroadening(
   }
 
   // Strip nullish union members (| null | undefined) before name-matching,
-  // consistent with how the build path strips before isIntegerBrandedType.
+  // consistent with how the build path strips before _isIntegerBrandedType.
   const effectiveType = stripNullishUnion(subjectType);
   // Use NoTruncation so that complex types (intersections, deep generics) are
-  // rendered in full. Without it, checker.typeToString uses its default truncation
-  // threshold (~160 chars) and can produce a structurally-different string than
-  // what was registered in tsTypeNames, causing broadening detection to miss.
+  // rendered in full. Without it, checker.typeToString applies TypeScript's internal
+  // truncation threshold and can produce a structurally-different string than what
+  // was registered in tsTypeNames, causing broadening detection to miss for
+  // anonymous intersection types or deeply nested generics.
   const typeName = typeToString(effectiveType, checker);
   if (typeName === null) {
+    // typeToString returns null when its type argument is undefined. stripNullishUnion
+    // always returns a ts.Type, so this branch is a defensive guard for future callers
+    // that might pass an undefined type through a different code path.
     return false;
   }
 
@@ -1077,17 +1087,6 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
   }
 }
 
-function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
-  const firstSpan = spans[0];
-  if (firstSpan === undefined) {
-    return null;
-  }
-  return {
-    start: firstSpan.start,
-    end: spans[spans.length - 1]?.end ?? firstSpan.end,
-  };
-}
-
 function createAnalysisDiagnostic(
   code: string,
   message: string,
@@ -1355,7 +1354,6 @@ function buildTagDiagnostics(
   ]);
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
-  const syntheticLog = getSyntheticLogger();
   const typedParserLog = getTypedParserLogger();
   const snapshotLogsEnabled = snapshotLog !== noopLogger;
   const typedParserTraceEnabled = typedParserLog !== noopLogger;
@@ -1384,9 +1382,7 @@ function buildTagDiagnostics(
   // the top of this function). Compute the log-friendly kind once, and only
   // when structured logging is actually enabled — describeTypeKind is cheap
   // but this runs on every snapshot diagnostic pass.
-  const subjectTypeKindForLog = snapshotLogsEnabled
-    ? describeTypeKind(subjectType, checker)
-    : "";
+  const subjectTypeKindForLog = snapshotLogsEnabled ? describeTypeKind(subjectType, checker) : "";
 
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
@@ -1452,25 +1448,74 @@ function buildTagDiagnostics(
     //   - ok: true (including raw-string-fallback for @const) → proceed to
     //                 lowerTagApplicationToSyntheticCall as before.
     if (isBuiltinConstraintName(tag.normalizedTagName)) {
-      const hasBroadening = hasExtensionBroadening(
+      // §4 Phase 4A — add the integer-brand bypass that was previously missing
+      // from the snapshot consumer (closes #325).
+      //
+      // Mirrors tsdoc-parser.ts hasBroadening computation (~lines 845-863):
+      //   - target === null: direct-field check only. Path-targeted fields use
+      //     the path-resolved type, not the declared subject type, so the brand
+      //     check does not apply to them.
+      //   - _isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
+      //     integer brand after stripping | null / | undefined wrappers.
+      //   - capabilities.includes("numeric-comparable"): only bypass numeric
+      //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
+      //
+      // When true: skip both the typed parser AND the synthetic checker and
+      // emit "bypass" on the structured log — identical to the build consumer.
+      //
+      // TODO(Phase 5, residual from #325): this bypass prevents TYPE_MISMATCH
+      // on the integer field itself, but the synthetic batch checker can still
+      // fail to resolve the imported integer type in its supporting
+      // declarations — which pollutes *sibling* string-field constraints
+      // (@minLength/@maxLength) in the same declaration with spurious
+      // TYPE_MISMATCH. Scenarios 6 and 7 in file-snapshots.integer-bypass.test.ts
+      // pin the current behavior. Full resolution lands with Phase 5
+      // (synthetic-checker retirement) per docs/refactors/synthetic-checker-retirement.md.
+      const isIntegerBypass =
+        target === null &&
+        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        semantic.tagDefinition.capabilities.includes("numeric-comparable");
+
+      if (isIntegerBypass) {
+        // §8.3b — log "bypass" roleOutcome on the snapshot consumer channel,
+        // mirroring the build consumer's emit("bypass", []) path.
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "bypass",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
+        // Skip typed parser and synthetic checker — no diagnostic emitted.
+        continue;
+      }
+
+      const hasExtBroadening = hasExtensionBroadening(
         tag.normalizedTagName,
         subjectType,
         checker,
         extensionDefinitions
       );
-      // TODO(Phase 4): add isIntegerBrandedType bypass here before removing the
-      // synthetic checker. Snapshot consumer does NOT currently have this bypass
-      // (tracked in #325); build consumer's tsdoc-parser.ts does. Phase 4 must
-      // unify before the synthetic checker can be deleted in Phase 5.
 
-      if (!hasBroadening) {
-        // TODO(Phase 4): Snapshot consumer passes tag.argumentText directly; build consumer
-        // re-derives via parseTagSyntax(tagName, rawText).argumentText to handle the
-        // TAGS_REQUIRING_RAW_TEXT compiler-API fallback path. Reconcile in Phase 4
-        // once both consumers use a shared argument-text extraction helper.
-        const typedParseResult = parseTagArgument(
+      if (!hasExtBroadening) {
+        // §4 Phase 4B — use shared extractEffectiveArgumentText so both
+        // consumers derive argument text identically. For the snapshot consumer,
+        // tag.argumentText is already target-stripped (parseCommentBlock strips
+        // the path-target prefix before storing argumentText), so passing it as
+        // rawText produces the same result as parseTagSyntax(tagName,
+        // tag.argumentText).argumentText. The helper unifies the code paths so
+        // future changes affect both consumers symmetrically.
+        const effectiveArgumentText = extractEffectiveArgumentText(
           tag.normalizedTagName,
           tag.argumentText,
+          tag
+        );
+        const typedParseResult = parseTagArgument(
+          tag.normalizedTagName,
+          effectiveArgumentText,
           "snapshot"
         );
 
@@ -1494,24 +1539,27 @@ function buildTagDiagnostics(
           // build consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
           const mappedCode = mapTypedParserDiagnosticCode(
             typedParseResult.diagnostic.code,
-            tag.normalizedTagName,
+            tag.normalizedTagName
           );
 
           diagnostics.push(
-            createAnalysisDiagnostic(mappedCode, typedParseResult.diagnostic.message, tag.fullSpan, {
-              tagName: tag.normalizedTagName,
-              placement,
-              ...(target === null
-                ? {}
-                : { targetKind: target.kind, targetText: target.text }),
-            })
+            createAnalysisDiagnostic(
+              mappedCode,
+              typedParseResult.diagnostic.message,
+              tag.fullSpan,
+              {
+                tagName: tag.normalizedTagName,
+                placement,
+                ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+              }
+            )
           );
           // Skip adding to syntheticApplications — typed parser already rejected at Role C.
           continue;
         }
 
         // Typed parser accepted the argument. Log at trace level before falling
-        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 4).
+        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 5).
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser C-pass", {
             consumer: "snapshot",
@@ -1523,7 +1571,9 @@ function buildTagDiagnostics(
           });
         }
       } else {
-        // Broadened — bypass typed parser. Log at trace level if enabled.
+        // Extension-broadened (D1/D2) — bypass the typed parser but still pass
+        // to the synthetic checker, which understands extension-registered types
+        // and handles D1/D2 validation. Log at trace level if enabled.
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",
@@ -1597,37 +1647,6 @@ function buildTagDiagnostics(
         ...(performance === undefined ? {} : { performance }),
       })
   );
-
-  // §8.3c — log any global (setup-level) diagnostics from the batch check.
-  if (batchCheck.globalDiagnostics.length > 0) {
-    const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
-    syntheticLog.debug("synthetic batch: global setup diagnostics", {
-      diagnosticCount: batchCheck.globalDiagnostics.length,
-      codes: setupCodes,
-    });
-  }
-
-  const globalDiagnosticRange = combineCommentSpans(
-    syntheticApplications.map((application) => application.tag.fullSpan)
-  );
-
-  if (globalDiagnosticRange !== null) {
-    for (const diagnostic of batchCheck.globalDiagnostics) {
-      const code =
-        diagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : diagnostic.kind === "synthetic-setup"
-            ? "SYNTHETIC_SETUP_FAILURE"
-            : "TYPE_MISMATCH";
-      diagnostics.push(
-        createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
-          placement,
-          tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-        })
-      );
-    }
-  }
 
   for (const [index, result] of batchCheck.applicationResults.entries()) {
     const application = syntheticApplications[index];
@@ -1795,6 +1814,37 @@ export function buildFormSpecAnalysisFileSnapshot(
   const comments: FormSpecAnalysisCommentSnapshot[] = [];
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
   const extensions = options.extensions ?? toExtensionTagSources(options.extensionDefinitions);
+
+  // §4 Phase 4 Slice C — pre-validate extension setup once per snapshot call.
+  // Previously, setup failures (UNSUPPORTED_CUSTOM_TYPE_OVERRIDE /
+  // SYNTHETIC_SETUP_FAILURE) were emitted inside buildTagDiagnostics for each
+  // commented declaration. In a file with N commented declarations, a broken
+  // extension config would produce N identical diagnostics. Pre-validating here
+  // emits each setup diagnostic exactly once per buildFormSpecAnalysisFileSnapshot
+  // call, anchored at the start of the file (no tag-site location available for
+  // registry-level failures).
+  const snapshotLog = getSnapshotLogger();
+  const setupDiagnosticResults = _validateExtensionSetup(extensions);
+  if (setupDiagnosticResults.length > 0) {
+    logSetupDiagnostics(snapshotLog, {
+      diagnosticCount: setupDiagnosticResults.length,
+      codes: setupDiagnosticResults.map((d) => d.kind),
+    });
+    // Emit each setup diagnostic anchored at the start of the file.
+    // The file-start span (0,0) is the closest we can get to a
+    // "registry-level" location in the snapshot transport format.
+    const fileStartSpan: CommentSpan = { start: 0, end: 0 };
+    for (const setupDiag of setupDiagnosticResults) {
+      diagnostics.push(
+        createAnalysisDiagnostic(
+          _mapSetupDiagnosticCode(setupDiag.kind),
+          setupDiag.message,
+          fileStartSpan,
+          {}
+        )
+      );
+    }
+  }
 
   const visit = (node: ts.Node): void => {
     const placement = resolveDeclarationPlacement(node);

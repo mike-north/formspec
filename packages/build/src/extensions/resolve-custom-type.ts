@@ -1,10 +1,9 @@
 import * as ts from "typescript";
 
-import { stripNullishUnion } from "@formspec/analysis/internal";
+import { _collectBrandIdentifiers, stripNullishUnion } from "@formspec/analysis/internal";
 
 import type { ExtensionRegistry, ExtensionTypeLookupResult } from "./registry.js";
 import {
-  collectBrandIdentifiers,
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
   resolveCanonicalSymbol,
@@ -123,7 +122,7 @@ export function resolveCustomTypeFromTsType(
   }
 
   // 3. Brand-based.
-  for (const brand of collectBrandIdentifiers(stripped)) {
+  for (const brand of _collectBrandIdentifiers(stripped)) {
     const byBrand = registry.findTypeByBrand(brand);
     if (byBrand !== undefined) {
       return byBrand;

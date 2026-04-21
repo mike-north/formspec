@@ -501,11 +501,7 @@ describe("generateJsonSchemaFromIR", () => {
       const prop = (schema.properties as Record<string, unknown>)["currency"];
 
       expect(prop).toEqual({
-        oneOf: [
-          { const: "USD" },
-          { const: "EUR", title: "Euro" },
-          { const: "GBP" },
-        ],
+        oneOf: [{ const: "USD" }, { const: "EUR", title: "Euro" }, { const: "GBP" }],
       });
     });
 
@@ -537,34 +533,28 @@ describe("generateJsonSchemaFromIR", () => {
         displayName: "usd",
         expectedTitle: true,
       },
-    ])(
-      "oneOf title omission edge case: $label",
-      ({ value, displayName, expectedTitle }) => {
-        const ir = makeIR([
-          makeField("f", {
-            kind: "enum",
-            members: [{ value, displayName }],
-          }),
-        ]);
-        const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
-        const prop = (schema.properties as Record<string, unknown>)["f"];
+    ])("oneOf title omission edge case: $label", ({ value, displayName, expectedTitle }) => {
+      const ir = makeIR([
+        makeField("f", {
+          kind: "enum",
+          members: [{ value, displayName }],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
+      const prop = (schema.properties as Record<string, unknown>)["f"];
 
-        if (expectedTitle) {
-          expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
-        } else {
-          expect(prop).toEqual({ oneOf: [{ const: value }] });
-        }
-      },
-    );
+      if (expectedTitle) {
+        expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
+      } else {
+        expect(prop).toEqual({ oneOf: [{ const: value }] });
+      }
+    });
 
     it("uses compact enum serialization in smart-size mode when titles would be redundant", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [
-            { value: "draft", displayName: "draft" },
-            { value: "sent" },
-          ],
+          members: [{ value: "draft", displayName: "draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
@@ -579,20 +569,14 @@ describe("generateJsonSchemaFromIR", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [
-            { value: "draft", displayName: "Draft" },
-            { value: "sent" },
-          ],
+          members: [{ value: "draft", displayName: "Draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
       const prop = (schema.properties as Record<string, unknown>)["status"];
 
       expect(prop).toEqual({
-        oneOf: [
-          { const: "draft", title: "Draft" },
-          { const: "sent" },
-        ],
+        oneOf: [{ const: "draft", title: "Draft" }, { const: "sent" }],
       });
     });
 
@@ -2087,7 +2071,10 @@ describe("generateJsonSchemaFromIR", () => {
       },
     };
 
-    it("emits allOf with $ref and property overrides for path-targeted constraints on reference types", () => {
+    it("emits $ref + sibling properties keyword for path-targeted constraints on reference types (issue #364)", () => {
+      // JSON Schema 2020-12 §10.2.1 allows sibling keywords next to $ref.
+      // The output must use sibling keywords, NOT allOf composition.
+      // See: https://github.com/mike-north/formspec/issues/364
       const ir: FormIR = {
         kind: "form-ir",
         irVersion: IR_VERSION,
@@ -2118,7 +2105,8 @@ describe("generateJsonSchemaFromIR", () => {
       };
       const schema = generateJsonSchemaFromIR(ir);
       expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
-        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
       });
     });
 
@@ -2226,8 +2214,11 @@ describe("generateJsonSchemaFromIR", () => {
         type: "array",
         minItems: 1,
       });
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // The items schema must use sibling keywords, not allOf. (#364)
       expect(lineItems["items"]).toEqual({
-        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
       });
     });
 
@@ -2292,11 +2283,11 @@ describe("generateJsonSchemaFromIR", () => {
         unknown
       >;
 
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // The remapped property name must appear in sibling properties, not allOf. (#364)
       expect(lineItems["items"]).toEqual({
-        allOf: [
-          { $ref: "#/$defs/RenamedAmount" },
-          { properties: { amount_value: { minimum: 0 } } },
-        ],
+        $ref: "#/$defs/RenamedAmount",
+        properties: { amount_value: { minimum: 0 } },
       });
     });
 
@@ -2805,15 +2796,14 @@ describe("generateJsonSchemaFromIR", () => {
         typeRegistry: MONETARY_AMOUNT_REGISTRY,
         provenance: PROVENANCE,
       };
+      // JSON Schema 2020-12 §10.2.1: sibling keywords next to $ref are valid.
+      // All overrides (title, properties) must appear as siblings alongside $ref,
+      // not wrapped in allOf. (Fixes #364.)
       const schema = generateJsonSchemaFromIR(ir);
       expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
-        allOf: [
-          { $ref: "#/$defs/MonetaryAmount" },
-          {
-            title: "Total Amount",
-            properties: { value: { minimum: 0, maximum: 999999 } },
-          },
-        ],
+        $ref: "#/$defs/MonetaryAmount",
+        title: "Total Amount",
+        properties: { value: { minimum: 0, maximum: 999999 } },
       });
     });
   });

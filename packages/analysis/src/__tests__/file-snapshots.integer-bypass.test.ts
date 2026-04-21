@@ -6,29 +6,33 @@
  * multi-branded Integer section) through `buildFormSpecAnalysisFileSnapshot`.
  *
  * The build path asserts on generated JSON Schema output; the snapshot path
- * asserts on diagnostic presence/absence (TYPE_MISMATCH). Where behavior
- * diverges between the two paths a `// KNOWN DIVERGENCE` comment documents
- * current behavior so regressions can be detected later.
+ * asserts on diagnostic presence/absence (TYPE_MISMATCH).
  *
- * Summary of divergences discovered (all 6 numeric-constraint scenarios):
- *   The `isIntegerBrandedType` bypass lives exclusively in the build path's
- *   synthetic-checker logic (packages/build/src/analyzer/class-analyzer.ts).
- *   The snapshot path uses the real TypeScript checker for binding/type
- *   resolution combined with a synthetic batch program for constraint
- *   checking (packages/analysis/src/compiler-signatures.ts). This batch
- *   checker does not apply the same integer-brand broadening, so it emits
- *   TYPE_MISMATCH for @minimum/@maximum on integer-branded types.
- *   Scenario 5 (@pattern) correctly produces TYPE_MISMATCH on both paths.
+ * Phase 4A (closes #325) added the `isIntegerBrandedType` bypass to the
+ * snapshot consumer. All 6 numeric-constraint scenarios that were previously
+ * KNOWN DIVERGENCE now converge: the snapshot path no longer emits
+ * TYPE_MISMATCH for @minimum/@maximum on integer-branded types.
+ *
+ * Scenario 5 (@pattern) correctly produces TYPE_MISMATCH on both paths.
+ *
+ * Scenarios 6 and 7 (cross-file integer + sibling string field) are
+ * partially resolved: the integer field no longer produces TYPE_MISMATCH, but
+ * the sibling string fields may still be poisoned by the synthetic batch
+ * checker failing to resolve the imported integer type in its supporting
+ * declarations. This sibling-poisoning issue is tracked separately and is
+ * deferred to Phase 5 (synthetic checker retirement).
  *
  * @see packages/build/src/__tests__/integer-type.test.ts — build-path reference
  * @see packages/analysis/src/file-snapshots.ts — buildFormSpecAnalysisFileSnapshot
- * @see packages/build/src/analyzer/class-analyzer.ts — isIntegerBrandedType
+ * @see packages/analysis/src/integer-brand.ts — isIntegerBrandedType
  * @see docs/refactors/synthetic-checker-retirement.md §9.1 #3
  */
 
+import * as path from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
+import { createProgram } from "./helpers.js";
 
 // ---------------------------------------------------------------------------
 // Virtual multi-file program helper
@@ -42,9 +46,16 @@ import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
  * here because the cross-file integer-import scenarios require a separate
  * "types.ts" module that exports `MultiBrandedInteger`.
  *
- * `allowImportingTsExtensions` is set so virtual imports that use the
- * explicit `.ts` extension (e.g. `from "/virtual/types.ts"`) are accepted
- * without a TS5097 error while keeping the map key as the real filename.
+ * Uses `module: NodeNext` with a custom `resolveModuleNames` override that
+ * maps `.js` import specifiers to `.ts` file keys in the `files` map.
+ * This is required so that `checker.getTypeAtLocation(propertySignature)`
+ * returns the fully-resolved intersection type (TypeFlags.Intersection)
+ * rather than a placeholder Any type — the same behaviour TypeScript
+ * produces for real on-disk files.
+ *
+ * Fixture sources must import with `.js` extensions
+ * (e.g. `from "./types.js"`) which NodeNext module resolution maps to
+ * the `.ts` source file in the virtual file map.
  */
 function createMultiFileProgram(
   files: Record<string, string>,
@@ -52,9 +63,9 @@ function createMultiFileProgram(
 ): { checker: ts.TypeChecker; sourceFile: ts.SourceFile } {
   const compilerOptions: ts.CompilerOptions = {
     target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
     strict: true,
-    allowImportingTsExtensions: true,
   };
 
   const host = ts.createCompilerHost(compilerOptions, true);
@@ -62,21 +73,68 @@ function createMultiFileProgram(
   const originalReadFile = host.readFile.bind(host);
   const originalFileExists = host.fileExists.bind(host);
 
+  const resolveVirtualPath = (requestedFileName: string): string => {
+    // Map .js imports to .ts for virtual files (NodeNext: "import './foo.js'" → 'foo.ts')
+    const tsEquivalent = requestedFileName.replace(/\.js$/, ".ts");
+    if (tsEquivalent in files) return tsEquivalent;
+    return requestedFileName;
+  };
+
   host.getSourceFile = (requestedFileName, languageVersion) => {
-    const content = files[requestedFileName];
+    const resolved = resolveVirtualPath(requestedFileName);
+    const content = files[resolved];
     if (content !== undefined) {
-      return ts.createSourceFile(requestedFileName, content, languageVersion, true, ts.ScriptKind.TS);
+      return ts.createSourceFile(resolved, content, languageVersion, true, ts.ScriptKind.TS);
     }
     return originalGetSourceFile(requestedFileName, languageVersion);
   };
   host.readFile = (requestedFileName) => {
-    const content = files[requestedFileName];
-    return content ?? originalReadFile(requestedFileName);
+    const resolved = resolveVirtualPath(requestedFileName);
+    return files[resolved] ?? originalReadFile(requestedFileName);
   };
-  host.fileExists = (requestedFileName) =>
-    requestedFileName in files || originalFileExists(requestedFileName);
+  host.fileExists = (requestedFileName) => {
+    const resolved = resolveVirtualPath(requestedFileName);
+    return resolved in files || originalFileExists(requestedFileName);
+  };
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   host.writeFile = () => {};
+
+  // Override module resolution so that `.js` imports in virtual files
+  // are mapped to their `.ts` counterparts in the `files` map.
+  // Uses `resolveModuleNameLiterals` (preferred over deprecated `resolveModuleNames`)
+  // so NodeNext resolution mode is correctly handled.
+  host.resolveModuleNameLiterals = (
+    moduleLiterals: readonly ts.StringLiteralLike[],
+    containingFile: string,
+    _redirectedReference: ts.ResolvedProjectReference | undefined,
+    options: ts.CompilerOptions
+  ): readonly ts.ResolvedModuleWithFailedLookupLocations[] => {
+    return moduleLiterals.map((literal) => {
+      const moduleName = literal.text;
+      const resolvedAbsolute = path.resolve(path.dirname(containingFile), moduleName);
+      const tsEquivalent = resolvedAbsolute.replace(/\.js$/, ".ts");
+      if (tsEquivalent in files) {
+        return {
+          resolvedModule: {
+            resolvedFileName: tsEquivalent,
+            isExternalLibraryImport: false,
+            extension: ts.Extension.Ts,
+          },
+        };
+      }
+      if (resolvedAbsolute in files) {
+        return {
+          resolvedModule: {
+            resolvedFileName: resolvedAbsolute,
+            isExternalLibraryImport: false,
+            extension: ts.Extension.Ts,
+          },
+        };
+      }
+      // Fall through to normal TypeScript resolution for real library imports.
+      return ts.resolveModuleName(moduleName, containingFile, options, host);
+    });
+  };
 
   const rootNames = Object.keys(files);
   const program = ts.createProgram(rootNames, compilerOptions, host);
@@ -113,37 +171,8 @@ const PRIMARY_FILE = "/virtual/importing.ts";
  * Build a snapshot from a single-file inline source string.
  */
 function snapshotFromSource(source: string): ReturnType<typeof buildFormSpecAnalysisFileSnapshot> {
-  const compilerOptions: ts.CompilerOptions = {
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    strict: true,
-  };
-  const host = ts.createCompilerHost(compilerOptions, true);
-  const originalGetSourceFile = host.getSourceFile.bind(host);
-  const originalReadFile = host.readFile.bind(host);
-  const originalFileExists = host.fileExists.bind(host);
-  const fileName = "/virtual/formspec-integer.ts";
-
-  host.getSourceFile = (requestedFileName, languageVersion) => {
-    if (requestedFileName === fileName) {
-      return ts.createSourceFile(fileName, source, languageVersion, true, ts.ScriptKind.TS);
-    }
-    return originalGetSourceFile(requestedFileName, languageVersion);
-  };
-  host.readFile = (requestedFileName) =>
-    requestedFileName === fileName ? source : originalReadFile(requestedFileName);
-  host.fileExists = (requestedFileName) =>
-    requestedFileName === fileName || originalFileExists(requestedFileName);
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  host.writeFile = () => {};
-
-  const program = ts.createProgram([fileName], compilerOptions, host);
-  const sourceFile = program.getSourceFile(fileName);
-  if (sourceFile === undefined) throw new Error("Expected virtual source file");
-
-  return buildFormSpecAnalysisFileSnapshot(sourceFile, {
-    checker: program.getTypeChecker(),
-  });
+  const { checker, sourceFile } = createProgram(source, "/virtual/formspec-integer.ts");
+  return buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
 }
 
 /**
@@ -183,30 +212,51 @@ function typeMismatchTagNames(snapshot: Snapshot): string[] {
       // Global batch diagnostics carry data.tagNames (string[]). Return each
       // member individually so callers see one entry per affected tag.
       const tagNames = d.data["tagNames"];
-      if (Array.isArray(tagNames)) return (tagNames as string[]).join(",");
+      if (Array.isArray(tagNames)) return tagNames.map(String).join(",");
       // Fallback for any future diagnostic shapes.
       return "<unknown>";
     });
+}
+
+/**
+ * Returns every declaration-level `numeric-constraints` fact recorded in the
+ * snapshot (one per field that had @minimum/@maximum/etc applied). Empty array
+ * means no numeric constraints were captured — which, in these scenarios, is
+ * the failure shape we want to guard against: a future regression that silently
+ * drops integer-field processing would make the TYPE_MISMATCH diagnostic check
+ * pass while losing the constraint entirely.
+ */
+function declarationNumericConstraints(
+  snapshot: Snapshot
+): { minimum?: number; maximum?: number }[] {
+  const results: { minimum?: number; maximum?: number }[] = [];
+  for (const comment of snapshot.comments) {
+    for (const fact of comment.declarationSummary.facts) {
+      if (fact.kind === "numeric-constraints" && fact.targetPath === null) {
+        const entry: { minimum?: number; maximum?: number } = {};
+        if (fact.minimum !== undefined) entry.minimum = fact.minimum;
+        if (fact.maximum !== undefined) entry.maximum = fact.maximum;
+        results.push(entry);
+      }
+    }
+  }
+  return results;
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("integer-brand bypass: snapshot path mirrors build path", () => {
+describe("integer-brand bypass: snapshot path mirrors build path (regression for #325)", () => {
   // -------------------------------------------------------------------------
   // Scenario 1: locally-declared doubly-branded integer with @minimum/@maximum
   //
   // Build path: generateSchemasOrThrow({ typeName: "MultiBrandedConstrainedConfig" })
   //   succeeds and produces minimum: 2000, maximum: 2026. No TYPE_MISMATCH.
   //
-  // KNOWN DIVERGENCE: The snapshot path produces TYPE_MISMATCH for @minimum/
-  // @maximum on doubly-branded integer types. The `isIntegerBrandedType` bypass
-  // (class-analyzer.ts) only runs inside the build path's synthetic checker; the
-  // snapshot path's synthetic batch checker (compiler-signatures.ts) does not
-  // apply the same broadening. Current snapshot behavior: TYPE_MISMATCH emitted.
+  // Phase 4A: snapshot path now also produces no TYPE_MISMATCH (bypass added).
   // -------------------------------------------------------------------------
-  it("scenario 1: locally-declared doubly-branded integer — KNOWN DIVERGENCE: snapshot emits TYPE_MISMATCH, build path does not", () => {
+  it("scenario 1: locally-declared doubly-branded integer — no TYPE_MISMATCH (bypass applied in both paths)", () => {
     // Mirrors integer-type.test.ts "accepts @minimum and @maximum on a doubly-branded
     // integer type (locally declared)"
     const source = [
@@ -222,15 +272,17 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromSource(source);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH (isIntegerBrandedType bypass
-    // applied). Snapshot path → TYPE_MISMATCH emitted (bypass not applied here).
-    // Pinning current snapshot behavior: all mismatches must be tied to the numeric
-    // constraint tags on this field (minimum/maximum), not to an unrelated tag.
+    // Phase 4A: integer-brand bypass now applied in snapshot path.
+    // No TYPE_MISMATCH should be emitted for @minimum/@maximum on integer-branded types.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames.length).toBeGreaterThan(0);
-    for (const name of tagNames) {
-      expect(["minimum", "maximum"]).toContain(name);
-    }
+    expect(tagNames.filter((n) => n === "minimum" || n === "maximum")).toHaveLength(0);
+
+    // Positive check: the bypass must not drop the constraint — the snapshot
+    // must record the 2000/2026 bounds derived from @minimum/@maximum.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({
+      minimum: 2000,
+      maximum: 2026,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -239,13 +291,13 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Build path: generateSchemasOrThrow({ typeName: "CrossFileConstrainedConfig" })
   //   succeeds (isIntegerBrandedType bypass prevents TYPE_MISMATCH).
   //
-  // KNOWN DIVERGENCE: snapshot path emits TYPE_MISMATCH on imported integer brands.
+  // Phase 4A: snapshot path now also produces no TYPE_MISMATCH.
   // -------------------------------------------------------------------------
-  it("scenario 2: imported doubly-branded integer — KNOWN DIVERGENCE: snapshot emits TYPE_MISMATCH, build path does not", () => {
+  it("scenario 2: imported doubly-branded integer — no TYPE_MISMATCH (bypass applied in both paths)", () => {
     // Mirrors integer-type.test.ts "accepts @minimum and @maximum on a doubly-branded
     // integer type imported from another module"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "interface CrossFileConstrainedConfig {",
       "  /** @minimum 2000 @maximum 2026 */",
@@ -255,14 +307,15 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromImportingSource(importingSource);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH (isIntegerBrandedType bypass
-    // applied). Snapshot path → TYPE_MISMATCH emitted (bypass not applied here).
-    // Pinning: all mismatches must be tied to minimum or maximum.
+    // Phase 4A: no TYPE_MISMATCH for @minimum/@maximum on imported integer brands.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames.length).toBeGreaterThan(0);
-    for (const name of tagNames) {
-      expect(["minimum", "maximum"]).toContain(name);
-    }
+    expect(tagNames.filter((n) => n === "minimum" || n === "maximum")).toHaveLength(0);
+
+    // Positive check: bounds are recorded in the declaration summary.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({
+      minimum: 2000,
+      maximum: 2026,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -271,12 +324,12 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Build path: generateSchemasOrThrow({ typeName: "CrossFileNullableConfig" })
   //   succeeds.
   //
-  // KNOWN DIVERGENCE: snapshot path emits TYPE_MISMATCH on nullable integer brands.
+  // Phase 4A: snapshot path now also produces no TYPE_MISMATCH.
   // -------------------------------------------------------------------------
-  it("scenario 3: nullable imported integer (MultiBrandedInteger | null) — KNOWN DIVERGENCE: snapshot emits TYPE_MISMATCH, build path does not", () => {
+  it("scenario 3: nullable imported integer (MultiBrandedInteger | null) — no TYPE_MISMATCH (bypass strips nullish union)", () => {
     // Mirrors integer-type.test.ts "accepts @minimum on a nullable imported integer type"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "interface CrossFileNullableConfig {",
       "  /** @minimum 0 */",
@@ -286,11 +339,11 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromImportingSource(importingSource);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH. Snapshot path → exactly
-    // one TYPE_MISMATCH tied to @minimum. Pinning count and tag name.
+    // Phase 4A: stripNullishUnion removes | null before isIntegerBrandedType
+    // check, so nullable integer fields are correctly bypassed.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames).toHaveLength(1);
-    expect(tagNames[0]).toBe("minimum");
+    const minimumMismatches = tagNames.filter((n) => n === "minimum");
+    expect(minimumMismatches).toHaveLength(0);
   });
 
   // -------------------------------------------------------------------------
@@ -299,12 +352,12 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Build path: generateSchemasOrThrow({ typeName: "CrossFileOptionalConfig" })
   //   succeeds.
   //
-  // KNOWN DIVERGENCE: snapshot path emits TYPE_MISMATCH on optional integer brands.
+  // Phase 4A: snapshot path now also produces no TYPE_MISMATCH.
   // -------------------------------------------------------------------------
-  it("scenario 4: optional imported integer field — KNOWN DIVERGENCE: snapshot emits TYPE_MISMATCH, build path does not", () => {
+  it("scenario 4: optional imported integer field — no TYPE_MISMATCH (bypass strips nullish union)", () => {
     // Mirrors integer-type.test.ts "accepts @minimum on an optional imported integer type"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "interface CrossFileOptionalConfig {",
       "  /** @minimum 0 */",
@@ -314,11 +367,11 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromImportingSource(importingSource);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH. Snapshot path → exactly
-    // one TYPE_MISMATCH tied to @minimum. Pinning count and tag name.
+    // Phase 4A: optional fields (T | undefined after TS expands ?) are handled
+    // by stripNullishUnion before the brand check.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames).toHaveLength(1);
-    expect(tagNames[0]).toBe("minimum");
+    const minimumMismatches = tagNames.filter((n) => n === "minimum");
+    expect(minimumMismatches).toHaveLength(0);
   });
 
   // -------------------------------------------------------------------------
@@ -327,12 +380,12 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Both paths agree: @pattern is not valid on numeric/integer types.
   // Build path: generateSchemasOrThrow throws with /TYPE_MISMATCH/.
   // Snapshot path: also emits TYPE_MISMATCH.
-  // No divergence.
+  // No divergence — unchanged by Phase 4A.
   // -------------------------------------------------------------------------
   it("scenario 5: @pattern on imported integer type — both paths emit TYPE_MISMATCH (numeric bypass is numeric-only)", () => {
     // Mirrors integer-type.test.ts "rejects @pattern on an imported integer type"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "interface CrossFilePatternConfig {",
       "  /** @pattern ^[0-9]+$ */",
@@ -356,20 +409,19 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Scenario 6: cross-file integer + sibling plain-string field (interface)
   //
   // Build path: generateSchemasOrThrow({ typeName: "CrossFileMixedConfig" })
-  //   succeeds; both @minimum on integer AND @minLength/@maxLength on string
-  //   work — the sibling string field is NOT poisoned.
+  //   succeeds; both @minimum on integer AND @minLength/@maxLength on string work.
   //
-  // KNOWN DIVERGENCE: The snapshot path's batch checker cannot resolve the
-  // imported integer type inside its synthetic program, causing ALL tags in
-  // the interface (including the sibling string constraints) to emit
-  // TYPE_MISMATCH. The sibling `vin` string constraints ARE poisoned here,
-  // unlike the build path where they work correctly.
+  // Phase 4A (partial): the integer field's @minimum no longer emits
+  // TYPE_MISMATCH. However, the sibling string fields' @minLength/@maxLength
+  // may still be poisoned by the synthetic batch checker failing to resolve the
+  // imported integer type in its supporting declarations. Full sibling-field
+  // parity is deferred to Phase 5 (synthetic checker retirement).
   // -------------------------------------------------------------------------
-  it("scenario 6: imported integer + sibling string field in interface — KNOWN DIVERGENCE: snapshot poisons sibling string constraints, build path does not", () => {
+  it("scenario 6: imported integer + sibling string field in interface — @minimum bypassed; sibling constraints may still be affected", () => {
     // Mirrors integer-type.test.ts "does not poison sibling string fields with
     // imported integer type constraints"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "interface CrossFileMixedConfig {",
       "  /** @minimum 2000 */",
@@ -385,19 +437,23 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromImportingSource(importingSource);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH for any tag (both integer
-    // and string constraints work). Snapshot path → TYPE_MISMATCH emitted for
-    // @minimum (integer field) AND @minLength/@maxLength (sibling string field)
-    // because the batch checker cannot resolve MultiBrandedInteger in its
-    // synthetic context. Pinning the exact set of affected tags.
+    // Phase 4A: integer field's @minimum is now bypassed — no TYPE_MISMATCH
+    // for @minimum on the integer field.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames.length).toBeGreaterThan(0);
-    // The integer field's numeric constraint must be among the mismatches.
-    expect(tagNames).toContain("minimum");
-    // The sibling string constraints are also poisoned — assert all mismatches
-    // belong to {minimum, minLength, maxLength} only (no unexpected tags).
+    expect(tagNames).not.toContain("minimum");
+
+    // Positive check: the integer field's @minimum 2000 must be recorded in
+    // the declaration summary. Guards against a future regression where the
+    // pipeline silently drops integer-field processing — the diagnostic check
+    // alone would not catch that.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({ minimum: 2000 });
+
+    // The sibling string fields may still be affected by the synthetic batch
+    // checker (supporting declarations include the unresolvable imported type).
+    // Any remaining mismatches must only be from the string constraint tags —
+    // this pins the boundary of the remaining divergence.
     for (const name of tagNames) {
-      expect(["minimum", "minLength", "maxLength"]).toContain(name);
+      expect(["minLength", "maxLength"]).toContain(name);
     }
   });
 
@@ -407,14 +463,14 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
   // Build path: generateSchemasOrThrow({ typeName: "CrossFileMixedTypeAlias" })
   //   succeeds; both fields work.
   //
-  // KNOWN DIVERGENCE: snapshot path poisons the sibling string constraints
-  // (same mechanism as scenario 6).
+  // Phase 4A (partial): same as scenario 6 — integer field bypassed, sibling
+  // string fields may still be affected by synthetic batch checker.
   // -------------------------------------------------------------------------
-  it("scenario 7: imported integer + sibling string field in type alias — KNOWN DIVERGENCE: snapshot poisons sibling string constraints, build path does not", () => {
+  it("scenario 7: imported integer + sibling string field in type alias — @minimum bypassed; sibling constraints may still be affected", () => {
     // Mirrors integer-type.test.ts "does not poison sibling string fields in
     // type alias declarations"
     const importingSource = [
-      `import type { MultiBrandedInteger } from "${TYPES_FILE}";`,
+      'import type { MultiBrandedInteger } from "./types.js";',
       "",
       "type CrossFileMixedTypeAlias = {",
       "  /** @minimum 2000 */",
@@ -430,14 +486,18 @@ describe("integer-brand bypass: snapshot path mirrors build path", () => {
 
     const snapshot = snapshotFromImportingSource(importingSource);
 
-    // KNOWN DIVERGENCE: build path → no TYPE_MISMATCH. Snapshot path → TYPE_MISMATCH
-    // for @minimum AND @minLength/@maxLength (sibling poisoning). Pinning the exact
-    // set of affected tags.
+    // Phase 4A: integer field's @minimum is bypassed — no TYPE_MISMATCH for
+    // @minimum.
     const tagNames = typeMismatchTagNames(snapshot);
-    expect(tagNames.length).toBeGreaterThan(0);
-    expect(tagNames).toContain("minimum");
+    expect(tagNames).not.toContain("minimum");
+
+    // Positive check: @minimum 2000 was recorded on the integer field.
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({ minimum: 2000 });
+
+    // Sibling string fields may still be affected. Remaining mismatches must
+    // only be from string constraint tags.
     for (const name of tagNames) {
-      expect(["minimum", "minLength", "maxLength"]).toContain(name);
+      expect(["minLength", "maxLength"]).toContain(name);
     }
   });
 });

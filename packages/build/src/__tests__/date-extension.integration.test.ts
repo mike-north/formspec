@@ -276,18 +276,25 @@ describe("date extension integration", () => {
     });
 
     expect(result.ok).toBe(false);
+    // Phase 4 Slice C: diagnostics are pre-emitted ONCE per registry
+    // construction. `toHaveLength(1)` pins the count explicitly — without it,
+    // `toMatchObject([...])` would silently accept extra diagnostics if a
+    // regression reintroduced per-field emission.
+    expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics).toMatchObject([
       {
         code: "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
       },
     ]);
-    // §9.1 #4 — pin setup-diagnostic primaryLocation so Phase 4 relocation is detectable
+    // Phase 4 Slice C: setup diagnostics are now anchored at the extension
+    // registration site (surface: "extension"), not at the tag use site.
+    // No source location is available for the registry-level failure, so
+    // provenance uses line 1, column 0.
     expect(result.diagnostics[0]?.primaryLocation).toEqual({
-      surface: "tsdoc",
+      surface: "extension",
       file: filePath,
-      line: 5,
-      column: 12,
-      tagName: "@minLength",
+      line: 1,
+      column: 0,
     });
     expect(result.diagnostics[0]?.relatedLocations).toEqual([]);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");
@@ -318,9 +325,11 @@ describe("date extension integration", () => {
     expect(message).toMatch(/Invalid custom type name "Not A Type"/);
     expect(message).not.toMatch(/TYPE_MISMATCH/);
     expect(message.match(/SYNTHETIC_SETUP_FAILURE/g)).toHaveLength(1);
-    // §9.1 #4 — pin setup-diagnostic location embedded in thrown message so Phase 4 relocation is detectable
-    // source: line 4 ("         * @minLength 1"), column 11 (0-based position of "@")
-    expect(message).toMatch(/:4:11\)/);
+    // Phase 4 Slice C: setup diagnostics are now anchored at the extension
+    // registration site (surface: "extension", line 1, column 0), not at the
+    // tag use site. The formatted location embedded in the thrown message is now
+    // `:1:0` instead of the previous tag-site location.
+    expect(message).toMatch(/:1:0\)/);
   });
 
   it("returns invalid custom type registrations as setup diagnostics without throwing", () => {
@@ -341,19 +350,24 @@ describe("date extension integration", () => {
     });
 
     expect(result.ok).toBe(false);
+    // Phase 4 Slice C: diagnostics are pre-emitted ONCE per registry
+    // construction. `toHaveLength(1)` pins the count explicitly — without it,
+    // `toMatchObject([...])` would silently accept extra diagnostics if a
+    // regression reintroduced per-field emission.
+    expect(result.diagnostics).toHaveLength(1);
     expect(result.diagnostics).toMatchObject([
       {
         code: "SYNTHETIC_SETUP_FAILURE",
       },
     ]);
     expect(result.diagnostics[0]?.message).toMatch(/Invalid custom type name "Not A Type"/);
-    // §9.1 #4 — pin setup-diagnostic primaryLocation so Phase 4 relocation is detectable
+    // Phase 4 Slice C: setup diagnostics are now anchored at the extension
+    // registration site (surface: "extension"), not at the tag use site.
     expect(result.diagnostics[0]?.primaryLocation).toEqual({
-      surface: "tsdoc",
+      surface: "extension",
       file: filePath,
-      line: 3,
-      column: 12,
-      tagName: "@minLength",
+      line: 1,
+      column: 0,
     });
     expect(result.diagnostics[0]?.relatedLocations).toEqual([]);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("TYPE_MISMATCH");

@@ -502,6 +502,49 @@ Unknown format values are accepted (with an info diagnostic D4) for extensibilit
 
 **Note on read-only fields:** TypeScript's `readonly` modifier already conveys read-only semantics and is inferred by the analyzer (PP2). A separate `@readOnly` tag is unnecessary. `@writeOnly` is a rare use case that can be added in a future version if demand materializes.
 
+##### Inheritance through `extends` heritage
+
+Type-level `@format` flows from a base declaration to a derived class or interface along `extends` clauses. This lets authors declare a semantic format once on a domain base and have every derived narrowing type carry it through without repetition.
+
+**Allow-list:** Only a curated set of type-level annotations inherit through heritage. The current membership is `{ @format }`. Other type-level annotations — `@remarks`, `@deprecated`, `@displayName`, `@placeholder`, `@defaultValue`, `@description` (via summary text) — do **not** inherit through `extends`. The allow-list is intentionally narrow; expanding it is a deliberate spec decision, not a silent side effect of touching the walker.
+
+**Scope — `extends` only:**
+
+- Interface `extends` interface / class `extends` class: `@format` on the base flows to the derived type's `$defs` entry.
+- Interface `extends` type-alias (whose resolved type is object-shaped or an intersection): `@format` on the type alias flows to the derived interface's `$defs` entry. The walker follows the alias's RHS when it is a type reference, so aliases-of-interfaces and multi-level alias chains are covered.
+- Class `implements` interface: annotations do **not** inherit. `implements` is a structural-conformance assertion, not a semantic-adoption declaration, and silently merging annotations across unrelated nominal types would be misleading.
+
+**Precedence — "nearest annotation by BFS wins, ties broken by declaration order":**
+
+The analyzer walks the heritage graph breadth-first from the derived type. The walker maintains a shared `seen` set, so each declaration is visited at most once. As annotations are found, the kinds that still need values are tracked in a `needed` set; once a kind is filled, the walker never overwrites it later in the walk.
+
+Consequences:
+
+1. A shallower annotation always beats a deeper one. If a directly-listed base provides `@format`, deeper ancestors reachable through an earlier-listed but un-annotated base do **not** overwrite it.
+2. At equal depth, declaration order in the `extends` clause is the tie-breaker — the first-listed base's `@format` wins.
+3. A local `@format` on the derived type always wins — inheritance only fills in missing kinds on the derived declaration itself.
+4. A local `@format` with an empty or whitespace-only value is **not** an override; the base-declared value still flows through. This lets authors retain the tag's location (for intent signaling) without dropping the inherited value.
+
+**Worked example (asymmetric diamond):**
+
+```ts
+/** @format deep-A */
+interface A {}
+
+interface B extends A {} // no local @format
+
+/** @format direct-C */
+interface C {}
+
+interface D extends B, C {}
+// D.format === "direct-C"  — C is directly listed at depth 1, A is depth 2
+```
+
+**Known limitations:**
+
+- The inheritance walker targets the case where the *derived* declaration is a class or interface. When the *derived* declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
+- Only `@format` currently participates. Proposals to broaden the allow-list should address override semantics, conflict resolution, and emission coverage for each new kind (see [issue #380](https://github.com/mike-north/formspec/issues/380)).
+
 #### `@defaultValue`
 
 ```

@@ -1,7 +1,9 @@
 import * as ts from "typescript";
+import type { Provenance } from "@formspec/core/internals";
 import { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
 import { LruCache } from "./lru-cache.js";
 import { optionalMeasure, type FormSpecPerformanceRecorder } from "./perf-tracing.js";
+import { type ConstraintSemanticDiagnostic } from "./semantic-targets.js";
 import {
   getAllTagDefinitions,
   getTagDefinition,
@@ -61,10 +63,15 @@ export interface LoweredSyntheticTagApplication {
 
 /**
  * A simplified TypeScript diagnostic surfaced from the synthetic compiler pass.
+ *
+ * @internal
  */
 export interface SyntheticCompilerDiagnostic {
+  /** The category of diagnostic: a raw TypeScript error, an unsupported global built-in override, or a synthetic setup failure. */
   readonly kind: "typescript" | "unsupported-custom-type-override" | "synthetic-setup";
+  /** TypeScript diagnostic code, or -1 for non-TypeScript diagnostics. */
   readonly code: number;
+  /** Human-readable description of the diagnostic. */
   readonly message: string;
 }
 
@@ -483,27 +490,103 @@ const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
 ]);
 
 /**
- * Collects deduplicated custom type names from extensions, suitable for
- * emission as `type X = unknown;` declarations in the synthetic prelude.
+ * Maps a `SyntheticCompilerDiagnostic["kind"]` to the canonical diagnostic code
+ * string used in `ConstraintSemanticDiagnostic.code` and
+ * `FormSpecAnalysisDiagnostic.code`.
  *
- * Throws if the same name is registered more than once (across or within
- * extensions). Skips TypeScript primitive keywords (TS2457) and supported
- * global built-in type overrides (TS2300): both are already declared by the
- * compiler, and no synthetic declaration is needed. Registering these names
- * as `tsTypeNames` is still valid -- it means "match the native type."
+ * Extracted to eliminate three identical ternary chains spread across
+ * `tsdoc-parser.ts` (2 sites) and `file-snapshots.ts` (1 site). The switch is
+ * exhaustive — the `never` default catches any future `kind` additions at
+ * compile time.
  *
- * Throws if an unsupported TypeScript global built-in is registered. To add
- * support for a new global built-in, set its value to `true` in
- * `TS_GLOBAL_BUILTIN_TYPES`.
+ * @internal
  */
-function collectExtensionCustomTypeNames(
-  extensions: readonly ExtensionTagSource[] | undefined
-): readonly string[] {
-  if (extensions === undefined) {
-    return [];
+export function _mapSetupDiagnosticCode(kind: SyntheticCompilerDiagnostic["kind"]): string {
+  switch (kind) {
+    case "unsupported-custom-type-override":
+      return "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE";
+    case "synthetic-setup":
+      return "SYNTHETIC_SETUP_FAILURE";
+    case "typescript":
+      return "TYPE_MISMATCH";
+    default: {
+      // Exhaustive check — fails to compile if a new kind is added without
+      // updating this mapping.
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
   }
+}
+
+/**
+ * Constructs the registry-level provenance for extension setup diagnostics.
+ *
+ * Extension setup failures are not tied to a specific source location — they
+ * are detected at registry construction time, before any source file is
+ * analyzed. We use `line: 1, column: 0` as the conventional registry-level
+ * anchor, and `surface: "extension"` to distinguish them from tag-site
+ * diagnostics.
+ *
+ * @param file - The source file path being analyzed when the diagnostic fires.
+ */
+function _extensionRegistryProvenance(file: string): Provenance {
+  return { surface: "extension", file, line: 1, column: 0 };
+}
+
+/**
+ * Converts `registry.setupDiagnostics` into `ConstraintSemanticDiagnostic[]`
+ * anchored at the extension-registration site for the given file.
+ *
+ * This helper is the single source of truth for the build path's pre-emit of
+ * setup diagnostics (consumed by `parseTSDocTags`). It uses
+ * `_extensionRegistryProvenance` for the anchor location and
+ * `_mapSetupDiagnosticCode` for the kind → code mapping.
+ *
+ * @param setupDiags - The diagnostics from `ExtensionRegistry.setupDiagnostics`.
+ * @param file - The source file path being analyzed.
+ * @returns One `ConstraintSemanticDiagnostic` per setup diagnostic.
+ * @internal
+ */
+export function _emitSetupDiagnostics(
+  setupDiags: readonly SyntheticCompilerDiagnostic[],
+  file: string
+): readonly ConstraintSemanticDiagnostic[] {
+  const provenance = _extensionRegistryProvenance(file);
+  return setupDiags.map((d) => ({
+    code: _mapSetupDiagnosticCode(d.kind),
+    message: d.message,
+    severity: "error" as const,
+    primaryLocation: provenance,
+    relatedLocations: [],
+  }));
+}
+
+/**
+ * Shared core of `_validateExtensionSetup` (non-throwing) and
+ * `collectExtensionCustomTypeNames` (throwing).
+ *
+ * Iterates over all `tsTypeNames` across all extensions and calls `onValid`
+ * for each name that passes validation, `onDiagnostic` for each name that
+ * fails the non-throwing validation, and `onError` for each name that should
+ * throw (the throwing path). When `onError` is undefined, errors are funnelled
+ * to `onDiagnostic` instead.
+ *
+ * Skips TypeScript primitive keywords (TS2457) and supported global built-in
+ * overrides (TS2300): both are already declared by the compiler.
+ */
+function _validateTypeNames(
+  extensions: readonly ExtensionTagSource[],
+  callbacks: {
+    readonly onValid: (tsName: string) => void;
+    readonly onDiagnostic: (diag: SyntheticCompilerDiagnostic) => void;
+    /** When provided, called instead of `onDiagnostic` for hard errors. */
+    readonly onError?: (
+      kind: Exclude<SyntheticCompilerDiagnostic["kind"], "typescript">,
+      message: string
+    ) => never;
+  }
+): void {
   const seen = new Map<string, string>(); // tsName -> extensionId
-  const result: string[] = [];
   for (const ext of extensions) {
     for (const customType of ext.customTypes ?? []) {
       for (const tsName of customType.tsTypeNames) {
@@ -517,36 +600,120 @@ function collectExtensionCustomTypeNames(
           continue;
         }
         if (globalBuiltinSupported === false) {
-          throw createSyntheticSetupError(
-            "unsupported-custom-type-override",
+          const message =
             `Custom type name "${tsName}" registered by extension "${ext.extensionId}" ` +
-              `conflicts with a TypeScript global built-in type that FormSpec does not ` +
-              `yet support overriding. Rename the custom type to a non-conflicting name.`
-          );
+            `conflicts with a TypeScript global built-in type that FormSpec does not ` +
+            `yet support overriding. Rename the custom type to a non-conflicting name.`;
+          if (callbacks.onError !== undefined) {
+            callbacks.onError("unsupported-custom-type-override", message);
+          } else {
+            callbacks.onDiagnostic({ kind: "unsupported-custom-type-override", code: -1, message });
+          }
+          continue;
         }
         // Guard against malformed names being interpolated into the synthetic
         // source (e.g. names with spaces, punctuation, or operator characters).
         if (!/^[$_a-zA-Z][$_a-zA-Z0-9]*$/.test(tsName)) {
-          throw createSyntheticSetupError(
-            "synthetic-setup",
+          const message =
             `Invalid custom type name "${tsName}" registered by extension "${ext.extensionId}": ` +
-              `must be a valid TypeScript identifier.`
-          );
+            `must be a valid TypeScript identifier.`;
+          if (callbacks.onError !== undefined) {
+            callbacks.onError("synthetic-setup", message);
+          } else {
+            callbacks.onDiagnostic({ kind: "synthetic-setup", code: -1, message });
+          }
+          continue;
         }
         const existingExtensionId = seen.get(tsName);
         if (existingExtensionId !== undefined) {
-          throw createSyntheticSetupError(
-            "synthetic-setup",
+          const message =
             `Duplicate custom type name "${tsName}" registered by extensions ` +
-              `"${existingExtensionId}" and "${ext.extensionId}". ` +
-              `Extension-registered types must have unique names.`
-          );
+            `"${existingExtensionId}" and "${ext.extensionId}". ` +
+            `Extension-registered types must have unique names.`;
+          if (callbacks.onError !== undefined) {
+            callbacks.onError("synthetic-setup", message);
+          } else {
+            callbacks.onDiagnostic({ kind: "synthetic-setup", code: -1, message });
+          }
+          continue;
         }
         seen.set(tsName, ext.extensionId);
-        result.push(tsName);
+        callbacks.onValid(tsName);
       }
     }
   }
+}
+
+/**
+ * Validates extension custom-type registrations and returns any setup
+ * diagnostics without throwing.
+ *
+ * This is the non-throwing counterpart to `collectExtensionCustomTypeNames`.
+ * Consumers (e.g. `createExtensionRegistry`) call this once at construction
+ * time and carry the result forward, so that setup diagnostics are emitted
+ * ONCE per registry rather than once per synthetic-batch call.
+ *
+ * §4 Phase 4 Slice C — relocates setup-diagnostic emission site from
+ * `buildSyntheticHelperPrelude` (per-batch) to `createExtensionRegistry` (once).
+ *
+ * @internal
+ */
+export function _validateExtensionSetup(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly SyntheticCompilerDiagnostic[] {
+  if (extensions === undefined || extensions.length === 0) {
+    return [];
+  }
+  const diagnostics: SyntheticCompilerDiagnostic[] = [];
+  _validateTypeNames(extensions, {
+    onValid: () => {
+      /* only diagnostics needed here */
+    },
+    onDiagnostic: (diag) => {
+      diagnostics.push(diag);
+    },
+  });
+  return diagnostics;
+}
+
+/**
+ * Collects deduplicated custom type names from extensions, suitable for
+ * emission as `type X = unknown;` declarations in the synthetic prelude.
+ *
+ * Throws if the same name is registered more than once (across or within
+ * extensions). Skips TypeScript primitive keywords (TS2457) and supported
+ * global built-in type overrides (TS2300): both are already declared by the
+ * compiler, and no synthetic declaration is needed. Registering these names
+ * as `tsTypeNames` is still valid -- it means "match the native type."
+ *
+ * Throws if an unsupported TypeScript global built-in is registered. To add
+ * support for a new global built-in, set its value to `true` in
+ * `TS_GLOBAL_BUILTIN_TYPES`.
+ *
+ * Note: §4 Phase 4 Slice C — consumers that construct an `ExtensionRegistry`
+ * should use `_validateExtensionSetup` at registry construction time instead.
+ * This throwing function is retained for the synthetic-prelude path which
+ * still catches and converts these errors inside `runBatchSyntheticCheck`.
+ * After Phase 5 (synthetic deletion), this function can be removed.
+ */
+function collectExtensionCustomTypeNames(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly string[] {
+  if (extensions === undefined) {
+    return [];
+  }
+  const result: string[] = [];
+  _validateTypeNames(extensions, {
+    onValid: (tsName) => {
+      result.push(tsName);
+    },
+    onDiagnostic: () => {
+      /* not reached — onError is always provided */
+    },
+    onError: (kind, message) => {
+      throw createSyntheticSetupError(kind, message);
+    },
+  });
   return result;
 }
 

@@ -32,8 +32,8 @@ import {
 } from "@formspec/build/internals";
 import type { LoadedFormSpecSchemas, ValidationResult } from "@formspec/build/internals";
 import type { FormIR } from "@formspec/core/internals";
-import { loadFormSpecConfig } from "@formspec/config";
-import type { FormSpecConfig } from "@formspec/config";
+import { loadFormSpecConfig, resolveConfigForFile } from "@formspec/config";
+import type { ResolvedFormSpecConfig } from "@formspec/config";
 import {
   loadFormSpecs,
   loadNamedFormSpecs,
@@ -363,8 +363,10 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
-  // Load FormSpec config: explicit path takes precedence, otherwise auto-discover
-  let formSpecConfig: FormSpecConfig | undefined;
+  // Load FormSpec config: explicit path takes precedence, otherwise auto-discover.
+  // Per-file package-override resolution happens here so downstream schema
+  // generation sees the effective config for the specific source file.
+  let effectiveConfig: ResolvedFormSpecConfig | undefined;
   try {
     const configResult = await loadFormSpecConfig(
       options.configPath
@@ -372,7 +374,11 @@ async function main(): Promise<void> {
         : { searchFrom: path.dirname(path.resolve(options.filePath)) }
     );
     if (configResult.found) {
-      formSpecConfig = configResult.config;
+      effectiveConfig = resolveConfigForFile(
+        configResult.config,
+        path.resolve(options.filePath),
+        path.dirname(configResult.configPath)
+      );
       console.log(`Using config: ${configResult.configPath}`);
     }
   } catch (error) {
@@ -384,7 +390,7 @@ async function main(): Promise<void> {
 
   // CLI flag overrides config; config overrides built-in default of "enum"
   const enumSerialization: "enum" | "oneOf" | "smart-size" =
-    options.enumSerialization ?? formSpecConfig?.enumSerialization ?? "enum";
+    options.enumSerialization ?? effectiveConfig?.enumSerialization ?? "enum";
 
   console.log(`Generating schemas from: ${options.filePath}`);
   if (options.className) {
@@ -546,7 +552,7 @@ async function main(): Promise<void> {
         // would produce.
         // Generate class schemas
         const schemaOptions = {
-          ...(formSpecConfig !== undefined && { config: formSpecConfig }),
+          ...(effectiveConfig !== undefined && { config: effectiveConfig }),
           enumSerialization,
         };
         const classSchemas = generateClassSchemas(
