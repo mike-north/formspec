@@ -362,9 +362,7 @@ export function isFormSpecSemanticQuery(value: unknown): value is FormSpecSemant
 // @public
 export function isFormSpecSemanticResponse(value: unknown): value is FormSpecSemanticResponse;
 
-// Warning: (ae-internal-missing-underscore) The name "isIntegerBrandedType" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function isIntegerBrandedType(type: ts.Type): boolean;
+export function _isIntegerBrandedType(type: ts.Type): boolean;
 
 ```

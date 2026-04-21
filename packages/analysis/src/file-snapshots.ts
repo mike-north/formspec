@@ -74,7 +74,7 @@ import {
   mapTypedParserDiagnosticCode,
   parseTagArgument,
 } from "./tag-argument-parser.js";
-import { isIntegerBrandedType } from "./integer-brand.js";
+import { _isIntegerBrandedType } from "./integer-brand.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -223,7 +223,7 @@ function createConstraintTagRegistry(
  *   The type is matched by name against `registration.tsTypeNames ?? [typeName]`,
  *   which is the same string-based detection used elsewhere in file-snapshots.ts.
  *
- * The isIntegerBrandedType bypass is handled in buildTagDiagnostics (Phase 4A,
+ * The _isIntegerBrandedType bypass is handled in buildTagDiagnostics (Phase 4A,
  * closes #325) before this function is called. This function handles only the
  * extension-registry broadening path.
  */
@@ -243,7 +243,7 @@ function hasExtensionBroadening(
   }
 
   // Strip nullish union members (| null | undefined) before name-matching,
-  // consistent with how the build path strips before isIntegerBrandedType.
+  // consistent with how the build path strips before _isIntegerBrandedType.
   const effectiveType = stripNullishUnion(subjectType);
   // Use NoTruncation so that complex types (intersections, deep generics) are
   // rendered in full. Without it, checker.typeToString uses its default truncation
@@ -1461,7 +1461,7 @@ function buildTagDiagnostics(
       //   - target === null: direct-field check only. Path-targeted fields use
       //     the path-resolved type, not the declared subject type, so the brand
       //     check does not apply to them.
-      //   - isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
+      //   - _isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
       //     integer brand after stripping | null / | undefined wrappers.
       //   - capabilities.includes("numeric-comparable"): only bypass numeric
       //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
@@ -1470,7 +1470,7 @@ function buildTagDiagnostics(
       // emit "bypass" on the structured log — identical to the build consumer.
       const isIntegerBypass =
         target === null &&
-        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
         semantic.tagDefinition.capabilities.includes("numeric-comparable");
 
       if (isIntegerBypass) {

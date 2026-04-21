@@ -76,7 +76,7 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
-import { isIntegerBrandedType } from "./builtin-brands.js";
+import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
   getBuildLogger,
   getBroadeningLogger,
@@ -846,7 +846,7 @@ function buildCompilerBackedConstraintDiagnostics(
   const hasBroadening = ((): boolean => {
     if (target === null) {
       if (
-        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
         definition.capabilities.includes("numeric-comparable")
       ) {
         return true;

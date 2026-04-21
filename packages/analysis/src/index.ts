@@ -17,4 +17,4 @@ export type {
 // (not here) because its signature references ParsedCommentTag which pulls in
 // the full comment-syntax type surface, causing ae-forgotten-export on the
 // main entry point. Consumers must import from @formspec/analysis/internal.
-export { isIntegerBrandedType } from "./integer-brand.js";
+export { _isIntegerBrandedType } from "./integer-brand.js";

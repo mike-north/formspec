@@ -10,13 +10,13 @@ import * as ts from "typescript";
  * `number & { [__integerBrand]: true } & { [__otherBrand]: true }`) are fully
  * inspected regardless of property order.
  *
- * Used by `isIntegerBrandedType` (analysis package) and by the build
+ * Used by `_isIntegerBrandedType` (analysis package) and by the build
  * consumer's extension-type resolver (`resolve-custom-type.ts`) for
  * brand-based custom-type lookup.
  *
  * @internal
  */
-export function collectBrandIdentifiers(type: ts.Type): readonly string[] {
+export function _collectBrandIdentifiers(type: ts.Type): readonly string[] {
   if (!type.isIntersection()) {
     return [];
   }
@@ -46,8 +46,8 @@ export function collectBrandIdentifiers(type: ts.Type): readonly string[] {
  *
  * @internal
  */
-export function isIntegerBrandedType(type: ts.Type): boolean {
+export function _isIntegerBrandedType(type: ts.Type): boolean {
   if (!type.isIntersection()) return false;
   if (!type.types.some((member) => !!(member.flags & ts.TypeFlags.Number))) return false;
-  return collectBrandIdentifiers(type).includes("__integerBrand");
+  return _collectBrandIdentifiers(type).includes("__integerBrand");
 }

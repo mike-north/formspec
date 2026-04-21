@@ -1,5 +1,5 @@
 /**
- * Re-exports {@link isIntegerBrandedType} from the shared
+ * Re-exports {@link _isIntegerBrandedType} from the shared
  * `@formspec/analysis` implementation.
  *
  * The detection logic was extracted to `@formspec/analysis` (Phase 4A of the
@@ -12,4 +12,4 @@
  *
  * @internal
  */
-export { isIntegerBrandedType } from "@formspec/analysis/internal";
+export { _isIntegerBrandedType } from "@formspec/analysis/internal";
