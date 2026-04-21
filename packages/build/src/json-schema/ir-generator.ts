@@ -1234,10 +1234,10 @@ function applyAnnotations(
  *    delegate fully to the extension.
  * 2. Otherwise, fall back to best-effort inference based on the `type` keyword
  *    on the already-emitted schema: when the emitted schema has
- *    `type: "string"`, coerce `number`, `boolean`, and `bigint` literals to
- *    their string form. Other literal shapes (e.g., objects, arrays) are left
- *    unchanged — extensions that need to coerce those should provide
- *    `serializeDefault` explicitly.
+ *    `type: "string"`, coerce primitive non-string literals currently handled
+ *    by this function (`number`, `boolean`, and `bigint`) to strings. Other
+ *    values are left unchanged unless the extension provides
+ *    `serializeDefault`.
  * 3. For non-custom types, pass the value through unchanged.
  */
 function coerceDefaultValue(
