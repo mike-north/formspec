@@ -63,7 +63,6 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
-
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return isResolvableObjectLikeAliasTypeNode(typeNode.type);
@@ -303,6 +302,180 @@ function resolveNodeMetadata(
   return resolvedMetadata;
 }
 
+// =============================================================================
+// HERITAGE-BASED ANNOTATION INHERITANCE (issue #367)
+// =============================================================================
+
+/**
+ * Type-level annotation kinds that should be inherited from base types onto
+ * derived types when the derived type does not declare its own value.
+ *
+ * Scope (issue #367): only `@format` is inherited today. Other type-level
+ * annotations (e.g., `@description`, `@remarks`) are intentionally not
+ * inherited here to keep the change surface-narrow; broader inheritance can
+ * be considered as a follow-up once the semantics are confirmed.
+ */
+const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationKind"]> = new Set<
+  AnnotationNode["annotationKind"]
+>(["format"]);
+
+/**
+ * Returns the string payload carried by an inheritable annotation, or
+ * `undefined` for annotation kinds where presence alone is the signal.
+ * Used to decide whether a locally-declared annotation counts as an
+ * override (empty/whitespace-only payloads do not — see
+ * {@link isOverridingInheritableAnnotation}).
+ */
+function getInheritableAnnotationStringValue(annotation: AnnotationNode): string | undefined {
+  if (annotation.annotationKind === "format") return annotation.value;
+  return undefined;
+}
+
+/**
+ * Returns `true` when a locally-declared annotation should suppress
+ * heritage inheritance for its kind. An annotation whose string payload is
+ * empty or whitespace-only (`/** @format * /`) is not treated as an
+ * override — the base-declared value still flows through.
+ */
+function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean {
+  const value = getInheritableAnnotationStringValue(annotation);
+  if (value === undefined) return true;
+  return value.trim().length > 0;
+}
+
+/**
+ * Walks base class / interface declarations reachable from a derived
+ * declaration and returns any inheritable type-level annotations that the
+ * derived declaration does not already specify.
+ *
+ * The walk is breadth-first across all `extends` clauses, following through
+ * the TypeScript symbol table to the declaration(s) backing each base type.
+ * A seen-set on declarations prevents infinite loops on pathological
+ * self-referential chains.
+ *
+ * Annotations already present on the derived type (matched by
+ * `annotationKind`) always win — only missing kinds are filled in from the
+ * base chain. When multiple bases provide the same kind, the first found
+ * wins (earliest in the `extends` clause list, nearest ancestor first).
+ */
+function collectInheritedTypeAnnotations(
+  derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration,
+  existingAnnotations: readonly AnnotationNode[],
+  checker: ts.TypeChecker,
+  extensionRegistry: ExtensionRegistry | undefined
+): AnnotationNode[] {
+  // A local annotation only suppresses heritage inheritance when it carries a
+  // meaningful payload. Empty/whitespace-only `@format` must fall through to
+  // the base-declared value. See issue #367 review discussion.
+  const existingKinds = new Set<AnnotationNode["annotationKind"]>(
+    existingAnnotations.filter(isOverridingInheritableAnnotation).map((a) => a.annotationKind)
+  );
+  const needed = new Set<AnnotationNode["annotationKind"]>();
+  for (const kind of INHERITABLE_TYPE_ANNOTATION_KINDS) {
+    if (!existingKinds.has(kind)) needed.add(kind);
+  }
+  if (needed.size === 0) return [];
+
+  const inherited: AnnotationNode[] = [];
+  const seen = new Set<ts.Node>([derivedDecl]);
+  const queue: (ts.ClassDeclaration | ts.InterfaceDeclaration)[] = [];
+
+  const enqueueBasesOf = (decl: ts.ClassDeclaration | ts.InterfaceDeclaration): void => {
+    const heritageClauses = decl.heritageClauses;
+    if (!heritageClauses) return;
+    for (const clause of heritageClauses) {
+      // Only follow `extends`. `implements` does NOT propagate type-level
+      // annotations: authors use `implements` to assert structural
+      // conformance, not to adopt the interface's metadata. Following it
+      // would silently merge annotations across unrelated nominal types.
+      if (clause.token !== ts.SyntaxKind.ExtendsKeyword) continue;
+      for (const typeExpr of clause.types) {
+        const sym = checker.getSymbolAtLocation(typeExpr.expression);
+        if (!sym) continue;
+        let target: ts.Symbol = sym;
+        if ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
+          try {
+            target = checker.getAliasedSymbol(sym);
+          } catch {
+            // TypeScript can throw when resolving certain alias chains
+            // (e.g., cyclic or partially resolved aliases). Fall back to
+            // the original symbol — worst case we miss an inheritance
+            // step, not a fatal error.
+            target = sym;
+          }
+        }
+        for (const baseDecl of target.declarations ?? []) {
+          if (seen.has(baseDecl)) continue;
+          seen.add(baseDecl);
+          if (ts.isClassDeclaration(baseDecl) || ts.isInterfaceDeclaration(baseDecl)) {
+            queue.push(baseDecl);
+          }
+        }
+      }
+    }
+  };
+
+  enqueueBasesOf(derivedDecl);
+
+  // Index-pointer traversal (vs `queue.shift()`) keeps the BFS O(n) for deep
+  // heritage graphs — array shift is O(n) in V8.
+  for (let queueIndex = 0; queueIndex < queue.length && needed.size > 0; queueIndex++) {
+    const baseDecl = queue[queueIndex];
+    if (baseDecl === undefined) continue;
+    // Use the base declaration's own source file for provenance / pos-mapping.
+    // The BFS may cross file boundaries, so the derived type's file is not
+    // the right reference point for annotations parsed off a base declaration.
+    const baseFile = baseDecl.getSourceFile().fileName;
+    const baseAnnotations = extractJSDocAnnotationNodes(
+      baseDecl,
+      baseFile,
+      makeParseOptions(extensionRegistry)
+    );
+    for (const annotation of baseAnnotations) {
+      if (!needed.has(annotation.annotationKind)) continue;
+      // Skip empty-payload annotations on the base as well — they cannot
+      // meaningfully fill an inherited slot.
+      if (!isOverridingInheritableAnnotation(annotation)) continue;
+      inherited.push(annotation);
+      needed.delete(annotation.annotationKind);
+    }
+    // Continue up the chain if we still need kinds.
+    if (needed.size > 0) {
+      enqueueBasesOf(baseDecl);
+    }
+  }
+
+  return inherited;
+}
+
+/**
+ * Extracts type-level annotations from a named declaration (class, interface,
+ * or type alias), applying heritage-based inheritance where applicable
+ * (issue #367). For type aliases (no heritage), behaves identically to
+ * {@link extractJSDocAnnotationNodes}. For classes and interfaces, any
+ * inheritable annotation kind absent from the local declaration is filled
+ * in by walking `extends` clauses via {@link collectInheritedTypeAnnotations}.
+ */
+function extractNamedTypeAnnotations(
+  namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker,
+  file: string,
+  extensionRegistry: ExtensionRegistry | undefined
+): AnnotationNode[] {
+  const local = extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry));
+  if (!ts.isClassDeclaration(namedDecl) && !ts.isInterfaceDeclaration(namedDecl)) {
+    return local;
+  }
+  const inherited = collectInheritedTypeAnnotations(
+    namedDecl,
+    local,
+    checker,
+    extensionRegistry
+  );
+  if (inherited.length === 0) return [...local];
+  return [...local, ...inherited];
+}
+
 export function analyzeDeclarationRootInfo(
   declaration: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
@@ -372,7 +545,15 @@ export function analyzeClassToIR(
     file,
     makeParseOptions(extensionRegistry, undefined, checker, classType, classType)
   );
-  const annotations = [...classDoc.annotations];
+  // Issue #367: type-level annotations (e.g., @format) declared on a base
+  // class flow to derived classes unless the derived class overrides them.
+  const inheritedClassAnnotations = collectInheritedTypeAnnotations(
+    classDecl,
+    classDoc.annotations,
+    checker,
+    extensionRegistry
+  );
+  const annotations: AnnotationNode[] = [...classDoc.annotations, ...inheritedClassAnnotations];
   diagnostics.push(...classDoc.diagnostics);
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
@@ -470,7 +651,19 @@ export function analyzeInterfaceToIR(
     file,
     makeParseOptions(extensionRegistry, undefined, checker, interfaceType, interfaceType)
   );
-  const annotations = [...interfaceDoc.annotations];
+  // Issue #367: type-level annotations (e.g., @format) declared on a base
+  // interface flow to derived interfaces unless the derived interface
+  // overrides them.
+  const inheritedInterfaceAnnotations = collectInheritedTypeAnnotations(
+    interfaceDecl,
+    interfaceDoc.annotations,
+    checker,
+    extensionRegistry
+  );
+  const annotations: AnnotationNode[] = [
+    ...interfaceDoc.annotations,
+    ...inheritedInterfaceAnnotations,
+  ];
   diagnostics.push(...interfaceDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
@@ -1307,10 +1500,7 @@ function extractReferenceTypeArguments(
         ? checker.getAliasedSymbol(baseSymbol)
         : baseSymbol;
     const argumentDecl = argumentSymbol?.declarations?.[0];
-    if (
-      argumentDecl !== undefined &&
-      argumentDecl.getSourceFile().fileName !== file
-    ) {
+    if (argumentDecl !== undefined && argumentDecl.getSourceFile().fileName !== file) {
       const argumentName = argumentSymbol?.getName() ?? baseSymbol?.getName();
       if (argumentName !== undefined) {
         return {
@@ -2020,7 +2210,10 @@ function resolveNamedTypeWithSourceRecovery(
   type: ts.Type,
   sourceNode: ts.Node | undefined,
   checker: ts.TypeChecker
-): { typeName: string; namedDecl: ts.Declaration } | null {
+): {
+  typeName: string;
+  namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration;
+} | null {
   const typeName = getNamedTypeName(type);
   const namedDecl = getNamedTypeDeclaration(type);
 
@@ -2149,7 +2342,11 @@ function resolveUnionType(
   // See `resolveNamedTypeWithSourceRecovery` for the fallback mechanism.
   const recovered = resolveNamedTypeWithSourceRecovery(type, sourceNode, checker);
   let typeName: string | null = null;
-  let namedDecl: ts.Declaration | undefined;
+  let namedDecl:
+    | ts.ClassDeclaration
+    | ts.InterfaceDeclaration
+    | ts.TypeAliasDeclaration
+    | undefined;
   if (recovered !== null) {
     const recoveredAliasDecl = ts.isTypeAliasDeclaration(recovered.namedDecl)
       ? recovered.namedDecl
@@ -2219,7 +2416,7 @@ function resolveUnionType(
       return { kind: "reference", name: typeName, typeArguments: [] };
     }
     const annotations = namedDecl
-      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+      ? extractNamedTypeAnnotations(namedDecl, checker, file, extensionRegistry)
       : undefined;
     const metadata =
       namedDecl !== undefined
@@ -2581,7 +2778,7 @@ function resolveObjectType(
         return recordNode;
       }
       const annotations = namedDecl
-        ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+        ? extractNamedTypeAnnotations(namedDecl, checker, file, extensionRegistry)
         : undefined;
       const metadata =
         namedDecl !== undefined
@@ -2719,7 +2916,7 @@ function resolveObjectType(
   // Register named types
   if (registryTypeName !== undefined && shouldRegisterNamedType) {
     const annotations = namedDecl
-      ? extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry))
+      ? extractNamedTypeAnnotations(namedDecl, checker, file, extensionRegistry)
       : undefined;
     const metadata =
       namedDecl !== undefined
@@ -3033,7 +3230,6 @@ function extractTypeAliasConstraintNodes(
   return constraints;
 }
 
-
 // =============================================================================
 // PROVENANCE HELPERS
 // =============================================================================
@@ -3097,7 +3293,9 @@ function getNamedTypeName(type: ts.Type): string | null {
 /**
  * Returns the declaration that defines a named type, if available.
  */
-function getNamedTypeDeclaration(type: ts.Type): ts.Declaration | undefined {
+function getNamedTypeDeclaration(
+  type: ts.Type
+): ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | undefined {
   const symbol = type.getSymbol();
   if (symbol?.declarations) {
     const decl = symbol.declarations[0];
