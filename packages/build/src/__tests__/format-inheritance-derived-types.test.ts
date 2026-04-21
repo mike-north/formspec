@@ -178,9 +178,21 @@ const EMPTY_OVERRIDE_SOURCE = [
 
 /**
  * Diamond / multi-base conflict: interface `Derived extends Left, Right`
- * where both bases declare a different `@format`. BFS order is declaration
- * order in the `extends` clause — the first-listed base wins. Locks in
- * policy so a future refactor can't silently flip resolution order.
+ * where both bases declare a different `@format` at the same BFS depth.
+ *
+ * The actual precedence rule enforced by `collectInheritedTypeAnnotations`
+ * is **nearest annotation by BFS wins, with ties broken by declaration
+ * order in the `extends` clause**. A shared `seen` set prevents the walker
+ * from revisiting already-enqueued nodes, so annotations found at a
+ * shallower depth always beat annotations deeper in the chain.
+ *
+ * This fixture is the symmetric case — both conflicting annotations live
+ * at depth 1 — so declaration order determines the winner. The asymmetric
+ * case (Case D, see {@link ASYMMETRIC_DIAMOND_SOURCE}) exercises the
+ * depth dimension: a directly-listed-second base's annotation wins over
+ * an annotation reachable only through the first-listed base.
+ *
+ * Locks in policy so a future refactor can't silently flip resolution.
  */
 const DIAMOND_CONFLICT_SOURCE = [
   "/** @format fmt-left */",
@@ -199,6 +211,37 @@ const DIAMOND_CONFLICT_SOURCE = [
   "",
   "export class Order {",
   "  value!: Merged;",
+  "}",
+].join("\n");
+
+/**
+ * Asymmetric diamond (Case D from issue #377). The first-listed base (B)
+ * is itself un-annotated and reaches `@format deep-A` only via another
+ * `extends` hop. The second-listed base (C) carries `@format direct-C`
+ * directly. BFS-nearest-wins requires the directly-listed annotation to
+ * beat the deeper ancestor despite the source-order position — guarding
+ * against a future refactor that re-reads the documentation as
+ * "first-listed wins in every case".
+ */
+const ASYMMETRIC_DIAMOND_SOURCE = [
+  "/** @format deep-A */",
+  "interface A {",
+  "  amount: number;",
+  "}",
+  "",
+  "interface B extends A {}",
+  "",
+  "/** @format direct-C */",
+  "interface C {",
+  "  amount: number;",
+  "}",
+  "",
+  "interface D extends B, C {",
+  "  label?: string;",
+  "}",
+  "",
+  "export class Container {",
+  "  tip!: D;",
   "}",
 ].join("\n");
 
@@ -414,6 +457,7 @@ let implementsNegativeFixturePath: string;
 let cyclicFixturePath: string;
 let emptyOverrideFixturePath: string;
 let diamondConflictFixturePath: string;
+let asymmetricDiamondFixturePath: string;
 let nonFormatAnnotationFixturePath: string;
 let bugReportVerbatimFixturePath: string;
 let typeAliasPrimitiveChainFixturePath: string;
@@ -464,6 +508,9 @@ beforeAll(() => {
 
   diamondConflictFixturePath = path.join(tmpDir, "diamond-conflict.ts");
   fs.writeFileSync(diamondConflictFixturePath, DIAMOND_CONFLICT_SOURCE);
+
+  asymmetricDiamondFixturePath = path.join(tmpDir, "asymmetric-diamond.ts");
+  fs.writeFileSync(asymmetricDiamondFixturePath, ASYMMETRIC_DIAMOND_SOURCE);
 
   nonFormatAnnotationFixturePath = path.join(tmpDir, "non-format-annotation.ts");
   fs.writeFileSync(nonFormatAnnotationFixturePath, NON_FORMAT_ANNOTATION_SOURCE);
@@ -612,7 +659,7 @@ describe("type-level @format inheritance on derived types — issue #367", () =>
     expect(derived["format"]).toBe("monetary-amount");
   });
 
-  it("resolves diamond / multi-base conflicts by declaration order (first-listed `extends` wins)", () => {
+  it("resolves symmetric diamond conflicts by declaration order when both @format bases live at the same BFS depth", () => {
     const result = generateSchemasOrThrow({
       filePath: diamondConflictFixturePath,
       typeName: "Order",
@@ -621,10 +668,44 @@ describe("type-level @format inheritance on derived types — issue #367", () =>
     const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
     const merged = expectRecord(defs["Merged"], "$defs.Merged");
 
-    // spec: issue #367 — BFS walks `extends` clauses in source order, so
-    // the first-listed base's @format wins. This test pins the policy so
-    // a future refactor can't silently flip resolution order.
+    // spec: issue #367 / #377 — the precedence rule is "nearest annotation
+    // by BFS wins, with ties broken by declaration order". In this
+    // symmetric fixture both LeftBase and RightBase carry @format at
+    // depth 1, so the tie-breaker (declaration order) decides:
+    // LeftBase is listed first, so `fmt-left` wins. The asymmetric case
+    // is pinned by the Case-D test below.
     expect(merged["format"]).toBe("fmt-left");
+  });
+
+  it("resolves asymmetric-diamond (Case D) conflicts by BFS depth — a directly-listed base's @format beats a deeper ancestor of an earlier-listed base", () => {
+    // spec: issue #377 — corrects the precedence claim that said
+    // "first-listed base wins". That claim only holds at equal depth.
+    // When the conflicting annotations live at different BFS depths, the
+    // nearer one wins regardless of declaration order. This is the
+    // behavior the shared `seen` set enforces: once a node has been
+    // enqueued it cannot be re-entered, so a shallower annotation
+    // short-circuits the need set before the walker descends further.
+    //
+    // Fixture (Case D from the issue):
+    //   /** @format deep-A */
+    //   interface A {}
+    //   interface B extends A {}        // no local annotation
+    //   /** @format direct-C */
+    //   interface C {}
+    //   interface D extends B, C {}
+    //
+    // BFS from D enqueues [B, C] at depth 1. B has no annotation, so
+    // processing moves on to C, which provides `@format direct-C` and
+    // closes the need set — A at depth 2 is never visited. Expected:
+    // `D.format === "direct-C"`, NOT "deep-A".
+    const result = generateSchemasOrThrow({
+      filePath: asymmetricDiamondFixturePath,
+      typeName: "Container",
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const d = expectRecord(defs["D"], "$defs.D");
+    expect(d["format"]).toBe("direct-C");
   });
 
   it("does not inherit non-`@format` type-level annotations (e.g. @remarks)", () => {
