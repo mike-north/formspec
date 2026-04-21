@@ -1152,5 +1152,96 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       // Flattening would conflict — allOf must remain.
       expect(totalProp?.["allOf"]).toBeDefined();
     });
+
+    it("retains allOf when an outer sibling keyword would collide with a member key", () => {
+      // Custom type returns an outer schema that already carries a top-level
+      // keyword (`type`) alongside its `allOf`, and the sole member declares
+      // the same keyword with a different value. Flattening would lift the
+      // member's `type` up and silently overwrite the outer's version —
+      // `tryFlattenAllOfToSiblings` must detect the outer↔member overlap and
+      // fall back to appending the override as an `allOf` member.
+      //
+      // This branch is reachable only from external `toJsonSchema` hooks
+      // (the in-tree emitter never produces outer keywords beside allOf),
+      // so without this test a regression in the outer↔member check would
+      // go unnoticed.
+      const registry = makeCustomTypeRegistry({
+        type: "object",
+        allOf: [{ type: "string" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Flattening would clobber `type: "object"` with `type: "string"` —
+      // allOf must remain.
+      expect(totalProp?.["allOf"]).toBeDefined();
+      // Outer `type` is preserved as a top-level sibling (not replaced by
+      // the member's value).
+      expect(totalProp?.["type"]).toBe("object");
+    });
+
+    it("retains allOf when an outer sibling keyword would collide with the override key", () => {
+      // Custom type returns an outer schema carrying `properties` alongside
+      // its `allOf`, and the path-targeted override also contributes
+      // `properties`. Flattening would lift the member up and then overwrite
+      // the outer's `properties` with the override — losing the outer's
+      // declared members. `tryFlattenAllOfToSiblings` must detect the
+      // outer↔override overlap and fall back to appending to `allOf`.
+      const registry = makeCustomTypeRegistry({
+        properties: { currency: { type: "string" } },
+        allOf: [{ $ref: "#/$defs/BaseMoney" }],
+      });
+
+      const ir: FormIR = makeIR([
+        {
+          kind: "field",
+          name: "total",
+          type: moneyNode(),
+          required: true,
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["value"] },
+              provenance: TSDOC_PROVENANCE,
+            },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir, { extensionRegistry: registry });
+      const totalProp = schema.properties?.["total"] as Record<string, unknown> | undefined;
+
+      // Flattening would clobber the outer's `properties.currency` with the
+      // override's `properties.value` — allOf must remain.
+      expect(totalProp?.["allOf"]).toBeDefined();
+      // Outer `properties.currency` survives as a top-level sibling,
+      // unmodified by the override contribution.
+      expect(totalProp?.["properties"]).toEqual({ currency: { type: "string" } });
+    });
   });
 });
