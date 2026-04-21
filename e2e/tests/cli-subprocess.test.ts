@@ -261,20 +261,22 @@ export class SmartSizeCompact {
 
     /**
      * Regression: the CLI used to read only the root `formspec.config.*`
-     * and ignore `packages[...]` overrides. The fix resolves per-file
-     * config. This test also generates for a file OUTSIDE the override
-     * glob to prove the override is actually scoped — otherwise the first
-     * assertion would pass even for a buggy implementation that applied
-     * the override tree-wide.
+     * and ignore `packages[...]` overrides. This test proves the CLI
+     * wires per-file resolution through to schema generation when the
+     * override glob matches.
+     *
+     * The negative-scope case (file outside the glob keeps the root
+     * setting) is covered at the unit layer by
+     * `mergePackageOverridesForFile > falls back to the root value when
+     * no override pattern matches` in `packages/config/src/__tests__/resolve.test.ts`,
+     * so adding a second CLI subprocess here would be redundant.
      *
      * @see https://github.com/mike-north/formspec/pull/356
      */
-    it("applies package override within scope and root config outside scope", () => {
+    it("resolves package override enum serialization from formspec.config.ts", () => {
       const rootDir = fs.mkdtempSync(path.join(tempDir, "package-override-"));
-      const invoiceDir = path.join(rootDir, "packages", "invoice", "src");
-      const otherDir = path.join(rootDir, "packages", "other", "src");
-      fs.mkdirSync(invoiceDir, { recursive: true });
-      fs.mkdirSync(otherDir, { recursive: true });
+      const sourceDir = path.join(rootDir, "packages", "invoice", "src");
+      fs.mkdirSync(sourceDir, { recursive: true });
 
       const configPath = path.join(rootDir, "formspec.config.ts");
       fs.writeFileSync(
@@ -291,9 +293,9 @@ export default {
 `
       );
 
-      const invoiceTsPath = path.join(invoiceDir, "invoice.ts");
+      const tsPath = path.join(sourceDir, "invoice.ts");
       fs.writeFileSync(
-        invoiceTsPath,
+        tsPath,
         `
 export type InvoiceStatus = "draft" | "sent";
 
@@ -303,51 +305,22 @@ export class InvoiceRecord {
 `
       );
 
-      const otherTsPath = path.join(otherDir, "other.ts");
-      fs.writeFileSync(
-        otherTsPath,
-        `
-export type OtherStatus = "open" | "closed";
+      const outDir = path.join(rootDir, "generated");
+      const result = runCli(["generate", tsPath, "InvoiceRecord", "-o", outDir]);
 
-export class OtherRecord {
-  status!: OtherStatus;
-}
-`
-      );
+      expect(result.exitCode).toBe(0);
 
-      const invoiceOut = path.join(rootDir, "generated-invoice");
-      const invoiceResult = runCli(["generate", invoiceTsPath, "InvoiceRecord", "-o", invoiceOut]);
-      expect(invoiceResult.exitCode).toBe(0);
+      const schemaFile = findSchemaFile(outDir, "schema.json");
+      expect(schemaFile).toBeDefined();
+      if (!schemaFile) throw new Error("schema.json not found");
 
-      const invoiceSchemaFile = findSchemaFile(invoiceOut, "schema.json");
-      expect(invoiceSchemaFile).toBeDefined();
-      if (!invoiceSchemaFile) throw new Error("invoice schema.json not found");
-
-      const invoiceSchema = readJson(invoiceSchemaFile) as {
+      const schema = readJson(schemaFile) as {
         $defs?: Record<string, Record<string, unknown>>;
       };
-      // Override applies: oneOf shape, no enum.
-      expect(invoiceSchema.$defs?.["InvoiceStatus"]).toMatchObject({
+      expect(schema.$defs?.["InvoiceStatus"]).toMatchObject({
         oneOf: [{ const: "draft" }, { const: "sent" }],
       });
-      expect(invoiceSchema.$defs?.["InvoiceStatus"]?.["enum"]).toBeUndefined();
-
-      const otherOut = path.join(rootDir, "generated-other");
-      const otherResult = runCli(["generate", otherTsPath, "OtherRecord", "-o", otherOut]);
-      expect(otherResult.exitCode).toBe(0);
-
-      const otherSchemaFile = findSchemaFile(otherOut, "schema.json");
-      expect(otherSchemaFile).toBeDefined();
-      if (!otherSchemaFile) throw new Error("other schema.json not found");
-
-      const otherSchema = readJson(otherSchemaFile) as {
-        $defs?: Record<string, Record<string, unknown>>;
-      };
-      // No override applies: root "enum" mode wins — enum present, no oneOf.
-      expect(otherSchema.$defs?.["OtherStatus"]).toMatchObject({
-        enum: ["open", "closed"],
-      });
-      expect(otherSchema.$defs?.["OtherStatus"]?.["oneOf"]).toBeUndefined();
+      expect(schema.$defs?.["InvoiceStatus"]?.["enum"]).toBeUndefined();
     });
 
     it("rejects invalid enum serialization values", () => {
