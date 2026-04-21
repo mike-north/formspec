@@ -44,7 +44,7 @@ import {
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
 } from "../extensions/ts-type-utils.js";
-import { isIntegerBrandedType } from "./builtin-brands.js";
+import { _isIntegerBrandedType } from "./builtin-brands.js";
 import type { MetadataPolicyInput } from "@formspec/core";
 import { getDeclarationMetadataPolicy, normalizeMetadataPolicy } from "../metadata/index.js";
 
@@ -1950,7 +1950,7 @@ export function resolveTypeNode(
   }
 
   // --- Integer-branded types (must check before Number) ---
-  if (isIntegerBrandedType(type)) {
+  if (_isIntegerBrandedType(type)) {
     return { kind: "primitive", primitiveKind: "integer" };
   }
 
@@ -2113,7 +2113,7 @@ function tryResolveNamedPrimitiveAlias(
         ts.TypeFlags.Boolean |
         ts.TypeFlags.Null)
     ) &&
-    !isIntegerBrandedType(type)
+    !_isIntegerBrandedType(type)
   ) {
     return null;
   }
@@ -2285,7 +2285,7 @@ function resolveAliasedPrimitiveTarget(
     );
   }
 
-  if (isIntegerBrandedType(type)) {
+  if (_isIntegerBrandedType(type)) {
     return { kind: "primitive", primitiveKind: "integer" };
   }
   if (type.flags & ts.TypeFlags.String) {

@@ -76,12 +76,13 @@ import {
   customTypeIdFromLookup,
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
-import { isIntegerBrandedType } from "./builtin-brands.js";
+import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
   getBuildLogger,
   getBroadeningLogger,
   getSyntheticLogger,
   getTypedParserLogger,
+  extractEffectiveArgumentText,
   mapTypedParserDiagnosticCode,
   parseTagArgument,
   describeTypeKind,
@@ -845,7 +846,7 @@ function buildCompilerBackedConstraintDiagnostics(
   const hasBroadening = ((): boolean => {
     if (target === null) {
       if (
-        isIntegerBrandedType(stripNullishUnion(subjectType)) &&
+        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
         definition.capabilities.includes("numeric-comparable")
       ) {
         return true;
@@ -910,20 +911,18 @@ function buildCompilerBackedConstraintDiagnostics(
   //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
-  // §4 Phase 2 — Option A: always derive argumentText from rawText (the
-  // canonical post-choosePreferredPayloadText string) so the typed parser sees
-  // the same text as parseConstraintTagValue (Role D). For TAGS_REQUIRING_RAW_TEXT,
-  // choosePreferredPayloadText may have selected the compiler-API fallback, making
-  // rawText differ from parsedTag.argumentText (which was derived from
-  // tag.resolvedPayloadText). Re-parsing from rawText also applies the same
-  // path-target prefix stripping that the original parse would have applied.
-  // TODO: once choosePreferredPayloadText is threaded upstream, this can go away.
-  const effectiveArgumentText =
-    parsedTag !== null ? parseTagSyntax(tagName, rawText).argumentText : rawText;
-
   if (hasBroadening) {
     return emit("bypass", []);
   }
+
+  // §4 Phase 4B — use shared extractEffectiveArgumentText so both consumers
+  // derive argument text identically. Extracts the argument from rawText (the
+  // canonical post-choosePreferredPayloadText string), which for
+  // TAGS_REQUIRING_RAW_TEXT may have been selected via the compiler-API
+  // fallback. Re-parsing from rawText applies path-target prefix stripping and
+  // canonicalisation consistently with the snapshot consumer.
+  // Computed after the bypass check so broadened fields skip this work entirely.
+  const effectiveArgumentText = extractEffectiveArgumentText(tagName, rawText, parsedTag);
 
   const typedParseResult = parseTagArgument(tagName, effectiveArgumentText, "build");
 
