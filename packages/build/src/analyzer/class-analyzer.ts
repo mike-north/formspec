@@ -63,7 +63,6 @@ function isIntersectionType(type: ts.Type): type is ts.IntersectionType {
   return !!(type.flags & ts.TypeFlags.Intersection);
 }
 
-
 export function isResolvableObjectLikeAliasTypeNode(typeNode: ts.TypeNode): boolean {
   if (ts.isParenthesizedTypeNode(typeNode)) {
     return isResolvableObjectLikeAliasTypeNode(typeNode.type);
@@ -316,7 +315,33 @@ function resolveNodeMetadata(
  * inherited here to keep the change surface-narrow; broader inheritance can
  * be considered as a follow-up once the semantics are confirmed.
  */
-const INHERITABLE_TYPE_ANNOTATION_KINDS = new Set<AnnotationNode["annotationKind"]>(["format"]);
+const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationKind"]> = new Set<
+  AnnotationNode["annotationKind"]
+>(["format"]);
+
+/**
+ * Returns the string payload carried by an inheritable annotation, or
+ * `undefined` for annotation kinds where presence alone is the signal.
+ * Used to decide whether a locally-declared annotation counts as an
+ * override (empty/whitespace-only payloads do not — see
+ * {@link isOverridingInheritableAnnotation}).
+ */
+function getInheritableAnnotationStringValue(annotation: AnnotationNode): string | undefined {
+  if (annotation.annotationKind === "format") return annotation.value;
+  return undefined;
+}
+
+/**
+ * Returns `true` when a locally-declared annotation should suppress
+ * heritage inheritance for its kind. An annotation whose string payload is
+ * empty or whitespace-only (`/** @format * /`) is not treated as an
+ * override — the base-declared value still flows through.
+ */
+function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean {
+  const value = getInheritableAnnotationStringValue(annotation);
+  if (value === undefined) return true;
+  return value.trim().length > 0;
+}
 
 /**
  * Walks base class / interface declarations reachable from a derived
@@ -340,8 +365,11 @@ function collectInheritedTypeAnnotations(
   file: string,
   extensionRegistry: ExtensionRegistry | undefined
 ): AnnotationNode[] {
+  // A local annotation only suppresses heritage inheritance when it carries a
+  // meaningful payload. Empty/whitespace-only `@format` must fall through to
+  // the base-declared value. See issue #367 review discussion.
   const existingKinds = new Set<AnnotationNode["annotationKind"]>(
-    existingAnnotations.map((a) => a.annotationKind)
+    existingAnnotations.filter(isOverridingInheritableAnnotation).map((a) => a.annotationKind)
   );
   const needed = new Set<AnnotationNode["annotationKind"]>();
   for (const kind of INHERITABLE_TYPE_ANNOTATION_KINDS) {
@@ -357,16 +385,26 @@ function collectInheritedTypeAnnotations(
     const heritageClauses = decl.heritageClauses;
     if (!heritageClauses) return;
     for (const clause of heritageClauses) {
-      // Interfaces use `extends`; classes use `extends` for their parent and
-      // `implements` for interfaces. For inheritance semantics we treat both
-      // `extends` and `implements` as sources of type-level annotations —
-      // nominal type authors routinely express the shape through either.
-      // `HeritageClause.token` is always one of those two per TS's AST types.
+      // Only follow `extends`. `implements` does NOT propagate type-level
+      // annotations: authors use `implements` to assert structural
+      // conformance, not to adopt the interface's metadata. Following it
+      // would silently merge annotations across unrelated nominal types.
+      if (clause.token !== ts.SyntaxKind.ExtendsKeyword) continue;
       for (const typeExpr of clause.types) {
         const sym = checker.getSymbolAtLocation(typeExpr.expression);
         if (!sym) continue;
-        const target =
-          sym.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(sym) : sym;
+        let target: ts.Symbol = sym;
+        if ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
+          try {
+            target = checker.getAliasedSymbol(sym);
+          } catch {
+            // TypeScript can throw when resolving certain alias chains
+            // (e.g., cyclic or partially resolved aliases). Fall back to
+            // the original symbol — worst case we miss an inheritance
+            // step, not a fatal error.
+            target = sym;
+          }
+        }
         for (const baseDecl of target.declarations ?? []) {
           if (seen.has(baseDecl)) continue;
           seen.add(baseDecl);
@@ -383,16 +421,22 @@ function collectInheritedTypeAnnotations(
   while (queue.length > 0 && needed.size > 0) {
     const baseDecl = queue.shift();
     if (baseDecl === undefined) break;
+    // Use the base declaration's own source file for provenance / pos-mapping.
+    // The BFS may cross file boundaries, so the derived type's `file` is not
+    // the right reference point for annotations parsed off a base declaration.
+    const baseFile = baseDecl.getSourceFile().fileName;
     const baseAnnotations = extractJSDocAnnotationNodes(
       baseDecl,
-      file,
+      baseFile,
       makeParseOptions(extensionRegistry)
     );
     for (const annotation of baseAnnotations) {
-      if (needed.has(annotation.annotationKind)) {
-        inherited.push(annotation);
-        needed.delete(annotation.annotationKind);
-      }
+      if (!needed.has(annotation.annotationKind)) continue;
+      // Skip empty-payload annotations on the base as well — they cannot
+      // meaningfully fill an inherited slot.
+      if (!isOverridingInheritableAnnotation(annotation)) continue;
+      inherited.push(annotation);
+      needed.delete(annotation.annotationKind);
     }
     // Continue up the chain if we still need kinds.
     if (needed.size > 0) {
@@ -404,50 +448,32 @@ function collectInheritedTypeAnnotations(
 }
 
 /**
- * Merges heritage-inherited annotations into a local annotation list for a
- * class or interface declaration. Returns the combined list; local
- * annotations always take precedence (see {@link collectInheritedTypeAnnotations}).
+ * Extracts type-level annotations from a named declaration (class, interface,
+ * or type alias), applying heritage-based inheritance where applicable
+ * (issue #367). For type aliases (no heritage), behaves identically to
+ * {@link extractJSDocAnnotationNodes}. For classes and interfaces, any
+ * inheritable annotation kind absent from the local declaration is filled
+ * in by walking `extends` clauses via {@link collectInheritedTypeAnnotations}.
  */
-function mergeInheritedTypeAnnotations(
-  decl: ts.ClassDeclaration | ts.InterfaceDeclaration | undefined,
-  localAnnotations: readonly AnnotationNode[],
+function extractNamedTypeAnnotations(
+  namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
   file: string,
   extensionRegistry: ExtensionRegistry | undefined
 ): AnnotationNode[] {
-  if (decl === undefined) return [...localAnnotations];
+  const local = extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry));
+  if (!ts.isClassDeclaration(namedDecl) && !ts.isInterfaceDeclaration(namedDecl)) {
+    return local;
+  }
   const inherited = collectInheritedTypeAnnotations(
-    decl,
-    localAnnotations,
+    namedDecl,
+    local,
     checker,
     file,
     extensionRegistry
   );
-  if (inherited.length === 0) return [...localAnnotations];
-  return [...localAnnotations, ...inherited];
-}
-
-/**
- * Extracts type-level annotations from a named declaration (class, interface,
- * or type alias), applying heritage-based inheritance where applicable
- * (issue #367). For type aliases (no heritage), behaves identically to
- * {@link extractJSDocAnnotationNodes}.
- */
-function extractNamedTypeAnnotations(
-  namedDecl: ts.Declaration,
-  checker: ts.TypeChecker,
-  file: string,
-  extensionRegistry: ExtensionRegistry | undefined
-): AnnotationNode[] {
-  const local = extractJSDocAnnotationNodes(
-    namedDecl,
-    file,
-    makeParseOptions(extensionRegistry)
-  );
-  if (ts.isClassDeclaration(namedDecl) || ts.isInterfaceDeclaration(namedDecl)) {
-    return mergeInheritedTypeAnnotations(namedDecl, local, checker, file, extensionRegistry);
-  }
-  return local;
+  if (inherited.length === 0) return [...local];
+  return [...local, ...inherited];
 }
 
 export function analyzeDeclarationRootInfo(
@@ -521,13 +547,14 @@ export function analyzeClassToIR(
   );
   // Issue #367: type-level annotations (e.g., @format) declared on a base
   // class flow to derived classes unless the derived class overrides them.
-  const annotations = mergeInheritedTypeAnnotations(
+  const inheritedClassAnnotations = collectInheritedTypeAnnotations(
     classDecl,
     classDoc.annotations,
     checker,
     file,
     extensionRegistry
   );
+  const annotations: AnnotationNode[] = [...classDoc.annotations, ...inheritedClassAnnotations];
   diagnostics.push(...classDoc.diagnostics);
   const visiting = new Set<ts.Type>();
   const instanceMethods: MethodInfo[] = [];
@@ -628,13 +655,17 @@ export function analyzeInterfaceToIR(
   // Issue #367: type-level annotations (e.g., @format) declared on a base
   // interface flow to derived interfaces unless the derived interface
   // overrides them.
-  const annotations = mergeInheritedTypeAnnotations(
+  const inheritedInterfaceAnnotations = collectInheritedTypeAnnotations(
     interfaceDecl,
     interfaceDoc.annotations,
     checker,
     file,
     extensionRegistry
   );
+  const annotations: AnnotationNode[] = [
+    ...interfaceDoc.annotations,
+    ...inheritedInterfaceAnnotations,
+  ];
   diagnostics.push(...interfaceDoc.diagnostics);
   const visiting = new Set<ts.Type>();
 
@@ -1471,10 +1502,7 @@ function extractReferenceTypeArguments(
         ? checker.getAliasedSymbol(baseSymbol)
         : baseSymbol;
     const argumentDecl = argumentSymbol?.declarations?.[0];
-    if (
-      argumentDecl !== undefined &&
-      argumentDecl.getSourceFile().fileName !== file
-    ) {
+    if (argumentDecl !== undefined && argumentDecl.getSourceFile().fileName !== file) {
       const argumentName = argumentSymbol?.getName() ?? baseSymbol?.getName();
       if (argumentName !== undefined) {
         return {
@@ -2184,7 +2212,10 @@ function resolveNamedTypeWithSourceRecovery(
   type: ts.Type,
   sourceNode: ts.Node | undefined,
   checker: ts.TypeChecker
-): { typeName: string; namedDecl: ts.Declaration } | null {
+): {
+  typeName: string;
+  namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration;
+} | null {
   const typeName = getNamedTypeName(type);
   const namedDecl = getNamedTypeDeclaration(type);
 
@@ -2313,7 +2344,11 @@ function resolveUnionType(
   // See `resolveNamedTypeWithSourceRecovery` for the fallback mechanism.
   const recovered = resolveNamedTypeWithSourceRecovery(type, sourceNode, checker);
   let typeName: string | null = null;
-  let namedDecl: ts.Declaration | undefined;
+  let namedDecl:
+    | ts.ClassDeclaration
+    | ts.InterfaceDeclaration
+    | ts.TypeAliasDeclaration
+    | undefined;
   if (recovered !== null) {
     const recoveredAliasDecl = ts.isTypeAliasDeclaration(recovered.namedDecl)
       ? recovered.namedDecl
@@ -3197,7 +3232,6 @@ function extractTypeAliasConstraintNodes(
   return constraints;
 }
 
-
 // =============================================================================
 // PROVENANCE HELPERS
 // =============================================================================
@@ -3261,7 +3295,9 @@ function getNamedTypeName(type: ts.Type): string | null {
 /**
  * Returns the declaration that defines a named type, if available.
  */
-function getNamedTypeDeclaration(type: ts.Type): ts.Declaration | undefined {
+function getNamedTypeDeclaration(
+  type: ts.Type
+): ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration | undefined {
   const symbol = type.getSymbol();
   if (symbol?.declarations) {
     const decl = symbol.declarations[0];
