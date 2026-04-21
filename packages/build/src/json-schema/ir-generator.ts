@@ -426,9 +426,12 @@ function isStringItemConstraint(constraint: ConstraintNode): boolean {
 }
 
 /**
- * Applies path-targeted constraints to a schema via allOf composition.
+ * Applies path-targeted constraints to a schema, merging overrides inline.
  *
- * For $ref schemas: wraps in allOf with property overrides.
+ * For $ref schemas: emits `$ref` with sibling keywords (legal in JSON Schema
+ * 2020-12 since draft 2019-09 — siblings are independent keywords, not merged
+ * into the `$ref` target). This avoids `allOf` composition, which some
+ * renderers do not support.
  * For inline object schemas: applies directly to nested properties.
  * For array schemas: applies path constraints to the items sub-schema.
  */
@@ -470,15 +473,18 @@ function applyPathTargetedConstraints(
     return schema;
   }
 
-  // $ref schema: wrap in allOf to preserve $ref semantics while adding overrides.
+  // $ref schema: emit $ref with sibling keywords — JSON Schema 2020-12 (since
+  // draft 2019-09) treats $ref and sibling keywords as independent assertions,
+  // so this is semantically equivalent to allOf composition but avoids the
+  // allOf wrapper that some renderers (e.g., Stripe dashboard config UI) do
+  // not support.
   if (schema.$ref) {
     const { $ref, ...rest } = schema;
-    const refPart: JsonSchema2020 = { $ref };
-    const overridePart: JsonSchema2020 = {
-      properties: propertyOverrides,
-      ...rest,
-    };
-    return { allOf: [refPart, overridePart] };
+    const result: JsonSchema2020 = { $ref, ...rest };
+    if (Object.keys(propertyOverrides).length > 0) {
+      result.properties = propertyOverrides;
+    }
+    return result;
   }
 
   // Inline object schema: merge property overrides directly where possible.

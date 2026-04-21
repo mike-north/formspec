@@ -88,24 +88,21 @@ describe("generateSchemas", () => {
       typeName: "BlogConfig",
     });
 
+    // JSON Schema 2020-12: $ref with sibling keywords — no allOf wrapper (issue #364)
     expect(result.jsonSchema.properties).toMatchObject({
       articles: {
         type: "array",
         minItems: 1,
         maxItems: 50,
         items: {
-          allOf: [
-            { $ref: "#/$defs/Article" },
-            {
-              properties: {
-                tags: {
-                  minItems: 1,
-                  maxItems: 20,
-                  uniqueItems: true,
-                },
-              },
+          $ref: "#/$defs/Article",
+          properties: {
+            tags: {
+              minItems: 1,
+              maxItems: 20,
+              uniqueItems: true,
             },
-          ],
+          },
         },
       },
     });
@@ -117,13 +114,12 @@ describe("generateSchemas", () => {
       typeName: "SerializedNameForm",
     });
 
+    // JSON Schema 2020-12: $ref with sibling keywords — no allOf wrapper (issue #364)
     expect(result.jsonSchema.properties).toMatchObject({
       first_name: { type: "string" },
       total: {
-        allOf: [
-          { $ref: "#/$defs/RenamedAmount" },
-          { properties: { amount_value: { minimum: 0 } } },
-        ],
+        $ref: "#/$defs/RenamedAmount",
+        properties: { amount_value: { minimum: 0 } },
       },
       address: { $ref: "#/$defs/PostalAddress" },
     });

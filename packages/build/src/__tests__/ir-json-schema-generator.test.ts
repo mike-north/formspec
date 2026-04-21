@@ -2087,7 +2087,9 @@ describe("generateJsonSchemaFromIR", () => {
       },
     };
 
-    it("emits allOf with $ref and property overrides for path-targeted constraints on reference types", () => {
+    it("emits $ref with sibling keywords for path-targeted constraints on reference types", () => {
+      // JSON Schema 2020-12 (since draft 2019-09): $ref and sibling keywords are
+      // independent assertions — no allOf wrapper is required or emitted.
       const ir: FormIR = {
         kind: "form-ir",
         irVersion: IR_VERSION,
@@ -2117,8 +2119,10 @@ describe("generateJsonSchemaFromIR", () => {
         provenance: PROVENANCE,
       };
       const schema = generateJsonSchemaFromIR(ir);
+      // Flat $ref + sibling keywords — no allOf wrapper (issue #364)
       expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
-        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
       });
     });
 
@@ -2226,8 +2230,10 @@ describe("generateJsonSchemaFromIR", () => {
         type: "array",
         minItems: 1,
       });
+      // Array items: $ref with sibling keywords — no allOf wrapper (issue #364)
       expect(lineItems["items"]).toEqual({
-        allOf: [{ $ref: "#/$defs/MonetaryAmount" }, { properties: { value: { minimum: 0 } } }],
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
       });
     });
 
@@ -2292,11 +2298,10 @@ describe("generateJsonSchemaFromIR", () => {
         unknown
       >;
 
+      // $ref with sibling keywords — apiName remapping is preserved (issue #364)
       expect(lineItems["items"]).toEqual({
-        allOf: [
-          { $ref: "#/$defs/RenamedAmount" },
-          { properties: { amount_value: { minimum: 0 } } },
-        ],
+        $ref: "#/$defs/RenamedAmount",
+        properties: { amount_value: { minimum: 0 } },
       });
     });
 
@@ -2804,15 +2809,269 @@ describe("generateJsonSchemaFromIR", () => {
         provenance: PROVENANCE,
       };
       const schema = generateJsonSchemaFromIR(ir);
+      // $ref with sibling keywords — title and property constraints all live
+      // alongside $ref at the same level (JSON Schema 2020-12, issue #364)
       expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
-        allOf: [
-          { $ref: "#/$defs/MonetaryAmount" },
-          {
-            title: "Total Amount",
-            properties: { value: { minimum: 0, maximum: 999999 } },
-          },
-        ],
+        $ref: "#/$defs/MonetaryAmount",
+        title: "Total Amount",
+        properties: { value: { minimum: 0, maximum: 999999 } },
       });
+    });
+
+    // -------------------------------------------------------------------------
+    // Regression tests for issue #364: $ref + sibling keywords instead of allOf
+    // JSON Schema 2020-12 (since draft 2019-09) treats $ref and sibling keywords
+    // as independent assertions, so no allOf wrapper is needed or emitted.
+    // -------------------------------------------------------------------------
+
+    it("regression #364: MonetaryAmount field with @exclusiveMinimum emits flat $ref + siblings", () => {
+      // Repro: interface MinAmountConfig { /** @exclusiveMinimum 0 */ minimumAmount: MonetaryAmount; }
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "minimumAmount",
+            { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "exclusiveMinimum",
+                value: 0,
+                path: { segments: ["amount"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@exclusiveMinimum",
+                },
+              },
+            ],
+            [
+              {
+                kind: "annotation",
+                annotationKind: "displayName",
+                value: "Minimum amount",
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@displayName",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: {
+          MonetaryAmount: {
+            name: "MonetaryAmount",
+            type: {
+              kind: "object",
+              properties: [
+                {
+                  name: "amount",
+                  type: { kind: "primitive", primitiveKind: "number" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+                {
+                  name: "currency",
+                  type: { kind: "primitive", primitiveKind: "string" },
+                  optional: false,
+                  constraints: [],
+                  annotations: [],
+                  provenance: PROVENANCE,
+                },
+              ],
+              additionalProperties: false,
+            },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const minimumAmount = (schema.properties as Record<string, unknown>)["minimumAmount"];
+
+      // Must be flat $ref with sibling keywords — no allOf wrapper (issue #364).
+      // The Stripe dashboard config UI does not support allOf composition.
+      expect(minimumAmount).toEqual({
+        $ref: "#/$defs/MonetaryAmount",
+        title: "Minimum amount",
+        properties: { amount: { exclusiveMinimum: 0 } },
+      });
+      // Structural check: no allOf wrapper
+      expect(minimumAmount).not.toHaveProperty("allOf");
+    });
+
+    it("negative: $ref field with no overlay constraints emits just $ref — no empty properties or allOf", () => {
+      // A $ref field without any path-targeted constraints must stay pristine —
+      // no `properties: {}` noise, no `allOf` wrapper.
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "total",
+            { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            true,
+            [] // no constraints
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const total = (schema.properties as Record<string, unknown>)["total"];
+
+      // Only $ref — no extra keys added
+      expect(total).toEqual({ $ref: "#/$defs/MonetaryAmount" });
+      expect(total).not.toHaveProperty("allOf");
+      expect(total).not.toHaveProperty("properties");
+    });
+
+    it("edge case: overlay with multiple keyword kinds (numeric + title + description) all placed as siblings of $ref", () => {
+      // JSON Schema 2020-12 §8.2.3: all keywords are independent assertions;
+      // $ref no longer stops sibling keyword evaluation (change from draft-07).
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "total",
+            { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 1,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@minimum",
+                },
+              },
+              {
+                kind: "constraint",
+                constraintKind: "maximum",
+                value: 500,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@maximum",
+                },
+              },
+            ],
+            [
+              {
+                kind: "annotation",
+                annotationKind: "displayName",
+                value: "Total Amount",
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@displayName",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const total = (schema.properties as Record<string, unknown>)["total"];
+
+      // All keywords are siblings of $ref — no allOf wrapper
+      expect(total).toEqual({
+        $ref: "#/$defs/MonetaryAmount",
+        title: "Total Amount",
+        properties: { value: { minimum: 1, maximum: 500 } },
+      });
+      expect(total).not.toHaveProperty("allOf");
+    });
+
+    it("edge case: Array<$ref-type> with path constraint — items use $ref siblings, array-level constraints stay on array node", () => {
+      // Array transparency: path-targeted constraints land on items;
+      // array-level constraints (minItems) stay on the array node.
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "lineItems",
+            {
+              kind: "array",
+              items: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+            },
+            true,
+            [
+              {
+                kind: "constraint",
+                constraintKind: "minimum",
+                value: 0,
+                path: { segments: ["value"] },
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@minimum",
+                },
+              },
+              {
+                kind: "constraint",
+                constraintKind: "minItems",
+                value: 2,
+                provenance: {
+                  surface: "tsdoc",
+                  file: "/test.ts",
+                  line: 1,
+                  column: 0,
+                  tagName: "@minItems",
+                },
+              },
+            ]
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const lineItems = (schema.properties as Record<string, unknown>)["lineItems"] as Record<
+        string,
+        unknown
+      >;
+
+      // Array-level constraint lives on the array node
+      expect(lineItems).toMatchObject({
+        type: "array",
+        minItems: 2,
+      });
+      // Items use $ref + sibling keywords — no allOf wrapper on the items schema
+      expect(lineItems["items"]).toEqual({
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
+      });
+      expect(lineItems["items"]).not.toHaveProperty("allOf");
     });
   });
 });

@@ -293,10 +293,10 @@ describe("generateSchemas with FormSpecConfig", () => {
       }
     }
 
-    // A path-target override is emitted as an `allOf` entry with
-    // `properties.<segment>.<jsonSchemaKeyword>: <value>`. Asserting via a
-    // direct `allOf` shape — then scanning its entries — keeps the Jest
-    // matcher types clean (no unsafe-any from `expect.arrayContaining`) while
+    // A path-target override is emitted as `$ref` with sibling keywords
+    // (JSON Schema 2020-12): `properties.<segment>.<jsonSchemaKeyword>: <value>`
+    // lives directly on the field schema alongside `$ref`. Asserting via the
+    // field's `properties` directly keeps the Jest matcher types clean while
     // using the real `JsonSchema2020` typing for property access.
     function findPathOverride(
       result: ClassSchemas,
@@ -304,14 +304,20 @@ describe("generateSchemas with FormSpecConfig", () => {
       predicate: (entry: JsonSchema2020) => boolean
     ): JsonSchema2020 | undefined {
       const field = result.jsonSchema.properties?.[fieldName];
-      const allOf = field?.allOf;
+      // The field schema itself is now the "override entry": $ref + sibling keywords
+      // (no allOf wrapper since issue #364 fix).
       expect(
-        allOf,
-        `expected allOf on property '${fieldName}' but found ${
-          allOf === undefined ? "none" : "empty"
-        }`
+        field,
+        `expected a field schema for property '${fieldName}' but found none`
       ).toBeDefined();
-      return allOf?.find(predicate);
+      if (field === undefined) return undefined;
+      // For nullable fields the field schema is a oneOf wrapper; the $ref branch
+      // with the override lives as one of its members.
+      if (field.oneOf !== undefined) {
+        return field.oneOf.find(predicate);
+      }
+      // For non-nullable fields the field schema itself carries the overrides.
+      return predicate(field) ? field : undefined;
     }
 
     function expectPathOverride(
@@ -332,7 +338,7 @@ describe("generateSchemas with FormSpecConfig", () => {
       );
       expect(
         override,
-        `no allOf entry with properties.${segment}.${keyword} === ${String(
+        `no path override with properties.${segment}.${keyword} === ${String(
           value
         )} on field '${fieldName}'`
       ).toBeDefined();
@@ -341,8 +347,8 @@ describe("generateSchemas with FormSpecConfig", () => {
     // Path-target overrides emit the standard JSON Schema keyword directly
     // on the sub-path — not the vendor-prefixed custom-constraint keyword
     // that's used for the type's own direct-target broadening. See the
-    // `allOf: [{ $ref }, { properties: { amount: { minimum: 0 } } }]`
-    // shape asserted by `expectPathOverride`.
+    // `{ $ref, properties: { amount: { minimum: 0 } } }` shape (issue #364).
+    // JSON Schema 2020-12 §8.2.3: $ref siblings are independent assertions.
     const numericTagCases: readonly {
       tag: string;
       argument: string;
@@ -429,7 +435,7 @@ describe("generateSchemas with FormSpecConfig", () => {
           `;
           // Vendor-prefix-agnostic smoke: we don't assert the keyword value
           // because the branded extension uses a different prefix, but we
-          // DO require an allOf entry that targets `amount`. A regression
+          // DO require a properties override targeting `amount`. A regression
           // that silently drops the override (no throw, no entry) would
           // otherwise pass.
           const result = runSchema(source, brandBasedConfig);
