@@ -242,11 +242,15 @@ function hasExtensionBroadening(
   // consistent with how the build path strips before isIntegerBrandedType.
   const effectiveType = stripNullishUnion(subjectType);
   // Use NoTruncation so that complex types (intersections, deep generics) are
-  // rendered in full. Without it, checker.typeToString uses its default truncation
-  // threshold (~160 chars) and can produce a structurally-different string than
-  // what was registered in tsTypeNames, causing broadening detection to miss.
+  // rendered in full. Without it, checker.typeToString applies TypeScript's internal
+  // truncation threshold and can produce a structurally-different string than what
+  // was registered in tsTypeNames, causing broadening detection to miss for
+  // anonymous intersection types or deeply nested generics.
   const typeName = typeToString(effectiveType, checker);
   if (typeName === null) {
+    // typeToString returns null when its type argument is undefined. stripNullishUnion
+    // always returns a ts.Type, so this branch is a defensive guard for future callers
+    // that might pass an undefined type through a different code path.
     return false;
   }
 
@@ -1384,9 +1388,7 @@ function buildTagDiagnostics(
   // the top of this function). Compute the log-friendly kind once, and only
   // when structured logging is actually enabled — describeTypeKind is cheap
   // but this runs on every snapshot diagnostic pass.
-  const subjectTypeKindForLog = snapshotLogsEnabled
-    ? describeTypeKind(subjectType, checker)
-    : "";
+  const subjectTypeKindForLog = snapshotLogsEnabled ? describeTypeKind(subjectType, checker) : "";
 
   for (const tag of commentTags) {
     const semantic = getCommentTagSemanticContext(tag, semanticOptions);
@@ -1494,17 +1496,20 @@ function buildTagDiagnostics(
           // build consumer — avoids the Lesson 3 silent-ternary-collapse pitfall.
           const mappedCode = mapTypedParserDiagnosticCode(
             typedParseResult.diagnostic.code,
-            tag.normalizedTagName,
+            tag.normalizedTagName
           );
 
           diagnostics.push(
-            createAnalysisDiagnostic(mappedCode, typedParseResult.diagnostic.message, tag.fullSpan, {
-              tagName: tag.normalizedTagName,
-              placement,
-              ...(target === null
-                ? {}
-                : { targetKind: target.kind, targetText: target.text }),
-            })
+            createAnalysisDiagnostic(
+              mappedCode,
+              typedParseResult.diagnostic.message,
+              tag.fullSpan,
+              {
+                tagName: tag.normalizedTagName,
+                placement,
+                ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+              }
+            )
           );
           // Skip adding to syntheticApplications — typed parser already rejected at Role C.
           continue;
