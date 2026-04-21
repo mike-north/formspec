@@ -26,8 +26,9 @@
 // Category 1 — Role B (capability check) still goes through synthetic path:
 //   The snapshot consumer (buildFormSpecAnalysisFileSnapshot) does NOT have a
 //   host-checker Role-B capability guard. The build consumer (tsdoc-parser.ts)
-//   DOES have supportsConstraintCapability() check at ~line 872 and produces
-//   TYPE_MISMATCH for these cases. The synthetic prelude's direct-field
+//   DOES have supportsConstraintCapability() check (in buildCompilerBackedConstraintDiagnostics,
+//   at the `supportsConstraintCapability(capability, fieldType, checker, { ... })` call site)
+//   and produces TYPE_MISMATCH for these cases. The synthetic prelude's direct-field
 //   tag_minimum / tag_pattern / tag_uniqueItems / tag_enumOptions functions
 //   are declared as `<Host, Subject>` with NO capability constraint on Subject
 //   for the direct-field overload — so the synthetic TypeScript checker does
@@ -51,8 +52,8 @@
 //   one of these, this test will flip and force a review of the design decision.
 //   - @pattern with non-string argument (e.g., 42): plan §3 — opaque pass-through.
 //   - @pattern on string[]: both paths treat string[] as string-like for @pattern
-//     (supportsConstraintCapability in tsdoc-parser.ts:464-467 returns true when
-//     the array element type is string-like).
+//     (supportsConstraintCapability's "string-like" branch performs array-element
+//     unwrap — returns true when the array element type is itself string-like).
 //
 // Phase 3 flips (previously .fails, now passing regular assertions):
 // - @enumOptions 5 (scalar not array) — typed parser catches at Role C
@@ -382,17 +383,21 @@ describe("@pattern silent-acceptance canaries", () => {
   // [intentional: string[] is string-like for @pattern]
   //
   // Phase 4D audit: this canary asserts TYPE_MISMATCH, but NEITHER consumer emits one.
-  // Root cause: supportsConstraintCapability() in the build path (tsdoc-parser.ts:464-467)
-  // treats string[] as satisfying "string-like" when the array element type is itself
-  // string-like — so string[] passes the Role-B capability check in the build path.
-  // The snapshot path's synthetic prelude has no capability constraint either, so it also
-  // accepts without error. Both consumers agree: @pattern on string[] is valid.
+  // Root cause: supportsConstraintCapability()'s "string-like" branch (array-element unwrap)
+  // in the build path treats string[] as satisfying "string-like" when the array element
+  // type is itself string-like — so string[] passes the Role-B capability check in the
+  // build path. The snapshot path's synthetic prelude has no capability constraint either,
+  // so it also accepts without error. Both consumers agree: @pattern on string[] is valid.
   // The TYPE_MISMATCH assertion in this test is a bug in the original canary spec.
   // Phase 5 will NOT flip this canary; this test is kept as a regression guard only —
   // if a future change causes either path to start rejecting @pattern on string[],
   // this test will flip and force a review of the design decision.
+  //
+  // Contrast with the number[] canary below: unlike string[] (which satisfies string-like
+  // via element unwrap), number[] is NOT string-like — both paths should reject @pattern
+  // on number[], but currently don't (genuine Phase 5 gap).
   it.fails(
-    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [intentional: string[] is string-like for @pattern; tsdoc-parser.ts:464-467]",
+    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [intentional: string[] is string-like for @pattern; supportsConstraintCapability's string-like branch (array-element unwrap)]",
     () => {
       const diagnostics = diagnosticsFor(
         `
@@ -402,6 +407,40 @@ describe("@pattern silent-acceptance canaries", () => {
         }
         `,
         "pattern-on-array"
+      );
+      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+    }
+  );
+
+  // @pattern ^yes$ on a number[] (array) field -- number[] is NOT string-like.
+  //
+  // [Phase 5 target: snapshot Role-B capability check]
+  //
+  // Unlike string[] (which satisfies "string-like" via supportsConstraintCapability's
+  // array-element unwrap branch), number[] is NOT string-like — neither the element
+  // type (number) nor the array itself passes the "string-like" capability check.
+  // Both consumers should emit TYPE_MISMATCH, but currently neither does:
+  //   - Build path: supportsConstraintCapability's "string-like" branch unwraps the
+  //     array element to `number`, which is not string-like, so the guard WOULD fire
+  //     if the capability check were wired at Role B in this path. Requires Phase 5
+  //     to fully thread the check for array-of-non-string types.
+  //   - Snapshot path: the synthetic prelude's tag_pattern<Host, Subject> direct-field
+  //     overload has NO capability constraint on Subject, so the synthetic TypeScript
+  //     checker accepts @pattern on number[] without error.
+  // This is a genuine Role-B gap, distinct from the intentional string[] behavior above.
+  // Phase 5 will flip this canary when host-checker Role-B is added to the snapshot
+  // consumer (or the synthetic checker is retired).
+  it.fails(
+    "emits TYPE_MISMATCH for @pattern ^yes$ on a number[] field [Phase 5 target: snapshot Role-B capability check]",
+    () => {
+      const diagnostics = diagnosticsFor(
+        `
+        class F {
+          /** @pattern ^yes$ */
+          value!: number[];
+        }
+        `,
+        "pattern-on-number-array"
       );
       expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
     }
