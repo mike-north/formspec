@@ -173,8 +173,6 @@ export interface ExtensionRegistry {
     findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
     findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
     findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
-    // Warning: (ae-forgotten-export) The symbol "SyntheticCompilerDiagnostic" needs to be exported by the entry point index.d.ts
-    //
     // @internal
     readonly setupDiagnostics: readonly SyntheticCompilerDiagnostic[];
 }
@@ -560,6 +558,15 @@ export interface StaticSchemaGenerationOptions {
     readonly metadata?: MetadataPolicyInput | undefined;
     // @deprecated
     readonly vendorPrefix?: string | undefined;
+}
+
+// Warning: (ae-internal-missing-underscore) The name "SyntheticCompilerDiagnostic" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export interface SyntheticCompilerDiagnostic {
+    readonly code: number;
+    readonly kind: "typescript" | "unsupported-custom-type-override" | "synthetic-setup";
+    readonly message: string;
 }
 
 export { TextField }

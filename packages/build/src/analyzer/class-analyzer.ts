@@ -251,7 +251,19 @@ export function createAnalyzerMetadataPolicy(
  * each call returns the same setup diagnostic (anchored at the extension
  * registration site). Without deduplication, an N-field declaration would
  * produce N identical setup diagnostics. We deduplicate by `code + message`
- * because all copies share the same `primaryLocation` provenance.
+ * (`\0`-separated to prevent collisions between a code value that matches a
+ * message prefix and an actual message) because all copies share the same
+ * `primaryLocation` provenance.
+ *
+ * TODO: root fix — instead of deduplicating after accumulation, inject setup
+ * diagnostics ONCE at the class/interface/type-alias entry in
+ * `analyzeClassToIR` / `analyzeInterfaceToIR` / `analyzeTypeAliasToIR`,
+ * before iterating fields. When `extensionRegistry.setupDiagnostics` is
+ * non-empty, emit them once and pass `undefined` as the extension registry to
+ * per-field `parseTSDocTags` calls so they perform no setup-diag re-emission.
+ * That eliminates the need for this deduplication pass entirely.
+ * Deferred because the restructure touches multiple entry functions and is
+ * outside the scope of the current PR (Phase 4 Slice C review feedback).
  */
 function deduplicateDiagnostics(
   diagnostics: readonly ConstraintSemanticDiagnostic[]
@@ -259,6 +271,9 @@ function deduplicateDiagnostics(
   if (diagnostics.length <= 1) return diagnostics;
   const seen = new Set<string>();
   return diagnostics.filter((d) => {
+    // `\0` separator prevents collisions where a code string is a prefix of a
+    // message string (e.g., code = "FOO", message = "BAR" must not collide
+    // with code = "FOO\0BAR", message = "").
     const key = `${d.code}\0${d.message}`;
     if (seen.has(key)) return false;
     seen.add(key);
