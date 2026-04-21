@@ -219,6 +219,9 @@ export interface LoggerLike {
 }
 
 // @public
+export function mergePackageOverridesForFile(config: FormSpecConfig, filePath: string, configDir: string): FormSpecConfig;
+
+// @public
 export interface NumberField<N extends string> {
     readonly apiName?: string;
     readonly displayName?: string;

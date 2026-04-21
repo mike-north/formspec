@@ -272,6 +272,9 @@ export interface LoggerLike {
     warn(msg: string, ...args: unknown[]): void;
 }
 
+// @public
+export function mergePackageOverridesForFile(config: FormSpecConfig, filePath: string, configDir: string): FormSpecConfig;
+
 // @beta
 export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig;
 
