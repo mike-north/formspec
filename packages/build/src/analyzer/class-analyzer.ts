@@ -344,22 +344,27 @@ function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean 
 }
 
 /**
- * Walks base class / interface declarations reachable from a derived
- * declaration and returns any inheritable type-level annotations that the
- * derived declaration does not already specify.
+ * Walks base declarations reachable from a derived declaration and returns
+ * any inheritable type-level annotations that the derived declaration does
+ * not already specify.
  *
- * The walk is breadth-first across all `extends` clauses, following through
- * the TypeScript symbol table to the declaration(s) backing each base type.
- * A seen-set on declarations prevents infinite loops on pathological
- * self-referential chains.
+ * Supports three entry shapes:
+ * - **Class / interface** — walks `extends` clauses (issue #367).
+ * - **Interface extends a type alias** — crosses the alias node to reach
+ *   annotations on a deeper object-shaped ancestor (issue #376).
+ * - **Type alias whose body is a type reference** — walks the alias
+ *   derivation chain (`type Foo = Bar`), following through alias-of-alias
+ *   and alias-of-interface cases (issue #374).
  *
- * Annotations already present on the derived type (matched by
+ * The walk is breadth-first across reachable bases. A seen-set on
+ * declarations prevents infinite loops on pathological self-referential
+ * chains. Annotations already present on the derived type (matched by
  * `annotationKind`) always win — only missing kinds are filled in from the
  * base chain. When multiple bases provide the same kind, the first found
  * wins (earliest in the `extends` clause list, nearest ancestor first).
  */
 function collectInheritedTypeAnnotations(
-  derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration,
+  derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   existingAnnotations: readonly AnnotationNode[],
   checker: ts.TypeChecker,
   extensionRegistry: ExtensionRegistry | undefined
@@ -410,14 +415,21 @@ function collectInheritedTypeAnnotations(
     return false;
   };
 
-  const enqueueCandidate = (baseDecl: ts.Declaration): void => {
+  // `fromTypeAliasRhs` differentiates two enqueue contexts:
+  // - false: reached from an interface/class `extends` clause. Type-alias
+  //   candidates must be object-shaped (TS compiler restriction).
+  // - true:  reached from a type alias's own RHS (alias-of-alias or
+  //   alias-of-interface). Primitive-typed chains are valid (issue #374:
+  //   `type WorkEmail = BaseEmail = string`).
+  const enqueueCandidate = (baseDecl: ts.Declaration, fromTypeAliasRhs: boolean): void => {
     if (seen.has(baseDecl)) return;
     if (ts.isClassDeclaration(baseDecl) || ts.isInterfaceDeclaration(baseDecl)) {
       seen.add(baseDecl);
       queue.push(baseDecl);
       return;
     }
-    if (ts.isTypeAliasDeclaration(baseDecl) && isObjectShapedTypeAlias(baseDecl)) {
+    if (ts.isTypeAliasDeclaration(baseDecl)) {
+      if (!fromTypeAliasRhs && !isObjectShapedTypeAlias(baseDecl)) return;
       seen.add(baseDecl);
       queue.push(baseDecl);
     }
@@ -426,17 +438,16 @@ function collectInheritedTypeAnnotations(
   const enqueueBasesOf = (decl: HeritageBearingDecl): void => {
     if (ts.isTypeAliasDeclaration(decl)) {
       // Type aliases have no heritage clauses. Instead, follow the alias's
-      // RHS when it resolves to another named type (alias-of-alias or
-      // alias-of-interface chains). This lets `@format` declared on a
-      // deeper ancestor reach a derived interface whose immediate base is
-      // a type alias (issue #376, mid-chain case).
+      // RHS when it resolves to another named type. This unifies the
+      // alias-chain walk (#374) with the interface-extends-alias mid-chain
+      // case (#376) under a single traversal.
       const rhs = decl.type;
       if (!ts.isTypeReferenceNode(rhs)) return;
       const sym = checker.getSymbolAtLocation(rhs.typeName);
       if (!sym) return;
       const target = resolveSymbolTarget(sym);
       for (const baseDecl of target.declarations ?? []) {
-        enqueueCandidate(baseDecl);
+        enqueueCandidate(baseDecl, /*fromTypeAliasRhs*/ true);
       }
       return;
     }
@@ -454,7 +465,7 @@ function collectInheritedTypeAnnotations(
         if (!sym) continue;
         const target = resolveSymbolTarget(sym);
         for (const baseDecl of target.declarations ?? []) {
-          enqueueCandidate(baseDecl);
+          enqueueCandidate(baseDecl, /*fromTypeAliasRhs*/ false);
         }
       }
     }
@@ -495,11 +506,10 @@ function collectInheritedTypeAnnotations(
 
 /**
  * Extracts type-level annotations from a named declaration (class, interface,
- * or type alias), applying heritage-based inheritance where applicable
- * (issue #367). For type aliases (no heritage), behaves identically to
- * {@link extractJSDocAnnotationNodes}. For classes and interfaces, any
- * inheritable annotation kind absent from the local declaration is filled
- * in by walking `extends` clauses via {@link collectInheritedTypeAnnotations}.
+ * or type alias), applying inheritance where applicable (issues #367, #374,
+ * #376). Any inheritable annotation kind absent from the local declaration
+ * is filled in by walking `extends` clauses and type-alias RHS chains via
+ * {@link collectInheritedTypeAnnotations}.
  */
 function extractNamedTypeAnnotations(
   namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
@@ -508,15 +518,7 @@ function extractNamedTypeAnnotations(
   extensionRegistry: ExtensionRegistry | undefined
 ): AnnotationNode[] {
   const local = extractJSDocAnnotationNodes(namedDecl, file, makeParseOptions(extensionRegistry));
-  if (!ts.isClassDeclaration(namedDecl) && !ts.isInterfaceDeclaration(namedDecl)) {
-    return local;
-  }
-  const inherited = collectInheritedTypeAnnotations(
-    namedDecl,
-    local,
-    checker,
-    extensionRegistry
-  );
+  const inherited = collectInheritedTypeAnnotations(namedDecl, local, checker, extensionRegistry);
   if (inherited.length === 0) return [...local];
   return [...local, ...inherited];
 }
@@ -2177,11 +2179,21 @@ function tryResolveNamedPrimitiveAlias(
       ...extractJSDocConstraintNodes(aliasDecl, file, makeParseOptions(extensionRegistry)),
       ...extractTypeAliasConstraintNodes(aliasDecl.type, checker, file, extensionRegistry),
     ];
-    const annotations = extractJSDocAnnotationNodes(
+    // Issue #374: collect inheritable annotations (e.g., @format) from the
+    // type-alias derivation chain so that `type WorkEmail = BaseEmail` inherits
+    // `@format email` from `BaseEmail`.
+    const localAnnotations = extractJSDocAnnotationNodes(
       aliasDecl,
       file,
       makeParseOptions(extensionRegistry)
     );
+    const inheritedAnnotations = collectInheritedTypeAnnotations(
+      aliasDecl,
+      localAnnotations,
+      checker,
+      extensionRegistry
+    );
+    const annotations = [...localAnnotations, ...inheritedAnnotations];
     const metadata = resolveNodeMetadata(
       metadataPolicy,
       "type",
@@ -2709,6 +2721,76 @@ function shouldEmitResolvedObjectProperty(
   return true;
 }
 
+/**
+ * If `sourceNode` carries a type annotation that is a "pass-through" type
+ * alias whose identity should be preserved in `$defs`, returns the alias's
+ * name and declaration. Returns `undefined` otherwise.
+ *
+ * A pass-through alias is one whose body is a `TypeReference` (`type Foo =
+ * Bar`) rather than a structural type (type literal, intersection, etc.).
+ * Structural aliases are already handled via the normal registration path.
+ *
+ * Identity preservation is gated on the alias carrying an **inheritable
+ * type-level annotation** (either locally or inherited through the alias
+ * chain) — today that means `@format` (issue #374). Aliases with only
+ * path-targeted constraints like `@minimum :field N` (issue #364) collapse
+ * to the base type so sibling-keyword composition works against the base's
+ * `$defs` entry.
+ */
+function getPassThroughTypeAliasFromSourceNode(
+  sourceNode: ts.Node | undefined,
+  checker: ts.TypeChecker,
+  extensionRegistry: ExtensionRegistry | undefined,
+  resolvedTypeName: string | undefined
+): { aliasName: string; aliasDecl: ts.TypeAliasDeclaration } | undefined {
+  const aliasDecl = getReferencedTypeAliasDeclaration(sourceNode, checker);
+  if (!aliasDecl) return undefined;
+
+  const aliasName = aliasDecl.name.text;
+  // Skip if the alias name already matches the resolved type name — no wrapping needed.
+  if (aliasName === resolvedTypeName) return undefined;
+
+  // Only treat as pass-through if the alias body is itself a type reference
+  // (not a structural type like `type Foo = { ... }` or `type Foo = A & B`).
+  if (!ts.isTypeReferenceNode(aliasDecl.type)) return undefined;
+
+  // Preserve alias identity only when the alias carries an inheritable
+  // type-level annotation (local or inherited). Aliases that carry only
+  // path-targeted constraints must collapse to the base so #364's $ref +
+  // sibling composition still resolves against the base's $defs entry.
+  if (!hasInheritableTypeAnnotation(aliasDecl, checker, extensionRegistry)) {
+    return undefined;
+  }
+
+  return { aliasName, aliasDecl };
+}
+
+/**
+ * Returns `true` when `aliasDecl` carries an inheritable type-level
+ * annotation (currently only `@format`), either locally or reachable through
+ * the alias / heritage chain. Used to decide whether a pass-through alias
+ * warrants its own `$defs` entry (issue #374) or should collapse to the
+ * base type (issue #364 sibling-keyword composition).
+ */
+function hasInheritableTypeAnnotation(
+  aliasDecl: ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker,
+  extensionRegistry: ExtensionRegistry | undefined
+): boolean {
+  const file = aliasDecl.getSourceFile().fileName;
+  const local = extractJSDocAnnotationNodes(aliasDecl, file, makeParseOptions(extensionRegistry));
+  for (const annotation of local) {
+    if (!INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) continue;
+    if (!isOverridingInheritableAnnotation(annotation)) continue;
+    return true;
+  }
+  const inherited = collectInheritedTypeAnnotations(aliasDecl, local, checker, extensionRegistry);
+  for (const annotation of inherited) {
+    if (INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) return true;
+  }
+  return false;
+}
+
 function resolveObjectType(
   type: ts.Type,
   checker: ts.TypeChecker,
@@ -2724,6 +2806,25 @@ function resolveObjectType(
   const typeName = getNamedTypeName(type);
   const namedTypeName = typeName ?? undefined;
   const namedDecl = getNamedTypeDeclaration(type);
+
+  // Issue #374: if the source node carries a "pass-through" type alias
+  // (e.g. `type PositiveMonetaryAmount = MonetaryAmount`) that carries an
+  // inheritable type-level annotation (e.g. `@format`) either locally or
+  // via its alias chain, prefer the alias name and declaration as the
+  // registry identity. This preserves alias identity in `$defs` and lets
+  // annotation inheritance flow from the chain (see
+  // `extractNamedTypeAnnotations`). Aliases with only path-targeted
+  // constraints intentionally collapse to the base so issue #364's
+  // $ref + sibling-keyword composition resolves against the base's
+  // $defs entry.
+  const passThroughAlias = getPassThroughTypeAliasFromSourceNode(
+    sourceNode,
+    checker,
+    extensionRegistry,
+    namedTypeName
+  );
+  const effectiveTypeName = passThroughAlias?.aliasName ?? namedTypeName;
+  const effectiveNamedDecl = passThroughAlias?.aliasDecl ?? namedDecl;
   const referenceTypeArguments = extractReferenceTypeArguments(
     type,
     checker,
@@ -2736,17 +2837,17 @@ function resolveObjectType(
     collectedDiagnostics
   );
   const instantiatedTypeName =
-    namedTypeName !== undefined && referenceTypeArguments.length > 0
+    effectiveTypeName !== undefined && referenceTypeArguments.length > 0
       ? buildInstantiatedReferenceName(
-          namedTypeName,
+          effectiveTypeName,
           referenceTypeArguments.map((argument) => argument.tsType),
           checker
         )
       : undefined;
-  const registryTypeName = instantiatedTypeName ?? namedTypeName;
+  const registryTypeName = instantiatedTypeName ?? effectiveTypeName;
   const shouldRegisterNamedType =
     registryTypeName !== undefined &&
-    !(registryTypeName === "Record" && namedDecl?.getSourceFile().fileName !== file);
+    !(registryTypeName === "Record" && effectiveNamedDecl?.getSourceFile().fileName !== file);
   const clearNamedTypeRegistration = (): void => {
     if (registryTypeName === undefined || !shouldRegisterNamedType) {
       return;
@@ -2777,7 +2878,7 @@ function resolveObjectType(
     typeRegistry[registryTypeName] = {
       name: registryTypeName,
       type: RESOLVING_TYPE_PLACEHOLDER,
-      provenance: provenanceForDeclaration(namedDecl, file),
+      provenance: provenanceForDeclaration(effectiveNamedDecl, file),
     };
   }
 
@@ -2822,21 +2923,21 @@ function resolveObjectType(
         clearNamedTypeRegistration();
         return recordNode;
       }
-      const annotations = namedDecl
-        ? extractNamedTypeAnnotations(namedDecl, checker, file, extensionRegistry)
+      const annotations = effectiveNamedDecl
+        ? extractNamedTypeAnnotations(effectiveNamedDecl, checker, file, extensionRegistry)
         : undefined;
       const metadata =
-        namedDecl !== undefined
+        effectiveNamedDecl !== undefined
           ? resolveNodeMetadata(
               metadataPolicy,
               "type",
               registryTypeName,
-              namedDecl,
+              effectiveNamedDecl,
               checker,
               extensionRegistry,
               {
                 checker,
-                declaration: namedDecl,
+                declaration: effectiveNamedDecl,
                 subjectType: type,
               }
             )
@@ -2846,7 +2947,7 @@ function resolveObjectType(
         ...(metadata !== undefined && { metadata }),
         type: recordNode,
         ...(annotations !== undefined && annotations.length > 0 && { annotations }),
-        provenance: provenanceForDeclaration(namedDecl, file),
+        provenance: provenanceForDeclaration(effectiveNamedDecl, file),
       };
       return {
         kind: "reference",
@@ -2941,13 +3042,13 @@ function resolveObjectType(
   const objectNode: TypeNode = {
     kind: "object",
     properties:
-      namedDecl !== undefined &&
-      (ts.isClassDeclaration(namedDecl) ||
-        ts.isInterfaceDeclaration(namedDecl) ||
-        ts.isTypeAliasDeclaration(namedDecl))
+      effectiveNamedDecl !== undefined &&
+      (ts.isClassDeclaration(effectiveNamedDecl) ||
+        ts.isInterfaceDeclaration(effectiveNamedDecl) ||
+        ts.isTypeAliasDeclaration(effectiveNamedDecl))
         ? applyDiscriminatorToObjectProperties(
             properties,
-            namedDecl,
+            effectiveNamedDecl,
             type,
             checker,
             file,
@@ -2960,21 +3061,21 @@ function resolveObjectType(
 
   // Register named types
   if (registryTypeName !== undefined && shouldRegisterNamedType) {
-    const annotations = namedDecl
-      ? extractNamedTypeAnnotations(namedDecl, checker, file, extensionRegistry)
+    const annotations = effectiveNamedDecl
+      ? extractNamedTypeAnnotations(effectiveNamedDecl, checker, file, extensionRegistry)
       : undefined;
     const metadata =
-      namedDecl !== undefined
+      effectiveNamedDecl !== undefined
         ? resolveNodeMetadata(
             metadataPolicy,
             "type",
             registryTypeName,
-            namedDecl,
+            effectiveNamedDecl,
             checker,
             extensionRegistry,
             {
               checker,
-              declaration: namedDecl,
+              declaration: effectiveNamedDecl,
               subjectType: type,
             }
           )
@@ -2984,7 +3085,7 @@ function resolveObjectType(
       ...(metadata !== undefined && { metadata }),
       type: objectNode,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
-      provenance: provenanceForDeclaration(namedDecl, file),
+      provenance: provenanceForDeclaration(effectiveNamedDecl, file),
     };
     return {
       kind: "reference",

@@ -5,7 +5,7 @@
  * derived type must win over the inherited value.
  *
  * @see https://github.com/mike-north/formspec/issues/367
- * @see https://github.com/mike-north/formspec/issues/374 — type-alias derivation gap (skipped tests below)
+ * @see https://github.com/mike-north/formspec/issues/374 — type-alias derivation coverage
  * @see https://github.com/mike-north/formspec/issues/376 — interface extends type-alias base (covered below)
  * @see packages/build/src/analyzer/class-analyzer.ts — named-type annotation
  *      extraction is the enforcement point.
@@ -444,6 +444,106 @@ const INTERFACE_EXTENDS_TYPE_ALIAS_MULTI_LEVEL_SOURCE = [
   "}",
 ].join("\n");
 
+/**
+ * Deep 3-level alias chain: `L1 = string + @format email`, `L2 = L1`,
+ * `L3 = L2`. Only `L1` carries the annotation. The field typed `L3` must
+ * reach it transitively (issue #374).
+ */
+const TYPE_ALIAS_DEEP_CHAIN_SOURCE = [
+  "/** @format email */",
+  "type L1 = string;",
+  "",
+  "type L2 = L1;",
+  "",
+  "type L3 = L2;",
+  "",
+  "export class Container {",
+  "  addr!: L3;",
+  "}",
+].join("\n");
+
+/**
+ * Cyclic annotation walk: `type CycleA = CycleB` where `CycleB` carries a
+ * `@format` annotation. The alias chain forms a soft cycle (A → B → A via
+ * the seen-set check) but the annotation walk must terminate after visiting
+ * each alias once. `CycleB`'s object literal body stops the constraint
+ * extractor from recursing, so only the annotation walk's seen-set is
+ * exercised by this fixture.
+ */
+const TYPE_ALIAS_CYCLIC_SOURCE = [
+  "/** @format cycle-b */",
+  "type CycleB = { value: number };",
+  "",
+  "type CycleA = CycleB;",
+  "",
+  "export class Container {",
+  "  value!: CycleA;",
+  "}",
+].join("\n");
+
+/**
+ * Intersection-body alias negative — stops the walk.
+ *
+ * `type Derived = Base & { extra: number }` is NOT a pass-through alias
+ * because the body is a structural intersection, not a type reference.
+ * The walker must NOT inherit `@format` from `Base`; the intersection is
+ * treated as a new structural type. Guards the `ts.isTypeReferenceNode`
+ * early-exit in `collectInheritedTypeAnnotations` / `enqueueBasesOf`.
+ */
+const TYPE_ALIAS_INTERSECTION_STOPS_WALK_SOURCE = [
+  "/** @format monetary-amount */",
+  "type BaseMoney = { amount: number };",
+  "",
+  "// Structural intersection — NOT a pass-through.",
+  "type DerivedMoney = BaseMoney & { currency: string };",
+  "",
+  "export class Container {",
+  "  value!: DerivedMoney;",
+  "}",
+].join("\n");
+
+/**
+ * #374 / #364 boundary fixture — alias with ONLY a path-targeted constraint
+ * (`@minimum :amount 0`) and no inheritable type-level annotation must
+ * collapse to the base's `$defs` entry so sibling-keyword composition
+ * (issue #364, spec 003 §5.4) still resolves against the base. This locks
+ * the reconciliation: alias identity is preserved only when an inheritable
+ * type-level annotation (e.g. `@format`) is present on the alias chain.
+ */
+const TYPE_ALIAS_PATH_CONSTRAINT_ONLY_SOURCE = [
+  "interface BaseMonetary {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+  "",
+  "/** @minimum :amount 0 */",
+  "type PositiveMonetary = BaseMonetary;",
+  "",
+  "export class Form {",
+  "  price!: PositiveMonetary;",
+  "}",
+].join("\n");
+
+/**
+ * Generic pass-through alias — `type Box<T> = Container<T>`. The alias
+ * body is a `TypeReferenceNode` with type arguments. The walker should
+ * still reach `Container`'s `@format` annotation; the use-site
+ * instantiated name (`Box<string>` vs `Container<string>`) is a separate
+ * concern handled by `buildInstantiatedReferenceName`.
+ */
+const TYPE_ALIAS_GENERIC_PASS_THROUGH_SOURCE = [
+  "/** @format boxed */",
+  "interface Container<T> {",
+  "  value: T;",
+  "}",
+  "",
+  "type Box<T> = Container<T>;",
+  "",
+  "export class Shelf {",
+  "  item!: Box<string>;",
+  "}",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -466,6 +566,11 @@ let typeAliasOfInterfaceFixturePath: string;
 let typeAliasOwnOverrideFixturePath: string;
 let interfaceExtendsTypeAliasFixturePath: string;
 let interfaceExtendsTypeAliasMultiLevelFixturePath: string;
+let typeAliasDeepChainFixturePath: string;
+let typeAliasCyclicFixturePath: string;
+let typeAliasIntersectionStopsWalkFixturePath: string;
+let typeAliasPathConstraintOnlyFixturePath: string;
+let typeAliasGenericPassThroughFixturePath: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-fmt-inherit-"));
@@ -541,6 +646,27 @@ beforeAll(() => {
     interfaceExtendsTypeAliasMultiLevelFixturePath,
     INTERFACE_EXTENDS_TYPE_ALIAS_MULTI_LEVEL_SOURCE
   );
+
+  typeAliasDeepChainFixturePath = path.join(tmpDir, "type-alias-deep-chain.ts");
+  fs.writeFileSync(typeAliasDeepChainFixturePath, TYPE_ALIAS_DEEP_CHAIN_SOURCE);
+
+  typeAliasCyclicFixturePath = path.join(tmpDir, "type-alias-cyclic.ts");
+  fs.writeFileSync(typeAliasCyclicFixturePath, TYPE_ALIAS_CYCLIC_SOURCE);
+
+  typeAliasIntersectionStopsWalkFixturePath = path.join(
+    tmpDir,
+    "type-alias-intersection-stops-walk.ts"
+  );
+  fs.writeFileSync(
+    typeAliasIntersectionStopsWalkFixturePath,
+    TYPE_ALIAS_INTERSECTION_STOPS_WALK_SOURCE
+  );
+
+  typeAliasPathConstraintOnlyFixturePath = path.join(tmpDir, "type-alias-path-constraint-only.ts");
+  fs.writeFileSync(typeAliasPathConstraintOnlyFixturePath, TYPE_ALIAS_PATH_CONSTRAINT_ONLY_SOURCE);
+
+  typeAliasGenericPassThroughFixturePath = path.join(tmpDir, "type-alias-generic-pass-through.ts");
+  fs.writeFileSync(typeAliasGenericPassThroughFixturePath, TYPE_ALIAS_GENERIC_PASS_THROUGH_SOURCE);
 });
 
 afterAll(() => {
@@ -825,20 +951,16 @@ describe("interface extends a type-alias base — issue #376", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — type-alias derivation gap (skipped / future work)
+// Tests — type-alias derivation (issue #374)
 //
 // PR #369's heritage-chain BFS is gated on `HeritageClause`-bearing
-// declarations (interfaces/classes). Type aliases have no heritage clauses,
-// so the fix never runs for them. Each skipped test asserts the target
-// behavior so a future implementation has an unambiguous acceptance
-// criterion — unskip and verify, no new test authoring required.
-//
-// See https://github.com/mike-north/formspec/issues/374 (filed alongside
-// this test file) for the tracking issue.
+// declarations (interfaces/classes). Issue #374 extended the inheritance
+// walk to `type Foo = Bar` chains and registers pass-through type aliases
+// as distinct `$defs` entries so derived alias identity is preserved.
 // ---------------------------------------------------------------------------
 
-describe("type-alias derivation — `@format` inheritance gap (future work)", () => {
-  it.skip("primitive alias chain: `type WorkEmail = BaseEmail` inherits `@format` from BaseEmail", () => {
+describe("type-alias derivation — `@format` inheritance", () => {
+  it("primitive alias chain: `type WorkEmail = BaseEmail` inherits `@format` from BaseEmail", () => {
     const result = generateSchemasOrThrow({
       filePath: typeAliasPrimitiveChainFixturePath,
       typeName: "Container",
@@ -863,7 +985,7 @@ describe("type-alias derivation — `@format` inheritance gap (future work)", ()
     expect(inlineFormat ?? defsFormat).toBe("email");
   });
 
-  it.skip("object-alias → object-alias: derived alias's $defs entry inherits base's `@format`", () => {
+  it("object-alias → object-alias: derived alias's $defs entry inherits base's `@format`", () => {
     const result = generateSchemasOrThrow({
       filePath: typeAliasObjectChainFixturePath,
       typeName: "Container",
@@ -882,7 +1004,7 @@ describe("type-alias derivation — `@format` inheritance gap (future work)", ()
     expect(derived["format"]).toBe("monetary-amount");
   });
 
-  it.skip("type-alias of interface: the alias name is preserved as its own $defs entry carrying inherited `@format`", () => {
+  it("type-alias of interface: the alias name is preserved as its own $defs entry carrying inherited `@format`", () => {
     const result = generateSchemasOrThrow({
       filePath: typeAliasOfInterfaceFixturePath,
       typeName: "Container",
@@ -902,7 +1024,7 @@ describe("type-alias derivation — `@format` inheritance gap (future work)", ()
     expect(aliased["format"]).toBe("monetary-amount");
   });
 
-  it.skip("derived type-alias with its own `@format` overrides the inherited base format", () => {
+  it("derived type-alias with its own `@format` overrides the inherited base format", () => {
     const result = generateSchemasOrThrow({
       filePath: typeAliasOwnOverrideFixturePath,
       typeName: "Container",
@@ -918,5 +1040,137 @@ describe("type-alias derivation — `@format` inheritance gap (future work)", ()
     const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
     const derived = expectRecord(defs["PositiveMonetaryAmount"], "$defs.PositiveMonetaryAmount");
     expect(derived["format"]).toBe("positive-monetary-amount");
+  });
+
+  it("deep 3-level alias chain (L1 → L2 → L3) transitively inherits `@format` from L1", () => {
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasDeepChainFixturePath,
+      typeName: "Container",
+    });
+
+    // spec: issue #374 — the walk must recurse past a single level. L3 has no
+    // local annotation; L2 also has none; only L1 carries `@format email`.
+    // The `addr` property should carry the format either inline or via a $ref
+    // that resolves to a $defs entry carrying it.
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const addr = expectRecord(props["addr"], "properties.addr");
+    const defs = result.jsonSchema.$defs as Record<string, { format?: string }> | undefined;
+
+    const inlineFormat = (addr as { format?: string }).format;
+    const refTarget =
+      typeof (addr as { $ref?: string }).$ref === "string" &&
+      (addr as { $ref: string }).$ref.startsWith("#/$defs/")
+        ? (addr as { $ref: string }).$ref.slice("#/$defs/".length)
+        : undefined;
+    const defsFormat = refTarget !== undefined ? defs?.[refTarget]?.format : undefined;
+
+    // spec: issue #374 — format must be reachable from the usage site, either
+    // inline on the property or on the $defs entry the property references.
+    expect(inlineFormat ?? defsFormat).toBe("email");
+  });
+
+  it("annotation walk terminates on a revisited alias (seen-set cycle guard) and inherits @format from the target", () => {
+    // spec: issue #374 — the annotation walk's seen-set must prevent
+    // revisiting already-walked aliases. `CycleA = CycleB` where `CycleB`
+    // is an object literal alias (stops the constraint extractor from
+    // recursing). The generator must complete and `CycleA`'s $defs entry
+    // must carry the `@format` declared on `CycleB`.
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasCyclicFixturePath,
+      typeName: "Container",
+    });
+
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const value = expectRecord(props["value"], "properties.value");
+    expect(value["$ref"]).toBe("#/$defs/CycleA");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const cycleA = expectRecord(defs["CycleA"], "$defs.CycleA");
+    // spec: issue #374 — CycleB carries @format cycle-b; CycleA = CycleB
+    // so the annotation walk must propagate it to CycleA's $defs entry.
+    expect(cycleA["format"]).toBe("cycle-b");
+  });
+
+  it("intersection-body alias does NOT inherit @format from the base (walk stops at non-TypeReference RHS)", () => {
+    // spec: issue #374 — only pass-through aliases (body is a direct
+    // TypeReference) participate in annotation inheritance. Structural
+    // intersections create a new type identity and must not pick up
+    // the base's `@format`.
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasIntersectionStopsWalkFixturePath,
+      typeName: "Container",
+    });
+
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const value = expectRecord(props["value"], "properties.value");
+
+    // No inherited format should reach the property or any $defs entry
+    // reachable from it. Accept either inline or through a $ref, but it
+    // must not equal "monetary-amount".
+    const defs = (result.jsonSchema.$defs ?? {}) as Record<string, Record<string, unknown>>;
+    const inline = (value as { format?: string }).format;
+    const refTarget =
+      typeof (value as { $ref?: string }).$ref === "string" &&
+      (value as { $ref: string }).$ref.startsWith("#/$defs/")
+        ? (value as { $ref: string }).$ref.slice("#/$defs/".length)
+        : undefined;
+    const defsFormat = refTarget !== undefined ? defs[refTarget]?.["format"] : undefined;
+
+    expect(inline).toBeUndefined();
+    expect(defsFormat).toBeUndefined();
+  });
+
+  it("alias with only path-targeted constraints collapses to the base $ref — preserves #364 sibling composition", () => {
+    // spec: issue #364 + issue #374 reconciliation. The alias carries only
+    // a path-targeted constraint (`@minimum :amount 0`); no inheritable
+    // type-level annotation is present on the chain. Identity preservation
+    // must NOT trigger — the property's `$ref` must point at the base
+    // (`BaseMonetary`) so sibling-keyword composition (spec 003 §5.4) can
+    // attach the narrowing bound at the use site. See panel review in
+    // PR #386 for the reconciliation rationale.
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasPathConstraintOnlyFixturePath,
+      typeName: "Form",
+    });
+
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const price = expectRecord(props["price"], "properties.price");
+
+    // Core assertion: `$ref` targets the base, not the alias.
+    expect(price["$ref"]).toBe("#/$defs/BaseMonetary");
+    // The path-targeted minimum rides as a sibling — guards #364's spec.
+    expect(price["properties"]).toEqual({ amount: { minimum: 0 } });
+    // And the base's $defs entry is present (dedup preserved).
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    expect(defs).toHaveProperty("BaseMonetary");
+    // No parallel alias entry is registered.
+    expect(defs["PositiveMonetary"]).toBeUndefined();
+  });
+
+  it("generic pass-through alias inherits @format through the chain", () => {
+    // spec: issue #374 — `type Box<T> = Container<T>` has a parameterized
+    // TypeReference body. The walker reaches `Container`'s `@format`
+    // annotation; identity preservation applies because an inheritable
+    // type-level annotation is on the chain.
+    const result = generateSchemasOrThrow({
+      filePath: typeAliasGenericPassThroughFixturePath,
+      typeName: "Shelf",
+    });
+
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const item = expectRecord(props["item"], "properties.item");
+
+    // The property must resolve to a $defs entry that carries the
+    // inherited `@format boxed`. The exact name uses the
+    // instantiated-reference form (e.g. `Box<string>` or
+    // `Container<string>` depending on collapse) — accept either and
+    // verify the reachable $defs entry carries the format.
+    const ref = (item as { $ref?: string }).$ref;
+    expect(typeof ref).toBe("string");
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const refTarget = ref?.startsWith("#/$defs/") ? ref.slice("#/$defs/".length) : undefined;
+    expect(refTarget).toBeDefined();
+    const entry = expectRecord(defs[refTarget ?? ""], `$defs.${refTarget ?? "(unknown)"}`);
+    expect(entry["format"]).toBe("boxed");
   });
 });
