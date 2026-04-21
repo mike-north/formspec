@@ -1180,7 +1180,7 @@ function applyAnnotations(
         break;
 
       case "defaultValue":
-        schema.default = coerceDefaultValue(annotation.value, typeNode, ctx);
+        schema.default = coerceDefaultValue(annotation.value, typeNode, schema, ctx);
         break;
 
       case "format":
@@ -1233,14 +1233,17 @@ function applyAnnotations(
  * 1. If the underlying type is a custom type with a `serializeDefault` hook,
  *    delegate fully to the extension.
  * 2. Otherwise, fall back to best-effort inference based on the `type` keyword
- *    returned by the extension's `toJsonSchema`: when the emitted schema has
- *    `type: "string"` and the parsed literal is not already a string, stringify
- *    the literal via `String(value)`.
+ *    on the already-emitted schema: when the emitted schema has
+ *    `type: "string"`, coerce `number`, `boolean`, and `bigint` literals to
+ *    their string form. Other literal shapes (e.g., objects, arrays) are left
+ *    unchanged — extensions that need to coerce those should provide
+ *    `serializeDefault` explicitly.
  * 3. For non-custom types, pass the value through unchanged.
  */
 function coerceDefaultValue(
   value: unknown,
   typeNode: TypeNode | undefined,
+  emittedSchema: JsonSchema2020,
   ctx: GeneratorContext
 ): unknown {
   if (typeNode?.kind !== "custom") {
@@ -1255,17 +1258,10 @@ function coerceDefaultValue(
     return registration.serializeDefault(value, typeNode.payload);
   }
 
-  // Inference fallback: examine the shape declared by `toJsonSchema`.
-  let emitted: Record<string, unknown>;
-  try {
-    emitted = registration.toJsonSchema(typeNode.payload, ctx.vendorPrefix);
-  } catch {
-    // Extension serialization errors should not derail default coercion; the
-    // main generator path will surface them through `generateCustomType`.
-    return value;
-  }
-
-  const declaredType = emitted["type"];
+  // Inference fallback: reuse the already-emitted schema from generateCustomType
+  // rather than invoking `toJsonSchema` a second time — that call may be
+  // expensive and is not required to be pure.
+  const declaredType = (emittedSchema as Record<string, unknown>)["type"];
   if (declaredType === "string" && typeof value !== "string") {
     // Coerce number/boolean/bigint literals into their string form so the
     // emitted `default` conforms to the custom type's JSON Schema `type`.

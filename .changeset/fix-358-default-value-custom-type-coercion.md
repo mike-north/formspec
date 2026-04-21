@@ -19,5 +19,5 @@ For example, `@defaultValue 9.99` on a `Decimal` field (which maps to `{ type: "
 Coercion strategy (in priority order):
 
 1. **Explicit hook**: if the `CustomTypeRegistration` provides a `serializeDefault` function, it is called with the parsed literal and the type payload. Extensions needing bespoke serialization (e.g., Date → ISO-8601 string) should use this hook.
-2. **Inference fallback**: when no `serializeDefault` hook is present, the pipeline inspects the `type` keyword returned by `toJsonSchema`. If the emitted type is `"string"` and the parsed literal is not already a string (or `null`), the literal is stringified via `String(value)`.
-3. **Pass-through**: non-custom types are unaffected; custom types without a matching registration are also passed through unchanged.
+2. **Inference fallback**: when no `serializeDefault` hook is present, the pipeline inspects the `type` keyword on the custom type's emitted JSON Schema. If the emitted type is `"string"` and the parsed literal is a `number`, `boolean`, or `bigint`, it is coerced to its string form. Non-finite numbers (`NaN`, `±Infinity`) are passed through unchanged. Other literal shapes (including objects and arrays) are left unchanged unless an explicit `serializeDefault` hook handles them.
+3. **Pass-through**: non-custom types are unaffected; custom types without a matching registration are also passed through unchanged, as are literals not covered by the inference fallback.
