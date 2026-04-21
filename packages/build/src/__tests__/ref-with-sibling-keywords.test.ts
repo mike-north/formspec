@@ -669,7 +669,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
   // ---------------------------------------------------------------------------
   // Site 1: inline-object missing-property fallback
   // ---------------------------------------------------------------------------
-  describe("Site 1: inline-object with path target naming a property that does not exist", () => {
+  describe("Site 1: inline-object with path target naming a property that does not exist (#382)", () => {
     it("emits a single flat object (no allOf wrapper) with sibling properties and preserved additionalProperties", () => {
       // Scenario: an inline object field has `additionalProperties: true` and
       // receives a path-targeted constraint pointing at a property that is not
@@ -871,7 +871,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
   // the composition cannot be expressed as siblings.
   //
   // @see https://github.com/mike-north/formspec/issues/382 Site 2
-  describe("Site 2: pre-composed allOf base", () => {
+  describe("Site 2: pre-composed allOf base (#382)", () => {
     function makeCustomTypeRegistry(jsonSchema: Record<string, unknown>) {
       const customType = defineCustomType({
         typeName: "ComposedMoney",

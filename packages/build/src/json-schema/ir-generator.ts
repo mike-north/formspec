@@ -507,10 +507,15 @@ function applyPathTargetedConstraints(
   // the override. (Fixes #382 Site 1.)
   if (schema.type === "object" && schema.properties) {
     for (const [target, overrideSchema] of Object.entries(propertyOverrides)) {
-      // Own-property check + defineProperty guard against prototype-pollution
-      // vectors (e.g. `__proto__`, `constructor`) if a path-targeted override
-      // ever names one of those keys. Using `in` or `[target]` assignment
-      // would traverse / mutate Object.prototype.
+      // Own-property lookup + defineProperty guard against prototype-pollution
+      // vectors when a path target names a key like `__proto__`:
+      //   - Plain `obj[target] = value` assignment with target === "__proto__"
+      //     invokes the Object.prototype `__proto__` setter, replacing the
+      //     object's [[Prototype]] instead of adding an own property.
+      //   - `Object.defineProperty` bypasses the setter and writes an own
+      //     data property, so the override lands where we expect.
+      // `Object.hasOwn` (not `in`) rejects inherited members like
+      // `constructor`, avoiding a mis-merge into Object.prototype.constructor.
       if (Object.hasOwn(schema.properties, target)) {
         const existing = schema.properties[target];
         if (existing) {
@@ -1003,10 +1008,14 @@ function buildPathOverrideSchema(
  * would silently overwrite one contribution), returns `undefined` and the
  * caller falls back to appending an `allOf` member.
  *
- * The single-member restriction reflects what the emitter produces today
- * (external `toJsonSchema` hooks may legitimately return single-member
- * `allOf` for wrapping). Generalising to N-member flattening is possible
- * via pairwise key-disjointness but is not needed by any current caller.
+ * The single-member restriction is a conservative scope choice, not a
+ * JSON Schema 2020-12 semantic constraint. In-tree emission paths only
+ * ever produce single-member `allOf` wrappers. Multi-member `allOf`
+ * reaches this helper only from user-supplied `toJsonSchema` hooks,
+ * where the multiple members typically represent intentional composition
+ * that should not be silently flattened. Pairwise-disjoint N-member
+ * flattening is semantically valid but is not performed today because
+ * no current producer requires it.
  *
  * Mirrors the `$ref`-sibling fix at `ir-generator.ts:492-497` (issue #364).
  *
