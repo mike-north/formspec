@@ -33,6 +33,57 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[enumSerialization?](./formspec.generatejsonschemaoptions.enumserialization.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+"enum" \| "oneOf" \| "smart-size"
+
+</td><td>
+
+_(Optional)_ JSON Schema representation to use for static enums.
+
+</td></tr>
+<tr><td>
+
+[logger?](./formspec.generatejsonschemaoptions.logger.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[LoggerLike](./formspec.loggerlike.md) \| undefined
+
+</td><td>
+
+_(Optional)_ Optional logger for diagnostic output. Defaults to a no-op logger so existing callers produce no output.
+
+</td></tr>
+<tr><td>
+
+[metadata?](./formspec.generatejsonschemaoptions.metadata.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[MetadataPolicyInput](./formspec.metadatapolicyinput.md) \| undefined
+
+</td><td>
+
+_(Optional)_ Metadata resolution policy for chain DSL generation.
+
+</td></tr>
+<tr><td>
+
 [vendorPrefix?](./formspec.generatejsonschemaoptions.vendorprefix.md)
 
 </td><td>

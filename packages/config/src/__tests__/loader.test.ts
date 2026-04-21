@@ -27,6 +27,18 @@ afterEach(async () => {
   }
 });
 
+/**
+ * Writes a `formspec.config.ts` in a fresh temp dir and asserts that loading
+ * it rejects with an error matching `messagePattern`. Used by regression
+ * tests that cover malformed config shapes.
+ */
+async function expectConfigRejection(source: string, messagePattern: RegExp): Promise<void> {
+  const dir = await createTempDir();
+  const filePath = join(dir, "formspec.config.ts");
+  await writeFile(filePath, source, "utf-8");
+  await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(messagePattern);
+}
+
 describe("loadFormSpecConfig", () => {
   describe("explicit configPath", () => {
     it("loads a formspec.config.ts file with a typed default export", async () => {
@@ -86,19 +98,53 @@ export default defineFormSpecConfig({
       expect(result.config.enumSerialization).toBe("smart-size");
     });
 
+    /**
+     * Regression coverage for malformed `packages` override shapes. Each case
+     * would have thrown a raw `TypeError` (e.g. from `Object.entries(null)`
+     * or indexing a non-object) prior to the loader's explicit validation.
+     *
+     * @see https://github.com/mike-north/formspec/pull/356
+     */
     it("rejects invalid package override enum serialization", async () => {
-      const dir = await createTempDir();
-      const filePath = join(dir, "formspec.config.ts");
-      await writeFile(
-        filePath,
+      await expectConfigRejection(
         `export default { packages: { "packages/*": { enumSerialization: "invalid" } } };`,
-        "utf-8"
-      );
-
-      await expect(loadFormSpecConfig({ configPath: filePath })).rejects.toThrow(
         /packages\["packages\/\*"\]\.enumSerialization/
       );
     });
+
+    const invalidTopLevelPackages = [
+      { label: "a string", source: `"smart-size"` },
+      { label: "null", source: `null` },
+      { label: "an array", source: `[]` },
+      { label: "a number", source: `42` },
+      { label: "a boolean", source: `true` },
+    ] as const;
+
+    for (const { label, source } of invalidTopLevelPackages) {
+      it(`rejects packages field that is ${label}`, async () => {
+        await expectConfigRejection(
+          `export default { packages: ${source} };`,
+          /"packages" must be an object mapping glob patterns to override objects/
+        );
+      });
+    }
+
+    const invalidOverrideEntries = [
+      { label: "null", source: `null` },
+      { label: "an array", source: `[]` },
+      { label: "a number", source: `42` },
+      { label: "a boolean", source: `true` },
+      { label: "a string", source: `"oneOf"` },
+    ] as const;
+
+    for (const { label, source } of invalidOverrideEntries) {
+      it(`rejects a package override entry that is ${label}`, async () => {
+        await expectConfigRejection(
+          `export default { packages: { "packages/*": ${source} } };`,
+          /"packages\["packages\/\*"\]" must be an override object/
+        );
+      });
+    }
 
     it("throws when configPath file does not exist", async () => {
       const dir = await createTempDir();

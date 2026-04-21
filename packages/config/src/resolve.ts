@@ -29,6 +29,9 @@ export interface ResolvedFormSpecConfig {
  * Resolves the effective config for a specific file by matching against
  * the `packages` glob map and merging with root-level settings.
  *
+ * Package overrides are evaluated in declaration order — the first matching
+ * pattern wins. Declare more specific patterns before broader ones.
+ *
  * @param config - The root FormSpecConfig
  * @param filePath - Absolute or relative path to the file being processed
  * @param configDir - Directory containing the config file (for relative path resolution)

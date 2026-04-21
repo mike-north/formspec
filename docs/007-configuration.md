@@ -102,11 +102,12 @@ export interface FormSpecConfig {
 
   /**
    * JSON Schema representation for static enums.
-   * - "enum": flat { "enum": ["a", "b"] }
-   * - "oneOf": { "oneOf": [{ "const": "a" }, ...] }
+   * - "enum": compact `enum` output, plus a display-name extension when labels exist
+   * - "oneOf": per-member `const` output, with `title` only for distinct labels
+   * - "smart-size": uses `enum` unless a distinct display label would be lost
    * @defaultValue "enum"
    */
-  readonly enumSerialization?: "enum" | "oneOf";
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
 
   /**
    * Per-package configuration overrides for monorepos.
@@ -151,7 +152,7 @@ export interface FormSpecPackageOverride {
   /** Override constraint surface for this package. */
   readonly constraints?: ConstraintConfig;
   /** Override enum serialization for this package. */
-  readonly enumSerialization?: "enum" | "oneOf";
+  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
   /** Override metadata policy for this package. */
   readonly metadata?: MetadataPolicyInput;
 }
@@ -252,6 +253,7 @@ Default: `"x-formspec"`.
 
 - `"enum"` (default): `{ "enum": ["a", "b", "c"] }`
 - `"oneOf"`: `{ "oneOf": [{ "const": "a" }, { "const": "b" }, { "const": "c" }] }`
+- `"smart-size"`: use `enum` unless distinct labels would be lost, then fall back to `oneOf`
 
 ### 3.6 `packages`
 
