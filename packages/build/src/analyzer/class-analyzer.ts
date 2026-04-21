@@ -376,11 +376,71 @@ function collectInheritedTypeAnnotations(
   }
   if (needed.size === 0) return [];
 
+  type HeritageBearingDecl =
+    | ts.ClassDeclaration
+    | ts.InterfaceDeclaration
+    | ts.TypeAliasDeclaration;
+
   const inherited: AnnotationNode[] = [];
   const seen = new Set<ts.Node>([derivedDecl]);
-  const queue: (ts.ClassDeclaration | ts.InterfaceDeclaration)[] = [];
+  const queue: HeritageBearingDecl[] = [];
 
-  const enqueueBasesOf = (decl: ts.ClassDeclaration | ts.InterfaceDeclaration): void => {
+  const resolveSymbolTarget = (sym: ts.Symbol): ts.Symbol => {
+    if ((sym.flags & ts.SymbolFlags.Alias) === 0) return sym;
+    try {
+      return checker.getAliasedSymbol(sym);
+    } catch {
+      // TypeScript can throw when resolving certain alias chains (e.g.,
+      // cyclic or partially resolved aliases). Fall back to the original
+      // symbol — worst case we miss an inheritance step, not a fatal error.
+      return sym;
+    }
+  };
+
+  const isObjectShapedTypeAlias = (alias: ts.TypeAliasDeclaration): boolean => {
+    // An interface can only legally extend an object-shaped alias (the TS
+    // compiler rejects `interface X extends StringAlias`), but we guard here
+    // so a misuse higher in the chain cannot pull in annotations from a
+    // primitive-typed alias whose semantics do not match. The check uses
+    // the alias's resolved type, not its syntactic RHS, so aliases of
+    // aliases-of-interfaces are covered.
+    const type = checker.getTypeFromTypeNode(alias.type);
+    if ((type.flags & ts.TypeFlags.Object) !== 0) return true;
+    if (type.isIntersection()) return true;
+    return false;
+  };
+
+  const enqueueCandidate = (baseDecl: ts.Declaration): void => {
+    if (seen.has(baseDecl)) return;
+    if (ts.isClassDeclaration(baseDecl) || ts.isInterfaceDeclaration(baseDecl)) {
+      seen.add(baseDecl);
+      queue.push(baseDecl);
+      return;
+    }
+    if (ts.isTypeAliasDeclaration(baseDecl) && isObjectShapedTypeAlias(baseDecl)) {
+      seen.add(baseDecl);
+      queue.push(baseDecl);
+    }
+  };
+
+  const enqueueBasesOf = (decl: HeritageBearingDecl): void => {
+    if (ts.isTypeAliasDeclaration(decl)) {
+      // Type aliases have no heritage clauses. Instead, follow the alias's
+      // RHS when it resolves to another named type (alias-of-alias or
+      // alias-of-interface chains). This lets `@format` declared on a
+      // deeper ancestor reach a derived interface whose immediate base is
+      // a type alias (issue #376, mid-chain case).
+      const rhs = decl.type;
+      if (!ts.isTypeReferenceNode(rhs)) return;
+      const sym = checker.getSymbolAtLocation(rhs.typeName);
+      if (!sym) return;
+      const target = resolveSymbolTarget(sym);
+      for (const baseDecl of target.declarations ?? []) {
+        enqueueCandidate(baseDecl);
+      }
+      return;
+    }
+
     const heritageClauses = decl.heritageClauses;
     if (!heritageClauses) return;
     for (const clause of heritageClauses) {
@@ -392,24 +452,9 @@ function collectInheritedTypeAnnotations(
       for (const typeExpr of clause.types) {
         const sym = checker.getSymbolAtLocation(typeExpr.expression);
         if (!sym) continue;
-        let target: ts.Symbol = sym;
-        if ((sym.flags & ts.SymbolFlags.Alias) !== 0) {
-          try {
-            target = checker.getAliasedSymbol(sym);
-          } catch {
-            // TypeScript can throw when resolving certain alias chains
-            // (e.g., cyclic or partially resolved aliases). Fall back to
-            // the original symbol — worst case we miss an inheritance
-            // step, not a fatal error.
-            target = sym;
-          }
-        }
+        const target = resolveSymbolTarget(sym);
         for (const baseDecl of target.declarations ?? []) {
-          if (seen.has(baseDecl)) continue;
-          seen.add(baseDecl);
-          if (ts.isClassDeclaration(baseDecl) || ts.isInterfaceDeclaration(baseDecl)) {
-            queue.push(baseDecl);
-          }
+          enqueueCandidate(baseDecl);
         }
       }
     }

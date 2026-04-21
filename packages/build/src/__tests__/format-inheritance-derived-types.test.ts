@@ -6,6 +6,7 @@
  *
  * @see https://github.com/mike-north/formspec/issues/367
  * @see https://github.com/mike-north/formspec/issues/374 — type-alias derivation gap (skipped tests below)
+ * @see https://github.com/mike-north/formspec/issues/376 — interface extends type-alias base (covered below)
  * @see packages/build/src/analyzer/class-analyzer.ts — named-type annotation
  *      extraction is the enforcement point.
  */
@@ -358,6 +359,48 @@ const TYPE_ALIAS_OWN_OVERRIDE_SOURCE = [
   "}",
 ].join("\n");
 
+/**
+ * Issue #376 repro. Derived is an `interface extends TypeAlias` where the
+ * base is a type-alias whose resolved type is object-shaped. The BFS in
+ * `collectInheritedTypeAnnotations` must traverse the type-alias base so
+ * that the derived interface inherits the alias-level `@format`.
+ */
+const INTERFACE_EXTENDS_TYPE_ALIAS_SOURCE = [
+  "/** @format monetary-amount */",
+  "type MonetaryAmount = { amount: number; currency: string };",
+  "",
+  "interface PositiveAmount extends MonetaryAmount {",
+  "  /** @exclusiveMinimum 0 */",
+  "  amount: number;",
+  "}",
+  "",
+  "export class Order {",
+  "  tip!: PositiveAmount;",
+  "}",
+].join("\n");
+
+/**
+ * Issue #376 — multi-level chain where the type-alias base sits in the
+ * middle of the BFS. The BFS must cross the type-alias node to reach the
+ * @format declared on a deeper base.
+ */
+const INTERFACE_EXTENDS_TYPE_ALIAS_MULTI_LEVEL_SOURCE = [
+  "/** @format monetary-amount */",
+  "interface BaseMonetary {",
+  "  amount: number;",
+  "}",
+  "",
+  "type AliasMonetary = BaseMonetary;",
+  "",
+  "interface LeafMonetary extends AliasMonetary {",
+  "  currency: string;",
+  "}",
+  "",
+  "export class Order {",
+  "  tip!: LeafMonetary;",
+  "}",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // Setup
 // ---------------------------------------------------------------------------
@@ -377,6 +420,8 @@ let typeAliasPrimitiveChainFixturePath: string;
 let typeAliasObjectChainFixturePath: string;
 let typeAliasOfInterfaceFixturePath: string;
 let typeAliasOwnOverrideFixturePath: string;
+let interfaceExtendsTypeAliasFixturePath: string;
+let interfaceExtendsTypeAliasMultiLevelFixturePath: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-fmt-inherit-"));
@@ -437,6 +482,18 @@ beforeAll(() => {
 
   typeAliasOwnOverrideFixturePath = path.join(tmpDir, "type-alias-own-override.ts");
   fs.writeFileSync(typeAliasOwnOverrideFixturePath, TYPE_ALIAS_OWN_OVERRIDE_SOURCE);
+
+  interfaceExtendsTypeAliasFixturePath = path.join(tmpDir, "interface-extends-type-alias.ts");
+  fs.writeFileSync(interfaceExtendsTypeAliasFixturePath, INTERFACE_EXTENDS_TYPE_ALIAS_SOURCE);
+
+  interfaceExtendsTypeAliasMultiLevelFixturePath = path.join(
+    tmpDir,
+    "interface-extends-type-alias-multi-level.ts"
+  );
+  fs.writeFileSync(
+    interfaceExtendsTypeAliasMultiLevelFixturePath,
+    INTERFACE_EXTENDS_TYPE_ALIAS_MULTI_LEVEL_SOURCE
+  );
 });
 
 afterAll(() => {
@@ -637,6 +694,52 @@ describe("issue #367 — bug-report verbatim scenario", () => {
       "$defs.PositiveMonetaryAmount.properties.amount"
     );
     expect(amount["exclusiveMinimum"]).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — issue #376: interface extends a type-alias base
+//
+// PR #369 added the BFS walker for heritage-chain @format inheritance, but
+// gated the enqueue step on `ClassDeclaration | InterfaceDeclaration` only.
+// When the base in an `extends` clause resolves to a `TypeAliasDeclaration`
+// (object-shaped), the walker silently dropped the base and no inherited
+// annotation flowed through. See the post-merge-audit note on #369.
+// ---------------------------------------------------------------------------
+
+describe("interface extends a type-alias base — issue #376", () => {
+  it("inherits @format from an object-shaped type-alias base in an interface `extends` clause", () => {
+    // spec: issue #376 repro — `interface PositiveAmount extends MonetaryAmount`
+    // where MonetaryAmount is `type MonetaryAmount = { ... }` carrying a
+    // type-level `@format`. The BFS must follow the TypeAliasDeclaration
+    // base so the derived interface's $defs entry picks up the annotation.
+    const result = generateSchemasOrThrow({
+      filePath: interfaceExtendsTypeAliasFixturePath,
+      typeName: "Order",
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["PositiveAmount"], "$defs.PositiveAmount");
+
+    // Core assertion: the type-alias base's @format reaches the derived
+    // interface's $defs entry.
+    expect(derived["format"]).toBe("monetary-amount");
+  });
+
+  it("traverses a type-alias node mid-chain to reach an @format declared deeper in the heritage graph", () => {
+    // spec: issue #376 — the fix must handle a type-alias sitting between
+    // two heritage-bearing declarations, not just as an immediate base. Here
+    // the chain is `LeafMonetary (interface) → AliasMonetary (type alias) →
+    // BaseMonetary (interface, @format-tagged)`. The BFS must cross the
+    // alias node to reach BaseMonetary.
+    const result = generateSchemasOrThrow({
+      filePath: interfaceExtendsTypeAliasMultiLevelFixturePath,
+      typeName: "Order",
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const leaf = expectRecord(defs["LeafMonetary"], "$defs.LeafMonetary");
+    expect(leaf["format"]).toBe("monetary-amount");
   });
 });
 
