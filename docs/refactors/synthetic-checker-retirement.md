@@ -3,7 +3,7 @@
 **Status:** planning document (no code changes proposed in this file). v6 adds an explicit §8 Success criteria section covering behavioral, performance/memory, observability (debug logging), and the named Stripe `Ref<Customer>` stress-test acceptance gate. Phase 0.5 gains fixtures 0.5l (Stripe stress test baseline) and 0.5m (parity-harness log schema); Phase 0 now builds out the §8.3 structured-logging deliverable as a required artifact, not a nice-to-have.
 **Scope:** consolidate constraint-tag validation on the host `ts.Program` and eliminate (or radically minimize) the in-memory synthetic program created in `packages/analysis/src/compiler-signatures.ts`.
 
-**Non-goal (explicit):** this refactor preserves current diagnostic semantics bit-for-bit *for every input that both consumers currently handle identically*. Inputs where build and snapshot already diverge today (see §3 table) stay divergent through the refactor — they are addressed in a separate, named "normalization PR" that lands after the refactor completes. This is the only way to keep the non-goal honest.
+**Non-goal (explicit):** this refactor preserves current diagnostic semantics bit-for-bit _for every input that both consumers currently handle identically_. Inputs where build and snapshot already diverge today (see §3 table) stay divergent through the refactor — they are addressed in a separate, named "normalization PR" that lands after the refactor completes. This is the only way to keep the non-goal honest.
 
 ---
 
@@ -18,16 +18,16 @@
   2. Supporting declarations scraped from the user's file (`buildSupportingDeclarations`, `tsdoc-parser.ts:203-233`), with imports rewritten to `unknown` (path fixed/extended by #294, #297).
   3. Per-application namespace: `type __Host = ...; type __Subject = ...;` + a synthetic call like `__formspec.tag_minimum(__ctx<"class-field", string, number>(), 10);`.
 
-The prelude's `unknown` aliases are load-bearing: `buildSupportingDeclarations` *keeps* declarations that reference imported/extension type names specifically because those names resolve via the prelude. Removing the aliases without removing their consumers breaks the synthetic program.
+The prelude's `unknown` aliases are load-bearing: `buildSupportingDeclarations` _keeps_ declarations that reference imported/extension type names specifically because those names resolve via the prelude. Removing the aliases without removing their consumers breaks the synthetic program.
 
 ### 1.2 Two synthetic consumers (not one)
 
 v1 of this plan missed the second consumer.
 
-| Site | Path | Role |
-|---|---|---|
-| Build analyzer | `buildCompilerBackedConstraintDiagnostics` at `packages/build/src/analyzer/tsdoc-parser.ts:669-899` | Per-field, per-tag validation inside `parseTSDocTags` |
-| File-snapshots batch | `packages/analysis/src/file-snapshots.ts:1240-1390` | Pre-batched synthetic applications for snapshot-driven analysis (ts-plugin / LSP); also produces the `TYPE_MISMATCH` / `UNKNOWN_PATH_TARGET` / `INVALID_TAG_ARGUMENT` / `INVALID_TAG_PLACEMENT` translation layer at line 1361-1390 |
+| Site                 | Path                                                                                                | Role                                                                                                                                                                                                                                |
+| -------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build analyzer       | `buildCompilerBackedConstraintDiagnostics` at `packages/build/src/analyzer/tsdoc-parser.ts:669-899` | Per-field, per-tag validation inside `parseTSDocTags`                                                                                                                                                                               |
+| File-snapshots batch | `packages/analysis/src/file-snapshots.ts:1240-1390`                                                 | Pre-batched synthetic applications for snapshot-driven analysis (ts-plugin / LSP); also produces the `TYPE_MISMATCH` / `UNKNOWN_PATH_TARGET` / `INVALID_TAG_ARGUMENT` / `INVALID_TAG_PLACEMENT` translation layer at line 1361-1390 |
 
 Both reach `checkSyntheticTagApplications`/`lowerTagApplicationToSyntheticCall`. Both must migrate — or the snapshot path must continue to function while the build path migrates, and vice versa.
 
@@ -35,7 +35,7 @@ Additionally, `compiler-signatures.ts` itself exposes:
 
 - `getMatchingTagSignatures` (line 403-411) — overload selection
 - `lowerTagApplicationToSyntheticCall` (line 596-635) — target-kind rejection and synthetic call construction
-- `checkNarrowSyntheticTagApplicability` / `checkNarrowSyntheticTagApplicabilities` (line 1245-1330) — a *narrow* applicability check (narrow prelude, no user declarations) with its own test coverage
+- `checkNarrowSyntheticTagApplicability` / `checkNarrowSyntheticTagApplicabilities` (line 1245-1330) — a _narrow_ applicability check (narrow prelude, no user declarations) with its own test coverage
 
 These are not just "a synthetic program." They form a module whose public surface reaches beyond the build analyzer.
 
@@ -43,11 +43,11 @@ These are not just "a synthetic program." They form a module whose public surfac
 
 The v1 "~60% already on host checker" framing was overstated. A more accurate claim:
 
-- **The build path's *gating* logic** (placement, path-target resolution, capability mismatch) already runs on the host `ts.TypeChecker` via `ts-binding.ts:hasTypeSemanticCapability` and `resolvePathTargetType` — see `tsdoc-parser.ts:698-708, 735-755, 797`.
+- **The build path's _gating_ logic** (placement, path-target resolution, capability mismatch) already runs on the host `ts.TypeChecker` via `ts-binding.ts:hasTypeSemanticCapability` and `resolvePathTargetType` — see `tsdoc-parser.ts:698-708, 735-755, 797`.
 - **But `parseTSDocTags` unconditionally calls `buildSupportingDeclarations`** at `tsdoc-parser.ts:984-989` before deciding whether a synthetic call will run. The prep work is not conditional on gating.
 - **And `compiler-signatures.ts` machinery has not moved to host-checker APIs** at all; it remains entirely `ts.createProgram`-based.
 
-So: the build-path host-checker path is well-established for *when* to reject a tag; the synthetic path still owns *how* the argument's type is validated.
+So: the build-path host-checker path is well-established for _when_ to reject a tag; the synthetic path still owns _how_ the argument's type is validated.
 
 ### 1.4 Existing non-extension bypass: `isIntegerBrandedType`
 
@@ -55,17 +55,17 @@ So: the build-path host-checker path is well-established for *when* to reject a 
 
 ### 1.5 Four-and-a-half roles (revised decomposition)
 
-| Role | What it does | Where today |
-|------|---|---|
-| A | Placement + tag-valid-here check | host checker / registry at `tsdoc-parser.ts:698-706` |
-| B | Path-target resolution | host checker at `tsdoc-parser.ts:735-755` |
-| C | Argument-literal type-check (is `10.5` a valid `@minLength` arg? is the regex a string?) | synthetic at `tsdoc-parser.ts:839` and `file-snapshots.ts:1355` |
-| D1 | **Direct-field broadening** — a built-in tag on a custom-type field is transformed into a custom constraint via the extension's `parseValue` callback; emits a vendor-prefixed keyword rather than the standard one. Example: `@minimum 0` on a `Decimal` field → `"x-formspec-decimal-minimum": "0.0"`. See `tag-value-parser.ts:273-295` and `numeric-extension.integration.test.ts:61-81`. | IR layer + tag-value parser |
-| D2 | **Path-target broadening** — stays a built-in constraint, emits the standard JSON Schema keyword on the path override. Different mechanism from D1. See `generate-schemas-config.test.ts:192-304`. | IR layer |
+| Role | What it does                                                                                                                                                                                                                                                                                                                                                                                  | Where today                                                     |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| A    | Placement + tag-valid-here check                                                                                                                                                                                                                                                                                                                                                              | host checker / registry at `tsdoc-parser.ts:698-706`            |
+| B    | Path-target resolution                                                                                                                                                                                                                                                                                                                                                                        | host checker at `tsdoc-parser.ts:735-755`                       |
+| C    | Argument-literal type-check (is `10.5` a valid `@minLength` arg? is the regex a string?)                                                                                                                                                                                                                                                                                                      | synthetic at `tsdoc-parser.ts:839` and `file-snapshots.ts:1355` |
+| D1   | **Direct-field broadening** — a built-in tag on a custom-type field is transformed into a custom constraint via the extension's `parseValue` callback; emits a vendor-prefixed keyword rather than the standard one. Example: `@minimum 0` on a `Decimal` field → `"x-formspec-decimal-minimum": "0.0"`. See `tag-value-parser.ts:273-295` and `numeric-extension.integration.test.ts:61-81`. | IR layer + tag-value parser                                     |
+| D2   | **Path-target broadening** — stays a built-in constraint, emits the standard JSON Schema keyword on the path override. Different mechanism from D1. See `generate-schemas-config.test.ts:192-304`.                                                                                                                                                                                            | IR layer                                                        |
 
 v1 conflated D1 and D2. They share the "broadening" name but have different code paths, different outputs, and different test surfaces.
 
-### 1.6 Role C: what the synthetic *actually* enforces (and doesn't)
+### 1.6 Role C: what the synthetic _actually_ enforces (and doesn't)
 
 Codex review surfaced several semantics the plan must preserve — or explicitly change in a non-refactor PR:
 
@@ -84,12 +84,14 @@ Codex review surfaced several semantics the plan must preserve — or explicitly
 ### 1.8 Test surface (inventory)
 
 Direct synthetic-path tests:
+
 - `packages/build/src/__tests__/integer-type.test.ts` — 11 cases including PR #294/#297 cross-file scenarios and the `isIntegerBrandedType` bypass.
 - `packages/build/src/__tests__/nounchecked-index-access.test.ts` — 4 cases for TS-compiler-option interactions.
 - `packages/analysis/src/__tests__/compiler-signatures.test.ts` — 12+ cases: `MIXED_TAG_APPLICATIONS` (9 tag types), synthetic prelude generation, path-target lowering, placement rejection, narrow applicability.
 - `packages/analysis/src/__tests__/tag-capability-applicability.test.ts` — exercises `checkNarrowSyntheticTagApplicability` specifically.
 
 Broadening / extension tests:
+
 - `packages/build/src/__tests__/numeric-extension.integration.test.ts` — D1 direct-field broadening into vendor-prefixed keywords.
 - `packages/build/src/__tests__/extension-api.test.ts:142-602` — broadening registry + JSON Schema rejection rules.
 - `packages/build/src/__tests__/generate-schemas-config.test.ts:192-460` — D2 path-target broadening + contradictions (e.g., `@pattern` on numeric Decimal path).
@@ -124,33 +126,42 @@ Three mechanisms, ordered from safest to most invasive. The plan chooses them pe
 
 Tag-by-tag coverage table:
 
-| Tag | Proposed mechanism | Semantics-preservation notes |
-|---|---|---|
-| `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf` | #1 (NumberLit) | Preserve integer-erasure — no new rejections. **Tie-break `Infinity`/`NaN`** (see §6 risk 9). |
-| `@minLength`, `@maxLength`, `@minItems`, `@maxItems` | #1 (NumberLit) | Preserve integer-erasure |
-| `@uniqueItems` | #1 (boolean marker, `requiresArgument: false`, cf. `tag-registry.ts:158-183, 557-567`) | Current parser accepts empty or the literal `true` only; any other argument (including `false`) returns `null` — `tag-value-parser.ts:132-145`. Preserve exactly: marker-only with optional `true`, value always serialized as `true`. |
-| `@pattern` | Raw string (opaque text), not a parsed RegexLit — matches current behavior at `tsdoc-parser.ts:311-312`, `tag-value-parser.ts:207-213`. | **Do not** run `new RegExp(text)` in Phase 2/3 — that is a new rejection. Defer regex validation to a separate opt-in improvement. |
-| `@enumOptions` | #1 (JsonArrayLit); project strings/numbers/`{id}` objects per `tag-value-parser.ts:178-204` | Preserve heterogeneous union; do not restrict to `string[]` |
-| `@const` | #1 (JSON scalar/array/object) with **raw-string fallback** on JSON-parse failure per `tag-value-parser.ts:151-176` and `tag-value-parser.test.ts:96-105`. IR compatibility check stays at `semantic-targets.ts:1255-1298`. | "Invalid JSON → raw string" is current behavior. Preserve. |
+| Tag                                                                             | Proposed mechanism                                                                                                                                                                                                         | Semantics-preservation notes                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, `@multipleOf` | #1 (NumberLit)                                                                                                                                                                                                             | Preserve integer-erasure — no new rejections. **Tie-break `Infinity`/`NaN`** (see §6 risk 9).                                                                                                                                          |
+| `@minLength`, `@maxLength`, `@minItems`, `@maxItems`                            | #1 (NumberLit)                                                                                                                                                                                                             | Preserve integer-erasure                                                                                                                                                                                                               |
+| `@uniqueItems`                                                                  | #1 (boolean marker, `requiresArgument: false`, cf. `tag-registry.ts:158-183, 557-567`)                                                                                                                                     | Current parser accepts empty or the literal `true` only; any other argument (including `false`) returns `null` — `tag-value-parser.ts:132-145`. Preserve exactly: marker-only with optional `true`, value always serialized as `true`. |
+| `@pattern`                                                                      | Raw string (opaque text), not a parsed RegexLit — matches current behavior at `tsdoc-parser.ts:311-312`, `tag-value-parser.ts:207-213`.                                                                                    | **Do not** run `new RegExp(text)` in Phase 2/3 — that is a new rejection. Defer regex validation to a separate opt-in improvement.                                                                                                     |
+| `@enumOptions`                                                                  | #1 (JsonArrayLit); project strings/numbers/`{id}` objects per `tag-value-parser.ts:178-204`                                                                                                                                | Preserve heterogeneous union; do not restrict to `string[]`                                                                                                                                                                            |
+| `@const`                                                                        | #1 (JSON scalar/array/object) with **raw-string fallback** on JSON-parse failure per `tag-value-parser.ts:151-176` and `tag-value-parser.test.ts:96-105`. IR compatibility check stays at `semantic-targets.ts:1255-1298`. | "Invalid JSON → raw string" is current behavior. Preserve.                                                                                                                                                                             |
 
-**Note on `@defaultValue`.** Codex v2 was right: `@defaultValue` is **not** on the synthetic constraint path. It's handled directly at `tsdoc-parser.ts:1060-1062, 1160-1162` and `file-snapshots.ts:685-699`, with its own raw-string fallback at `tag-value-parser.ts:216-229`. It is *outside* the scope of this refactor and should be listed only for completeness — no migration needed. If Phase 2/3 touches it, that's scope creep.
+**Note on `@defaultValue`.** Codex v2 was right: `@defaultValue` is **not** on the synthetic constraint path. It's handled directly at `tsdoc-parser.ts:1060-1062, 1160-1162` and `file-snapshots.ts:685-699`, with its own raw-string fallback at `tag-value-parser.ts:216-229`. It is _outside_ the scope of this refactor and should be listed only for completeness — no migration needed. If Phase 2/3 touches it, that's scope creep.
 
 ### Role C baseline is not singular — build and snapshot already diverge
 
 Codex v2 surfaced a critical issue: the two synthetic consumers lower arguments differently.
 
 - Build path: `renderSyntheticArgumentExpression` at `tsdoc-parser.ts:297-329` — invalid JSON becomes a quoted string literal; non-finite numbers are stringified.
-- Snapshot path: `getArgumentExpression` at `file-snapshots.ts:896-927` — invalid JSON causes the argument to be *omitted*; non-finite numbers pass through unchanged.
+- Snapshot path: `getArgumentExpression` at `file-snapshots.ts:896-927` — invalid JSON causes the argument to be _omitted_; non-finite numbers pass through unchanged.
 
 These produce different diagnostics today. Concrete divergent inputs:
 
-| Input | Build today | Snapshot today |
-|---|---|---|
-| `@const not-json` | Quoted string literal passed to synthetic | Argument omitted; different TS message |
-| `@minimum Infinity` | Stringified "Infinity" | Passed through as `Infinity` identifier |
-| `@minimum NaN` | Stringified "NaN" | Passed through as `NaN` identifier |
+| Input               | Build today                               | Snapshot today                          |
+| ------------------- | ----------------------------------------- | --------------------------------------- |
+| `@const not-json`   | Quoted string literal passed to synthetic | Argument omitted; different TS message  |
+| `@minimum Infinity` | Stringified "Infinity"                    | Passed through as `Infinity` identifier |
+| `@minimum NaN`      | Stringified "NaN"                         | Passed through as `NaN` identifier      |
 
 **The refactor does NOT normalize this divergence.** To keep the semantics-preservation claim honest, the typed-argument parser replicates whichever consumer is calling it — build callers get build semantics, snapshot callers get snapshot semantics — by parameterizing the parser with a small `lowering: "build" | "snapshot"` flag for the small set of divergent inputs. Post-refactor, a separate "normalization PR" picks one authority per divergent case with an explicit changelog entry. Scoping normalization out of the refactor is the only way the preservation claim remains true for every real-world call site.
+
+**KNOWN_DIVERGENCES status after Phase 4D:**
+
+| Divergence          | Status                                                       | Disposition                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@const not-json`   | Active `KNOWN_DIVERGENCES` entry in `parity-harness.test.ts` | Refactoring artifact. Will be normalized in the post-Phase-5 normalization PR. The `KNOWN_DIVERGENCES` entry is retained only until that PR lands.                                                                         |
+| `@minimum Infinity` | Removed from `KNOWN_DIVERGENCES`                             | Normalized in Phase 2 — both consumers now pass `Infinity` as an identifier. No entry needed.                                                                                                                              |
+| `@minimum NaN`      | Removed from `KNOWN_DIVERGENCES`                             | Normalized in Phase 2 — same mechanism as `Infinity`. No entry needed.                                                                                                                                                     |
+| Alias-chain (#363)  | Not in `KNOWN_DIVERGENCES` (semantic decision pending)       | If the decision is "not supported", this becomes a permanent user-visible divergence (never enters `KNOWN_DIVERGENCES` as a fixed entry — it becomes documented behavior). If "resolve", it becomes Phase-5-adjacent work. |
 
 ### Role D split
 
@@ -185,7 +196,7 @@ v1 had an inversion bug (Phase 3 removed prelude aliases before their consumers 
 3. **Phase 1 — typed-argument parser in `@formspec/analysis`.** New module `tag-argument-parser.ts` with per-tag schemas. Test parity against every row in the §3 table. No wiring. Ship green.
 4. **Phase 2 — route role-C off synthetic in the build path only.** `buildCompilerBackedConstraintDiagnostics` calls the new parser; keeps the synthetic call as a fallback for any tag not yet covered. Snapshot consumer unchanged. Ship green.
 5. **Phase 3 — route role-C off synthetic in the snapshot path.** Mirror Phase 2 in `file-snapshots.ts:1300-1390`, preserving the diagnostic-code translation layer. This is where semantic-preservation testing is most critical: the ts-plugin/LSP consume these codes. Ship green.
-6. **Phase 4 — relocate setup diagnostics.** This phase runs *before* any deletion. The setup-validation diagnostics (`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE`) currently live in `compiler-signatures.ts:446-585` — validation of invalid TS identifiers, built-in name conflicts, duplicate custom type names. They surface in real user-facing tests (`compiler-signatures.test.ts:334-458`, `file-snapshots.test.ts:174-204`, `date-extension.integration.test.ts:287-339`). Relocate them to a registry-validation pass that runs once inside `createExtensionRegistry` (`packages/build/src/extensions/index.ts`, with a mirror pass invoked by the snapshot consumer's extension-loading site). Preserve diagnostic `code` and message shape exactly; *capture* current provenance in Phase 0's observability work (do not attempt to preserve it). Span **will** change (per-field → registry-level); this is unavoidable and must be explicitly signed off as a documented behavior change with release-notes entry, not a silent drift.
+6. **Phase 4 — integer-brand bypass unification + argument-text helper + setup-diagnostic relocation.** _(Slices 4A/B/C landed; setup-diagnostic relocation and snapshot-path Role-B capability check are continuing work.)_ Slice 4A added `isIntegerBrandedType` bypass to the snapshot consumer (`file-snapshots.ts:buildTagDiagnostics`), resolving the six known parity-harness divergences on integer-branded types (#325). Slice 4B extracted the shared `effectiveArgumentText` helper, unifying argument-text derivation across both consumers and eliminating `TAGS_REQUIRING_RAW_TEXT` parity divergences. Slice 4C relocated setup-validation diagnostics (`UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE`) from lazy first-batch emission in `compiler-signatures.ts:446-585` to eager emission at `createExtensionRegistry` time. Slice 4D — canary audit + acceptance-gate grounding: investigation found that the 13 remaining `.fails` canaries in `constraint-canaries.test.ts` require Phase 5 work — no canaries flipped in Phase 4. Canaries fall into two structural gaps and one intentional category (see test file module comment). The §8.4b acceptance gate was grounded to **≤ 700 MB peak RSS on `stripe-realistic-build`** (see #336). _Phase 5 targets (found during 4D audit):_ (a) snapshot-path Role-B capability guard (8 canaries in Category 1), (b) snapshot-path IR validation pass (4 canaries in Category 2), (c) alias-chain resolution decision (#363).
 7. **Phase 5 — delete synthetic callers and narrow-applicability surface.** Once both consumers route role C through the typed parser, delete: `runSyntheticProgram`, `buildSyntheticBatchSource`, `checkSyntheticTagApplication`, `checkSyntheticTagApplications` (the snapshot batch entrypoint at `compiler-signatures.ts:1113`, imported at `file-snapshots.ts:4,1355`), `lowerTagApplicationToSyntheticCall`, and the custom `CompilerHost`. Also handle `checkNarrowSyntheticTagApplicability` / `checkNarrowSyntheticTagApplicabilities` — they're module-internal (not re-exported from `@formspec/analysis/internal` per `packages/analysis/src/internal.ts:157-164`), so a monorepo-wide `rg` sweep is sufficient; no deprecation cycle needed. Their tests (`tag-capability-applicability.test.ts`, `compiler-signatures.test.ts:737-845`) must migrate to assert the same invariants against the new typed-parser surface before deletion.
 8. **Phase 6 — delete prelude and supporting declarations.** Only now: remove `buildSyntheticHelperPrelude`, `buildSupportingDeclarations` (the thing #294/#297 has been patching), and the extension-type `unknown` aliases. Confirm `isIntegerBrandedType` bypass is preserved or explicitly replaced.
 9. **Phase 7 — tidy `class-analyzer.ts` and `file-snapshots.ts`.** Remove unused `hostType`/`subjectType` plumbing if no longer needed. Document in ARCHITECTURE.md.
@@ -196,7 +207,7 @@ Each phase is independently shippable and test-green. Phase 0 validates assumpti
 
 ## 5. Test-preservation strategy
 
-- Every existing test from §1.8 runs against the new path unchanged. These tests *are* the spec.
+- Every existing test from §1.8 runs against the new path unchanged. These tests _are_ the spec.
 - Add `packages/analysis/src/__tests__/tag-argument-parser.test.ts` for the new parser, covering every row of the §3 table with positive + negative cases.
 - **Parity harness for Phase 2.** Before Phase 2 lands, add a test harness that runs both the typed-argument path and the synthetic path over the same inputs and asserts diagnostic-equality (code + message). Wire it as a temporary Vitest project that can be disabled once Phase 4 lands. This is the safety net for the semantics-preservation non-goal.
 - **Integer-branded regression canary.** Carve out the 7 imported/branded-Integer cases from `integer-type.test.ts` as a named sub-suite; re-run them with an environment toggle that forces the host-checker path, starting in Phase 2. Failures here are blockers.
@@ -216,7 +227,7 @@ Each phase is independently shippable and test-green. Phase 0 validates assumpti
 7. **Interaction with PR #297 (imported-type sibling fix)** and **PR #308 (large external type argument fix)**. Both land in the "host checker only" direction; they're compatible with this refactor. But #297 patches the very `buildSupportingDeclarations` that Phase 6 deletes — coordinate timing so we're not patching code that's about to disappear. Note: PR #300 (`extractPayload`) was superseded by #308 and removed in #313.
 8. **Unsupported deep-import risk (not Published API).** `@formspec/analysis`'s `package.json:9-24` exposes only `.` and `./internal`, and `./internal` (`packages/analysis/src/internal.ts:157-164`) does not re-export `checkNarrowSyntheticTagApplicability` / `...Applicabilities`. The helpers are therefore not part of the published API — any external caller would have to deep-import the source file. Before Phase 5 deletion, run `rg checkNarrowSyntheticTagApplicabilit` across the monorepo (sufficient for internal callers) and note in release notes that deep-imports of this symbol are unsupported; no formal deprecation cycle needed.
 9. **`Infinity` / `NaN` in numeric tag arguments.** Build stringifies, snapshot passes through. Codex v2 flagged this as an unresolved semantic. Pick one before Phase 2.
-10. **Relocated setup diagnostics may produce different spans.** Moving `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` from a per-field per-application site to a registry-level site changes *where* the diagnostic anchors. Consumers that rely on the provenance (IDE gutter markers, ESLint fixers) need verification.
+10. **Relocated setup diagnostics may produce different spans.** Moving `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` from a per-field per-application site to a registry-level site changes _where_ the diagnostic anchors. Consumers that rely on the provenance (IDE gutter markers, ESLint fixers) need verification.
 
 ---
 
@@ -251,7 +262,7 @@ Debug logging is not a nice-to-have. The refactor spans three phases of implemen
 Deliverables, building on the pino logger from #298:
 
 - **8.3a** A `formspec:analysis:constraint-validator` logger namespace, with sub-namespaces `:build`, `:snapshot`, `:typed-parser`, `:synthetic` (while it still exists), `:broadening`. Each logs at `debug` by default, `trace` for argument-lowering details.
-- **8.3b** Per-tag-application structured log entry with: `consumer` (build/snapshot), `tag`, `placement`, `subjectTypeKind`, `roleOutcome` (A-pass / A-reject / B-pass / B-reject / C-pass / C-reject / D1 / D2 / bypass), `elapsedMicros`. Phase 0 lands this even before any implementation change — it *is* the observability counter from Phase 0.
+- **8.3b** Per-tag-application structured log entry with: `consumer` (build/snapshot), `tag`, `placement`, `subjectTypeKind`, `roleOutcome` (A-pass / A-reject / B-pass / B-reject / C-pass / C-reject / D1 / D2 / bypass), `elapsedMicros`. Phase 0 lands this even before any implementation change — it _is_ the observability counter from Phase 0.
 - **8.3c** Extension-registry construction logs setup-diagnostic emission (count + codes) at `debug`. This is the runtime evidence behind §9 #19 (emission-count stability across registry rebuilds).
 - **8.3d** ~~`extractPayload` invocations~~ — removed. `extractPayload` was superseded by PR #308 and removed in #313. The `Ref<T>` stack overflow is now handled by skipping full expansion of external type arguments in `extractReferenceTypeArguments`.
 - **8.3e** Parity-harness logs are structured JSON consumable by a diffing script, not free-form text. Phase 0.5a must define the schema.
@@ -261,7 +272,7 @@ Acceptance check: enabling `trace`-level logging on the 20-field fixture produce
 
 ### 8.4 Stripe `Ref<Customer>` stress test — named acceptance gate
 
-Motivation: the `stripe` npm SDK exposes very complex, deeply-nested, heavily-generic types (discriminated unions with dozens of variants, recursive references, expandable-field polymorphism). The synthetic `ts.Program` has historically been the OOM risk in FormSpec — it instantiates a parallel type graph that the host checker has already computed once. If the refactor succeeds, running the *host* checker over a Stripe-typed form should Just Work, because the host program has already paid the type-instantiation cost.
+Motivation: the `stripe` npm SDK exposes very complex, deeply-nested, heavily-generic types (discriminated unions with dozens of variants, recursive references, expandable-field polymorphism). The synthetic `ts.Program` has historically been the OOM risk in FormSpec — it instantiates a parallel type graph that the host checker has already computed once. If the refactor succeeds, running the _host_ checker over a Stripe-typed form should Just Work, because the host program has already paid the type-instantiation cost.
 
 **Fixture** (lives in `@formspec/e2e`):
 
@@ -272,7 +283,7 @@ Motivation: the `stripe` npm SDK exposes very complex, deeply-nested, heavily-ge
 **Gates:**
 
 - **8.4a** Pre-refactor baseline (Phase 0): run the fixture, record peak RSS, wall time, and whether it OOMs at all. Expected: measurable memory pressure; possibly OOM on CI runners with <2 GB.
-- **8.4b** Post-Phase 4 gate: the same fixture completes with peak RSS ≤ 50% of the Phase-0 baseline and zero OOM on a 1 GB runner. If it fails, Phase 5/6 deletion is blocked until root-caused.
+- **8.4b** Post-Phase 4 gate: peak RSS ≤ **700 MB** on the `stripe-realistic-build` surface (the build consumer driven against the Stripe-realistic fixture). Grounding rationale: the tsserver-plugin Phase 0 baseline is 567 MB — that surface uses the host TypeScript program with zero synthetic `ts.createProgram` calls, so it is the empirically measured cost of loading Stripe's `.d.ts` once. Post-Phase-5 the build surface must do the same work plus schema generation; 700 MB gives 133 MB of headroom above that floor. The current build baseline is 861 MB; the ~294 MB gap corresponds exactly to the synthetic parallel-program cost (consistent with `coldProgramCount: 20` in the synthetic microbenchmark). The previous "≤50% of Phase-0 baseline" target was physically impossible — it would require dropping below the host-checker floor. This gate was grounded in Phase 4 Slice D (see issue #336 comment https://github.com/mike-north/formspec/issues/336#issuecomment-4290907383). If it fails, Phase 5/6 deletion is blocked until root-caused. **This gate cannot be met by optimization; it is met only by eliminating the synthetic `ts.createProgram` calls. If Phase 5 completes and the benchmark still exceeds 700 MB, the synthetic path has not been fully retired.**
 - **8.4c** Post-Phase 6 gate (synthetic fully deleted): same fixture again. No `ts.createProgram` call recorded in the debug logs (§8.3 counter for `:synthetic` namespace reads zero for the whole run).
 - **8.4d** Bench it in CI as a guard against regressions, not just during the refactor.
 
@@ -282,15 +293,15 @@ This is the single most important acceptance test because it is the **external m
 
 ## 9. Brutal test-coverage assessment
 
-The refactor will silently regress behavior unless the test surface is hardened *before* Phase 2. The current coverage is directionally decent but has structural gaps that will bite. Ordered by severity.
+The refactor will silently regress behavior unless the test surface is hardened _before_ Phase 2. The current coverage is directionally decent but has structural gaps that will bite. Ordered by severity.
 
 ### 9.1 Critical gaps (block Phase 2 until addressed)
 
 1. **No cross-consumer parity test exists anywhere.** Build and snapshot consume different lowering functions (`renderSyntheticArgumentExpression` vs `getArgumentExpression`) and produce different diagnostics today — but there is no test that compares them on the same input. This means Phase 2 (build migration) can land green with snapshot quietly regressing, and Phase 3 can land green with build quietly regressing. **Action:** write a parametric fixture suite (tag × type × argument shape) that runs both consumers and asserts either (a) diagnostic equality or (b) a known-divergence entry in a golden list. This is the single most important test investment before the refactor starts.
 
-2. **LSP / ts-plugin constraint-diagnostic coverage is thin even though basic E2E exists.** `packages/ts-plugin/src/__tests__/semantic-service.test.ts:28-55`, `downstream-authoring-host.test.ts:29-71`, `packages/language-server/src/__tests__/plugin-client.test.ts:174-213` and `server.test.ts:284-340` already drive the consumers meaningfully. What's missing is *constraint-tag-specific* coverage through those surfaces. **Action:** extend the existing harnesses with three fixtures — `@minimum` on a string (expect TYPE_MISMATCH), `@minimum 0` on imported `Integer` (expect accept via bypass), path-target `@exclusiveMinimum :amount 0` on `Decimal` (expect accept via D2). Scope: three added fixtures, not a new harness.
+2. **LSP / ts-plugin constraint-diagnostic coverage is thin even though basic E2E exists.** `packages/ts-plugin/src/__tests__/semantic-service.test.ts:28-55`, `downstream-authoring-host.test.ts:29-71`, `packages/language-server/src/__tests__/plugin-client.test.ts:174-213` and `server.test.ts:284-340` already drive the consumers meaningfully. What's missing is _constraint-tag-specific_ coverage through those surfaces. **Action:** extend the existing harnesses with three fixtures — `@minimum` on a string (expect TYPE_MISMATCH), `@minimum 0` on imported `Integer` (expect accept via bypass), path-target `@exclusiveMinimum :amount 0` on `Decimal` (expect accept via D2). Scope: three added fixtures, not a new harness.
 
-3. **`isIntegerBrandedType` bypass coverage is narrow.** `integer-type.test.ts:439-497` covers 7 scenarios — imported, nullable, optional, mixed — through the *build* path. I see no corresponding tests for the *snapshot* path. If the bypass applies in one consumer and not the other, Phase 3 will regress IDE behavior without any test flagging it. **Action:** mirror the 7 cases into `file-snapshots.test.ts` before Phase 2.
+3. **`isIntegerBrandedType` bypass coverage is narrow.** `integer-type.test.ts:439-497` covers 7 scenarios — imported, nullable, optional, mixed — through the _build_ path. I see no corresponding tests for the _snapshot_ path. If the bypass applies in one consumer and not the other, Phase 3 will regress IDE behavior without any test flagging it. **Action:** mirror the 7 cases into `file-snapshots.test.ts` before Phase 2.
 
 4. **No test pins the `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` span/provenance.** Existing tests check `code` and `message.toMatch(...)` but not `primaryLocation`. Phase 4's relocation of setup diagnostics changes where they anchor. Without a span test, IDE gutter regressions go silent. **Action:** extend `compiler-signatures.test.ts:334-458` and `date-extension.integration.test.ts:287-339` to assert `primaryLocation.file`, `line`, and `column` against expected pre-relocation provenance, then update the expected values as part of Phase 4 with an explicit sign-off rather than silent drift.
 
@@ -308,7 +319,7 @@ The refactor will silently regress behavior unless the test surface is hardened 
 
 10. **`noUncheckedIndexedAccess` is the only TS-compiler-option canary.** `nounchecked-index-access.test.ts` covers one option. What about `strictNullChecks: false`, `useUnknownInCatchVariables: false`, `exactOptionalPropertyTypes: true`, `useDefineForClassFields: true`? Any of these could interact with the host-checker migration in ways the synthetic path absorbs today. **Action:** don't write tests for all of them — instead, add a per-option matrix to one representative fixture (`@minLength 1` on `string`) and assert identical diagnostics across a chosen set of 3-4 high-risk options.
 
-11. **ESLint plugin is *not* an IR-diagnostic consumer — this is a false alarm.** `@formspec/eslint-plugin`'s `tag-type-check` rule (`packages/eslint-plugin/src/rules/type-compatibility/tag-type-check.ts:93-154`) computes mismatches directly from AST + host `ts.TypeChecker`, not from `ConstraintSemanticDiagnostic`. The refactor cannot silently regress the plugin through IR-message changes because the plugin never reads them. **No action required.** (Kept in the list because v3 mis-characterized this as a gap.)
+11. **ESLint plugin is _not_ an IR-diagnostic consumer — this is a false alarm.** `@formspec/eslint-plugin`'s `tag-type-check` rule (`packages/eslint-plugin/src/rules/type-compatibility/tag-type-check.ts:93-154`) computes mismatches directly from AST + host `ts.TypeChecker`, not from `ConstraintSemanticDiagnostic`. The refactor cannot silently regress the plugin through IR-message changes because the plugin never reads them. **No action required.** (Kept in the list because v3 mis-characterized this as a gap.)
 
 ### 9.3 Structural issues
 
@@ -322,7 +333,7 @@ The refactor will silently regress behavior unless the test surface is hardened 
 
 16. **The three known build/snapshot divergences are unpinned.** §3 catalogs `@const not-json`, `@minimum Infinity`, and `@minimum NaN` as inputs where the two consumers already diverge today. No test asserts what each consumer actually produces. Phase 2/3 will parameterize the typed parser with a `lowering: "build" | "snapshot"` flag; without pinned tests, the flag is free to drift. **Action:** add three pair-tests (one per divergent input) asserting the build and snapshot diagnostic separately. These are the anchor for the eventual normalization PR.
 
-17. **Orphaned raw-text fallback is untested.** `tsdoc-parser.ts:1152-1175` processes raw-text fallback from `ts.getJSDocTags()` *even when the unified parser produced no tag object* — a recovery path that matters for malformed comments. No test in the `tsdoc-parser` suite exercises this orphaned-fallback branch (I searched for fixtures combining a broken unified-parse with a recoverable raw tag). Phase 1's typed parser must either reproduce this recovery or explicitly decline to, but there's no spec test to pin it either way. **Action:** add one integration test where the unified parser fails on a field but a raw `@pattern "abc"` is still recovered — assert current behavior before Phase 1.
+17. **Orphaned raw-text fallback is untested.** `tsdoc-parser.ts:1152-1175` processes raw-text fallback from `ts.getJSDocTags()` _even when the unified parser produced no tag object_ — a recovery path that matters for malformed comments. No test in the `tsdoc-parser` suite exercises this orphaned-fallback branch (I searched for fixtures combining a broken unified-parse with a recoverable raw tag). Phase 1's typed parser must either reproduce this recovery or explicitly decline to, but there's no spec test to pin it either way. **Action:** add one integration test where the unified parser fails on a field but a raw `@pattern "abc"` is still recovered — assert current behavior before Phase 1.
 
 18. **Narrow-applicability invariants are not migration-planned.** `compiler-signatures.test.ts:737-845` covers `checkNarrowSyntheticTagApplicability` at the unit level (narrow prelude, placement-aware capability check). Phase 5 deletes that function; Phase 1's typed parser needs to carry the same placement-aware applicability logic forward. **Action:** before Phase 5, re-assert each `compiler-signatures.test.ts:737-845` invariant against the new typed-parser entrypoint so the tests migrate rather than die.
 
@@ -332,20 +343,21 @@ The refactor will silently regress behavior unless the test surface is hardened 
 
 This list is the source of truth; **Phase 0.5 in §4 is the execution plan** that schedules each item as a separately-mergeable PR. Before any Phase 2 code lands:
 
-- [ ] Cross-consumer parity harness (9.1 #1)
-- [ ] Three LSP/ts-plugin constraint fixtures added to existing harnesses (9.1 #2)
-- [ ] Mirror `isIntegerBrandedType` cases in snapshot tests (9.1 #3)
-- [ ] Span/provenance assertions for setup diagnostics (9.1 #4)
-- [ ] `@const` raw-fallback edge cases (9.1 #5)
-- [ ] Pinned tests for the three known build/snapshot divergences (9.3 #16)
-- [ ] Orphaned raw-text fallback integration test (9.3 #17)
-- [ ] Narrow-applicability invariants migrated to the typed-parser entrypoint before Phase 5 (9.3 #18)
-- [ ] Setup-diagnostic emission-count stability test (9.3 #19)
-- [ ] Thin `constraint-tag-semantics.ref.md` with ~15 entries (9.3 #12)
-- [ ] Silent-acceptance negative-case canaries (9.3 #14)
-- [ ] §8.3 debug-logging namespaces landed + ARCHITECTURE.md "Debugging constraint validation" section
-- [ ] Stripe `Ref<Customer>` stress-test fixture + Phase-0 baseline (§8.4 / 0.5l)
-- [ ] Parity-harness structured log schema + diffing helper (§8.3e / 0.5m)
+- [x] Cross-consumer parity harness (9.1 #1) — landed in 0.5a (#324)
+- [x] Three LSP/ts-plugin constraint fixtures added to existing harnesses (9.1 #2) — landed in 0.5b (#323)
+- [x] Mirror `isIntegerBrandedType` cases in snapshot tests (9.1 #3) — landed in 0.5c (#315); bypass wired in Phase 4A (#361)
+- [x] Span/provenance assertions for setup diagnostics (9.1 #4) — landed in 0.5d (#322); setup diagnostics relocated in Phase 4C (#384)
+- [x] `@const` raw-fallback edge cases (9.1 #5) — landed in 0.5e (#314)
+- [x] Pinned tests for the three known build/snapshot divergences (9.3 #16) — landed in 0.5f (#317)
+- [x] Orphaned raw-text fallback integration test (9.3 #17) — landed in 0.5g (#321)
+- [ ] Narrow-applicability invariants migrated to the typed-parser entrypoint before Phase 5 (9.3 #18) — deferred to Phase 5
+- [x] Setup-diagnostic emission-count stability test (9.3 #19) — landed in 0.5h (#320)
+- [x] Thin `constraint-tag-semantics.ref.md` with ~15 entries (9.3 #12) — landed in 0.5i (#328)
+- [x] Silent-acceptance negative-case canaries (9.3 #14) — landed in 0.5j (#318); labels updated in Phase 4D (this PR)
+- [x] §8.3 debug-logging namespaces landed + ARCHITECTURE.md "Debugging constraint validation" section — Phase 0-A (#305)
+- [x] Stripe `Ref<Customer>` stress-test fixture + Phase-0 baseline (§8.4 / 0.5l) — landed in 0.5l (#333)
+- [x] Parity-harness structured log schema + diffing helper (§8.3e / 0.5m) — landed in 0.5m (#316)
+- [x] §8.4b acceptance gate grounded to ≤ 700 MB peak RSS on `stripe-realistic-build` — Phase 4D (this PR; see #336)
 
 Budget: ~1-2 weeks of focused test work. Skipping it turns this refactor into a game of whack-a-mole with user bug reports.
 
