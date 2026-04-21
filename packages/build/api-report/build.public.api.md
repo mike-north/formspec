@@ -98,7 +98,7 @@ export interface ControlElement {
 }
 
 // @public
-export function createExtensionRegistry(extensions: readonly ExtensionDefinition[]): MutableExtensionRegistry;
+export function createExtensionRegistry(extensions: readonly ExtensionDefinition_2[]): MutableExtensionRegistry;
 
 // @public
 export function createStaticBuildContext(filePath: string): StaticBuildContext;
@@ -153,18 +153,18 @@ export { ExtensionDefinition }
 
 // @public
 export interface ExtensionRegistry {
-    readonly extensions: readonly ExtensionDefinition[];
-    findAnnotation(annotationId: string): CustomAnnotationRegistration | undefined;
+    readonly extensions: readonly ExtensionDefinition_2[];
+    findAnnotation(annotationId: string): CustomAnnotationRegistration_2 | undefined;
     findBuiltinConstraintBroadening(typeId: string, tagName: string): {
         readonly extensionId: string;
-        readonly registration: BuiltinConstraintBroadeningRegistration;
+        readonly registration: BuiltinConstraintBroadeningRegistration_2;
     } | undefined;
-    findConstraint(constraintId: string): CustomConstraintRegistration | undefined;
+    findConstraint(constraintId: string): CustomConstraintRegistration_2 | undefined;
     findConstraintTag(tagName: string): {
         readonly extensionId: string;
-        readonly registration: ConstraintTagRegistration;
+        readonly registration: ConstraintTagRegistration_2;
     } | undefined;
-    findType(typeId: string): CustomTypeRegistration | undefined;
+    findType(typeId: string): CustomTypeRegistration_2 | undefined;
     findTypeByBrand(brand: string): ExtensionTypeLookupResult | undefined;
     findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
     findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
@@ -173,7 +173,7 @@ export interface ExtensionRegistry {
 // @public
 export interface ExtensionTypeLookupResult {
     readonly extensionId: string;
-    readonly registration: CustomTypeRegistration;
+    readonly registration: CustomTypeRegistration_2;
 }
 
 export { FormElement }
@@ -184,7 +184,7 @@ export { FormSpec }
 export interface FormSpecConfig {
     readonly constraints?: ConstraintConfig;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
-    readonly extensions?: readonly ExtensionDefinition_2[];
+    readonly extensions?: readonly ExtensionDefinition_3[];
     readonly metadata?: MetadataPolicyInput_2;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
     readonly vendorPrefix?: string;
