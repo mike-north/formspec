@@ -244,7 +244,24 @@ export function createAnalyzerMetadataPolicy(
 }
 
 /**
- * Removes duplicate diagnostics from an accumulated array.
+ * Diagnostic codes eligible for deduplication by `deduplicateDiagnostics`.
+ *
+ * Only setup diagnostics are safe to dedup by `code + message` because every
+ * copy shares the same `primaryLocation` (the registry-level
+ * `{surface:"extension", line:1, column:0}` anchor). Per-field diagnostics —
+ * e.g., two fields producing the same `INVALID_TAG_PLACEMENT` message at
+ * different file positions — must not be merged because their
+ * `primaryLocation` values differ and losing one would silently hide a
+ * legitimate per-field error.
+ */
+const DEDUPLICATABLE_DIAGNOSTIC_CODES: ReadonlySet<string> = new Set([
+  "SYNTHETIC_SETUP_FAILURE",
+  "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE",
+]);
+
+/**
+ * Removes duplicate setup diagnostics from an accumulated array, leaving
+ * non-setup diagnostics unchanged.
  *
  * Phase 4 Slice C: when an extension registry has setup failures, each field
  * node in a class/interface calls {@link parseTSDocTags} independently, and
@@ -252,8 +269,13 @@ export function createAnalyzerMetadataPolicy(
  * registration site). Without deduplication, an N-field declaration would
  * produce N identical setup diagnostics. We deduplicate by `code + message`
  * (`\0`-separated to prevent collisions between a code value that matches a
- * message prefix and an actual message) because all copies share the same
- * `primaryLocation` provenance.
+ * message prefix and an actual message) because all copies of a setup
+ * diagnostic share the same `primaryLocation` provenance.
+ *
+ * Dedup is restricted to {@link DEDUPLICATABLE_DIAGNOSTIC_CODES} so that
+ * per-field diagnostics with identical messages but distinct locations are
+ * always retained — otherwise the helper would silently drop legitimate
+ * errors on sibling fields that happen to share a diagnostic code+message.
  *
  * TODO: root fix — instead of deduplicating after accumulation, inject setup
  * diagnostics ONCE at the class/interface/type-alias entry in
@@ -262,15 +284,16 @@ export function createAnalyzerMetadataPolicy(
  * non-empty, emit them once and pass `undefined` as the extension registry to
  * per-field `parseTSDocTags` calls so they perform no setup-diag re-emission.
  * That eliminates the need for this deduplication pass entirely.
- * Deferred because the restructure touches multiple entry functions and is
- * outside the scope of the current PR (Phase 4 Slice C review feedback).
+ * Tracked in
+ * `docs/refactors/phase-4-slice-c-deduplicate-diagnostics-root-fix.md`.
  */
-function deduplicateDiagnostics(
+export function deduplicateDiagnostics(
   diagnostics: readonly ConstraintSemanticDiagnostic[]
 ): readonly ConstraintSemanticDiagnostic[] {
   if (diagnostics.length <= 1) return diagnostics;
   const seen = new Set<string>();
   return diagnostics.filter((d) => {
+    if (!DEDUPLICATABLE_DIAGNOSTIC_CODES.has(d.code)) return true;
     // `\0` separator prevents collisions where a code string is a prefix of a
     // message string (e.g., code = "FOO", message = "BAR" must not collide
     // with code = "FOO\0BAR", message = "").
