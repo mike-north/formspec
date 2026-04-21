@@ -1,5 +1,11 @@
 ---
 "@formspec/analysis": patch
+"@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/eslint-plugin": patch
+"@formspec/language-server": patch
+"@formspec/ts-plugin": patch
+"formspec": patch
 ---
 
 Phase 4 Slice D: document canary audit findings and ground the Phase 4 acceptance gate.
