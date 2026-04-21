@@ -23,10 +23,8 @@ export class SecondaryReport {
     tempDir = fs.mkdtempSync(path.join(__dirname, "..", ".cli-subprocess-"));
   });
 
-  afterAll(() => {
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true });
-    }
+  afterAll(async () => {
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   });
 
   describe("help", () => {
