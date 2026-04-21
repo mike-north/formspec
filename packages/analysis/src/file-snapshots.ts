@@ -3,6 +3,7 @@ import * as ts from "typescript";
 import {
   checkSyntheticTagApplicationsDetailed,
   lowerTagApplicationToSyntheticCall,
+  validateExtensionSetup,
 } from "./compiler-signatures.js";
 import {
   extractCommentBlockTagTexts,
@@ -64,6 +65,7 @@ import {
   getSyntheticLogger,
   getTypedParserLogger,
   describeTypeKind,
+  logSetupDiagnostics,
   logTagApplication,
   nowMicros,
   elapsedMicros,
@@ -1329,7 +1331,12 @@ function buildTagDiagnostics(
   commentTags: ReturnType<typeof parseCommentBlock>["tags"],
   semanticOptions: CommentSemanticContextOptions,
   performance: FormSpecPerformanceRecorder | undefined,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  /** Phase 4 Slice C: when `true`, setup diagnostics were already emitted at
+   * the snapshot level (once per {@link buildFormSpecAnalysisFileSnapshot} call).
+   * Skip re-emitting `batchCheck.globalDiagnostics` in this function so the
+   * caller-level emit and the per-batch emit do not double-count. */
+  setupDiagnosticsPreEmitted = false
 ): FormSpecAnalysisDiagnostic[] {
   if (placement === null || subjectType === undefined) {
     return [];
@@ -1658,34 +1665,45 @@ function buildTagDiagnostics(
       })
   );
 
-  // §8.3c — log any global (setup-level) diagnostics from the batch check.
-  if (batchCheck.globalDiagnostics.length > 0) {
-    const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
-    syntheticLog.debug("synthetic batch: global setup diagnostics", {
-      diagnosticCount: batchCheck.globalDiagnostics.length,
-      codes: setupCodes,
-    });
-  }
+  // §4 Phase 4 Slice C — when setup diagnostics were pre-emitted at the
+  // snapshot level, skip re-emitting them from the per-batch path. Without
+  // this guard, a file with N commented declarations would produce N copies of
+  // each setup diagnostic (one per `buildTagDiagnostics` call), undoing the
+  // "emit-once-per-snapshot-call" guarantee established at the caller level.
+  //
+  // When setup diagnostics were NOT pre-emitted (legacy call sites or callers
+  // that don't pass the flag), retain the old per-batch behaviour so existing
+  // consumers are not silently broken.
+  if (!setupDiagnosticsPreEmitted) {
+    // §8.3c — log any global (setup-level) diagnostics from the batch check.
+    if (batchCheck.globalDiagnostics.length > 0) {
+      const setupCodes = batchCheck.globalDiagnostics.map((d) => d.kind);
+      syntheticLog.debug("synthetic batch: global setup diagnostics", {
+        diagnosticCount: batchCheck.globalDiagnostics.length,
+        codes: setupCodes,
+      });
+    }
 
-  const globalDiagnosticRange = combineCommentSpans(
-    syntheticApplications.map((application) => application.tag.fullSpan)
-  );
+    const globalDiagnosticRange = combineCommentSpans(
+      syntheticApplications.map((application) => application.tag.fullSpan)
+    );
 
-  if (globalDiagnosticRange !== null) {
-    for (const diagnostic of batchCheck.globalDiagnostics) {
-      const code =
-        diagnostic.kind === "unsupported-custom-type-override"
-          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
-          : diagnostic.kind === "synthetic-setup"
-            ? "SYNTHETIC_SETUP_FAILURE"
-            : "TYPE_MISMATCH";
-      diagnostics.push(
-        createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
-          placement,
-          tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-        })
-      );
+    if (globalDiagnosticRange !== null) {
+      for (const diagnostic of batchCheck.globalDiagnostics) {
+        const code =
+          diagnostic.kind === "unsupported-custom-type-override"
+            ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+            : diagnostic.kind === "synthetic-setup"
+              ? "SYNTHETIC_SETUP_FAILURE"
+              : "TYPE_MISMATCH";
+        diagnostics.push(
+          createAnalysisDiagnostic(code, diagnostic.message, globalDiagnosticRange, {
+            placement,
+            tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
+            ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
+          })
+        );
+      }
     }
   }
 
@@ -1856,6 +1874,36 @@ export function buildFormSpecAnalysisFileSnapshot(
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
   const extensions = options.extensions ?? toExtensionTagSources(options.extensionDefinitions);
 
+  // §4 Phase 4 Slice C — pre-validate extension setup once per snapshot call.
+  // Previously, setup failures (UNSUPPORTED_CUSTOM_TYPE_OVERRIDE /
+  // SYNTHETIC_SETUP_FAILURE) were emitted inside buildTagDiagnostics for each
+  // commented declaration. In a file with N commented declarations, a broken
+  // extension config would produce N identical diagnostics. Pre-validating here
+  // emits each setup diagnostic exactly once per buildFormSpecAnalysisFileSnapshot
+  // call, anchored at the start of the file (no tag-site location available for
+  // registry-level failures). buildTagDiagnostics skips its own global-diagnostic
+  // emission when setupDiagnosticsPreEmitted is true.
+  const snapshotLog = getSnapshotLogger();
+  const setupDiagnosticResults = validateExtensionSetup(extensions);
+  const setupDiagnosticsPreEmitted = setupDiagnosticResults.length > 0;
+  if (setupDiagnosticsPreEmitted) {
+    logSetupDiagnostics(snapshotLog, {
+      diagnosticCount: setupDiagnosticResults.length,
+      codes: setupDiagnosticResults.map((d) => d.kind),
+    });
+    // Emit each setup diagnostic anchored at the start of the file.
+    // The file-start span (0,0) is the closest we can get to a
+    // "registry-level" location in the snapshot transport format.
+    const fileStartSpan: CommentSpan = { start: 0, end: 0 };
+    for (const setupDiag of setupDiagnosticResults) {
+      const code =
+        setupDiag.kind === "unsupported-custom-type-override"
+          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+          : "SYNTHETIC_SETUP_FAILURE";
+      diagnostics.push(createAnalysisDiagnostic(code, setupDiag.message, fileStartSpan, {}));
+    }
+  }
+
   const visit = (node: ts.Node): void => {
     const placement = resolveDeclarationPlacement(node);
     if (placement !== null) {
@@ -1896,7 +1944,8 @@ export function buildFormSpecAnalysisFileSnapshot(
                   ...(extensions === undefined ? {} : { extensions }),
                 },
                 options.performance,
-                options.extensionDefinitions
+                options.extensionDefinitions,
+                setupDiagnosticsPreEmitted
               )
           )
         );

@@ -243,6 +243,29 @@ export function createAnalyzerMetadataPolicy(
   };
 }
 
+/**
+ * Removes duplicate diagnostics from an accumulated array.
+ *
+ * Phase 4 Slice C: when an extension registry has setup failures, each field
+ * node in a class/interface calls {@link parseTSDocTags} independently, and
+ * each call returns the same setup diagnostic (anchored at the extension
+ * registration site). Without deduplication, an N-field declaration would
+ * produce N identical setup diagnostics. We deduplicate by `code + message`
+ * because all copies share the same `primaryLocation` provenance.
+ */
+function deduplicateDiagnostics(
+  diagnostics: readonly ConstraintSemanticDiagnostic[]
+): readonly ConstraintSemanticDiagnostic[] {
+  if (diagnostics.length <= 1) return diagnostics;
+  const seen = new Set<string>();
+  return diagnostics.filter((d) => {
+    const key = `${d.code}\0${d.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function resolveNodeMetadata(
   metadataPolicy: AnalyzerMetadataPolicy,
   declarationKind: "type" | "field" | "method",
@@ -660,6 +683,7 @@ export function analyzeClassToIR(
     }
   );
 
+  const deduplicatedDiagnostics = deduplicateDiagnostics(diagnostics);
   return {
     name,
     ...(metadata !== undefined && { metadata }),
@@ -667,7 +691,7 @@ export function analyzeClassToIR(
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
-    ...(diagnostics.length > 0 && { diagnostics }),
+    ...(deduplicatedDiagnostics.length > 0 && { diagnostics: deduplicatedDiagnostics }),
     instanceMethods,
     staticMethods,
   };
@@ -758,6 +782,7 @@ export function analyzeInterfaceToIR(
     }
   );
 
+  const deduplicatedDiagnostics = deduplicateDiagnostics(diagnostics);
   return {
     name,
     ...(metadata !== undefined && { metadata }),
@@ -765,7 +790,7 @@ export function analyzeInterfaceToIR(
     fieldLayouts,
     typeRegistry,
     ...(annotations.length > 0 && { annotations }),
-    ...(diagnostics.length > 0 && { diagnostics }),
+    ...(deduplicatedDiagnostics.length > 0 && { diagnostics: deduplicatedDiagnostics }),
     instanceMethods: [],
     staticMethods: [],
   };
@@ -867,6 +892,7 @@ export function analyzeTypeAliasToIR(
     }
   );
 
+  const deduplicatedDiagnostics = deduplicateDiagnostics(diagnostics);
   return {
     ok: true,
     analysis: {
@@ -876,7 +902,7 @@ export function analyzeTypeAliasToIR(
       fieldLayouts: specializedFields.map(() => ({})),
       typeRegistry,
       ...(annotations.length > 0 && { annotations }),
-      ...(diagnostics.length > 0 && { diagnostics }),
+      ...(deduplicatedDiagnostics.length > 0 && { diagnostics: deduplicatedDiagnostics }),
       instanceMethods: [],
       staticMethods: [],
     },

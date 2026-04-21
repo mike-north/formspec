@@ -483,6 +483,86 @@ const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
 ]);
 
 /**
+ * Validates extension custom-type registrations and returns any setup
+ * diagnostics without throwing.
+ *
+ * This is the non-throwing counterpart to `collectExtensionCustomTypeNames`.
+ * It runs the same validation logic but returns a `SyntheticCompilerDiagnostic`
+ * for each error instead of throwing. Consumers (e.g. `createExtensionRegistry`)
+ * call this once at construction time and carry the result forward, so that
+ * setup diagnostics are emitted ONCE per registry rather than once per
+ * synthetic-batch call.
+ *
+ * §4 Phase 4 Slice C — relocates setup-diagnostic emission site from
+ * `buildSyntheticHelperPrelude` (per-batch) to `createExtensionRegistry` (once).
+ *
+ * @public
+ */
+export function validateExtensionSetup(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly SyntheticCompilerDiagnostic[] {
+  if (extensions === undefined || extensions.length === 0) {
+    return [];
+  }
+  const diagnostics: SyntheticCompilerDiagnostic[] = [];
+  const seen = new Map<string, string>(); // tsName -> extensionId
+
+  for (const ext of extensions) {
+    for (const customType of ext.customTypes ?? []) {
+      for (const tsName of customType.tsTypeNames) {
+        // TypeScript already resolves primitive keywords; no declaration needed.
+        if (TS_PRIMITIVE_KEYWORDS.has(tsName)) {
+          continue;
+        }
+        const globalBuiltinSupported = TS_GLOBAL_BUILTIN_TYPES.get(tsName);
+        if (globalBuiltinSupported === true) {
+          // Already declared in TypeScript's lib files; skip to avoid TS2300.
+          continue;
+        }
+        if (globalBuiltinSupported === false) {
+          diagnostics.push({
+            kind: "unsupported-custom-type-override",
+            code: -1,
+            message:
+              `Custom type name "${tsName}" registered by extension "${ext.extensionId}" ` +
+              `conflicts with a TypeScript global built-in type that FormSpec does not ` +
+              `yet support overriding. Rename the custom type to a non-conflicting name.`,
+          });
+          continue;
+        }
+        // Guard against malformed names being interpolated into the synthetic
+        // source (e.g. names with spaces, punctuation, or operator characters).
+        if (!/^[$_a-zA-Z][$_a-zA-Z0-9]*$/.test(tsName)) {
+          diagnostics.push({
+            kind: "synthetic-setup",
+            code: -1,
+            message:
+              `Invalid custom type name "${tsName}" registered by extension "${ext.extensionId}": ` +
+              `must be a valid TypeScript identifier.`,
+          });
+          continue;
+        }
+        const existingExtensionId = seen.get(tsName);
+        if (existingExtensionId !== undefined) {
+          diagnostics.push({
+            kind: "synthetic-setup",
+            code: -1,
+            message:
+              `Duplicate custom type name "${tsName}" registered by extensions ` +
+              `"${existingExtensionId}" and "${ext.extensionId}". ` +
+              `Extension-registered types must have unique names.`,
+          });
+          continue;
+        }
+        seen.set(tsName, ext.extensionId);
+      }
+    }
+  }
+
+  return diagnostics;
+}
+
+/**
  * Collects deduplicated custom type names from extensions, suitable for
  * emission as `type X = unknown;` declarations in the synthetic prelude.
  *
@@ -495,6 +575,12 @@ const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
  * Throws if an unsupported TypeScript global built-in is registered. To add
  * support for a new global built-in, set its value to `true` in
  * `TS_GLOBAL_BUILTIN_TYPES`.
+ *
+ * Note: §4 Phase 4 Slice C — consumers that construct an `ExtensionRegistry`
+ * should use `validateExtensionSetup` at registry construction time instead.
+ * This throwing function is retained for the synthetic-prelude path which
+ * still catches and converts these errors inside `runBatchSyntheticCheck`.
+ * After Phase 5 (synthetic deletion), this function can be removed.
  */
 function collectExtensionCustomTypeNames(
   extensions: readonly ExtensionTagSource[] | undefined

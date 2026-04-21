@@ -1200,6 +1200,41 @@ export function parseTSDocTags(
     return cached;
   }
 
+  // §4 Phase 4 Slice C — emit setup diagnostics ONCE per parseTSDocTags call
+  // (anchored at the extension registration site, not at the tag use site).
+  // Previously, setup diagnostics fired once per synthetic-batch call inside
+  // buildSyntheticHelperPrelude, bypassing the LRU cache. Now they are
+  // pre-computed in createExtensionRegistry and read here, producing exactly
+  // one diagnostic per node analysis pass rather than one per tag application.
+  const setupDiags = options?.extensionRegistry?.setupDiagnostics;
+  if (setupDiags !== undefined && setupDiags.length > 0) {
+    // Anchor at the "extension" surface with the current file path.
+    // We do not have source-location info for the extension registration site,
+    // so we use line 1, column 0 as the registry-level provenance.
+    const extensionProvenance: Provenance = {
+      surface: "extension",
+      file,
+      line: 1,
+      column: 0,
+    };
+    const diagnostics: ConstraintSemanticDiagnostic[] = setupDiags.map((d) =>
+      makeDiagnostic(
+        d.kind === "unsupported-custom-type-override"
+          ? "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE"
+          : "SYNTHETIC_SETUP_FAILURE",
+        d.message,
+        extensionProvenance
+      )
+    );
+    const result: TSDocParseResult = {
+      constraints: [],
+      annotations: [],
+      diagnostics,
+    };
+    parseResultCache.set(cacheKey, result);
+    return result;
+  }
+
   const constraints: ConstraintNode[] = [];
   const annotations: AnnotationNode[] = [];
   const diagnostics: ConstraintSemanticDiagnostic[] = [];

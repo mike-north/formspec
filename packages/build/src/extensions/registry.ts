@@ -25,7 +25,10 @@ import {
   getTagDefinition,
   normalizeFormSpecTagName,
   getSyntheticLogger,
+  validateExtensionSetup,
+  logSetupDiagnostics,
   type ExtensionTagSource,
+  type SyntheticCompilerDiagnostic,
 } from "@formspec/analysis/internal";
 
 // =============================================================================
@@ -60,6 +63,24 @@ export interface ExtensionTypeLookupResult {
 export interface ExtensionRegistry {
   /** The extensions registered in this registry (in registration order). */
   readonly extensions: readonly ExtensionDefinition[];
+
+  /**
+   * Setup diagnostics detected during registry construction.
+   *
+   * These diagnostics represent configuration errors in the extension
+   * registrations — e.g. unsupported TypeScript built-in type overrides,
+   * invalid type-name identifiers, or duplicate registrations. They are
+   * computed ONCE at `createExtensionRegistry` call time (§4 Phase 4 Slice C)
+   * and carried on the registry so consumers can emit them without re-running
+   * the validation on every analysis call.
+   *
+   * Consumers should check this array at the start of each analysis pass and
+   * short-circuit if it is non-empty — the registry is unusable for
+   * constraint-type validation when setup diagnostics are present.
+   *
+   * @internal
+   */
+  readonly setupDiagnostics: readonly SyntheticCompilerDiagnostic[];
 
   /**
    * Look up a custom type registration by its fully-qualified type ID.
@@ -180,6 +201,18 @@ function buildConstraintTagSources(
           })),
         }
       : {}),
+    // Include customTypes so validateExtensionSetup can check tsTypeNames for
+    // unsupported built-in overrides and invalid identifier patterns.
+    ...(extension.types !== undefined
+      ? {
+          customTypes: extension.types.map((type) => ({
+            // tsTypeNames: deprecated in favour of symbol-based detection, but
+            // still required for name-based validation in validateExtensionSetup
+            // until the bridge is fully retired (see §synthetic-checker-retirement §4C).
+            tsTypeNames: type.tsTypeNames ?? [type.typeName],
+          })),
+        }
+      : {}),
   }));
 }
 
@@ -207,7 +240,19 @@ export function createExtensionRegistry(
     extensionIds: extensions.map((e) => e.extensionId),
   });
 
-  const reservedTagSources = buildConstraintTagSources(extensions);
+  // §4 Phase 4 Slice C — validate extension type-name registrations ONCE at
+  // construction time. Consumers pull `registry.setupDiagnostics` at the start
+  // of each analysis pass instead of re-running validation per synthetic batch.
+  const extensionTagSources = buildConstraintTagSources(extensions);
+  const setupDiagnostics = validateExtensionSetup(extensionTagSources);
+  logSetupDiagnostics(registryLog, {
+    diagnosticCount: setupDiagnostics.length,
+    codes: setupDiagnostics.map((d) => d.kind),
+  });
+
+  // extensionTagSources is already computed above for validateExtensionSetup;
+  // reuse it here to avoid a second pass over the extensions array.
+  const reservedTagSources = extensionTagSources;
   let symbolMap = new Map<ts.Symbol, ExtensionTypeLookupResult>();
   const typeMap = new Map<string, CustomTypeRegistration>();
   const typeNameMap = new Map<string, ExtensionTypeLookupResult>();
@@ -365,10 +410,12 @@ export function createExtensionRegistry(
     broadeningCount: builtinBroadeningMap.size,
     annotationCount: annotationMap.size,
     metadataSlotCount: metadataSlotMap.size,
+    setupDiagnosticCount: setupDiagnostics.length,
   });
 
   return {
     extensions,
+    setupDiagnostics,
     findType: (typeId: string) => typeMap.get(typeId),
     findTypeByName: (typeName: string) => typeNameMap.get(typeName),
     findTypeByBrand: (brand: string) => brandMap.get(brand),

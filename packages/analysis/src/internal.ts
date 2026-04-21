@@ -161,6 +161,7 @@ export {
   checkSyntheticTagApplications,
   getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
+  validateExtensionSetup,
 } from "./compiler-signatures.js";
 export {
   parseUnifiedComment,
