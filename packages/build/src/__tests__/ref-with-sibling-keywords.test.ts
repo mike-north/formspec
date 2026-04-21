@@ -892,9 +892,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         ]);
 
         const schema = generateJsonSchemaFromIR(ir);
-        const payload = schema.properties?.["payload"] as
-          | Record<string, unknown>
-          | undefined;
+        const payload = schema.properties?.["payload"] as Record<string, unknown> | undefined;
         const props = payload?.["properties"] as Record<string, unknown> | undefined;
 
         // Object.prototype.constructor still points at Object — we did not
@@ -938,9 +936,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         ]);
 
         const schema = generateJsonSchemaFromIR(ir);
-        const payload = schema.properties?.["payload"] as
-          | Record<string, unknown>
-          | undefined;
+        const payload = schema.properties?.["payload"] as Record<string, unknown> | undefined;
         const props = payload?.["properties"] as Record<string, unknown> | undefined;
 
         // The override landed as a real own property — Object.hasOwn returns
@@ -949,14 +945,12 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
         // `obj["__proto__"] = value` would have replaced [[Prototype]]
         // instead, leaving no own property.
         expect(Object.hasOwn(props ?? {}, "__proto__")).toBe(true);
-        expect(
-          Object.getOwnPropertyDescriptor(props, "__proto__")?.value
-        ).toEqual({ minLength: 1 });
+        expect(Object.getOwnPropertyDescriptor(props, "__proto__")?.value).toEqual({
+          minLength: 1,
+        });
         // Object.prototype is untouched — the global prototype chain is not
         // mutated as a side-effect of emission.
-        expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(
-          protoSnapshot
-        );
+        expect(Object.getOwnPropertyNames(Object.prototype).sort()).toEqual(protoSnapshot);
       });
     });
   });

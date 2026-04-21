@@ -1093,9 +1093,7 @@ function mergeSchemaOverride(target: JsonSchema2020, override: JsonSchema2020): 
     const mergedProperties =
       target.properties ?? (Object.create(null) as Record<string, JsonSchema2020>);
     for (const [name, propertyOverride] of Object.entries(override.properties)) {
-      const existing = Object.hasOwn(mergedProperties, name)
-        ? mergedProperties[name]
-        : undefined;
+      const existing = Object.hasOwn(mergedProperties, name) ? mergedProperties[name] : undefined;
       if (existing === undefined) {
         // `defineProperty` bypasses the `__proto__` setter on regular-prototype
         // maps; safe no-op on null-prototype maps. See the hardening comment
