@@ -23,7 +23,7 @@
 - `@multipleOf 1` → integer promotion (inherited-constraints)
 - 2-level alias chain propagation (inherited-constraints)
 - Field-level narrowing of alias constraints (inherited-constraints)
-- Path-target on `$ref` type — `allOf` composition (path-target-constraints)
+- Path-target on `$ref` type — sibling keywords alongside `$ref` (path-target-constraints; see 003 §5.4)
 - Path-target on array item type — transparency (path-target-constraints)
 - Chain DSL: groups, conditionals, labeled enums, dynamic enums, objects, arrays (chain-dsl fixtures)
 
@@ -1008,10 +1008,12 @@ export class NetworkForm {
   "$defs": {
     "Integer": { "type": "integer" },
     "NonNegativeInteger": {
-      "allOf": [{ "$ref": "#/$defs/Integer" }, { "minimum": 0 }]
+      "$ref": "#/$defs/Integer",
+      "minimum": 0
     },
     "PortNumber": {
-      "allOf": [{ "$ref": "#/$defs/NonNegativeInteger" }, { "maximum": 65535 }]
+      "$ref": "#/$defs/NonNegativeInteger",
+      "maximum": 65535
     }
   }
 }
@@ -1154,48 +1156,36 @@ export class PathTargetExpandedForm {
   "type": "object",
   "properties": {
     "size": {
-      "allOf": [
-        { "$ref": "#/$defs/Dimensions" },
-        {
-          "properties": {
-            "width": { "minimum": 0, "maximum": 10000 },
-            "height": { "minimum": 0, "maximum": 10000 },
-            "unit": { "pattern": "^(cm|in|px)$" }
-          }
-        }
-      ]
+      "$ref": "#/$defs/Dimensions",
+      "properties": {
+        "width": { "minimum": 0, "maximum": 10000 },
+        "height": { "minimum": 0, "maximum": 10000 },
+        "unit": { "pattern": "^(cm|in|px)$" }
+      }
     },
     "total": {
-      "allOf": [
-        { "$ref": "#/$defs/MonetaryAmount" },
-        {
-          "properties": {
-            "value": {
-              "minimum": 0.01,
-              "maximum": 9999999.99,
-              "multipleOf": 0.01
-            },
-            "currency": {
-              "minLength": 3,
-              "maxLength": 3,
-              "pattern": "^[A-Z]{3}$"
-            }
-          }
+      "$ref": "#/$defs/MonetaryAmount",
+      "properties": {
+        "value": {
+          "minimum": 0.01,
+          "maximum": 9999999.99,
+          "multipleOf": 0.01
+        },
+        "currency": {
+          "minLength": 3,
+          "maxLength": 3,
+          "pattern": "^[A-Z]{3}$"
         }
-      ]
+      }
     },
     "lineItems": {
       "type": "array",
       "items": {
-        "allOf": [
-          { "$ref": "#/$defs/MonetaryAmount" },
-          {
-            "properties": {
-              "value": { "minimum": 0 },
-              "currency": { "minLength": 3, "maxLength": 3 }
-            }
-          }
-        ]
+        "$ref": "#/$defs/MonetaryAmount",
+        "properties": {
+          "value": { "minimum": 0 },
+          "currency": { "minLength": 3, "maxLength": 3 }
+        }
       }
     },
     "shipments": {
@@ -1203,29 +1193,21 @@ export class PathTargetExpandedForm {
       "minItems": 1,
       "maxItems": 100,
       "items": {
-        "allOf": [
-          { "$ref": "#/$defs/Shipment" },
-          {
-            "properties": {
-              "lineItems": {
-                "minItems": 1,
-                "maxItems": 25,
-                "uniqueItems": true
-              }
-            }
+        "$ref": "#/$defs/Shipment",
+        "properties": {
+          "lineItems": {
+            "minItems": 1,
+            "maxItems": 25,
+            "uniqueItems": true
           }
-        ]
+        }
       }
     },
     "optionalAmount": {
-      "allOf": [
-        { "$ref": "#/$defs/MonetaryAmount" },
-        {
-          "properties": {
-            "value": { "minimum": 0 }
-          }
-        }
-      ]
+      "$ref": "#/$defs/MonetaryAmount",
+      "properties": {
+        "value": { "minimum": 0 }
+      }
     }
   },
   "required": ["size", "total", "lineItems"],
@@ -1269,9 +1251,9 @@ export class PathTargetExpandedForm {
 - [ ] Array transparency: `lineItems` has path-targeted constraints applied to `items` (spec 002 §4.3)
 - [ ] Untargeted `@minItems` / `@maxItems` on `shipments` constrain the outer array itself (spec 002 §4.3)
 - [ ] Path-targeted `@minItems :lineItems` / `@maxItems :lineItems` / `@uniqueItems :lineItems` constrain the nested array field on each shipment item (spec 002 §4.3)
-- [ ] Optional field with path target: `optionalAmount` emits `allOf` and is NOT in `required` (spec S8)
+- [ ] Optional field with path target: `optionalAmount` emits `$ref` + sibling keywords and is NOT in `required` (spec S8)
 - [ ] All named types appear in `$defs` (spec 003 §5.2, PP7)
-- [ ] `allOf` contains `$ref` + constraint object (spec 003 §5.4)
+- [ ] Path-targeted overrides emit as sibling keywords alongside `$ref`, not wrapped in `allOf` (spec 003 §5.4)
 
 ---
 
@@ -1779,7 +1761,7 @@ export class LineItem {
       "title": "Unit Price"
     },
     "quantity": {
-      "allOf": [{ "$ref": "#/$defs/USDCents" }],
+      "$ref": "#/$defs/USDCents",
       "minimum": 1,
       "maximum": 9999,
       "title": "Quantity"
@@ -1792,7 +1774,8 @@ export class LineItem {
       "maximum": 99999999999999
     },
     "USDCents": {
-      "allOf": [{ "$ref": "#/$defs/Integer" }, { "minimum": 0 }]
+      "$ref": "#/$defs/Integer",
+      "minimum": 0
     }
   }
 }
