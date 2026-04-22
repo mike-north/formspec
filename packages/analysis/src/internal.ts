@@ -189,7 +189,11 @@ export {
   type TagArgumentLowering,
 } from "./tag-argument-parser.js";
 export { _isIntegerBrandedType, _collectBrandIdentifiers } from "./integer-brand.js";
-export { _capabilityLabel, _supportsConstraintCapability } from "./constraint-applicability.js";
+export {
+  _capabilityLabel,
+  _supportsConstraintCapability,
+  _checkConstValueAgainstType,
+} from "./constraint-applicability.js";
 export {
   CONSTRAINT_VALIDATOR_NS,
   CONSTRAINT_VALIDATOR_BUILD_NS,

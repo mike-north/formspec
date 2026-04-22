@@ -67,10 +67,19 @@
 //   has TypeFlags.NonPrimitive and is NOT json-like, so the capability check
 //   emits TYPE_MISMATCH directly. This is correct behavior.
 //
+// Phase 5B flips (2026-04-21):
+// - 3 Category-2 @const canaries: snapshot consumer now runs @const IR
+//   validation (_checkConstValueAgainstType) in buildTagDiagnostics after
+//   Role-C accepts the parsed JSON value. Closes the IR-validation gap for
+//   primitive value-type mismatches (@const {"a":1} on number, @const 42 on
+//   string, @const {"a":{"b":1}} on string).
+//
 // @see docs/refactors/synthetic-checker-retirement.md S.9.3 #14
 // @see docs/refactors/synthetic-checker-retirement.md §4 (Phase 3 scope)
 // @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5A
+// @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5B
 // @see packages/analysis/src/constraint-applicability.ts _supportsConstraintCapability (Role B — shared)
+// @see packages/analysis/src/constraint-applicability.ts _checkConstValueAgainstType (@const IR — snapshot)
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
 import { createProgram } from "./helpers.js";
@@ -617,72 +626,64 @@ describe("@const silent-acceptance canaries", () => {
   // @const {"a":1} on a number field -- a JSON object constant is not
   // compatible with a number field.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
-  // checkers accept the raw tag call (before IR validation) because
-  // `JsonValue = unknown` in the prelude makes any JSON value assignable. The
-  // build path later catches the mismatch in validateIR (semantic-targets.ts),
-  // but the snapshot consumer never reaches that layer. Phase 5 target.
-  it.fails(
-    'emits TYPE_MISMATCH for @const {"a":1} on a number field [Phase 5 target: IR-validation pass in snapshot consumer]',
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
+  // Phase 5B FLIP: snapshot consumer now runs the @const IR validation in
+  // buildTagDiagnostics after Role-C accepts the parsed JSON value. The
+  // value's typeof ("object") does not match the number field's primitive
+  // kind, so TYPE_MISMATCH is emitted — matching the build consumer's
+  // semantic-targets.ts case "const" (~line 1283).
+  it('emits TYPE_MISMATCH for @const {"a":1} on a number field (snapshot @const IR validation)', () => {
+    const diagnostics = diagnosticsFor(
+      `
         class F {
           /** @const {"a":1} */
           value!: number;
         }
         `,
-        "const-json-obj-on-number"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+      "const-json-obj-on-number"
+    );
+    expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+  });
 
   // @const 42 on a string field -- numeric constant mismatches the string
   // field type.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
-  // checkers accept the raw tag call (before IR validation) because
-  // `JsonValue = unknown` in the prelude; the build path catches the mismatch
-  // in validateIR (semantic-targets.ts), but the snapshot consumer does not run
-  // IR validation. Phase 5 target.
-  it.fails(
-    "emits TYPE_MISMATCH for @const 42 on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
+  // Phase 5B FLIP: snapshot consumer now runs the @const IR validation in
+  // buildTagDiagnostics after Role-C accepts the parsed JSON value. The
+  // value's typeof ("number") does not match the string field's primitive
+  // kind, so TYPE_MISMATCH is emitted — matching the build consumer's
+  // semantic-targets.ts case "const" (~line 1283).
+  it("emits TYPE_MISMATCH for @const 42 on a string field (snapshot @const IR validation)", () => {
+    const diagnostics = diagnosticsFor(
+      `
         class F {
           /** @const 42 */
           value!: string;
         }
         `,
-        "const-42-on-string"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+      "const-42-on-string"
+    );
+    expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+  });
 
   // @const {"a":{"b":1}} (deeply nested JSON object) on a string field.
   // Also probes that nested JSON values do not cause a parse crash.
   //
-  // Phase 4D audit: same root cause as @const "USD" on object — both synthetic
-  // checkers accept the raw tag call (before IR validation) because
-  // `JsonValue = unknown` in the prelude; the build path catches the mismatch
-  // in validateIR (semantic-targets.ts), but the snapshot consumer never reaches
-  // that layer. Phase 5 target: IR-validation pass in snapshot consumer.
-  it.fails(
-    "emits a diagnostic for @const with a nested object literal on a string field [Phase 5 target: IR-validation pass in snapshot consumer]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
+  // Phase 5B FLIP: snapshot consumer now runs the @const IR validation in
+  // buildTagDiagnostics after Role-C accepts the parsed JSON value. The
+  // value's typeof ("object") does not match the string field's primitive
+  // kind, so TYPE_MISMATCH is emitted — matching the build consumer's
+  // semantic-targets.ts case "const" (~line 1283). This also confirms that
+  // deeply nested JSON values do not cause a parse crash during validation.
+  it("emits a diagnostic for @const with a nested object literal on a string field (snapshot @const IR validation)", () => {
+    const diagnostics = diagnosticsFor(
+      `
         class F {
           /** @const {"a":{"b":1}} */
           value!: string;
         }
         `,
-        "const-nested-obj-on-string"
-      );
-      expect(diagnostics.length).toBeGreaterThan(0);
-    }
-  );
+      "const-nested-obj-on-string"
+    );
+    expect(diagnostics.length).toBeGreaterThan(0);
+  });
 });

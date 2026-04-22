@@ -9,6 +9,7 @@ import type {
   TypeNode,
 } from "@formspec/core/internals";
 import { normalizeConstraintTagName } from "@formspec/core/internals";
+import { jsonValueEquals } from "./json-value.js";
 type ConstraintDiagnosticSeverity = "error" | "warning";
 
 export interface AnalysisTypeDefinition {
@@ -499,64 +500,6 @@ function typeLabel(type: TypeNode): string {
       return String(exhaustive);
     }
   }
-}
-
-function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
-  return Array.isArray(value);
-}
-
-function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
-  if (left === right) {
-    return true;
-  }
-
-  if (isJsonArray(left) || isJsonArray(right)) {
-    if (!isJsonArray(left) || !isJsonArray(right) || left.length !== right.length) {
-      return false;
-    }
-
-    for (const [index, item] of left.entries()) {
-      const rightItem = right[index];
-      if (rightItem === undefined || !jsonValueEquals(item, rightItem)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  if (isJsonObject(left) || isJsonObject(right)) {
-    if (!isJsonObject(left) || !isJsonObject(right)) {
-      return false;
-    }
-
-    const leftKeys = Object.keys(left).sort();
-    const rightKeys = Object.keys(right).sort();
-    if (leftKeys.length !== rightKeys.length) {
-      return false;
-    }
-
-    return leftKeys.every((key, index) => {
-      const rightKey = rightKeys[index];
-      if (rightKey !== key) {
-        return false;
-      }
-
-      const leftValue = left[key];
-      const rightValue = right[rightKey];
-      return (
-        leftValue !== undefined &&
-        rightValue !== undefined &&
-        jsonValueEquals(leftValue, rightValue)
-      );
-    });
-  }
-
-  return false;
 }
 
 type NumericConstraintKind =

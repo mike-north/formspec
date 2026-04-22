@@ -30,10 +30,7 @@ import * as ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSchemas } from "../generators/class-schema.js";
 import { buildFormSpecAnalysisFileSnapshot } from "@formspec/analysis/internal";
-import {
-  type BuildFixtureDir,
-  createBuildFixtureDir,
-} from "./helpers/build-fixture-dir.js";
+import { type BuildFixtureDir, createBuildFixtureDir } from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
 // Temp directory — shared across all build-path probe fixtures
@@ -147,42 +144,40 @@ function runSnapshotConsumer(source: string) {
 // =============================================================================
 // Divergence case 1: @const not-json
 //
-// Build path (renderSyntheticArgumentExpression, valueKind="json"):
-//   JSON.parse("not-json") throws → JSON.stringify("not-json") = '"not-json"'
-//   checkSyntheticTagApplication sees tag_const(ctx, "not-json").
-//   JsonValue = unknown, so string passes the synthetic type check → no
-//   synthetic diagnostic. But parseConstraintTagValue creates a ConstConstraintNode
-//   with string value "not-json", which the IR validator rejects because
-//   "not-json" is not compatible with the field type `number`.
-//   Diagnostic: TYPE_MISMATCH with IR-level message
-//     'Field "value": @const value type "string" is incompatible with field type "number"'
+// PHASE 5B UPDATE — divergence NORMALIZED (2026-04-21):
 //
-// Snapshot path (getArgumentExpression):
-//   JSON.parse("not-json") throws → returns null (argument omitted from synthetic call).
-//   The synthetic call becomes tag_const(ctx) without the required second argument.
-//   Diagnostic: INVALID_TAG_ARGUMENT — "Expected 2-3 arguments, but got 1."
+// Before Phase 5B (build path — unchanged):
+//   renderSyntheticArgumentExpression (valueKind="json"):
+//     JSON.parse("not-json") throws → JSON.stringify("not-json") = '"not-json"'
+//   checkSyntheticTagApplication: tag_const(ctx, "not-json") passes (string ≤ unknown).
+//   parseConstraintTagValue: ConstConstraintNode with string value "not-json".
+//   validateIR (semantic-targets.ts case "const"): rejects because string value
+//   is incompatible with field type `number` → TYPE_MISMATCH.
 //
-// KNOWN DIVERGENCE (refactor plan §3):
-//   build:    '"not-json"' passes synthetic type check, but IR validator catches
-//             the string-vs-number incompatibility as TYPE_MISMATCH.
-//   snapshot: argument omitted; INVALID_TAG_ARGUMENT from synthetic type check.
+// Before Phase 5B (snapshot path):
+//   parseTagArgument("const", "not-json", "snapshot") → ok: true, raw-string-fallback.
+//   getArgumentExpression (valueLabels includes "json"): JSON.parse throws → null.
+//   Synthetic call is missing the argument → arity error "Expected 2-3 arguments,
+//   but got 1." → INVALID_TAG_ARGUMENT.
 //
-// BEHAVIOR CHANGE from original analysis-package test: the original test assumed
-// the build path produced NO diagnostic. That was incorrect — it called
-// checkSyntheticTagApplication directly with generic hostType/subjectType,
-// bypassing the IR validation stage. The real build pipeline DOES emit a
-// diagnostic (TYPE_MISMATCH from the IR validator), just a different one
-// than the snapshot path's INVALID_TAG_ARGUMENT.
+// After Phase 5B (snapshot path — this is the change):
+//   parseTagArgument("const", "not-json", "snapshot") → ok: true, raw-string-fallback
+//   with value "not-json" (string).
+//   _checkConstValueAgainstType("not-json", number-typed field, checker) →
+//   TYPE_MISMATCH with message '@const value type "string" is incompatible with
+//   field type "number"' — matching the build consumer's IR-validator message
+//   (minus the build path's `Field "<name>":` prefix).
 //
-// Phase 2/3 normalization should unify the error path: if the lowering
-// already knew the argument was invalid JSON, it should reject early
-// (matching snapshot behavior) rather than deferring to the IR validator.
+// NORMALIZED: both consumers now produce TYPE_MISMATCH. The §3 catalogue entry
+// for `@const not-json` is resolved by Phase 5B.
+//
+// @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5B
+// @see packages/analysis/src/constraint-applicability.ts _checkConstValueAgainstType
 // =============================================================================
 
-describe("known divergence: @const not-json", () => {
+describe("normalized: @const not-json (Phase 5B — both consumers emit TYPE_MISMATCH)", () => {
   it("BUILD consumer: emits TYPE_MISMATCH from IR validator (string const incompatible with number field)", () => {
-    // UPDATED DIVERGENCE (refactor plan §3): build produces TYPE_MISMATCH here,
-    // NOT zero diagnostics as the original analysis-package test assumed.
+    // Build path (unchanged): IR validator rejects at validateIR time.
     //
     // renderSyntheticArgumentExpression (build path, valueKind="json"):
     //   JSON.parse("not-json") throws → JSON.stringify("not-json") = '"not-json"'
@@ -202,11 +197,12 @@ describe("known divergence: @const not-json", () => {
     expect(diagnostic?.message).toContain("number");
   });
 
-  it("SNAPSHOT consumer: emits INVALID_TAG_ARGUMENT (argument is omitted when JSON parse fails)", () => {
-    // KNOWN DIVERGENCE (refactor plan §3): snapshot produces INVALID_TAG_ARGUMENT here.
-    // The snapshot path returns null for invalid JSON, omitting the argument from the
-    // synthetic call. The call becomes tag_const(ctx) without the required value
-    // argument, producing "Expected 2 arguments, but got 1."
+  it("SNAPSHOT consumer: emits TYPE_MISMATCH from @const IR check (Phase 5B — now matches build)", () => {
+    // Phase 5B: the snapshot consumer's @const IR check runs after Role-C
+    // accepts the raw-string-fallback value. The value's typeof ("string")
+    // does not match the number field's primitive kind → TYPE_MISMATCH with
+    // the same textual payload (minus the field-name prefix) as the build
+    // consumer's semantic-targets.ts case "const".
     const source = `
       class Form {
         /** @const not-json */
@@ -215,13 +211,26 @@ describe("known divergence: @const not-json", () => {
     `;
     const snapshot = runSnapshotConsumer(source);
 
-    const diagnostic = snapshot.diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const diagnostic = snapshot.diagnostics.find((d) => d.code === "TYPE_MISMATCH");
     expect(diagnostic).toBeDefined();
-    // The exact message is "Expected 2-3 arguments, but got 1." because the
-    // @const tag has two overloads (direct and path-targeted), so TypeScript
-    // reports a range. Pin the exact message to catch future signature changes.
-    expect(diagnostic?.message).toBe("Expected 2-3 arguments, but got 1.");
+    // Pin the exact message the snapshot consumer produces (without the build
+    // path's `Field "<name>":` prefix).
+    expect(diagnostic?.message).toBe(
+      '@const value type "string" is incompatible with field type "number"'
+    );
     expect(diagnostic?.data["tagName"]).toBe("const");
+
+    // Phase 5B guarantees the synthetic arity error no longer surfaces for
+    // this input — the @const IR check short-circuits the synthetic call.
+    expect(
+      snapshot.diagnostics.some(
+        (d) =>
+          d.code === "INVALID_TAG_ARGUMENT" &&
+          typeof d.message === "string" &&
+          d.message.includes("arguments")
+      ),
+      "Expected no synthetic arity error — @const IR check short-circuits the synthetic call"
+    ).toBe(false);
   });
 });
 

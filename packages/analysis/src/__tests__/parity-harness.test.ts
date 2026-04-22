@@ -23,6 +23,7 @@
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
+  _checkConstValueAgainstType,
   _supportsConstraintCapability,
   buildFormSpecAnalysisFileSnapshot,
   checkSyntheticTagApplication,
@@ -30,6 +31,7 @@ import {
   getMatchingTagSignatures,
   getSubjectType,
   getTagDefinition,
+  parseTagArgument,
   resolveDeclarationPlacement,
 } from "../internal.js";
 import type { FormSpecAnalysisDiagnostic } from "../protocol.js";
@@ -299,7 +301,23 @@ const FIXTURES: readonly ParityFixture[] = [
   },
 
   // -------------------------------------------------------------------------
-  // @const "USD"
+  // @const "USD" (happy path only — both consumers should accept)
+  //
+  // NOTE (Panel Fix #5): the IR-check sub-cases (`@const "USD" on number`,
+  // `@const "USD" on object`) were removed because the parity harness's
+  // `runBuildConsumer` proxies Phase 5B by calling the SAME
+  // `_checkConstValueAgainstType` function the snapshot consumer uses. That
+  // makes those fixtures tautological — they cannot detect drift from the real
+  // build path's IR validator in `semantic-targets.ts`.
+  //
+  // Real cross-consumer coverage for @const IR-check parity lives in:
+  //   - packages/build/src/__tests__/parity-divergences.test.ts:178-232
+  //     (builds the real build path and snapshot consumer over the same
+  //     source, asserts matching TYPE_MISMATCH)
+  //   - packages/analysis/src/__tests__/constraint-applicability.test.ts
+  //     describe block "@const IR-check parity (analyzeConstraintTargets vs
+  //     _checkConstValueAgainstType)" — direct comparison of the two IR-check
+  //     implementations over matching ts.Type / TypeNode pairs.
   // -------------------------------------------------------------------------
   {
     label: '@const "USD" on string',
@@ -307,17 +325,36 @@ const FIXTURES: readonly ParityFixture[] = [
     subjectType: "string",
     tagArgument: '"USD"',
   },
+
+  // Enum membership: @const on string-literal unions (Panel Fix #6).
+  // These exercise the snapshot consumer's enum classifier, and — via the
+  // build-path proxy — the `_checkConstValueAgainstType` enum branch. They
+  // also regression-test the nullable-union fix for the classifier (Fix #1):
+  // `"USD" | "EUR" | null` has two non-nullish members so stripNullishUnion
+  // does not collapse it; the classifier must filter nullish members.
   {
-    label: '@const "USD" on number',
+    label: '@const "USD" on string-literal union',
     tagName: "const",
-    subjectType: "number",
+    subjectType: '"USD" | "EUR"',
     tagArgument: '"USD"',
   },
   {
-    label: '@const "USD" on object',
+    label: '@const "XYZ" on string-literal union (membership fail)',
     tagName: "const",
-    subjectType: "{ code: string }",
+    subjectType: '"USD" | "EUR"',
+    tagArgument: '"XYZ"',
+  },
+  {
+    label: '@const "USD" on nullable string-literal union',
+    tagName: "const",
+    subjectType: '"USD" | "EUR" | null',
     tagArgument: '"USD"',
+  },
+  {
+    label: "@const true on nullable boolean",
+    tagName: "const",
+    subjectType: "boolean | null",
+    tagArgument: "true",
   },
 
   // -------------------------------------------------------------------------
@@ -647,6 +684,31 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
       hasDiagnostic = true;
       diagnosticCode = "INVALID_TAG_PLACEMENT";
       diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
+    }
+  }
+
+  // §5 Phase 5B — mirror the @const IR validation that the real build path
+  // applies via `validateIR` in `semantic-targets.ts` (`case "const":` ~line
+  // 1255). The snapshot consumer now runs `_checkConstValueAgainstType` in
+  // `buildTagDiagnostics`, so this proxy must mirror it or every fixture
+  // where the field type is not primitive/enum — and every primitive-kind
+  // mismatch — would spuriously flag as a parity divergence.
+  //
+  // Scope: only @const with a successful typed-parser parse. Matches the
+  // snapshot consumer's scope (case "const" in buildTagDiagnostics after
+  // Role-C C-pass). Parity fixtures use direct-field targets only.
+  if (!hasDiagnostic && subjectType !== undefined && fixture.tagName === "const") {
+    const typedResult = parseTagArgument("const", fixture.tagArgument, "build");
+    if (
+      typedResult.ok &&
+      (typedResult.value.kind === "json-value" || typedResult.value.kind === "raw-string-fallback")
+    ) {
+      const constCheck = _checkConstValueAgainstType(typedResult.value.value, subjectType, checker);
+      if (constCheck !== null) {
+        hasDiagnostic = true;
+        diagnosticCode = constCheck.code;
+        diagnosticMessage = constCheck.message;
+      }
     }
   }
 
