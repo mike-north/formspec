@@ -51,13 +51,13 @@
     "pino-pretty": "^11.0.0"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@formspec/dsl": "workspace:*",
     "pino": "^9.0.0",
     "pino-pretty": "^11.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.2.4"
   },
   "publishConfig": {
     "access": "public"

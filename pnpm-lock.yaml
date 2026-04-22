@@ -36,7 +36,7 @@ importers:
         specifier: ^19.2.9
         version: 19.2.9
       eslint:
-        specifier: ^9.18.0
+        specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)
       eslint-config-prettier:
         specifier: ^10.0.1
@@ -47,6 +47,9 @@ importers:
       react:
         specifier: ^19.2.3
         version: 19.2.3
+      syncpack:
+        specifier: ^14.3.0
+        version: 14.3.0
       tsd:
         specifier: ^0.31.0
         version: 0.31.2
@@ -60,7 +63,7 @@ importers:
         specifier: ^8.21.0
         version: 8.53.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       zod:
-        specifier: ^3.24.0
+        specifier: ^3.25.0
         version: 3.25.76
 
   e2e:
@@ -106,10 +109,10 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
       vscode-languageserver-textdocument:
         specifier: ^1.0.12
@@ -124,11 +127,11 @@ importers:
         specifier: ^0.16.0
         version: 0.16.0
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
     devDependencies:
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     optionalDependencies:
       pino:
@@ -150,7 +153,7 @@ importers:
         specifier: workspace:*
         version: link:../core
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
       zod:
         specifier: ^3.25.0
@@ -160,7 +163,7 @@ importers:
         specifier: workspace:*
         version: link:../dsl
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
     optionalDependencies:
       pino:
@@ -185,7 +188,7 @@ importers:
         specifier: ^11.0.0
         version: 11.3.0
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
     devDependencies:
       '@formspec/core':
@@ -195,7 +198,7 @@ importers:
         specifier: workspace:*
         version: link:../dsl
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/config:
@@ -217,7 +220,7 @@ importers:
         specifier: ^0.31.0
         version: 0.31.2
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/core:
@@ -239,7 +242,7 @@ importers:
         specifier: ^0.31.0
         version: 0.31.2
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/eslint-plugin:
@@ -260,10 +263,10 @@ importers:
         specifier: ^8.0.0
         version: 8.53.1(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       eslint:
-        specifier: ^9.0.0
+        specifier: ^9.39.2
         version: 9.39.2(jiti@2.6.1)
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
     devDependencies:
       '@typescript-eslint/parser':
@@ -276,7 +279,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2(eslint@9.39.2(jiti@2.6.1))(prettier@3.8.1)(typescript@5.9.3)
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/formspec:
@@ -316,7 +319,7 @@ importers:
         version: 1.0.12
     devDependencies:
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/runtime:
@@ -329,7 +332,7 @@ importers:
         specifier: workspace:*
         version: link:../dsl
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/ts-plugin:
@@ -341,14 +344,14 @@ importers:
         specifier: workspace:*
         version: link:../core
       typescript:
-        specifier: ^5.0.0
+        specifier: ^5.7.3
         version: 5.9.3
     devDependencies:
       '@microsoft/api-extractor':
-        specifier: ^7.52.12
+        specifier: ^7.55.2
         version: 7.55.2(@types/node@22.19.7)
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/validator:
@@ -358,7 +361,7 @@ importers:
         version: 4.1.1
     devDependencies:
       vitest:
-        specifier: ^3.0.0
+        specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
 packages:
@@ -2572,6 +2575,51 @@ packages:
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
+
+  syncpack-darwin-arm64@14.3.0:
+    resolution: {integrity: sha512-gpbkBzO7yqa3BONc4EU3jY07yiPSZdoAxcpnz8REV9Bc6FkmKfOejCpYIh8RaogGPS4gOLJ/RUJEECqAaHTcjA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  syncpack-darwin-x64@14.3.0:
+    resolution: {integrity: sha512-wTpl6Qj5qGIHrYhpCrlNnosmhQqvUoidqqmxtdM3f+j+b+OkTtpkUl2tdE28h3aeEEUPf9ClQnHuwRJMYNlrJw==}
+    cpu: [x64]
+    os: [darwin]
+
+  syncpack-linux-arm64-musl@14.3.0:
+    resolution: {integrity: sha512-AezJ5dv0s+l/p1l4/wBatYhM6SZEKLcyNKggSOX5uISzqbSKwj/Aak13pBXWarzS+N6LnOl4PMcwRMJPOUfN/g==}
+    cpu: [arm64]
+    os: [linux]
+
+  syncpack-linux-arm64@14.3.0:
+    resolution: {integrity: sha512-Vcf9zWkJGRqb5mGPKi9E+s/mB/Tw08LmKGRaiyKJjK8bhd1Ds65O8A2lOidy3jg0NOOojqREmDsli74Xd0z6KA==}
+    cpu: [arm64]
+    os: [linux]
+
+  syncpack-linux-x64-musl@14.3.0:
+    resolution: {integrity: sha512-tIRF0lvBJcoIwcO05/Q6j30CAg0jzn+A5eQL+06Ncq8CE5i8fBWrVwN1U/QQ4fzT+tondNWH/2BR5zlaB1VUpQ==}
+    cpu: [x64]
+    os: [linux]
+
+  syncpack-linux-x64@14.3.0:
+    resolution: {integrity: sha512-n/4iBJnoOCe5An+WYlaqfSxOKQ7Id3TZTpxOpI60Cucq3yqwq0JHQUielj6JBtVaxvo2rAsTwbCLyp2aB0SD2g==}
+    cpu: [x64]
+    os: [linux]
+
+  syncpack-windows-arm64@14.3.0:
+    resolution: {integrity: sha512-ZTX0rSUTJZjIde3qPKLEqU7IEt4KxFsmq6gKLfESx5rB1rxk/B1Ljv6nTYph5QVItEzHQHUXDWnqa9yCb15myw==}
+    cpu: [arm64]
+    os: [win32]
+
+  syncpack-windows-x64@14.3.0:
+    resolution: {integrity: sha512-zvbphZw40wFZYeEW2oJYqA9Uw6IOwNIpgFmVNdWdGmShPF/Zu1cavHEcGwtQmvVzwuTEyiu67uxQ3hDC2q6vtg==}
+    cpu: [x64]
+    os: [win32]
+
+  syncpack@14.3.0:
+    resolution: {integrity: sha512-8/WtPPxxGFqE21JPFz6Bpw0m9BT3lzMYDcewJFj++EBPmCaDWowTnx0R4V7ofH/1z3HAIaAps6g2GHL76l1Y2g==}
+    engines: {node: '>=14.17.0'}
+    hasBin: true
 
   table@6.9.0:
     resolution: {integrity: sha512-9kY+CygyYM6j02t5YFHbNz2FN5QmYGv9zAjVp4lCDjlCw7amdckXlEt/bjMhUIfj4ThGRE4gCUH5+yGnNuPo5A==}
@@ -5121,6 +5169,41 @@ snapshots:
       supports-color: 7.2.0
 
   supports-preserve-symlinks-flag@1.0.0: {}
+
+  syncpack-darwin-arm64@14.3.0:
+    optional: true
+
+  syncpack-darwin-x64@14.3.0:
+    optional: true
+
+  syncpack-linux-arm64-musl@14.3.0:
+    optional: true
+
+  syncpack-linux-arm64@14.3.0:
+    optional: true
+
+  syncpack-linux-x64-musl@14.3.0:
+    optional: true
+
+  syncpack-linux-x64@14.3.0:
+    optional: true
+
+  syncpack-windows-arm64@14.3.0:
+    optional: true
+
+  syncpack-windows-x64@14.3.0:
+    optional: true
+
+  syncpack@14.3.0:
+    optionalDependencies:
+      syncpack-darwin-arm64: 14.3.0
+      syncpack-darwin-x64: 14.3.0
+      syncpack-linux-arm64: 14.3.0
+      syncpack-linux-arm64-musl: 14.3.0
+      syncpack-linux-x64: 14.3.0
+      syncpack-linux-x64-musl: 14.3.0
+      syncpack-windows-arm64: 14.3.0
+      syncpack-windows-x64: 14.3.0
 
   table@6.9.0:
     dependencies:

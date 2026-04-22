@@ -1,0 +1,51 @@
+{
+  "$schema": "https://unpkg.com/syncpack@14/dist/schema.json",
+  "source": [
+    "package.json",
+    "packages/*/package.json",
+    "e2e/package.json"
+  ],
+  "semverGroups": [
+    {
+      "label": "Internal packages always use the pnpm workspace protocol",
+      "dependencies": ["@formspec/*", "formspec"],
+      "dependencyTypes": ["dev", "peer", "prod"],
+      "packages": ["**"],
+      "range": ""
+    }
+  ],
+  "versionGroups": [
+    {
+      "label": "Internal packages always use the pnpm workspace protocol",
+      "dependencies": ["@formspec/*", "formspec"],
+      "dependencyTypes": ["dev", "peer", "prod"],
+      "packages": ["**"],
+      "pinVersion": "workspace:*"
+    }
+  ],
+  "sortAz": [
+    "contributors",
+    "dependencies",
+    "devDependencies",
+    "keywords",
+    "overrides",
+    "peerDependencies",
+    "pnpm.overrides",
+    "resolutions"
+  ],
+  "sortFirst": [
+    "name",
+    "description",
+    "version",
+    "author",
+    "license",
+    "private",
+    "type",
+    "main",
+    "module",
+    "types",
+    "exports",
+    "files",
+    "scripts"
+  ]
+}

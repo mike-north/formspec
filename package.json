@@ -17,6 +17,9 @@
     "api-extractor": "pnpm -r run api-extractor",
     "api-extractor:local": "pnpm -r run api-extractor:local",
     "api-documenter": "pnpm -r run api-documenter",
+    "syncpack": "syncpack lint",
+    "syncpack:fix": "syncpack fix",
+    "syncpack:format": "syncpack format",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm run build && changeset publish"
@@ -34,15 +37,16 @@
     "@microsoft/api-extractor": "^7.55.2",
     "@types/node": "^22.13.0",
     "@types/react": "^19.2.9",
-    "eslint": "^9.18.0",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.0.1",
     "prettier": "^3.5.0",
     "react": "^19.2.3",
+    "syncpack": "^14.3.0",
     "tsd": "^0.31.0",
     "tsup": "^8.5.1",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.21.0",
-    "zod": "^3.24.0"
+    "zod": "^3.25.0"
   },
   "engines": {
     "node": ">=24"
