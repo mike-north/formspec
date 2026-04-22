@@ -23,6 +23,7 @@
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
+  _checkConstValueAgainstType,
   _supportsConstraintCapability,
   buildFormSpecAnalysisFileSnapshot,
   checkSyntheticTagApplication,
@@ -30,6 +31,7 @@ import {
   getMatchingTagSignatures,
   getSubjectType,
   getTagDefinition,
+  parseTagArgument,
   resolveDeclarationPlacement,
 } from "../internal.js";
 import type { FormSpecAnalysisDiagnostic } from "../protocol.js";
@@ -647,6 +649,31 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
       hasDiagnostic = true;
       diagnosticCode = "INVALID_TAG_PLACEMENT";
       diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
+    }
+  }
+
+  // §5 Phase 5B — mirror the @const IR validation that the real build path
+  // applies via `validateIR` in `semantic-targets.ts` (`case "const":` ~line
+  // 1255). The snapshot consumer now runs `_checkConstValueAgainstType` in
+  // `buildTagDiagnostics`, so this proxy must mirror it or every fixture
+  // where the field type is not primitive/enum — and every primitive-kind
+  // mismatch — would spuriously flag as a parity divergence.
+  //
+  // Scope: only @const with a successful typed-parser parse. Matches the
+  // snapshot consumer's scope (case "const" in buildTagDiagnostics after
+  // Role-C C-pass). Parity fixtures use direct-field targets only.
+  if (!hasDiagnostic && subjectType !== undefined && fixture.tagName === "const") {
+    const typedResult = parseTagArgument("const", fixture.tagArgument, "build");
+    if (
+      typedResult.ok &&
+      (typedResult.value.kind === "json-value" || typedResult.value.kind === "raw-string-fallback")
+    ) {
+      const constCheck = _checkConstValueAgainstType(typedResult.value.value, subjectType, checker);
+      if (constCheck !== null) {
+        hasDiagnostic = true;
+        diagnosticCode = constCheck.code;
+        diagnosticMessage = constCheck.message;
+      }
     }
   }
 

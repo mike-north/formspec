@@ -184,26 +184,24 @@ describe("@enumOptions typed-parser Role-C canaries (snapshot consumer)", () => 
 // =============================================================================
 
 describe("@const typed-parser Role-C canaries (snapshot consumer)", () => {
-  it("accepts @const not-json via raw-string-fallback (typed parser passes through; synthetic checker catches it)", () => {
+  it("rejects @const not-json on number via @const IR validation (Phase 5B: TYPE_MISMATCH)", () => {
     // parseTagArgument("const", "not-json", "snapshot") → ok: true, { kind: "raw-string-fallback" }
-    // The typed parser deliberately accepts invalid-JSON @const with a raw-string fallback.
+    // The typed parser deliberately accepts invalid-JSON @const with a raw-string fallback
+    // whose value is the raw string literal ("not-json").
     //
-    // After the typed-parser pass-through, the snapshot path's getArgumentExpression
-    // returns null for invalid JSON (it cannot produce a TypeScript AST node for
-    // non-parseable text), so the synthetic call is missing the required value
-    // argument. The synthetic checker then fires:
-    //   "Expected 2-3 arguments, but got 1." → INVALID_TAG_ARGUMENT
+    // Phase 5B (2026-04-21): the snapshot consumer now runs @const IR validation
+    // (_checkConstValueAgainstType) after Role-C accepts the parsed value. The
+    // raw-string-fallback value is a string ("not-json"), which does NOT match
+    // the number field's primitive kind → TYPE_MISMATCH is emitted before the
+    // synthetic checker runs.
     //
-    // This is the known divergence from parity-harness.test.ts §3:
-    //   - Snapshot: INVALID_TAG_ARGUMENT from synthetic checker (arity error).
+    // This closes the previous divergence tracked in parity-harness.test.ts §3:
+    //   - Snapshot: (pre-5B) INVALID_TAG_ARGUMENT from synthetic arity check.
+    //   - Snapshot: (post-5B) TYPE_MISMATCH from @const IR check — matches build path.
     //   - Build:    TYPE_MISMATCH from IR validator (string-vs-number).
     //
-    // Phase 3 assertion (mirrors the build canary structure):
-    //   The diagnostic must be INVALID_TAG_ARGUMENT with an arity message
-    //   ("Expected N arguments") — not a typed-parser format rejection.
-    //   The typed parser's own rejection messages say e.g. "Expected @const to be ..."
-    //   so the arity message confirms that Role C passed through and the rejection
-    //   came from the synthetic checker.
+    // @see packages/analysis/src/constraint-applicability.ts _checkConstValueAgainstType
+    // @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5B
     const source = ["class Form {", "  /** @const not-json */", "  value!: number;", "}"].join(
       "\n"
     );
@@ -215,26 +213,32 @@ describe("@const typed-parser Role-C canaries (snapshot consumer)", () => {
     const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
     const diagnostics = snapshot.diagnostics;
 
-    // The downstream synthetic checker emits INVALID_TAG_ARGUMENT with an arity
-    // error message ("Expected 2-3 arguments, but got 1.").
-    // Role C does NOT reject @const not-json — the typed parser returns ok: true.
-    const syntheticArityDiag = diagnostics.find(
+    // @const IR check fires after Role-C pass: raw-string value "not-json"
+    // (string) does not match the number primitive kind → TYPE_MISMATCH with
+    // the shared "@const value type ..." message.
+    const irMismatchDiag = diagnostics.find(
       (d) =>
-        d.code === "INVALID_TAG_ARGUMENT" &&
+        d.code === "TYPE_MISMATCH" &&
         typeof d.message === "string" &&
-        d.message.startsWith("Expected") &&
-        d.message.includes("arguments")
+        d.message.includes("@const value type") &&
+        d.message.includes("is incompatible with field type")
     );
     expect(
-      syntheticArityDiag,
-      "Expected INVALID_TAG_ARGUMENT from the synthetic arity check (not from Role C)"
+      irMismatchDiag,
+      "Expected TYPE_MISMATCH from the @const IR check (snapshot consumer Phase 5B)"
     ).toBeDefined();
 
-    // Confirm: no TYPE_MISMATCH (the snapshot path does not have an IR validator;
-    // the synthetic arity check fires instead, unlike the build path).
+    // Confirm: no synthetic arity error — the @const IR check runs before the
+    // synthetic batch, so the `continue` above skips the synthetic call entirely.
     expect(
-      diagnostics.some((d) => d.code === "TYPE_MISMATCH"),
-      "Expected no TYPE_MISMATCH — snapshot path uses synthetic arity check, not IR validator"
+      diagnostics.some(
+        (d) =>
+          d.code === "INVALID_TAG_ARGUMENT" &&
+          typeof d.message === "string" &&
+          d.message.startsWith("Expected") &&
+          d.message.includes("arguments")
+      ),
+      "Expected no synthetic arity error — @const IR check short-circuits the synthetic call"
     ).toBe(false);
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "./compiler-signatures.js";
 import {
   _capabilityLabel,
+  _checkConstValueAgainstType,
   _supportsConstraintCapability,
 } from "./constraint-applicability.js";
 import {
@@ -1698,6 +1699,62 @@ function buildTagDiagnostics(
             roleOutcome: "C-pass",
             valueKind: typedParseResult.value.kind,
           });
+        }
+
+        // §5 Phase 5B — @const IR validation (snapshot consumer).
+        //
+        // The build consumer validates @const value/type compatibility at IR
+        // validation time (semantic-targets.ts case "const", ~line 1255). The
+        // snapshot consumer does not build an analysis IR, so we port the
+        // primitive value-type and enum-membership checks directly against the
+        // `ts.Type` here. Closes the 4 IR-validation canaries pinned in
+        // constraint-canaries.test.ts (see §4 Phase 5B in
+        // docs/refactors/synthetic-checker-retirement.md).
+        //
+        // Scope: only builtin @const, direct-field (target === null). Path-
+        // targeted @const still goes through the synthetic checker until
+        // Phase 5C deletes the synthetic machinery entirely. This matches the
+        // scoping of Slice A's Role-B guard above.
+        //
+        // The typed parser produces one of:
+        //   - { kind: "json-value", value: JsonValue }     — parsed JSON
+        //   - { kind: "raw-string-fallback", value: string } — malformed JSON
+        //     treated as an opaque string literal (only @const produces this).
+        // Both feed a JsonValue into the IR check — raw-string-fallback's
+        // value is a string, which is valid on a string-typed field and
+        // mismatches number/boolean/null fields (matching the build path's
+        // behavior on raw-string inputs).
+        if (
+          tag.normalizedTagName === "const" &&
+          target === null &&
+          (typedParseResult.value.kind === "json-value" ||
+            typedParseResult.value.kind === "raw-string-fallback")
+        ) {
+          const constCheck = _checkConstValueAgainstType(
+            typedParseResult.value.value,
+            subjectType,
+            checker
+          );
+          if (constCheck !== null) {
+            diagnostics.push(
+              createAnalysisDiagnostic(constCheck.code, constCheck.message, tag.fullSpan, {
+                tagName: tag.normalizedTagName,
+                placement,
+              })
+            );
+            if (snapshotLogsEnabled) {
+              logTagApplication(snapshotLog, {
+                consumer: "snapshot",
+                tag: tag.normalizedTagName,
+                placement,
+                subjectTypeKind: subjectTypeKindForLog,
+                roleOutcome: "B-reject",
+                elapsedMicros: elapsedMicros(tagStartMicros),
+              });
+            }
+            // Skip synthetic call — IR check rejected.
+            continue;
+          }
         }
       } else {
         // Extension-broadened (D1/D2) — bypass the typed parser but still pass
