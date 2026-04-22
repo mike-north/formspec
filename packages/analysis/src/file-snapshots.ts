@@ -1469,7 +1469,7 @@ function buildTagDiagnostics(
               evaluatedTypeLabel =
                 standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
             } else if (target.kind === "path") {
-              // pathTargetResolution is computed earlier in the loop (line ~1492)
+              // pathTargetResolution is computed earlier in the loop (line ~1305)
               // via resolvePathTargetType(declaredSubjectType, ...). Use it to
               // drive the path-target Role-B check.
               if (pathTargetResolution === null) {
