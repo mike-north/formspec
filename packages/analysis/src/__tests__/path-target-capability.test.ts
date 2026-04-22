@@ -76,7 +76,7 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     expect(relevant[0]?.data["targetText"]).toBe("amount");
   });
 
-  it("rejects an invalid argument on a valid path-target — `@minimum :amount \"hello\"` on `{ amount: number }`", () => {
+  it('rejects an invalid argument on a valid path-target — `@minimum :amount "hello"` on `{ amount: number }`', () => {
     const source = `
       interface Money {
         amount: number;
@@ -93,5 +93,54 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
     expect(relevant).toHaveLength(1);
     expect(relevant[0]?.code).toBe("INVALID_TAG_ARGUMENT");
+  });
+
+  // Panel Fix #6: UNKNOWN_PATH_TARGET — path references a property that does not
+  // exist on the declared subject type.
+  it("emits UNKNOWN_PATH_TARGET when the path references a missing property — `@minimum :missing 0` on `{ amount: number }`", () => {
+    const source = `
+      interface Money {
+        amount: number;
+        currency: string;
+      }
+      class Foo {
+        /** @minimum :missing 0 */
+        price!: Money;
+      }
+    `;
+    const diagnostics = collectDiagnostics(source);
+    const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
+    expect(relevant).toHaveLength(1);
+    expect(relevant[0]?.code).toBe("UNKNOWN_PATH_TARGET");
+    // The diagnostic should carry the missing segment name.
+    expect(relevant[0]?.data["missingPathSegment"]).toBe("missing");
+    expect(relevant[0]?.data["targetKind"]).toBe("path");
+    expect(relevant[0]?.data["targetText"]).toBe("missing");
+  });
+
+  // Panel Fix #6: TYPE_MISMATCH from an unresolvable intermediate — path traverses
+  // through a non-object terminal type (e.g. `amount.nested` where `amount` is
+  // `number`, so `.nested` is un-traversable).
+  it("emits TYPE_MISMATCH when the path targets an unresolvable intermediate — `@minimum :amount.nested 0` on `{ amount: number }`", () => {
+    const source = `
+      interface Money {
+        amount: number;
+        currency: string;
+      }
+      class Foo {
+        /** @minimum :amount.nested 0 */
+        price!: Money;
+      }
+    `;
+    const diagnostics = collectDiagnostics(source);
+    const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
+    expect(relevant).toHaveLength(1);
+    // resolvePathTargetType returns { kind: "unresolvable" } when an
+    // intermediate segment targets a primitive (non-traversable) type. The
+    // snapshot consumer maps that to TYPE_MISMATCH (see file-snapshots.ts
+    // ~lines 1438-1443).
+    expect(relevant[0]?.code).toBe("TYPE_MISMATCH");
+    expect(relevant[0]?.data["targetKind"]).toBe("path");
+    expect(relevant[0]?.data["targetText"]).toBe("amount.nested");
   });
 });

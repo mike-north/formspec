@@ -146,17 +146,18 @@ export {
 } from "./ts-binding.js";
 export { TAGS_REQUIRING_RAW_TEXT, getOrCreateTSDocParser } from "./tsdoc-config.js";
 export { choosePreferredPayloadText } from "./tsdoc-text-extraction.js";
-// §5 Phase 5C — the synthetic-check surface has been deleted. The only
-// remaining exports from `compiler-signatures.ts` are the extension setup
-// helpers (used by the file-snapshot entry path) and `getMatchingTagSignatures`
-// (used as the Role-A placement pre-check in both consumers).
+// Extension setup validation (used by the file-snapshot entry path and the
+// build path's extension registry).
 export {
   _emitSetupDiagnostics,
   _mapSetupDiagnosticCode,
   _validateExtensionSetup,
-  getMatchingTagSignatures,
-} from "./compiler-signatures.js";
-export type { SyntheticCompilerDiagnostic } from "./compiler-signatures.js";
+} from "./extension-setup-validation.js";
+export type { SetupDiagnostic } from "./extension-setup-validation.js";
+
+// Role-A placement pre-check, shared between the build and snapshot consumers.
+export { getMatchingTagSignatures } from "./tag-signature-matching.js";
+export type { TagTargetKind } from "./tag-signature-matching.js";
 export {
   parseUnifiedComment,
   type UnifiedParsedComment,
@@ -186,11 +187,11 @@ export {
   CONSTRAINT_VALIDATOR_BUILD_NS,
   CONSTRAINT_VALIDATOR_SNAPSHOT_NS,
   CONSTRAINT_VALIDATOR_TYPED_PARSER_NS,
-  CONSTRAINT_VALIDATOR_SYNTHETIC_NS,
+  CONSTRAINT_VALIDATOR_REGISTRY_NS,
   CONSTRAINT_VALIDATOR_BROADENING_NS,
   getBuildLogger,
   getSnapshotLogger,
-  getSyntheticLogger,
+  getRegistryLogger,
   getTypedParserLogger,
   getBroadeningLogger,
   nowMicros,

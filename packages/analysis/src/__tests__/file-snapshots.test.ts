@@ -498,12 +498,6 @@ describe("file-snapshots", () => {
   });
 
   it("produces no diagnostics for a mixed-tag canary comment and remains deterministic across repeated analysis", () => {
-    // §5 Phase 5C — this test formerly asserted on the synthetic batch cache
-    // (`analysis.syntheticCheckBatch.cacheHit` / `createProgram` performance
-    // events). The synthetic-program surface has been retired, so the cache
-    // semantics no longer exist. The test is retained as a determinism guard
-    // on the mixed-tag canary — repeated analyses must produce identical
-    // diagnostics and comment snapshots.
     const { checker, sourceFile } = createProgram(
       MIXED_TAG_CANARY_SOURCE,
       "/virtual/formspec-mixed-tag-canary.ts"

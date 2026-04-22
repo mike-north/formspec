@@ -77,7 +77,7 @@ export type {
   MutableExtensionRegistry,
 } from "./extensions/index.js";
 /**
- * A simplified TypeScript diagnostic surfaced from the synthetic compiler pass.
+ * A simplified setup-time diagnostic produced by extension-registry construction.
  *
  * Re-exported here because {@link ExtensionRegistry.setupDiagnostics} (an
  * `@internal` field on a `@public` interface) references this type directly.
@@ -87,7 +87,7 @@ export type {
  *
  * @internal
  */
-export type { SyntheticCompilerDiagnostic } from "@formspec/analysis/internal";
+export type { SetupDiagnostic } from "@formspec/analysis/internal";
 export type { FormSpecConfig } from "@formspec/config";
 
 export type {

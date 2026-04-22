@@ -1,11 +1,11 @@
 ---
 "@formspec/analysis": minor
-"@formspec/build": patch
-"@formspec/cli": patch
-"@formspec/eslint-plugin": patch
-"@formspec/language-server": patch
-"@formspec/ts-plugin": patch
-"formspec": patch
+"@formspec/build": minor
+"@formspec/cli": minor
+"@formspec/eslint-plugin": minor
+"@formspec/language-server": minor
+"@formspec/ts-plugin": minor
+"formspec": minor
 ---
 
 Phase 5 Slice C — retire the synthetic TypeScript program batch.
@@ -23,10 +23,12 @@ The `@formspec/analysis/internal` export surface loses the synthetic-checker ent
 (`checkSyntheticTagApplication`, `checkSyntheticTagApplications`,
 `checkSyntheticTagApplicationsDetailed`, `lowerTagApplicationToSyntheticCall`,
 `buildSyntheticHelperPrelude`, `checkNarrowSyntheticTagApplicability` /
-`…Applicabilities`) along with their option and result types. These were documented as
-`@internal` and never part of the public API surface. The retained setup-diagnostic
-helpers (`_validateExtensionSetup`, `_emitSetupDiagnostics`, `_mapSetupDiagnosticCode`,
-`SyntheticCompilerDiagnostic`) continue to anchor extension registry setup failures.
+`…Applicabilities`, `FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES`,
+`_mapGlobalSyntheticTsDiagnostics`) along with their option and result types. These were
+documented as `@internal` and never part of the public API surface. The retained
+setup-diagnostic helpers (`_validateExtensionSetup`, `_emitSetupDiagnostics`,
+`_mapSetupDiagnosticCode`, `SetupDiagnostic` — renamed from `SyntheticCompilerDiagnostic`)
+continue to anchor extension registry setup failures.
 
 `FormSpecSemanticServiceStats` in `@formspec/ts-plugin` drops the four synthetic counters
 (`syntheticBatchCacheHits`, `syntheticBatchCacheMisses`, `syntheticCompileCount`,
@@ -41,5 +43,7 @@ will be pursued as a follow-up.
 
 Per the repo's lockstep release convention, changes under `packages/<name>/src` bump the
 affected package and all transitively-dependent packages. `@formspec/analysis` takes a
-minor bump because removed symbols from `./internal` may break deep-imports; every other
-package takes a patch bump.
+minor bump because removed symbols from `./internal` may break deep-imports;
+`@formspec/ts-plugin` takes a minor bump because `FormSpecSemanticServiceStats` (a
+`@public` interface) removes four `readonly` counters. All other `@formspec/*` packages
+take a minor bump together under the lockstep version-link convention.

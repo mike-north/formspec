@@ -1,127 +1,35 @@
 /**
- * Extension setup validation + placement-signature matching.
+ * Extension setup validation — checks extension custom-type-name registrations
+ * and produces `ConstraintSemanticDiagnostic` entries for setup-time failures.
  *
- * §5 Phase 5C — this module formerly hosted the synthetic-TypeScript-program
- * batch used by both the build and snapshot consumers for Role-D type-check
- * validation. The synthetic program has been retired:
- * constraint-tag validation now flows through `getMatchingTagSignatures`
- * (Role A — placement pre-check),
- * `_supportsConstraintCapability`/`resolvePathTargetType` (Role B —
- * capability guard), and `parseTagArgument` (Role C — typed-parser argument
- * validation) in both consumers.
+ * Called once at `ExtensionRegistry` construction time so setup diagnostics
+ * are emitted ONCE per registry rather than once per analysis call.
  *
- * The remaining exports are:
- *
- * - `getMatchingTagSignatures` — placement + target-kind overload filter used
- *   by both consumers' Role-A pre-check.
- * - `_validateExtensionSetup` — non-throwing validation of extension
- *   custom-type-name registrations. Produces
- *   `SYNTHETIC_SETUP_FAILURE` / `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`
- *   diagnostics at registry construction time.
- * - `_emitSetupDiagnostics` — maps validation output into
- *   `ConstraintSemanticDiagnostic[]` anchored at the extension registry.
- * - `_mapSetupDiagnosticCode` — kind → diagnostic-code mapping shared between
- *   the build and snapshot consumers.
- * - Supporting types: `SyntheticCompilerDiagnostic` (shape preserved for
- *   backward compatibility of the setup-diagnostic pipeline).
- *
- * @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5C
+ * Produces two diagnostic codes:
+ *   - `SYNTHETIC_SETUP_FAILURE` — invalid identifier, duplicate registration
+ *   - `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` — unsupported TypeScript global-builtin override
  */
 
 import type { Provenance } from "@formspec/core/internals";
 import { type ConstraintSemanticDiagnostic } from "./semantic-targets.js";
-import {
-  type ExtensionTagSource,
-  type FormSpecPlacement,
-  type TagDefinition,
-  type TagSignature,
-  type TagSignatureParameter,
-} from "./tag-registry.js";
+import { type ExtensionTagSource } from "./tag-registry.js";
 
 /**
- * Target kinds surfaced by `getMatchingTagSignatures`.
- *
- * A missing target is modeled by passing `null` rather than a dedicated
- * `"none"` variant.
- */
-export type SyntheticTagTargetKind = "path" | "member" | "variant";
-
-/**
- * Setup-time diagnostic produced by the `_validateExtensionSetup` helper in
- * this module.
+ * Setup-time diagnostic produced by the `_validateExtensionSetup` helper.
  *
  * The `kind` field distinguishes between a "setup" failure (invalid type
  * name, duplicate registration) and an unsupported built-in override.
- * Historically this shape also carried raw TypeScript diagnostics from the
- * synthetic program (`kind: "typescript"`); that variant is retained to keep
- * the `_mapSetupDiagnosticCode` switch exhaustive even though no caller
- * produces it any more.
  *
  * @internal
  */
-export interface SyntheticCompilerDiagnostic {
+export interface SetupDiagnostic {
   /** The category of diagnostic. */
-  readonly kind: "typescript" | "unsupported-custom-type-override" | "synthetic-setup";
+  readonly kind: "unsupported-custom-type-override" | "synthetic-setup";
   /** TypeScript diagnostic code, or -1 for non-TypeScript diagnostics. */
   readonly code: number;
   /** Human-readable description of the diagnostic. */
   readonly message: string;
 }
-
-// ---------------------------------------------------------------------------
-// Signature target-kind helpers (used by getMatchingTagSignatures)
-// ---------------------------------------------------------------------------
-
-function targetKindForParameter(parameter: TagSignatureParameter): SyntheticTagTargetKind | null {
-  switch (parameter.kind) {
-    case "target-path":
-      return "path";
-    case "target-member":
-      return "member";
-    case "target-variant":
-      return "variant";
-    case "value":
-      return null;
-    default: {
-      const exhaustive: never = parameter.kind;
-      return exhaustive;
-    }
-  }
-}
-
-function getSignatureTargetKind(signature: TagSignature): SyntheticTagTargetKind | null {
-  for (const parameter of signature.parameters) {
-    const targetKind = targetKindForParameter(parameter);
-    if (targetKind !== null) {
-      return targetKind;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Filters a tag definition's overloads down to the ones that apply to the
- * requested placement and target form.
- *
- * Used as the Role-A placement pre-check in both the build and snapshot
- * consumers. An empty result means the tag is not allowed on the requested
- * placement/target combination — callers emit `INVALID_TAG_PLACEMENT`.
- */
-export function getMatchingTagSignatures(
-  definition: TagDefinition,
-  placement: FormSpecPlacement,
-  targetKind: SyntheticTagTargetKind | null
-): readonly TagSignature[] {
-  return definition.signatures.filter(
-    (signature) =>
-      signature.placements.includes(placement) && getSignatureTargetKind(signature) === targetKind
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Extension setup validation
-// ---------------------------------------------------------------------------
 
 /**
  * TypeScript primitive type keywords. Registering these as `tsTypeNames` is
@@ -188,23 +96,19 @@ const TS_GLOBAL_BUILTIN_TYPES = new Map<string, boolean>([
 ]);
 
 /**
- * Maps a `SyntheticCompilerDiagnostic["kind"]` to its canonical diagnostic
- * code string.
+ * Maps a `SetupDiagnostic["kind"]` to its canonical diagnostic code string.
  *
  * Shared between the build and snapshot consumers to avoid diverging ternary
- * chains. The `"typescript"` branch is retained for historical shape
- * compatibility even though no caller produces that kind any more.
+ * chains.
  *
  * @internal
  */
-export function _mapSetupDiagnosticCode(kind: SyntheticCompilerDiagnostic["kind"]): string {
+export function _mapSetupDiagnosticCode(kind: SetupDiagnostic["kind"]): string {
   switch (kind) {
     case "unsupported-custom-type-override":
       return "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE";
     case "synthetic-setup":
       return "SYNTHETIC_SETUP_FAILURE";
-    case "typescript":
-      return "TYPE_MISMATCH";
     default: {
       const _exhaustive: never = kind;
       return _exhaustive;
@@ -227,11 +131,11 @@ export function _mapSetupDiagnosticCode(kind: SyntheticCompilerDiagnostic["kind"
  */
 export function _validateExtensionSetup(
   extensions: readonly ExtensionTagSource[] | undefined
-): readonly SyntheticCompilerDiagnostic[] {
+): readonly SetupDiagnostic[] {
   if (extensions === undefined || extensions.length === 0) {
     return [];
   }
-  const diagnostics: SyntheticCompilerDiagnostic[] = [];
+  const diagnostics: SetupDiagnostic[] = [];
   const seen = new Map<string, string>(); // tsName -> extensionId
   for (const ext of extensions) {
     for (const customType of ext.customTypes ?? []) {
@@ -305,7 +209,7 @@ function _extensionRegistryProvenance(file: string): Provenance {
  * @internal
  */
 export function _emitSetupDiagnostics(
-  setupDiags: readonly SyntheticCompilerDiagnostic[],
+  setupDiags: readonly SetupDiagnostic[],
   file: string
 ): readonly ConstraintSemanticDiagnostic[] {
   const provenance = _extensionRegistryProvenance(file);

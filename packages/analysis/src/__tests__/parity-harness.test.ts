@@ -19,6 +19,28 @@
  * consumers now share a unified validation path; most previously-known
  * divergences are resolved and KNOWN_DIVERGENCES is empty by default.
  *
+ * ## Scope and tautology acknowledgement
+ *
+ * After Phase 5C, `runBuildConsumer` calls the SAME shared helpers that the
+ * snapshot consumer calls (`_supportsConstraintCapability` for Role B,
+ * `_checkConstValueAgainstType` for `@const` IR checks, `parseTagArgument`
+ * for Role C, `getMatchingTagSignatures` for Role A). That is intentional —
+ * both consumers run through the unified pipeline — but it also means this
+ * harness can no longer detect drift between the two consumers within those
+ * shared sections: any bug in a shared helper would be reflected identically
+ * on both sides.
+ *
+ * This harness therefore serves as a **structural fixture enumeration** —
+ * it pins that the full matrix of constraint tag × subject type × argument
+ * shape flows through the unified pipeline without surprise diagnostics. For
+ * real cross-consumer divergence detection (end-to-end through the actual
+ * build path vs the snapshot path, not through shared helpers), consult:
+ *
+ *   - `packages/build/src/__tests__/parity-divergences.test.ts` — end-to-end
+ *     `generateSchemas` cross-consumer comparison.
+ *   - `packages/build/src/__tests__/alias-chain-propagation.test.ts` —
+ *     alias-chain coverage (#363).
+ *
  * @see docs/refactors/synthetic-checker-retirement.md §9.1 #1
  * @see docs/refactors/synthetic-checker-retirement.md §3 (divergence catalogue)
  */

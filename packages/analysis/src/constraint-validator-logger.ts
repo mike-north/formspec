@@ -2,14 +2,14 @@
  * Structured logging module for the FormSpec constraint-validation pipeline.
  *
  * Provides namespace scaffolding (§8.3a) and the per-tag-application log-entry
- * schema (§8.3b) for the synthetic-checker retirement refactor (Phase 0-A).
+ * schema (§8.3b) for the constraint-validator consumers.
  *
  * Namespaces:
  *   formspec:analysis:constraint-validator          — root
  *   formspec:analysis:constraint-validator:build    — build-path (tsdoc-parser.ts)
  *   formspec:analysis:constraint-validator:snapshot — snapshot-path (file-snapshots.ts)
- *   formspec:analysis:constraint-validator:typed-parser — future typed-argument parser
- *   formspec:analysis:constraint-validator:synthetic — synthetic-program invocations
+ *   formspec:analysis:constraint-validator:typed-parser — typed-argument parser
+ *   formspec:analysis:constraint-validator:registry — extension-registry construction
  *   formspec:analysis:constraint-validator:broadening — broadening bypass decisions
  *
  * Log level convention:
@@ -29,8 +29,7 @@ import type { LoggerLike } from "@formspec/core";
 // module-load time. In CJS `__filename` is defined; in ESM it is not. Prefer
 // `__filename` when available so the same source works in both output formats.
 declare const __filename: string | undefined;
-const moduleUrl: string =
-  typeof __filename === "string" ? __filename : import.meta.url;
+const moduleUrl: string = typeof __filename === "string" ? __filename : import.meta.url;
 const esmRequire = createRequire(moduleUrl);
 
 // =============================================================================
@@ -50,12 +49,10 @@ export type ConstraintValidatorConsumer = "build" | "snapshot";
  * Roles A–D mirror the architectural roles described in the refactor plan:
  *   A — placement check (is the tag allowed on this declaration kind?)
  *   B — path/target validation (is the `:path` target syntactically valid and resolvable?)
- *   C — argument type check (is the argument value type-compatible? — currently via synthetic program)
- *   D1 — direct-field custom-constraint dispatch (no synthetic involvement)
+ *   C — argument type check (is the argument value type-compatible?)
+ *   D1 — direct-field custom-constraint dispatch
  *   D2 — path-target built-in broadening dispatch
  *   bypass — broadening registry short-circuit (tag accepted without role-C check)
- *   D-pass — synthetic batch accepted a tag that previously passed Role-C (no diagnostics
- *             produced by the synthetic checker for this application)
  *
  * @public
  */
@@ -66,7 +63,6 @@ export type ConstraintValidatorRoleOutcome =
   | "B-reject"
   | "C-pass"
   | "C-reject"
-  | "D-pass"
   | "D1"
   | "D2"
   | "bypass";
@@ -108,7 +104,7 @@ export interface ConstraintTagApplicationLogEntry {
 
 /**
  * Structured log entry emitted when setup diagnostics are generated during
- * extension-registry construction or synthetic-program batch setup.
+ * extension-registry construction.
  *
  * @public
  */
@@ -197,8 +193,8 @@ export const CONSTRAINT_VALIDATOR_SNAPSHOT_NS = `${CONSTRAINT_VALIDATOR_NS}:snap
 /** Sub-namespace for the typed-argument parser (active from Phase 2). */
 export const CONSTRAINT_VALIDATOR_TYPED_PARSER_NS = `${CONSTRAINT_VALIDATOR_NS}:typed-parser`;
 
-/** Sub-namespace for synthetic-program invocations. */
-export const CONSTRAINT_VALIDATOR_SYNTHETIC_NS = `${CONSTRAINT_VALIDATOR_NS}:synthetic`;
+/** Sub-namespace for extension-registry construction events. */
+export const CONSTRAINT_VALIDATOR_REGISTRY_NS = `${CONSTRAINT_VALIDATOR_NS}:registry`;
 
 /** Sub-namespace for broadening bypass decisions. */
 export const CONSTRAINT_VALIDATOR_BROADENING_NS = `${CONSTRAINT_VALIDATOR_NS}:broadening`;
@@ -261,8 +257,7 @@ function buildNamespaceLogger(namespace: string): LoggerLike {
       | typeof import("pino");
     const pino = typeof pinoModule === "function" ? pinoModule : pinoModule.default;
 
-    const isTTY =
-      typeof process !== "undefined" && process.stderr.isTTY;
+    const isTTY = typeof process !== "undefined" && process.stderr.isTTY;
 
     if (isTTY) {
       try {
@@ -301,9 +296,9 @@ export function getSnapshotLogger(): LoggerLike {
   return getOrCreateLogger(CONSTRAINT_VALIDATOR_SNAPSHOT_NS);
 }
 
-/** Returns the module-level logger for the synthetic-program namespace. */
-export function getSyntheticLogger(): LoggerLike {
-  return getOrCreateLogger(CONSTRAINT_VALIDATOR_SYNTHETIC_NS);
+/** Returns the module-level logger for the extension-registry namespace. */
+export function getRegistryLogger(): LoggerLike {
+  return getOrCreateLogger(CONSTRAINT_VALIDATOR_REGISTRY_NS);
 }
 
 /** Returns the module-level logger for the typed-argument-parser namespace. */
@@ -360,14 +355,10 @@ export function logTagApplication(
  * Emits a setup-diagnostic count record (§8.3c).
  *
  * Call whenever setup diagnostics are generated during extension-registry
- * construction or synthetic-program prelude setup.
+ * construction.
  */
-export function logSetupDiagnostics(
-  logger: LoggerLike,
-  entry: SetupDiagnosticLogEntry
-): void {
+export function logSetupDiagnostics(logger: LoggerLike, entry: SetupDiagnosticLogEntry): void {
   if (entry.diagnosticCount > 0) {
     logger.child({ ...entry }).debug("setup diagnostics emitted");
   }
 }
-

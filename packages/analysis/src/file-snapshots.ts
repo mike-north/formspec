@@ -1,10 +1,7 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
-import {
-  _mapSetupDiagnosticCode,
-  _validateExtensionSetup,
-  getMatchingTagSignatures,
-} from "./compiler-signatures.js";
+import { _mapSetupDiagnosticCode, _validateExtensionSetup } from "./extension-setup-validation.js";
+import { getMatchingTagSignatures } from "./tag-signature-matching.js";
 import {
   _capabilityLabel,
   _checkConstValueAgainstType,
@@ -93,13 +90,13 @@ export interface BuildFormSpecAnalysisFileSnapshotOptions {
   readonly performance?: FormSpecPerformanceRecorder;
 }
 
-const SYNTHETIC_TYPE_NODE_BUILDER_FLAGS =
+const ANALYSIS_TYPE_NODE_BUILDER_FLAGS =
   ts.NodeBuilderFlags.NoTruncation |
   ts.NodeBuilderFlags.UseStructuralFallback |
   ts.NodeBuilderFlags.IgnoreErrors |
   ts.NodeBuilderFlags.InTypeAlias;
 
-const SYNTHETIC_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
+const ANALYSIS_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
   "/virtual/formspec-standalone-type.ts",
   "",
   ts.ScriptTarget.ES2022,
@@ -107,7 +104,7 @@ const SYNTHETIC_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
   ts.ScriptKind.TS
 );
 
-const SYNTHETIC_TYPE_PRINTER = ts.createPrinter({ removeComments: true });
+const ANALYSIS_TYPE_PRINTER = ts.createPrinter({ removeComments: true });
 
 interface NumericConstraintAccumulator {
   minimum?: number;
@@ -218,8 +215,8 @@ function createConstraintTagRegistry(
  *
  * Returns `true` when the given builtin constraint tag has a registered
  * broadening for the field's TypeScript type. When broadening is active the
- * tag application bypasses Role C (typed-argument validation) and proceeds
- * directly to the synthetic batch, which routes it to D1/D2 handling.
+ * tag application bypasses Role C (typed-argument validation) and is routed
+ * to D1/D2 handling.
  *
  * This mirrors the build path's `hasBuiltinConstraintBroadening` function in
  * `tsdoc-parser.ts`, adapted for the snapshot consumer's data model:
@@ -880,20 +877,20 @@ function renderStandaloneTypeSyntax(
     return null;
   }
 
-  const typeNode = checker.typeToTypeNode(type, undefined, SYNTHETIC_TYPE_NODE_BUILDER_FLAGS);
+  const typeNode = checker.typeToTypeNode(type, undefined, ANALYSIS_TYPE_NODE_BUILDER_FLAGS);
   if (typeNode === undefined) {
     return null;
   }
 
-  const rendered = SYNTHETIC_TYPE_PRINTER.printNode(
+  const rendered = ANALYSIS_TYPE_PRINTER.printNode(
     ts.EmitHint.Unspecified,
     typeNode,
-    SYNTHETIC_TYPE_PRINT_SOURCE_FILE
+    ANALYSIS_TYPE_PRINT_SOURCE_FILE
   ).trim();
   return rendered === "" ? null : rendered;
 }
 
-function getSyntheticTargetForTag(tag: ReturnType<typeof parseCommentBlock>["tags"][number]) {
+function getTagTargetDescriptor(tag: ReturnType<typeof parseCommentBlock>["tags"][number]) {
   if (tag.target === null) {
     return null;
   }
@@ -1302,7 +1299,7 @@ function buildTagDiagnostics(
       continue;
     }
 
-    const target = getSyntheticTargetForTag(tag);
+    const target = getTagTargetDescriptor(tag);
     const pathTargetResolution =
       tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
         ? tag.target.path === null
@@ -1314,24 +1311,23 @@ function buildTagDiagnostics(
     // above the loop. Both are only consumed when logging is enabled.
     const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
 
-    // §4 Phase 3 — Role C: validate argument literal via the typed parser BEFORE
-    // the synthetic-checker call, mirroring the Phase 2 wiring in tsdoc-parser.ts.
+    // Role C: validate argument literal via the typed parser. Mirrors the wiring
+    // in tsdoc-parser.ts.
     //
-    // IMPORTANT (Lesson 1 from Phase 2): the broadening check MUST run BEFORE the
-    // typed-parser call. Broadened fields (D1/D2) bypass Role C entirely. Without
-    // this guard a broadened field whose argument the typed parser would reject
-    // (e.g. a custom type with a registered @minimum broadening) would spuriously
-    // emit INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
+    // IMPORTANT: the broadening check MUST run BEFORE the typed-parser call.
+    // Broadened fields (D1/D2) bypass Role C entirely. Without this guard a
+    // broadened field whose argument the typed parser would reject (e.g. a
+    // custom type with a registered @minimum broadening) would spuriously emit
+    // INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
     //
     // Guard: only call parseTagArgument for builtin constraint tags. Extension tags
     // are not in the typed parser's registry (they would return UNKNOWN_TAG), and
     // they bypass this path via the `!isBuiltinConstraintName` guard below.
     //
     // Behaviour (non-broadened builtin constraint path):
-    //   - ok: false → emit INVALID_TAG_ARGUMENT or MISSING_TAG_ARGUMENT; skip
-    //                 adding this application to syntheticApplications.
-    //   - ok: true (including raw-string-fallback for @const) → proceed to
-    //                 lowerTagApplicationToSyntheticCall as before.
+    //   - ok: false → emit INVALID_TAG_ARGUMENT or MISSING_TAG_ARGUMENT.
+    //   - ok: true (including raw-string-fallback for @const) → proceed to the
+    //                 remaining Role-B / IR checks.
     if (isBuiltinConstraintName(tag.normalizedTagName)) {
       // §4 Phase 4A — add the integer-brand bypass that was previously missing
       // from the snapshot consumer (closes #325).
@@ -1345,17 +1341,8 @@ function buildTagDiagnostics(
       //   - capabilities.includes("numeric-comparable"): only bypass numeric
       //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
       //
-      // When true: skip both the typed parser AND the synthetic checker and
+      // When true: skip both the typed parser AND the Role-C check and
       // emit "bypass" on the structured log — identical to the build consumer.
-      //
-      // TODO(Phase 5, residual from #325): this bypass prevents TYPE_MISMATCH
-      // on the integer field itself, but the synthetic batch checker can still
-      // fail to resolve the imported integer type in its supporting
-      // declarations — which pollutes *sibling* string-field constraints
-      // (@minLength/@maxLength) in the same declaration with spurious
-      // TYPE_MISMATCH. Scenarios 6 and 7 in file-snapshots.integer-bypass.test.ts
-      // pin the current behavior. Full resolution lands with Phase 5
-      // (synthetic-checker retirement) per docs/refactors/synthetic-checker-retirement.md.
       const isIntegerBypass =
         target === null &&
         _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
@@ -1374,7 +1361,7 @@ function buildTagDiagnostics(
             elapsedMicros: elapsedMicros(tagStartMicros),
           });
         }
-        // Skip typed parser and synthetic checker — no diagnostic emitted.
+        // Skip typed parser and Role-C check — no diagnostic emitted.
         continue;
       }
 
@@ -1446,35 +1433,28 @@ function buildTagDiagnostics(
                   message: `Target "${target.text}": path-targeted constraint "${tag.normalizedTagName}" references unknown path segment "${pathTargetResolution.segment}"`,
                 };
               } else if (pathTargetResolution.kind === "unresolvable") {
-                const actualTypeText = typeToString(pathTargetResolution.type, checker) ?? "unknown";
+                const actualTypeText =
+                  typeToString(pathTargetResolution.type, checker) ?? "unknown";
                 pathRejection = {
                   code: "TYPE_MISMATCH",
                   message: `Target "${target.text}": path-targeted constraint "${tag.normalizedTagName}" is invalid because type "${actualTypeText}" cannot be traversed`,
                 };
               } else {
                 evaluatedType = pathTargetResolution.type;
-                evaluatedTypeLabel =
-                  typeToString(pathTargetResolution.type, checker) ?? "unknown";
+                evaluatedTypeLabel = typeToString(pathTargetResolution.type, checker) ?? "unknown";
               }
             }
 
             if (pathRejection !== null) {
               diagnostics.push(
-                createAnalysisDiagnostic(
-                  pathRejection.code,
-                  pathRejection.message,
-                  tag.fullSpan,
-                  {
-                    tagName: tag.normalizedTagName,
-                    placement,
-                    ...(target === null
-                      ? {}
-                      : { targetKind: target.kind, targetText: target.text }),
-                    ...(pathTargetResolution?.kind === "missing-property"
-                      ? { missingPathSegment: pathTargetResolution.segment }
-                      : {}),
-                  }
-                )
+                createAnalysisDiagnostic(pathRejection.code, pathRejection.message, tag.fullSpan, {
+                  tagName: tag.normalizedTagName,
+                  placement,
+                  ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+                  ...(pathTargetResolution?.kind === "missing-property"
+                    ? { missingPathSegment: pathTargetResolution.segment }
+                    : {}),
+                })
               );
               if (snapshotLogsEnabled) {
                 logTagApplication(snapshotLog, {
@@ -1581,12 +1561,12 @@ function buildTagDiagnostics(
               }
             )
           );
-          // Skip adding to syntheticApplications — typed parser already rejected at Role C.
+          // Typed parser already rejected at Role C — no further checks.
           continue;
         }
 
-        // Typed parser accepted the argument. Log at trace level before falling
-        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 5).
+        // Typed parser accepted the argument. Log at trace level before
+        // continuing to the remaining checks (Roles A / IR / D1/D2).
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser C-pass", {
             consumer: "snapshot",
@@ -1604,14 +1584,11 @@ function buildTagDiagnostics(
         // validation time (semantic-targets.ts case "const", ~line 1255). The
         // snapshot consumer does not build an analysis IR, so we port the
         // primitive value-type and enum-membership checks directly against the
-        // `ts.Type` here. Closes the 4 IR-validation canaries pinned in
-        // constraint-canaries.test.ts (see §4 Phase 5B in
-        // docs/refactors/synthetic-checker-retirement.md).
+        // `ts.Type` here.
         //
         // Scope: only builtin @const, direct-field (target === null). Path-
-        // targeted @const still goes through the synthetic checker until
-        // Phase 5C deletes the synthetic machinery entirely. This matches the
-        // scoping of Slice A's Role-B guard above.
+        // targeted @const relies on the Role-B path-target capability guard
+        // above and does not run this extra IR check.
         //
         // The typed parser produces one of:
         //   - { kind: "json-value", value: JsonValue }     — parsed JSON
@@ -1653,14 +1630,14 @@ function buildTagDiagnostics(
                 elapsedMicros: elapsedMicros(tagStartMicros),
               });
             }
-            // Skip synthetic call — IR check rejected.
+            // IR check rejected — no further processing.
             continue;
           }
         }
       } else {
-        // Extension-broadened (D1/D2) — bypass the typed parser but still pass
-        // to the synthetic checker, which understands extension-registered types
-        // and handles D1/D2 validation. Log at trace level if enabled.
+        // Extension-broadened (D1/D2) — bypass the typed parser; D1/D2
+        // handling is performed by the downstream registry dispatch.
+        // Log at trace level if enabled.
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",
@@ -1679,10 +1656,8 @@ function buildTagDiagnostics(
     // semantic.tagDefinition is always non-null here (the null case causes an
     // early `continue` at the top of the loop).
     //
-    // §5 Phase 5C — this placement check is the only Role-A guard remaining
-    // after the synthetic-program batch has been retired. The try/catch
-    // fallback around lowerTagApplicationToSyntheticCall was removed along
-    // with that surface.
+    // §5 Phase 5C — this placement check is the only Role-A guard; the former
+    // synthetic-program fallback has been retired.
     {
       const definition = semantic.tagDefinition;
       const targetKind = target?.kind ?? null;

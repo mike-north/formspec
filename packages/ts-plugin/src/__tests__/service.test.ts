@@ -360,12 +360,6 @@ describe("FormSpecPluginService", () => {
     expect(loggedOutput).toContain("semantic.getDiagnostics");
     expect(loggedOutput).toContain("semantic.getFileSnapshot.result");
     expect(loggedOutput).toContain("analysis.buildFileSnapshot");
-    // §5 Phase 5C — the synthetic batch events
-    // (`analysis.syntheticCheckBatch.createProgram` /
-    //  `analysis.syntheticCheckBatch.getPreEmitDiagnostics`) no longer exist
-    // after the synthetic-program retirement. The performance trail now ends
-    // at `analysis.buildTagDiagnostics` and `analysis.renderStandaloneSubjectType`
-    // — assert on the new shape instead.
     expect(loggedOutput).toContain("analysis.buildTagDiagnostics");
   });
 

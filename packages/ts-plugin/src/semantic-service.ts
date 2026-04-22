@@ -205,10 +205,8 @@ interface MutableSemanticServiceStats {
   fileSnapshotCacheMisses: number;
 }
 
-// §5 Phase 5C — the former synthetic-check event names
-// (analysis.syntheticCheckBatch.{cacheHit,cacheMiss,createProgram}) no longer
-// fire after synthetic-program retirement. The STATS_ONLY filter is retained
-// as an extension point for future stats-only events.
+// Extension point for event names that should be counted in stats but not
+// recorded to the per-call performance trail. Currently empty.
 const STATS_ONLY_EVENT_NAMES = new Set<string>([]);
 
 class StatsOnlyPerformanceRecorder implements FormSpecPerformanceRecorder {
