@@ -72,7 +72,16 @@ export interface TagDefinition {
   readonly allowDuplicates: boolean;
   readonly category: FormSpecTagCategory;
   readonly placements: readonly FormSpecPlacement[];
-  readonly capabilities: readonly SemanticCapability[];
+  /**
+   * The semantic capabilities required of the field type for this tag to be
+   * applicable. At most one capability may be declared per tag.
+   *
+   * The "at most one" invariant is structural: all `capabilitiesForValueKind`
+   * return paths yield 0 or 1 elements, and no tag definition supplies 2+
+   * capabilities. The tuple type enforces this at the type level so future
+   * additions that accidentally provide two capabilities produce a type error.
+   */
+  readonly capabilities: readonly [SemanticCapability] | readonly [];
   readonly completionDetail: string;
   readonly hoverSummary: string;
   readonly hoverMarkdown: string;
@@ -382,21 +391,21 @@ function getBuiltinConstraintCapability(name: BuiltinConstraintName): SemanticCa
 
 function capabilitiesForValueKind(
   valueKind: FormSpecValueKind | null
-): readonly SemanticCapability[] {
+): readonly [SemanticCapability] | readonly [] {
   switch (valueKind) {
     case "number":
     case "integer":
     case "signedInteger":
-      return ["numeric-comparable"];
+      return ["numeric-comparable"] as const;
     case "string":
-      return ["string-like"];
+      return ["string-like"] as const;
     case "json":
-      return ["json-like"];
+      return ["json-like"] as const;
     case "condition":
-      return ["condition-like"];
+      return ["condition-like"] as const;
     case "boolean":
     case null:
-      return [];
+      return [] as const;
     default: {
       const exhaustive: never = valueKind;
       return exhaustive;
@@ -568,7 +577,7 @@ const BUILTIN_TAG_DEFINITIONS = Object.fromEntries(
         allowDuplicates: false,
         category: "constraint" as const,
         placements: FIELD_PLACEMENTS,
-        capabilities: [subjectCapability],
+        capabilities: [subjectCapability] as const,
         completionDetail: CONSTRAINT_COMPLETION_DETAIL[name] ?? `@${name}`,
         hoverSummary: CONSTRAINT_HOVER_SUMMARIES[name],
         hoverMarkdown: CONSTRAINT_HOVER_DOCS[name] ?? `**@${name}**`,
@@ -805,7 +814,7 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     // regardless of its type, so their value-kind must not leak into a field
     // constraint. `EXTRA_TAG_SPECS` currently has no constraint entries, but
     // we keep the `spec.category === "constraint"` check for future-proofing.
-    capabilities: spec.category === "constraint" ? capabilitiesForValueKind(valueKind) : [],
+    capabilities: spec.category === "constraint" ? capabilitiesForValueKind(valueKind) : ([] as const),
     completionDetail: spec.completionDetail,
     hoverSummary: spec.hoverSummary,
     hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),
@@ -884,7 +893,7 @@ function buildExtensionMetadataTagDefinition(
     // Extension metadata tags are always annotations — they attach a typed
     // value to a declaration without constraining the declaration's type.
     // See `buildExtraTagDefinition` for the rationale.
-    capabilities: [],
+    capabilities: [] as const,
     completionDetail: `Extension metadata tag from ${extensionId}`,
     hoverSummary: `Extension-defined metadata tag from \`${extensionId}\`.`,
     hoverMarkdown: [
@@ -937,7 +946,7 @@ export function getTagDefinition(
       allowDuplicates: true,
       category: "constraint",
       placements: FIELD_PLACEMENTS,
-      capabilities: [],
+      capabilities: [] as const,
       completionDetail: `Extension constraint tag from ${extensionRegistration.extensionId}`,
       hoverSummary: `Extension-defined constraint tag from \`${extensionRegistration.extensionId}\`.`,
       hoverMarkdown: [

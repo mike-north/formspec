@@ -59,9 +59,18 @@
 // - @enumOptions 5 (scalar not array) — typed parser catches at Role C
 // - @enumOptions {} (object not array) — typed parser catches at Role C
 //
+// Phase 5A flips (2026-04-21):
+// - 8 Category-1 canaries: snapshot consumer now runs _supportsConstraintCapability
+//   Role-B guard in buildTagDiagnostics, matching the build path's check.
+//   Closes the 8 Role-B silent-acceptance gaps tracked in #326.
+// - @const "USD" on object (bonus flip): the TypeScript `object` primitive type
+//   has TypeFlags.NonPrimitive and is NOT json-like, so the capability check
+//   emits TYPE_MISMATCH directly. This is correct behavior.
+//
 // @see docs/refactors/synthetic-checker-retirement.md S.9.3 #14
 // @see docs/refactors/synthetic-checker-retirement.md §4 (Phase 3 scope)
-// @see packages/build/src/analyzer/tsdoc-parser.ts supportsConstraintCapability (Role B — build path only)
+// @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5A
+// @see packages/analysis/src/constraint-applicability.ts _supportsConstraintCapability (Role B — shared)
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../internal.js";
 import { createProgram } from "./helpers.js";
@@ -99,8 +108,8 @@ describe("@minimum silent-acceptance canaries", () => {
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     // range is always present; verify it points somewhere in the source
     expect(diagnostic?.range).toBeDefined();
-    expect(typeof diagnostic?.range.start).toBe("number");
-    expect(typeof diagnostic?.range.end).toBe("number");
+    expect(diagnostic?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostic?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @minimum true -- boolean is not a valid numeric argument.
@@ -143,48 +152,45 @@ describe("@minimum silent-acceptance canaries", () => {
 
   // @minimum 0 on a string field -- string has no numeric-comparable capability.
   //
-  // Phase 4D audit: SNAPSHOT PATH ONLY — still silently accepted.
-  // Root cause: the synthetic prelude's direct-field tag_minimum overload has no
-  // capability constraint on Subject. The build path (tsdoc-parser.ts) catches
-  // this via supportsConstraintCapability() at Role B, but the snapshot consumer
-  // (buildFormSpecAnalysisFileSnapshot) does not have an equivalent Role-B guard.
-  // Phase 5 target: add host-checker Role-B capability check to snapshot consumer,
-  // or retire the synthetic prelude in favour of the build path's guard.
-  it.fails(
-    "emits TYPE_MISMATCH for @minimum 0 on a string field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @minimum 0 */
-          value!: string;
-        }
-        `,
-        "minimum-on-string"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard
+  // (_supportsConstraintCapability) in buildTagDiagnostics, matching the build
+  // path's supportsConstraintCapability() check in tsdoc-parser.ts.
+  it("emits TYPE_MISMATCH for @minimum 0 on a string field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @minimum 0 */
+        value!: string;
+      }
+      `,
+      "minimum-on-string"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 
   // @minimum 0 on a boolean field -- boolean has no numeric-comparable capability.
   //
-  // Phase 4D audit: same root cause as @minimum on string above.
-  // Phase 5 target: snapshot Role-B capability check.
-  it.fails(
-    "emits TYPE_MISMATCH for @minimum 0 on a boolean field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @minimum 0 */
-          value!: boolean;
-        }
-        `,
-        "minimum-on-boolean"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: same mechanism as @minimum on string above.
+  it("emits TYPE_MISMATCH for @minimum 0 on a boolean field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @minimum 0 */
+        value!: boolean;
+      }
+      `,
+      "minimum-on-boolean"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -195,12 +201,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions with no argument omits the required JSON array.
   // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
   // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits MISSING_TAG_ARGUMENT for @enumOptions with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-empty"
@@ -213,12 +222,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
   // @enumOptions [1, -- truncated / malformed JSON.
   // The synthetic checker emits INVALID_TAG_ARGUMENT.
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions [1, (malformed JSON)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions [1, */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-malformed"
@@ -232,12 +244,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions 5 -- scalar number, not a JSON array.
   // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
   // (Previously: silent acceptance — no diagnostic emitted.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions 5 (scalar, not array)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions 5 */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-scalar"
@@ -250,12 +265,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions {} -- plain object, not a JSON array.
   // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
   // (Previously: silent acceptance — no diagnostic emitted.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions {} (object, not array)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions {} */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-object"
@@ -267,25 +285,25 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
   // @enumOptions on a number field -- no enum-member-addressable capability.
   //
-  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
-  // direct-field tag_enumOptions has no capability constraint on Subject.
-  // The build path does emit TYPE_MISMATCH (supportsConstraintCapability returns
-  // false for number with "enum-member-addressable"). Phase 5 target.
-  it.fails(
-    "emits a diagnostic for @enumOptions on a number field (no enum capability) [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @enumOptions ["a","b"] */
-          value!: number;
-        }
-        `,
-        "enumOptions-on-number"
-      );
-      expect(diagnostics.length).toBeGreaterThan(0);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard,
+  // matching the build path's supportsConstraintCapability() check which returns
+  // false for number with "enum-member-addressable".
+  it("emits TYPE_MISMATCH for @enumOptions on a number field (no enum-member-addressable capability)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @enumOptions ["a","b"] */
+        value!: number;
+      }
+      `,
+      "enumOptions-on-number"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -340,43 +358,43 @@ describe("@pattern silent-acceptance canaries", () => {
 
   // @pattern on a number field -- numbers are not string-like.
   //
-  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
-  // direct-field tag_pattern has no capability constraint on Subject.
-  // Phase 5 target: snapshot Role-B capability check.
-  it.fails(
-    "emits TYPE_MISMATCH for @pattern on a number field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @pattern ^[a-z]+$ */
-          value!: number;
-        }
-        `,
-        "pattern-on-number"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard.
+  it("emits TYPE_MISMATCH for @pattern on a number field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @pattern ^[a-z]+$ */
+        value!: number;
+      }
+      `,
+      "pattern-on-number"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 
   // @pattern on a boolean field -- booleans are not string-like.
   //
-  // Phase 4D audit: same root cause as @pattern on number. Phase 5 target.
-  it.fails(
-    "emits TYPE_MISMATCH for @pattern on a boolean field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @pattern ^yes$ */
-          value!: boolean;
-        }
-        `,
-        "pattern-on-boolean"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard.
+  it("emits TYPE_MISMATCH for @pattern on a boolean field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @pattern ^yes$ */
+        value!: boolean;
+      }
+      `,
+      "pattern-on-boolean"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 
   // @pattern on a string[] (array) field -- arrays are not string-like...or are they?
   //
@@ -414,37 +432,29 @@ describe("@pattern silent-acceptance canaries", () => {
 
   // @pattern ^yes$ on a number[] (array) field -- number[] is NOT string-like.
   //
-  // [Phase 5 target: snapshot Role-B capability check]
+  // Unlike string[] (which satisfies "string-like" via _supportsConstraintCapability's
+  // array-element unwrap branch), number[] is NOT string-like — the element type
+  // (number) is not string-like, and neither is the array itself.
   //
-  // Unlike string[] (which satisfies "string-like" via supportsConstraintCapability's
-  // array-element unwrap branch), number[] is NOT string-like — neither the element
-  // type (number) nor the array itself passes the "string-like" capability check.
-  // Both consumers should emit TYPE_MISMATCH, but currently neither does:
-  //   - Build path: supportsConstraintCapability's "string-like" branch unwraps the
-  //     array element to `number`, which is not string-like, so the guard WOULD fire
-  //     if the capability check were wired at Role B in this path. Requires Phase 5
-  //     to fully thread the check for array-of-non-string types.
-  //   - Snapshot path: the synthetic prelude's tag_pattern<Host, Subject> direct-field
-  //     overload has NO capability constraint on Subject, so the synthetic TypeScript
-  //     checker accepts @pattern on number[] without error.
-  // This is a genuine Role-B gap, distinct from the intentional string[] behavior above.
-  // Phase 5 will flip this canary when host-checker Role-B is added to the snapshot
-  // consumer (or the synthetic checker is retired).
-  it.fails(
-    "emits TYPE_MISMATCH for @pattern ^yes$ on a number[] field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @pattern ^yes$ */
-          value!: number[];
-        }
-        `,
-        "pattern-on-number-array"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard.
+  // _supportsConstraintCapability unwraps the array element to `number`, which
+  // is not string-like, so the capability check fails and TYPE_MISMATCH is emitted.
+  it("emits TYPE_MISMATCH for @pattern ^yes$ on a number[] field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @pattern ^yes$ */
+        value!: number[];
+      }
+      `,
+      "pattern-on-number-array"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -512,43 +522,43 @@ describe("@uniqueItems silent-acceptance canaries", () => {
 
   // @uniqueItems on a string field -- strings are not arrays.
   //
-  // Phase 4D audit: same root cause as @minimum on string — synthetic prelude
-  // direct-field tag_uniqueItems has no capability constraint on Subject.
-  // Phase 5 target: snapshot Role-B capability check.
-  it.fails(
-    "emits TYPE_MISMATCH for @uniqueItems on a string field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @uniqueItems */
-          value!: string;
-        }
-        `,
-        "uniqueItems-on-string"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: snapshot consumer now runs the Role-B capability guard.
+  it("emits TYPE_MISMATCH for @uniqueItems on a string field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @uniqueItems */
+        value!: string;
+      }
+      `,
+      "uniqueItems-on-string"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 
   // @uniqueItems on a number field -- numbers are not arrays.
   //
-  // Phase 4D audit: same root cause as @uniqueItems on string. Phase 5 target.
-  it.fails(
-    "emits TYPE_MISMATCH for @uniqueItems on a number field [Phase 5 target: snapshot Role-B capability check]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @uniqueItems */
-          value!: number;
-        }
-        `,
-        "uniqueItems-on-number"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  // Phase 5A FLIP: same mechanism as @uniqueItems on string above.
+  it("emits TYPE_MISMATCH for @uniqueItems on a number field (snapshot Role-B capability check)", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @uniqueItems */
+        value!: number;
+      }
+      `,
+      "uniqueItems-on-number"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -578,29 +588,31 @@ describe("@const silent-acceptance canaries", () => {
   // @const "USD" on an object field -- a string literal constant is not
   // compatible with an object field.
   //
-  // Phase 4D audit: IR-level mismatch — not surfaced by snapshot consumer.
-  // Root cause: both synthetic checkers accept the raw tag call (before IR
-  // validation) because the prelude declares `type JsonValue = unknown` — any
-  // JSON value (including "USD") is assignable to the Subject type parameter of
-  // tag_const. The build path later catches the mismatch in validateIR
-  // (semantic-targets.ts), but the snapshot consumer never reaches that layer.
-  // Phase 5 target: retire the synthetic checker and/or add IR-validation pass
-  // to the snapshot consumer.
-  it.fails(
-    'emits a diagnostic for @const "USD" on an object field [Phase 5 target: IR-validation pass in snapshot consumer]',
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @const "USD" */
-          value!: object;
-        }
-        `,
-        "const-on-object"
-      );
-      expect(diagnostics.length).toBeGreaterThan(0);
-    }
-  );
+  // Phase 5A FLIP (bonus): the TypeScript `object` primitive type has
+  // TypeFlags.NonPrimitive and is NOT json-like (isJsonLike returns false).
+  // The Role-B capability guard (_supportsConstraintCapability) catches this
+  // at capability check time: @const requires "json-like", but the TypeScript
+  // `object` keyword does not satisfy that capability.
+  //
+  // Note: this is different from struct/record object types (e.g. `{ code: string }`)
+  // which ARE json-like. The TypeScript `object` primitive is a catch-all for
+  // non-primitive values and is specifically not json-like.
+  it('emits TYPE_MISMATCH for @const "USD" on an object field (Role-B capability check)', () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @const "USD" */
+        value!: object;
+      }
+      `,
+      "const-on-object"
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    expect(diagnostics[0]?.range).toBeDefined();
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
+  });
 
   // @const {"a":1} on a number field -- a JSON object constant is not
   // compatible with a number field.
