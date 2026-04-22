@@ -44,7 +44,7 @@ export interface MethodSchemas {
 /**
  * Parameter schemas for a method.
  */
-export interface MethodParamsSchemas {
+interface MethodParamsSchemas {
   /** JSON Schema for parameters */
   jsonSchema: JsonSchema2020;
   /** UI Schema / FormSpec for parameters (if available) */
