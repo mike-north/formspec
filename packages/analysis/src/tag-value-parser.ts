@@ -62,6 +62,17 @@ export interface ConstraintTagParseRegistryLike {
 export interface ParseConstraintTagValueOptions {
   readonly registry?: ConstraintTagParseRegistryLike;
   readonly fieldType?: TypeNode;
+  /**
+   * For path-targeted built-in constraint tags, the custom type ID that the
+   * path resolves to (if the terminal sub-type is a registered custom type).
+   * When present, this is consulted for built-in constraint broadening in
+   * place of `fieldType` — the field's own type describes the wrong thing
+   * for a path-targeted tag.
+   *
+   * Only the build consumer has the compiler-level resolution needed to
+   * compute this value; other consumers may safely omit it.
+   */
+  readonly pathResolvedCustomTypeId?: string;
 }
 
 function syntaxOptions(
@@ -274,7 +285,17 @@ function parseExtensionConstraintTagValue(
     return null;
   }
 
-  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  // For path-targeted built-in tags, the field's own type describes the
+  // wrong thing — the broadening lookup must target the path-resolved
+  // terminal type. The caller (the build consumer) is the only layer with
+  // compiler-level access to resolve this, and supplies the result via
+  // `pathResolvedCustomTypeId`. When `path` is present we consult only
+  // that input; when `path` is absent (direct-field case) we consult the
+  // IR `fieldType` as before.
+  const broadenedTypeId =
+    path !== undefined
+      ? options?.pathResolvedCustomTypeId
+      : getBroadenedCustomTypeId(options?.fieldType);
   if (broadenedTypeId === undefined) {
     return null;
   }
@@ -294,7 +315,18 @@ function parseExtensionConstraintTagValue(
   );
 }
 
-function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
+/**
+ * Resolves the broadening-eligible custom type ID for a field's IR type.
+ *
+ * Returns the `CustomTypeNode.typeId` when the field type is directly custom,
+ * OR when it's a nullable-single-custom union (`T | null`). Returns `undefined`
+ * for any other shape — the caller's broadening lookup then falls through.
+ *
+ * Exported from `@formspec/analysis/internal` so the build consumer can reuse
+ * exactly the same "what counts as a broadenable custom field type" rule
+ * without maintaining a drift-prone duplicate. See PR #398 / issue #395.
+ */
+export function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
   if (fieldType?.kind === "custom") {
     return fieldType.typeId;
   }

@@ -131,6 +131,54 @@ export function dereferenceAnalysisType(
   return current;
 }
 
+/**
+ * Unwraps a `T | null` nullable union down to its single non-null member.
+ * Unions with multiple non-null members are returned unchanged.
+ *
+ * IR-only: the canonical `TypeNode` has no `"undefined"` primitive kind —
+ * optionality is carried by the `ObjectProperty.optional` flag, not by
+ * a union member. So only `null` participates here; any attempt to "sync"
+ * this helper with the TS-level `stripNullishUnion` by adding an `undefined`
+ * check would be dead code.
+ *
+ * Mirrors the nullable-stripping behavior of `stripNullishUnion` in
+ * `ts-binding.ts` so IR-level path traversal matches what the compiler-backed
+ * resolver already does. Without this, a path walking through a nullable
+ * intermediate (e.g. `LineItem { money: MonetaryAmount | null }` with
+ * `:money.amount`) would be rejected at the union boundary even though the
+ * TS resolver accepts it.
+ */
+function stripNullableUnion(type: TypeNode): TypeNode {
+  if (type.kind !== "union") {
+    return type;
+  }
+  const nonNullMembers = type.members.filter(
+    (member) => !(member.kind === "primitive" && member.primitiveKind === "null")
+  );
+  if (nonNullMembers.length === 1) {
+    const [sole] = nonNullMembers;
+    return sole ?? type;
+  }
+  return type;
+}
+
+/**
+ * Combined dereference + nullable-unwrap used before path traversal.
+ *
+ * References are dereferenced first (the body may itself be a nullable union),
+ * then nullable wrappers are stripped, then dereferenced once more in case the
+ * non-null member was itself a reference (e.g. `MonetaryAmount | null` where
+ * `MonetaryAmount` is a `ReferenceTypeNode`).
+ */
+function resolveTraversable(type: TypeNode, typeRegistry: AnalysisTypeRegistry): TypeNode {
+  const dereffed = dereferenceAnalysisType(type, typeRegistry);
+  const unwrapped = stripNullableUnion(dereffed);
+  if (unwrapped === dereffed) {
+    return dereffed;
+  }
+  return dereferenceAnalysisType(unwrapped, typeRegistry);
+}
+
 export function collectReferencedTypeConstraints(
   type: TypeNode,
   typeRegistry: AnalysisTypeRegistry
@@ -202,7 +250,12 @@ function resolveProperty(
     }
   | { readonly kind: "missing-property"; readonly segment: string }
   | { readonly kind: "unresolvable"; readonly type: TypeNode } {
-  const effectiveType = dereferenceAnalysisType(type, typeRegistry);
+  // resolveTraversable strips both reference indirection and nullable unions.
+  // The latter keeps IR-level path resolution in parity with the TS-level
+  // resolver (`stripNullishUnion` in ts-binding.ts), so nullable intermediate
+  // segments in a path (e.g. `:money.amount` on `LineItem { money: MonetaryAmount | null }`)
+  // traverse through to the non-null member instead of erroring on the union.
+  const effectiveType = resolveTraversable(type, typeRegistry);
 
   if (segments.length === 0) {
     return { kind: "resolved", property: null, rawType: type, type: effectiveType };
@@ -231,7 +284,7 @@ function resolveProperty(
       kind: "resolved",
       property,
       rawType: property.type,
-      type: dereferenceAnalysisType(property.type, typeRegistry),
+      type: resolveTraversable(property.type, typeRegistry),
     };
   }
 
@@ -1163,9 +1216,7 @@ function checkConstraintOnType(
   const isArray = unwrapped.kind === "array";
   const isEnum = unwrapped.kind === "enum";
   const arrayItemType =
-    unwrapped.kind === "array"
-      ? dereferenceAnalysisType(unwrapped.items, typeRegistry)
-      : undefined;
+    unwrapped.kind === "array" ? dereferenceAnalysisType(unwrapped.items, typeRegistry) : undefined;
   const isStringArray =
     arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
 

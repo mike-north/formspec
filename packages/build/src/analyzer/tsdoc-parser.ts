@@ -44,6 +44,7 @@ import {
   checkSyntheticTagApplication,
   choosePreferredPayloadText,
   extractPathTarget as extractSharedPathTarget,
+  getBroadenedCustomTypeId,
   getTagDefinition,
   hasTypeSemanticCapability,
   normalizeFormSpecTagName,
@@ -96,11 +97,63 @@ import {
   type ConstraintValidatorRoleOutcome,
 } from "@formspec/analysis/internal";
 
-function sharedTagValueOptions(options?: ParseTSDocOptions) {
+function sharedTagValueOptions(options?: ParseTSDocOptions, pathResolvedCustomTypeId?: string) {
   return {
     ...(options?.extensionRegistry !== undefined ? { registry: options.extensionRegistry } : {}),
     ...(options?.fieldType !== undefined ? { fieldType: options.fieldType } : {}),
+    ...(pathResolvedCustomTypeId !== undefined ? { pathResolvedCustomTypeId } : {}),
   };
+}
+
+/**
+ * For a `ts.Type` already resolved (e.g. by walking a path through the host),
+ * returns the fully-qualified custom type ID if the type is a registered
+ * custom type, else `undefined`. Single shared step used both for direct-type
+ * lookups and for path-resolved terminals.
+ */
+function customTypeIdForResolvedType(
+  resolvedType: ts.Type,
+  checker: ts.TypeChecker,
+  registry: ExtensionRegistry | undefined
+): string | undefined {
+  if (registry === undefined) return undefined;
+  const lookup = resolveCustomTypeFromTsType(resolvedType, checker, registry);
+  return lookup === null ? undefined : customTypeIdFromLookup(lookup);
+}
+
+/**
+ * For a parsed tag whose target is a valid path (`:foo.bar`), resolves the
+ * terminal sub-type through the TypeScript compiler and looks up whether that
+ * sub-type is a registered custom type. Returns the fully-qualified type ID
+ * (`extensionId/typeName`) used by the broadening registry, or `undefined`
+ * when any precondition is missing or the terminal type is not a registered
+ * custom type.
+ *
+ * This is the build-consumer-only hook that enables path-targeted broadening
+ * in the analysis layer; the resolved ID is threaded to
+ * `parseConstraintTagValue` via its `pathResolvedCustomTypeId` option.
+ */
+function resolvePathTargetCustomTypeId(
+  parsedTag: ParsedCommentTag | null,
+  subjectType: ts.Type | undefined,
+  checker: ts.TypeChecker | undefined,
+  registry: ExtensionRegistry | undefined
+): string | undefined {
+  if (parsedTag === null) return undefined;
+  const target = parsedTag.target;
+  if (target?.kind !== "path" || !target.valid || target.path === null) {
+    return undefined;
+  }
+  if (subjectType === undefined || checker === undefined) {
+    return undefined;
+  }
+
+  const resolution = resolvePathTargetType(subjectType, checker, target.path.segments);
+  if (resolution.kind !== "resolved") {
+    return undefined;
+  }
+
+  return customTypeIdForResolvedType(resolution.type, checker, registry);
 }
 
 const SYNTHETIC_TYPE_FORMAT_FLAGS =
@@ -389,11 +442,21 @@ function processConstraintTag(
     pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
     return;
   }
+  // Resolve the path-targeted custom type ID (if any) so the analysis layer
+  // can apply broadening to the path-resolved terminal type — fixes #395
+  // where path-targeted built-in constraints (e.g. `@exclusiveMinimum :amount 0`
+  // on a `MonetaryAmount` field) previously emitted raw numeric constraints.
+  const pathResolvedCustomTypeId = resolvePathTargetCustomTypeId(
+    parsedTag,
+    options?.subjectType,
+    options?.checker,
+    options?.extensionRegistry
+  );
   const constraintNode = parseConstraintTagValue(
     tagName,
     text,
     provenance,
-    sharedTagValueOptions(options)
+    sharedTagValueOptions(options, pathResolvedCustomTypeId)
   );
   if (constraintNode) {
     constraints.push(constraintNode);
@@ -630,30 +693,6 @@ function placementLabel(
 }
 
 
-function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
-  if (fieldType?.kind === "custom") {
-    return fieldType.typeId;
-  }
-
-  if (fieldType?.kind !== "union") {
-    return undefined;
-  }
-
-  const customMembers = fieldType.members.filter(
-    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
-  );
-  if (customMembers.length !== 1) {
-    return undefined;
-  }
-
-  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
-  const allOtherMembersAreNull = nonCustomMembers.every(
-    (member) => member.kind === "primitive" && member.primitiveKind === "null"
-  );
-  const customMember = customMembers[0];
-  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
-}
-
 function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
   const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
   return (
@@ -823,11 +862,10 @@ function buildCompilerBackedConstraintDiagnostics(
     }
     const registry = options?.extensionRegistry;
     if (registry === undefined) return false;
-    const resolved = resolveCustomTypeFromTsType(evaluatedType, checker, registry);
+    const typeId = customTypeIdForResolvedType(evaluatedType, checker, registry);
     return (
-      resolved !== null &&
-      registry.findBuiltinConstraintBroadening(customTypeIdFromLookup(resolved), tagName) !==
-        undefined
+      typeId !== undefined &&
+      registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined
     );
   })();
 

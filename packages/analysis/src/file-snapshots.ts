@@ -669,6 +669,12 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
+    // Intentionally omits `fieldType` and `pathResolvedCustomTypeId`: the
+    // snapshot consumer does not currently apply custom-type broadening for
+    // direct OR path-targeted constraints. Downstream LSP/natural-language
+    // summarizers therefore receive un-broadened `NumericConstraintNode`/
+    // `LengthConstraintNode` IR. Parity with the build consumer (PR #398,
+    // issue #395) is tracked in issue #396.
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
