@@ -27,7 +27,7 @@
 
 import * as ts from "typescript";
 import { type SemanticCapability } from "./tag-registry.js";
-import { hasTypeSemanticCapability } from "./ts-binding.js";
+import { hasTypeSemanticCapability, stripNullishUnion } from "./ts-binding.js";
 
 /**
  * Maps a {@link SemanticCapability} to a human-readable type name for use in
@@ -69,13 +69,23 @@ export function _capabilityLabel(capability: SemanticCapability | undefined): st
 /**
  * Returns `true` when `type` satisfies the constraint `capability`.
  *
- * Mirrors `supportsConstraintCapability` in `tsdoc-parser.ts` with one
- * addition: the `string-like` array-element unwrap path. This allows
- * `string[]` to satisfy `string-like` constraints (e.g. `@pattern`) by
- * inspecting the element type, consistent with the build path's behaviour.
+ * Ported from `supportsConstraintCapability` in `tsdoc-parser.ts` (build
+ * package). Both the build consumer (`tsdoc-parser.ts`) and the snapshot
+ * consumer (`file-snapshots.ts`) call this function, so the capability
+ * logic is shared and the TYPE_MISMATCH decisions are consistent across
+ * both paths.
  *
- * When `capability` is `undefined` (no constraint on target type), returns
- * `true` unconditionally.
+ * Behaviour:
+ * - When `capability` is `undefined` (no constraint on target type), returns
+ *   `true` unconditionally.
+ * - For `string-like` capability, also accepts `string[]` (and nullable
+ *   variants like `string[] | null`) by unwrapping the array element type.
+ *   This mirrors the build path's treatment of `@pattern` on string-array
+ *   fields.
+ * - Integer-brand bypass is the caller's responsibility. Callers must check
+ *   for integer-branded types and skip this function when appropriate (see
+ *   ordering invariants in the module-level JSDoc). There is no options
+ *   parameter — the bypass happens at the call site, not here.
  *
  * @param capability - The semantic capability required by the constraint tag.
  * @param fieldType  - The TypeScript type of the field being annotated.
@@ -110,11 +120,17 @@ export function _supportsConstraintCapability(
 /**
  * Returns the element type of an array type, or `null` if the type is not an
  * array.
+ *
+ * Applies {@link stripNullishUnion} before the array check so that nullable
+ * array types (e.g. `string[] | null`) are correctly unwrapped. Without this,
+ * `checker.isArrayType` returns `false` for the union type, causing nullable
+ * array fields to silently fail Role-B capability checks.
  */
 function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
-  if (!checker.isArrayType(type)) {
+  const stripped = stripNullishUnion(type);
+  if (!checker.isArrayType(stripped)) {
     return null;
   }
   // checker.isArrayType guarantees TypeReference here.
-  return checker.getTypeArguments(type as ts.TypeReference)[0] ?? null;
+  return checker.getTypeArguments(stripped as ts.TypeReference)[0] ?? null;
 }

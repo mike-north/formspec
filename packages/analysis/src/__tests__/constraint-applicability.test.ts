@@ -98,6 +98,20 @@ describe("_supportsConstraintCapability", () => {
     expect(_supportsConstraintCapability("string-like", type, checker)).toBe(false);
   });
 
+  // Regression: nullable string array (string[] | null) must satisfy string-like.
+  // Before the fix, getArrayElementType called checker.isArrayType on the raw
+  // union, which returned false, silently failing the Role-B capability check.
+  it("returns true for string[] | null type with string-like capability (nullable-array regression)", () => {
+    const { type, checker } = makeProgram("string[] | null");
+    expect(_supportsConstraintCapability("string-like", type, checker)).toBe(true);
+  });
+
+  // Regression companion: nullable number array (number[] | null) must NOT satisfy string-like.
+  it("returns false for number[] | null type with string-like capability", () => {
+    const { type, checker } = makeProgram("number[] | null");
+    expect(_supportsConstraintCapability("string-like", type, checker)).toBe(false);
+  });
+
   // string[] satisfies array-like for @uniqueItems
   it("returns true for string[] type with array-like capability", () => {
     const { type, checker } = makeProgram("string[]");
