@@ -651,6 +651,7 @@ export class FormSpecSemanticService {
   // re-enable this method with the appropriate event-to-stat mapping.
   // Until then, the caller site can be removed if there are no meaningful
   // events to track.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op, see TODO above
   private updateStatsFromPerformanceEvents(_events: readonly FormSpecPerformanceEvent[]): void {}
 
   private logPerformanceEvents(
