@@ -645,12 +645,14 @@ export class FormSpecSemanticService {
     this.stats.queryPathTotals[kind].cold += 1;
   }
 
-  private updateStatsFromPerformanceEvents(_events: readonly FormSpecPerformanceEvent[]): void {
-    // §5 Phase 5C — the synthetic-check batch cache / create-program events no
-    // longer fire after synthetic-program retirement. This method is retained
-    // as a hook for future stats-only events; the former counters have been
-    // removed from FormSpecSemanticServiceStats.
-  }
+  // TODO: This hook is currently a no-op. The former synthetic-program
+  // performance counters were removed from FormSpecSemanticServiceStats in
+  // Phase 5C. If future performance events warrant new stats counters,
+  // re-enable this method with the appropriate event-to-stat mapping.
+  // Until then, the caller site can be removed if there are no meaningful
+  // events to track.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function -- intentional no-op, see TODO above
+  private updateStatsFromPerformanceEvents(_events: readonly FormSpecPerformanceEvent[]): void {}
 
   private logPerformanceEvents(
     rootEventName: string,

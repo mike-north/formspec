@@ -296,10 +296,8 @@ DEBUG=formspec:analysis:constraint-validator:snapshot pnpm run build
 # Broadening-bypass decisions only
 DEBUG=formspec:analysis:constraint-validator:broadening pnpm run build
 
-# Extension-setup diagnostics only (historical synthetic-checker namespace)
-# The synthetic TypeScript program itself was retired in Phase 5C; this
-# namespace now only surfaces setup failures from `_validateExtensionSetup`.
-DEBUG=formspec:analysis:constraint-validator:synthetic pnpm run build
+# Extension-registry construction and setup diagnostics
+DEBUG=formspec:analysis:constraint-validator:registry pnpm run build
 ```
 
 ### Per-tag-application log-entry schema (§8.3b)

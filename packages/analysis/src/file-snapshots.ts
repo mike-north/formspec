@@ -1302,16 +1302,58 @@ function buildTagDiagnostics(
     }
 
     const target = getTagTargetDescriptor(tag);
-    const pathTargetResolution =
-      tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
-        ? tag.target.path === null
-          ? null
-          : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
-        : null;
 
     // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
     // above the loop. Both are only consumed when logging is enabled.
     const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
+
+    // §5 Phase 5A — Role A: placement pre-check (snapshot consumer).
+    //
+    // ORDERING: Role A runs BEFORE Role B (capability guard) and Role C
+    // (typed parser). This matches the build consumer's order in
+    // `tsdoc-parser.ts` (~line 482), where `definition.placements.includes`
+    // is checked before the capability guard. For a builtin constraint tag
+    // that is BOTH misplaced AND type-incompatible (e.g. `@minimum` on a
+    // `string` field at a non-field placement), both consumers must emit
+    // `INVALID_TAG_PLACEMENT` (Role A wins) — not `TYPE_MISMATCH` (Role B).
+    //
+    // Applies to ALL tags (builtin constraint and extension), not just builtin.
+    // semantic.tagDefinition is always non-null here (the null case causes an
+    // early `continue` at the top of the loop).
+    //
+    // §5 Phase 5C — this placement check is the only Role-A guard; the former
+    // synthetic-program fallback has been retired.
+    {
+      const definition = semantic.tagDefinition;
+      const targetKind = target?.kind ?? null;
+      const matchingSignatures = getMatchingTagSignatures(definition, placement, targetKind);
+      if (matchingSignatures.length === 0) {
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "A-reject",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
+        diagnostics.push(
+          createAnalysisDiagnostic(
+            "INVALID_TAG_PLACEMENT",
+            `Tag "@${definition.canonicalName}" is not allowed on placement "${placement}"` +
+              (targetKind === null ? "" : ` with target kind "${targetKind}"`),
+            tag.fullSpan,
+            {
+              tagName: tag.normalizedTagName,
+              placement,
+              ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+            }
+          )
+        );
+        continue;
+      }
+    }
 
     // Role C: validate argument literal via the typed parser. Mirrors the wiring
     // in tsdoc-parser.ts.
@@ -1415,15 +1457,27 @@ function buildTagDiagnostics(
             let evaluatedType: ts.Type | null = null;
             let evaluatedTypeLabel = "";
             let pathRejection: { code: string; message: string } | null = null;
+            // `pathTargetResolution` is resolved lazily below only when
+            // `target.kind === "path"` — computing it earlier would pay the
+            // `resolvePathTargetType` cost for misplaced tags (rejected at
+            // Role A above) and non-constraint tags (which don't enter this
+            // block). Hoisted here (not inside the branch) because the later
+            // `pathRejection` diagnostic at line ~1512 reads its `kind` /
+            // `segment` to attach `missingPathSegment` data.
+            let pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null = null;
 
             if (target === null) {
               evaluatedType = subjectType;
               evaluatedTypeLabel =
                 standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
             } else if (target.kind === "path") {
-              // pathTargetResolution is computed earlier in the loop (line ~1492)
-              // via resolvePathTargetType(declaredSubjectType, ...). Use it to
-              // drive the path-target Role-B check.
+              pathTargetResolution =
+                tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
+                  ? tag.target.path === null
+                    ? null
+                    : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
+                  : null;
+
               if (pathTargetResolution === null) {
                 // tag.target.path is null — the path target text failed to
                 // parse (e.g. `@minimum :invalid-syntax 0` where the segment
@@ -1655,46 +1709,6 @@ function buildTagDiagnostics(
             roleOutcome: "bypass",
           });
         }
-      }
-    }
-
-    // §5 Phase 5A — placement pre-check (snapshot consumer).
-    //
-    // Applies to ALL tags (builtin constraint and extension), not just builtin.
-    // semantic.tagDefinition is always non-null here (the null case causes an
-    // early `continue` at the top of the loop).
-    //
-    // §5 Phase 5C — this placement check is the only Role-A guard; the former
-    // synthetic-program fallback has been retired.
-    {
-      const definition = semantic.tagDefinition;
-      const targetKind = target?.kind ?? null;
-      const matchingSignatures = getMatchingTagSignatures(definition, placement, targetKind);
-      if (matchingSignatures.length === 0) {
-        if (snapshotLogsEnabled) {
-          logTagApplication(snapshotLog, {
-            consumer: "snapshot",
-            tag: tag.normalizedTagName,
-            placement,
-            subjectTypeKind: subjectTypeKindForLog,
-            roleOutcome: "A-reject",
-            elapsedMicros: elapsedMicros(tagStartMicros),
-          });
-        }
-        diagnostics.push(
-          createAnalysisDiagnostic(
-            "INVALID_TAG_PLACEMENT",
-            `Tag "@${definition.canonicalName}" is not allowed on placement "${placement}"` +
-              (targetKind === null ? "" : ` with target kind "${targetKind}"`),
-            tag.fullSpan,
-            {
-              tagName: tag.normalizedTagName,
-              placement,
-              ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
-            }
-          )
-        );
-        continue;
       }
     }
 

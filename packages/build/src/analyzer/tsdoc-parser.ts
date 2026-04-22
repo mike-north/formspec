@@ -152,7 +152,7 @@ function resolvePathTargetCustomTypeId(
   return customTypeIdForResolvedType(resolution.type, checker, registry);
 }
 
-const SYNTHETIC_TYPE_FORMAT_FLAGS =
+const TYPE_FORMAT_FLAGS =
   ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
 /**
@@ -528,7 +528,7 @@ function buildCompilerBackedConstraintDiagnostics(
     }
 
     if (resolution.kind === "unresolvable") {
-      const actualType = checker.typeToString(resolution.type, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      const actualType = checker.typeToString(resolution.type, node, TYPE_FORMAT_FLAGS);
       return emit("B-reject", [
         makeDiagnostic(
           "TYPE_MISMATCH",
@@ -579,7 +579,7 @@ function buildCompilerBackedConstraintDiagnostics(
       requiredCapability !== undefined &&
       !supportsConstraintCapability(evaluatedType, checker, requiredCapability)
     ) {
-      const actualType = checker.typeToString(evaluatedType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
+      const actualType = checker.typeToString(evaluatedType, node, TYPE_FORMAT_FLAGS);
       const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
       // Path-target hints only apply to direct-field mismatches — the hint
       // suggests "did you mean a sub-path?" which is nonsensical when the
@@ -604,11 +604,10 @@ function buildCompilerBackedConstraintDiagnostics(
     }
   }
 
-  // §4 Phase 2 — Role C: validate argument literal via the typed parser BEFORE
-  // the synthetic-checker call. The typed parser is the new gatekeeper for
-  // argument-shape validity (is `10.5` a valid `@minLength` arg? is `[]` a valid
-  // `@enumOptions` arg?). Roles A/B/D1/D2 remain the synthetic checker's
-  // responsibility until Phase 4.
+  // Role C: validate argument literal via the typed parser. The typed parser is
+  // the gatekeeper for argument-shape validity (is `10.5` a valid `@minLength`
+  // arg? is `[]` a valid `@enumOptions` arg?). Roles A and B have already run
+  // above; this guard handles Role C.
   //
   // IMPORTANT: the typed-parser call is guarded by `if (!hasBroadening)` so that
   // broadened fields (D1/D2) bypass Role C entirely. Without this guard a broadened
@@ -617,8 +616,8 @@ function buildCompilerBackedConstraintDiagnostics(
   // of being silently bypassed as Role D1/D2 requires.
   //
   // Behaviour (non-broadened path):
-  //   - ok: false → emit C-reject with the typed parser's code + message; skip synthetic.
-  //   - ok: true (including raw-string-fallback for @const) → proceed to synthetic.
+  //   - ok: false → emit C-reject with the typed parser's code + message.
+  //   - ok: true (including raw-string-fallback for @const) → proceed.
   //     The raw-string-fallback is a successful parse; the downstream IR compatibility
   //     check (semantic-targets.ts:~1255-1298) owns the final decision for @const.
   if (hasBroadening) {
@@ -789,11 +788,11 @@ function getParseCacheKey(
     fieldType: options?.fieldType ?? null,
     subjectType:
       checker !== undefined && options?.subjectType !== undefined
-        ? checker.typeToString(options.subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        ? checker.typeToString(options.subjectType, node, TYPE_FORMAT_FLAGS)
         : null,
     hostType:
       checker !== undefined && options?.hostType !== undefined
-        ? checker.typeToString(options.hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS)
+        ? checker.typeToString(options.hostType, node, TYPE_FORMAT_FLAGS)
         : null,
     extensions: getExtensionRegistryCacheKey(options?.extensionRegistry),
   });
