@@ -41,7 +41,6 @@ import * as ts from "typescript";
 import {
   _capabilityLabel,
   _supportsConstraintCapability,
-  checkSyntheticTagApplication,
   choosePreferredPayloadText,
   extractPathTarget as extractSharedPathTarget,
   getBroadenedCustomTypeId,
@@ -57,7 +56,6 @@ import {
   resolvePathTargetType,
   TAGS_REQUIRING_RAW_TEXT,
   type ConstraintSemanticDiagnostic,
-  type FormSpecValueKind,
   type ParsedCommentTag,
   type SemanticCapability,
 } from "@formspec/analysis/internal";
@@ -82,10 +80,8 @@ import {
 import { _isIntegerBrandedType } from "./builtin-brands.js";
 import {
   _emitSetupDiagnostics,
-  _mapSetupDiagnosticCode,
   getBuildLogger,
   getBroadeningLogger,
-  getSyntheticLogger,
   getTypedParserLogger,
   extractEffectiveArgumentText,
   mapTypedParserDiagnosticCode,
@@ -159,255 +155,6 @@ function resolvePathTargetCustomTypeId(
 const SYNTHETIC_TYPE_FORMAT_FLAGS =
   ts.TypeFormatFlags.NoTruncation | ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope;
 
-function getExtensionTypeNames(registry: ExtensionRegistry | undefined): ReadonlySet<string> {
-  if (registry === undefined) {
-    return new Set();
-  }
-  return new Set(
-    registry.extensions.flatMap((ext) =>
-      (ext.types ?? []).flatMap((t) => t.tsTypeNames ?? [t.typeName])
-    )
-  );
-}
-
-function collectImportedNames(sourceFile: ts.SourceFile): ReadonlySet<string> {
-  const importedNames = new Set<string>();
-
-  for (const statement of sourceFile.statements) {
-    if (ts.isImportDeclaration(statement) && statement.importClause !== undefined) {
-      const clause = statement.importClause;
-      if (clause.name !== undefined) {
-        importedNames.add(clause.name.text);
-      }
-      if (clause.namedBindings !== undefined) {
-        if (ts.isNamedImports(clause.namedBindings)) {
-          for (const specifier of clause.namedBindings.elements) {
-            importedNames.add(specifier.name.text);
-          }
-        } else if (ts.isNamespaceImport(clause.namedBindings)) {
-          importedNames.add(clause.namedBindings.name.text);
-        }
-      }
-      continue;
-    }
-
-    if (ts.isImportEqualsDeclaration(statement)) {
-      importedNames.add(statement.name.text);
-    }
-  }
-
-  return importedNames;
-}
-
-function isNonReferenceIdentifier(node: ts.Identifier): boolean {
-  const parent = node.parent;
-
-  if (
-    (ts.isBindingElement(parent) ||
-      ts.isClassDeclaration(parent) ||
-      ts.isEnumDeclaration(parent) ||
-      ts.isEnumMember(parent) ||
-      ts.isFunctionDeclaration(parent) ||
-      ts.isFunctionExpression(parent) ||
-      ts.isImportClause(parent) ||
-      ts.isImportEqualsDeclaration(parent) ||
-      ts.isImportSpecifier(parent) ||
-      ts.isInterfaceDeclaration(parent) ||
-      ts.isMethodDeclaration(parent) ||
-      ts.isMethodSignature(parent) ||
-      ts.isModuleDeclaration(parent) ||
-      ts.isNamespaceExport(parent) ||
-      ts.isNamespaceImport(parent) ||
-      ts.isParameter(parent) ||
-      ts.isPropertyDeclaration(parent) ||
-      ts.isPropertySignature(parent) ||
-      ts.isSetAccessorDeclaration(parent) ||
-      ts.isGetAccessorDeclaration(parent) ||
-      ts.isTypeAliasDeclaration(parent) ||
-      ts.isTypeParameterDeclaration(parent) ||
-      ts.isVariableDeclaration(parent)) &&
-    parent.name === node
-  ) {
-    return true;
-  }
-
-  if (
-    (ts.isPropertyAssignment(parent) || ts.isPropertyAccessExpression(parent)) &&
-    parent.name === node
-  ) {
-    return true;
-  }
-
-  if (ts.isQualifiedName(parent) && parent.right === node) {
-    return true;
-  }
-
-  return false;
-}
-
-function astReferencesImportedName(root: ts.Node, importedNames: ReadonlySet<string>): boolean {
-  if (importedNames.size === 0) {
-    return false;
-  }
-
-  let found = false;
-
-  const visit = (node: ts.Node): void => {
-    if (found) return;
-
-    if (ts.isIdentifier(node) && importedNames.has(node.text) && !isNonReferenceIdentifier(node)) {
-      found = true;
-      return;
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(root);
-  return found;
-}
-
-/**
- * Returns the member list for declarations that have object-like members:
- * interface declarations and type alias declarations with a type-literal body.
- * Returns `undefined` for all other node shapes.
- */
-function getObjectMembers(
-  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration
-): ts.NodeArray<ts.TypeElement> | undefined {
-  if (ts.isInterfaceDeclaration(statement)) {
-    return statement.members;
-  }
-  if (ts.isTypeLiteralNode(statement.type)) {
-    return statement.type.members;
-  }
-  return undefined;
-}
-
-/**
- * Rewrites a declaration so that members whose type annotations reference an
- * imported name have their type replaced with `unknown`. This preserves the
- * declaration in the synthetic program so the checker can resolve sibling
- * members that use non-imported types.
- *
- * Handles both interface declarations and type alias declarations whose body
- * is a type literal (e.g. `type Foo = { bar: ImportedType; baz: string }`).
- *
- * Without this, an interface like `{ year: Integer; vin: string }` where
- * `Integer` is imported would be entirely excluded from supporting
- * declarations, preventing the synthetic checker from knowing that `vin` is
- * a string — causing spurious TYPE_MISMATCH errors on constraint tags like
- * `@minLength`.
- */
-function rewriteImportedMemberTypes(
-  statement: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
-  sourceFile: ts.SourceFile,
-  importedNames: ReadonlySet<string>
-): string | null {
-  const members = getObjectMembers(statement);
-  if (members === undefined) {
-    return null;
-  }
-
-  const replacements: { start: number; end: number }[] = [];
-
-  for (const member of members) {
-    // Only property signatures have rewritable type annotations. If a
-    // non-property member (method signature, index signature, etc.)
-    // references an imported name, we can't safely rewrite it — return
-    // null to fall back to excluding the whole declaration.
-    if (!ts.isPropertySignature(member)) {
-      if (astReferencesImportedName(member, importedNames)) {
-        return null;
-      }
-      continue;
-    }
-
-    const typeAnnotation = member.type;
-    if (typeAnnotation === undefined) continue;
-
-    if (astReferencesImportedName(typeAnnotation, importedNames)) {
-      replacements.push({
-        start: typeAnnotation.getStart(sourceFile),
-        end: typeAnnotation.getEnd(),
-      });
-    }
-  }
-
-  if (replacements.length === 0) {
-    return statement.getText(sourceFile);
-  }
-
-  // Apply replacements in reverse order to preserve offsets.
-  // getText(sourceFile) and getStart(sourceFile) use the same base, so
-  // subtracting stmtStart from absolute positions yields correct offsets.
-  const stmtStart = statement.getStart(sourceFile);
-  let result = statement.getText(sourceFile);
-  for (const { start, end } of [...replacements].reverse()) {
-    result = result.slice(0, start - stmtStart) + "unknown" + result.slice(end - stmtStart);
-  }
-  return result;
-}
-
-function buildSupportingDeclarations(
-  sourceFile: ts.SourceFile,
-  extensionTypeNames: ReadonlySet<string>
-): readonly string[] {
-  const importedNames = collectImportedNames(sourceFile);
-
-  // Filter out extension-registered type names: the synthetic program provides
-  // type aliases for these, so declarations referencing them are safe to include.
-  const importedNamesToSkip = new Set(
-    [...importedNames].filter((name) => !extensionTypeNames.has(name))
-  );
-
-  const result: string[] = [];
-
-  for (const statement of sourceFile.statements) {
-    // Always exclude imports and re-exports
-    if (ts.isImportDeclaration(statement)) continue;
-    if (ts.isImportEqualsDeclaration(statement)) continue;
-    if (ts.isExportDeclaration(statement) && statement.moduleSpecifier !== undefined) continue;
-
-    if (!astReferencesImportedName(statement, importedNamesToSkip)) {
-      result.push(statement.getText(sourceFile));
-      continue;
-    }
-
-    // For interface and type-literal-bodied type alias declarations that
-    // reference imports, rewrite imported member types to `unknown` instead
-    // of dropping the whole declaration. Returns null when a non-property
-    // member references an import (method/index signatures), in which case
-    // we fall back to excluding the whole declaration.
-    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) {
-      const rewritten = rewriteImportedMemberTypes(statement, sourceFile, importedNamesToSkip);
-      if (rewritten !== null) {
-        result.push(rewritten);
-      }
-    }
-  }
-
-  return result;
-}
-
-function pushUniqueCompilerDiagnostics(
-  target: ConstraintSemanticDiagnostic[],
-  additions: readonly ConstraintSemanticDiagnostic[]
-): void {
-  for (const diagnostic of additions) {
-    if (
-      (diagnostic.code === "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE" ||
-        diagnostic.code === "SYNTHETIC_SETUP_FAILURE") &&
-      target.some(
-        (existing) => existing.code === diagnostic.code && existing.message === diagnostic.message
-      )
-    ) {
-      continue;
-    }
-    target.push(diagnostic);
-  }
-}
-
 /**
  * Runs the full constraint tag processing pipeline for a single tag: compiler
  * diagnostics check → constraint value parse → push to output arrays.
@@ -423,7 +170,6 @@ function processConstraintTag(
   provenance: Provenance,
   node: ts.Node,
   sourceFile: ts.SourceFile,
-  supportingDeclarations: readonly string[],
   options: ParseTSDocOptions | undefined,
   constraints: ConstraintNode[],
   diagnostics: ConstraintSemanticDiagnostic[]
@@ -435,11 +181,14 @@ function processConstraintTag(
     parsedTag,
     text,
     provenance,
-    supportingDeclarations,
     options
   );
   if (compilerDiagnostics.length > 0) {
-    pushUniqueCompilerDiagnostics(diagnostics, compilerDiagnostics);
+    // §4 Phase 5C — synthetic-batch dedup no longer needed: the synthetic setup
+    // diagnostics (UNSUPPORTED_CUSTOM_TYPE_OVERRIDE / SYNTHETIC_SETUP_FAILURE)
+    // are emitted once at registry setup time via _emitSetupDiagnostics and can
+    // no longer reach this site because the synthetic batch call has been deleted.
+    diagnostics.push(...compilerDiagnostics);
     return;
   }
   // Resolve the path-targeted custom type ID (if any) so the analysis layer
@@ -460,48 +209,6 @@ function processConstraintTag(
   );
   if (constraintNode) {
     constraints.push(constraintNode);
-  }
-}
-
-function renderSyntheticArgumentExpression(
-  valueKind: FormSpecValueKind | null,
-  argumentText: string
-): string | null {
-  const trimmed = argumentText.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  switch (valueKind) {
-    case "number":
-    case "integer":
-    case "signedInteger":
-      // Pass Infinity, -Infinity, and NaN through as TS identifiers (not quoted
-      // strings). The typed parser (Phase 2) accepts these values; the snapshot
-      // path has always passed them through as identifiers. Aligning the build
-      // path with the snapshot path normalises the §3 Infinity/NaN divergence.
-      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
-        return trimmed;
-      }
-      return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
-    case "string":
-      return JSON.stringify(argumentText);
-    case "json":
-      try {
-        JSON.parse(trimmed);
-        return `(${trimmed})`;
-      } catch {
-        return JSON.stringify(trimmed);
-      }
-    case "boolean":
-      return trimmed === "true" || trimmed === "false" ? trimmed : JSON.stringify(trimmed);
-    case "condition":
-      return "undefined as unknown as FormSpecCondition";
-    case null:
-      return null;
-    default: {
-      return String(valueKind);
-    }
   }
 }
 
@@ -709,7 +416,6 @@ function buildCompilerBackedConstraintDiagnostics(
   parsedTag: ParsedCommentTag | null,
   rawText: string,
   provenance: Provenance,
-  supportingDeclarations: readonly string[],
   options?: ParseTSDocOptions
 ): readonly ConstraintSemanticDiagnostic[] {
   if (!isBuiltinConstraintName(tagName)) {
@@ -738,10 +444,8 @@ function buildCompilerBackedConstraintDiagnostics(
   const nonNullPlacement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>> = placement;
   const log = getBuildLogger();
   const broadeningLog = getBroadeningLogger();
-  const syntheticLog = getSyntheticLogger();
   const typedParserLog = getTypedParserLogger();
   const logsEnabled = log !== noopLogger || broadeningLog !== noopLogger;
-  const syntheticTraceEnabled = syntheticLog !== noopLogger;
   const typedParserTraceEnabled = typedParserLog !== noopLogger;
   const logStart = logsEnabled ? nowMicros() : 0;
   const subjectTypeKind = logsEnabled ? describeTypeKind(subjectType, checker) : "";
@@ -957,6 +661,12 @@ function buildCompilerBackedConstraintDiagnostics(
 
   // Typed parser accepted the argument. Log at trace level before falling through
   // to the synthetic checker (which handles Roles A/B/D1/D2 until Phase 4).
+  // §4 Phase 5C — typed parser accepted the argument. This is the terminal
+  // success outcome: all constraint-tag validation (placement Role A, path-target
+  // resolution, capability Role B, argument Role C) has now passed via the
+  // typed-parser/capability checks above. Previously this site invoked the
+  // synthetic TypeScript program for a redundant "Role D" re-check; that
+  // machinery has been deleted (synthetic-checker retirement §4 Phase 5C).
   if (typedParserTraceEnabled) {
     typedParserLog.trace("typed-parser C-pass", {
       consumer: "build",
@@ -968,94 +678,7 @@ function buildCompilerBackedConstraintDiagnostics(
     });
   }
 
-  const argumentExpression = renderSyntheticArgumentExpression(
-    definition.valueKind,
-    effectiveArgumentText
-  );
-  // NOTE (Phase 2): the `requiresArgument && argumentExpression === null` guard
-  // that previously lived here was removed because it is dead code after Phase 2.
-  // For every `requiresArgument: true` tag, the typed parser returns ok: false
-  // (MISSING_TAG_ARGUMENT) when the argument text is empty, so the C-reject
-  // branch above fires before this point can be reached. The guard was labelled
-  // "A-pass" which was misleading — it represented "typed-parser-passed-but-
-  // rendering-returned-null", not a true Role-A miss. Dead branch confirmed by
-  // exhaustive analysis of parseTagArgument return values for all tag families.
-
-  const subjectTypeText = checker.typeToString(subjectType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-  const hostType = options?.hostType ?? subjectType;
-  const hostTypeText = checker.typeToString(hostType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-
-  // §8.3b — trace-level log before the synthetic program is invoked.
-  if (syntheticTraceEnabled) {
-    syntheticLog.trace("invoking synthetic checker", {
-      consumer: "build",
-      tag: tagName,
-      placement,
-      subjectTypeKind,
-      subjectTypeText,
-    });
-  }
-
-  const result = checkSyntheticTagApplication({
-    tagName,
-    placement,
-    hostType: hostTypeText,
-    subjectType: subjectTypeText,
-    ...(target?.kind === "path" ? { target: { kind: "path" as const, text: target.rawText } } : {}),
-    ...(argumentExpression !== null ? { argumentExpression } : {}),
-    supportingDeclarations,
-    ...(options?.extensionRegistry !== undefined
-      ? {
-          extensions: options.extensionRegistry.extensions.map((extension) => ({
-            extensionId: extension.extensionId,
-            ...(extension.constraintTags !== undefined
-              ? {
-                  constraintTags: extension.constraintTags.map((tag) => ({ tagName: tag.tagName })),
-                }
-              : {}),
-            ...(extension.metadataSlots !== undefined
-              ? {
-                  metadataSlots: extension.metadataSlots,
-                }
-              : {}),
-            ...(extension.types !== undefined
-              ? {
-                  customTypes: extension.types.map((t) => ({
-                    tsTypeNames: t.tsTypeNames ?? [t.typeName],
-                  })),
-                }
-              : {}),
-          })),
-        }
-      : {}),
-  });
-
-  if (result.diagnostics.length === 0) {
-    // "D-pass": the synthetic batch produced no diagnostics for this application.
-    // This is distinct from "C-pass" (typed-parser accepted the argument at Role C
-    // before the batch ran). "D-pass" means the synthetic checker found nothing wrong.
-    return emit("D-pass", []);
-  }
-
-  const setupDiagnostic = result.diagnostics.find((diagnostic) => diagnostic.kind !== "typescript");
-  if (setupDiagnostic !== undefined) {
-    return emit("C-reject", [
-      makeDiagnostic(
-        _mapSetupDiagnosticCode(setupDiagnostic.kind),
-        setupDiagnostic.message,
-        provenance
-      ),
-    ]);
-  }
-
-  const expectedLabel = definition.valueKind ?? "compatible argument";
-  return emit("C-reject", [
-    makeDiagnostic(
-      "TYPE_MISMATCH",
-      `Tag "@${tagName}" received an invalid argument for ${expectedLabel}.`,
-      provenance
-    ),
-  ]);
+  return emit("C-pass", []);
 }
 
 const parseResultCache = new Map<string, TSDocParseResult>();
@@ -1237,11 +860,6 @@ export function parseTSDocTags(
   const sourceFile = node.getSourceFile();
   const sourceText = sourceFile.getFullText();
 
-  // Collect extension-registered type names so we don't skip declarations
-  // that reference them (the synthetic program provides aliases for these).
-  const extensionTypeNames = getExtensionTypeNames(options?.extensionRegistry);
-
-  const supportingDeclarations = buildSupportingDeclarations(sourceFile, extensionTypeNames);
   const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
 
   // TS compiler API fallback for TAGS_REQUIRING_RAW_TEXT: handles tags that
@@ -1325,7 +943,6 @@ export function parseTSDocTags(
             provenance,
             node,
             sourceFile,
-            supportingDeclarations,
             options,
             constraints,
             diagnostics
@@ -1348,7 +965,6 @@ export function parseTSDocTags(
           provenance,
           node,
           sourceFile,
-          supportingDeclarations,
           options,
           constraints,
           diagnostics
@@ -1425,7 +1041,6 @@ export function parseTSDocTags(
         provenance,
         node,
         sourceFile,
-        supportingDeclarations,
         options,
         constraints,
         diagnostics

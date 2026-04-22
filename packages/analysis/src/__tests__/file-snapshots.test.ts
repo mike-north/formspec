@@ -497,7 +497,13 @@ describe("file-snapshots", () => {
     ]);
   });
 
-  it("uses one synthetic compiler pass for a mixed-tag canary comment and reuses the synthetic batch cache on repeated analysis", () => {
+  it("produces no diagnostics for a mixed-tag canary comment and remains deterministic across repeated analysis", () => {
+    // §5 Phase 5C — this test formerly asserted on the synthetic batch cache
+    // (`analysis.syntheticCheckBatch.cacheHit` / `createProgram` performance
+    // events). The synthetic-program surface has been retired, so the cache
+    // semantics no longer exist. The test is retained as a determinism guard
+    // on the mixed-tag canary — repeated analyses must produce identical
+    // diagnostics and comment snapshots.
     const { checker, sourceFile } = createProgram(
       MIXED_TAG_CANARY_SOURCE,
       "/virtual/formspec-mixed-tag-canary.ts"
@@ -510,11 +516,6 @@ describe("file-snapshots", () => {
     });
 
     expect(firstSnapshot.diagnostics).toEqual([]);
-    expect(
-      firstPerformance.events.some(
-        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
-      )
-    ).toBe(true);
 
     const secondPerformance = createFormSpecPerformanceRecorder();
     const secondSnapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
@@ -524,16 +525,6 @@ describe("file-snapshots", () => {
 
     expect(secondSnapshot.diagnostics).toEqual([]);
     expect(secondSnapshot.comments).toEqual(firstSnapshot.comments);
-    expect(
-      secondPerformance.events.some(
-        (event) => event.name === "analysis.syntheticCheckBatch.cacheHit"
-      )
-    ).toBe(true);
-    expect(
-      secondPerformance.events.some(
-        (event) => event.name === "analysis.syntheticCheckBatch.createProgram"
-      )
-    ).toBe(false);
   });
 
   it("regression: does not emit false missing-name TYPE_MISMATCH diagnostics when a class field host type lowers to a named outer type", () => {

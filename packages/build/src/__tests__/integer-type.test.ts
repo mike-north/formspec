@@ -593,31 +593,34 @@ describe("builtin Integer type", () => {
       });
     });
 
-    it("falls back to excluding interface when a method signature references an import", () => {
-      // Method signatures can't be rewritten to `unknown`, so the whole
-      // interface should be excluded (pre-fix behavior preserved).
-      // This means sibling constraints produce diagnostics, but the build
-      // must not crash or produce invalid synthetic code.
+    it("handles method-signature interfaces without emitting spurious TYPE_MISMATCH diagnostics", () => {
+      // §5 Phase 5C: Before the synthetic-checker retirement, interfaces with
+      // method/index signatures referencing imports were excluded from the
+      // synthetic program because those members could not be safely rewritten
+      // to `unknown`. Exclusion caused sibling constraints to fail with
+      // TYPE_MISMATCH. Now that validation runs directly against the host
+      // TypeScript program, the full interface is visible and no spurious
+      // TYPE_MISMATCH is emitted.
       const result = generateSchemas({
         filePath: importingFixturePath,
         typeName: "CrossFileMethodSigConfig",
         errorReporting: "diagnostics",
       });
 
-      // Constraint diagnostics are expected — the interface was excluded
-      expect(result.diagnostics.length).toBeGreaterThan(0);
-      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(false);
     });
 
-    it("falls back to excluding interface when an index signature references an import", () => {
+    it("handles index-signature interfaces without emitting spurious TYPE_MISMATCH diagnostics", () => {
+      // §5 Phase 5C: see sibling test above. Index signatures that referenced
+      // imported types used to force the interface out of the synthetic
+      // program; the host-program path validates them directly.
       const result = generateSchemas({
         filePath: importingFixturePath,
         typeName: "CrossFileIndexSigConfig",
         errorReporting: "diagnostics",
       });
 
-      expect(result.diagnostics.length).toBeGreaterThan(0);
-      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
+      expect(result.diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(false);
     });
 
     it("rewrites imported types in generic position (Array<ImportedType>)", () => {

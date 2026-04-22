@@ -178,7 +178,10 @@ describe("FormSpecSemanticService", () => {
     expect(stats.queryPathTotals.diagnostics.warm).toBe(1);
     expect(stats.fileSnapshotCacheMisses).toBe(1);
     expect(stats.fileSnapshotCacheHits).toBe(1);
-    expect(stats.syntheticCompileCount).toBeGreaterThanOrEqual(1);
+    // §5 Phase 5C — the former `syntheticCompileCount` stat has been removed
+    // along with the synthetic batch. The remaining stats (query totals +
+    // file-snapshot cache hits/misses) cover the same warm/cold semantics
+    // without requiring a synthetic TypeScript program at all.
   });
 
   it("analyzes multiple files in one workspace without regressing to per-tag compiler passes", async () => {
@@ -238,8 +241,14 @@ describe("FormSpecSemanticService", () => {
 
     const stats = service.getStats();
     expect(stats.queryTotals.diagnostics).toBe(2);
-    expect(stats.syntheticCompileApplications).toBeLessThanOrEqual(7);
-    expect(stats.syntheticCompileCount).toBeLessThanOrEqual(2);
+    // §5 Phase 5C — `syntheticCompileApplications` / `syntheticCompileCount`
+    // have been removed along with the synthetic batch. The test title is
+    // retained because the guarantee still holds: multi-file workspaces do
+    // not regress to per-tag compiler passes — there are no compiler passes
+    // at all in the diagnostics path now, only the host TypeScript program.
+    // The `fileSnapshotCacheMisses` stat still proves per-file (not per-tag)
+    // work: two files produce at most two snapshot-cache misses.
+    expect(stats.fileSnapshotCacheMisses).toBeLessThanOrEqual(2);
   });
 
   it("returns null for completion and hover when the host program cannot resolve the file", () => {

@@ -255,10 +255,6 @@ export interface FormSpecSemanticServiceStats {
         readonly diagnostics: number;
         readonly fileSnapshot: number;
     };
-    readonly syntheticBatchCacheHits: number;
-    readonly syntheticBatchCacheMisses: number;
-    readonly syntheticCompileApplications: number;
-    readonly syntheticCompileCount: number;
 }
 
 // @public
