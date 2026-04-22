@@ -599,7 +599,7 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
     if (matchingSignatures.length === 0) {
       hasDiagnostic = true;
       diagnosticCode = "INVALID_TAG_PLACEMENT";
-      diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
+      diagnosticMessage = `No matching signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
     }
   }
 

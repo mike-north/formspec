@@ -1302,12 +1302,6 @@ function buildTagDiagnostics(
     }
 
     const target = getTagTargetDescriptor(tag);
-    const pathTargetResolution =
-      tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
-        ? tag.target.path === null
-          ? null
-          : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
-        : null;
 
     // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
     // above the loop. Both are only consumed when logging is enabled.
@@ -1463,15 +1457,27 @@ function buildTagDiagnostics(
             let evaluatedType: ts.Type | null = null;
             let evaluatedTypeLabel = "";
             let pathRejection: { code: string; message: string } | null = null;
+            // `pathTargetResolution` is resolved lazily below only when
+            // `target.kind === "path"` — computing it earlier would pay the
+            // `resolvePathTargetType` cost for misplaced tags (rejected at
+            // Role A above) and non-constraint tags (which don't enter this
+            // block). Hoisted here (not inside the branch) because the later
+            // `pathRejection` diagnostic at line ~1512 reads its `kind` /
+            // `segment` to attach `missingPathSegment` data.
+            let pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null = null;
 
             if (target === null) {
               evaluatedType = subjectType;
               evaluatedTypeLabel =
                 standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
             } else if (target.kind === "path") {
-              // pathTargetResolution is computed earlier in the loop (line ~1305)
-              // via resolvePathTargetType(declaredSubjectType, ...). Use it to
-              // drive the path-target Role-B check.
+              pathTargetResolution =
+                tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
+                  ? tag.target.path === null
+                    ? null
+                    : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
+                  : null;
+
               if (pathTargetResolution === null) {
                 // tag.target.path is null — the path target text failed to
                 // parse (e.g. `@minimum :invalid-syntax 0` where the segment
