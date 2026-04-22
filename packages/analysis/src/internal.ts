@@ -87,7 +87,6 @@ export {
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
 } from "./tag-registry.js";
-export { FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES } from "./constants.js";
 export { LruCache } from "./lru-cache.js";
 export {
   getFormSpecManifestPath,
@@ -95,7 +94,6 @@ export {
   getFormSpecWorkspaceRuntimeDirectory,
 } from "./workspace-runtime.js";
 export {
-  _mapGlobalSyntheticTsDiagnostics,
   buildFormSpecAnalysisFileSnapshot,
   type BuildFormSpecAnalysisFileSnapshotOptions,
 } from "./file-snapshots.js";
@@ -148,28 +146,17 @@ export {
 } from "./ts-binding.js";
 export { TAGS_REQUIRING_RAW_TEXT, getOrCreateTSDocParser } from "./tsdoc-config.js";
 export { choosePreferredPayloadText } from "./tsdoc-text-extraction.js";
-export type {
-  CheckNarrowSyntheticTagApplicabilitiesOptions,
-  CheckNarrowSyntheticTagApplicabilityOptions,
-  CheckSyntheticTagApplicationOptions,
-  CheckSyntheticTagApplicationsOptions,
-  LowerSyntheticTagApplicationOptions,
-  LoweredSyntheticTagApplication,
-  SyntheticCompilerDiagnostic,
-  SyntheticTagCheckResult,
-  SyntheticTagTargetKind,
-  SyntheticTagTargetSpecifier,
-} from "./compiler-signatures.js";
+// §5 Phase 5C — the synthetic-check surface has been deleted. The only
+// remaining exports from `compiler-signatures.ts` are the extension setup
+// helpers (used by the file-snapshot entry path) and `getMatchingTagSignatures`
+// (used as the Role-A placement pre-check in both consumers).
 export {
   _emitSetupDiagnostics,
   _mapSetupDiagnosticCode,
   _validateExtensionSetup,
-  buildSyntheticHelperPrelude,
-  checkSyntheticTagApplication,
-  checkSyntheticTagApplications,
   getMatchingTagSignatures,
-  lowerTagApplicationToSyntheticCall,
 } from "./compiler-signatures.js";
+export type { SyntheticCompilerDiagnostic } from "./compiler-signatures.js";
 export {
   parseUnifiedComment,
   type UnifiedParsedComment,

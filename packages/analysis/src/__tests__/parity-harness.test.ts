@@ -1,10 +1,12 @@
 /**
- * Cross-consumer parity harness (Phase 0.5a).
+ * Cross-consumer parity harness (originally Phase 0.5a; updated Phase 5C).
  *
- * Runs the BUILD path (via {@link checkSyntheticTagApplication} with
- * build-style argument preparation) and the SNAPSHOT path (via
- * {@link buildFormSpecAnalysisFileSnapshot}) over a parametric fixture suite
- * covering the full matrix of constraint tag × subject type × argument shape.
+ * Runs a build-path proxy (Role A placement pre-check + Role B capability
+ * guard + `@const` IR check + Role C typed-parser argument validation — the
+ * same gates the real build path in `tsdoc-parser.ts` applies) and the
+ * SNAPSHOT path (via {@link buildFormSpecAnalysisFileSnapshot}) over a
+ * parametric fixture suite covering the full matrix of constraint tag ×
+ * subject type × argument shape.
  *
  * For each fixture, the two consumer outputs are normalised into
  * {@link ParityLogEntry} slices and compared with {@link diffParityLogs}.
@@ -13,8 +15,9 @@
  *   (a) `diff.length === 0` — the two consumers agree, or
  *   (b) every divergence matches an entry in {@link KNOWN_DIVERGENCES}.
  *
- * If a NEW divergence appears that is not in the known list the test name and
- * the actual-vs-expected diff make the root cause obvious.
+ * §5 Phase 5C retired the synthetic TypeScript program batch, so the two
+ * consumers now share a unified validation path; most previously-known
+ * divergences are resolved and KNOWN_DIVERGENCES is empty by default.
  *
  * @see docs/refactors/synthetic-checker-retirement.md §9.1 #1
  * @see docs/refactors/synthetic-checker-retirement.md §3 (divergence catalogue)
@@ -26,7 +29,6 @@ import {
   _checkConstValueAgainstType,
   _supportsConstraintCapability,
   buildFormSpecAnalysisFileSnapshot,
-  checkSyntheticTagApplication,
   describeTypeKind,
   getMatchingTagSignatures,
   getSubjectType,
@@ -469,98 +471,6 @@ function generateFixtureSource(fixture: ParityFixture): string {
 }
 
 // ---------------------------------------------------------------------------
-// Build-consumer proxy helpers
-//
-// These replicate the argument-lowering logic of the build consumer's
-// `renderSyntheticArgumentExpression` function. This intentionally lives
-// here (not imported) because the build package is not a dependency of
-// @formspec/analysis. Keeping it in-test ensures it stays in sync with the
-// spec description in §3 of the retirement plan.
-//
-// ============================================================================
-// SYNC CONTRACT — keep this proxy in sync with the canonical implementation:
-//   packages/build/src/analyzer/tsdoc-parser.ts  renderSyntheticArgumentExpression  (lines ~406-419)
-//
-// Branches that MUST stay in sync:
-//   1. "number" / "integer" / "signedInteger" — Infinity/NaN pass through as
-//      identifiers (Phase 2 fix). Other non-parseable text is JSON.stringify'd.
-//   2. "string" — always JSON.stringify(argumentText) (note: full text, not trimmed).
-//   3. "json"   — JSON.parse + wrap in parens on success; JSON.stringify fallback on error.
-//   4. "boolean" — pass "true"/"false" through; JSON.stringify everything else.
-//   5. "condition" — "undefined as unknown as FormSpecCondition" literal.
-//   6. null/undefined — return null (no argument).
-//   7. Infinity/NaN handling — "Infinity", "-Infinity", "NaN" must pass through
-//      as identifiers for the number/integer/signedInteger branch (not stringified).
-// ============================================================================
-// ---------------------------------------------------------------------------
-
-/**
- * Proxy replicating `renderSyntheticArgumentExpression` from
- * `packages/build/src/analyzer/tsdoc-parser.ts` — the build-path argument
- * lowering function.
- *
- * Named `renderBuildArgumentExpressionProxy` to make clear this is a local
- * copy that must be kept in sync with the canonical implementation. See the
- * SYNC CONTRACT block above for the exact branches to maintain.
- *
- * Key semantics (§3, updated for Phase 2):
- *   - number/integer/signedInteger: finite numbers pass through; Infinity,
- *     -Infinity, and NaN pass through as identifiers (Phase 2 fix — no longer
- *     JSON-stringified). Other non-parseable text is JSON-stringified.
- *   - string: always JSON-quoted.
- *   - json: parses and re-renders valid JSON; falls back to JSON.stringify on
- *     parse error (this is the divergence from the snapshot path for `@const`
- *     with invalid JSON).
- *   - boolean: accepts "true"/"false"; otherwise JSON-stringifies.
- *   - null / condition: pass-through special cases.
- *
- * @see packages/build/src/analyzer/tsdoc-parser.ts renderSyntheticArgumentExpression
- */
-function renderBuildArgumentExpressionProxy(
-  valueKind: string | null | undefined,
-  argumentText: string
-): string | null {
-  const trimmed = argumentText.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  switch (valueKind) {
-    case "number":
-    case "integer":
-    case "signedInteger":
-      // Phase 2: Infinity, -Infinity, NaN pass through as identifiers.
-      // Snapshot path has always done this; build path now matches.
-      if (trimmed === "Infinity" || trimmed === "-Infinity" || trimmed === "NaN") {
-        return trimmed;
-      }
-      return Number.isFinite(Number(trimmed)) ? trimmed : JSON.stringify(trimmed);
-    case "string":
-      return JSON.stringify(argumentText);
-    case "json": {
-      try {
-        JSON.parse(trimmed);
-        return `(${trimmed})`;
-      } catch {
-        // Build path: fallback to quoted string (diverges from snapshot which omits)
-        return JSON.stringify(trimmed);
-      }
-    }
-    case "boolean":
-      return trimmed === "true" || trimmed === "false" ? trimmed : JSON.stringify(trimmed);
-    case "condition":
-      return "undefined as unknown as FormSpecCondition";
-    case null:
-    case undefined:
-      return null;
-    default:
-      // Mirror renderSyntheticArgumentExpression's default: surface the unknown
-      // kind as a bare identifier (triggers TS errors for truly unknown kinds).
-      return valueKind;
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Consumer runners
 // ---------------------------------------------------------------------------
 
@@ -625,32 +535,14 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
     subjectType !== undefined ? describeTypeKind(subjectType, checker) : "unknown";
   const resolvedPlacement = placement ?? "class-field";
 
-  // Get tag definition to retrieve the valueKind for argument lowering
+  // Get tag definition to retrieve semantic metadata for the role checks below.
   const definition = getTagDefinition(fixture.tagName);
-  const valueKind = definition?.valueKind ?? null;
 
-  // Prepare argument expression using build-path lowering
-  const argumentExpression = renderBuildArgumentExpressionProxy(valueKind, fixture.tagArgument);
-
-  // subjectType text for the synthetic call
-  const subjectTypeText =
-    subjectType !== undefined
-      ? checker.typeToString(subjectType, undefined, ts.TypeFormatFlags.NoTruncation)
-      : "unknown";
-
-  // Collect supporting declarations from source (the preamble type aliases)
-  const supportingDeclarations: string[] = [];
-  ts.forEachChild(sourceFile, (node) => {
-    if (
-      ts.isTypeAliasDeclaration(node) ||
-      ts.isVariableStatement(node) ||
-      ts.isInterfaceDeclaration(node)
-    ) {
-      supportingDeclarations.push(node.getFullText(sourceFile).trim());
-    }
-  });
-
-  // Invoke the synthetic checker (build path proxy)
+  // §5 Phase 5C — the build-path proxy now runs Role A (placement pre-check)
+  // + Role B (capability guard) + @const IR check + Role C (typed parser),
+  // matching the real build path after the synthetic retirement. Previously
+  // this function also lowered the argument into a synthetic call expression
+  // and compiled a supporting declarations preamble; both steps are gone.
   let hasDiagnostic = false;
   let diagnosticCode: string | undefined;
   let diagnosticMessage: string | undefined;
@@ -712,29 +604,16 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
     }
   }
 
+  // §5 Phase 5C — the synthetic TypeScript program batch has been retired.
+  // The build-path proxy now runs Role C via `parseTagArgument` directly, the
+  // same gate the real build path uses after Slice C. Role A / Role B /
+  // `@const` IR check above mirror the real build path's earlier gates.
   if (!hasDiagnostic) {
-    try {
-      const result = checkSyntheticTagApplication({
-        tagName: fixture.tagName,
-        placement: resolvedPlacement,
-        hostType: subjectTypeText,
-        subjectType: subjectTypeText,
-        supportingDeclarations,
-        ...(argumentExpression !== null ? { argumentExpression } : {}),
-      });
-      hasDiagnostic = result.diagnostics.length > 0;
-      if (hasDiagnostic) {
-        const firstDiag = result.diagnostics[0];
-        if (firstDiag !== undefined) {
-          diagnosticCode = deriveBuildDiagnosticCode(firstDiag.message);
-          diagnosticMessage = firstDiag.message;
-        }
-      }
-    } catch (error) {
-      // lowerTagApplicationToSyntheticCall throws for invalid placements (A-reject)
+    const typedResult = parseTagArgument(fixture.tagName, fixture.tagArgument, "build");
+    if (!typedResult.ok) {
       hasDiagnostic = true;
-      diagnosticCode = "INVALID_TAG_PLACEMENT";
-      diagnosticMessage = error instanceof Error ? error.message : String(error);
+      diagnosticCode = typedResult.diagnostic.code;
+      diagnosticMessage = typedResult.diagnostic.message;
     }
   }
 
@@ -745,24 +624,6 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
     subjectTypeKind,
     placement: resolvedPlacement,
   };
-}
-
-/**
- * Derives a build-path diagnostic code from a TypeScript compiler diagnostic
- * message string.
- *
- * The `includes("Expected")` and `includes("No overload")` pattern mapping
- * mirrors the per-application result classification in `buildTagDiagnostics`
- * at `packages/analysis/src/file-snapshots.ts`.
- */
-function deriveBuildDiagnosticCode(message: string): string {
-  if (message.includes("No overload")) {
-    return "INVALID_TAG_PLACEMENT";
-  }
-  if (message.includes("Expected")) {
-    return "INVALID_TAG_ARGUMENT";
-  }
-  return "TYPE_MISMATCH";
 }
 
 /**

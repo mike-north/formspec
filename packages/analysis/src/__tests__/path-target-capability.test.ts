@@ -65,15 +65,15 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     // `@pattern` requires `string-like`; the path-target terminal type is
     // `number`, which does not satisfy that capability. Role B must reject
     // with TYPE_MISMATCH.
-    const relevant = diagnostics.filter((d) => d.data?.["tagName"] === "pattern");
+    const relevant = diagnostics.filter((d) => d.data["tagName"] === "pattern");
     expect(relevant).toHaveLength(1);
     expect(relevant[0]?.code).toBe("TYPE_MISMATCH");
     expect(relevant[0]?.message).toContain("pattern");
     // The diagnostic should reference the path target, not the whole field.
-    expect(relevant[0]?.data?.["targetKind"]).toBe("path");
+    expect(relevant[0]?.data["targetKind"]).toBe("path");
     // `targetText` is the raw text without the leading colon (see
     // `ParsedCommentTargetSpecifier.rawText` in comment-syntax.ts).
-    expect(relevant[0]?.data?.["targetText"]).toBe("amount");
+    expect(relevant[0]?.data["targetText"]).toBe("amount");
   });
 
   it("rejects an invalid argument on a valid path-target — `@minimum :amount \"hello\"` on `{ amount: number }`", () => {
@@ -90,7 +90,7 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     const diagnostics = collectDiagnostics(source);
     // Role B passes (number satisfies numeric-comparable). Role C rejects
     // because `"hello"` is not a valid numeric argument.
-    const relevant = diagnostics.filter((d) => d.data?.["tagName"] === "minimum");
+    const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
     expect(relevant).toHaveLength(1);
     expect(relevant[0]?.code).toBe("INVALID_TAG_ARGUMENT");
   });

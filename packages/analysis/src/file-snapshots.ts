@@ -4,7 +4,6 @@ import {
   _mapSetupDiagnosticCode,
   _validateExtensionSetup,
   getMatchingTagSignatures,
-  type SyntheticCompilerDiagnostic,
 } from "./compiler-signatures.js";
 import {
   _capabilityLabel,
@@ -1231,49 +1230,6 @@ function buildDiscriminatorDiagnostics(
     )
   );
   return diagnostics;
-}
-
-/**
- * Maps `kind: "typescript"` global synthetic diagnostics to
- * `TYPE_MISMATCH`-coded {@link FormSpecAnalysisDiagnostic}s anchored at the
- * given span.
- *
- * Setup-kind globals (`unsupported-custom-type-override`, `synthetic-setup`)
- * are pre-emitted at the file-level span by
- * {@link buildFormSpecAnalysisFileSnapshot} via `_validateExtensionSetup`
- * before tag diagnostics run, so this helper filters them out to prevent
- * double-emission.
- *
- * TS-kind globals arise when the synthetic TypeScript program produces a
- * diagnostic that either (a) has no file/start position or (b) falls outside
- * every tag application's line range — see `mapBatchDiagnostics` in
- * `compiler-signatures.ts`. These used to surface as `TYPE_MISMATCH` before
- * Phase 4 Slice C; the original refactor removed the emission path by
- * mistake. Restoring it closes the silent-drop regression flagged in
- * post-merge review feedback for #384.
- *
- * @internal
- */
-export function _mapGlobalSyntheticTsDiagnostics(
-  globalDiagnostics: readonly SyntheticCompilerDiagnostic[],
-  anchorSpan: CommentSpan,
-  data: FormSpecAnalysisDiagnostic["data"]
-): FormSpecAnalysisDiagnostic[] {
-  const result: FormSpecAnalysisDiagnostic[] = [];
-  for (const diagnostic of globalDiagnostics) {
-    if (diagnostic.kind !== "typescript") {
-      // Setup-kind globals are already emitted at the file-level span by the
-      // snapshot entry path. Skip to avoid double-emission.
-      continue;
-    }
-    result.push(
-      createAnalysisDiagnostic("TYPE_MISMATCH", diagnostic.message, anchorSpan, {
-        ...data,
-        ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-      })
-    );
-  }
-  return result;
 }
 
 function buildTagDiagnostics(
