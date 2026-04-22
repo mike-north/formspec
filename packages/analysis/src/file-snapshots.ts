@@ -1567,6 +1567,61 @@ function buildTagDiagnostics(
       );
 
       if (!hasExtBroadening) {
+        // §5 Phase 5A — Role B capability guard (snapshot consumer).
+        //
+        // ORDERING: Role B runs BEFORE Role C (typed parser) to match the build
+        // path's guard order in `tsdoc-parser.ts` (~lines 855-884). The build
+        // path checks supportsConstraintCapability() first, so for a bad-arg AND
+        // wrong-type input (e.g. `@minimum "hello" on string`), both consumers
+        // must emit TYPE_MISMATCH (Role B wins) — not INVALID_TAG_ARGUMENT (Role
+        // C wins). Running Role C first would produce a diagnostic-code divergence
+        // for that class of inputs.
+        //
+        // Ordering invariant: integer-brand bypass ALREADY ran earlier in this
+        // loop (isIntegerBypass check above). This guard only runs on the
+        // non-broadened, non-bypassed path.
+        //
+        // Only direct-field tags (target === null) are checked here.
+        // Path-targeted fields use the resolved path type, not the declared
+        // subject type — that check requires a different anchor and is already
+        // handled via the existing synthetic checker path until Phase 5C.
+        if (target === null) {
+          const requiredCapability = semantic.tagDefinition.capabilities[0];
+          // Under noUncheckedIndexedAccess, capabilities[0] is SemanticCapability | undefined.
+          // No capability constraint on this tag → always valid for any field type.
+          // requiredCapability is narrowed to SemanticCapability in the else-if branch.
+          if (
+            requiredCapability !== undefined &&
+            !_supportsConstraintCapability(requiredCapability, subjectType, checker)
+          ) {
+            const actualTypeText =
+              standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
+            diagnostics.push(
+              createAnalysisDiagnostic(
+                "TYPE_MISMATCH",
+                `constraint "@${tag.normalizedTagName}" is only valid on ${requiredCapability} targets, but field type is "${actualTypeText}"`,
+                tag.fullSpan,
+                {
+                  tagName: tag.normalizedTagName,
+                  placement,
+                }
+              )
+            );
+            if (snapshotLogsEnabled) {
+              logTagApplication(snapshotLog, {
+                consumer: "snapshot",
+                tag: tag.normalizedTagName,
+                placement,
+                subjectTypeKind: subjectTypeKindForLog,
+                roleOutcome: "B-reject",
+                elapsedMicros: elapsedMicros(tagStartMicros),
+              });
+            }
+            // Skip synthetic call — Role B already rejected.
+            continue;
+          }
+        }
+
         // §4 Phase 4B — use shared extractEffectiveArgumentText so both
         // consumers derive argument text identically. For the snapshot consumer,
         // tag.argumentText is already target-stripped (parseCommentBlock strips
@@ -1574,6 +1629,11 @@ function buildTagDiagnostics(
         // rawText produces the same result as parseTagSyntax(tagName,
         // tag.argumentText).argumentText. The helper unifies the code paths so
         // future changes affect both consumers symmetrically.
+        //
+        // ORDERING: Role C runs AFTER Role B (capability check). This matches the
+        // build path's order: bypass → Role B → Role C. For wrong-type AND
+        // bad-arg inputs, Role B wins and emits TYPE_MISMATCH before the
+        // typed parser inspects the argument.
         const effectiveArgumentText = extractEffectiveArgumentText(
           tag.normalizedTagName,
           tag.argumentText,
@@ -1635,53 +1695,6 @@ function buildTagDiagnostics(
             roleOutcome: "C-pass",
             valueKind: typedParseResult.value.kind,
           });
-        }
-
-        // §5 Phase 5A — Role B capability guard (snapshot consumer).
-        //
-        // Mirrors the build path's `supportsConstraintCapability()` call in
-        // `tsdoc-parser.ts` (~lines 870-896). The build path runs this check
-        // BEFORE the synthetic call to emit TYPE_MISMATCH when the field type
-        // lacks the required capability (e.g. @minimum 0 on string).
-        //
-        // Ordering invariant: integer-brand bypass ALREADY ran earlier in this
-        // loop (isIntegerBypass check above). This guard only runs on the
-        // non-broadened, non-bypassed path, after typed-parser C-pass.
-        //
-        // Only direct-field tags (target === null) are checked here.
-        // Path-targeted fields use the resolved path type, not the declared
-        // subject type — that check requires a different anchor and is already
-        // handled via the existing synthetic checker path until Phase 5C.
-        if (target === null) {
-          const requiredCapability = semantic.tagDefinition.capabilities[0];
-          if (!_supportsConstraintCapability(requiredCapability, subjectType, checker)) {
-            const actualTypeText =
-              standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
-            const capabilityLabel = requiredCapability ?? "unknown";
-            diagnostics.push(
-              createAnalysisDiagnostic(
-                "TYPE_MISMATCH",
-                `constraint "@${tag.normalizedTagName}" is only valid on ${capabilityLabel} targets, but field type is "${actualTypeText}"`,
-                tag.fullSpan,
-                {
-                  tagName: tag.normalizedTagName,
-                  placement,
-                }
-              )
-            );
-            if (snapshotLogsEnabled) {
-              logTagApplication(snapshotLog, {
-                consumer: "snapshot",
-                tag: tag.normalizedTagName,
-                placement,
-                subjectTypeKind: subjectTypeKindForLog,
-                roleOutcome: "B-reject",
-                elapsedMicros: elapsedMicros(tagStartMicros),
-              });
-            }
-            // Skip synthetic call — Role B already rejected.
-            continue;
-          }
         }
       } else {
         // Extension-broadened (D1/D2) — bypass the typed parser but still pass

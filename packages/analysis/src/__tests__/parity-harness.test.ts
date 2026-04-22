@@ -379,6 +379,22 @@ const FIXTURES: readonly ParityFixture[] = [
     subjectType: "number",
     tagArgument: "NaN",
   },
+
+  // -------------------------------------------------------------------------
+  // Guard-order parity pin (Fix #1): @minimum "hello" on string
+  //
+  // Both consumers should emit TYPE_MISMATCH (Role B wins — string has no
+  // numeric-comparable capability) before the argument type is checked.
+  // If the snapshot consumer runs Role C (typed parser) before Role B, it
+  // emits INVALID_TAG_ARGUMENT instead of TYPE_MISMATCH, creating a
+  // diagnostic-code divergence. This fixture pins the correct order.
+  // -------------------------------------------------------------------------
+  {
+    label: '@minimum "hello" on string (guard-order parity: Role B before Role C)',
+    tagName: "minimum",
+    subjectType: "string",
+    tagArgument: '"hello"',
+  },
 ];
 
 // ---------------------------------------------------------------------------

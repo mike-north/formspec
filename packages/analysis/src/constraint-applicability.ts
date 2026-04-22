@@ -17,10 +17,10 @@
  *      bypass is not applied first, `_supportsConstraintCapability` will still
  *      return `true` for numeric-comparable on integer types (correct), but the
  *      guard ordering must match the build path's ordering.
- *   2. This check runs BEFORE the typed-parser Role-C call in the build path.
- *      In the snapshot consumer it should run after the typed-parser Role-C call
- *      (since Role C already ran earlier in the loop) but before the synthetic
- *      call.
+ *   2. This check runs BEFORE the typed-parser Role-C call (matching the build
+ *      path's guard order). For a bad-arg AND wrong-type input (e.g. `@minimum
+ *      "hello" on string`), Role B emits TYPE_MISMATCH before Role C inspects
+ *      the argument — ensuring both consumers produce the same diagnostic code.
  *
  * @internal
  */
@@ -43,18 +43,13 @@ import { hasTypeSemanticCapability } from "./ts-binding.js";
  * @param capability - The semantic capability required by the constraint tag.
  * @param fieldType  - The TypeScript type of the field being annotated.
  * @param checker    - The TypeScript type checker for the host program.
- * @param options    - Optional behaviour flags.
- * @param options.allowIntegerBrandedAsNumeric - Unused in this implementation
- *   because integer-brand bypass is handled by the caller before this function
- *   is invoked. Kept for API symmetry with the build path.
  *
  * @internal
  */
 export function _supportsConstraintCapability(
   capability: SemanticCapability | undefined,
   fieldType: ts.Type,
-  checker: ts.TypeChecker,
-  _options?: { allowIntegerBrandedAsNumeric?: boolean }
+  checker: ts.TypeChecker
 ): boolean {
   if (capability === undefined) {
     return true;
