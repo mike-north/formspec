@@ -4,7 +4,7 @@ import {
   type TagDefinition,
 } from "@formspec/analysis/internal";
 
-export type { FormSpecTargetKind, FormSpecValueKind } from "@formspec/analysis/internal";
+export type { FormSpecTargetKind } from "@formspec/analysis/internal";
 
 export { normalizeFormSpecTagName };
 

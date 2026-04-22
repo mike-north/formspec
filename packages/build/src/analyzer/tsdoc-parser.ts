@@ -736,7 +736,7 @@ export interface ParseTSDocOptions {
  * callers can apply the former to the enclosing type/form and the latter to
  * enum members.
  */
-export interface DisplayNameMetadata {
+interface DisplayNameMetadata {
   readonly displayName?: string;
   readonly memberDisplayNames: ReadonlyMap<string, string>;
 }
@@ -1048,29 +1048,6 @@ export function parseTSDocTags(
   const result = { constraints, annotations, diagnostics };
   parseResultCache.set(cacheKey, result);
   return result;
-}
-
-/**
- * Checks if a TS AST node has a `@deprecated` tag using the unified parser.
- */
-export function hasDeprecatedTagTSDoc(node: ts.Node): boolean {
-  const sourceFile = node.getSourceFile();
-  const sourceText = sourceFile.getFullText();
-  const commentRanges = ts.getLeadingCommentRanges(sourceText, node.getFullStart());
-
-  if (commentRanges) {
-    for (const range of commentRanges) {
-      if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia) continue;
-      const commentText = sourceText.substring(range.pos, range.end);
-      if (!commentText.startsWith("/**")) continue;
-
-      if (parseUnifiedComment(commentText).isDeprecated) {
-        return true;
-      }
-    }
-  }
-
-  return false;
 }
 
 /**

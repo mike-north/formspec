@@ -11,7 +11,7 @@ export type SupportedDeclaration =
   | TSESTree.TSInterfaceDeclaration
   | TSESTree.TSTypeAliasDeclaration;
 
-export interface ResolvedTagTarget {
+interface ResolvedTagTarget {
   readonly valid: boolean;
   readonly reason: "none" | "unknownPath" | "unknownMember" | "memberTargetOnNonUnion";
   readonly type: ts.Type | null;

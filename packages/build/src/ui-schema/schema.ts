@@ -29,13 +29,6 @@ const jsonPointerSchema = z.string();
 export const ruleEffectSchema = z.enum(["SHOW", "HIDE", "ENABLE", "DISABLE"]);
 
 /**
- * Rule effect types for conditional visibility.
- *
- * @internal
- */
-export type RuleEffect = z.infer<typeof ruleEffectSchema>;
-
-/**
  * Zod schema for UI Schema element type strings.
  *
  * @internal
@@ -50,13 +43,6 @@ export const uiSchemaElementTypeSchema = z.enum([
   "Label",
 ]);
 
-/**
- * UI Schema element types.
- *
- * @internal
- */
-export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
-
 // =============================================================================
 // Rule Condition Schema (recursive)
 // =============================================================================
@@ -69,7 +55,7 @@ export type UISchemaElementType = z.infer<typeof uiSchemaElementTypeSchema>;
  *
  * @internal
  */
-export interface RuleConditionSchema {
+interface RuleConditionSchema {
   const?: unknown;
   enum?: readonly unknown[];
   type?: string;
@@ -125,13 +111,6 @@ export const schemaBasedConditionSchema = z
   .strict();
 
 /**
- * Condition for a rule.
- *
- * @internal
- */
-export type SchemaBasedCondition = z.infer<typeof schemaBasedConditionSchema>;
-
-/**
  * Zod schema for a UI Schema rule.
  *
  * @internal
@@ -148,7 +127,7 @@ export const ruleSchema = z
  *
  * @internal
  */
-export type Rule = z.infer<typeof ruleSchema>;
+type Rule = z.infer<typeof ruleSchema>;
 
 // =============================================================================
 // UI Schema Element Schemas (recursive via z.lazy)
@@ -161,7 +140,7 @@ export type Rule = z.infer<typeof ruleSchema>;
  *
  * @internal
  */
-export type UISchemaElement =
+type UISchemaElement =
   | ControlElement
   | VerticalLayout
   | HorizontalLayout
@@ -214,7 +193,7 @@ export const controlSchema = z
  *
  * @internal
  */
-export type ControlElement = z.infer<typeof controlSchema>;
+type ControlElement = z.infer<typeof controlSchema>;
 
 // -----------------------------------------------------------------------------
 // VerticalLayout
@@ -226,7 +205,7 @@ export type ControlElement = z.infer<typeof controlSchema>;
  *
  * @internal
  */
-export interface VerticalLayout {
+interface VerticalLayout {
   type: "VerticalLayout";
   elements: UISchemaElement[];
   rule?: Rule | undefined;
@@ -259,7 +238,7 @@ export const verticalLayoutSchema: z.ZodType<VerticalLayout> = z.lazy(() =>
  *
  * @internal
  */
-export interface HorizontalLayout {
+interface HorizontalLayout {
   type: "HorizontalLayout";
   elements: UISchemaElement[];
   rule?: Rule | undefined;
@@ -292,7 +271,7 @@ export const horizontalLayoutSchema: z.ZodType<HorizontalLayout> = z.lazy(() =>
  *
  * @internal
  */
-export interface GroupLayout {
+interface GroupLayout {
   type: "Group";
   label: string;
   elements: UISchemaElement[];
@@ -327,7 +306,7 @@ export const groupLayoutSchema: z.ZodType<GroupLayout> = z.lazy(() =>
  *
  * @internal
  */
-export interface Category {
+interface Category {
   type: "Category";
   label: string;
   elements: UISchemaElement[];
@@ -362,7 +341,7 @@ export const categorySchema: z.ZodType<Category> = z.lazy(() =>
  *
  * @internal
  */
-export interface Categorization {
+interface Categorization {
   type: "Categorization";
   elements: Category[];
   label?: string | undefined;
@@ -411,7 +390,7 @@ export const labelElementSchema = z
  *
  * @internal
  */
-export type LabelElement = z.infer<typeof labelElementSchema>;
+type LabelElement = z.infer<typeof labelElementSchema>;
 
 // =============================================================================
 // Root UISchema

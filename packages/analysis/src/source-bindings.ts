@@ -98,7 +98,7 @@ export function getVisibleTypeParameterNames(node: ts.Node): readonly string[] {
   return [...names];
 }
 
-export interface DirectPropertyTarget {
+interface DirectPropertyTarget {
   readonly name: string;
   readonly declaration: ts.PropertyDeclaration | ts.PropertySignature;
   readonly type: ts.Type;

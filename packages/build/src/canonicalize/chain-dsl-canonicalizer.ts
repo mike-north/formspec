@@ -101,7 +101,7 @@ function isField(el: FormElement): el is AnyField {
  * @param form - A form specification created via `formspec(...)` from `@formspec/dsl`
  * @returns The canonical intermediate representation
  */
-export interface CanonicalizeChainDSLOptions {
+interface CanonicalizeChainDSLOptions {
   readonly metadata?: MetadataPolicyInput;
 }
 

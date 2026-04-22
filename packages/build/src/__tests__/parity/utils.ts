@@ -237,7 +237,7 @@ export interface ProvenanceFreeFormIR {
  * A structured description of a single difference between two IR trees.
  * Path uses dot notation for object properties and `[n]` for array indices.
  */
-export interface IRDifference {
+interface IRDifference {
   /** JSONPath-like string describing where the difference is located. */
   readonly path: string;
   readonly expected: unknown;
@@ -252,7 +252,7 @@ export interface IRDifference {
  * Strips all `provenance` (and `mergeHistory`) fields from a `FormIRElement`,
  * returning a `ProvenanceFreeFormIRElement`.
  */
-export function stripProvenanceFromElement(element: FormIRElement): ProvenanceFreeFormIRElement {
+function stripProvenanceFromElement(element: FormIRElement): ProvenanceFreeFormIRElement {
   switch (element.kind) {
     case "field":
       return stripProvenanceFromField(element);
