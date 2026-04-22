@@ -11,7 +11,8 @@
       "entry": [
         "src/__tests__/fixtures/**/*.ts",
         "src/__tests__/parity/fixtures/**/*.ts"
-      ]
+      ],
+      "ignore": ["src/__tests__/fixtures/method-signature-schemas.ts"]
     },
     "packages/cli": {
       "entry": ["src/__tests__/fixtures/**/*.ts"]
