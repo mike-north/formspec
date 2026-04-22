@@ -1,6 +1,6 @@
 {
   "name": "@formspec/validator",
-  "version": "0.1.0-alpha.28",
+  "version": "0.1.0-alpha.60",
   "description": "JSON Schema validator for FormSpec — backed by @cfworker/json-schema, safe for secure runtimes",
   "type": "module",
   "main": "./dist/index.cjs",

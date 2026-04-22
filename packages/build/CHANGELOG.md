@@ -1,5 +1,144 @@
 # @formspec/build
 
+## 0.1.0-alpha.60
+
+### Minor Changes
+
+- [#401](https://github.com/mike-north/formspec/pull/401) [`8f41a9f`](https://github.com/mike-north/formspec/commit/8f41a9f992de04b25477d70ea139ff3ef47db98a) Thanks [@mike-north](https://github.com/mike-north)! - Phase 5 Slice C — retire the synthetic TypeScript program batch.
+
+  Deletes the parallel-program constraint-tag checker that drove role-D validation in both
+  consumers. Constraint-tag validation now flows through three unified stages in both the
+  build and snapshot consumers:
+  - Role A — placement pre-check (`getMatchingTagSignatures`)
+  - Role B — capability guard, now extended to cover path-targeted tags in the snapshot
+    consumer (`_supportsConstraintCapability` + `resolvePathTargetType`)
+  - Role C — typed-parser argument validation (`parseTagArgument`)
+
+  The `@formspec/analysis/internal` export surface loses the synthetic-checker entry points
+  (`checkSyntheticTagApplication`, `checkSyntheticTagApplications`,
+  `checkSyntheticTagApplicationsDetailed`, `lowerTagApplicationToSyntheticCall`,
+  `buildSyntheticHelperPrelude`, `checkNarrowSyntheticTagApplicability` /
+  `…Applicabilities`, `FORM_SPEC_SYNTHETIC_BATCH_CACHE_ENTRIES`,
+  `_mapGlobalSyntheticTsDiagnostics`) along with their option and result types. These were
+  documented as `@internal` and never part of the public API surface. The retained
+  setup-diagnostic helpers (`_validateExtensionSetup`, `_emitSetupDiagnostics`,
+  `_mapSetupDiagnosticCode`, `SetupDiagnostic` — renamed from `SyntheticCompilerDiagnostic`)
+  continue to anchor extension registry setup failures.
+
+  `FormSpecSemanticServiceStats` in `@formspec/ts-plugin` drops the four synthetic counters
+  (`syntheticBatchCacheHits`, `syntheticBatchCacheMisses`, `syntheticCompileCount`,
+  `syntheticCompileApplications`). Query totals and file-snapshot cache hit/miss ratios
+  remain and cover the same warm/cold semantics.
+
+  The §8.4b memory gate target is peak RSS ≤ 700 MB on `stripe-realistic-build`; the Phase
+  5C measurement is 769.5 MB — a 91.8 MB (10.7%) improvement over the Phase 0 baseline of
+  861.3 MB but 69.5 MB above the gate. The synthetic `ts.createProgram` surface is fully
+  retired (no more `analysis.syntheticCheckBatch.*` performance events); remaining headroom
+  will be pursued as a follow-up.
+
+  Per the repo's lockstep release convention, changes under `packages/<name>/src` bump the
+  affected package and all transitively-dependent packages. `@formspec/analysis` takes a
+  minor bump because removed symbols from `./internal` may break deep-imports;
+  `@formspec/ts-plugin` takes a minor bump because `FormSpecSemanticServiceStats` (a
+  `@public` interface) removes four `readonly` counters. All other `@formspec/*` packages
+  take a minor bump together under the lockstep version-link convention.
+
+### Patch Changes
+
+- [#404](https://github.com/mike-north/formspec/pull/404) [`f0929c6`](https://github.com/mike-north/formspec/commit/f0929c60e7f74db7da6cffd589a8daaa5ba1e834) Thanks [@mike-north](https://github.com/mike-north)! - Tighten external-dependency minimums so every package advertises the version it's actually built against, and align internal devDependencies across the workspace.
+
+  Consumer-visible:
+  - `@formspec/analysis`, `@formspec/build`, `@formspec/eslint-plugin`, `@formspec/ts-plugin`: `typescript` peer dependency raised from `^5.0.0` to `^5.7.3`.
+  - `@formspec/cli`: `typescript` runtime dependency raised from `^5.0.0` to `^5.7.3`.
+  - `@formspec/eslint-plugin`: `eslint` peer dependency raised from `^9.0.0` to `^9.39.2`.
+
+  Internal only (devDependencies): `vitest` aligned to `^3.2.4` across all packages; `@microsoft/api-extractor` upgraded to `^7.58.7` (latest 7.x, now bundling TypeScript 5.9.3).
+
+  Consumers already on TypeScript 5.7+ and ESLint 9.39+ are unaffected. Consumers on older ranges will see a peer-dependency warning and should upgrade.
+
+- [#398](https://github.com/mike-north/formspec/pull/398) [`5225a45`](https://github.com/mike-north/formspec/commit/5225a45631dad8b38a088a330c5aa5665519f29b) Thanks [@mike-north](https://github.com/mike-north)! - Fix path-targeted built-in constraint tags so they participate in custom-type broadening. `@exclusiveMinimum :amount 0` on a `MonetaryAmount` field whose `amount` is a registered Decimal now emits the broadened custom-constraint keyword (e.g. `decimalExclusiveMinimum: "0"`) instead of the semantically-invalid raw `exclusiveMinimum: 0` sibling of `$ref`.
+
+  Also unblocks path traversal through nullable intermediates at the IR level — `@minimum :money.amount 0` on `LineItem { money: MonetaryAmount | null }` now resolves cleanly, closing an asymmetry with the compiler-backed TS resolver that already stripped nullable unions.
+
+  The snapshot consumer used by `@formspec/ts-plugin` and `@formspec/language-server` will receive the same fix in a follow-up (#396); until then, IDE diagnostics for path-targeted constraints on custom types remain unbroadened.
+
+- [#393](https://github.com/mike-north/formspec/pull/393) [`a6df78a`](https://github.com/mike-north/formspec/commit/a6df78a75b75afc8942ad86856ad750ba9ff39da) Thanks [@mike-north](https://github.com/mike-north)! - Phase 4 Slice D — canary audit + acceptance-gate grounding.
+
+  Updates `constraint-canaries.test.ts` with accurate Phase 4D audit commentary for all 13
+  remaining `.fails` canaries — identifying the two root causes (snapshot-path Role-B capability
+  check gap, IR-validation gap in snapshot consumer) and marking them as Phase 5 targets.
+  One canary (`@pattern on string[]`) is relabeled as intentional: `supportsConstraintCapability`
+  in the build path treats `string[]` as string-like for `@pattern`, so neither consumer emits
+  `TYPE_MISMATCH`. The test is retained as a regression guard only.
+
+  Updates `parity-harness.test.ts` KNOWN_DIVERGENCES to note that the alias-chain divergence
+  (#363) was reviewed and deferred in Phase 4D.
+
+  No behavior change: 0 canaries flipped. The 13 remaining `.fails` cases require Phase 5
+  (snapshot-path Role-B host-checker guard, or full synthetic-checker retirement) to resolve.
+
+  Per the repo's changeset policy, any change under `packages/<name>/src` triggers a patch bump
+  for that package and all transitively-dependent packages, even when the change is
+  test-comment-only and produces no behavioral difference.
+
+- [#399](https://github.com/mike-north/formspec/pull/399) [`0e79231`](https://github.com/mike-north/formspec/commit/0e79231c25403802d7e426fb6ca0b6db6017cc81) Thanks [@mike-north](https://github.com/mike-north)! - Port host-checker capability guard + placement pre-check to snapshot consumer
+
+  Closes 8 Role-B silent-acceptance bugs tracked in #326. The snapshot consumer
+  now runs the same `_supportsConstraintCapability` and `getMatchingTagSignatures`
+  checks the build consumer already used, emitting `TYPE_MISMATCH` and
+  `INVALID_TAG_PLACEMENT` at the same correctness boundary. Prerequisite for
+  Phase 5C deletion of the synthetic machinery.
+
+- [#400](https://github.com/mike-north/formspec/pull/400) [`6e1dfbe`](https://github.com/mike-north/formspec/commit/6e1dfbeb6f7f42b0dc046b0d55e2cd24dc3a71ee) Thanks [@mike-north](https://github.com/mike-north)! - Snapshot consumer now validates `@const` values against the field type
+
+  Closes the IR-validation gap tracked by 4 canaries in
+  `constraint-canaries.test.ts`. The snapshot consumer now runs
+  `_checkConstValueAgainstType` in `buildTagDiagnostics` after Role-C
+  accepts the parsed JSON value, emitting `TYPE_MISMATCH` for primitive
+  value/type mismatches and non-matching enum members — matching the build
+  consumer's `semantic-targets.ts` `case "const"` behavior. No behavior
+  change in the build consumer.
+
+- [#403](https://github.com/mike-north/formspec/pull/403) [`5ae85f5`](https://github.com/mike-north/formspec/commit/5ae85f51ed89b17f25a55f2d9a7fed44a8ba76dd) Thanks [@mike-north](https://github.com/mike-north)! - Phase 5 Slice C follow-up — ordering fix, test migration, and cleanup (addresses panel review of #401).
+
+  Three targeted changes following the Phase 5 Slice C synthetic-checker retirement:
+
+  **Role-A/B ordering fix (`packages/analysis/src/file-snapshots.ts`)**
+  Hoists the Role-A placement pre-check (`getMatchingTagSignatures`) above the
+  `isBuiltinConstraintName` guard in the snapshot consumer's `buildTagDiagnostics`. The
+  build consumer already ran Role A → Role B → Role C in the correct order; the snapshot
+  consumer was checking Role B (capability guard) first for built-in constraint tags,
+  diverging from the guaranteed execution sequence. The parity-harness proxy in
+  `parity-harness.test.ts` is corrected to match, and a new type-alias fixture pins the A→B
+  ordering for the "misplaced + type-incompatible" case.
+
+  **Narrow-applicability migration tests (`packages/analysis/src/__tests__/non-constraint-tag-dispatch.test.ts`)**
+  Adds 101 migration tests restoring coverage removed when the synthetic-checker module was
+  deleted. Coverage includes: 96 parametric tests (16 non-constraint tags × 6 field-type
+  shapes = zero diagnostics each), 3 unknown-tag silent-ignore tests, and 2 nullable-intermediate
+  path-traversal tests.
+
+  **Auto-fixable cleanup from panel review**
+  - `packages/build/src/analyzer/tsdoc-parser.ts`: Rename `SYNTHETIC_TYPE_FORMAT_FLAGS` → `TYPE_FORMAT_FLAGS`; remove stale "before the synthetic-checker call" comment block
+  - `ARCHITECTURE.md`: Update DEBUG namespace from `:synthetic` to `:registry`
+  - `e2e/benchmarks/README.md`: Delete stale section documenting the deleted benchmark file
+  - `packages/ts-plugin/src/semantic-service.ts`: Document the intentional no-op `updateStatsFromPerformanceEvents` method
+  - `e2e/benchmarks/stripe-realistic-tsserver-bench.ts`: Mark `syntheticCompileCount` as `@deprecated`
+  - `packages/analysis/src/lru-cache.ts` + tests: Delete (zero in-source consumers after retirement)
+
+- [#405](https://github.com/mike-north/formspec/pull/405) [`d70c0b0`](https://github.com/mike-north/formspec/commit/d70c0b0414eb1630b5593ebe0a22a9e3dc3c2d0a) Thanks [@mike-north](https://github.com/mike-north)! - Raise the `typescript` minimum from `^5.7.3` to `^5.9.3` for the workspace packages that declare a `typescript` peer or runtime dependency, so those packages advertise TypeScript 5.9 as their supported baseline. The other packages listed in this changeset receive a patch bump because they are part of the repo's linked version group.
+
+  Consumer-visible:
+  - `@formspec/analysis`, `@formspec/build`, `@formspec/eslint-plugin`, `@formspec/ts-plugin`: `typescript` peer dependency raised to `^5.9.3`.
+  - `@formspec/cli`: `typescript` runtime dependency raised to `^5.9.3`.
+  - `@formspec/config`, `@formspec/dsl`, `@formspec/language-server`, `@formspec/runtime`, `@formspec/validator`, and `formspec`: patch bumps only, with no direct `typescript` dependency range change in this changeset.
+
+  Consumers already on TypeScript 5.9 are unaffected. Consumers on older ranges will see a peer-dependency warning and should upgrade where applicable.
+
+- Updated dependencies [[`f0929c6`](https://github.com/mike-north/formspec/commit/f0929c60e7f74db7da6cffd589a8daaa5ba1e834), [`5225a45`](https://github.com/mike-north/formspec/commit/5225a45631dad8b38a088a330c5aa5665519f29b), [`a6df78a`](https://github.com/mike-north/formspec/commit/a6df78a75b75afc8942ad86856ad750ba9ff39da), [`0e79231`](https://github.com/mike-north/formspec/commit/0e79231c25403802d7e426fb6ca0b6db6017cc81), [`6e1dfbe`](https://github.com/mike-north/formspec/commit/6e1dfbeb6f7f42b0dc046b0d55e2cd24dc3a71ee), [`5ae85f5`](https://github.com/mike-north/formspec/commit/5ae85f51ed89b17f25a55f2d9a7fed44a8ba76dd), [`8f41a9f`](https://github.com/mike-north/formspec/commit/8f41a9f992de04b25477d70ea139ff3ef47db98a), [`d70c0b0`](https://github.com/mike-north/formspec/commit/d70c0b0414eb1630b5593ebe0a22a9e3dc3c2d0a)]:
+  - @formspec/analysis@0.1.0-alpha.60
+  - @formspec/config@0.1.0-alpha.60
+
 ## 0.1.0-alpha.59
 
 ### Patch Changes
