@@ -116,6 +116,9 @@ interface TsserverInvocationResult {
    * TypeScript program batch has been deleted, so no per-invocation compile
    * count is measured any more. Downstream dashboards that track the field
    * will see a steady 0 going forward.
+   *
+   * @deprecated Always 0 since Phase 5C (synthetic-checker retirement). Remove
+   * in a future cleanup pass once dashboards no longer reference this field.
    */
   readonly syntheticCompileCount: number;
   readonly diagnosticsCount: number;

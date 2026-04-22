@@ -87,7 +87,6 @@ export {
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
 } from "./tag-registry.js";
-export { LruCache } from "./lru-cache.js";
 export {
   getFormSpecManifestPath,
   getFormSpecWorkspaceId,
