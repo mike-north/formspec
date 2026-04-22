@@ -24,11 +24,11 @@ import {
 import {
   getTagDefinition,
   normalizeFormSpecTagName,
-  getSyntheticLogger,
+  getRegistryLogger,
   _validateExtensionSetup,
   logSetupDiagnostics,
   type ExtensionTagSource,
-  type SyntheticCompilerDiagnostic,
+  type SetupDiagnostic,
 } from "@formspec/analysis/internal";
 
 // =============================================================================
@@ -80,7 +80,7 @@ export interface ExtensionRegistry {
    *
    * @internal
    */
-  readonly setupDiagnostics: readonly SyntheticCompilerDiagnostic[];
+  readonly setupDiagnostics: readonly SetupDiagnostic[];
 
   /**
    * Look up a custom type registration by its fully-qualified type ID.
@@ -234,7 +234,7 @@ export function createExtensionRegistry(
 ): MutableExtensionRegistry {
   // §8.3c — log registry construction at debug so setup-diagnostic emission is
   // observable across repeated calls (e.g. snapshot-driven consumers per §9 #19).
-  const registryLog = getSyntheticLogger();
+  const registryLog = getRegistryLogger();
   registryLog.debug("createExtensionRegistry: constructing", {
     extensionCount: extensions.length,
     extensionIds: extensions.map((e) => e.extensionId),

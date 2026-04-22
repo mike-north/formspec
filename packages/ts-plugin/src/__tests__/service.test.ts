@@ -360,8 +360,7 @@ describe("FormSpecPluginService", () => {
     expect(loggedOutput).toContain("semantic.getDiagnostics");
     expect(loggedOutput).toContain("semantic.getFileSnapshot.result");
     expect(loggedOutput).toContain("analysis.buildFileSnapshot");
-    expect(loggedOutput).toContain("analysis.syntheticCheckBatch.createProgram");
-    expect(loggedOutput).toContain("analysis.syntheticCheckBatch.getPreEmitDiagnostics");
+    expect(loggedOutput).toContain("analysis.buildTagDiagnostics");
   });
 
   it("does not log performance hotspots below the configured threshold", () => {

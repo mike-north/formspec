@@ -122,23 +122,20 @@ function runBuildBenchOnce(filePath: string): BuildRunResult {
 }
 
 // ---------------------------------------------------------------------------
-// Synthetic-program-count measurement: FormSpecSemanticService path
+// §5 Phase 5C — synthetic program count measurement is retired.
 //
-// The semantic service drives the same @formspec/analysis synthetic-checker
-// as the build path. It exposes syntheticCompileCount via getStats(), giving
-// us an exact count of ts.createProgram invocations inside the checker.
-//
-// NOTE: @formspec/analysis has a module-level LRU cache for synthetic-batch
-// results. After the first (cold) run, subsequent runs of the same fixture
-// produce cache hits and a compile count of 0. We therefore report the cold
-// and warm counts separately rather than computing a misleading median across
-// all runs.
+// Historically this benchmark reported `syntheticCompileCount` from
+// FormSpecSemanticService.getStats() as a proxy for how many parallel
+// ts.createProgram calls the analysis pipeline was issuing. The synthetic
+// TypeScript program has been deleted, so the counter always reads zero and
+// has been removed from the stats surface. The plugin-path loop is kept to
+// continue measuring the warm/cold query path totals and file-snapshot cache
+// hit ratio, which remain meaningful for wall-time / RSS tracking.
 // ---------------------------------------------------------------------------
 
 interface PluginRunResult {
-  readonly syntheticProgramCount: number;
-  readonly syntheticBatchCacheHits: number;
-  readonly syntheticBatchCacheMisses: number;
+  readonly fileSnapshotCacheHits: number;
+  readonly fileSnapshotCacheMisses: number;
 }
 
 function runPluginBenchOnce(workspaceRoot: string, filePath: string): PluginRunResult {
@@ -155,11 +152,8 @@ function runPluginBenchOnce(workspaceRoot: string, filePath: string): PluginRunR
     service.getDiagnostics(filePath);
     const after = service.getStats();
     return {
-      syntheticProgramCount: after.syntheticCompileCount - before.syntheticCompileCount,
-      syntheticBatchCacheHits:
-        after.syntheticBatchCacheHits - before.syntheticBatchCacheHits,
-      syntheticBatchCacheMisses:
-        after.syntheticBatchCacheMisses - before.syntheticBatchCacheMisses,
+      fileSnapshotCacheHits: after.fileSnapshotCacheHits - before.fileSnapshotCacheHits,
+      fileSnapshotCacheMisses: after.fileSnapshotCacheMisses - before.fileSnapshotCacheMisses,
     };
   } finally {
     service.dispose();
@@ -223,34 +217,30 @@ async function main(): Promise<void> {
     const warmWallTimeMs = allWallTimeMs.slice(1);
     const warmPeakRssBytes = allPeakRssBytes.slice(1);
 
-    // --- TS-plugin-path measurements (syntheticProgramCount) ---
-    // TODO(phase-0c): this loop shares @formspec/analysis's module-level
-    //   synthetic-batch LRU cache with the build-path loop above. If cache
-    //   keys overlap, the plugin-path "cold" run may observe hits from the
-    //   earlier build-path runs. Add a clearSyntheticBatchCache() hook or run
-    //   the plugin path in a fresh process to make the cold count strictly
-    //   comparable across phases.
-    const allSyntheticCounts: PluginRunResult[] = [];
+    // --- TS-plugin-path measurements ---
+    // §5 Phase 5C — no more synthetic program counter; we still record
+    // file-snapshot cache hit/miss ratios across cold/warm runs because they
+    // are the most useful signal for caching regressions.
+    const allPluginResults: PluginRunResult[] = [];
 
     process.stderr.write("\n  Plugin-path (FormSpecSemanticService.getDiagnostics):\n");
     for (let i = 0; i < RUNS; i++) {
       const label = i === 0 ? "cold" : "warm";
       process.stderr.write(`    run ${String(i + 1)}/${String(RUNS)} [${label}]...`);
       const result = runPluginBenchOnce(workspaceRoot, fixturePath);
-      allSyntheticCounts.push(result);
+      allPluginResults.push(result);
       process.stderr.write(
-        ` syntheticPrograms=${String(result.syntheticProgramCount)} cacheHits=${String(result.syntheticBatchCacheHits)} cacheMisses=${String(result.syntheticBatchCacheMisses)}\n`
+        ` fileSnapshotCacheHits=${String(result.fileSnapshotCacheHits)} misses=${String(result.fileSnapshotCacheMisses)}\n`
       );
     }
 
     const medianWarmWallTimeMs = median(warmWallTimeMs);
     const medianWarmPeakRssBytes = median(warmPeakRssBytes);
-    const coldSyntheticProgramCount = allSyntheticCounts[0]?.syntheticProgramCount ?? 0;
 
     const coldWallTimeMs = allWallTimeMs[0] ?? 0;
 
     // Human-readable summary to stderr
-    process.stderr.write("\n--- Phase 0-C Analysis Baseline ---\n");
+    process.stderr.write("\n--- Analysis Baseline (Phase 5C) ---\n");
     process.stderr.write(
       `  wallTimeMs cold:             ${coldWallTimeMs.toFixed(2)}\n`
     );
@@ -259,9 +249,6 @@ async function main(): Promise<void> {
     );
     process.stderr.write(
       `  peakRssBytes warm (median):  ${String(Math.round(medianWarmPeakRssBytes))} (${(medianWarmPeakRssBytes / 1024 / 1024).toFixed(1)} MB)\n`
-    );
-    process.stderr.write(
-      `  syntheticProgramCount cold:  ${String(coldSyntheticProgramCount)}\n`
     );
     process.stderr.write("-----------------------------------\n");
 
@@ -285,13 +272,15 @@ async function main(): Promise<void> {
           all: allPeakRssBytes,
           path: "generateSchemasFromProgram",
         },
-        syntheticProgramCount: {
-          cold: coldSyntheticProgramCount,
-          all: allSyntheticCounts.map((r) => r.syntheticProgramCount),
-          cacheHits: allSyntheticCounts.map((r) => r.syntheticBatchCacheHits),
-          cacheMisses: allSyntheticCounts.map((r) => r.syntheticBatchCacheMisses),
+        fileSnapshotCache: {
+          hits: allPluginResults.map((r) => r.fileSnapshotCacheHits),
+          misses: allPluginResults.map((r) => r.fileSnapshotCacheMisses),
           path: "FormSpecSemanticService.getDiagnostics",
-          note: "TypeScript 5.9+ sealed exports prevent direct monkey-patching. Count from FormSpecSemanticService.getStats().syntheticCompileCount. Run 1 is labeled 'cold' for this path only; because @formspec/analysis maintains a module-level LRU cache that is shared between build-path and plugin-path call sites, any overlap in cache keys from the build-path loop (which runs earlier in this process) may cause the plugin-path cold run to observe cache hits. For a fully isolated cold measurement, run this benchmark in a fresh process or add a cache-clear hook — subsequent runs in the same process hit the module-level LRU cache and produce a count of 0.",
+          note:
+            "§5 Phase 5C — `syntheticProgramCount` retired with the synthetic " +
+            "program batch. `fileSnapshotCache.hits/misses` now provide the " +
+            "warm/cold signal: the first (cold) run records a miss, subsequent " +
+            "(warm) runs should report a hit for the same source text.",
         },
       },
       commitSha,

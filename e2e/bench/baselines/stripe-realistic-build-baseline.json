@@ -1,28 +1,33 @@
 {
-  "phase": "0",
+  "phase": "5C",
   "surface": "build",
-  "description": "Stripe realistic OOM sweep — build surface (generateSchemasFromProgram, direct Stripe types, no Ref<T> wrapper)",
+  "description": "Post-Phase-5C synthetic-checker retirement baseline — build surface (generateSchemasFromProgram, direct Stripe types, no Ref<T> wrapper)",
   "fixture": "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
   "typeName": "CheckoutForm",
   "runs": 3,
   "oomHeapCapMB": 1024,
   "metrics": {
-    "peakRSS_MB": 861.3,
-    "wallTime_ms": 81.53,
+    "peakRSS_MB": 769.5,
+    "wallTime_ms": 75.03,
     "didOOM": false,
     "warmWallTimes_ms": [
-      84,
-      79.05
+      77.93,
+      72.13
     ],
     "allPeakRSS_MB": [
-      593.7,
-      776.8,
-      945.7
+      502.1,
+      683.5,
+      855.5
     ],
-    "coldWallTime_ms": 432.71
+    "coldWallTime_ms": 107.84
+  },
+  "gate": {
+    "target_peakRSS_MB": 700,
+    "status": "above-gate",
+    "note": "§8.4b target is peakRSS_MB ≤ 700 MB. Phase 5C result is 769.5 MB — a 91.8 MB (10.7%) improvement over the Phase 0 baseline of 861.3 MB, but 69.5 MB above the gate. Remaining headroom likely lives in host-program caching and type-checker warmup costs. Tracked as a follow-up; not a blocker for synthetic-checker retirement."
   },
   "gitSha": "unknown",
-  "timestamp": "2026-04-20T01:12:09.040Z",
+  "timestamp": "2026-04-22T16:39:23.955Z",
   "nodeVersion": "v24.14.0",
   "platform": "darwin",
   "arch": "arm64"

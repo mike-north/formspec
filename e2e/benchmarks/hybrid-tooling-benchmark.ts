@@ -47,12 +47,7 @@ interface OperationMeasurement {
 
 type SemanticStats = Pick<
   FormSpecSemanticServiceStats,
-  | "fileSnapshotCacheHits"
-  | "fileSnapshotCacheMisses"
-  | "syntheticBatchCacheHits"
-  | "syntheticBatchCacheMisses"
-  | "syntheticCompileCount"
-  | "syntheticCompileApplications"
+  "fileSnapshotCacheHits" | "fileSnapshotCacheMisses"
 >;
 
 type MaybePromise<T> = Promise<T> | T;

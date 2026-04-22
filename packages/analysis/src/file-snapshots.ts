@@ -1,13 +1,7 @@
 import type { ExtensionDefinition } from "@formspec/core";
 import * as ts from "typescript";
-import {
-  _mapSetupDiagnosticCode,
-  _validateExtensionSetup,
-  checkSyntheticTagApplicationsDetailed,
-  getMatchingTagSignatures,
-  lowerTagApplicationToSyntheticCall,
-  type SyntheticCompilerDiagnostic,
-} from "./compiler-signatures.js";
+import { _mapSetupDiagnosticCode, _validateExtensionSetup } from "./extension-setup-validation.js";
+import { getMatchingTagSignatures } from "./tag-signature-matching.js";
 import {
   _capabilityLabel,
   _checkConstValueAgainstType,
@@ -76,7 +70,6 @@ import {
   logTagApplication,
   nowMicros,
   elapsedMicros,
-  type ConstraintValidatorRoleOutcome,
 } from "./constraint-validator-logger.js";
 import {
   extractEffectiveArgumentText,
@@ -97,13 +90,13 @@ export interface BuildFormSpecAnalysisFileSnapshotOptions {
   readonly performance?: FormSpecPerformanceRecorder;
 }
 
-const SYNTHETIC_TYPE_NODE_BUILDER_FLAGS =
+const ANALYSIS_TYPE_NODE_BUILDER_FLAGS =
   ts.NodeBuilderFlags.NoTruncation |
   ts.NodeBuilderFlags.UseStructuralFallback |
   ts.NodeBuilderFlags.IgnoreErrors |
   ts.NodeBuilderFlags.InTypeAlias;
 
-const SYNTHETIC_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
+const ANALYSIS_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
   "/virtual/formspec-standalone-type.ts",
   "",
   ts.ScriptTarget.ES2022,
@@ -111,7 +104,7 @@ const SYNTHETIC_TYPE_PRINT_SOURCE_FILE = ts.createSourceFile(
   ts.ScriptKind.TS
 );
 
-const SYNTHETIC_TYPE_PRINTER = ts.createPrinter({ removeComments: true });
+const ANALYSIS_TYPE_PRINTER = ts.createPrinter({ removeComments: true });
 
 interface NumericConstraintAccumulator {
   minimum?: number;
@@ -222,8 +215,8 @@ function createConstraintTagRegistry(
  *
  * Returns `true` when the given builtin constraint tag has a registered
  * broadening for the field's TypeScript type. When broadening is active the
- * tag application bypasses Role C (typed-argument validation) and proceeds
- * directly to the synthetic batch, which routes it to D1/D2 handling.
+ * tag application bypasses Role C (typed-argument validation) and is routed
+ * to D1/D2 handling.
  *
  * This mirrors the build path's `hasBuiltinConstraintBroadening` function in
  * `tsdoc-parser.ts`, adapted for the snapshot consumer's data model:
@@ -876,20 +869,6 @@ function typeToString(type: ts.Type | undefined, checker: ts.TypeChecker): strin
   return checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation);
 }
 
-function supportingDeclarationsForType(type: ts.Type | undefined): readonly string[] {
-  if (type === undefined) {
-    return [];
-  }
-
-  const symbol = type.aliasSymbol ?? type.getSymbol();
-  const declarations = symbol?.declarations ?? [];
-  return declarations
-    .map((declaration) =>
-      declaration.getSourceFile().text.slice(declaration.getFullStart(), declaration.getEnd())
-    )
-    .filter((declarationText) => declarationText.trim().length > 0);
-}
-
 function renderStandaloneTypeSyntax(
   type: ts.Type | undefined,
   checker: ts.TypeChecker
@@ -898,60 +877,20 @@ function renderStandaloneTypeSyntax(
     return null;
   }
 
-  const typeNode = checker.typeToTypeNode(type, undefined, SYNTHETIC_TYPE_NODE_BUILDER_FLAGS);
+  const typeNode = checker.typeToTypeNode(type, undefined, ANALYSIS_TYPE_NODE_BUILDER_FLAGS);
   if (typeNode === undefined) {
     return null;
   }
 
-  const rendered = SYNTHETIC_TYPE_PRINTER.printNode(
+  const rendered = ANALYSIS_TYPE_PRINTER.printNode(
     ts.EmitHint.Unspecified,
     typeNode,
-    SYNTHETIC_TYPE_PRINT_SOURCE_FILE
+    ANALYSIS_TYPE_PRINT_SOURCE_FILE
   ).trim();
   return rendered === "" ? null : rendered;
 }
 
-function requiresSupportingDeclarationsForStandaloneTypeSyntax(typeText: string | null): boolean {
-  if (typeText === null) {
-    return true;
-  }
-
-  const sourceFile = ts.createSourceFile(
-    "/virtual/formspec-standalone-type-analysis.ts",
-    `type __FormSpecStandalone = ${typeText};`,
-    ts.ScriptTarget.ES2022,
-    false,
-    ts.ScriptKind.TS
-  );
-  const statement = sourceFile.statements[0];
-  if (statement === undefined || !ts.isTypeAliasDeclaration(statement)) {
-    return true;
-  }
-
-  let requiresDeclarations = false;
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isTypeReferenceNode(node) ||
-      ts.isExpressionWithTypeArguments(node) ||
-      ts.isImportTypeNode(node) ||
-      ts.isTypeQueryNode(node)
-    ) {
-      requiresDeclarations = true;
-      return;
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(statement.type);
-  return requiresDeclarations;
-}
-
-function dedupeSupportingDeclarations(declarations: readonly string[]): readonly string[] {
-  return [...new Set(declarations)];
-}
-
-function getSyntheticTargetForTag(tag: ReturnType<typeof parseCommentBlock>["tags"][number]) {
+function getTagTargetDescriptor(tag: ReturnType<typeof parseCommentBlock>["tags"][number]) {
   if (tag.target === null) {
     return null;
   }
@@ -993,39 +932,6 @@ function getDeclaredSubjectType(
   }
 
   return subjectType;
-}
-
-function getArgumentExpression(
-  argumentText: string,
-  valueLabels: readonly string[],
-  capabilityTargets: readonly string[]
-): string | null {
-  const trimmed = argumentText.trim();
-  if (trimmed === "") {
-    return null;
-  }
-
-  if (valueLabels.some((label) => label.includes("number") || label.includes("integer"))) {
-    return trimmed;
-  }
-  if (valueLabels.some((label) => label.includes("boolean"))) {
-    return trimmed === "true" || trimmed === "false" ? trimmed : null;
-  }
-  if (valueLabels.some((label) => label.includes("json"))) {
-    try {
-      return JSON.stringify(JSON.parse(trimmed));
-    } catch {
-      return null;
-    }
-  }
-  if (valueLabels.some((label) => label.includes("condition"))) {
-    return "undefined as unknown as FormSpecCondition";
-  }
-  if (capabilityTargets.length > 0 || valueLabels.some((label) => label.includes("string"))) {
-    return JSON.stringify(trimmed);
-  }
-
-  return JSON.stringify(trimmed);
 }
 
 function isNullableType(type: ts.Type): boolean {
@@ -1323,69 +1229,6 @@ function buildDiscriminatorDiagnostics(
   return diagnostics;
 }
 
-/**
- * Combines a sequence of comment spans into a single span covering from the
- * first span's start to the last span's end. Returns `null` when the input is
- * empty (no meaningful span to anchor a diagnostic at).
- *
- * Used to anchor batch-level (global) synthetic diagnostics at a span that
- * covers every tag application in a batch — the diagnostic is not tied to any
- * single application, so the combined span is the closest meaningful location.
- */
-function combineCommentSpans(spans: readonly CommentSpan[]): CommentSpan | null {
-  const firstSpan = spans[0];
-  if (firstSpan === undefined) {
-    return null;
-  }
-  return {
-    start: firstSpan.start,
-    end: spans[spans.length - 1]?.end ?? firstSpan.end,
-  };
-}
-
-/**
- * Maps `kind: "typescript"` global synthetic diagnostics to
- * `TYPE_MISMATCH`-coded {@link FormSpecAnalysisDiagnostic}s anchored at the
- * given span.
- *
- * Setup-kind globals (`unsupported-custom-type-override`, `synthetic-setup`)
- * are pre-emitted at the file-level span by
- * {@link buildFormSpecAnalysisFileSnapshot} via `_validateExtensionSetup`
- * before tag diagnostics run, so this helper filters them out to prevent
- * double-emission.
- *
- * TS-kind globals arise when the synthetic TypeScript program produces a
- * diagnostic that either (a) has no file/start position or (b) falls outside
- * every tag application's line range — see `mapBatchDiagnostics` in
- * `compiler-signatures.ts`. These used to surface as `TYPE_MISMATCH` before
- * Phase 4 Slice C; the original refactor removed the emission path by
- * mistake. Restoring it closes the silent-drop regression flagged in
- * post-merge review feedback for #384.
- *
- * @internal
- */
-export function _mapGlobalSyntheticTsDiagnostics(
-  globalDiagnostics: readonly SyntheticCompilerDiagnostic[],
-  anchorSpan: CommentSpan,
-  data: FormSpecAnalysisDiagnostic["data"]
-): FormSpecAnalysisDiagnostic[] {
-  const result: FormSpecAnalysisDiagnostic[] = [];
-  for (const diagnostic of globalDiagnostics) {
-    if (diagnostic.kind !== "typescript") {
-      // Setup-kind globals are already emitted at the file-level span by the
-      // snapshot entry path. Skip to avoid double-emission.
-      continue;
-    }
-    result.push(
-      createAnalysisDiagnostic("TYPE_MISMATCH", diagnostic.message, anchorSpan, {
-        ...data,
-        ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-      })
-    );
-  }
-  return result;
-}
-
 function buildTagDiagnostics(
   node: ts.Node,
   sourceFile: ts.SourceFile,
@@ -1405,54 +1248,24 @@ function buildTagDiagnostics(
   const declaredSubjectType = getDeclaredSubjectType(node, checker, subjectType);
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
   let discriminatorTagCount = 0;
-  const standaloneHostTypeText = optionalMeasure(
-    performance,
-    "analysis.renderStandaloneHostType",
-    undefined,
-    () => renderStandaloneTypeSyntax(hostType, checker)
-  );
+  // §5 Phase 5C — renderStandaloneTypeSyntax is used for direct-field Role-B
+  // error messages (the TYPE_MISMATCH path where target === null). The
+  // standalone form yields a self-contained string even for types that
+  // reference imported names, which keeps error messages stable across import
+  // boundaries. Path-target Role-B error messages use typeToString directly
+  // against the resolved path-terminal type — the standalone renderer is not
+  // needed there because the terminal type is already a concrete local type.
   const standaloneSubjectTypeText = optionalMeasure(
     performance,
     "analysis.renderStandaloneSubjectType",
     undefined,
     () => renderStandaloneTypeSyntax(subjectType, checker)
   );
-  const hostTypeNeedsDeclarations =
-    requiresSupportingDeclarationsForStandaloneTypeSyntax(standaloneHostTypeText);
-  const subjectTypeNeedsDeclarations =
-    requiresSupportingDeclarationsForStandaloneTypeSyntax(standaloneSubjectTypeText);
-  const hostTypeText = standaloneHostTypeText ?? typeToString(hostType, checker) ?? "unknown";
-  const subjectTypeText =
-    standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
-  const supportingDeclarations = dedupeSupportingDeclarations([
-    ...(hostTypeNeedsDeclarations ? supportingDeclarationsForType(hostType) : []),
-    ...(subjectTypeNeedsDeclarations ? supportingDeclarationsForType(subjectType) : []),
-  ]);
   // §8.3b — module-level loggers for the snapshot consumer.
   const snapshotLog = getSnapshotLogger();
   const typedParserLog = getTypedParserLogger();
   const snapshotLogsEnabled = snapshotLog !== noopLogger;
   const typedParserTraceEnabled = typedParserLog !== noopLogger;
-
-  const syntheticApplications: {
-    readonly tag: (typeof commentTags)[number];
-    readonly target: ReturnType<typeof getSyntheticTargetForTag>;
-    readonly pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null;
-    /** §8.3b — microsecond timestamp when this tag's processing started. */
-    readonly tagStartMicros: number;
-    /** §8.3b — human-readable subject type kind for the log entry. */
-    readonly subjectTypeKindForLog: string;
-    readonly options: {
-      readonly tagName: string;
-      readonly placement: FormSpecPlacement;
-      readonly hostType: string;
-      readonly subjectType: string;
-      readonly supportingDeclarations: readonly string[];
-      readonly target?: ReturnType<typeof getSyntheticTargetForTag>;
-      readonly argumentExpression?: string;
-      readonly extensions?: readonly ExtensionTagSource[];
-    };
-  }[] = [];
 
   // subjectType is constant for the whole call (per the early-return guard at
   // the top of this function). Compute the log-friendly kind once, and only
@@ -1488,41 +1301,35 @@ function buildTagDiagnostics(
       continue;
     }
 
-    const target = getSyntheticTargetForTag(tag);
+    const target = getTagTargetDescriptor(tag);
     const pathTargetResolution =
       tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
         ? tag.target.path === null
           ? null
           : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
         : null;
-    const argumentExpression = getArgumentExpression(
-      tag.argumentText,
-      semantic.valueLabels,
-      semantic.compatiblePathTargets
-    );
 
     // §8.3b — record per-tag start time; subjectTypeKindForLog is hoisted
     // above the loop. Both are only consumed when logging is enabled.
     const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
 
-    // §4 Phase 3 — Role C: validate argument literal via the typed parser BEFORE
-    // the synthetic-checker call, mirroring the Phase 2 wiring in tsdoc-parser.ts.
+    // Role C: validate argument literal via the typed parser. Mirrors the wiring
+    // in tsdoc-parser.ts.
     //
-    // IMPORTANT (Lesson 1 from Phase 2): the broadening check MUST run BEFORE the
-    // typed-parser call. Broadened fields (D1/D2) bypass Role C entirely. Without
-    // this guard a broadened field whose argument the typed parser would reject
-    // (e.g. a custom type with a registered @minimum broadening) would spuriously
-    // emit INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
+    // IMPORTANT: the broadening check MUST run BEFORE the typed-parser call.
+    // Broadened fields (D1/D2) bypass Role C entirely. Without this guard a
+    // broadened field whose argument the typed parser would reject (e.g. a
+    // custom type with a registered @minimum broadening) would spuriously emit
+    // INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
     //
     // Guard: only call parseTagArgument for builtin constraint tags. Extension tags
     // are not in the typed parser's registry (they would return UNKNOWN_TAG), and
     // they bypass this path via the `!isBuiltinConstraintName` guard below.
     //
     // Behaviour (non-broadened builtin constraint path):
-    //   - ok: false → emit INVALID_TAG_ARGUMENT or MISSING_TAG_ARGUMENT; skip
-    //                 adding this application to syntheticApplications.
-    //   - ok: true (including raw-string-fallback for @const) → proceed to
-    //                 lowerTagApplicationToSyntheticCall as before.
+    //   - ok: false → emit INVALID_TAG_ARGUMENT or MISSING_TAG_ARGUMENT.
+    //   - ok: true (including raw-string-fallback for @const) → proceed to the
+    //                 remaining Role-B / IR checks.
     if (isBuiltinConstraintName(tag.normalizedTagName)) {
       // §4 Phase 4A — add the integer-brand bypass that was previously missing
       // from the snapshot consumer (closes #325).
@@ -1536,17 +1343,8 @@ function buildTagDiagnostics(
       //   - capabilities.includes("numeric-comparable"): only bypass numeric
       //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
       //
-      // When true: skip both the typed parser AND the synthetic checker and
+      // When true: skip both the typed parser AND the Role-C check and
       // emit "bypass" on the structured log — identical to the build consumer.
-      //
-      // TODO(Phase 5, residual from #325): this bypass prevents TYPE_MISMATCH
-      // on the integer field itself, but the synthetic batch checker can still
-      // fail to resolve the imported integer type in its supporting
-      // declarations — which pollutes *sibling* string-field constraints
-      // (@minLength/@maxLength) in the same declaration with spurious
-      // TYPE_MISMATCH. Scenarios 6 and 7 in file-snapshots.integer-bypass.test.ts
-      // pin the current behavior. Full resolution lands with Phase 5
-      // (synthetic-checker retirement) per docs/refactors/synthetic-checker-retirement.md.
       const isIntegerBypass =
         target === null &&
         _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
@@ -1565,7 +1363,7 @@ function buildTagDiagnostics(
             elapsedMicros: elapsedMicros(tagStartMicros),
           });
         }
-        // Skip typed parser and synthetic checker — no diagnostic emitted.
+        // Skip typed parser and Role-C check — no diagnostic emitted.
         continue;
       }
 
@@ -1591,44 +1389,125 @@ function buildTagDiagnostics(
         // loop (isIntegerBypass check above). This guard only runs on the
         // non-broadened, non-bypassed path.
         //
-        // Only direct-field tags (target === null) are checked here.
-        // Path-targeted fields use the resolved path type, not the declared
-        // subject type — that check requires a different anchor and is already
-        // handled via the existing synthetic checker path until Phase 5C.
-        if (target === null) {
+        // §5 Phase 5C — Role B now covers BOTH direct-field (target === null)
+        // and path-target (target.kind === "path") validation. Previously path
+        // targets were validated through the synthetic checker; Phase 5C retires
+        // that surface so Role B is the only remaining capability check.
+        //
+        // For path targets we resolve the terminal type via resolvePathTargetType
+        // and run the capability check against that resolved type. Path
+        // resolution can also fail with `missing-property` (unknown segment) or
+        // `unresolvable` (non-traversable intermediate type) — both emit their
+        // own B-reject diagnostics before the capability check.
+        {
           const requiredCapability = semantic.tagDefinition.capabilities[0];
           // Under noUncheckedIndexedAccess, capabilities[0] is SemanticCapability | undefined.
           // No capability constraint on this tag → always valid for any field type.
-          // requiredCapability is narrowed to SemanticCapability in the else-if branch.
-          if (
-            requiredCapability !== undefined &&
-            !_supportsConstraintCapability(requiredCapability, subjectType, checker)
-          ) {
-            const actualTypeText =
-              standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
-            diagnostics.push(
-              createAnalysisDiagnostic(
-                "TYPE_MISMATCH",
-                `constraint "@${tag.normalizedTagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualTypeText}"`,
-                tag.fullSpan,
-                {
+          if (requiredCapability !== undefined) {
+            // Resolve the type to run capability checks against.
+            //   - target === null: the declared subject type (direct field).
+            //   - target.kind === "path": the path-target terminal type.
+            // Other target kinds (member, variant, ambiguous) are left to the
+            // placement pre-check / downstream validators — this guard is only
+            // concerned with the "is this type compatible with this tag?"
+            // question, which is well-defined for path targets but not for
+            // member/variant targeting.
+            let evaluatedType: ts.Type | null = null;
+            let evaluatedTypeLabel = "";
+            let pathRejection: { code: string; message: string } | null = null;
+
+            if (target === null) {
+              evaluatedType = subjectType;
+              evaluatedTypeLabel =
+                standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
+            } else if (target.kind === "path") {
+              // pathTargetResolution is computed earlier in the loop (line ~1492)
+              // via resolvePathTargetType(declaredSubjectType, ...). Use it to
+              // drive the path-target Role-B check.
+              if (pathTargetResolution === null) {
+                // tag.target.path is null — the path target text failed to
+                // parse (e.g. `@minimum :invalid-syntax 0` where the segment
+                // contains non-identifier characters). Before Phase 5C this
+                // fell through to the synthetic lowering which would reject it
+                // there; now that the synthetic checker is retired we must emit
+                // a diagnostic here instead of silently accepting it.
+                pathRejection = {
+                  code: "INVALID_PATH_TARGET",
+                  message: `Tag "@${tag.normalizedTagName}" has an invalid path target.`,
+                };
+              } else if (pathTargetResolution.kind === "missing-property") {
+                pathRejection = {
+                  code: "UNKNOWN_PATH_TARGET",
+                  message: `Target "${target.text}": path-targeted constraint "${tag.normalizedTagName}" references unknown path segment "${pathTargetResolution.segment}"`,
+                };
+              } else if (pathTargetResolution.kind === "unresolvable") {
+                const actualTypeText =
+                  typeToString(pathTargetResolution.type, checker) ?? "unknown";
+                pathRejection = {
+                  code: "TYPE_MISMATCH",
+                  message: `Target "${target.text}": path-targeted constraint "${tag.normalizedTagName}" is invalid because type "${actualTypeText}" cannot be traversed`,
+                };
+              } else {
+                evaluatedType = pathTargetResolution.type;
+                evaluatedTypeLabel = typeToString(pathTargetResolution.type, checker) ?? "unknown";
+              }
+            }
+
+            if (pathRejection !== null) {
+              diagnostics.push(
+                createAnalysisDiagnostic(pathRejection.code, pathRejection.message, tag.fullSpan, {
                   tagName: tag.normalizedTagName,
                   placement,
-                }
-              )
-            );
-            if (snapshotLogsEnabled) {
-              logTagApplication(snapshotLog, {
-                consumer: "snapshot",
-                tag: tag.normalizedTagName,
-                placement,
-                subjectTypeKind: subjectTypeKindForLog,
-                roleOutcome: "B-reject",
-                elapsedMicros: elapsedMicros(tagStartMicros),
-              });
+                  ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+                  ...(pathTargetResolution?.kind === "missing-property"
+                    ? { missingPathSegment: pathTargetResolution.segment }
+                    : {}),
+                })
+              );
+              if (snapshotLogsEnabled) {
+                logTagApplication(snapshotLog, {
+                  consumer: "snapshot",
+                  tag: tag.normalizedTagName,
+                  placement,
+                  subjectTypeKind: subjectTypeKindForLog,
+                  roleOutcome: "B-reject",
+                  elapsedMicros: elapsedMicros(tagStartMicros),
+                });
+              }
+              continue;
             }
-            // Skip synthetic call — Role B already rejected.
-            continue;
+
+            if (
+              evaluatedType !== null &&
+              !_supportsConstraintCapability(requiredCapability, evaluatedType, checker)
+            ) {
+              const targetPrefix = target === null ? "" : `Target "${target.text}": `;
+              diagnostics.push(
+                createAnalysisDiagnostic(
+                  "TYPE_MISMATCH",
+                  `${targetPrefix}constraint "@${tag.normalizedTagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${evaluatedTypeLabel}"`,
+                  tag.fullSpan,
+                  {
+                    tagName: tag.normalizedTagName,
+                    placement,
+                    ...(target === null
+                      ? {}
+                      : { targetKind: target.kind, targetText: target.text }),
+                  }
+                )
+              );
+              if (snapshotLogsEnabled) {
+                logTagApplication(snapshotLog, {
+                  consumer: "snapshot",
+                  tag: tag.normalizedTagName,
+                  placement,
+                  subjectTypeKind: subjectTypeKindForLog,
+                  roleOutcome: "B-reject",
+                  elapsedMicros: elapsedMicros(tagStartMicros),
+                });
+              }
+              continue;
+            }
           }
         }
 
@@ -1690,12 +1569,12 @@ function buildTagDiagnostics(
               }
             )
           );
-          // Skip adding to syntheticApplications — typed parser already rejected at Role C.
+          // Typed parser already rejected at Role C — no further checks.
           continue;
         }
 
-        // Typed parser accepted the argument. Log at trace level before falling
-        // through to the synthetic batch (which handles Roles A/B/D1/D2 until Phase 5).
+        // Typed parser accepted the argument. Log at trace level before
+        // continuing to the remaining checks (Roles A / IR / D1/D2).
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser C-pass", {
             consumer: "snapshot",
@@ -1713,14 +1592,11 @@ function buildTagDiagnostics(
         // validation time (semantic-targets.ts case "const", ~line 1255). The
         // snapshot consumer does not build an analysis IR, so we port the
         // primitive value-type and enum-membership checks directly against the
-        // `ts.Type` here. Closes the 4 IR-validation canaries pinned in
-        // constraint-canaries.test.ts (see §4 Phase 5B in
-        // docs/refactors/synthetic-checker-retirement.md).
+        // `ts.Type` here.
         //
         // Scope: only builtin @const, direct-field (target === null). Path-
-        // targeted @const still goes through the synthetic checker until
-        // Phase 5C deletes the synthetic machinery entirely. This matches the
-        // scoping of Slice A's Role-B guard above.
+        // targeted @const relies on the Role-B path-target capability guard
+        // above and does not run this extra IR check.
         //
         // The typed parser produces one of:
         //   - { kind: "json-value", value: JsonValue }     — parsed JSON
@@ -1762,14 +1638,14 @@ function buildTagDiagnostics(
                 elapsedMicros: elapsedMicros(tagStartMicros),
               });
             }
-            // Skip synthetic call — IR check rejected.
+            // IR check rejected — no further processing.
             continue;
           }
         }
       } else {
-        // Extension-broadened (D1/D2) — bypass the typed parser but still pass
-        // to the synthetic checker, which understands extension-registered types
-        // and handles D1/D2 validation. Log at trace level if enabled.
+        // Extension-broadened (D1/D2) — bypass the typed parser; D1/D2
+        // handling is performed by the downstream registry dispatch.
+        // Log at trace level if enabled.
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",
@@ -1784,16 +1660,12 @@ function buildTagDiagnostics(
 
     // §5 Phase 5A — placement pre-check (snapshot consumer).
     //
-    // Before calling lowerTagApplicationToSyntheticCall, call
-    // getMatchingTagSignatures to detect INVALID_TAG_PLACEMENT without relying
-    // on the throw-and-catch path below. The try/catch is kept for defense-in-
-    // depth (Phase 5C will delete the synthetic machinery; the catch stays until
-    // then). When the explicit check fires first, the try/catch is unreachable
-    // for this tag application.
-    //
     // Applies to ALL tags (builtin constraint and extension), not just builtin.
     // semantic.tagDefinition is always non-null here (the null case causes an
-    // early `continue` at the top of the loop, line 1453).
+    // early `continue` at the top of the loop).
+    //
+    // §5 Phase 5C — this placement check is the only Role-A guard; the former
+    // synthetic-program fallback has been retired.
     {
       const definition = semantic.tagDefinition;
       const targetKind = target?.kind ?? null;
@@ -1812,7 +1684,7 @@ function buildTagDiagnostics(
         diagnostics.push(
           createAnalysisDiagnostic(
             "INVALID_TAG_PLACEMENT",
-            `No synthetic signature for @${definition.canonicalName} on placement "${placement}"` +
+            `Tag "@${definition.canonicalName}" is not allowed on placement "${placement}"` +
               (targetKind === null ? "" : ` with target kind "${targetKind}"`),
             tag.fullSpan,
             {
@@ -1822,149 +1694,25 @@ function buildTagDiagnostics(
             }
           )
         );
-        // Skip synthetic call — placement already rejected.
         continue;
       }
     }
 
-    try {
-      const syntheticOptions = {
-        tagName: tag.normalizedTagName,
-        placement,
-        hostType: hostTypeText,
-        subjectType: subjectTypeText,
-        supportingDeclarations,
-        ...(target === null ? {} : { target }),
-        ...(argumentExpression === null ? {} : { argumentExpression }),
-        ...(semanticOptions.extensions === undefined
-          ? {}
-          : { extensions: semanticOptions.extensions }),
-      } as const;
-      lowerTagApplicationToSyntheticCall(syntheticOptions);
-      syntheticApplications.push({
-        tag,
-        target,
-        pathTargetResolution,
-        tagStartMicros,
-        subjectTypeKindForLog,
-        options: syntheticOptions,
-      });
-    } catch (error) {
-      // §8.3b — role A reject (placement check failed for snapshot consumer).
-      if (snapshotLogsEnabled) {
-        logTagApplication(snapshotLog, {
-          consumer: "snapshot",
-          tag: tag.normalizedTagName,
-          placement,
-          subjectTypeKind: subjectTypeKindForLog,
-          roleOutcome: "A-reject",
-          elapsedMicros: elapsedMicros(tagStartMicros),
-        });
-      }
-      diagnostics.push(
-        createAnalysisDiagnostic(
-          "INVALID_TAG_PLACEMENT",
-          error instanceof Error ? error.message : String(error),
-          tag.fullSpan,
-          {
-            tagName: tag.normalizedTagName,
-            placement,
-            ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
-          }
-        )
-      );
-    }
-  }
-
-  const batchCheck = optionalMeasure(
-    performance,
-    "analysis.syntheticCheckBatch",
-    {
-      tagCount: syntheticApplications.length,
-    },
-    () =>
-      checkSyntheticTagApplicationsDetailed({
-        applications: syntheticApplications.map((application) => application.options),
-        ...(performance === undefined ? {} : { performance }),
-      })
-  );
-
-  for (const [index, result] of batchCheck.applicationResults.entries()) {
-    const application = syntheticApplications[index];
-    if (application === undefined) {
-      continue;
-    }
-
-    // §8.3b — determine role outcome for this tag application and log.
-    // "D-pass": the synthetic batch produced no diagnostics for this application.
-    // This is distinct from "C-pass" (typed-parser accepted the argument literal
-    // at Role C before the synthetic batch ran). "D-pass" means the synthetic
-    // checker found nothing wrong after Role C already passed.
+    // §5 Phase 5C — all validation is now complete via Role A (placement
+    // pre-check), Role B (capability guard, including path-target resolution),
+    // and Role C (typed-parser argument validation). The synthetic
+    // TypeScript program batch has been retired. Log C-pass for structured
+    // tracing and move on.
     if (snapshotLogsEnabled) {
-      const roleOutcome: ConstraintValidatorRoleOutcome =
-        result.diagnostics.length === 0
-          ? "D-pass"
-          : result.diagnostics.some((d) => d.message.includes("No overload"))
-            ? "A-reject"
-            : "C-reject";
-
       logTagApplication(snapshotLog, {
         consumer: "snapshot",
-        tag: application.tag.normalizedTagName,
+        tag: tag.normalizedTagName,
         placement,
-        subjectTypeKind: application.subjectTypeKindForLog,
-        roleOutcome,
-        elapsedMicros: elapsedMicros(application.tagStartMicros),
+        subjectTypeKind: subjectTypeKindForLog,
+        roleOutcome: "C-pass",
+        elapsedMicros: elapsedMicros(tagStartMicros),
       });
     }
-
-    for (const diagnostic of result.diagnostics) {
-      const code =
-        application.target !== null && diagnostic.message.includes("not assignable")
-          ? application.target.kind === "path" &&
-            application.pathTargetResolution?.kind === "missing-property"
-            ? "UNKNOWN_PATH_TARGET"
-            : "TYPE_MISMATCH"
-          : diagnostic.message.includes("Expected")
-            ? "INVALID_TAG_ARGUMENT"
-            : diagnostic.message.includes("No overload")
-              ? "INVALID_TAG_PLACEMENT"
-              : "TYPE_MISMATCH";
-      diagnostics.push(
-        createAnalysisDiagnostic(code, diagnostic.message, application.tag.fullSpan, {
-          tagName: application.tag.normalizedTagName,
-          placement,
-          ...(diagnostic.code > 0 ? { typescriptDiagnosticCode: diagnostic.code } : {}),
-          ...(application.target === null
-            ? {}
-            : {
-                targetKind: application.target.kind,
-                targetText: application.target.text,
-              }),
-          ...(application.pathTargetResolution?.kind === "missing-property"
-            ? { missingPathSegment: application.pathTargetResolution.segment }
-            : {}),
-        })
-      );
-    }
-  }
-
-  // §4 Phase 4 Slice C follow-up — batch-level diagnostics that were not tied
-  // to any single application (either position-less or outside all tag line
-  // ranges; see `mapBatchDiagnostics` in `compiler-signatures.ts`) previously
-  // surfaced as TYPE_MISMATCH. Emission was dropped by the original refactor
-  // and is restored here. Setup-kind globals are filtered out because they
-  // are pre-emitted at the file-level span by the snapshot entry path.
-  const globalAnchorSpan = combineCommentSpans(
-    syntheticApplications.map((application) => application.tag.fullSpan)
-  );
-  if (globalAnchorSpan !== null && batchCheck.globalDiagnostics.length > 0) {
-    diagnostics.push(
-      ..._mapGlobalSyntheticTsDiagnostics(batchCheck.globalDiagnostics, globalAnchorSpan, {
-        placement,
-        tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
-      })
-    );
   }
 
   return diagnostics;

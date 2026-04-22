@@ -22,8 +22,7 @@
  *     `_validateExtensionSetup` always runs per call.
  *
  * @see docs/refactors/synthetic-checker-retirement.md §4 Phase 4 Slice C
- * @see packages/analysis/src/compiler-signatures.ts (_validateExtensionSetup)
- * @see packages/analysis/src/__tests__/compiler-signatures.test.ts lines 404-431
+ * @see packages/analysis/src/extension-setup-validation.ts (_validateExtensionSetup)
  */
 
 import { describe, expect, it } from "vitest";

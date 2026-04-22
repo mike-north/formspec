@@ -174,7 +174,7 @@ export interface ExtensionRegistry {
     findTypeByName(typeName: string): ExtensionTypeLookupResult | undefined;
     findTypeBySymbol(symbol: ts.Symbol): ExtensionTypeLookupResult | undefined;
     // @internal
-    readonly setupDiagnostics: readonly SyntheticCompilerDiagnostic[];
+    readonly setupDiagnostics: readonly SetupDiagnostic[];
 }
 
 // @public
@@ -536,6 +536,15 @@ export interface SchemaGenerationTarget {
 // @public
 export type SchemaSourceDeclaration = ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration;
 
+// Warning: (ae-internal-missing-underscore) The name "SetupDiagnostic" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export interface SetupDiagnostic {
+    readonly code: number;
+    readonly kind: "unsupported-custom-type-override" | "synthetic-setup";
+    readonly message: string;
+}
+
 // @public
 export interface StaticBuildContext {
     readonly checker: ts.TypeChecker;
@@ -558,15 +567,6 @@ export interface StaticSchemaGenerationOptions {
     readonly metadata?: MetadataPolicyInput | undefined;
     // @deprecated
     readonly vendorPrefix?: string | undefined;
-}
-
-// Warning: (ae-internal-missing-underscore) The name "SyntheticCompilerDiagnostic" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
-export interface SyntheticCompilerDiagnostic {
-    readonly code: number;
-    readonly kind: "typescript" | "unsupported-custom-type-override" | "synthetic-setup";
-    readonly message: string;
 }
 
 export { TextField }

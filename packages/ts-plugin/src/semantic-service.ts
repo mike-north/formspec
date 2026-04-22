@@ -143,14 +143,6 @@ export interface FormSpecSemanticServiceStats {
   readonly fileSnapshotCacheHits: number;
   /** Number of file snapshot cache misses. */
   readonly fileSnapshotCacheMisses: number;
-  /** Number of synthetic batch cache hits. */
-  readonly syntheticBatchCacheHits: number;
-  /** Number of synthetic batch cache misses. */
-  readonly syntheticBatchCacheMisses: number;
-  /** Number of synthetic compiler program creations. */
-  readonly syntheticCompileCount: number;
-  /** Total synthetic application count compiled across misses. */
-  readonly syntheticCompileApplications: number;
 }
 
 interface CachedFileSnapshot {
@@ -211,20 +203,11 @@ interface MutableSemanticServiceStats {
   };
   fileSnapshotCacheHits: number;
   fileSnapshotCacheMisses: number;
-  syntheticBatchCacheHits: number;
-  syntheticBatchCacheMisses: number;
-  syntheticCompileCount: number;
-  syntheticCompileApplications: number;
 }
 
-const STATS_ONLY_EVENT_NAMES = new Set<string>([
-  "analysis.syntheticCheckBatch.cacheHit",
-  "analysis.narrowSyntheticCheckBatch.cacheHit",
-  "analysis.syntheticCheckBatch.cacheMiss",
-  "analysis.narrowSyntheticCheckBatch.cacheMiss",
-  "analysis.syntheticCheckBatch.createProgram",
-  "analysis.narrowSyntheticCheckBatch.createProgram",
-]);
+// Extension point for event names that should be counted in stats but not
+// recorded to the per-call performance trail. Currently empty.
+const STATS_ONLY_EVENT_NAMES = new Set<string>([]);
 
 class StatsOnlyPerformanceRecorder implements FormSpecPerformanceRecorder {
   private readonly mutableEvents: FormSpecPerformanceEvent[] = [];
@@ -281,10 +264,6 @@ export class FormSpecSemanticService {
     },
     fileSnapshotCacheHits: 0,
     fileSnapshotCacheMisses: 0,
-    syntheticBatchCacheHits: 0,
-    syntheticBatchCacheMisses: 0,
-    syntheticCompileCount: 0,
-    syntheticCompileApplications: 0,
   };
 
   public constructor(private readonly options: FormSpecSemanticServiceOptions) {}
@@ -439,10 +418,6 @@ export class FormSpecSemanticService {
       },
       fileSnapshotCacheHits: this.stats.fileSnapshotCacheHits,
       fileSnapshotCacheMisses: this.stats.fileSnapshotCacheMisses,
-      syntheticBatchCacheHits: this.stats.syntheticBatchCacheHits,
-      syntheticBatchCacheMisses: this.stats.syntheticBatchCacheMisses,
-      syntheticCompileCount: this.stats.syntheticCompileCount,
-      syntheticCompileApplications: this.stats.syntheticCompileApplications,
     };
   }
 
@@ -670,35 +645,11 @@ export class FormSpecSemanticService {
     this.stats.queryPathTotals[kind].cold += 1;
   }
 
-  private updateStatsFromPerformanceEvents(events: readonly FormSpecPerformanceEvent[]): void {
-    for (const event of events) {
-      if (
-        event.name === "analysis.syntheticCheckBatch.cacheHit" ||
-        event.name === "analysis.narrowSyntheticCheckBatch.cacheHit"
-      ) {
-        this.stats.syntheticBatchCacheHits += 1;
-        continue;
-      }
-
-      if (
-        event.name === "analysis.syntheticCheckBatch.cacheMiss" ||
-        event.name === "analysis.narrowSyntheticCheckBatch.cacheMiss"
-      ) {
-        this.stats.syntheticBatchCacheMisses += 1;
-        const applicationCount = event.detail?.["applicationCount"];
-        if (typeof applicationCount === "number") {
-          this.stats.syntheticCompileApplications += applicationCount;
-        }
-        continue;
-      }
-
-      if (
-        event.name === "analysis.syntheticCheckBatch.createProgram" ||
-        event.name === "analysis.narrowSyntheticCheckBatch.createProgram"
-      ) {
-        this.stats.syntheticCompileCount += 1;
-      }
-    }
+  private updateStatsFromPerformanceEvents(_events: readonly FormSpecPerformanceEvent[]): void {
+    // §5 Phase 5C — the synthetic-check batch cache / create-program events no
+    // longer fire after synthetic-program retirement. This method is retained
+    // as a hook for future stats-only events; the former counters have been
+    // removed from FormSpecSemanticServiceStats.
   }
 
   private logPerformanceEvents(
