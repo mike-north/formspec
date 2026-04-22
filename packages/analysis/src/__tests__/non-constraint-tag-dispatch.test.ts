@@ -32,11 +32,11 @@ import { createProgram } from "./helpers.js";
  * `@group`, `@showWhen`, `@hideWhen`, `@enableWhen`, `@disableWhen` are
  * included — they are valid on fields and must produce zero diagnostics.
  */
-const NON_CONSTRAINT_FIELD_TAGS: ReadonlyArray<{
+const NON_CONSTRAINT_FIELD_TAGS: readonly {
   readonly tagName: string;
-  /** Tag argument text, omit for no-argument tags like @deprecated. */
+  /** Tag argument text, omit for boolean/no-argument tags (e.g. the `deprecated` tag). */
   readonly tagArg?: string;
-}> = [
+}[] = [
   // annotation tags
   { tagName: "displayName", tagArg: '"My Field"' },
   { tagName: "description", tagArg: "A description" },
@@ -63,13 +63,13 @@ const NON_CONSTRAINT_FIELD_TAGS: ReadonlyArray<{
  * acceptance criteria: string, number, boolean, string[], string | null,
  * optional string (via `?` modifier which TypeScript expands to string | undefined).
  */
-const FIELD_TYPE_SHAPES: ReadonlyArray<{
+const FIELD_TYPE_SHAPES: readonly {
   readonly label: string;
   /** TypeScript type expression for the field declaration. */
   readonly typeExpr: string;
   /** When true, use the `?` optional modifier instead of `!`. */
   readonly optional?: boolean;
-}> = [
+}[] = [
   { label: "string", typeExpr: "string" },
   { label: "number", typeExpr: "number" },
   { label: "boolean", typeExpr: "boolean" },

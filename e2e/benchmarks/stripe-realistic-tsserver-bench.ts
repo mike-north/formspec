@@ -340,8 +340,10 @@ async function main(): Promise<void> {
     session.invocations.forEach((inv, i) => {
       const label = i === 0 ? "cold" : "warm";
       allWallTimeMs.push(inv.wallTimeMs);
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- owner file; kept for dashboard schema compatibility
       allSyntheticCompileCounts.push(inv.syntheticCompileCount);
       process.stderr.write(
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- owner file; kept for dashboard schema compatibility
         `    call ${String(i + 1)}/${String(RUNS)} [${label}]: ${inv.wallTimeMs.toFixed(1)}ms  syntheticCompile=${String(inv.syntheticCompileCount)} diags=${String(inv.diagnosticsCount)}\n`
       );
     });
