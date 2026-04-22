@@ -30,6 +30,43 @@ import { type SemanticCapability } from "./tag-registry.js";
 import { hasTypeSemanticCapability } from "./ts-binding.js";
 
 /**
+ * Maps a {@link SemanticCapability} to a human-readable type name for use in
+ * diagnostic messages (e.g. `"numeric-comparable"` → `"number"`).
+ *
+ * Both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
+ * (`file-snapshots.ts`) use this helper so their TYPE_MISMATCH messages are
+ * identical.
+ *
+ * @internal
+ */
+export function _capabilityLabel(capability: SemanticCapability | undefined): string {
+  switch (capability) {
+    case "numeric-comparable":
+      return "number";
+    case "string-like":
+      return "string";
+    case "array-like":
+      return "array";
+    case "enum-member-addressable":
+      return "enum";
+    case "json-like":
+      return "JSON-compatible";
+    case "object-like":
+      return "object";
+    case "condition-like":
+      return "conditional";
+    case undefined:
+      return "compatible";
+    default: {
+      // Exhaustiveness guard: if a new SemanticCapability is added to the
+      // union, TypeScript will error here until this switch is updated.
+      const exhaustive: never = capability;
+      return String(exhaustive);
+    }
+  }
+}
+
+/**
  * Returns `true` when `type` satisfies the constraint `capability`.
  *
  * Mirrors `supportsConstraintCapability` in `tsdoc-parser.ts` with one

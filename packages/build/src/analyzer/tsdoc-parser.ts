@@ -39,6 +39,7 @@
 
 import * as ts from "typescript";
 import {
+  _capabilityLabel,
   _supportsConstraintCapability,
   checkSyntheticTagApplication,
   choosePreferredPayloadText,
@@ -628,28 +629,6 @@ function placementLabel(
   }
 }
 
-function capabilityLabel(capability: string | undefined): string {
-  switch (capability) {
-    case "numeric-comparable":
-      return "number";
-    case "string-like":
-      return "string";
-    case "array-like":
-      return "array";
-    case "enum-member-addressable":
-      return "enum";
-    case "json-like":
-      return "JSON-compatible";
-    case "object-like":
-      return "object";
-    case "condition-like":
-      return "conditional";
-    case undefined:
-      return "compatible";
-    default:
-      return capability;
-  }
-}
 
 function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
   if (fieldType?.kind === "custom") {
@@ -836,7 +815,7 @@ function buildCompilerBackedConstraintDiagnostics(
     if (target === null) {
       if (
         _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        definition.capabilities.includes("numeric-comparable")
+        definition.capabilities[0] === "numeric-comparable"
       ) {
         return true;
       }
@@ -859,7 +838,7 @@ function buildCompilerBackedConstraintDiagnostics(
       !supportsConstraintCapability(evaluatedType, checker, requiredCapability)
     ) {
       const actualType = checker.typeToString(evaluatedType, node, SYNTHETIC_TYPE_FORMAT_FLAGS);
-      const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
+      const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
       // Path-target hints only apply to direct-field mismatches — the hint
       // suggests "did you mean a sub-path?" which is nonsensical when the
       // user is already path-targeting.
@@ -1031,8 +1010,7 @@ function buildCompilerBackedConstraintDiagnostics(
     ]);
   }
 
-  const expectedLabel =
-    definition.valueKind === null ? "compatible argument" : capabilityLabel(definition.valueKind);
+  const expectedLabel = definition.valueKind ?? "compatible argument";
   return emit("C-reject", [
     makeDiagnostic(
       "TYPE_MISMATCH",

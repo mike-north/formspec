@@ -27,6 +27,7 @@ import {
   buildFormSpecAnalysisFileSnapshot,
   checkSyntheticTagApplication,
   describeTypeKind,
+  getMatchingTagSignatures,
   getSubjectType,
   getTagDefinition,
   resolveDeclarationPlacement,
@@ -621,12 +622,31 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   // applies via `supportsConstraintCapability()` in `tsdoc-parser.ts`.
   // The snapshot consumer now also applies this check, so the proxy must mirror
   // it for parity to be meaningful. Only applies to direct-field (no target).
-  if (subjectType !== undefined) {
-    const requiredCapability = definition?.capabilities[0];
-    if (!_supportsConstraintCapability(requiredCapability, subjectType, checker)) {
+  if (subjectType !== undefined && definition !== null) {
+    const requiredCapability = definition.capabilities[0];
+    if (
+      requiredCapability !== undefined &&
+      !_supportsConstraintCapability(requiredCapability, subjectType, checker)
+    ) {
       hasDiagnostic = true;
       diagnosticCode = "TYPE_MISMATCH";
       diagnosticMessage = `constraint "@${fixture.tagName}" capability check failed (Role B)`;
+    }
+  }
+
+  // §5 Phase 5A — apply the placement pre-check that the real snapshot path
+  // applies via `getMatchingTagSignatures()` in `file-snapshots.ts`. The real
+  // build path handles this via lowerTagApplicationToSyntheticCall throwing for
+  // invalid placements (try/catch below). Mirroring the snapshot's explicit
+  // pre-check here ensures parity for placement-rejection cases.
+  if (!hasDiagnostic && definition !== null) {
+    // Parity fixtures use direct-field targets only (no path/member targets),
+    // so targetKind is always null here.
+    const matchingSignatures = getMatchingTagSignatures(definition, resolvedPlacement, null);
+    if (matchingSignatures.length === 0) {
+      hasDiagnostic = true;
+      diagnosticCode = "INVALID_TAG_PLACEMENT";
+      diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
     }
   }
 

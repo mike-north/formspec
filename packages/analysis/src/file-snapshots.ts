@@ -8,7 +8,10 @@ import {
   lowerTagApplicationToSyntheticCall,
   type SyntheticCompilerDiagnostic,
 } from "./compiler-signatures.js";
-import { _supportsConstraintCapability } from "./constraint-applicability.js";
+import {
+  _capabilityLabel,
+  _supportsConstraintCapability,
+} from "./constraint-applicability.js";
 import {
   extractCommentBlockTagTexts,
   extractCommentSummaryText,
@@ -1540,7 +1543,7 @@ function buildTagDiagnostics(
       const isIntegerBypass =
         target === null &&
         _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        semantic.tagDefinition.capabilities.includes("numeric-comparable");
+        semantic.tagDefinition.capabilities[0] === "numeric-comparable";
 
       if (isIntegerBypass) {
         // §8.3b — log "bypass" roleOutcome on the snapshot consumer channel,
@@ -1599,7 +1602,7 @@ function buildTagDiagnostics(
             diagnostics.push(
               createAnalysisDiagnostic(
                 "TYPE_MISMATCH",
-                `constraint "@${tag.normalizedTagName}" is only valid on ${requiredCapability} targets, but field type is "${actualTypeText}"`,
+                `constraint "@${tag.normalizedTagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualTypeText}"`,
                 tag.fullSpan,
                 {
                   tagName: tag.normalizedTagName,
