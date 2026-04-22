@@ -149,7 +149,10 @@ describe("@enumOptions typed-parser Role-C canaries (snapshot consumer)", () => 
     // "Expected @enumOptions to be a JSON array, got number."
     // Before Phase 3 this was a `.fails` case (constraint-canaries.test.ts).
     // Phase 3 wires the typed parser into the snapshot path, converting it.
-    const diagnostics = snapshotDiagnosticsFor("enumOptions", "5", "string", "scalar");
+    //
+    // Note: field type is "a" | "b" (string literal union) so Role B passes
+    // (enum-member-addressable capability) and Role C runs.
+    const diagnostics = snapshotDiagnosticsFor("enumOptions", "5", '"a" | "b"', "scalar");
     const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(
       invalidArgDiags,
@@ -163,7 +166,10 @@ describe("@enumOptions typed-parser Role-C canaries (snapshot consumer)", () => 
     // "Expected @enumOptions to be a JSON array, got object."
     // Mirrors the build-consumer canary for @enumOptions {} (typed-parser-canaries.test.ts).
     // Phase 3 wires the typed parser into the snapshot path for this case.
-    const diagnostics = snapshotDiagnosticsFor("enumOptions", "{}", "string", "object");
+    //
+    // Note: field type is "a" | "b" (string literal union) so Role B passes
+    // (enum-member-addressable capability) and Role C runs.
+    const diagnostics = snapshotDiagnosticsFor("enumOptions", "{}", '"a" | "b"', "object");
     const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
     expect(
       invalidArgDiags,

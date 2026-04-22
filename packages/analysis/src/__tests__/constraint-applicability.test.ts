@@ -170,8 +170,8 @@ describe("snapshot consumer Role-B integration", () => {
     const typeMismatch = diagnostics.filter((d) => d.code === "TYPE_MISMATCH");
     expect(typeMismatch).toHaveLength(1);
     expect(typeMismatch[0]?.range).toBeDefined();
-    expect(typeof typeMismatch[0]?.range.start).toBe("number");
-    expect(typeof typeMismatch[0]?.range.end).toBe("number");
+    expect(typeMismatch[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(typeMismatch[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // Invariant 8: pattern on multiple field types — strings pass, numbers fail
@@ -230,8 +230,8 @@ describe("snapshot consumer placement pre-check integration", () => {
     const placementDiag = diagnostics.find((d) => d.code === "INVALID_TAG_PLACEMENT");
     expect(placementDiag, "Expected an INVALID_TAG_PLACEMENT diagnostic").toBeDefined();
     expect(placementDiag?.range).toBeDefined();
-    expect(typeof placementDiag?.range.start).toBe("number");
-    expect(typeof placementDiag?.range.end).toBe("number");
+    expect(placementDiag?.range.start).toBeGreaterThanOrEqual(0);
+    expect(placementDiag?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // A @minimum tag on a valid class field should NOT produce INVALID_TAG_PLACEMENT

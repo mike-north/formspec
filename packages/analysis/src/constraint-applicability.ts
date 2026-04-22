@@ -109,13 +109,12 @@ export function _supportsConstraintCapability(
 
 /**
  * Returns the element type of an array type, or `null` if the type is not an
- * array. Strips nullish union members before checking.
- *
- * Mirrors the private `getArrayElementType` helper in `tsdoc-parser.ts`.
+ * array.
  */
 function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
   if (!checker.isArrayType(type)) {
     return null;
   }
+  // checker.isArrayType guarantees TypeReference here.
   return checker.getTypeArguments(type as ts.TypeReference)[0] ?? null;
 }

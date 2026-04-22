@@ -108,8 +108,8 @@ describe("@minimum silent-acceptance canaries", () => {
     expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
     // range is always present; verify it points somewhere in the source
     expect(diagnostic?.range).toBeDefined();
-    expect(typeof diagnostic?.range.start).toBe("number");
-    expect(typeof diagnostic?.range.end).toBe("number");
+    expect(diagnostic?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostic?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @minimum true -- boolean is not a valid numeric argument.
@@ -168,8 +168,8 @@ describe("@minimum silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @minimum 0 on a boolean field -- boolean has no numeric-comparable capability.
@@ -188,8 +188,8 @@ describe("@minimum silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -201,12 +201,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions with no argument omits the required JSON array.
   // Phase 3: typed parser (Role C) emits MISSING_TAG_ARGUMENT for the empty argument.
   // (Previously: the synthetic checker emitted INVALID_TAG_ARGUMENT.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits MISSING_TAG_ARGUMENT for @enumOptions with no argument", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-empty"
@@ -219,12 +222,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
 
   // @enumOptions [1, -- truncated / malformed JSON.
   // The synthetic checker emits INVALID_TAG_ARGUMENT.
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions [1, (malformed JSON)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions [1, */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-malformed"
@@ -238,12 +244,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions 5 -- scalar number, not a JSON array.
   // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
   // (Previously: silent acceptance — no diagnostic emitted.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions 5 (scalar, not array)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions 5 */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-scalar"
@@ -256,12 +265,15 @@ describe("@enumOptions silent-acceptance canaries", () => {
   // @enumOptions {} -- plain object, not a JSON array.
   // Phase 3 FLIP: typed parser (Role C) now rejects this with INVALID_TAG_ARGUMENT.
   // (Previously: silent acceptance — no diagnostic emitted.)
+  //
+  // Note: field type is "a" | "b" (string literal union) so Role B passes
+  // (enum-member-addressable capability) and Role C runs.
   it("emits INVALID_TAG_ARGUMENT for @enumOptions {} (object, not array)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
         /** @enumOptions {} */
-        value!: string;
+        value!: "a" | "b";
       }
       `,
       "enumOptions-object"
@@ -289,8 +301,8 @@ describe("@enumOptions silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -360,8 +372,8 @@ describe("@pattern silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @pattern on a boolean field -- booleans are not string-like.
@@ -380,8 +392,8 @@ describe("@pattern silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @pattern on a string[] (array) field -- arrays are not string-like...or are they?
@@ -440,8 +452,8 @@ describe("@pattern silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -524,8 +536,8 @@ describe("@uniqueItems silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @uniqueItems on a number field -- numbers are not arrays.
@@ -544,8 +556,8 @@ describe("@uniqueItems silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -598,8 +610,8 @@ describe("@const silent-acceptance canaries", () => {
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     expect(diagnostics[0]?.range).toBeDefined();
-    expect(typeof diagnostics[0]?.range.start).toBe("number");
-    expect(typeof diagnostics[0]?.range.end).toBe("number");
+    expect(diagnostics[0]?.range.start).toBeGreaterThanOrEqual(0);
+    expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
   // @const {"a":1} on a number field -- a JSON object constant is not
