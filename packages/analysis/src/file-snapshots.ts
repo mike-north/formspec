@@ -1748,7 +1748,11 @@ function buildTagDiagnostics(
                 tag: tag.normalizedTagName,
                 placement,
                 subjectTypeKind: subjectTypeKindForLog,
-                roleOutcome: "B-reject",
+                // The @const IR check runs AFTER the typed parser (Role C)
+                // accepts, so a rejection here is a C-phase rejection (the
+                // value semantically fails the constraint), not a Role-B
+                // capability failure.
+                roleOutcome: "C-reject",
                 elapsedMicros: elapsedMicros(tagStartMicros),
               });
             }

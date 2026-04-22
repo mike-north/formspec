@@ -27,6 +27,8 @@
 
 import * as ts from "typescript";
 import type { JsonValue } from "@formspec/core/internals";
+import { _isIntegerBrandedType } from "./integer-brand.js";
+import { jsonValueEquals } from "./json-value.js";
 import { type SemanticCapability } from "./tag-registry.js";
 import { hasTypeSemanticCapability, stripNullishUnion } from "./ts-binding.js";
 
@@ -158,16 +160,24 @@ type ConstPrimitiveKind = "string" | "number" | "integer" | "bigint" | "boolean"
  * nullable `number | null` field classifies as `"number"`; the `null` member
  * does not demote it to `"other"`.
  *
+ * Unlike {@link stripNullishUnion}, this classifier also handles *wider*
+ * nullish unions internally: when a union contains `null`/`undefined` plus
+ * multiple non-nullish members (e.g. `boolean | null`, `"USD" | "EUR" | null`),
+ * `stripNullishUnion` leaves the union unchanged — but we still want to
+ * classify the non-nullish portion. So we filter out nullish members and
+ * inspect whatever remains.
+ *
  * Returns:
- * - `{ kind: "primitive"; primitiveKind }` — plain primitive types. `integer`
- *   is NOT detected here (there is no TS-level "integer" flag); callers that
- *   need integer-brand treatment should bypass this function via
- *   `_isIntegerBrandedType` before calling.
- * - `{ kind: "enum"; members }` — string-literal unions. Member values are
- *   returned in declaration order (matches `getEnumMemberCompletions` but
- *   without sorting, since `jsonValueEquals` is order-independent).
+ * - `{ kind: "primitive"; primitiveKind }` — plain primitive types, including
+ *   integer-branded numeric intersections (detected via
+ *   `_isIntegerBrandedType` to mirror the build path's `primitiveKind:
+ *   "integer"`).
+ * - `{ kind: "enum"; members }` — string-literal or number-literal unions, and
+ *   single-literal types (a `"sent"` field becomes an enum-of-one, matching
+ *   the build path's `isStringLiteral`/`isNumberLiteral` → IR `enum` mapping
+ *   in `class-analyzer.ts`). Member values are returned in declaration order.
  * - `{ kind: "other" }` — anything else (structs, arrays, unions of mixed
- *   types, etc.). The caller should emit the placement error.
+ *   non-literal types, etc.). The caller should emit the placement error.
  *
  * @internal
  */
@@ -175,120 +185,111 @@ function classifyConstTargetType(
   type: ts.Type
 ):
   | { readonly kind: "primitive"; readonly primitiveKind: ConstPrimitiveKind }
-  | { readonly kind: "enum"; readonly members: readonly string[] }
+  | { readonly kind: "enum"; readonly members: readonly (string | number)[] }
   | { readonly kind: "other" } {
   const stripped = stripNullishUnion(type);
 
-  // String-literal union → enum. Matches the analysis-IR `enum` type the build
-  // path checks against in semantic-targets.ts case "const".
-  if (stripped.isUnion() && stripped.types.length > 0) {
-    const memberLiterals: string[] = [];
-    let allStringLiterals = true;
-    for (const member of stripped.types) {
-      if (member.isStringLiteral()) {
-        memberLiterals.push(member.value);
-      } else {
-        allStringLiterals = false;
-        break;
-      }
-    }
-    if (allStringLiterals) {
-      return { kind: "enum", members: memberLiterals };
-    }
+  // Integer-branded intersection (`number & { [__integerBrand]: true }`) must
+  // be detected BEFORE primitive-flag checks, because the intersection itself
+  // has neither `TypeFlags.Number` nor any primitive flag in the shape we
+  // care about. Mirrors the build path's integer primitive kind.
+  if (_isIntegerBrandedType(stripped)) {
+    return { kind: "primitive", primitiveKind: "integer" };
   }
 
-  // Plain string (or a single string literal).
-  if (stripped.flags & (ts.TypeFlags.String | ts.TypeFlags.StringLiteral)) {
+  // If this is a union, filter out nullish members and reclassify on what
+  // remains. This catches wider nullish unions (boolean | null,
+  // "a" | "b" | null) that stripNullishUnion leaves untouched because they
+  // have more than one non-nullish member.
+  if (stripped.isUnion()) {
+    const nonNullish = stripped.types.filter(
+      (member) => (member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined)) === 0
+    );
+
+    // If only one non-nullish member remains, recurse on it (handles cases
+    // like `(true | false) | null` where the inner `true | false` is itself
+    // the boolean widening target).
+    if (nonNullish.length === 1 && nonNullish[0] !== undefined) {
+      return classifyConstTargetType(nonNullish[0]);
+    }
+
+    if (nonNullish.length >= 1) {
+      // String-literal union → enum (matches the analysis-IR `enum` type
+      // the build path checks against in semantic-targets.ts case "const").
+      // Number-literal union also produces enum-of-numbers, matching
+      // class-analyzer's isNumberLiteral → enum mapping.
+      const memberLiterals: (string | number)[] = [];
+      let allStringLiterals = true;
+      let allNumberLiterals = true;
+      for (const member of nonNullish) {
+        if (member.isStringLiteral()) {
+          allNumberLiterals = false;
+          memberLiterals.push(member.value);
+        } else if (member.isNumberLiteral()) {
+          allStringLiterals = false;
+          memberLiterals.push(member.value);
+        } else {
+          allStringLiterals = false;
+          allNumberLiterals = false;
+          break;
+        }
+      }
+      if (allStringLiterals || allNumberLiterals) {
+        return { kind: "enum", members: memberLiterals };
+      }
+
+      // Boolean-wide union: `true | false` is how TS represents `boolean`
+      // internally. If every non-nullish member has BooleanLiteral flag,
+      // treat as primitive boolean.
+      const allBooleanLiteral = nonNullish.every(
+        (member) => (member.flags & ts.TypeFlags.BooleanLiteral) !== 0
+      );
+      if (allBooleanLiteral) {
+        return { kind: "primitive", primitiveKind: "boolean" };
+      }
+    }
+    // Fall through to the widened-primitive checks below; non-uniform
+    // non-nullish unions (e.g. `string | number`) hit `{ kind: "other" }`.
+  }
+
+  // Single-literal types map to enum-of-one to match the build-path IR shape
+  // (class-analyzer.ts maps isStringLiteral/isNumberLiteral to an enum node
+  // with a single member). If we treated them as primitives here, a @const
+  // value that fails enum-membership would incorrectly PASS the snapshot
+  // check while the build check correctly rejects it.
+  if (stripped.isStringLiteral()) {
+    return { kind: "enum", members: [stripped.value] };
+  }
+  if (stripped.isNumberLiteral()) {
+    return { kind: "enum", members: [stripped.value] };
+  }
+
+  // Plain string (non-literal).
+  if ((stripped.flags & ts.TypeFlags.String) !== 0) {
     return { kind: "primitive", primitiveKind: "string" };
   }
 
-  // Number (regular number or numeric literal).
-  if (stripped.flags & (ts.TypeFlags.Number | ts.TypeFlags.NumberLiteral)) {
+  // Plain number (non-literal).
+  if ((stripped.flags & ts.TypeFlags.Number) !== 0) {
     return { kind: "primitive", primitiveKind: "number" };
   }
 
   // BigInt — the build path treats `bigint` as primitiveKind "bigint".
-  if (stripped.flags & (ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)) {
+  if ((stripped.flags & (ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)) !== 0) {
     return { kind: "primitive", primitiveKind: "bigint" };
   }
 
-  // Boolean.
-  if (stripped.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral)) {
+  // Boolean (widened or literal).
+  if ((stripped.flags & (ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral)) !== 0) {
     return { kind: "primitive", primitiveKind: "boolean" };
   }
 
   // Null.
-  if (stripped.flags & ts.TypeFlags.Null) {
+  if ((stripped.flags & ts.TypeFlags.Null) !== 0) {
     return { kind: "primitive", primitiveKind: "null" };
   }
 
   return { kind: "other" };
-}
-
-/**
- * Type guard: value is a JSON array.
- */
-function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
-  return Array.isArray(value);
-}
-
-/**
- * Type guard: value is a JSON object (non-null, non-array).
- */
-function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/**
- * Deep-equality check for two JSON values.
- *
- * Mirrors `jsonValueEquals` in `semantic-targets.ts` (~line 459). Extracted as
- * a local helper here so the snapshot consumer's `@const` IR check does not
- * depend on the `semantic-targets.ts` internals (which are build-path
- * machinery). The two implementations should stay behaviourally identical.
- */
-function jsonValueEquals(left: JsonValue, right: JsonValue): boolean {
-  if (left === right) {
-    return true;
-  }
-
-  if (isJsonArray(left) || isJsonArray(right)) {
-    if (!isJsonArray(left) || !isJsonArray(right) || left.length !== right.length) {
-      return false;
-    }
-    for (const [index, leftItem] of left.entries()) {
-      const rightItem = right[index];
-      if (rightItem === undefined || !jsonValueEquals(leftItem, rightItem)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (isJsonObject(left) || isJsonObject(right)) {
-    if (!isJsonObject(left) || !isJsonObject(right)) {
-      return false;
-    }
-    const leftKeys = Object.keys(left).sort();
-    const rightKeys = Object.keys(right).sort();
-    if (leftKeys.length !== rightKeys.length) {
-      return false;
-    }
-    return leftKeys.every((key, index) => {
-      if (rightKeys[index] !== key) {
-        return false;
-      }
-      const leftValue = left[key];
-      const rightValue = right[key];
-      return (
-        leftValue !== undefined &&
-        rightValue !== undefined &&
-        jsonValueEquals(leftValue, rightValue)
-      );
-    });
-  }
-
-  return false;
 }
 
 /**
