@@ -39,6 +39,7 @@
 
 import * as ts from "typescript";
 import {
+  _supportsConstraintCapability,
   checkSyntheticTagApplication,
   choosePreferredPayloadText,
   extractPathTarget as extractSharedPathTarget,
@@ -440,33 +441,19 @@ function renderSyntheticArgumentExpression(
   }
 }
 
-function getArrayElementType(type: ts.Type, checker: ts.TypeChecker): ts.Type | null {
-  if (!checker.isArrayType(type)) {
-    return null;
-  }
-
-  return checker.getTypeArguments(type as ts.TypeReference)[0] ?? null;
-}
-
+/**
+ * Re-export shim: the implementation has moved to
+ * `@formspec/analysis/internal:_supportsConstraintCapability`.
+ *
+ * The local signature `(type, checker, capability)` is preserved so existing
+ * callers in this file do not need to change argument order.
+ */
 function supportsConstraintCapability(
   type: ts.Type,
   checker: ts.TypeChecker,
   capability: SemanticCapability | undefined
 ): boolean {
-  if (capability === undefined) {
-    return true;
-  }
-
-  if (hasTypeSemanticCapability(type, checker, capability)) {
-    return true;
-  }
-
-  if (capability === "string-like") {
-    const itemType = getArrayElementType(type, checker);
-    return itemType !== null && hasTypeSemanticCapability(itemType, checker, capability);
-  }
-
-  return false;
+  return _supportsConstraintCapability(capability, type, checker);
 }
 
 const MAX_HINT_CANDIDATES = 5;
