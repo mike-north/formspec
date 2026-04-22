@@ -40,7 +40,7 @@ export interface FormSpecSchemas {
 /**
  * Result of loading all FormSpecs from a module.
  */
-export interface ModuleFormSpecs {
+interface ModuleFormSpecs {
   /** All FormSpec exports found in the module */
   formSpecs: Map<string, FormSpecSchemas>;
   /** The raw module for accessing other exports */

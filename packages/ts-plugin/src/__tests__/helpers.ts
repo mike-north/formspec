@@ -7,7 +7,7 @@ import type { FormSpecPluginService } from "../service.js";
 
 export const FORM_SPEC_PLUGIN_TEST_SOCKET_TIMEOUT_MS = 1_000;
 
-export interface TestProgramContext {
+interface TestProgramContext {
   readonly workspaceRoot: string;
   readonly filePath: string;
   readonly program: ts.Program;

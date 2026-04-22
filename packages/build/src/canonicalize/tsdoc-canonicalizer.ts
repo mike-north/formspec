@@ -30,7 +30,7 @@ export interface TSDocSource {
   readonly file: string;
 }
 
-export interface CanonicalizeTSDocOptions {
+interface CanonicalizeTSDocOptions {
   readonly metadata?: MetadataPolicyInput;
 }
 

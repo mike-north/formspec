@@ -16,7 +16,7 @@ import type { FormSpecSchemas } from "../runtime/formspec-loader.js";
 /**
  * Options for writing output files.
  */
-export interface WriteOptions {
+interface WriteOptions {
   /** Output directory path */
   outDir: string;
   /** JSON indentation (default: 2) */
@@ -26,7 +26,7 @@ export interface WriteOptions {
 /**
  * Result of writing a class's schemas.
  */
-export interface ClassWriteResult {
+interface ClassWriteResult {
   /** Path to the class output directory */
   dir: string;
   /** Files that were written */
@@ -36,7 +36,7 @@ export interface ClassWriteResult {
 /**
  * Result of writing standalone FormSpec schemas.
  */
-export interface FormSpecWriteResult {
+interface FormSpecWriteResult {
   /** Path to the output directory */
   dir: string;
   /** Files that were written */

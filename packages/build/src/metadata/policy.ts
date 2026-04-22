@@ -17,23 +17,11 @@ import type {
 } from "@formspec/core/internals";
 export type {
   NormalizedDeclarationMetadataPolicy,
-  NormalizedEnumMemberDisplayNamePolicy,
-  NormalizedEnumMemberMetadataPolicy,
   NormalizedMetadataPolicy,
-  NormalizedMetadataPluralizationPolicy as NormalizedPluralizationPolicy,
 } from "@formspec/core/internals";
 
 export type MetadataResolutionContext = MetadataInferenceContext;
 export type EnumMemberResolutionContext = EnumMemberMetadataInferenceContext;
-export type NormalizedMetadataScalarPolicy = NormalizedMetadataValuePolicy;
-
-export function defaultApiNameInference(_context: MetadataResolutionContext): string {
-  return "";
-}
-
-export function defaultDisplayNameInference(_context: MetadataResolutionContext): string {
-  return "";
-}
 
 const NOOP_INFLECT: MetadataPluralizationFn = () => "";
 
@@ -157,8 +145,4 @@ export function makeMetadataContext(
     logicalName,
     ...(buildContext !== undefined && { buildContext }),
   };
-}
-
-export function getDefaultMetadataPolicy(): NormalizedMetadataPolicy {
-  return normalizeMetadataPolicy(undefined);
 }

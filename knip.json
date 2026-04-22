@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "packages/core": {
+      "entry": ["src/__tests__/**/*.test-d.ts"]
+    },
+    "packages/dsl": {
+      "entry": ["src/__tests__/**/*.test-d.ts"]
+    },
+    "packages/build": {
+      "entry": [
+        "src/__tests__/fixtures/**/*.ts",
+        "src/__tests__/parity/fixtures/**/*.ts"
+      ]
+    },
+    "packages/cli": {
+      "entry": ["src/__tests__/fixtures/**/*.ts"]
+    },
+    "packages/analysis": {
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "e2e": {
+      "entry": [
+        "benchmarks/**/*.{ts,cjs}",
+        "fixtures/**/*.ts",
+        "helpers/**/*.ts"
+      ],
+      "project": ["**/*.{ts,cjs}"],
+      "ignoreDependencies": ["@formspec/cli", "@formspec/core"]
+    }
+  }
+}

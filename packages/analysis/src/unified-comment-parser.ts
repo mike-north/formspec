@@ -22,8 +22,6 @@ import {
 import { extractCommentSummaryText } from "./comment-syntax.js";
 import { normalizeFormSpecTagName, type ExtensionTagSource } from "./tag-registry.js";
 
-export type { ParsedCommentTag, ParsedCommentBlock };
-
 // =============================================================================
 // PUBLIC TYPES
 // =============================================================================

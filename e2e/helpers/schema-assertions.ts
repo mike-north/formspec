@@ -16,9 +16,6 @@ export function assertValidJsonSchema(schema: Record<string, unknown>): void {
   expect(schema).toHaveProperty("properties");
 }
 
-/** @deprecated Use assertValidJsonSchema instead */
-export const assertValidJsonSchema2020 = assertValidJsonSchema;
-
 export function assertPropertyConstraints(
   schema: Record<string, unknown>,
   propName: string,

@@ -24,7 +24,7 @@ import pino from "pino";
  * routed as: `trace/debug` → `log`, `info` → `info`, `warn` → `warn`,
  * `error` → `error`.
  */
-export interface LspConsole {
+interface LspConsole {
   log(msg: string): void;
   info(msg: string): void;
   warn(msg: string): void;

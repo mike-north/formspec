@@ -17,7 +17,6 @@ import * as ts from "typescript";
 import type { ConstraintNode, AnnotationNode, JsonValue } from "@formspec/core/internals";
 import {
   parseTSDocTags,
-  hasDeprecatedTagTSDoc,
   type ParseTSDocOptions,
   type TSDocParseResult,
 } from "./tsdoc-parser.js";
@@ -69,15 +68,6 @@ export function extractJSDocAnnotationNodes(
 ): AnnotationNode[] {
   const result = extractJSDocParseResult(node, file, options);
   return [...result.annotations];
-}
-
-/**
- * Checks if a node has a TSDoc `@deprecated` tag.
- *
- * Uses the TSDoc parser for structured detection.
- */
-export function hasDeprecatedTag(node: ts.Node): boolean {
-  return hasDeprecatedTagTSDoc(node);
 }
 
 /**

@@ -6,6 +6,7 @@ import {
   getDeclarationName,
   getDeclarationType,
   getResolvedTypeName,
+  type SupportedDeclaration,
 } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 import { isNullableType, isStringType } from "../../utils/type-utils.js";
@@ -26,7 +27,7 @@ type MessageIds =
   | "nonStringLikeTargetField";
 
 function getLocalTypeParameterNames(
-  node: import("../../utils/rule-helpers.js").SupportedDeclaration
+  node: SupportedDeclaration
 ): Set<string> {
   switch (node.type) {
     case AST_NODE_TYPES.ClassDeclaration:
@@ -83,7 +84,7 @@ function isObjectLikeTypeAliasDeclaration(
 }
 
 function getDirectPropertyMembers(
-  node: import("../../utils/rule-helpers.js").SupportedDeclaration,
+  node: SupportedDeclaration,
   services: ParserServicesWithTypeInformation
 ): readonly (TSESTree.PropertyDefinition | TSESTree.TSPropertySignature)[] {
   switch (node.type) {

@@ -19,7 +19,7 @@ import type { JsonValue } from "@formspec/core/internals";
  *
  * @internal
  */
-export function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
+function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
   return Array.isArray(value);
 }
 
@@ -28,7 +28,7 @@ export function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
  *
  * @internal
  */
-export function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
+function isJsonObject(value: JsonValue): value is Record<string, JsonValue> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 

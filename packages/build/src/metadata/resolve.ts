@@ -17,14 +17,14 @@ import type {
   NormalizedMetadataPolicy,
 } from "./policy.js";
 
-export interface ExplicitMetadataInput {
+interface ExplicitMetadataInput {
   readonly apiName?: string;
   readonly displayName?: string;
   readonly apiNamePlural?: string;
   readonly displayNamePlural?: string;
 }
 
-export interface ResolveFormIRMetadataOptions {
+interface ResolveFormIRMetadataOptions {
   readonly policy: NormalizedMetadataPolicy;
   readonly surface: MetadataAuthoringSurface;
   readonly buildContext?: unknown;

@@ -186,7 +186,7 @@ export interface IRClassAnalysis {
   readonly staticMethods: readonly MethodInfo[];
 }
 
-export type AnalyzeTypeAliasToIRFailureKind = "duplicate-properties" | "not-object-like";
+type AnalyzeTypeAliasToIRFailureKind = "duplicate-properties" | "not-object-like";
 
 /**
  * Result of analyzing a type alias into IR — either success or error.

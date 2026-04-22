@@ -56,7 +56,7 @@ export interface MethodParamsSchemas {
 /**
  * Options for generating method schemas.
  */
-export interface GenerateMethodSchemasOptions {
+interface GenerateMethodSchemasOptions {
   /** JSON Schema representation to use for static enums. */
   readonly enumSerialization?: GenerateJsonSchemaFromIROptions["enumSerialization"] | undefined;
 }

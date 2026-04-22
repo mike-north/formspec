@@ -4,7 +4,7 @@ import type {
 } from "@formspec/analysis";
 import type { FormSpecSemanticService } from "./semantic-service.js";
 
-export interface DownstreamAuthoringFeedback {
+interface DownstreamAuthoringFeedback {
   readonly code: string;
   readonly severity: FormSpecAnalysisDiagnostic["severity"];
   readonly summary: string;

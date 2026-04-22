@@ -291,13 +291,6 @@ export function getStringLiteralUnionValues(
 }
 
 /**
- * Checks if a field is marked as optional (has `?` modifier).
- */
-export function isOptionalProperty(node: TSESTree.PropertyDefinition): boolean {
-  return node.optional;
-}
-
-/**
  * Gets the type checker from parser services.
  */
 export function getTypeChecker(services: ParserServicesWithTypeInformation): ts.TypeChecker {
