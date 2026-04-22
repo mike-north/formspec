@@ -141,6 +141,13 @@ interface ParityFixture {
    * Used for alias-chain propagation tests.
    */
   readonly preamble?: string;
+  /**
+   * When `"type-alias"`, the tag is placed on a top-level `type MyType = ...`
+   * declaration instead of a class field. This exercises `type-alias` placement
+   * rather than `class-field` placement, enabling misplacement fixtures for
+   * tags that only support field placements (e.g. `@minimum`).
+   */
+  readonly targetDeclaration?: "type-alias";
 }
 
 // ---------------------------------------------------------------------------
@@ -414,6 +421,28 @@ const FIXTURES: readonly ParityFixture[] = [
     subjectType: "string",
     tagArgument: '"hello"',
   },
+
+  // -------------------------------------------------------------------------
+  // Role-A/B ordering pin: @minimum on type-alias string (misplaced + type-incompatible)
+  //
+  // `@minimum` has FIELD_PLACEMENTS only; `type-alias` is not a valid
+  // placement. The subject type is `string` (no numeric-comparable capability),
+  // making this both misplaced AND type-incompatible.
+  //
+  // After the Role-A ordering fix, BOTH consumers must emit
+  // INVALID_TAG_PLACEMENT (Role A wins). Before the fix, the snapshot consumer
+  // ran Role B first and emitted TYPE_MISMATCH, while the build consumer
+  // already ran Role A first and emitted INVALID_TAG_PLACEMENT — a real
+  // diagnostic-code divergence that this fixture pins to never recur.
+  // -------------------------------------------------------------------------
+  {
+    label:
+      "@minimum 0 on type-alias string (Role-A/B order pin: misplaced + type-incompatible)",
+    tagName: "minimum",
+    subjectType: "string",
+    tagArgument: "0",
+    targetDeclaration: "type-alias",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -426,12 +455,23 @@ const FIXTURES: readonly ParityFixture[] = [
  * The generated source wraps the field in a class named `TestClass`. For
  * optional types (`number | undefined`), a `?` modifier is added so the
  * TypeScript compiler resolves the subject type correctly.
+ *
+ * When `fixture.targetDeclaration === "type-alias"`, the tag is placed on a
+ * top-level type alias named `MyType` instead of a class field, to exercise
+ * `type-alias` placement for misplacement tests.
  */
 function generateFixtureSource(fixture: ParityFixture): string {
   const { tagName, subjectType, tagArgument, preamble } = fixture;
   // Build the doc comment: @tagName [tagArgument]
   const tagLine = tagArgument.trim() === "" ? `@${tagName}` : `@${tagName} ${tagArgument}`;
   const comment = `/** ${tagLine} */`;
+
+  const preamblePart = preamble !== undefined ? `${preamble}\n\n` : "";
+
+  if (fixture.targetDeclaration === "type-alias") {
+    // Tag on a type alias — yields `type-alias` placement.
+    return `${preamblePart}${comment}\ntype MyType = ${subjectType};\n`;
+  }
 
   // Detect optional: `number | undefined` → use `?` modifier with `number`
   const isOptional = subjectType.includes("| undefined") || subjectType.includes("undefined |");
@@ -445,7 +485,6 @@ function generateFixtureSource(fixture: ParityFixture): string {
     ? `  ${comment}\n  field?: ${declaredType};`
     : `  ${comment}\n  field!: ${declaredType};`;
 
-  const preamblePart = preamble !== undefined ? `${preamble}\n\n` : "";
   return `${preamblePart}class TestClass {\n${fieldDecl}\n}\n`;
 }
 
@@ -486,30 +525,50 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   const source = generateFixtureSource(fixture);
   const { checker, sourceFile } = createProgram(source);
 
-  // Locate the 'field' property declaration inside TestClass
-  let fieldNode: ts.PropertyDeclaration | undefined;
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isPropertyDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === "field"
-    ) {
-      fieldNode = node;
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
+  let targetNode: ts.Node | undefined;
 
-  if (fieldNode === undefined) {
-    // generateFixtureSource always emits a `field` property, so reaching here
-    // indicates an AST traversal bug rather than a valid "no field" scenario.
-    throw new Error(
-      `Invariant violation: generated parity fixture source is missing the 'field' property for tag '${fixture.tagName}'.`
-    );
+  if (fixture.targetDeclaration === "type-alias") {
+    // Locate the 'MyType' type alias declaration for type-alias placement fixtures.
+    const visit = (node: ts.Node): void => {
+      if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "MyType") {
+        targetNode = node;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+
+    if (targetNode === undefined) {
+      throw new Error(
+        `Invariant violation: generated parity fixture source is missing the 'MyType' type alias for tag '${fixture.tagName}'.`
+      );
+    }
+  } else {
+    // Locate the 'field' property declaration inside TestClass
+    let fieldNode: ts.PropertyDeclaration | undefined;
+    const visit = (node: ts.Node): void => {
+      if (
+        ts.isPropertyDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "field"
+      ) {
+        fieldNode = node;
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+
+    if (fieldNode === undefined) {
+      // generateFixtureSource always emits a `field` property, so reaching here
+      // indicates an AST traversal bug rather than a valid "no field" scenario.
+      throw new Error(
+        `Invariant violation: generated parity fixture source is missing the 'field' property for tag '${fixture.tagName}'.`
+      );
+    }
+    targetNode = fieldNode;
   }
 
-  const subjectType = getSubjectType(fieldNode, checker);
-  const placement = resolveDeclarationPlacement(fieldNode);
+  const subjectType = getSubjectType(targetNode, checker);
+  const placement = resolveDeclarationPlacement(targetNode);
   const subjectTypeKind =
     subjectType !== undefined ? describeTypeKind(subjectType, checker) : "unknown";
   const resolvedPlacement = placement ?? "class-field";
@@ -526,11 +585,30 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   let diagnosticCode: string | undefined;
   let diagnosticMessage: string | undefined;
 
-  // §5 Phase 5A — apply the Role-B capability guard that the real build path
-  // applies via `supportsConstraintCapability()` in `tsdoc-parser.ts`.
-  // The snapshot consumer now also applies this check, so the proxy must mirror
-  // it for parity to be meaningful. Only applies to direct-field (no target).
-  if (subjectType !== undefined && definition !== null) {
+  // Role A — apply the placement pre-check that the real build path applies via
+  // `definition.placements.includes(placement)` in `tsdoc-parser.ts` (~line
+  // 482). ORDERING: Role A runs BEFORE Role B (capability guard). For a
+  // builtin constraint that is BOTH misplaced AND type-incompatible, both
+  // consumers must emit `INVALID_TAG_PLACEMENT` (Role A wins). Running Role B
+  // first would produce `TYPE_MISMATCH`, causing a parity divergence.
+  //
+  // Parity fixtures use direct-field targets only (no path/member targets),
+  // so targetKind is always null here.
+  if (definition !== null) {
+    const matchingSignatures = getMatchingTagSignatures(definition, resolvedPlacement, null);
+    if (matchingSignatures.length === 0) {
+      hasDiagnostic = true;
+      diagnosticCode = "INVALID_TAG_PLACEMENT";
+      diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
+    }
+  }
+
+  // Role B — apply the capability guard that the real build path applies via
+  // `supportsConstraintCapability()` in `tsdoc-parser.ts`. The snapshot
+  // consumer also applies this check after Role A, so the proxy must mirror
+  // the same order for parity to be meaningful. Only applies to direct-field
+  // (no target).
+  if (!hasDiagnostic && subjectType !== undefined && definition !== null) {
     const requiredCapability = definition.capabilities[0];
     if (
       requiredCapability !== undefined &&
@@ -539,22 +617,6 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
       hasDiagnostic = true;
       diagnosticCode = "TYPE_MISMATCH";
       diagnosticMessage = `constraint "@${fixture.tagName}" capability check failed (Role B)`;
-    }
-  }
-
-  // §5 Phase 5A — apply the placement pre-check that the real snapshot path
-  // applies via `getMatchingTagSignatures()` in `file-snapshots.ts`. The real
-  // build path handles this via lowerTagApplicationToSyntheticCall throwing for
-  // invalid placements (try/catch below). Mirroring the snapshot's explicit
-  // pre-check here ensures parity for placement-rejection cases.
-  if (!hasDiagnostic && definition !== null) {
-    // Parity fixtures use direct-field targets only (no path/member targets),
-    // so targetKind is always null here.
-    const matchingSignatures = getMatchingTagSignatures(definition, resolvedPlacement, null);
-    if (matchingSignatures.length === 0) {
-      hasDiagnostic = true;
-      diagnosticCode = "INVALID_TAG_PLACEMENT";
-      diagnosticMessage = `No synthetic signature for @${definition.canonicalName} on placement "${resolvedPlacement}"`;
     }
   }
 

@@ -1313,6 +1313,54 @@ function buildTagDiagnostics(
     // above the loop. Both are only consumed when logging is enabled.
     const tagStartMicros = snapshotLogsEnabled ? nowMicros() : 0;
 
+    // §5 Phase 5A — Role A: placement pre-check (snapshot consumer).
+    //
+    // ORDERING: Role A runs BEFORE Role B (capability guard) and Role C
+    // (typed parser). This matches the build consumer's order in
+    // `tsdoc-parser.ts` (~line 482), where `definition.placements.includes`
+    // is checked before the capability guard. For a builtin constraint tag
+    // that is BOTH misplaced AND type-incompatible (e.g. `@minimum` on a
+    // `string` field at a non-field placement), both consumers must emit
+    // `INVALID_TAG_PLACEMENT` (Role A wins) — not `TYPE_MISMATCH` (Role B).
+    //
+    // Applies to ALL tags (builtin constraint and extension), not just builtin.
+    // semantic.tagDefinition is always non-null here (the null case causes an
+    // early `continue` at the top of the loop).
+    //
+    // §5 Phase 5C — this placement check is the only Role-A guard; the former
+    // synthetic-program fallback has been retired.
+    {
+      const definition = semantic.tagDefinition;
+      const targetKind = target?.kind ?? null;
+      const matchingSignatures = getMatchingTagSignatures(definition, placement, targetKind);
+      if (matchingSignatures.length === 0) {
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "A-reject",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
+        diagnostics.push(
+          createAnalysisDiagnostic(
+            "INVALID_TAG_PLACEMENT",
+            `Tag "@${definition.canonicalName}" is not allowed on placement "${placement}"` +
+              (targetKind === null ? "" : ` with target kind "${targetKind}"`),
+            tag.fullSpan,
+            {
+              tagName: tag.normalizedTagName,
+              placement,
+              ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+            }
+          )
+        );
+        continue;
+      }
+    }
+
     // Role C: validate argument literal via the typed parser. Mirrors the wiring
     // in tsdoc-parser.ts.
     //
@@ -1655,46 +1703,6 @@ function buildTagDiagnostics(
             roleOutcome: "bypass",
           });
         }
-      }
-    }
-
-    // §5 Phase 5A — placement pre-check (snapshot consumer).
-    //
-    // Applies to ALL tags (builtin constraint and extension), not just builtin.
-    // semantic.tagDefinition is always non-null here (the null case causes an
-    // early `continue` at the top of the loop).
-    //
-    // §5 Phase 5C — this placement check is the only Role-A guard; the former
-    // synthetic-program fallback has been retired.
-    {
-      const definition = semantic.tagDefinition;
-      const targetKind = target?.kind ?? null;
-      const matchingSignatures = getMatchingTagSignatures(definition, placement, targetKind);
-      if (matchingSignatures.length === 0) {
-        if (snapshotLogsEnabled) {
-          logTagApplication(snapshotLog, {
-            consumer: "snapshot",
-            tag: tag.normalizedTagName,
-            placement,
-            subjectTypeKind: subjectTypeKindForLog,
-            roleOutcome: "A-reject",
-            elapsedMicros: elapsedMicros(tagStartMicros),
-          });
-        }
-        diagnostics.push(
-          createAnalysisDiagnostic(
-            "INVALID_TAG_PLACEMENT",
-            `Tag "@${definition.canonicalName}" is not allowed on placement "${placement}"` +
-              (targetKind === null ? "" : ` with target kind "${targetKind}"`),
-            tag.fullSpan,
-            {
-              tagName: tag.normalizedTagName,
-              placement,
-              ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
-            }
-          )
-        );
-        continue;
       }
     }
 
