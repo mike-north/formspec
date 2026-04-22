@@ -4,9 +4,11 @@ import {
   _mapSetupDiagnosticCode,
   _validateExtensionSetup,
   checkSyntheticTagApplicationsDetailed,
+  getMatchingTagSignatures,
   lowerTagApplicationToSyntheticCall,
   type SyntheticCompilerDiagnostic,
 } from "./compiler-signatures.js";
+import { _supportsConstraintCapability } from "./constraint-applicability.js";
 import {
   extractCommentBlockTagTexts,
   extractCommentSummaryText,
@@ -1634,6 +1636,53 @@ function buildTagDiagnostics(
             valueKind: typedParseResult.value.kind,
           });
         }
+
+        // §5 Phase 5A — Role B capability guard (snapshot consumer).
+        //
+        // Mirrors the build path's `supportsConstraintCapability()` call in
+        // `tsdoc-parser.ts` (~lines 870-896). The build path runs this check
+        // BEFORE the synthetic call to emit TYPE_MISMATCH when the field type
+        // lacks the required capability (e.g. @minimum 0 on string).
+        //
+        // Ordering invariant: integer-brand bypass ALREADY ran earlier in this
+        // loop (isIntegerBypass check above). This guard only runs on the
+        // non-broadened, non-bypassed path, after typed-parser C-pass.
+        //
+        // Only direct-field tags (target === null) are checked here.
+        // Path-targeted fields use the resolved path type, not the declared
+        // subject type — that check requires a different anchor and is already
+        // handled via the existing synthetic checker path until Phase 5C.
+        if (target === null) {
+          const requiredCapability = semantic.tagDefinition.capabilities[0];
+          if (!_supportsConstraintCapability(requiredCapability, subjectType, checker)) {
+            const actualTypeText =
+              standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
+            const capabilityLabel = requiredCapability ?? "unknown";
+            diagnostics.push(
+              createAnalysisDiagnostic(
+                "TYPE_MISMATCH",
+                `constraint "@${tag.normalizedTagName}" is only valid on ${capabilityLabel} targets, but field type is "${actualTypeText}"`,
+                tag.fullSpan,
+                {
+                  tagName: tag.normalizedTagName,
+                  placement,
+                }
+              )
+            );
+            if (snapshotLogsEnabled) {
+              logTagApplication(snapshotLog, {
+                consumer: "snapshot",
+                tag: tag.normalizedTagName,
+                placement,
+                subjectTypeKind: subjectTypeKindForLog,
+                roleOutcome: "B-reject",
+                elapsedMicros: elapsedMicros(tagStartMicros),
+              });
+            }
+            // Skip synthetic call — Role B already rejected.
+            continue;
+          }
+        }
       } else {
         // Extension-broadened (D1/D2) — bypass the typed parser but still pass
         // to the synthetic checker, which understands extension-registered types
@@ -1647,6 +1696,51 @@ function buildTagDiagnostics(
             roleOutcome: "bypass",
           });
         }
+      }
+    }
+
+    // §5 Phase 5A — placement pre-check (snapshot consumer).
+    //
+    // Before calling lowerTagApplicationToSyntheticCall, call
+    // getMatchingTagSignatures to detect INVALID_TAG_PLACEMENT without relying
+    // on the throw-and-catch path below. The try/catch is kept for defense-in-
+    // depth (Phase 5C will delete the synthetic machinery; the catch stays until
+    // then). When the explicit check fires first, the try/catch is unreachable
+    // for this tag application.
+    //
+    // Applies to ALL tags (builtin constraint and extension), not just builtin.
+    // semantic.tagDefinition is always non-null here (the null case causes an
+    // early `continue` at the top of the loop, line 1453).
+    {
+      const definition = semantic.tagDefinition;
+      const targetKind = target?.kind ?? null;
+      const matchingSignatures = getMatchingTagSignatures(definition, placement, targetKind);
+      if (matchingSignatures.length === 0) {
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "A-reject",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
+        diagnostics.push(
+          createAnalysisDiagnostic(
+            "INVALID_TAG_PLACEMENT",
+            `No synthetic signature for @${definition.canonicalName} on placement "${placement}"` +
+              (targetKind === null ? "" : ` with target kind "${targetKind}"`),
+            tag.fullSpan,
+            {
+              tagName: tag.normalizedTagName,
+              placement,
+              ...(target === null ? {} : { targetKind: target.kind, targetText: target.text }),
+            }
+          )
+        );
+        // Skip synthetic call — placement already rejected.
+        continue;
       }
     }
 
@@ -1785,9 +1879,7 @@ function buildTagDiagnostics(
     diagnostics.push(
       ..._mapGlobalSyntheticTsDiagnostics(batchCheck.globalDiagnostics, globalAnchorSpan, {
         placement,
-        tagNames: syntheticApplications.map(
-          (application) => application.tag.normalizedTagName
-        ),
+        tagNames: syntheticApplications.map((application) => application.tag.normalizedTagName),
       })
     );
   }
