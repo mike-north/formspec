@@ -23,10 +23,15 @@
  *   2. SIGKILL termination (OS kills before Node.js writes diagnostics)
  *   3. Null exit status with any signal
  *
- * ### Phase 4 gate
+ * ### §8.4b acceptance gate (Phase 5C)
  *
- * After host-checker migration: peakRSS_MB ≤ 50% of this baseline,
- * zero OOM at 1 GB cap across all four surfaces.
+ * Target: peakRSS_MB warm (median) ≤ 700 MB, zero OOM at 1 GB cap.
+ * The gate status is reported at the end of each run. Not enforced as a hard
+ * exit — CI dashboards monitor the trend.
+ *
+ * Phase 0 baseline was 861.3 MB. Phase 5C retired the synthetic TypeScript
+ * program batch, recovering part of the ~300 MB gap; remaining headroom
+ * depends on host-program caching and TypeScript checker warmup costs.
  *
  * ### How to run
  *
@@ -223,7 +228,7 @@ function median(values: readonly number[]): number {
 // ---------------------------------------------------------------------------
 
 interface StripeRealisticBuildBaseline {
-  readonly phase: "0";
+  readonly phase: "5C";
   readonly surface: "build";
   readonly description: string;
   readonly fixture: string;
@@ -304,22 +309,30 @@ async function main(): Promise<void> {
     const didOOM = detectOom(fixturePath, OOM_HEAP_CAP_MB);
     process.stderr.write(`    didOOM: ${String(didOOM)}\n`);
 
-    process.stderr.write(`\n--- Phase 0 Stripe Realistic Build Baseline ---\n`);
+    process.stderr.write(`\n--- Phase 5C Stripe Realistic Build Baseline ---\n`);
     process.stderr.write(`  surface:                     build\n`);
     process.stderr.write(`  wallTime_ms cold:             ${coldWallTimeMs.toFixed(2)}\n`);
     process.stderr.write(`  wallTime_ms warm (median):    ${medianWarmWallTimeMs.toFixed(2)}\n`);
     process.stderr.write(`  peakRSS_MB warm (median):    ${peakRSSMB.toFixed(1)} MB\n`);
     process.stderr.write(`  didOOM (${String(OOM_HEAP_CAP_MB)} MB cap):       ${String(didOOM)}\n`);
     process.stderr.write(`----------------------------------------------\n`);
-    process.stderr.write(`\n  Phase 4 gate: peakRSS_MB ≤ ${(peakRSSMB * 0.5).toFixed(1)} MB, zero OOM at 1 GB cap\n\n`);
+    // §8.4b acceptance gate — peakRSS ≤ 700 MB on the warm-median measurement.
+    // Reported at the end of the run for visibility; not enforced in CI (a
+    // hard exit would be disruptive if the gate hasn't fully landed).
+    const phase5CGateMB = 700;
+    const gateStatus = peakRSSMB <= phase5CGateMB ? "PASS" : "ABOVE-GATE";
+    process.stderr.write(
+      `\n  §8.4b gate: peakRSS_MB ≤ ${String(phase5CGateMB)} MB — ${gateStatus} (measured ${peakRSSMB.toFixed(1)} MB)\n`
+    );
+    process.stderr.write(`  Phase 0 baseline reference: 861.3 MB, Phase 4 baseline target: ≤50% of baseline (unmet)\n\n`);
 
     const commitSha = process.env["GIT_COMMIT_SHA"] ?? "unknown";
 
     const baseline: StripeRealisticBuildBaseline = {
-      phase: "0",
+      phase: "5C",
       surface: "build",
       description:
-        "Stripe realistic OOM sweep — build surface (generateSchemasFromProgram, direct Stripe types, no Ref<T> wrapper)",
+        "Post-Phase-5C synthetic-checker retirement baseline — build surface (generateSchemasFromProgram, direct Stripe types, no Ref<T> wrapper)",
       fixture: "e2e/fixtures/stripe-realistic-oom/checkout-form.ts",
       typeName: TYPE_NAME,
       runs: RUNS,

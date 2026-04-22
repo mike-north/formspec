@@ -73,66 +73,23 @@ interface KnownDivergenceEntry {
 /**
  * Pinned list of known build/snapshot divergences.
  *
- * §3 catalogue entries:
- *   - `@const not-json` — Build: passes quoted string literal; Snapshot: omits
- *     argument entirely. Both consumers reach role-C, but may produce different
- *     diagnostic codes when the argument is malformed JSON.
- *   - `@minimum Infinity` — Build: stringifies to `"Infinity"`; Snapshot:
- *     passes `Infinity` as an identifier. Divergent C-outcome.
- *   - `@minimum NaN` — Build: stringifies to `"NaN"`; Snapshot passes `NaN`
- *     as an identifier. Divergent C-outcome.
- *   - Integer-brand snapshot-path gap (#315) — The build path has an
- *     `isIntegerBrandedType` bypass that accepts numeric constraints on
- *     integer-branded types without a synthetic call. The snapshot path does
- *     not replicate this bypass today, so the two consumers may diverge on
- *     integer-branded subject types.
+ * §3 catalogue history (kept for reference — every entry has been resolved):
+ *   - `@const not-json` (§3): Build path formerly passed a quoted string
+ *     literal into the synthetic program; snapshot omitted the argument.
+ *     Phase 5C — synthetic retirement — resolves this; both consumers now
+ *     route Role C through the typed parser, which applies the same
+ *     raw-string-fallback policy on both sides.
+ *   - `@minimum Infinity` / `@minimum NaN` (§3): NORMALIZED in Phase 2 and
+ *     kept identical in Phase 5C.
+ *   - Integer-brand snapshot-path gap (#315 / #325): resolved in Phase 4A.
+ *   - Alias-chain type-resolution divergence (#363): resolved in Phase 5C.
+ *     Both consumers now share a unified validation path that never invokes
+ *     the synthetic prelude, so alias-name vs primitive-base differences no
+ *     longer cause divergent outcomes.
  *
- * Phase 4A update: the integer-brand snapshot-path gap (#325) is now resolved.
- * `isIntegerBrandedType` bypass was added to the snapshot consumer in Phase 4A,
- * so the `@minimum 0 on Integer` KNOWN_DIVERGENCES entry is removed. Both
- * consumers now converge on integer-branded types with numeric-comparable tags.
+ * @see docs/refactors/synthetic-checker-retirement.md §4 Phase 5C
  */
-const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [
-  // §3: @const not-json — build passes quoted string; snapshot omits argument
-  {
-    fixtureLabel: "@const not-json string",
-    divergenceKind: "any",
-    reason:
-      "§3: Build path passes quoted string literal for invalid JSON; snapshot omits argument. See docs/refactors/synthetic-checker-retirement.md §3.",
-  },
-  // §3: @minimum Infinity — NORMALIZED in Phase 2.
-  // Build path now passes Infinity as an identifier (same as snapshot). Both
-  // renderSyntheticArgumentExpression (in tsdoc-parser.ts) and renderBuildArgumentExpressionProxy
-  // (this harness proxy) were updated to handle Infinity as an identifier.
-  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
-  //
-  // §3: @minimum NaN — NORMALIZED in Phase 2. Same mechanism as Infinity.
-  // This KNOWN_DIVERGENCES entry is intentionally removed; no divergence expected.
-  //
-  // Integer-brand snapshot-path gap (PR #325): RESOLVED in Phase 4A.
-  // The isIntegerBrandedType bypass was added to the snapshot consumer.
-  // Both consumers now converge on numeric-comparable tags for integer-branded types.
-  // This entry is intentionally removed; no divergence expected for "@minimum 0 on Integer".
-  // Alias-chain type-resolution divergence (newly discovered by this harness):
-  // The build consumer resolves subject type to its primitive base (number) before
-  // invoking checkSyntheticTagApplication; supporting declarations include the alias
-  // chain. The snapshot consumer uses checker.typeToString on the declared type node
-  // which may produce the alias name (e.g. "P") rather than "number". When the
-  // synthetic helper prelude does not include the alias chain declaration, the
-  // snapshot rejects the constraint as a TYPE_MISMATCH while the build passes.
-  // This is a pre-existing divergence, not introduced by this harness.
-  // Phase 4D decision deferred: see #363 for tracking and resolution approach.
-  {
-    fixtureLabel: "alias-chain: @maximum 100 on derived alias (P = NN = number, @minimum 0 on NN)",
-    divergenceKind: "role-outcome-divergence",
-    reason:
-      "Alias-chain type-resolution divergence (newly discovered by Phase 0.5a harness): " +
-      "build consumer resolves subject type to primitive base (number) before synthetic call; " +
-      "snapshot consumer uses the alias name from the declared type node (P), which the synthetic " +
-      "prelude does not have supporting declarations for, causing a TYPE_MISMATCH rejection. " +
-      "This is a pre-existing divergence — Phase 4D deferred, tracked in #363.",
-  },
-];
+const KNOWN_DIVERGENCES: readonly KnownDivergenceEntry[] = [];
 
 // ---------------------------------------------------------------------------
 // ParityFixture type

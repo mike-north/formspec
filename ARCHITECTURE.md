@@ -296,15 +296,15 @@ DEBUG=formspec:analysis:constraint-validator:snapshot pnpm run build
 # Broadening-bypass decisions only
 DEBUG=formspec:analysis:constraint-validator:broadening pnpm run build
 
-# Synthetic-program invocations and setup diagnostics
+# Extension-setup diagnostics only (historical synthetic-checker namespace)
+# The synthetic TypeScript program itself was retired in Phase 5C; this
+# namespace now only surfaces setup failures from `_validateExtensionSetup`.
 DEBUG=formspec:analysis:constraint-validator:synthetic pnpm run build
 ```
 
 ### Per-tag-application log-entry schema (§8.3b)
 
 Each constraint-tag evaluation emits one structured record at `debug` level.
-Enabling `trace` adds argument-lowering detail before the synthetic program is
-called.
 
 | Field | Type | Description |
 |---|---|---|
@@ -317,15 +317,20 @@ called.
 
 #### Role outcome values
 
+Phase 5C retired the synthetic TypeScript program batch. Constraint-tag
+validation now flows through three roles in order: Role A (placement), Role B
+(capability guard, including path-target resolution), Role C (typed-parser
+argument validation). A `C-pass` outcome means all three roles accepted.
+
 | Value | Meaning |
 |---|---|
 | `A-pass` | Placement check passed; tag accepted without reaching role C |
 | `A-reject` | Placement check failed (`INVALID_TAG_PLACEMENT`) |
 | `B-pass` | Path/target check passed (for path-targeted constraints) |
-| `B-reject` | Path/target check failed (`UNSUPPORTED_TARGETING_SYNTAX`, `UNKNOWN_PATH_TARGET`) |
-| `C-pass` | Argument type check passed via synthetic program |
-| `C-reject` | Argument type check failed (`TYPE_MISMATCH`, `INVALID_TAG_ARGUMENT`) |
-| `D1` | Direct-field custom-constraint dispatch (no synthetic involvement) |
+| `B-reject` | Capability or path-target check failed (`TYPE_MISMATCH`, `UNKNOWN_PATH_TARGET`, `UNSUPPORTED_TARGETING_SYNTAX`) |
+| `C-pass` | Typed-parser argument validation passed — terminal success outcome |
+| `C-reject` | Typed-parser argument validation failed (`INVALID_TAG_ARGUMENT`, `MISSING_TAG_ARGUMENT`, `TYPE_MISMATCH` from `@const` IR check) |
+| `D1` | Direct-field custom-constraint dispatch (custom-type broadening) |
 | `D2` | Path-target built-in broadening dispatch |
 | `bypass` | Broadening registry short-circuit (tag accepted without role-C check) |
 

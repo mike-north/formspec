@@ -17,10 +17,6 @@ export interface HybridBenchmarkScenario {
 export interface HybridBenchmarkStats {
   readonly fileSnapshotCacheHits: number;
   readonly fileSnapshotCacheMisses: number;
-  readonly syntheticBatchCacheHits: number;
-  readonly syntheticBatchCacheMisses: number;
-  readonly syntheticCompileCount: number;
-  readonly syntheticCompileApplications: number;
 }
 
 export interface HybridBenchmarkResult {
@@ -158,11 +154,6 @@ export function subtractHybridBenchmarkStats(
   return {
     fileSnapshotCacheHits: after.fileSnapshotCacheHits - before.fileSnapshotCacheHits,
     fileSnapshotCacheMisses: after.fileSnapshotCacheMisses - before.fileSnapshotCacheMisses,
-    syntheticBatchCacheHits: after.syntheticBatchCacheHits - before.syntheticBatchCacheHits,
-    syntheticBatchCacheMisses: after.syntheticBatchCacheMisses - before.syntheticBatchCacheMisses,
-    syntheticCompileCount: after.syntheticCompileCount - before.syntheticCompileCount,
-    syntheticCompileApplications:
-      after.syntheticCompileApplications - before.syntheticCompileApplications,
   };
 }
 
@@ -194,23 +185,19 @@ export function renderHybridToolingBenchmarkReport(
     lines.push(scenario.description);
     lines.push("");
     lines.push(
-      "| Operation | Mode | Startup (ms) | Cold (ms) | Warm (ms) | Snapshot H/M | Synthetic H/M | Compiles | Applications | Summary |"
+      "| Operation | Mode | Startup (ms) | Cold (ms) | Warm (ms) | Snapshot H/M | Summary |"
     );
-    lines.push("| --- | --- | ---: | ---: | ---: | --- | --- | ---: | ---: | --- |");
+    lines.push("| --- | --- | ---: | ---: | ---: | --- | --- |");
 
     for (const result of scenarioResults) {
       const snapshotCacheSummary = formatCountPair(
         result.stats.fileSnapshotCacheHits,
         result.stats.fileSnapshotCacheMisses
       );
-      const syntheticCacheSummary = formatCountPair(
-        result.stats.syntheticBatchCacheHits,
-        result.stats.syntheticBatchCacheMisses
-      );
       lines.push(
         `| ${result.operation} | ${result.mode} | ${formatMs(result.startupMs)} | ${formatMs(
           result.coldMs
-        )} | ${formatMs(result.warmMs)} | ${snapshotCacheSummary} | ${syntheticCacheSummary} | ${formatCount(result.stats.syntheticCompileCount)} | ${formatCount(result.stats.syntheticCompileApplications)} | ${result.summary} |`
+        )} | ${formatMs(result.warmMs)} | ${snapshotCacheSummary} | ${result.summary} |`
       );
     }
 

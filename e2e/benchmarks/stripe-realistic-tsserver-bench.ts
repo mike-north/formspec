@@ -111,6 +111,12 @@ function startRssPoller(intervalMs = 5): RssPoller {
 
 interface TsserverInvocationResult {
   readonly wallTimeMs: number;
+  /**
+   * §5 Phase 5C — retained as 0 for schema compatibility. The synthetic
+   * TypeScript program batch has been deleted, so no per-invocation compile
+   * count is measured any more. Downstream dashboards that track the field
+   * will see a steady 0 going forward.
+   */
   readonly syntheticCompileCount: number;
   readonly diagnosticsCount: number;
 }
@@ -147,18 +153,16 @@ function runTsserverSession(
     const invocations: TsserverInvocationResult[] = [];
 
     for (let i = 0; i < runs; i++) {
-      const statsBefore = service.getStats();
       const start = performance.now();
 
       const diagnosticsResult = service.getDiagnostics(fixturePath);
 
       const wallTimeMs = performance.now() - start;
-      const statsAfter = service.getStats();
 
       invocations.push({
         wallTimeMs,
-        syntheticCompileCount:
-          statsAfter.syntheticCompileCount - statsBefore.syntheticCompileCount,
+        // §5 Phase 5C — synthetic batch retired; always 0.
+        syntheticCompileCount: 0,
         diagnosticsCount: diagnosticsResult.diagnostics.length,
       });
     }

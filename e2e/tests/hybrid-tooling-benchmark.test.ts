@@ -38,10 +38,6 @@ describe("hybrid tooling benchmark harness", () => {
         stats: {
           fileSnapshotCacheHits: 1,
           fileSnapshotCacheMisses: 1,
-          syntheticBatchCacheHits: 0,
-          syntheticBatchCacheMisses: 1,
-          syntheticCompileCount: 1,
-          syntheticCompileApplications: 2,
         },
       },
     ];
@@ -54,7 +50,7 @@ describe("hybrid tooling benchmark harness", () => {
     expect(report).toContain("2 canonical diagnostics");
     expect(report).toContain("| Operation | Mode | Startup (ms) |");
     expect(report).toContain(
-      "| diagnostics | direct-semantic-service | 0.0 | 12.5 | 2.1 | 1/1 | 0/1 | 1 | 2 | 2 canonical diagnostics |"
+      "| diagnostics | direct-semantic-service | 0.0 | 12.5 | 2.1 | 1/1 | 2 canonical diagnostics |"
     );
   });
 
@@ -71,27 +67,15 @@ describe("hybrid tooling benchmark harness", () => {
     const before: HybridBenchmarkStats = {
       fileSnapshotCacheHits: 1,
       fileSnapshotCacheMisses: 2,
-      syntheticBatchCacheHits: 3,
-      syntheticBatchCacheMisses: 4,
-      syntheticCompileCount: 5,
-      syntheticCompileApplications: 6,
     };
     const after: HybridBenchmarkStats = {
       fileSnapshotCacheHits: 4,
       fileSnapshotCacheMisses: 8,
-      syntheticBatchCacheHits: 9,
-      syntheticBatchCacheMisses: 10,
-      syntheticCompileCount: 11,
-      syntheticCompileApplications: 14,
     };
 
     expect(subtractHybridBenchmarkStats(after, before)).toEqual({
       fileSnapshotCacheHits: 3,
       fileSnapshotCacheMisses: 6,
-      syntheticBatchCacheHits: 6,
-      syntheticBatchCacheMisses: 6,
-      syntheticCompileCount: 6,
-      syntheticCompileApplications: 8,
     });
   });
 });
