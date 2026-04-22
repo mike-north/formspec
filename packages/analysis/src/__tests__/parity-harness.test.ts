@@ -23,6 +23,7 @@
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
+  _supportsConstraintCapability,
   buildFormSpecAnalysisFileSnapshot,
   checkSyntheticTagApplication,
   describeTypeKind,
@@ -600,28 +601,43 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   let diagnosticCode: string | undefined;
   let diagnosticMessage: string | undefined;
 
-  try {
-    const result = checkSyntheticTagApplication({
-      tagName: fixture.tagName,
-      placement: resolvedPlacement,
-      hostType: subjectTypeText,
-      subjectType: subjectTypeText,
-      supportingDeclarations,
-      ...(argumentExpression !== null ? { argumentExpression } : {}),
-    });
-    hasDiagnostic = result.diagnostics.length > 0;
-    if (hasDiagnostic) {
-      const firstDiag = result.diagnostics[0];
-      if (firstDiag !== undefined) {
-        diagnosticCode = deriveBuildDiagnosticCode(firstDiag.message);
-        diagnosticMessage = firstDiag.message;
-      }
+  // §5 Phase 5A — apply the Role-B capability guard that the real build path
+  // applies via `supportsConstraintCapability()` in `tsdoc-parser.ts`.
+  // The snapshot consumer now also applies this check, so the proxy must mirror
+  // it for parity to be meaningful. Only applies to direct-field (no target).
+  if (subjectType !== undefined) {
+    const requiredCapability = definition?.capabilities[0];
+    if (!_supportsConstraintCapability(requiredCapability, subjectType, checker)) {
+      hasDiagnostic = true;
+      diagnosticCode = "TYPE_MISMATCH";
+      diagnosticMessage = `constraint "@${fixture.tagName}" capability check failed (Role B)`;
     }
-  } catch (error) {
-    // lowerTagApplicationToSyntheticCall throws for invalid placements (A-reject)
-    hasDiagnostic = true;
-    diagnosticCode = "INVALID_TAG_PLACEMENT";
-    diagnosticMessage = error instanceof Error ? error.message : String(error);
+  }
+
+  if (!hasDiagnostic) {
+    try {
+      const result = checkSyntheticTagApplication({
+        tagName: fixture.tagName,
+        placement: resolvedPlacement,
+        hostType: subjectTypeText,
+        subjectType: subjectTypeText,
+        supportingDeclarations,
+        ...(argumentExpression !== null ? { argumentExpression } : {}),
+      });
+      hasDiagnostic = result.diagnostics.length > 0;
+      if (hasDiagnostic) {
+        const firstDiag = result.diagnostics[0];
+        if (firstDiag !== undefined) {
+          diagnosticCode = deriveBuildDiagnosticCode(firstDiag.message);
+          diagnosticMessage = firstDiag.message;
+        }
+      }
+    } catch (error) {
+      // lowerTagApplicationToSyntheticCall throws for invalid placements (A-reject)
+      hasDiagnostic = true;
+      diagnosticCode = "INVALID_TAG_PLACEMENT";
+      diagnosticMessage = error instanceof Error ? error.message : String(error);
+    }
   }
 
   return {
@@ -654,6 +670,12 @@ function deriveBuildDiagnosticCode(message: string): string {
 /**
  * Derives a role outcome for the build consumer based on diagnostic presence
  * and code.
+ *
+ * Phase 5A: Role-B capability failures are mapped to "C-reject" in the parity
+ * model to match the snapshot consumer's mapping (both emit TYPE_MISMATCH;
+ * the exact role label — B vs C — is not semantically significant for parity
+ * detection). The important thing is that both consumers agree on whether a
+ * diagnostic is produced and what its code is.
  */
 function deriveBuildRoleOutcome(result: BuildConsumerResult): RoleOutcome {
   if (!result.hasDiagnostic) {
