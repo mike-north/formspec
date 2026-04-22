@@ -1248,11 +1248,13 @@ function buildTagDiagnostics(
   const declaredSubjectType = getDeclaredSubjectType(node, checker, subjectType);
   const diagnostics: FormSpecAnalysisDiagnostic[] = [];
   let discriminatorTagCount = 0;
-  // §5 Phase 5C — renderStandaloneTypeSyntax is retained for Role-B error
-  // messages (path-target and direct-field capability rejections include the
-  // actual type text). The standalone form yields a self-contained string
-  // even for types that reference imported names, which keeps the error
-  // message stable across import boundaries.
+  // §5 Phase 5C — renderStandaloneTypeSyntax is used for direct-field Role-B
+  // error messages (the TYPE_MISMATCH path where target === null). The
+  // standalone form yields a self-contained string even for types that
+  // reference imported names, which keeps error messages stable across import
+  // boundaries. Path-target Role-B error messages use typeToString directly
+  // against the resolved path-terminal type — the standalone renderer is not
+  // needed there because the terminal type is already a concrete local type.
   const standaloneSubjectTypeText = optionalMeasure(
     performance,
     "analysis.renderStandaloneSubjectType",
@@ -1423,10 +1425,16 @@ function buildTagDiagnostics(
               // via resolvePathTargetType(declaredSubjectType, ...). Use it to
               // drive the path-target Role-B check.
               if (pathTargetResolution === null) {
-                // tag.target.path was null — malformed path target. Skip the
-                // capability check; downstream lowering will surface a parser
-                // error.
-                evaluatedType = null;
+                // tag.target.path is null — the path target text failed to
+                // parse (e.g. `@minimum :invalid-syntax 0` where the segment
+                // contains non-identifier characters). Before Phase 5C this
+                // fell through to the synthetic lowering which would reject it
+                // there; now that the synthetic checker is retired we must emit
+                // a diagnostic here instead of silently accepting it.
+                pathRejection = {
+                  code: "INVALID_PATH_TARGET",
+                  message: `Tag "@${tag.normalizedTagName}" has an invalid path target.`,
+                };
               } else if (pathTargetResolution.kind === "missing-property") {
                 pathRejection = {
                   code: "UNKNOWN_PATH_TARGET",

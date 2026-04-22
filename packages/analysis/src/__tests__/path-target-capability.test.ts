@@ -118,6 +118,34 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     expect(relevant[0]?.data["targetText"]).toBe("missing");
   });
 
+  // Slice C Copilot regression: before Phase 5C the synthetic lowering would
+  // reject a malformed path target (one whose text doesn't parse as valid
+  // dot-separated identifiers, e.g. `:invalid-path-syntax`). After the
+  // synthetic checker was retired the snapshot consumer silently accepted such
+  // targets without emitting any diagnostic. This test pins the corrected
+  // behaviour: INVALID_PATH_TARGET must be emitted.
+  it("emits INVALID_PATH_TARGET for a malformed path target — `@minimum :invalid-path-syntax 0` (non-identifier segment)", () => {
+    const source = `
+      interface Money {
+        amount: number;
+        currency: string;
+      }
+      class Foo {
+        /** @minimum :invalid-path-syntax 0 */
+        price!: Money;
+      }
+    `;
+    const diagnostics = collectDiagnostics(source);
+    // The path text "invalid-path-syntax" fails the identifier-segment regex
+    // inside extractPathTarget(), so tag.target.path is null. Before the fix
+    // this escaped validation silently; now it must emit INVALID_PATH_TARGET.
+    const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
+    expect(relevant).toHaveLength(1);
+    expect(relevant[0]?.code).toBe("INVALID_PATH_TARGET");
+    expect(relevant[0]?.data["targetKind"]).toBe("path");
+    expect(relevant[0]?.data["targetText"]).toBe("invalid-path-syntax");
+  });
+
   // Panel Fix #6: TYPE_MISMATCH from an unresolvable intermediate — path traverses
   // through a non-object terminal type (e.g. `amount.nested` where `amount` is
   // `number`, so `.nested` is un-traversable).

@@ -659,8 +659,6 @@ function buildCompilerBackedConstraintDiagnostics(
     ]);
   }
 
-  // Typed parser accepted the argument. Log at trace level before falling through
-  // to the synthetic checker (which handles Roles A/B/D1/D2 until Phase 4).
   // §4 Phase 5C — typed parser accepted the argument. This is the terminal
   // success outcome: all constraint-tag validation (placement Role A, path-target
   // resolution, capability Role B, argument Role C) has now passed via the
