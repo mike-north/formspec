@@ -316,9 +316,8 @@ function constValueTypeLabel(value: JsonValue): string {
  * Human-readable label for a field type in `@const` placement diagnostics.
  *
  * The build path renders `effectiveType` via `renderTypeLabel` in
- * `semantic-targets.ts`. The snapshot consumer uses `checker.typeToString`
- * as the closest equivalent. Caller may pass a pre-rendered string (e.g.
- * `standaloneSubjectTypeText`) to preserve existing formatting.
+ * `semantic-targets.ts`. The snapshot consumer renders the provided
+ * `ts.Type` via `checker.typeToString` as the closest equivalent.
  */
 function renderFieldTypeLabel(type: ts.Type, checker: ts.TypeChecker): string {
   return checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation);
@@ -340,17 +339,16 @@ function renderFieldTypeLabel(type: ts.Type, checker: ts.TypeChecker): string {
  *
  * Checks (in order):
  *   1. **Placement.** Field type must be a primitive (`string`, `number`,
- *      `bigint`, `boolean`, `null`) or a string-literal enum. Otherwise:
- *      `constraint "const" is only valid on primitive or enum fields, but
- *      field type is "<label>"`.
+ *      `integer`, `bigint`, `boolean`, `null`) or a string-literal enum.
+ *      Otherwise: `constraint "const" is only valid on primitive or enum
+ *      fields, but field type is "<label>"`.
  *   2. **Primitive value-type match.** For a primitive field, the value's
  *      runtime `typeof` (with `null`/`Array` carve-outs) must match the
- *      primitive kind. `integer` and `bigint` both accept `"number"` — but
- *      note this helper does not classify `integer` itself (there is no
- *      TS-level flag); integer-branded types should bypass via
- *      `_isIntegerBrandedType` at the call site. If the types disagree:
- *      `@const value type "<valueType>" is incompatible with field type
- *      "<primitiveKind>"`.
+ *      primitive kind. `classifyConstTargetType` classifies integer-branded
+ *      types as `primitiveKind: "integer"` (via `_isIntegerBrandedType`),
+ *      and both `integer` and `bigint` accept `"number"`. If the types
+ *      disagree: `@const value type "<valueType>" is incompatible with
+ *      field type "<primitiveKind>"`.
  *   3. **Enum membership.** For an enum field, the value must deep-equal one
  *      member via {@link jsonValueEquals}. Otherwise: `@const value <JSON>
  *      is not one of the enum members`.
