@@ -1,5 +1,29 @@
 # @formspec/validator
 
+## 0.1.0-alpha.60
+
+### Patch Changes
+
+- [#404](https://github.com/mike-north/formspec/pull/404) [`f0929c6`](https://github.com/mike-north/formspec/commit/f0929c60e7f74db7da6cffd589a8daaa5ba1e834) Thanks [@mike-north](https://github.com/mike-north)! - Tighten external-dependency minimums so every package advertises the version it's actually built against, and align internal devDependencies across the workspace.
+
+  Consumer-visible:
+  - `@formspec/analysis`, `@formspec/build`, `@formspec/eslint-plugin`, `@formspec/ts-plugin`: `typescript` peer dependency raised from `^5.0.0` to `^5.7.3`.
+  - `@formspec/cli`: `typescript` runtime dependency raised from `^5.0.0` to `^5.7.3`.
+  - `@formspec/eslint-plugin`: `eslint` peer dependency raised from `^9.0.0` to `^9.39.2`.
+
+  Internal only (devDependencies): `vitest` aligned to `^3.2.4` across all packages; `@microsoft/api-extractor` upgraded to `^7.58.7` (latest 7.x, now bundling TypeScript 5.9.3).
+
+  Consumers already on TypeScript 5.7+ and ESLint 9.39+ are unaffected. Consumers on older ranges will see a peer-dependency warning and should upgrade.
+
+- [#405](https://github.com/mike-north/formspec/pull/405) [`d70c0b0`](https://github.com/mike-north/formspec/commit/d70c0b0414eb1630b5593ebe0a22a9e3dc3c2d0a) Thanks [@mike-north](https://github.com/mike-north)! - Raise the `typescript` minimum from `^5.7.3` to `^5.9.3` for the workspace packages that declare a `typescript` peer or runtime dependency, so those packages advertise TypeScript 5.9 as their supported baseline. The other packages listed in this changeset receive a patch bump because they are part of the repo's linked version group.
+
+  Consumer-visible:
+  - `@formspec/analysis`, `@formspec/build`, `@formspec/eslint-plugin`, `@formspec/ts-plugin`: `typescript` peer dependency raised to `^5.9.3`.
+  - `@formspec/cli`: `typescript` runtime dependency raised to `^5.9.3`.
+  - `@formspec/config`, `@formspec/dsl`, `@formspec/language-server`, `@formspec/runtime`, `@formspec/validator`, and `formspec`: patch bumps only, with no direct `typescript` dependency range change in this changeset.
+
+  Consumers already on TypeScript 5.9 are unaffected. Consumers on older ranges will see a peer-dependency warning and should upgrade where applicable.
+
 ## 0.1.0-alpha.28
 
 ### Patch Changes
