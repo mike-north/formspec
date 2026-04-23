@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -44,7 +44,7 @@ describe("@formspec/ts-plugin CJS entry point surface", () => {
 
   let report: CjsEntryPointReport;
 
-  it("loads without throwing", async () => {
+  beforeAll(async () => {
     const { stdout } = await execFileAsync(process.execPath, ["-e", script], {
       cwd: repoRoot,
     });
