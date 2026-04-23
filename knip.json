@@ -2,20 +2,20 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     "packages/core": {
-      "entry": ["src/__tests__/**/*.test-d.ts"]
+      "entry": ["tests/**/*.test-d.ts"]
     },
     "packages/dsl": {
-      "entry": ["src/__tests__/**/*.test-d.ts"]
+      "entry": ["tests/**/*.test-d.ts"]
     },
     "packages/build": {
       "entry": [
-        "src/__tests__/fixtures/**/*.ts",
-        "src/__tests__/parity/fixtures/**/*.ts"
+        "tests/fixtures/**/*.ts",
+        "tests/parity/fixtures/**/*.ts"
       ],
-      "ignore": ["src/__tests__/fixtures/method-signature-schemas.ts"]
+      "ignore": ["tests/fixtures/method-signature-schemas.ts"]
     },
     "packages/cli": {
-      "entry": ["src/__tests__/fixtures/**/*.ts"]
+      "entry": ["tests/fixtures/**/*.ts"]
     },
     "packages/analysis": {
       "ignoreDependencies": ["pino-pretty"]

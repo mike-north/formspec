@@ -268,7 +268,7 @@ export class SmartSizeCompact {
      * The negative-scope case (file outside the glob keeps the root
      * setting) is covered at the unit layer by
      * `mergePackageOverridesForFile > falls back to the root value when
-     * no override pattern matches` in `packages/config/src/__tests__/resolve.test.ts`,
+     * no override pattern matches` in `packages/config/tests/resolve.test.ts`,
      * so adding a second CLI subprocess here would be redundant.
      *
      * @see https://github.com/mike-north/formspec/pull/356

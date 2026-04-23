@@ -12,6 +12,5 @@
       "@formspec/core/internals": ["../core/dist/internals.d.ts"]
     }
   },
-  "include": ["src/**/*", "package.json"],
-  "exclude": ["src/__tests__/**/*"]
+  "include": ["src/**/*", "package.json"]
 }
