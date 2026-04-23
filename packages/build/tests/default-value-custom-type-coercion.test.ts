@@ -29,6 +29,7 @@ import type {
   CustomTypeRegistration,
   ObjectProperty,
   TypeDefinition,
+  JsonValue,
 } from "@formspec/core/internals";
 import { IR_VERSION, defineCustomType, defineExtension } from "@formspec/core/internals";
 import { generateJsonSchemaFromIR } from "../src/json-schema/ir-generator.js";
@@ -48,7 +49,7 @@ const PROVENANCE: Provenance = {
 const EXTENSION_ID = "x-test/numeric";
 const DECIMAL_TYPE_ID = `${EXTENSION_ID}/Decimal`;
 
-const defaultValueAnnotation = (value: unknown): AnnotationNode => ({
+const defaultValueAnnotation = (value: JsonValue): AnnotationNode => ({
   kind: "annotation",
   annotationKind: "defaultValue",
   value,
@@ -187,7 +188,9 @@ describe("issue #358: @defaultValue coercion for custom-type fields", () => {
 
     it("stringifies a bigint @defaultValue when the custom type emits type: 'string'", () => {
       // Covers the `typeof value === "bigint"` branch of the inference fallback.
-      const ir = makeIR([makeDecimalField("price", [defaultValueAnnotation(9n)])]);
+      // bigint is not a JsonValue; the cast exercises the runtime coercion path
+      // that handles bigint values that may reach the pipeline through TSDoc parsing.
+      const ir = makeIR([makeDecimalField("price", [defaultValueAnnotation(9n as unknown as JsonValue)])]);
       const schema = generateJsonSchemaFromIR(ir, {
         extensionRegistry: registryWith(inferredDecimalType),
       });

@@ -152,6 +152,7 @@ describe("build metadata extension integration", () => {
             defineConstraintTag({
               tagName: "currency",
               constraintName: "currency",
+              parseValue: (raw) => raw,
             }),
           ],
           metadataSlots: [
@@ -175,6 +176,7 @@ describe("build metadata extension integration", () => {
             defineConstraintTag({
               tagName: "currency",
               constraintName: "currency",
+              parseValue: (raw) => raw,
             }),
           ],
           metadataSlots: [

@@ -984,7 +984,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       return {
         kind: "custom",
         typeId: "x-test/composed/ComposedMoney",
-        payload: undefined,
+        payload: null,
       };
     }
 

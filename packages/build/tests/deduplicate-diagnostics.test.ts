@@ -53,7 +53,7 @@ function tagSiteDiag(
     message,
     severity: "error",
     primaryLocation: {
-      surface: "jsdoc",
+      surface: "tsdoc",
       file: "/virtual/test.ts",
       line,
       column: 0,

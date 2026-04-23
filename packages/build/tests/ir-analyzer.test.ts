@@ -676,7 +676,7 @@ describe("canonicalizeTSDoc", () => {
   // Import inline to avoid module-level issues if the module isn't found
   it("produces a valid FormIR from analyzeInterfaceToIR output", async () => {
     const { canonicalizeTSDoc } = await import("../src/canonicalize/tsdoc-canonicalizer.js");
-    const { IR_VERSION } = await import("@formspec/core");
+    const { IR_VERSION } = await import("@formspec/core/internals");
 
     const ctx = createProgramContext(interfaceFixturePath);
     const decl = findInterfaceByName(ctx.sourceFile, "SimpleConfig");

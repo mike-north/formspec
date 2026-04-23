@@ -179,7 +179,7 @@ describe("generateSchemas with FormSpecConfig", () => {
       const config: FormSpecConfig = {
         metadata: {
           field: {
-            apiName: { mode: "prefer-explicit" },
+            apiName: { mode: "disabled" },
           },
         },
       };
@@ -191,7 +191,7 @@ describe("generateSchemas with FormSpecConfig", () => {
         errorReporting: "throw",
       });
 
-      // With prefer-explicit: no apiName inference, so the property name is preserved as-is
+      // With disabled: no apiName inference, so the property name is preserved as-is
       expect(result.jsonSchema.properties).toHaveProperty("userName");
     } finally {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });

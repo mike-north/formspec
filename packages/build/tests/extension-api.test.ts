@@ -259,6 +259,7 @@ describe("Extension API", () => {
               defineConstraintTag({
                 tagName: "Currency",
                 constraintName: "Currency",
+                parseValue: (raw) => raw,
               }),
             ],
             metadataSlots: [
@@ -520,7 +521,7 @@ describe("Extension API", () => {
       });
 
       const props = result.properties ?? {};
-      expect(props.amount).toMatchObject({
+      expect(props["amount"]).toMatchObject({
         type: "string",
         "x-test-decimal": true,
         decimalMinimum: "0.01",

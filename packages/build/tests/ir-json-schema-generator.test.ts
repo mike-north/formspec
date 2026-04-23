@@ -644,7 +644,7 @@ describe("generateJsonSchemaFromIR", () => {
         string
       >;
       expectedDisplayNames["__proto__"] = "Prototype";
-      expectedDisplayNames.constructor = "Constructor";
+      expectedDisplayNames["constructor"] = "Constructor";
 
       expect(prop).toEqual({
         enum: ["__proto__", "constructor"],

@@ -48,7 +48,7 @@ function countOccurrences(haystack: string, needle: string): number {
  */
 function expectInDefs(schema: unknown, name: string, reason = ""): void {
   const root = expectRecord(schema, "schema");
-  const defs = (root.$defs ?? {}) as Record<string, unknown>;
+  const defs = (root["$defs"] ?? {}) as Record<string, unknown>;
   const keys = Object.keys(defs);
   const suffix = reason ? ` — ${reason}` : "";
   expect(keys, `Expected ${name} in $defs (found [${keys.join(", ")}])${suffix}`).toContain(name);
@@ -291,7 +291,7 @@ describe("$defs deduplication — issue #309", () => {
       const monetary = expectRecord(defs["MonetaryAmount"], "$defs.MonetaryAmount");
       const props = expectRecord(monetary["properties"], "MonetaryAmount.properties");
       // spec: JSON Schema 2020-12 §10.2.1 — named aliases go in $defs, referenced via $ref
-      expect(props["currency"]?.$ref).toBe("#/$defs/Currency");
+      expect((props["currency"] as Record<string, unknown>)?.["$ref"]).toBe("#/$defs/Currency");
     });
 
     it("places Address in $defs for a required address field", () => {

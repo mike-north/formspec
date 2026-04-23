@@ -157,8 +157,8 @@ describe("generateSchemas", () => {
       typeName: "MetadataDescriptionRegression",
       metadata: {
         field: {
-          apiName: { mode: "prefer-explicit" },
-          displayName: { mode: "prefer-explicit" },
+          apiName: { mode: "disabled" },
+          displayName: { mode: "disabled" },
         },
       },
     });

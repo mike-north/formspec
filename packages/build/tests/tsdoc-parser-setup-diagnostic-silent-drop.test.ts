@@ -80,7 +80,7 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
     const invalidRegistry = createExtensionRegistry([
       {
         extensionId: "x-test/invalid",
-        types: [{ typeName: "MyType", tsTypeNames: ["Not A Type"] }],
+        types: [{ typeName: "MyType", tsTypeNames: ["Not A Type"], toJsonSchema: () => ({}) }],
       },
     ]);
 
@@ -115,7 +115,7 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
     const unsupportedBuiltinRegistry = createExtensionRegistry([
       {
         extensionId: "x-test/bad-array",
-        types: [{ typeName: "Array", tsTypeNames: ["Array"] }],
+        types: [{ typeName: "Array", tsTypeNames: ["Array"], toJsonSchema: () => ({}) }],
       },
     ]);
 
@@ -143,7 +143,7 @@ describe("parseTSDocTags silent-drop: only setup diagnostics surface when regist
     const validRegistry = createExtensionRegistry([
       {
         extensionId: "x-test/valid",
-        types: [{ typeName: "MyDecimal", tsTypeNames: ["MyDecimal"] }],
+        types: [{ typeName: "MyDecimal", tsTypeNames: ["MyDecimal"], toJsonSchema: () => ({}) }],
       },
     ]);
 
