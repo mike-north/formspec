@@ -5,12 +5,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/dsl": [
-        "../dsl/dist/dsl.d.ts"
-      ]
+      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"]
     }
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

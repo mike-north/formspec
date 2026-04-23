@@ -436,8 +436,7 @@ const FIXTURES: readonly ParityFixture[] = [
   // diagnostic-code divergence that this fixture pins to never recur.
   // -------------------------------------------------------------------------
   {
-    label:
-      "@minimum 0 on type-alias string (Role-A/B order pin: misplaced + type-incompatible)",
+    label: "@minimum 0 on type-alias string (Role-A/B order pin: misplaced + type-incompatible)",
     tagName: "minimum",
     subjectType: "string",
     tagArgument: "0",
@@ -530,7 +529,11 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   if (fixture.targetDeclaration === "type-alias") {
     // Locate the 'MyType' type alias declaration for type-alias placement fixtures.
     const visit = (node: ts.Node): void => {
-      if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "MyType") {
+      if (
+        ts.isTypeAliasDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "MyType"
+      ) {
         targetNode = node;
       }
       ts.forEachChild(node, visit);

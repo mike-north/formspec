@@ -5,12 +5,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/core": [
-        "../core/dist/core.d.ts"
-      ]
+      "@formspec/core": ["../core/dist/core.d.ts"]
     }
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

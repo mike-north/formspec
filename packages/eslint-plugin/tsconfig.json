@@ -4,12 +4,6 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*",
-    "package.json"
-  ],
-  "exclude": [
-    "tests/**/*.test-d.ts"
-  ]
+  "include": ["src/**/*", "tests/**/*", "package.json"],
+  "exclude": ["tests/**/*.test-d.ts"]
 }

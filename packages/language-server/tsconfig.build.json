@@ -5,21 +5,11 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@formspec/core/internals": [
-        "../core/dist/internals.d.ts"
-      ],
-      "@formspec/analysis": [
-        "../analysis/dist/analysis.d.ts"
-      ],
-      "@formspec/analysis/internal": [
-        "../analysis/dist/internal.d.ts"
-      ],
-      "@formspec/config": [
-        "../config/dist/config.d.ts"
-      ]
+      "@formspec/core/internals": ["../core/dist/internals.d.ts"],
+      "@formspec/analysis": ["../analysis/dist/analysis.d.ts"],
+      "@formspec/analysis/internal": ["../analysis/dist/internal.d.ts"],
+      "@formspec/config": ["../config/dist/config.d.ts"]
     }
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

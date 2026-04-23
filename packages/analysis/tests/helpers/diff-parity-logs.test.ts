@@ -24,7 +24,7 @@ function makeEntry(
     placement: string;
     subjectTypeKind: string;
     roleOutcome: ParityLogEntry["roleOutcome"];
-  },
+  }
 ): ParityLogEntry {
   return {
     elapsedMicros: 10,
@@ -37,7 +37,7 @@ function buildEntry(
   placement: string,
   subjectTypeKind: string,
   roleOutcome: ParityLogEntry["roleOutcome"],
-  extra?: Partial<ParityLogEntry>,
+  extra?: Partial<ParityLogEntry>
 ): ParityLogEntry {
   return makeEntry({ consumer: "build", tag, placement, subjectTypeKind, roleOutcome, ...extra });
 }
@@ -47,7 +47,7 @@ function snapshotEntry(
   placement: string,
   subjectTypeKind: string,
   roleOutcome: ParityLogEntry["roleOutcome"],
-  extra?: Partial<ParityLogEntry>,
+  extra?: Partial<ParityLogEntry>
 ): ParityLogEntry {
   return makeEntry({
     consumer: "snapshot",
@@ -73,7 +73,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: 42,
-      }),
+      })
     ).toBe(true);
   });
 
@@ -87,7 +87,7 @@ describe("isParityLogEntry", () => {
         roleOutcome: "A-reject",
         elapsedMicros: 5,
         diagnostic: { code: "INVALID_TAG_PLACEMENT", message: "tag not valid here" },
-      }),
+      })
     ).toBe(true);
   });
 
@@ -114,7 +114,7 @@ describe("isParityLogEntry", () => {
           roleOutcome,
           elapsedMicros: 1,
         }),
-        `expected isParityLogEntry to return true for roleOutcome="${roleOutcome}"`,
+        `expected isParityLogEntry to return true for roleOutcome="${roleOutcome}"`
       ).toBe(true);
     }
   });
@@ -128,7 +128,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: 0,
-      }),
+      })
     ).toBe(true);
   });
 
@@ -141,7 +141,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: 12345.67,
-      }),
+      })
     ).toBe(true);
   });
 
@@ -167,7 +167,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: 1,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -180,7 +180,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "E-pass",
         elapsedMicros: 1,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -192,7 +192,7 @@ describe("isParityLogEntry", () => {
         placement: "class-field",
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
-      }),
+      })
     ).toBe(false);
   });
 
@@ -205,7 +205,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: NaN,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -218,7 +218,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: Infinity,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -231,7 +231,7 @@ describe("isParityLogEntry", () => {
         subjectTypeKind: "number",
         roleOutcome: "C-pass",
         elapsedMicros: -1,
-      }),
+      })
     ).toBe(false);
   });
 
@@ -245,7 +245,7 @@ describe("isParityLogEntry", () => {
         roleOutcome: "C-pass",
         elapsedMicros: 1,
         diagnostic: { message: "missing code field" },
-      }),
+      })
     ).toBe(false);
   });
 
@@ -259,7 +259,7 @@ describe("isParityLogEntry", () => {
         roleOutcome: "C-pass",
         elapsedMicros: 1,
         diagnostic: [],
-      }),
+      })
     ).toBe(false);
   });
 
@@ -355,7 +355,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, []);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("missing-in-snapshot");
       if (div.kind === "missing-in-snapshot") {
         expect(div.key).toBe("pattern::class-field::string");
@@ -368,7 +369,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs([], s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("missing-in-build");
       if (div.kind === "missing-in-build") {
         expect(div.key).toBe("pattern::class-field::string");
@@ -385,8 +387,14 @@ describe("diffParityLogs", () => {
 
       expect(result).toHaveLength(2);
       // Sorted ascending by key: aaa < zzz
-      expect(result[0]).toMatchObject({ kind: "missing-in-snapshot", key: "aaa::class-field::number" });
-      expect(result[1]).toMatchObject({ kind: "missing-in-snapshot", key: "zzz::class-field::string" });
+      expect(result[0]).toMatchObject({
+        kind: "missing-in-snapshot",
+        key: "aaa::class-field::number",
+      });
+      expect(result[1]).toMatchObject({
+        kind: "missing-in-snapshot",
+        key: "zzz::class-field::string",
+      });
     });
   });
 
@@ -398,7 +406,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("role-outcome-divergence");
       if (div.kind === "role-outcome-divergence") {
         expect(div.index).toBe(0);
@@ -426,7 +435,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
         expect(div.index).toBe(0);
@@ -446,7 +456,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
         expect(div.index).toBe(0);
@@ -466,7 +477,7 @@ describe("diffParityLogs", () => {
 
       const result = diffParityLogs(b, []);
 
-      expect(result.map((d) => d.kind === "missing-in-snapshot" ? d.key : "")).toEqual([
+      expect(result.map((d) => (d.kind === "missing-in-snapshot" ? d.key : ""))).toEqual([
         "aaa-tag::class-field::number",
         "mmm-tag::class-field::boolean",
         "zzz-tag::class-field::string",
@@ -519,7 +530,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("array-length-divergence");
       if (div.kind === "array-length-divergence") {
         expect(div.key).toBe("minimum::class-field::number");
@@ -540,7 +552,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("array-length-divergence");
       if (div.kind === "array-length-divergence") {
         expect(div.buildCount).toBe(1);
@@ -584,7 +597,8 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0]; expectDefined(div);
+      const div = result[0];
+      expectDefined(div);
       expect(div.kind).toBe("role-outcome-divergence");
       if (div.kind === "role-outcome-divergence") {
         expect(div.index).toBe(1);

@@ -211,7 +211,8 @@ describe("metadata analysis", () => {
       })
     ).toBe("Order Items");
     const qualifierRange = explicitSource.qualifierRange;
-    if (qualifierRange === undefined) throw new Error("qualifierRange defined above via toBeDefined()");
+    if (qualifierRange === undefined)
+      throw new Error("qualifierRange defined above via toBeDefined()");
     expect(
       sliceCommentSpan(commentText, qualifierRange, {
         offset: property.getFullStart(),
@@ -599,7 +600,13 @@ describe("metadata analysis", () => {
   it("rejects extension metadata tags that shadow extension constraint tags", () => {
     const extension = defineExtension({
       extensionId: "x-example/metadata",
-      constraintTags: [defineConstraintTag({ tagName: "currency", constraintName: "currency", parseValue: (raw) => raw })],
+      constraintTags: [
+        defineConstraintTag({
+          tagName: "currency",
+          constraintName: "currency",
+          parseValue: (raw) => raw,
+        }),
+      ],
       metadataSlots: [
         defineMetadataSlot({
           slotId: "currencyLabel",

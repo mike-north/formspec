@@ -409,15 +409,13 @@ describe("$defs deduplication — issue #309", () => {
         const fieldSchema = expectRecord(props[fieldName], `Expected ${fieldName} to be defined`);
         // May be wrapped in anyOf/oneOf for optional semantics; the $ref should appear somewhere.
         const fieldStr = JSON.stringify(fieldSchema);
-        expect(
-          fieldStr,
-          `Expected ${fieldName} to reference $defs/Address via $ref`
-        ).toContain('"$ref":"#/$defs/Address"');
+        expect(fieldStr, `Expected ${fieldName} to reference $defs/Address via $ref`).toContain(
+          '"$ref":"#/$defs/Address"'
+        );
         // The inline object properties should NOT appear on the field schema itself.
-        expect(
-          fieldStr,
-          `Expected ${fieldName} NOT to inline the Address shape`
-        ).not.toContain('"street"');
+        expect(fieldStr, `Expected ${fieldName} NOT to inline the Address shape`).not.toContain(
+          '"street"'
+        );
       }
     });
 

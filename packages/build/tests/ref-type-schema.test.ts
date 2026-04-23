@@ -141,10 +141,7 @@ function expectRecord(value: unknown, message: string): Record<string, unknown> 
   return value as Record<string, unknown>;
 }
 
-function resolveRef(
-  schema: unknown,
-  root: Record<string, unknown>
-): Record<string, unknown> {
+function resolveRef(schema: unknown, root: Record<string, unknown>): Record<string, unknown> {
   // Fail fast if `schema` isn't an object — silently casting `undefined` here
   // produces confusing downstream errors (e.g. "cannot read properties of
   // undefined") that mask missing fields in the test setup.
@@ -273,19 +270,21 @@ describe("Ref<T> JSON Schema serialization", () => {
       // May be wrapped in a nullable schema — find the Ref properties
       const customerSchema = props["customer"] as Record<string, unknown>;
       // Try direct resolution first, then check oneOf/anyOf for nullable
-      const refSchema = customerSchema["$ref"] !== undefined
-        ? resolveRef(customerSchema, root)
-        : (() => {
-            const oneOf = customerSchema["oneOf"] as unknown[] | undefined;
-            const anyOf = customerSchema["anyOf"] as unknown[] | undefined;
-            const members = oneOf ?? anyOf ?? [customerSchema];
-            const nonNull = members.find(
-              (m) => typeof m === "object" && m !== null && (m as Record<string, unknown>)["type"] !== "null"
-            );
-            return nonNull !== undefined
-              ? resolveRef(nonNull, root)
-              : customerSchema;
-          })();
+      const refSchema =
+        customerSchema["$ref"] !== undefined
+          ? resolveRef(customerSchema, root)
+          : (() => {
+              const oneOf = customerSchema["oneOf"] as unknown[] | undefined;
+              const anyOf = customerSchema["anyOf"] as unknown[] | undefined;
+              const members = oneOf ?? anyOf ?? [customerSchema];
+              const nonNull = members.find(
+                (m) =>
+                  typeof m === "object" &&
+                  m !== null &&
+                  (m as Record<string, unknown>)["type"] !== "null"
+              );
+              return nonNull !== undefined ? resolveRef(nonNull, root) : customerSchema;
+            })();
 
       // Assert properties are emitted unconditionally — a regression that drops
       // the Ref body on optional fields must fail this test, not silently pass.

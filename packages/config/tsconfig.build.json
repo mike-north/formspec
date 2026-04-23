@@ -5,16 +5,10 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/core": [
-        "../core/dist/core.d.ts"
-      ],
-      "@formspec/dsl": [
-        "../dsl/dist/dsl.d.ts"
-      ]
+      "@formspec/core": ["../core/dist/core.d.ts"],
+      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"]
     },
     "resolveJsonModule": true
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

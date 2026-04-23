@@ -43,11 +43,7 @@ function setupDiag(
   };
 }
 
-function tagSiteDiag(
-  code: string,
-  message: string,
-  line: number
-): ConstraintSemanticDiagnostic {
+function tagSiteDiag(code: string, message: string, line: number): ConstraintSemanticDiagnostic {
   return {
     code,
     message,
