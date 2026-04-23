@@ -22,8 +22,19 @@ const configWithExtension: FormSpecConfig = {
         {
           typeName: "Decimal",
           tsTypeNames: ["Decimal"],
-          jsonSchemaType: { type: "string", format: "decimal" },
-          builtinConstraintBroadenings: [{ tagName: "minimum" }, { tagName: "maximum" }],
+          toJsonSchema: () => ({ type: "string", format: "decimal" }),
+          builtinConstraintBroadenings: [
+            {
+              tagName: "minimum",
+              constraintName: "x-test/minimum",
+              parseValue: (raw: string) => Number(raw),
+            },
+            {
+              tagName: "maximum",
+              constraintName: "x-test/maximum",
+              parseValue: (raw: string) => Number(raw),
+            },
+          ],
         },
       ],
     },

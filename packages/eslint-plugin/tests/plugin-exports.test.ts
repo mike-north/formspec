@@ -3,6 +3,7 @@ import { ESLint } from "eslint";
 import type { Linter } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import { ESLintUtils } from "@typescript-eslint/utils";
+import type { TSESLint } from "@typescript-eslint/utils";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
@@ -15,7 +16,7 @@ import plugin, {
   rules,
 } from "../src/index.js";
 
-function getConfigRuleIds(config: readonly Linter.Config[]): string[] {
+function getConfigRuleIds(config: TSESLint.FlatConfig.ConfigArray): string[] {
   return config.flatMap((entry) => Object.keys(entry.rules ?? {}));
 }
 
@@ -99,7 +100,12 @@ describe("@formspec/eslint-plugin exports", () => {
       const allRulesEnabled = Object.fromEntries(
         Object.keys(rules).map((name) => [`formspec/${name}`, "warn"])
       );
-      const overrideConfig: Linter.Config = {
+      // The overrideConfig object is structurally compatible with ESLint 9 flat
+      // config at runtime. The cast through unknown is required because
+      // @typescript-eslint/utils's FlatConfig types and eslint's Linter.Config
+      // diverge at the type-definition level (RuleModuleWithName vs RuleDefinition,
+      // LanguageOptions index signatures) even though they represent the same shape.
+      const overrideConfig = {
         files: ["**/*.ts"],
         languageOptions: {
           parser: tsParser,
@@ -112,10 +118,11 @@ describe("@formspec/eslint-plugin exports", () => {
       const eslint = new ESLint({
         cwd: tmpDir,
         overrideConfigFile: true,
-        overrideConfig,
+        overrideConfig: overrideConfig as unknown as Linter.Config,
       });
 
       const [result] = await eslint.lintFiles(["test.ts"]);
+      if (result === undefined) throw new Error("Expected lint result");
       expect(result.messages).toEqual([]);
     });
 
@@ -189,7 +196,12 @@ describe("@formspec/eslint-plugin exports", () => {
         ].join("\n")
       );
 
-      const overrideConfig: Linter.Config = {
+      // The overrideConfig object is structurally compatible with ESLint 9 flat
+      // config at runtime. The cast through unknown is required because
+      // @typescript-eslint/utils's FlatConfig types and eslint's Linter.Config
+      // diverge at the type-definition level (RuleModuleWithName vs RuleDefinition,
+      // LanguageOptions index signatures) even though they represent the same shape.
+      const overrideConfig = {
         files: ["**/*.ts"],
         languageOptions: {
           parser: tsParser,
@@ -210,10 +222,11 @@ describe("@formspec/eslint-plugin exports", () => {
       const eslint = new ESLint({
         cwd: tmpDir,
         overrideConfigFile: true,
-        overrideConfig,
+        overrideConfig: overrideConfig as unknown as Linter.Config,
       });
 
       const [result] = await eslint.lintFiles(["metadata.ts"]);
+      if (result === undefined) throw new Error("Expected lint result");
       expect(result.messages).toEqual([]);
       expect(seen).toHaveLength(1);
       expect(seen[0]?.apiName).toBe("customer_name");

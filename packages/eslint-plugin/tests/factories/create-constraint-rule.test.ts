@@ -6,8 +6,6 @@
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import type { AnyRuleModule } from "@typescript-eslint/utils/ts-eslint";
-import type { RuleModule } from "@typescript-eslint/utils/ts-eslint";
 import { createConstraintRule } from "../../src/factories/constraint-rule.js";
 import * as vitest from "vitest";
 
@@ -26,17 +24,6 @@ const ruleTester = new RuleTester({
   },
 });
 
-/**
- * The factory returns a typed `RuleModule<"typeMismatch" | "invalidValue", []>`.
- * RuleTester.run expects AnyRuleModule. The underlying shape is compatible —
- * this cast bridges the two TypeScript signatures.
- */
-function asTestableRule(rule: RuleModule<"typeMismatch" | "invalidValue", []>): AnyRuleModule {
-  // @ts-expect-error -- RuleModule<specific messageIds> narrows the type more
-  // than AnyRuleModule requires. The runtime shape is identical.
-  return rule;
-}
-
 // ---------------------------------------------------------------------------
 // Rule: @CustomMin — numeric, number fields only, value must be >= 0
 // ---------------------------------------------------------------------------
@@ -52,7 +39,7 @@ const customMinRule = createConstraintRule({
 });
 
 vitest.describe("createConstraintRule — @CustomMin (numeric, number only, >= 0)", () => {
-  ruleTester.run("custom-min-valid", asTestableRule(customMinRule), {
+  ruleTester.run("custom-min-valid", customMinRule, {
     valid: [
       // Correct type and valid value
       {
@@ -145,7 +132,7 @@ const requiredPatternRule = createConstraintRule({
 vitest.describe(
   "createConstraintRule — @RequiredPattern (string only, non-empty valid regex)",
   () => {
-    ruleTester.run("required-pattern-valid", asTestableRule(requiredPatternRule), {
+    ruleTester.run("required-pattern-valid", requiredPatternRule, {
       valid: [
         // Valid regex on string field
         {
@@ -199,7 +186,7 @@ const anyTagRule = createConstraintRule({
 });
 
 vitest.describe("createConstraintRule — @AnyTag (no type restriction, no value validation)", () => {
-  ruleTester.run("any-tag-rule", asTestableRule(anyTagRule), {
+  ruleTester.run("any-tag-rule", anyTagRule, {
     valid: [
       // On string field — OK because no type restriction
       {
@@ -242,7 +229,7 @@ const numericOnlyRule = createConstraintRule({
 });
 
 vitest.describe("createConstraintRule — @NumericOnly (number only, no value validation)", () => {
-  ruleTester.run("numeric-only-rule", asTestableRule(numericOnlyRule), {
+  ruleTester.run("numeric-only-rule", numericOnlyRule, {
     valid: [
       // Number field — OK
       {
@@ -301,7 +288,7 @@ const strictRule = createConstraintRule({
 });
 
 vitest.describe("createConstraintRule — type error skips value validation", () => {
-  ruleTester.run("strict-num-type-gate", asTestableRule(strictRule), {
+  ruleTester.run("strict-num-type-gate", strictRule, {
     valid: [],
     invalid: [
       // Wrong type AND invalid value: only ONE error (typeMismatch), not two

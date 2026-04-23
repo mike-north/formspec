@@ -9,7 +9,7 @@
  * This is documented on the mock construction sites below.
  */
 
-import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
+import { AST_NODE_TYPES, AST_TOKEN_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
 import { describe, expect, it } from "vitest";
 import { getTagIdentity, scanFormSpecTags, type ScannedTag } from "../../src/utils/tag-scanner.js";
@@ -32,7 +32,7 @@ function makeBlockComment(source: string, rangeStart = 0): TSESTree.Comment {
   const value = source.slice(2, source.length - 2);
   const end = rangeStart + source.length;
   return {
-    type: "Block",
+    type: AST_TOKEN_TYPES.Block,
     value,
     range: [rangeStart, end],
     loc: {
@@ -371,7 +371,7 @@ describe("scanFormSpecTags — no-tag cases", () => {
   it("returns an empty array when no JSDoc comments are present", () => {
     // Non-JSDoc block comment (no leading asterisk in value) is filtered out
     const comment: TSESTree.Comment = {
-      type: "Block",
+      type: AST_TOKEN_TYPES.Block,
       value: " a plain block comment ",
       range: [0, 25],
       loc: {
