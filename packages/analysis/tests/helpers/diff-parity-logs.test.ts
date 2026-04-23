@@ -351,7 +351,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, []);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("missing-in-snapshot");
       if (div.kind === "missing-in-snapshot") {
         expect(div.key).toBe("pattern::class-field::string");
@@ -364,7 +364,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs([], s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("missing-in-build");
       if (div.kind === "missing-in-build") {
         expect(div.key).toBe("pattern::class-field::string");
@@ -394,7 +394,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("role-outcome-divergence");
       if (div.kind === "role-outcome-divergence") {
         expect(div.index).toBe(0);
@@ -422,7 +422,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
         expect(div.index).toBe(0);
@@ -442,7 +442,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("diagnostic-code-divergence");
       if (div.kind === "diagnostic-code-divergence") {
         expect(div.index).toBe(0);
@@ -515,7 +515,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("array-length-divergence");
       if (div.kind === "array-length-divergence") {
         expect(div.key).toBe("minimum::class-field::number");
@@ -536,7 +536,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("array-length-divergence");
       if (div.kind === "array-length-divergence") {
         expect(div.buildCount).toBe(1);
@@ -580,7 +580,7 @@ describe("diffParityLogs", () => {
       const result = diffParityLogs(b, s);
 
       expect(result).toHaveLength(1);
-      const div = result[0];
+      const div = result[0]!;
       expect(div.kind).toBe("role-outcome-divergence");
       if (div.kind === "role-outcome-divergence") {
         expect(div.index).toBe(1);

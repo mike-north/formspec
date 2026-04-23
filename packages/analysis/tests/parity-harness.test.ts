@@ -883,6 +883,11 @@ describe("cross-consumer parity harness (Phase 0.5a)", () => {
               return `  missing-in-snapshot at key "${d.key}": build has entry, snapshot does not`;
             case "missing-in-build":
               return `  missing-in-build at key "${d.key}": snapshot has entry, build does not`;
+            case "array-length-divergence":
+              return (
+                `  array-length-divergence at key "${d.key}": ` +
+                `build has ${String(d.buildCount)} entries, snapshot has ${String(d.snapshotCount)}`
+              );
           }
         });
 
