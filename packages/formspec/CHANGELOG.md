@@ -1,5 +1,14 @@
 # formspec
 
+## 0.1.0-alpha.61
+
+### Patch Changes
+
+- [#406](https://github.com/mike-north/formspec/pull/406) [`c51c4c8`](https://github.com/mike-north/formspec/commit/c51c4c8fd5f0280b83a3e1d0a6895e88018e6c05) Thanks [@mike-north](https://github.com/mike-north)! - Internal refactor: unexport `MethodParamsSchemas` from `@formspec/build/src/generators/method-schema.ts`. The type was never referenced outside its defining module, was not part of the package's public `exports`, and did not appear in any API Extractor report — it is now a module-local interface. No consumer-visible change.
+
+- Updated dependencies [[`c51c4c8`](https://github.com/mike-north/formspec/commit/c51c4c8fd5f0280b83a3e1d0a6895e88018e6c05)]:
+  - @formspec/build@0.1.0-alpha.61
+
 ## 0.1.0-alpha.60
 
 ### Minor Changes
