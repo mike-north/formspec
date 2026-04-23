@@ -33,9 +33,9 @@ export default [
   {
     // Legacy/transitional files — deprecated APIs and unresolved types cleaned up in later stack PRs
     files: [
-      "packages/build/src/__tests__/jsdoc-constraints.test.ts",
-      "packages/build/src/__tests__/constraint-validator.test.ts",
-      "packages/build/src/__tests__/extension-api.test.ts",
+      "packages/build/tests/jsdoc-constraints.test.ts",
+      "packages/build/tests/constraint-validator.test.ts",
+      "packages/build/tests/extension-api.test.ts",
       "packages/build/src/analyzer/jsdoc-constraints.ts",
       "packages/build/src/analyzer/tsdoc-parser.ts",
       "packages/build/src/extensions/registry.ts",
@@ -58,7 +58,7 @@ export default [
     // platform-dependent @typescript-eslint type resolution (Linux vs macOS).
     files: [
       "packages/eslint-plugin/src/factories/constraint-rule.ts",
-      "packages/eslint-plugin/src/__tests__/factories/create-constraint-rule.test.ts",
+      "packages/eslint-plugin/tests/factories/create-constraint-rule.test.ts",
     ],
     rules: {
       "@typescript-eslint/no-unnecessary-type-arguments": "off",

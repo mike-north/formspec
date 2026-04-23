@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@formspec/core/internals": [
+        "../core/dist/internals.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ]
+}

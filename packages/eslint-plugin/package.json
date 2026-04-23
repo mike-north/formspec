@@ -24,7 +24,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
+    "build": "tsup && tsc --emitDeclarationOnly -p tsconfig.build.json && pnpm run api-extractor:local",
     "check:eslint-docs": "eslint-doc-generator --check --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
     "clean": "rm -rf dist temp",
     "fix:eslint-docs": "eslint-doc-generator --path-rule-list README.md --url-rule-doc \"https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/{name}.md\"",
@@ -39,15 +39,15 @@
     "@formspec/build": "workspace:*",
     "@formspec/config": "workspace:*",
     "@formspec/core": "workspace:*",
-    "@typescript-eslint/utils": "^8.0.0"
+    "@typescript-eslint/utils": "^8.54.0"
   },
   "peerDependencies": {
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@typescript-eslint/parser": "^8.55.0",
-    "@typescript-eslint/rule-tester": "^8.0.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "@typescript-eslint/rule-tester": "^8.57.0",
     "eslint-doc-generator": "^3.3.2",
     "vitest": "^3.2.4"
   },

@@ -59,7 +59,7 @@ feedback layer directly on top of `FormSpecSemanticService`.
 See:
 
 - [reference-host-example.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/reference-host-example.ts)
-- [downstream-authoring-host.test.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/src/__tests__/downstream-authoring-host.test.ts)
+- [downstream-authoring-host.test.ts](https://github.com/mike-north/formspec/blob/main/packages/ts-plugin/tests/downstream-authoring-host.test.ts)
 
 These source-repository references intentionally show a downstream host that
 renders diagnostics from `code` + `data` instead of reusing FormSpec's default

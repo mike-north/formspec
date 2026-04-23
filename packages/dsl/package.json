@@ -19,7 +19,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly && pnpm run api-extractor:local",
+    "build": "tsup && tsc --emitDeclarationOnly -p tsconfig.build.json && pnpm run api-extractor:local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -36,7 +36,7 @@
     "vitest": "^3.2.4"
   },
   "tsd": {
-    "directory": "src/__tests__"
+    "directory": "tests"
   },
   "publishConfig": {
     "access": "public"

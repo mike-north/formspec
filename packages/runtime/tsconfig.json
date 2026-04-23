@@ -1,12 +1,14 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.build.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "paths": {
-      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"]
-    }
+    "noEmit": true,
+    "rootDir": "."
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "tests/**/*.test-d.ts"
+  ]
 }
