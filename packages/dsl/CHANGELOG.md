@@ -1,5 +1,14 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.63
+
+### Patch Changes
+
+- [#410](https://github.com/mike-north/formspec/pull/410) [`2f430b6`](https://github.com/mike-north/formspec/commit/2f430b60f55c600b3e18a91a54f637feb56b9a55) Thanks [@mike-north](https://github.com/mike-north)! - Internal restructure: tests moved from `src/__tests__/` to a sibling `tests/` folder in each package, with the TypeScript typecheck scope widened to cover them. No public API changes.
+
+- Updated dependencies [[`2f430b6`](https://github.com/mike-north/formspec/commit/2f430b60f55c600b3e18a91a54f637feb56b9a55)]:
+  - @formspec/core@0.1.0-alpha.63
+
 ## 0.1.0-alpha.60
 
 ### Patch Changes
