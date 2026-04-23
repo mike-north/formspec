@@ -1,5 +1,11 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.62
+
+### Patch Changes
+
+- [#408](https://github.com/mike-north/formspec/pull/408) [`f500325`](https://github.com/mike-north/formspec/commit/f500325bc1f16a8c3fe548043f1d275230d7097b) Thanks [@mike-north](https://github.com/mike-north)! - Expose all public exports on the CJS entry point alongside the plugin init function.
+
 ## 0.1.0-alpha.60
 
 ### Minor Changes
