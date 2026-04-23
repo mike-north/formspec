@@ -4,7 +4,7 @@ TypeScript language service plugin for FormSpec semantic comment analysis.
 
 This package serves two roles:
 
-- a turnkey `tsserver` plugin via `init()`
+- a turnkey `tsserver` plugin via `@formspec/ts-plugin`
 - a composable in-process semantic API for downstream TypeScript hosts
 
 The shipped plugin is the reference implementation. Downstream tools that
@@ -27,6 +27,10 @@ pnpm add -D @formspec/ts-plugin
   }
 }
 ```
+
+The package root is intentionally a hybrid CommonJS surface: `tsserver` can
+load it directly as a plugin module, while downstream hosts can also import the
+same package as a library to access FormSpec composition primitives.
 
 ## Public Composition APIs
 
