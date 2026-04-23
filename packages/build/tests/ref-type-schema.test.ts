@@ -370,14 +370,18 @@ describe("Ref<T> JSON Schema serialization", () => {
       const customerType = expectRecord(customerProps["type"], "Missing customer type");
       const customerOneOf = customerType["oneOf"] as Record<string, unknown>[];
       expect(customerOneOf).toHaveLength(1);
-      expect(customerOneOf[0]!["const"]).toBe("customer");
+      const [customerFirst] = customerOneOf;
+      if (!customerFirst) throw new Error("customer oneOf[0] missing");
+      expect(customerFirst["const"]).toBe("customer");
 
       const invoiceRef = resolveRef(props["invoice"], root);
       const invoiceProps = expectRecord(invoiceRef["properties"], "Missing invoice Ref props");
       const invoiceType = expectRecord(invoiceProps["type"], "Missing invoice type");
       const invoiceOneOf = invoiceType["oneOf"] as Record<string, unknown>[];
       expect(invoiceOneOf).toHaveLength(1);
-      expect(invoiceOneOf[0]!["const"]).toBe("invoice");
+      const [invoiceFirst] = invoiceOneOf;
+      if (!invoiceFirst) throw new Error("invoice oneOf[0] missing");
+      expect(invoiceFirst["const"]).toBe("invoice");
     });
 
     it("id and property structure unchanged with oneOf serialization", () => {
@@ -456,7 +460,9 @@ describe("Ref<T> JSON Schema serialization", () => {
       // Literal value, no prefix, oneOf format
       const oneOf = typeSchema["oneOf"] as Record<string, unknown>[];
       expect(oneOf).toHaveLength(1);
-      expect(oneOf[0]!["const"]).toBe("customer");
+      const [firstOneOf] = oneOf;
+      if (!firstOneOf) throw new Error("oneOf[0] missing");
+      expect(firstOneOf["const"]).toBe("customer");
     });
 
     it("@apiName-derived value IS prefixed", () => {

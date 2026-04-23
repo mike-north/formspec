@@ -210,9 +210,10 @@ describe("metadata analysis", () => {
         offset: property.getFullStart(),
       })
     ).toBe("Order Items");
+    const qualifierRange = explicitSource.qualifierRange;
+    if (qualifierRange === undefined) throw new Error("qualifierRange defined above via toBeDefined()");
     expect(
-      // qualifierRange is defined for qualified form — established by toBeDefined() check above
-      sliceCommentSpan(commentText, explicitSource.qualifierRange!, {
+      sliceCommentSpan(commentText, qualifierRange, {
         offset: property.getFullStart(),
       })
     ).toBe("plural");

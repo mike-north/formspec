@@ -78,7 +78,6 @@ describe("@formspec/eslint-plugin metadata analysis exports", () => {
     const propertyNode = findPropertyDefinition(parsed.ast);
     const tsNode = services.esTreeNodeToTSNodeMap.get(propertyNode);
     expect(tsNode).toBeDefined();
-    if (tsNode === undefined) throw new Error("Expected tsNode to be defined");
     const getTypeCheckerSpy = vi.spyOn(program, "getTypeChecker");
 
     const rootResult = analyzeMetadataForNodeFromPlugin({

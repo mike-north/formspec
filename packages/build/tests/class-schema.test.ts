@@ -368,14 +368,16 @@ describe("generateSchemas", () => {
     });
 
     expect(results).toHaveLength(3);
-    expect(results[0]!).toMatchObject({
+    const [first, second, third] = results;
+    if (!first || !second || !third) throw new Error("expected 3 results");
+    expect(first).toMatchObject({
       filePath: classSchemaRegressionsPath,
       typeName: "NotificationPreferences",
       ok: true,
     });
-    expect(results[0]!.jsonSchema?.properties?.["channel"]).toMatchObject({ default: "email" });
-    expect(results[1]!.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
-    expect(results[2]!.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_NOT_FOUND");
+    expect(first.jsonSchema?.properties?.["channel"]).toMatchObject({ default: "email" });
+    expect(second.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
+    expect(third.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_NOT_FOUND");
   });
 
   it("can analyze within an existing TypeScript program", () => {
@@ -442,8 +444,10 @@ describe("generateSchemas", () => {
     expect(result.ok).toBe(false);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
     expect(batchResults).toHaveLength(2);
-    expect(batchResults[0]!.ok).toBe(true);
-    expect(batchResults[1]!.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+    const [batchFirst, batchSecond] = batchResults;
+    if (!batchFirst || !batchSecond) throw new Error("expected 2 batch results");
+    expect(batchFirst.ok).toBe(true);
+    expect(batchSecond.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
       "TYPE_NOT_FOUND"
     );
   });

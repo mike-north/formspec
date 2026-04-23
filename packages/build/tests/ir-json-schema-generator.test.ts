@@ -644,6 +644,7 @@ describe("generateJsonSchemaFromIR", () => {
         string
       >;
       expectedDisplayNames["__proto__"] = "Prototype";
+      // eslint-disable-next-line @typescript-eslint/dot-notation -- bracket form preserves test intent (key equals Object.prototype.constructor's own name)
       expectedDisplayNames["constructor"] = "Constructor";
 
       expect(prop).toEqual({
