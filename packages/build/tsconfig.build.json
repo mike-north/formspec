@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@formspec/config": [
+        "../config/dist/config-internal.d.ts"
+      ],
+      "@formspec/core/internals": [
+        "../core/dist/internals.d.ts"
+      ],
+      "@formspec/dsl": [
+        "../dsl/dist/dsl.d.ts"
+      ],
+      "@formspec/analysis": [
+        "../analysis/dist/analysis.d.ts"
+      ],
+      "@formspec/analysis/protocol": [
+        "../analysis/dist/protocol.d.ts"
+      ],
+      "@formspec/analysis/internal": [
+        "../analysis/dist/internal.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ]
+}
