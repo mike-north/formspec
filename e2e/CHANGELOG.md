@@ -1,5 +1,12 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.62
+
+### Patch Changes
+
+- Updated dependencies [[`f500325`](https://github.com/mike-north/formspec/commit/f500325bc1f16a8c3fe548043f1d275230d7097b)]:
+  - @formspec/ts-plugin@0.1.0-alpha.62
+
 ## 0.1.0-alpha.61
 
 ### Patch Changes
