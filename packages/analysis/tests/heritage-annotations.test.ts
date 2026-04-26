@@ -22,31 +22,28 @@ import {
 } from "../src/internal.js";
 import { createProgram } from "./helpers.js";
 
-function findDecl<T extends ts.Declaration>(
-  sourceFile: ts.SourceFile,
-  predicate: (node: ts.Node) => node is T,
-  name: string
-): T {
+function findInterface(sourceFile: ts.SourceFile, name: string): ts.InterfaceDeclaration {
   const decl = sourceFile.statements.find(
-    (s): s is T =>
-      predicate(s) &&
-      "name" in s &&
-      (s as unknown as { name: ts.Identifier }).name.text === name
+    (s): s is ts.InterfaceDeclaration => ts.isInterfaceDeclaration(s) && s.name.text === name
   );
-  if (!decl) throw new Error(`Declaration "${name}" not found`);
+  if (!decl) throw new Error(`Interface "${name}" not found`);
   return decl;
 }
 
-function findInterface(sourceFile: ts.SourceFile, name: string): ts.InterfaceDeclaration {
-  return findDecl(sourceFile, ts.isInterfaceDeclaration, name);
-}
-
 function findClass(sourceFile: ts.SourceFile, name: string): ts.ClassDeclaration {
-  return findDecl(sourceFile, ts.isClassDeclaration, name);
+  const decl = sourceFile.statements.find(
+    (s): s is ts.ClassDeclaration => ts.isClassDeclaration(s) && s.name?.text === name
+  );
+  if (!decl) throw new Error(`Class "${name}" not found`);
+  return decl;
 }
 
 function findTypeAlias(sourceFile: ts.SourceFile, name: string): ts.TypeAliasDeclaration {
-  return findDecl(sourceFile, ts.isTypeAliasDeclaration, name);
+  const decl = sourceFile.statements.find(
+    (s): s is ts.TypeAliasDeclaration => ts.isTypeAliasDeclaration(s) && s.name.text === name
+  );
+  if (!decl) throw new Error(`Type alias "${name}" not found`);
+  return decl;
 }
 
 function makeFormatAnnotation(value: string, file = "/virtual/formspec.ts"): FormatAnnotationNode {
