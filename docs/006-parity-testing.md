@@ -256,7 +256,7 @@ For each fixture, both the TSDoc surface and the chain DSL surface are authored,
 Parity test fixtures follow this directory layout:
 
 ```
-packages/build/src/__tests__/parity/
+packages/build/tests/parity/
   fixtures/
     usd-cents/
       tsdoc.ts          ← TSDoc-surface TypeScript source
@@ -444,7 +444,7 @@ The three-test pattern is intentional:
 The `compareIR` function compares two `FormIR` instances structurally, excluding provenance fields. It returns a structured result rather than throwing directly, enabling the test to report which fields differ:
 
 ```typescript
-// packages/build/src/__tests__/helpers/ir-comparison.ts
+// packages/build/tests/helpers/ir-comparison.ts
 
 export interface IRComparisonResult {
   equivalent: boolean;
@@ -766,7 +766,7 @@ Two diagnostic sets are equivalent when:
 ### 7.2 Contradiction Test Pattern
 
 ```typescript
-// packages/build/src/__tests__/parity/diagnostics.test.ts
+// packages/build/tests/parity/diagnostics.test.ts
 
 import { describe, it, expect } from "vitest";
 import { extractWithDiagnostics } from "@formspec/build/internals";
@@ -815,7 +815,7 @@ describe("diagnostic parity: constraint broadening", () => {
 ### 7.3 Diagnostic Comparison Helper
 
 ```typescript
-// packages/build/src/__tests__/helpers/diagnostic-comparison.ts
+// packages/build/tests/helpers/diagnostic-comparison.ts
 
 export interface DiagnosticComparisonResult {
   equivalent: boolean;
@@ -865,17 +865,17 @@ Each category of diagnostic is covered by at least one parity test:
 
 ### 8.1 File Naming Conventions
 
-| Test file pattern                                      | Purpose                                  |
-| ------------------------------------------------------ | ---------------------------------------- |
-| `src/__tests__/parity/*.test.ts`                       | Surface parity tests (TSDoc ↔ chain DSL) |
-| `src/__tests__/parity/fixtures/*/tsdoc.ts`             | TSDoc surface fixture                    |
-| `src/__tests__/parity/fixtures/*/chain-dsl.ts`         | Chain DSL surface fixture                |
-| `src/__tests__/parity/fixtures/*/expected-ir.ts`       | Hand-authored expected IR                |
-| `src/__tests__/parity/fixtures/*/expected-schema.json` | Hand-authored expected JSON Schema       |
-| `src/__tests__/parity/diagnostics.test.ts`             | Diagnostic consistency across surfaces   |
-| `src/__tests__/parity/a3-purity.test.ts`               | Generator purity (A3)                    |
-| `src/__tests__/helpers/ir-comparison.ts`               | `compareIR` helper                       |
-| `src/__tests__/helpers/diagnostic-comparison.ts`       | `compareDiagnostics` helper              |
+| Test file pattern                              | Purpose                                  |
+| ---------------------------------------------- | ---------------------------------------- |
+| `tests/parity/*.test.ts`                       | Surface parity tests (TSDoc ↔ chain DSL) |
+| `tests/parity/fixtures/*/tsdoc.ts`             | TSDoc surface fixture                    |
+| `tests/parity/fixtures/*/chain-dsl.ts`         | Chain DSL surface fixture                |
+| `tests/parity/fixtures/*/expected-ir.ts`       | Hand-authored expected IR                |
+| `tests/parity/fixtures/*/expected-schema.json` | Hand-authored expected JSON Schema       |
+| `tests/parity/diagnostics.test.ts`             | Diagnostic consistency across surfaces   |
+| `tests/parity/a3-purity.test.ts`               | Generator purity (A3)                    |
+| `tests/helpers/ir-comparison.ts`               | `compareIR` helper                       |
+| `tests/helpers/diagnostic-comparison.ts`       | `compareDiagnostics` helper              |
 
 ### 8.2 Location in the Monorepo
 
@@ -888,7 +888,7 @@ Parity tests live in `@formspec/build` because:
 Extension fixture tests (`Decimal`, `DateOnly`) are in `@formspec/build`'s test suite but depend on extension packages defined in the monorepo's test fixtures directory:
 
 ```
-packages/build/src/__tests__/
+packages/build/tests/
   parity/
     fixtures/
       decimal/          ← uses @formspec/test-fixtures/decimal
@@ -946,9 +946,9 @@ The `expected-ir.ts` and `expected-schema.json` files are the specification. Cha
 
 ## Appendix: Open Decisions Summary
 
-| #    | Section  | Question                                                                                                                                           | Status                                                                                                                                                                                                                                                                                                                                                   |
-| ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OD-1 | §3.2     | How does the chain DSL express type alias constraint inheritance — by name reference resolved at build time, or by explicit constraint repetition? | By name reference — `type: "USDCents"` loads the alias chain from the project's type registry                                                                                                                                                                                                                                                            |
-| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                         |
-| OD-3 | §6, §8.2 | Should extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests?                                            | **DECIDED:** In `packages/test-fixtures/` as a private, unpublished workspace package. This allows the fixture extensions to have their own `package.json`, `tsconfig.json`, and build step, while remaining clearly separated from distributable code. Tests in `packages/build/src/__tests__/` reference the fixture package via workspace dependency. |
-| OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                                                       | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                                                                                                                                        |
+| #    | Section  | Question                                                                                                                                           | Status                                                                                                                                                                                                                                                                                                                                           |
+| ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OD-1 | §3.2     | How does the chain DSL express type alias constraint inheritance — by name reference resolved at build time, or by explicit constraint repetition? | By name reference — `type: "USDCents"` loads the alias chain from the project's type registry                                                                                                                                                                                                                                                    |
+| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                 |
+| OD-3 | §6, §8.2 | Should extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests?                                            | **DECIDED:** In `packages/test-fixtures/` as a private, unpublished workspace package. This allows the fixture extensions to have their own `package.json`, `tsconfig.json`, and build step, while remaining clearly separated from distributable code. Tests in `packages/build/tests/` reference the fixture package via workspace dependency. |
+| OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                                                       | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                                                                                                                                |

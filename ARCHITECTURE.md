@@ -249,18 +249,18 @@ themselves how diagnostics are surfaced.
 
 ### Test Layers
 
-| Layer                | Framework  | Location                            | Purpose                                    |
-| -------------------- | ---------- | ----------------------------------- | ------------------------------------------ |
-| **Unit**             | Vitest     | `src/__tests__/*.test.ts`           | Individual functions in isolation          |
-| **Type**             | tsd        | `src/__tests__/*.test-d.ts`         | Type inference correctness                 |
-| **Integration**      | Vitest     | `src/__tests__/integration.test.ts` | Full pipeline (DSL → schema)               |
-| **Fixture-based**    | Vitest     | `src/__tests__/fixtures/`           | Real TypeScript files through the analyzer |
-| **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`     | Valid/invalid code patterns per rule       |
-| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`   | Future worked-example validation           |
+| Layer                | Framework  | Location                          | Purpose                                    |
+| -------------------- | ---------- | --------------------------------- | ------------------------------------------ |
+| **Unit**             | Vitest     | `tests/*.test.ts`                 | Individual functions in isolation          |
+| **Type**             | tsd        | `tests/*.test-d.ts`               | Type inference correctness                 |
+| **Integration**      | Vitest     | `tests/integration.test.ts`       | Full pipeline (DSL → schema)               |
+| **Fixture-based**    | Vitest     | `tests/fixtures/`                 | Real TypeScript files through the analyzer |
+| **ESLint rule**      | RuleTester | `tests/rules/*.test.ts`           | Valid/invalid code patterns per rule       |
+| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts` | Future worked-example validation           |
 
 ### Test Infrastructure
 
-- **Fixtures**: Real TypeScript files in `src/__tests__/fixtures/` compiled by the TypeScript program
+- **Fixtures**: Real TypeScript files in `tests/fixtures/` compiled by the TypeScript program
 - **Timeout config**: 15s for packages with heavy TS analysis (cli, eslint-plugin); 5s default
 - **Circular reference tests**: Use Vitest timeout guards to prevent hangs
 

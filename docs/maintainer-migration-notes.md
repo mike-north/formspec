@@ -80,7 +80,7 @@ Target direction:
 
 ## 4. Constraint Profiles and Validation
 
-The current `ConstraintConfig` type in `@formspec/constraints` can be reinterpreted as a profile evaluated during the Validate phase, after contradiction checking.
+The current `ConstraintConfig` type in `@formspec/config` can be reinterpreted as a profile evaluated during the Validate phase, after contradiction checking.
 
 Approximate mapping examples:
 

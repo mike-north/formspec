@@ -25,6 +25,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 ## 006-parity-testing
 
 - Documented recursive named-type coverage as existing analyzer, generator, and CLI/e2e evidence rather than adding a strict TSDoc-to-ChainDSL parity fixture in this doc-only update.
+- Refreshed parity-test organization examples to the package-level `tests/` layout introduced by PR #410.
 
 ## e2e-test-matrix
 
