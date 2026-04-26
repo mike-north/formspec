@@ -161,5 +161,6 @@ TypeScript 7.x is the Go rewrite with a substantively different API surface. We 
 When code reaches into TypeScript's compiler API (`ts.Type`, `ts.Symbol`, `ts.TypeChecker`, etc.), be aware that some internals are not part of the public API contract and shift between majors. The most common pitfall:
 
 - **`ts.TypeFlags` numeric values were renumbered between TS 5.x and TS 6.x.** Always reference flags by enum member (`type.flags & ts.TypeFlags.Null`), never by hardcoded number (`type.flags & 65536`). See [`packages/eslint-plugin/src/utils/type-utils.ts`](packages/eslint-plugin/src/utils/type-utils.ts) for a full table and rationale.
+- `pnpm run lint` runs `scripts/check-typeflags-magic-numbers.mjs`, which fails on numeric literals in `.flags` bitmasks under `packages/**/src`. Replace any violation with the named `ts.TypeFlags.*` enum member.
 
 When in doubt, `import * as ts from "typescript"` (rather than `import type`) so enum references resolve at runtime against the host's installed TypeScript.

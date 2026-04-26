@@ -11,7 +11,11 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.js", "scripts/normalize-generated-markdown.mjs"],
+          allowDefaultProject: [
+            "eslint.config.js",
+            "scripts/check-typeflags-magic-numbers.mjs",
+            "scripts/normalize-generated-markdown.mjs",
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
