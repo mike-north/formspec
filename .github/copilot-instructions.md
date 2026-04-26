@@ -14,7 +14,9 @@ Every cross-package import must correspond to a relationship declared in `formsp
 - `from "@formspec/<x>/src/..."` — never import another package's source path.
 - `from "@formspec/<x>/dist/..."` — never import another package's build output.
 - Relative imports that cross a package boundary.
-- Imports of subpaths not in the upstream package's `exports`. Canonical subpaths are `.`, `/internals`, `/browser`, `/protocol`.
+- New subpath exports (other than `/browser` for env-conditioned bundles). Subpaths are discouraged.
+
+Cross-package internal API surface is declared by tagging barrel exports with TSDoc `@internal` (API Extractor strips them from public; siblings still import via the main entry). Non-barrel imports are allowed only inside a package's own tests. Existing `/internals`, `/internal`, `/protocol`, `/base` subpaths are transitional; do not introduce new ones.
 
 Each concept has exactly one owning bounded context. Adding constraint extraction in `@formspec/dsl` instead of `@formspec/build`, or putting tag-parsing in `@formspec/core` instead of `@formspec/analysis`, is wrong by definition — flag it.
 
@@ -41,7 +43,7 @@ Use canonical terms from `GLOSSARY.md` verbatim. Common drifts to flag:
 ## Test discipline
 
 - Bug fixes require a regression test that fails pre-fix and references the bug (issue number or summary) in its name or comment.
-- Spec-first: expected IR/schema values are hand-derived from the spec/design doc and cite the section (e.g., `// per design 003 §2.3`). Exemplars: `packages/build/tests/parity/` (hand-written `expected-ir.ts` constants) and `packages/build/tests/ir-json-schema-generator.test.ts`. Flag `toMatchSnapshot()` / `loadExpected()` as the only correctness mechanism — tautological.
+- Spec-first: expected IR/schema values are hand-derived from the spec and cite the section (e.g., `// per design 003 §2.3`). Exemplars in `packages/build/tests/parity/`. Flag `toMatchSnapshot()` / `loadExpected()` as a correctness mechanism — tautological.
 - Pick the test layer deliberately: unit for pure logic; integration when a change crosses a package boundary declared in `formspec.cml`; e2e for multi-context flows; UAT (CLI subprocess) for user-visible CLI output.
 - `tsd` type tests need positive (`expectType` / `expectAssignable`) and negative (`expectError`) cases.
 - Deterministic time: fixed date constants or `vi.useFakeTimers()`; never `new Date()` / `Date.now()` in fixtures.
@@ -49,5 +51,4 @@ Use canonical terms from `GLOSSARY.md` verbatim. Common drifts to flag:
 
 ## Out of scope (do not flag)
 
-- TypeScript 6.x matrix CI failures — pre-existing, handled separately.
 - Stale `@formspec/playground` references in older docs — separate cleanup PR.

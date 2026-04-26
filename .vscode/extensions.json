@@ -1,7 +1,3 @@
 {
-  "recommendations": [
-    "contextmapper.context-mapper-vscode-extension",
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode"
-  ]
+  "recommendations": ["contextmapper.context-mapper-vscode-extension"]
 }
