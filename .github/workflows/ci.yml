@@ -38,6 +38,82 @@ jobs:
       - name: Type check
         run: pnpm run typecheck
 
+  typescript-matrix:
+    name: Compute TypeScript matrix
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.compute.outputs.include }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute matrix
+        id: compute
+        # Skip the "5.x" entry when the workspace's default TypeScript is
+        # already on 5.x — the main build-and-test job covers it. When the
+        # default is bumped to 6.x or later, the 5.x entry auto-enables to
+        # keep backwards-compatibility coverage.
+        run: |
+          node --input-type=module <<'EOF' >> "$GITHUB_OUTPUT"
+          import { readFileSync } from "node:fs";
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const spec = pkg.devDependencies?.typescript ?? "";
+          const defaultMajor = Number((spec.match(/\d+/) ?? ["0"])[0]);
+          const include = [];
+          if (defaultMajor !== 5) {
+            include.push({ label: "5.x", typescript: "5", experimental: false });
+          }
+          include.push({ label: "latest", typescript: "latest", experimental: false });
+          include.push({ label: "beta", typescript: "beta", experimental: true });
+          // 6.x nightly. Pinned to <7 because TypeScript 7.x is the Go
+          // rewrite with a different API surface — we'll handle that as a
+          // separate, deliberate migration rather than silently testing it.
+          include.push({ label: "6.x nightly", typescript: ">=6.0.0-dev <7.0.0-0", experimental: true });
+          console.log(`include=${JSON.stringify(include)}`);
+          EOF
+
+  typescript-versions:
+    name: Test (TypeScript ${{ matrix.label }})
+    needs: typescript-matrix
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.typescript-matrix.outputs.include) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Pin TypeScript version via pnpm override
+        run: npm pkg set "pnpm.overrides.typescript=${{ matrix.typescript }}"
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Print resolved TypeScript version
+        run: pnpm exec tsc --version
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Run tests
+        run: pnpm run test
+
+      - name: Type check
+        run: pnpm run typecheck
+
   knip:
     runs-on: ubuntu-latest
 
