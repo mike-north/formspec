@@ -3504,10 +3504,14 @@ function assertTypeRegistryDeclarationSource(
   // The registry is keyed by unqualified type names, so cross-file collisions
   // would otherwise make one declaration silently stand in for another.
   throw new Error(
-    `Type registry collision: "${typeName}" was already registered from ${existing.provenance.file}; ` +
-      `cannot re-register from a different source file (${provenance.file}). ` +
+    `Type registry collision: "${typeName}" was already registered from ${formatProvenanceLocation(existing.provenance)}; ` +
+      `cannot re-register from a different declaration location (${formatProvenanceLocation(provenance)}). ` +
       "Rename one of the conflicting types."
   );
+}
+
+function formatProvenanceLocation(provenance: Provenance): string {
+  return `${provenance.file}:${String(provenance.line)}:${String(provenance.column)}`;
 }
 
 function isSameTypeRegistryDeclaration(left: Provenance, right: Provenance): boolean {

@@ -36,7 +36,7 @@ function writeFixture(files: Record<string, string>): MultiFileFixture {
         compilerOptions: {
           target: "ES2022",
           module: "NodeNext",
-          moduleResolution: "NodeNext",
+          moduleResolution: "nodenext",
           strict: true,
           skipLibCheck: true,
           noEmit: true,
