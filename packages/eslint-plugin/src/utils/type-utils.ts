@@ -65,6 +65,8 @@ import * as ts from "typescript";
 
 /**
  * Field type categories for FormSpec.
+ *
+ * @public
  */
 export type FieldTypeCategory =
   | "string"
@@ -84,6 +86,8 @@ export type FieldTypeCategory =
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
  * @returns True if the type is string, a string literal, or a union of string types
+ *
+ * @public
  */
 export function isStringType(
   type: ts.Type,
@@ -126,6 +130,8 @@ export function isStringType(
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
  * @returns True if the type is number, a number literal, or a union of number types
+ *
+ * @public
  */
 export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for number primitive
@@ -148,6 +154,8 @@ export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
 
 /**
  * Checks if a TypeScript type is a bigint type.
+ *
+ * @public
  */
 export function isBigIntType(type: ts.Type): boolean {
   if (type.flags & ts.TypeFlags.BigInt) {
@@ -173,6 +181,8 @@ export function isBigIntType(type: ts.Type): boolean {
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
  * @returns True if the type is boolean, true, false, or a union of boolean types
+ *
+ * @public
  */
 export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for boolean primitive
@@ -215,6 +225,8 @@ export function isNullableType(type: ts.Type): boolean {
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
  * @returns True if the type is an array type
+ *
+ * @public
  */
 export function isArrayType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check symbol name for Array
@@ -272,6 +284,8 @@ function stripNullishFromUnion(type: ts.Type): ts.Type {
  * @param type - The TypeScript type to categorize
  * @param checker - The TypeScript type checker instance
  * @returns The field type category
+ *
+ * @public
  */
 export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): FieldTypeCategory {
   // Strip undefined/null from union types (e.g., optional fields: string | undefined → string)
@@ -298,6 +312,8 @@ export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): Fi
 
 /**
  * Gets the TypeScript type of a class property.
+ *
+ * @public
  */
 export function getPropertyType(
   node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature,
