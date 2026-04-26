@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Architecture orientation
+
+Read these before making non-trivial changes:
+
+- [`formspec.cml`](./formspec.cml) — the formal bounded-context model (Context Mapper Language). Authoritative source for which package owns what role and which packages may depend on which.
+- [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) — reader-friendly companion to the CML.
+- [`GLOSSARY.md`](./GLOSSARY.md) — project vocabulary. Use these terms verbatim.
+- [`docs/000-principles.md`](./docs/000-principles.md) — architectural principles every change must respect.
+
 ## Build & Development Commands
 
 ```bash
@@ -64,8 +73,8 @@ formspec (umbrella — re-exports everything)
 
 @formspec/analysis         (shared comment-tag analysis — depends on @formspec/core)
 @formspec/cli              (CLI tool — depends on @formspec/build/internals)
-@formspec/eslint-plugin    (ESLint rules — depends on @formspec/analysis, @formspec/constraints, @formspec/core)
-@formspec/constraints      (constraint validation — depends on @formspec/core)
+@formspec/eslint-plugin    (ESLint rules — depends on @formspec/analysis, @formspec/build, @formspec/config, @formspec/core)
+@formspec/config           (constraint validation + .formspec.yml configuration — depends on @formspec/core)
 @formspec/validator        (JSON Schema validation — @cfworker/json-schema)
 @formspec/ts-plugin        (TypeScript plugin + composable semantic service — reference implementation inside tsserver, depends on @formspec/analysis)
 @formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers, depends on @formspec/analysis and @formspec/core)
@@ -90,10 +99,10 @@ formspec (umbrella — re-exports everything)
 Packages must build in dependency order. The root `pnpm run build` handles this automatically. For manual builds:
 
 1. `@formspec/core` (no deps)
-2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` (depend on core)
+2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/config` (depend on core)
 3. `@formspec/analysis` (depends on core)
-4. `@formspec/build` (depends on core and analysis at runtime; peer dep on typescript)
-5. `@formspec/cli`, `@formspec/eslint-plugin` (depend on build/constraints/analysis)
+4. `@formspec/build` (depends on core, analysis, config at runtime; peer dep on typescript)
+5. `@formspec/cli`, `@formspec/eslint-plugin` (depend on build/config/analysis)
 6. `@formspec/ts-plugin` (depends on analysis)
 7. `@formspec/language-server` (depends on analysis, core)
 8. `formspec` (umbrella, depends on core, dsl, build, runtime)

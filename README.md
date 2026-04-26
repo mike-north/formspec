@@ -2,6 +2,8 @@
 
 Type-safe form definitions that compile to JSON Schema 2020-12 and JSON Forms UI Schema.
 
+> **Architecture orientation.** New contributors and AI agents should read [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) (a tour of the project's bounded contexts and how they relate) and [`GLOSSARY.md`](./GLOSSARY.md) (the project's vocabulary). The formal model lives in [`formspec.cml`](./formspec.cml).
+
 ## What It Covers
 
 FormSpec supports two authoring styles:
@@ -276,7 +278,7 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/build`           | JSON Schema / UI Schema generation and static TypeScript analysis                   |
 | `@formspec/runtime`         | Resolver helpers for dynamic data                                                   |
 | `@formspec/analysis`        | Shared semantic-analysis protocol types and comment-tag utilities                   |
-| `@formspec/constraints`     | `.formspec.yml` configuration and DSL capability validation                         |
+| `@formspec/config`          | `.formspec.yml` configuration and DSL capability validation                         |
 | `@formspec/validator`       | Runtime JSON Schema validation for secure environments                              |
 | `@formspec/eslint-plugin`   | ESLint rules for FormSpec tags and DSL usage                                        |
 | `@formspec/ts-plugin`       | TypeScript language-service plugin and reusable semantic service                    |
