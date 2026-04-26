@@ -41,7 +41,13 @@ Domain FormSpec {
 	Subdomain AuthoringDomain {
 		type = CORE
 		domainVisionStatement
-			= "How developers express form definitions: the chain DSL builder API and the TSDoc-annotated class surface, both producing values consumable by Compilation."
+			= "How developers express form definitions in TypeScript. Two surfaces: the chain DSL builder API and the TSDoc-annotated class surface."
+	}
+
+	Subdomain SemanticAnalysisDomain {
+		type = SUPPORTING
+		domainVisionStatement
+			= "Static extraction of FormSpec semantics from TypeScript source — TSDoc tag parsing, constraint metadata, FileSnapshot protocol — packaged so downstream tooling (Compilation, ESLint, TS plugin, language server) does not re-implement TypeScript-AST traversal."
 	}
 
 	Subdomain CompilationDomain {
@@ -89,6 +95,17 @@ BoundedContext DomainModelContext implements FormSpecModelDomain {
 		  "FormIR nodes (FieldNode, FormIRElement, ConstraintNode, AnnotationNode, Provenance)",
 		  "Constraint and annotation registration interfaces",
 		  "Metadata policy primitives"
+	// Published types (the surface this context exports for downstream contexts):
+	//   public (.):           AnyField, FormElement, FormSpec, TextField, NumberField,
+	//                         BooleanField, StaticEnumField, DynamicEnumField,
+	//                         DynamicSchemaField, ArrayField, ObjectField, Group,
+	//                         Conditional, EnumOption, plus constraint and annotation
+	//                         registration interfaces, MetadataPolicy primitives,
+	//                         LoggerLike contract.
+	//   /internals:           FieldNode, FormIR, FormIRElement, AnnotationNode,
+	//                         ConstraintNode, TypeNode, Provenance, IR_VERSION,
+	//                         PathTarget, JsonValue, BUILTIN_CONSTRAINT_DEFINITIONS,
+	//                         normalizeConstraintTagName, _attachFormSpecMetadataPolicy.
 }
 
 BoundedContext ChainDslContext implements AuthoringDomain {
@@ -101,9 +118,11 @@ BoundedContext ChainDslContext implements AuthoringDomain {
 		  "Group and conditional layout helpers",
 		  "Root formspec() factory",
 		  "InferFormSchema type inference helpers"
+	// Published types (.):
+	//   formspec(), field, group, when, is, InferFormSchema.
 }
 
-BoundedContext StaticAnalysisContext implements AuthoringDomain {
+BoundedContext StaticAnalysisContext implements SemanticAnalysisDomain {
 	type = FEATURE
 	domainVisionStatement
 		= "Extract semantic information from TypeScript source — TSDoc tag parsing, constraint extraction, FileSnapshot protocol — so that downstream tooling does not re-implement TypeScript-AST traversal."
@@ -113,6 +132,17 @@ BoundedContext StaticAnalysisContext implements AuthoringDomain {
 		  "Constraint and annotation extraction with provenance",
 		  "FileSnapshot protocol for transport-safe analysis input",
 		  "Constraint-validator semantics for diagnostic generation"
+	// Published types:
+	//   public (.):    analyzeMetadataForNode, analyzeMetadataForSourceFile, plus
+	//                  re-export of all /protocol types.
+	//   /protocol:     FormSpecAnalysisFileSnapshot, FormSpecAnalysisDiagnostic,
+	//                  FormSpecAnalysisManifest, FormSpecSemanticQuery,
+	//                  FormSpecSemanticResponse, FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+	//                  FORMSPEC_ANALYSIS_SCHEMA_VERSION, computeFormSpecTextHash,
+	//                  isFormSpecAnalysisManifest, plus serialized-* type families.
+	//   /internal:     ParsedCommentTag, ParsedCommentBlock, parseCommentBlock,
+	//                  parseTagSyntax, parseConstraintTagValue, parseDefaultValueTagValue,
+	//                  ConstraintTagParseRegistryLike, semantic completion helpers.
 }
 
 BoundedContext CompilationContext implements CompilationDomain {
@@ -126,6 +156,13 @@ BoundedContext CompilationContext implements CompilationDomain {
 		  "JSON Schema 2020-12 emission",
 		  "JSON Forms UI Schema emission",
 		  "Mixed-authoring orchestration"
+	// Published types:
+	//   public (.):    buildFormSchemas, generateSchemas, generateSchemasFromClass,
+	//                  generateSchemasFromProgram, buildMixedAuthoringSchemas,
+	//                  writeSchemas, JsonSchema2020.
+	//   /browser:      Schema generators without Node fs/path imports.
+	//   /internals:    createProgramContext, analyzeClass, ClassSchemas,
+	//                  MethodSchemas, LoadedFormSpecSchemas, ValidationResult.
 }
 
 BoundedContext ConfigurationContext implements ConfigurationDomain {
@@ -138,6 +175,15 @@ BoundedContext ConfigurationContext implements ConfigurationDomain {
 		  "defineFormSpecConfig() and defineConstraints() — typed configuration authoring",
 		  "validateFormSpecElements() / validateFormSpec() — DSL capability validation",
 		  "Browser-safe subset (loadConfigFromString) for embedded YAML-string parsing"
+	// Published types:
+	//   public (.):    loadFormSpecConfig, loadConfig (deprecated),
+	//                  defineFormSpecConfig, defineConstraints,
+	//                  validateFormSpecElements, validateFormSpec,
+	//                  resolveConfigForFile, FormSpecConfig, ConstraintConfig,
+	//                  ResolvedConstraintConfig, ValidationIssue, ValidationResult,
+	//                  DEFAULT_CONFIG, DEFAULT_CONSTRAINTS, mergeWithDefaults.
+	//   /browser:      loadConfigFromString and validation surface without
+	//                  Node fs/path or jiti.
 }
 
 BoundedContext RuntimeContext implements RuntimeDomain {
@@ -149,6 +195,8 @@ BoundedContext RuntimeContext implements RuntimeDomain {
 		= "defineResolvers() builder",
 		  "Resolver composition for dynamic enums",
 		  "Type-safe binding between resolver function signatures and form definitions"
+	// Published types (.):
+	//   defineResolvers, ResolverRegistry, resolver helper types.
 }
 
 BoundedContext ValidatorContext implements ValidationDomain {
@@ -159,6 +207,8 @@ BoundedContext ValidatorContext implements ValidationDomain {
 	responsibilities
 		= "Runtime JSON Schema 2020-12 validation",
 		  "Edge-runtime compatibility (no Node-specific imports)"
+	// Published types (.):
+	//   Validator constructor, validation result types — no FormSpec-specific surface.
 }
 
 BoundedContext CliContext implements DeveloperToolingDomain {
@@ -194,6 +244,9 @@ BoundedContext TsPluginContext implements DeveloperToolingDomain {
 		= "tsserver plugin entry point",
 		  "FormSpecSemanticService composable API exposed for higher-level tools",
 		  "IDE diagnostic and completion contributions"
+	// Published types (.):
+	//   FormSpecSemanticService, plugin factory entry. CJS-only consumers
+	//   (tsserver) load this package via require.
 }
 
 BoundedContext LanguageServerContext implements DeveloperToolingDomain {
@@ -207,26 +260,27 @@ BoundedContext LanguageServerContext implements DeveloperToolingDomain {
 		  "Translation between LSP types and FormSpec semantic helpers"
 }
 
-BoundedContext UmbrellaContext implements FormSpecModelDomain {
-	type = APPLICATION
-	domainVisionStatement
-		= "Single-import re-export point for end users. No new behavior; just bundles the most common runtime-facing APIs from core, dsl, build, and runtime."
-	implementationTechnology = "TypeScript — npm package formspec (umbrella)"
-	responsibilities
-		= "Re-export public surfaces from @formspec/core, @formspec/dsl, @formspec/build, @formspec/runtime"
-}
+// NOTE: The `formspec` umbrella package is intentionally NOT modelled as a
+// BoundedContext. It re-exports `@formspec/core`, `@formspec/dsl`,
+// `@formspec/build`, and `@formspec/runtime` verbatim — it has no domain
+// language of its own and is purely a packaging convenience. See
+// BOUNDED_CONTEXTS.md for the rationale and how its dependencies are still
+// enforced (it must only re-export from the four upstream contexts).
 
 // =============================================================================
 // Context Map
 // =============================================================================
 //
-// Relationship notation:
+// Relationship notation (only patterns actually used in this map):
 //   [D]   = Downstream
 //   [U]   = Upstream
 //   [OHS] = Open Host Service (upstream provides a documented protocol)
 //   [PL]  = Published Language (a shared, well-defined vocabulary)
 //   [CF]  = Conformist (downstream accepts upstream's model as-is)
-//   [SK]  = Shared Kernel (bidirectional shared model)
+//   [ACL] = Anti-Corruption Layer (downstream translates upstream into a
+//           different vocabulary)
+// (CML supports other patterns — Shared Kernel, Customer-Supplier,
+// Partnership — that are not currently used in FormSpec.)
 //
 // Every cross-context coupling in this map corresponds to a real
 // dependency declared in package.json — and conversely, every real
@@ -254,7 +308,6 @@ ContextMap FormSpecContextMap {
 	contains EslintContext
 	contains TsPluginContext
 	contains LanguageServerContext
-	contains UmbrellaContext
 
 	// -------------------------------------------------------------------------
 	// DomainModelContext is the published language of FormSpec.
@@ -302,34 +355,35 @@ ContextMap FormSpecContextMap {
 		exposedAggregates = "FormElement, Provenance, diagnostic types"
 	}
 
-	UmbrellaContext [D, CF]<-[U, OHS, PL] DomainModelContext {
-		implementationTechnology = "Re-export of @formspec/core public surface"
-	}
-
 	// -------------------------------------------------------------------------
-	// StaticAnalysisContext exposes parsed comment-tag info as an OHS
-	// (the public + /internals + /protocol exports of @formspec/analysis).
-	// All semantic-tooling consumers conform to that protocol.
+	// StaticAnalysisContext exposes parsed comment-tag info as an OHS.
+	// Downstreams translate that information into different vocabularies
+	// (canonicalized IR, ESLint diagnostics, LSP responses) — these are
+	// Anti-Corruption Layer relationships, not Conformist consumption.
 	// -------------------------------------------------------------------------
 
-	CompilationContext [D, CF]<-[U, OHS, PL] StaticAnalysisContext {
+	CompilationContext [D, ACL]<-[U, OHS, PL] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis public + /internal exports"
 		exposedAggregates = "FormSpecAnalysisFileSnapshot, ParsedCommentTag (via /internal), parseConstraintTagValue (via /internal), analyzeMetadataForSourceFile"
+		// ACL: canonicalization translates parsed-tag info into FormIR (principle A4).
 	}
 
-	EslintContext [D, CF]<-[U, OHS] StaticAnalysisContext {
+	EslintContext [D, ACL]<-[U, OHS] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis"
 		exposedAggregates = "Constraint extraction helpers, applicability rules"
+		// ACL: lint rules translate constraint info into ESLint RuleContext / fix descriptors.
 	}
 
-	TsPluginContext [D, CF]<-[U, OHS] StaticAnalysisContext {
+	TsPluginContext [D, ACL]<-[U, OHS] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis"
 		exposedAggregates = "Comment parser, semantic analysis helpers"
+		// ACL: plugin translates parsed-tag info into ts-server diagnostic / completion shapes.
 	}
 
-	LanguageServerContext [D, CF]<-[U, OHS, PL] StaticAnalysisContext {
+	LanguageServerContext [D, ACL]<-[U, OHS, PL] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis (including /protocol for transport)"
 		exposedAggregates = "FormSpecAnalysisFileSnapshot, FormSpecAnalysisDiagnostic, FormSpecAnalysisManifest"
+		// ACL: textbook — translates analysis output into LSP wire types.
 	}
 
 	// -------------------------------------------------------------------------
@@ -367,25 +421,10 @@ ContextMap FormSpecContextMap {
 		exposedAggregates = "buildFormSchemas, generateSchemas, ClassSchemas, MethodSchemas"
 	}
 
-	EslintContext [D, CF]<-[U, OHS] CompilationContext {
+	EslintContext [D, ACL]<-[U, OHS] CompilationContext {
 		implementationTechnology = "TypeScript via @formspec/build"
 		exposedAggregates = "Compilation helpers used by constraint rules"
-	}
-
-	UmbrellaContext [D, CF]<-[U, OHS] CompilationContext {
-		implementationTechnology = "Re-export of @formspec/build public surface"
-	}
-
-	// -------------------------------------------------------------------------
-	// Authoring contexts re-exported by the umbrella.
-	// -------------------------------------------------------------------------
-
-	UmbrellaContext [D, CF]<-[U, OHS] ChainDslContext {
-		implementationTechnology = "Re-export of @formspec/dsl public surface"
-	}
-
-	UmbrellaContext [D, CF]<-[U, OHS] RuntimeContext {
-		implementationTechnology = "Re-export of @formspec/runtime public surface"
+		// ACL: lint rules adapt build outputs into ESLint diagnostics.
 	}
 
 	// -------------------------------------------------------------------------
