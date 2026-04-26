@@ -1,5 +1,11 @@
 # @formspec/validator
 
+## 0.1.0-alpha.64
+
+### Patch Changes
+
+- [#412](https://github.com/mike-north/formspec/pull/412) [`f91cc78`](https://github.com/mike-north/formspec/commit/f91cc78817cfb3fc5a1a492f3812c2e6dc186c46) Thanks [@mike-north](https://github.com/mike-north)! - Add `DOM` to the validator's build `lib` so the global `URL` type referenced by `@cfworker/json-schema`'s published declarations resolves under TypeScript 6.x. No runtime impact — declaration-emit only.
+
 ## 0.1.0-alpha.63
 
 ### Patch Changes

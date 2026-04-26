@@ -1,5 +1,25 @@
 # @formspec/cli
 
+## 0.1.0-alpha.64
+
+### Patch Changes
+
+- [#413](https://github.com/mike-north/formspec/pull/413) [`68228ba`](https://github.com/mike-north/formspec/commit/68228ba7db7c73f908ad9743950dc8821dcdad12) Thanks [@mike-north](https://github.com/mike-north)! - Add regression tests for `@format` inheritance across hybrid heritage + type-alias chains (issue #383). The unified BFS in `collectInheritedTypeAnnotations` already crosses alias boundaries in both directions; these tests pin that behavior so a future refactor cannot break either composition direction.
+
+- [#414](https://github.com/mike-north/formspec/pull/414) [`fc75ca4`](https://github.com/mike-north/formspec/commit/fc75ca4ec95b03aeb4c589c625ce1e03bd471cd2) Thanks [@mike-north](https://github.com/mike-north)! - Fail fast when TSDoc schema generation encounters same-named type definitions from different source modules, preventing silent `$defs` collisions.
+
+- [#415](https://github.com/mike-north/formspec/pull/415) [`2f50fc3`](https://github.com/mike-north/formspec/commit/2f50fc3debd46fb64101f4ce4a08b584f0d719c8) Thanks [@mike-north](https://github.com/mike-north)! - Move extension tag-name flattening and settings-bound extension registry reading into `@formspec/analysis`.
+
+  The ESLint plugin now uses the shared analysis helpers for extension-registered constraint tags, metadata slots, annotations, and built-in constraint broadening instead of maintaining local `settings.formspec.extensionRegistry` casts.
+
+- [#421](https://github.com/mike-north/formspec/pull/421) [`e06cebc`](https://github.com/mike-north/formspec/commit/e06cebc2f111cca0b8f5076b824f2cfcb59e0321) Thanks [@mike-north](https://github.com/mike-north)! - Relocate the `@format` heritage walker (`collectInheritedTypeAnnotations`, `extractNamedTypeAnnotations`, `INHERITABLE_TYPE_ANNOTATION_KINDS`) from `@formspec/build` to `@formspec/analysis` (resolves #379). The walk is now reusable by IDE surfaces (hover, diagnostics) without depending on `@formspec/build`. The walk itself is parser-agnostic — callers supply a `HeritageAnnotationExtractor` callback so the analysis package does not bind to build's TSDoc parser or `ExtensionRegistry`. Build keeps a thin adapter that supplies the existing extractor; no behavior change.
+
+- [#412](https://github.com/mike-north/formspec/pull/412) [`f91cc78`](https://github.com/mike-north/formspec/commit/f91cc78817cfb3fc5a1a492f3812c2e6dc186c46) Thanks [@mike-north](https://github.com/mike-north)! - Drop the no-op `baseUrl: "."` from each package's build tsconfig and pin `types: ["node"]` at the workspace root. `paths` resolves relative to the tsconfig file when `baseUrl` is omitted (TS 4.1+), so emitted declarations are unchanged. Required for clean builds under TypeScript 6.x, which deprecates `baseUrl` and no longer auto-includes `@types/node` globals.
+
+- Updated dependencies [[`68228ba`](https://github.com/mike-north/formspec/commit/68228ba7db7c73f908ad9743950dc8821dcdad12), [`fc75ca4`](https://github.com/mike-north/formspec/commit/fc75ca4ec95b03aeb4c589c625ce1e03bd471cd2), [`2f50fc3`](https://github.com/mike-north/formspec/commit/2f50fc3debd46fb64101f4ce4a08b584f0d719c8), [`e06cebc`](https://github.com/mike-north/formspec/commit/e06cebc2f111cca0b8f5076b824f2cfcb59e0321), [`f91cc78`](https://github.com/mike-north/formspec/commit/f91cc78817cfb3fc5a1a492f3812c2e6dc186c46)]:
+  - @formspec/build@0.1.0-alpha.64
+  - @formspec/config@0.1.0-alpha.64
+
 ## 0.1.0-alpha.63
 
 ### Patch Changes
