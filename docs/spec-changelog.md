@@ -124,6 +124,10 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Added declaration-level tooling coverage for `@discriminator`.
   - ESLint validation now includes declaration placement, duplicate detection, target-field validation, and local type-parameter validation for the discriminator surface.
   - The language server now needs tag completion, direct-property target completion, local type-parameter completion, and hover/signature help for the new tag.
+- Reconciled the ESLint rule inventory.
+  - `@description` validation now lives at `documentation/no-unsupported-description-tag`, while `constraint-validation/no-description-tag` remains a deprecated alias.
+  - Chain DSL policy rules now live under `dsl-policy/allowed-field-types` and `dsl-policy/allowed-layouts`; the previous `constraints-allowed-*` IDs remain deprecated aliases.
+  - The recommended preset includes the existing Markdown-formatting and DSL-policy rules, and stale `SYNTHETIC_SETUP_FAILURE` references were removed from 004's rule-category tables.
 
 ## 005-numeric-types.md
 

@@ -1,8 +1,8 @@
 /**
- * Rule: constraints/allowed-field-types
+ * Rule: dsl-policy/allowed-field-types
  *
  * Validates that field types used in the Chain DSL are allowed by the
- * project's constraint configuration.
+ * project's DSL policy configuration.
  *
  * Works with: field.text(), field.number(), field.boolean(), field.enum(),
  * field.dynamicEnum(), field.dynamicSchema(), field.array(), field.object()
@@ -10,11 +10,7 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import {
-  getFieldTypeSeverity,
-  type FieldTypeConstraints,
-  type Severity as _Severity,
-} from "@formspec/config/browser";
+import { getFieldTypeSeverity, type FieldTypeConstraints } from "@formspec/config/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -70,11 +66,11 @@ export type Options = [FieldTypeConstraints];
  * @public
  */
 export const allowedFieldTypes = createRule<Options, MessageIds>({
-  name: "constraints-allowed-field-types",
+  name: "dsl-policy/allowed-field-types",
   meta: {
     type: "problem",
     docs: {
-      description: "Validates that field types are allowed by the project's constraints",
+      description: "Validates that field types are allowed by the project's DSL policy",
     },
     messages: {
       disallowedFieldType:

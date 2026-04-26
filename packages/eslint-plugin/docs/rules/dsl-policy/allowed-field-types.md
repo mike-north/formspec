@@ -1,8 +1,6 @@
-# @formspec/constraints-allowed-field-types
+# @formspec/dsl-policy/allowed-field-types
 
 📝 Validates that field types are allowed by the project's DSL policy.
-
-❌ This rule is deprecated. It was replaced by [`@formspec/dsl-policy/allowed-field-types`](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/dsl-policy/allowed-field-types.md).
 
 <!-- end auto-generated rule header -->
 

@@ -1,8 +1,8 @@
 /**
- * Rule: constraints/allowed-layouts
+ * Rule: dsl-policy/allowed-layouts
  *
  * Validates that layout constructs (group, when/conditionals) used in the
- * Chain DSL are allowed by the project's constraint configuration.
+ * Chain DSL are allowed by the project's DSL policy configuration.
  *
  * Works with: group(), when()
  */
@@ -34,12 +34,12 @@ export type Options = [LayoutConstraints];
  * @public
  */
 export const allowedLayouts = createRule<Options, MessageIds>({
-  name: "constraints-allowed-layouts",
+  name: "dsl-policy/allowed-layouts",
   meta: {
     type: "problem",
     docs: {
       description:
-        "Validates that layout constructs (group, conditionals) are allowed by the project's constraints",
+        "Validates that layout constructs (group, conditionals) are allowed by the project's DSL policy",
     },
     messages: {
       disallowedGroup:

@@ -1,9 +1,9 @@
 /**
- * Tests for constraints/allowed-field-types rule.
+ * Tests for dsl-policy/allowed-field-types rule.
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import { allowedFieldTypes } from "../../../src/rules/constraints/allowed-field-types.js";
+import { allowedFieldTypes } from "../../../src/rules/dsl-policy/allowed-field-types.js";
 import * as vitest from "vitest";
 
 RuleTester.afterAll = vitest.afterAll;
@@ -19,9 +19,16 @@ const ruleTester = new RuleTester({
       },
     },
   },
+  plugins: {
+    "@rule-tester/dsl-policy": {
+      rules: {
+        "allowed-field-types": allowedFieldTypes,
+      },
+    },
+  },
 });
 
-ruleTester.run("constraints-allowed-field-types", allowedFieldTypes, {
+ruleTester.run("dsl-policy/allowed-field-types", allowedFieldTypes, {
   valid: [
     // All field types allowed by default (no constraints)
     {
