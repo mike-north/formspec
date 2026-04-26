@@ -173,7 +173,7 @@ This phase validates constraint composition across the resolved IR nodes:
    - Array length: `@minItems` > `@maxItems`
    - Rule effects: `@showWhen` + `@hideWhen` on same field; `@enableWhen` + `@disableWhen`
 3. Checks for duplicate tags where only one instance is meaningful (producing `DUPLICATE_TAG`)
-4. Checks for missing summary text when `@remarks` is present (producing `REMARKS_WITHOUT_SUMMARY`)
+4. Reserves future documentation-hygiene diagnostics such as `REMARKS_WITHOUT_SUMMARY`
 5. Checks for unsupported `@description` tag usage (producing `UNSUPPORTED_DESCRIPTION_TAG`)
 6. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
 
@@ -224,19 +224,21 @@ The pipeline is pure and stateless per invocation — no ambient configuration, 
 
 ## 3. ESLint Rule Architecture
 
-Per A7, ESLint owns all validation and auto-fix logic. The `@formspec/eslint-plugin` package provides a comprehensive rule set organized into categories that mirror the 002 §6 diagnostic code categories.
+Per A7, ESLint owns all validation and auto-fix logic. The `@formspec/eslint-plugin` package provides a comprehensive rule set organized into categories for TSDoc diagnostics, documentation hygiene, and DSL-policy enforcement.
 
 ### 3.1 Rule Categories
 
-Each rule category maps directly to a diagnostic category from 002 §6:
+Each rule category maps to either a diagnostic category from 002 §6 or an authoring-policy domain:
 
-| Rule category           | Diagnostic families                                                                                                  | Responsibility                                                               |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
-| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related                                                     | Malformed numeric, regex, JSON, and date values                              |
-| `type-compatibility`    | `TYPE_MISMATCH`                                                                                                      | Tags applied to incompatible field types                                     |
-| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                                              | Invalid path-target and member-target references                             |
-| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                                                 | Contradictions, duplicates, rule effect conflicts                            |
+| Rule category           | Diagnostic families                                                                                   | Responsibility                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, related    | Unknown tags, missing arguments, disabled tags, and extension setup   |
+| `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related                                      | Malformed numeric, regex, JSON, and date values                       |
+| `type-compatibility`    | `TYPE_MISMATCH`                                                                                       | Tags applied to incompatible field types                              |
+| `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                               | Invalid path-target and member-target references                      |
+| `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, discriminator diagnostics, related                       | Contradictions, duplicates, discriminator structure, rule conflicts   |
+| `documentation`         | `UNSUPPORTED_DESCRIPTION_TAG`, future documentation-hygiene diagnostics                               | Documentation-specific TSDoc usage                                    |
+| `dsl-policy`            | DSL-policy rule message IDs such as `disallowedFieldType`, `disallowedGroup`, `disallowedConditional` | Project policy over allowed Chain DSL field types and layout features |
 
 Rules within each category are named `formspec/<category>/<specific-rule>`, for example:
 
@@ -244,7 +246,7 @@ Rules within each category are named `formspec/<category>/<specific-rule>`, for 
 - `formspec/type-compatibility/tag-type-check`
 - `formspec/target-resolution/valid-path-target`
 
-Declaration-level tags such as `@discriminator` are validated by the same pipeline and surfaced through the same rule categories: placement and target issues are reported through target-resolution/type-compatibility checks, while duplicate occurrences continue to use `constraint-validation/no-duplicate-tags`.
+Declaration-level tags such as `@discriminator` are validated by the same pipeline. Discriminator placement, target, source operand, and target-field shape issues are surfaced through `constraint-validation/valid-discriminator`, while duplicate occurrences continue to use `constraint-validation/no-duplicate-tags`.
 
 ### 3.2 How Rules Consume the IR
 
@@ -300,31 +302,44 @@ const noContradictions: Rule.RuleModule = {
 
 ### 3.3 Built-In Rule Set
 
-The built-in rules cover all diagnostic codes defined in 002 §6. They are grouped into the recommended configuration (`formspec/recommended`) and a stricter configuration (`formspec/strict`) that upgrades configurable warnings to errors.
+The active built-in rules define the current public rule inventory for implemented tooling diagnostics and DSL-policy checks. They are grouped into the recommended configuration (`formspec/recommended`) and a stricter configuration (`formspec/strict`) that upgrades configurable warnings to errors.
 
 **`formspec/recommended` rule set:**
 
-| Rule                                           | Codes                                                                                                                                                                    | Default severity |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `tag-recognition/no-unknown-tags`              | `UNKNOWN_TAG`                                                                                                                                                            | warn             |
-| `tag-recognition/require-tag-arguments`        | `MISSING_TAG_ARGUMENT`                                                                                                                                                   | error            |
-| `tag-recognition/no-disabled-tags`             | `TAG_DISABLED`                                                                                                                                                           | warn             |
-| `value-parsing/valid-numeric-value`            | `INVALID_NUMERIC_VALUE`                                                                                                                                                  | error            |
-| `value-parsing/valid-integer-value`            | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                                                           | error            |
-| `value-parsing/valid-regex-pattern`            | `INVALID_REGEX_PATTERN`                                                                                                                                                  | error            |
-| `value-parsing/valid-json-value`               | `INVALID_JSON_VALUE`                                                                                                                                                     | error            |
-| `type-compatibility/tag-type-check`            | `TYPE_MISMATCH`                                                                                                                                                          | error            |
-| `target-resolution/valid-path-target`          | `UNKNOWN_PATH_TARGET`                                                                                                                                                    | error            |
-| `target-resolution/valid-member-target`        | `UNKNOWN_MEMBER_TARGET`                                                                                                                                                  | error            |
-| `target-resolution/no-unsupported-targeting`   | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                                                           | error            |
-| `target-resolution/no-member-target-on-object` | `MEMBER_TARGET_ON_NON_UNION`                                                                                                                                             | error            |
-| `target-resolution/discriminator-target`       | `INVALID_DISCRIMINATOR_TARGET`, `UNKNOWN_DISCRIMINATOR_TARGET`                                                                                                           | error            |
-| `type-compatibility/discriminator-source`      | `DISCRIMINATOR_SOURCE_NOT_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_NOT_LOCAL_TYPE_PARAMETER`, `DISCRIMINATOR_SOURCE_UNSUPPORTED_SHAPE`, `DISCRIMINATOR_VALUE_UNRESOLVABLE` | error            |
-| `constraint-validation/no-contradictions`      | `CONSTRAINT_CONTRADICTION`                                                                                                                                               | error            |
-| `constraint-validation/no-duplicate-tags`      | `DUPLICATE_TAG`                                                                                                                                                          | warn             |
-| `documentation/remarks-without-summary`        | `REMARKS_WITHOUT_SUMMARY`                                                                                                                                                | info             |
-| `documentation/no-unsupported-description-tag` | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                                                            | error            |
-| `constraint-validation/no-contradictory-rules` | `CONTRADICTORY_RULE_EFFECTS`                                                                                                                                             | error            |
+| Rule                                                | Codes / message IDs                                                                                                                  | Default severity |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `tag-recognition/no-unknown-tags`                   | `UNKNOWN_TAG`                                                                                                                        | warn             |
+| `tag-recognition/require-tag-arguments`             | `MISSING_TAG_ARGUMENT`                                                                                                               | error            |
+| `tag-recognition/no-disabled-tags`                  | `TAG_DISABLED`                                                                                                                       | warn             |
+| `tag-recognition/no-markdown-formatting`            | `markdownFormattingForbidden`                                                                                                        | warn             |
+| `tag-recognition/tsdoc-comment-syntax`              | `tsdocSyntax`                                                                                                                        | error            |
+| `value-parsing/valid-numeric-value`                 | `INVALID_NUMERIC_VALUE`                                                                                                              | error            |
+| `value-parsing/valid-integer-value`                 | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                       | error            |
+| `value-parsing/valid-regex-pattern`                 | `INVALID_REGEX_PATTERN`                                                                                                              | error            |
+| `value-parsing/valid-json-value`                    | `INVALID_JSON_VALUE`                                                                                                                 | error            |
+| `type-compatibility/tag-type-check`                 | `TYPE_MISMATCH`                                                                                                                      | error            |
+| `target-resolution/valid-path-target`               | `UNKNOWN_PATH_TARGET`                                                                                                                | error            |
+| `target-resolution/valid-member-target`             | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error            |
+| `target-resolution/no-unsupported-targeting`        | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error            |
+| `target-resolution/no-member-target-on-object`      | `MEMBER_TARGET_ON_NON_UNION`                                                                                                         | error            |
+| `constraint-validation/no-contradictions`           | `CONSTRAINT_CONTRADICTION`                                                                                                           | error            |
+| `constraint-validation/no-duplicate-tags`           | `DUPLICATE_TAG`                                                                                                                      | warn             |
+| `constraint-validation/no-contradictory-rules`      | `CONTRADICTORY_RULE_EFFECTS`                                                                                                         | error            |
+| `constraint-validation/valid-discriminator`         | `invalidPlacement`, `missingTarget`, `nestedTarget`, `invalidSourceOperand`, `nonLocalTypeParameter`, target-field shape diagnostics | error            |
+| `constraint-validation/no-double-underscore-fields` | `phantomField`                                                                                                                       | warn             |
+| `documentation/no-unsupported-description-tag`      | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                        | error            |
+| `dsl-policy/allowed-field-types`                    | `disallowedFieldType`                                                                                                                | error            |
+| `dsl-policy/allowed-layouts`                        | `disallowedGroup`, `disallowedConditional`                                                                                           | error            |
+
+Deprecated aliases remain registered for existing ESLint configurations, but they are not included in `formspec/recommended` or `formspec/strict`:
+
+| Deprecated rule ID                         | Replacement                                    |
+| ------------------------------------------ | ---------------------------------------------- |
+| `constraint-validation/no-description-tag` | `documentation/no-unsupported-description-tag` |
+| `constraints-allowed-field-types`          | `dsl-policy/allowed-field-types`               |
+| `constraints-allowed-layouts`              | `dsl-policy/allowed-layouts`                   |
+
+`documentation/remarks-without-summary` is specified for future documentation-hygiene work but is not part of this rule inventory.
 
 ### 3.4 Rule Configuration Interface
 
@@ -820,13 +835,13 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 
 ## Appendix A: Diagnostic Category Quick Reference
 
-| Category              | Representative symbolic codes                                                                                        | Responsibility                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, `SYNTHETIC_SETUP_FAILURE` | Unknown tags, missing arguments, disabled tags, and extension setup failures |
-| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related                                                            | Malformed numeric, regex, JSON, and date values                              |
-| Type compatibility    | `TYPE_MISMATCH`                                                                                                      | Tags applied to incompatible field types                                     |
-| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                                              | Invalid path-target and member-target references                             |
-| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                                                 | Contradictions, duplicates, rule effect conflicts                            |
+| Category              | Representative symbolic codes                                                                      | Responsibility                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, related | Unknown tags, missing arguments, disabled tags, and extension setup failures |
+| Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related                                          | Malformed numeric, regex, JSON, and date values                              |
+| Type compatibility    | `TYPE_MISMATCH`                                                                                    | Tags applied to incompatible field types                                     |
+| Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                            | Invalid path-target and member-target references                             |
+| Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                               | Contradictions, duplicates, rule effect conflicts                            |
 
 See 002 §6 for the individual diagnostic code definitions.
 

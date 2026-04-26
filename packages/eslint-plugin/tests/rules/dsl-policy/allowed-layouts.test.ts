@@ -1,9 +1,9 @@
 /**
- * Tests for constraints/allowed-layouts rule.
+ * Tests for dsl-policy/allowed-layouts rule.
  */
 
 import { RuleTester } from "@typescript-eslint/rule-tester";
-import { allowedLayouts } from "../../../src/rules/constraints/allowed-layouts.js";
+import { allowedLayouts } from "../../../src/rules/dsl-policy/allowed-layouts.js";
 import * as vitest from "vitest";
 
 RuleTester.afterAll = vitest.afterAll;
@@ -19,9 +19,16 @@ const ruleTester = new RuleTester({
       },
     },
   },
+  plugins: {
+    "@rule-tester/dsl-policy": {
+      rules: {
+        "allowed-layouts": allowedLayouts,
+      },
+    },
+  },
 });
 
-ruleTester.run("constraints-allowed-layouts", allowedLayouts, {
+ruleTester.run("dsl-policy/allowed-layouts", allowedLayouts, {
   valid: [
     // All layouts allowed by default (no constraints)
     {

@@ -11,8 +11,8 @@ const createRule = ESLintUtils.RuleCreator(
  *
  * @public
  */
-export const noDescriptionTag = createRule<[], "descriptionTagForbidden">({
-  name: "constraint-validation/no-description-tag",
+export const noUnsupportedDescriptionTag = createRule<[], "descriptionTagForbidden">({
+  name: "documentation/no-unsupported-description-tag",
   meta: {
     type: "problem",
     docs: {

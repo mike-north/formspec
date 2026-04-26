@@ -1,8 +1,6 @@
-# @formspec/constraints-allowed-layouts
+# @formspec/dsl-policy/allowed-layouts
 
 📝 Validates that layout constructs (group, conditionals) are allowed by the project's DSL policy.
-
-❌ This rule is deprecated. It was replaced by [`@formspec/dsl-policy/allowed-layouts`](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/dsl-policy/allowed-layouts.md).
 
 <!-- end auto-generated rule header -->
 

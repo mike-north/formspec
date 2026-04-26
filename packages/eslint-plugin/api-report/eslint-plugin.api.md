@@ -102,10 +102,8 @@ export const noContradictoryRules: ESLintUtils.RuleModule<"contradictoryRuleEffe
     name: string;
 };
 
-// @public
-export const noDescriptionTag: ESLintUtils.RuleModule<"descriptionTagForbidden", [], unknown, ESLintUtils.RuleListener> & {
-    name: string;
-};
+// @public @deprecated
+export const noDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []>;
 
 // @public
 export const noDisabledTags: NamedRuleModule<NoDisabledTagsMessageIds, NoDisabledTagsOptions>;
@@ -148,6 +146,9 @@ export const noMemberTargetOnObject: ESLintUtils.RuleModule<"memberTargetOnNonUn
 export const noUnknownTags: ESLintUtils.RuleModule<"unknownTag", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export const noUnsupportedDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []>;
 
 // @public
 export const noUnsupportedTargeting: ESLintUtils.RuleModule<"unsupportedTargetingSyntax", [], unknown, ESLintUtils.RuleListener> & {
@@ -201,9 +202,6 @@ const plugin: {
         readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
-        readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
-            name: string;
-        };
         readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
@@ -213,6 +211,10 @@ const plugin: {
         readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
+        readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
+        readonly "dsl-policy/allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
+        readonly "dsl-policy/allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
+        readonly "constraint-validation/no-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
         readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
         readonly "constraints-allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
     };
@@ -271,9 +273,6 @@ export const rules: {
     readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
-    readonly "constraint-validation/no-description-tag": TSESLint.RuleModule<"descriptionTagForbidden", [], unknown, TSESLint.RuleListener> & {
-        name: string;
-    };
     readonly "constraint-validation/no-contradictory-rules": TSESLint.RuleModule<"contradictoryRuleEffects", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
@@ -283,6 +282,10 @@ export const rules: {
     readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
+    readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
+    readonly "dsl-policy/allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
+    readonly "dsl-policy/allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
+    readonly "constraint-validation/no-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
     readonly "constraints-allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
     readonly "constraints-allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
 };

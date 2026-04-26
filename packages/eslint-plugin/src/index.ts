@@ -39,26 +39,26 @@ import {
   noUnsupportedTargeting,
   noMemberTargetOnObject,
   noDuplicateTags,
-  noDescriptionTag,
+  noUnsupportedDescriptionTag as noUnsupportedDescriptionTagRule,
   noContradictoryRules,
   validDiscriminator,
   noDoubleUnderscoreFields,
+  allowedFieldTypes as allowedFieldTypesRule,
+  allowedLayouts as allowedLayoutsRule,
   tsdocCommentSyntax as tsdocCommentSyntaxRule,
 } from "./rules/index.js";
 import {
   noContradictions as noContradictionsRule,
   type MessageIds as NoContradictionsMessageIds,
 } from "./rules/constraint-validation/no-contradictions.js";
-import {
-  allowedFieldTypes as allowedFieldTypesRule,
-  type MessageIds as AllowedFieldTypesMessageIds,
-  type Options as AllowedFieldTypesOptions,
-} from "./rules/constraints/allowed-field-types.js";
-import {
-  allowedLayouts as allowedLayoutsRule,
-  type MessageIds as AllowedLayoutsMessageIds,
-  type Options as AllowedLayoutsOptions,
-} from "./rules/constraints/allowed-layouts.js";
+import type {
+  MessageIds as AllowedFieldTypesMessageIds,
+  Options as AllowedFieldTypesOptions,
+} from "./rules/dsl-policy/allowed-field-types.js";
+import type {
+  MessageIds as AllowedLayoutsMessageIds,
+  Options as AllowedLayoutsOptions,
+} from "./rules/dsl-policy/allowed-layouts.js";
 import {
   noDisabledTags as noDisabledTagsRule,
   type MessageIds as NoDisabledTagsMessageIds,
@@ -79,6 +79,25 @@ export type NamedRuleModule<
   MessageIds extends string,
   Options extends readonly unknown[],
 > = TSESLint.RuleModule<MessageIds, Options> & { name: string };
+
+/**
+ * Creates an ESLint-visible alias without mutating the canonical rule module.
+ */
+function createDeprecatedRuleAlias<MessageIds extends string, Options extends readonly unknown[]>(
+  rule: NamedRuleModule<MessageIds, Options>,
+  name: string,
+  replacedBy: string
+): NamedRuleModule<MessageIds, Options> {
+  return {
+    ...rule,
+    name,
+    meta: {
+      ...rule.meta,
+      deprecated: true,
+      replacedBy: [replacedBy],
+    },
+  };
+}
 
 export type {
   AllowedFieldTypesMessageIds,
@@ -130,7 +149,30 @@ export const noMarkdownFormatting: NamedRuleModule<
 export const tsdocCommentSyntax: NamedRuleModule<"tsdocSyntax", []> = tsdocCommentSyntaxRule;
 
 /**
- * Validates allowed field types against project constraints.
+ * Bans `@description`, which is not a supported FormSpec documentation tag.
+ *
+ * @public
+ */
+export const noUnsupportedDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []> =
+  noUnsupportedDescriptionTagRule;
+
+const deprecatedNoDescriptionTag = createDeprecatedRuleAlias(
+  noUnsupportedDescriptionTag,
+  "constraint-validation/no-description-tag",
+  "documentation/no-unsupported-description-tag"
+);
+
+/**
+ * Deprecated alias for `documentation/no-unsupported-description-tag`.
+ *
+ * @deprecated Use `noUnsupportedDescriptionTag`.
+ * @public
+ */
+export const noDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []> =
+  deprecatedNoDescriptionTag;
+
+/**
+ * Validates allowed field types against project DSL policy.
  *
  * @public
  */
@@ -140,12 +182,24 @@ export const allowedFieldTypes: NamedRuleModule<
 > = allowedFieldTypesRule;
 
 /**
- * Validates allowed layout constructs against project constraints.
+ * Validates allowed layout constructs against project DSL policy.
  *
  * @public
  */
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions> =
   allowedLayoutsRule;
+
+const deprecatedAllowedFieldTypes = createDeprecatedRuleAlias(
+  allowedFieldTypes,
+  "constraints-allowed-field-types",
+  "dsl-policy/allowed-field-types"
+);
+
+const deprecatedAllowedLayouts = createDeprecatedRuleAlias(
+  allowedLayouts,
+  "constraints-allowed-layouts",
+  "dsl-policy/allowed-layouts"
+);
 
 /**
  * All rules provided by this plugin.
@@ -170,14 +224,17 @@ export const rules = {
   "target-resolution/no-member-target-on-object": noMemberTargetOnObject,
   "constraint-validation/no-contradictions": noContradictions,
   "constraint-validation/no-duplicate-tags": noDuplicateTags,
-  "constraint-validation/no-description-tag": noDescriptionTag,
   "constraint-validation/no-contradictory-rules": noContradictoryRules,
   "constraint-validation/valid-discriminator": validDiscriminator,
   "constraint-validation/no-double-underscore-fields": noDoubleUnderscoreFields,
+  "documentation/no-unsupported-description-tag": noUnsupportedDescriptionTag,
+  "dsl-policy/allowed-field-types": allowedFieldTypes,
+  "dsl-policy/allowed-layouts": allowedLayouts,
 
-  // Constraint rules for Chain DSL
-  "constraints-allowed-field-types": allowedFieldTypes,
-  "constraints-allowed-layouts": allowedLayouts,
+  // Deprecated aliases retained for existing ESLint configs.
+  "constraint-validation/no-description-tag": deprecatedNoDescriptionTag,
+  "constraints-allowed-field-types": deprecatedAllowedFieldTypes,
+  "constraints-allowed-layouts": deprecatedAllowedLayouts,
 } as const;
 
 /**
@@ -216,6 +273,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/tag-recognition/no-unknown-tags": "warn",
       "formspec/tag-recognition/require-tag-arguments": "error",
       "formspec/tag-recognition/no-disabled-tags": "warn",
+      "formspec/tag-recognition/no-markdown-formatting": "warn",
       "formspec/tag-recognition/tsdoc-comment-syntax": "error",
       "formspec/value-parsing/valid-numeric-value": "error",
       "formspec/value-parsing/valid-integer-value": "error",
@@ -228,10 +286,12 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/target-resolution/no-member-target-on-object": "error",
       "formspec/constraint-validation/no-contradictions": "error",
       "formspec/constraint-validation/no-duplicate-tags": "warn",
-      "formspec/constraint-validation/no-description-tag": "error",
       "formspec/constraint-validation/no-contradictory-rules": "error",
       "formspec/constraint-validation/valid-discriminator": "error",
       "formspec/constraint-validation/no-double-underscore-fields": "warn",
+      "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/dsl-policy/allowed-field-types": "error",
+      "formspec/dsl-policy/allowed-layouts": "error",
     },
   },
 ];
@@ -253,6 +313,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/tag-recognition/no-unknown-tags": "error",
       "formspec/tag-recognition/require-tag-arguments": "error",
       "formspec/tag-recognition/no-disabled-tags": "error",
+      "formspec/tag-recognition/no-markdown-formatting": "error",
       "formspec/tag-recognition/tsdoc-comment-syntax": "error",
       "formspec/value-parsing/valid-numeric-value": "error",
       "formspec/value-parsing/valid-integer-value": "error",
@@ -265,10 +326,12 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/target-resolution/no-member-target-on-object": "error",
       "formspec/constraint-validation/no-contradictions": "error",
       "formspec/constraint-validation/no-duplicate-tags": "error",
-      "formspec/constraint-validation/no-description-tag": "error",
       "formspec/constraint-validation/no-contradictory-rules": "error",
       "formspec/constraint-validation/valid-discriminator": "error",
       "formspec/constraint-validation/no-double-underscore-fields": "error",
+      "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/dsl-policy/allowed-field-types": "error",
+      "formspec/dsl-policy/allowed-layouts": "error",
     },
   },
 ];
@@ -358,7 +421,6 @@ export {
   noUnsupportedTargeting,
   noMemberTargetOnObject,
   noDuplicateTags,
-  noDescriptionTag,
   noContradictoryRules,
   noDoubleUnderscoreFields,
 };

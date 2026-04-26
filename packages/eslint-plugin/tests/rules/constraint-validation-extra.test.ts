@@ -1,7 +1,7 @@
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as vitest from "vitest";
 import { noDuplicateTags } from "../../src/rules/constraint-validation/no-duplicate-tags.js";
-import { noDescriptionTag } from "../../src/rules/constraint-validation/no-description-tag.js";
+import { noUnsupportedDescriptionTag } from "../../src/rules/documentation/no-unsupported-description-tag.js";
 import { noContradictoryRules } from "../../src/rules/constraint-validation/no-contradictory-rules.js";
 import { validDiscriminator } from "../../src/rules/constraint-validation/valid-discriminator.js";
 import { noDoubleUnderscoreFields } from "../../src/rules/constraint-validation/no-double-underscore-fields.js";
@@ -16,6 +16,13 @@ const ruleTester = new RuleTester({
     parserOptions: {
       projectService: {
         allowDefaultProject: ["*.ts"],
+      },
+    },
+  },
+  plugins: {
+    "@rule-tester/documentation": {
+      rules: {
+        "no-unsupported-description-tag": noUnsupportedDescriptionTag,
       },
     },
   },
@@ -65,7 +72,7 @@ ruleTester.run("no-duplicate-tags", noDuplicateTags, {
   ],
 });
 
-ruleTester.run("no-description-tag", noDescriptionTag, {
+ruleTester.run("documentation/no-unsupported-description-tag", noUnsupportedDescriptionTag, {
   valid: [{ code: `class Form { /** A name */ name!: string; }` }],
   invalid: [
     {
