@@ -7,6 +7,7 @@
  * @see https://github.com/mike-north/formspec/issues/367
  * @see https://github.com/mike-north/formspec/issues/374 — type-alias derivation coverage
  * @see https://github.com/mike-north/formspec/issues/376 — interface extends type-alias base (covered below)
+ * @see https://github.com/mike-north/formspec/issues/383 — hybrid heritage + type-alias chains (covered below)
  * @see packages/build/src/analyzer/class-analyzer.ts — named-type annotation
  *      extraction is the enforcement point.
  */
@@ -525,6 +526,58 @@ const TYPE_ALIAS_PATH_CONSTRAINT_ONLY_SOURCE = [
 ].join("\n");
 
 /**
+ * Hybrid 2 (issue #383) — extends-then-alias. A derived interface extends
+ * an `@format`-tagged base; a type alias then points at the derived
+ * interface. The alias-chain walk must reach the derived interface and
+ * continue through its heritage clause to inherit the base's annotation.
+ */
+const HYBRID_EXTENDS_THEN_ALIAS_SOURCE = [
+  "/** @format monetary-amount */",
+  "interface BaseMonetary {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+  "",
+  "interface DerivedMonetary extends BaseMonetary {",
+  "  note?: string;",
+  "}",
+  "",
+  "type AliasedDerived = DerivedMonetary;",
+  "",
+  "export class Order {",
+  "  tip!: AliasedDerived;",
+  "}",
+].join("\n");
+
+/**
+ * Hybrid 3 (issue #383) — alias-then-implements (negative). A class
+ * `implements` an alias of an `@format`-tagged interface. `implements`
+ * never propagates type-level annotations (mirrors the
+ * {@link IMPLEMENTS_NEGATIVE_SOURCE} fixture), so the alias indirection
+ * must not change that result. Guards against a future change that
+ * accidentally treats alias-of-interface in `implements` as a different
+ * code path.
+ */
+const HYBRID_ALIAS_THEN_IMPLEMENTS_SOURCE = [
+  "/** @format monetary-amount */",
+  "interface IMonetary {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+  "",
+  "type AliasedBase = IMonetary;",
+  "",
+  "export class DerivedFromAlias implements AliasedBase {",
+  "  amount!: number;",
+  "  currency!: string;",
+  "}",
+  "",
+  "export class Order {",
+  "  amount!: DerivedFromAlias;",
+  "}",
+].join("\n");
+
+/**
  * Generic pass-through alias — `type Box<T> = Container<T>`. The alias
  * body is a `TypeReferenceNode` with type arguments. The walker should
  * still reach `Container`'s `@format` annotation; the use-site
@@ -571,6 +624,8 @@ let typeAliasCyclicFixturePath: string;
 let typeAliasIntersectionStopsWalkFixturePath: string;
 let typeAliasPathConstraintOnlyFixturePath: string;
 let typeAliasGenericPassThroughFixturePath: string;
+let hybridExtendsThenAliasFixturePath: string;
+let hybridAliasThenImplementsFixturePath: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-fmt-inherit-"));
@@ -667,6 +722,12 @@ beforeAll(() => {
 
   typeAliasGenericPassThroughFixturePath = path.join(tmpDir, "type-alias-generic-pass-through.ts");
   fs.writeFileSync(typeAliasGenericPassThroughFixturePath, TYPE_ALIAS_GENERIC_PASS_THROUGH_SOURCE);
+
+  hybridExtendsThenAliasFixturePath = path.join(tmpDir, "hybrid-extends-then-alias.ts");
+  fs.writeFileSync(hybridExtendsThenAliasFixturePath, HYBRID_EXTENDS_THEN_ALIAS_SOURCE);
+
+  hybridAliasThenImplementsFixturePath = path.join(tmpDir, "hybrid-alias-then-implements.ts");
+  fs.writeFileSync(hybridAliasThenImplementsFixturePath, HYBRID_ALIAS_THEN_IMPLEMENTS_SOURCE);
 });
 
 afterAll(() => {
@@ -1172,5 +1233,66 @@ describe("type-alias derivation — `@format` inheritance", () => {
     expect(refTarget).toBeDefined();
     const entry = expectRecord(defs[refTarget ?? ""], `$defs.${refTarget ?? "(unknown)"}`);
     expect(entry["format"]).toBe("boxed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — hybrid heritage + type-alias chains (issue #383)
+//
+// Hybrid chains mix `interface extends` / `class extends` with `type` alias
+// derivation in a single inheritance path. The unified BFS in
+// `collectInheritedTypeAnnotations` crosses alias boundaries in both
+// directions, so these tests pin the composition.
+//
+// Issue #383's "Hybrid 1" (alias-then-extends, `interface Derived extends
+// AliasedBase` where `AliasedBase = SomeInterface`) is structurally the
+// same path already pinned by `INTERFACE_EXTENDS_TYPE_ALIAS_MULTI_LEVEL_SOURCE`
+// above — no separate fixture needed. Issue #383's parenthetical "class
+// extends AliasedBase" arm is not testable: TypeScript rejects
+// `class extends type-alias` (TS2693, "only refers to a type"), so a
+// type-alias cannot appear in a class's heritage clause regardless of
+// whether the alias resolves to a class or interface. The remaining
+// hybrid chains are pinned below.
+// ---------------------------------------------------------------------------
+
+describe("hybrid heritage + type-alias chains — issue #383", () => {
+  it("extends-then-alias: alias of a derived interface inherits the @format from the interface's base", () => {
+    // spec: issue #383 Hybrid 2 — chain is `AliasedDerived (alias) →
+    // DerivedMonetary (interface) extends BaseMonetary (interface,
+    // @format-tagged)`. The alias-chain walker must reach the derived
+    // interface, then continue through its heritage clause to pick up
+    // the base's annotation.
+    const result = generateSchemasOrThrow({
+      filePath: hybridExtendsThenAliasFixturePath,
+      typeName: "Order",
+    });
+
+    const props = expectRecord(result.jsonSchema.properties ?? {}, "properties");
+    const tip = expectRecord(props["tip"], "properties.tip");
+    // The alias preserves identity because an inheritable type-level
+    // annotation is reachable on the chain.
+    expect(tip["$ref"]).toBe("#/$defs/AliasedDerived");
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const aliased = expectRecord(defs["AliasedDerived"], "$defs.AliasedDerived");
+    expect(aliased["format"]).toBe("monetary-amount");
+  });
+
+  it("alias-then-implements (negative): a class that `implements` an alias of an @format-tagged interface does NOT inherit the format", () => {
+    // spec: issue #383 Hybrid 3 — `implements` never propagates
+    // type-level annotations (locked in by IMPLEMENTS_NEGATIVE_SOURCE
+    // for the non-hybrid case). The alias indirection must not change
+    // that result. Guards against a future change that mistakenly
+    // routes alias-of-interface bases through the inheritance walker
+    // for `implements` clauses.
+    const result = generateSchemasOrThrow({
+      filePath: hybridAliasThenImplementsFixturePath,
+      typeName: "Order",
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["DerivedFromAlias"], "$defs.DerivedFromAlias");
+
+    expect(derived["format"]).toBeUndefined();
   });
 });
