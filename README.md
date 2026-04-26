@@ -278,7 +278,7 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/build`           | JSON Schema / UI Schema generation and static TypeScript analysis                   |
 | `@formspec/runtime`         | Resolver helpers for dynamic data                                                   |
 | `@formspec/analysis`        | Shared semantic-analysis protocol types and comment-tag utilities                   |
-| `@formspec/config`          | `.formspec.yml` configuration and DSL capability validation                         |
+| `@formspec/config`          | `formspec.config.ts` loading and DSL capability validation                          |
 | `@formspec/validator`       | Runtime JSON Schema validation for secure environments                              |
 | `@formspec/eslint-plugin`   | ESLint rules for FormSpec tags and DSL usage                                        |
 | `@formspec/ts-plugin`       | TypeScript language-service plugin and reusable semantic service                    |

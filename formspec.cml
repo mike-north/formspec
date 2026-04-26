@@ -53,7 +53,7 @@ Domain FormSpec {
 	Subdomain ConfigurationDomain {
 		type = SUPPORTING
 		domainVisionStatement
-			= "User-facing constraint registration and DSL capability restriction via .formspec.yml."
+			= "User-facing extension and constraint registration plus DSL capability restriction. Authored as TypeScript via formspec.config.ts (.mts/.js/.mjs variants accepted); legacy YAML strings are still parseable via the browser entry."
 	}
 
 	Subdomain RuntimeDomain {
@@ -131,13 +131,13 @@ BoundedContext CompilationContext implements CompilationDomain {
 BoundedContext ConfigurationContext implements ConfigurationDomain {
 	type = APPLICATION
 	domainVisionStatement
-		= "Load .formspec.yml configuration; let consumers register custom constraints; restrict the FormSpec capability surface (allowed field types, layout features, field options) per project."
-	implementationTechnology = "TypeScript + jiti + yaml — npm package @formspec/config"
+		= "Load formspec.config.ts (or .mts/.js/.mjs) configuration; let consumers register extensions and custom constraints via defineFormSpecConfig; restrict the FormSpec capability surface (allowed field types, layout features, field options) per project."
+	implementationTechnology = "TypeScript + jiti — npm package @formspec/config"
 	responsibilities
-		= "loadConfig() — discover and parse .formspec.yml",
-		  "defineConstraints() — typed constraint registration API",
-		  "validateFormSpecElements() — DSL capability validation",
-		  "Browser-safe subset for embedded validation"
+		= "loadFormSpecConfig() — discover and parse formspec.config.{ts,mts,js,mjs}",
+		  "defineFormSpecConfig() and defineConstraints() — typed configuration authoring",
+		  "validateFormSpecElements() / validateFormSpec() — DSL capability validation",
+		  "Browser-safe subset (loadConfigFromString) for embedded YAML-string parsing"
 }
 
 BoundedContext RuntimeContext implements RuntimeDomain {

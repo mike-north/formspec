@@ -184,11 +184,13 @@ When in doubt, prefer **Resolver** for the function and **data source** for the 
 
 ## Configuration
 
-### `.formspec.yml`
+### `formspec.config.ts`
 
-The project-level configuration file consumed by `@formspec/config`. Declares allowed field types, allowed layout features, allowed field options, and custom constraint registrations.
+The project-level configuration file consumed by `@formspec/config`. Discovery searches for `formspec.config.ts`, `formspec.config.mts`, `formspec.config.js`, or `formspec.config.mjs` (in that order) starting from the working directory. Authors write the file as TypeScript using `defineFormSpecConfig({...})` and register extensions, custom constraints, vendor prefix, metadata policy, enum serialization, and per-package overrides.
 
-Owning bounded context: `ConfigurationContext`.
+`.formspec.yml` is **legacy** and is no longer the default convention; YAML strings can still be parsed via `loadConfigFromString()` in the browser entry for embedded scenarios.
+
+Owning bounded context: `ConfigurationContext`. See [`docs/007-configuration.md`](./docs/007-configuration.md).
 
 ### Capability
 

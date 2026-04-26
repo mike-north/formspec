@@ -16,7 +16,7 @@ formspec (umbrella — re-exports everything)
 @formspec/cli              (CLI tool)
 └── @formspec/build/internals
 
-@formspec/config           (constraint validation + .formspec.yml configuration)
+@formspec/config           (constraint validation + formspec.config.ts loader)
 └── @formspec/core
 
 @formspec/analysis         (shared comment-tag analysis utilities)
@@ -179,19 +179,28 @@ Options include `--emit-ir` (output Canonical IR as JSON) and `--validate-only` 
 
 ## Constraints (`@formspec/config`)
 
-Restricts which FormSpec features are allowed, configured via `.formspec.yml`:
+Restricts which FormSpec features are allowed, configured in TypeScript via `formspec.config.ts` (or `.mts`/`.js`/`.mjs`). See [`docs/007-configuration.md`](./docs/007-configuration.md) for the full configuration spec.
 
-```yaml
-constraints:
-  fieldTypes:
-    dynamicEnum: error # Disallow dynamic enums
-    dynamicSchema: error # Disallow dynamic schemas
-  layout:
-    group: off # Allow groups
-    conditionals: warn # Warn on conditionals
-    maxNestingDepth: 3 # Limit nesting
-  fieldOptions:
-    placeholder: off # Allow placeholders
+```typescript
+// formspec.config.ts
+import { defineFormSpecConfig } from "@formspec/config";
+
+export default defineFormSpecConfig({
+  constraints: {
+    fieldTypes: {
+      dynamicEnum: "error", // Disallow dynamic enums
+      dynamicSchema: "error", // Disallow dynamic schemas
+    },
+    layout: {
+      group: "off", // Allow groups
+      conditionals: "warn", // Warn on conditionals
+      maxNestingDepth: 3, // Limit nesting
+    },
+    fieldOptions: {
+      placeholder: "off", // Allow placeholders
+    },
+  },
+});
 ```
 
 ### Enforcement Layers
@@ -200,7 +209,7 @@ constraints:
 | ---------------- | -------------------------- | ------------------------------ |
 | **Build-time**   | `@formspec/eslint-plugin`  | During linting / CI            |
 | **Programmatic** | `validateFormSpec()`       | At runtime or in build scripts |
-| **Browser**      | `@formspec/config/browser` | In the playground              |
+| **Browser**      | `@formspec/config/browser` | In browser-embedded validation |
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 
@@ -213,10 +222,10 @@ constraints:
 
 ### Chain DSL Rules
 
-| Rule                              | Purpose                                                                       |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `.formspec.yml` |
-| `constraints-allowed-layouts`     | `group()`, `when()` validated against `.formspec.yml`                         |
+| Rule                              | Purpose                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `formspec.config.ts` |
+| `constraints-allowed-layouts`     | `group()`, `when()` validated against `formspec.config.ts`                         |
 
 ## Tooling Architecture
 

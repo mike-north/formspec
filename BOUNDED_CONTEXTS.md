@@ -27,7 +27,7 @@ The campaign deliberately stops at the strategic level (BoundedContexts + Contex
 | `FormSpecModelDomain`    | CORE       | The canonical FormIR vocabulary every other context shares                                            |
 | `AuthoringDomain`        | CORE       | The two surfaces developers use to express form definitions                                           |
 | `CompilationDomain`      | CORE       | Canonicalization plus JSON Schema and UI Schema emission                                              |
-| `ConfigurationDomain`    | SUPPORTING | `.formspec.yml` and DSL capability restriction                                                        |
+| `ConfigurationDomain`    | SUPPORTING | `formspec.config.ts` loading and DSL capability restriction                                           |
 | `RuntimeDomain`          | SUPPORTING | Resolver helpers for dynamic data at form-render time                                                 |
 | `DeveloperToolingDomain` | SUPPORTING | IDE, lint, and CLI integrations                                                                       |
 | `ValidationDomain`       | GENERIC    | Standard JSON Schema 2020-12 validation (conforms to an external standard, not to FormSpec specifics) |
@@ -40,20 +40,20 @@ CORE is where FormSpec's distinctive value lives. SUPPORTING domains are necessa
 
 Each row below maps a CML `BoundedContext` to its npm package and primary responsibilities. Cell labels match the identifiers in [`formspec.cml`](./formspec.cml) — search there for the full vision statement.
 
-| Bounded context         | Package                     | Subdomain                | Role / responsibilities                                                                                                                      |
-| ----------------------- | --------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DomainModelContext`    | `@formspec/core`            | `FormSpecModelDomain`    | Defines and publishes the canonical FormIR. Discriminated FormElement union, IR node types, constraint/annotation registration APIs.         |
-| `ChainDslContext`       | `@formspec/dsl`             | `AuthoringDomain`        | Fluent builder API: `field.*`, `group`, `when`, `formspec`. Full type inference of the resulting schema.                                     |
-| `StaticAnalysisContext` | `@formspec/analysis`        | `AuthoringDomain`        | TSDoc tag parsing, constraint extraction, FileSnapshot protocol. The "TypeScript-AST work" every IDE/lint tool would otherwise re-implement. |
-| `CompilationContext`    | `@formspec/build`           | `CompilationDomain`      | Canonicalize chain DSL and class-analysis output to FormIR; emit JSON Schema 2020-12 and JSON Forms UI Schema.                               |
-| `ConfigurationContext`  | `@formspec/config`          | `ConfigurationDomain`    | Load `.formspec.yml`; register custom constraints; restrict the FormSpec capability surface per project.                                     |
-| `RuntimeContext`        | `@formspec/runtime`         | `RuntimeDomain`          | `defineResolvers()` for dynamic enum and dynamic schema fields, with type-safe end-to-end binding.                                           |
-| `ValidatorContext`      | `@formspec/validator`       | `ValidationDomain`       | Wraps `@cfworker/json-schema` to provide JSON Schema 2020-12 validation in edge-runtime environments. No FormSpec-specific dependencies.     |
-| `CliContext`            | `@formspec/cli`             | `DeveloperToolingDomain` | Drive schema and IR generation from the command line.                                                                                        |
-| `EslintContext`         | `@formspec/eslint-plugin`   | `DeveloperToolingDomain` | ESLint rules: constraint type-mismatch, contradictions, capability restrictions, with auto-fixes where unambiguous.                          |
-| `TsPluginContext`       | `@formspec/ts-plugin`       | `DeveloperToolingDomain` | TypeScript language-service plugin and reusable composable semantic service for IDE integrations.                                            |
-| `LanguageServerContext` | `@formspec/language-server` | `DeveloperToolingDomain` | LSP reference implementation; thin presentation layer over composable analysis and TS-plugin helpers.                                        |
-| `UmbrellaContext`       | `formspec`                  | `FormSpecModelDomain`    | Single-import re-export of common runtime-facing APIs from core, dsl, build, runtime.                                                        |
+| Bounded context         | Package                     | Subdomain                | Role / responsibilities                                                                                                                               |
+| ----------------------- | --------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DomainModelContext`    | `@formspec/core`            | `FormSpecModelDomain`    | Defines and publishes the canonical FormIR. Discriminated FormElement union, IR node types, constraint/annotation registration APIs.                  |
+| `ChainDslContext`       | `@formspec/dsl`             | `AuthoringDomain`        | Fluent builder API: `field.*`, `group`, `when`, `formspec`. Full type inference of the resulting schema.                                              |
+| `StaticAnalysisContext` | `@formspec/analysis`        | `AuthoringDomain`        | TSDoc tag parsing, constraint extraction, FileSnapshot protocol. The "TypeScript-AST work" every IDE/lint tool would otherwise re-implement.          |
+| `CompilationContext`    | `@formspec/build`           | `CompilationDomain`      | Canonicalize chain DSL and class-analysis output to FormIR; emit JSON Schema 2020-12 and JSON Forms UI Schema.                                        |
+| `ConfigurationContext`  | `@formspec/config`          | `ConfigurationDomain`    | Load `formspec.config.ts` (or `.mts`/`.js`/`.mjs`); register extensions and custom constraints; restrict the FormSpec capability surface per project. |
+| `RuntimeContext`        | `@formspec/runtime`         | `RuntimeDomain`          | `defineResolvers()` for dynamic enum and dynamic schema fields, with type-safe end-to-end binding.                                                    |
+| `ValidatorContext`      | `@formspec/validator`       | `ValidationDomain`       | Wraps `@cfworker/json-schema` to provide JSON Schema 2020-12 validation in edge-runtime environments. No FormSpec-specific dependencies.              |
+| `CliContext`            | `@formspec/cli`             | `DeveloperToolingDomain` | Drive schema and IR generation from the command line.                                                                                                 |
+| `EslintContext`         | `@formspec/eslint-plugin`   | `DeveloperToolingDomain` | ESLint rules: constraint type-mismatch, contradictions, capability restrictions, with auto-fixes where unambiguous.                                   |
+| `TsPluginContext`       | `@formspec/ts-plugin`       | `DeveloperToolingDomain` | TypeScript language-service plugin and reusable composable semantic service for IDE integrations.                                                     |
+| `LanguageServerContext` | `@formspec/language-server` | `DeveloperToolingDomain` | LSP reference implementation; thin presentation layer over composable analysis and TS-plugin helpers.                                                 |
+| `UmbrellaContext`       | `formspec`                  | `FormSpecModelDomain`    | Single-import re-export of common runtime-facing APIs from core, dsl, build, runtime.                                                                 |
 
 ---
 
@@ -111,7 +111,7 @@ Standalone:
 | Everyone except Validator                        | `DomainModelContext`                | `D, CF` ← `U, OHS, PL` | All FormSpec contexts conform to FormIR types as the published language. A change to `@formspec/core`'s public surface is a project-wide change. |
 | `CompilationContext`                             | `StaticAnalysisContext`             | `D, CF` ← `U, OHS, PL` | The build pipeline consumes parsed comment-tag info; the analysis package owns that parsing.                                                     |
 | `EslintContext`, `LanguageServerContext`         | `StaticAnalysisContext`             | `D, CF` ← `U, OHS`     | IDE/lint tools reuse the same analysis instead of re-implementing TypeScript-AST traversal.                                                      |
-| `CompilationContext`, `EslintContext`, etc.      | `ConfigurationContext`              | `D, CF` ← `U, OHS`     | Capability restrictions and custom constraint registrations originate in `.formspec.yml`.                                                        |
+| `CompilationContext`, `EslintContext`, etc.      | `ConfigurationContext`              | `D, CF` ← `U, OHS`     | Capability restrictions and custom constraint registrations originate in `formspec.config.ts`.                                                   |
 | `CliContext`, `EslintContext`, `UmbrellaContext` | `CompilationContext`                | `D, CF` ← `U, OHS`     | Anything that produces or inspects schemas delegates to the build pipeline; nobody else reaches into the analyzer or generators directly.        |
 | `UmbrellaContext`                                | `ChainDslContext`, `RuntimeContext` | `D, CF` ← `U, OHS`     | Pure re-exports for end users.                                                                                                                   |
 

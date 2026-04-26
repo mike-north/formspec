@@ -25,7 +25,7 @@ Primary packages:
 - `@formspec/build` — schema generation and static TypeScript analysis
 - `@formspec/runtime` — resolver helpers for dynamic enum/schema sources
 - `@formspec/analysis` — shared semantic-analysis protocol types and helpers
-- `@formspec/config` — `.formspec.yml` parsing and DSL capability validation
+- `@formspec/config` — `formspec.config.ts` loading and DSL capability validation
 - `@formspec/eslint-plugin` — lint rules for tags and DSL usage
 - `@formspec/ts-plugin` — TypeScript language-service plugin and semantic service
 - `@formspec/language-server` — reference LSP implementation over shared helpers
