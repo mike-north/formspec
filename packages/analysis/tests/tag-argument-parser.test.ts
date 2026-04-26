@@ -674,9 +674,6 @@ describe("parseTagArgument", () => {
   });
 
   describe("json-value-with-fallback (@const)", () => {
-    // Upstream parseTagSyntax truncates multi-line tag arguments at the first
-    // newline (Issue #327 / PR #314 pin). See the truncation pinning test below.
-
     function expectJsonValue(text: string, expected: unknown): void {
       const result = parseTagArgument("const", text, "build");
       expect(result.ok, `expected ok=true for input: ${JSON.stringify(text)}`).toBe(true);
@@ -736,12 +733,30 @@ describe("parseTagArgument", () => {
     it("falls back to raw string for trailing-comma array (invalid JSON)", () => {
       expectRawFallback("[1,2,]", "[1,2,]");
     });
-    it('truncated-to-"[" (Issue #327): falls back to raw-string', () => {
-      // Upstream parseTagSyntax truncates multi-line JSON at the first newline.
-      // `@const [\n1,\n2\n]` arrives here as just "[" — an incomplete JSON
-      // token that fails to parse. Pin that behavior here so a fix to #327
-      // is immediately visible at this layer.
-      expectRawFallback("[", "[");
+    it("rejects unterminated JSON-shaped arrays", () => {
+      const result = parseTagArgument("const", "[\n1,\n2", "build");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+        expect(result.diagnostic.message).toContain("@const");
+      }
+    });
+    it("rejects unterminated JSON-shaped objects", () => {
+      const result = parseTagArgument("const", '{"a": 1', "build");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+      }
+    });
+    it.each(["[}", '{"a": ]'])("rejects mismatched JSON-shaped delimiters (%s)", (text) => {
+      const result = parseTagArgument("const", text, "build");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+      }
     });
     it("returns MISSING_TAG_ARGUMENT for empty string", () => {
       const result = parseTagArgument("const", "", "build");

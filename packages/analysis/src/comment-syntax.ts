@@ -1,4 +1,5 @@
 import type { PathTarget } from "@formspec/core/internals";
+import { createJsonLikeBalanceTracker } from "./json-like-balance.js";
 import { extractPathTarget } from "./path-target.js";
 import {
   getTagDefinition,
@@ -99,6 +100,18 @@ interface CommentLineProjection {
   readonly rawContentEnd: number;
 }
 
+interface MultiLineJsonArgument {
+  readonly argumentText: string;
+  readonly rawEnd: number;
+}
+
+const MULTI_LINE_JSON_ARGUMENT_TAGS: ReadonlySet<string> = new Set([
+  "const",
+  "defaultValue",
+  "enumOptions",
+  "example",
+]);
+
 function isWhitespace(char: string | undefined): boolean {
   return char === " " || char === "\t" || char === "\n" || char === "\r";
 }
@@ -143,6 +156,19 @@ function trimTrailingWhitespace(lineText: string, end: number): number {
   return cursor;
 }
 
+function startsWithJsonOpener(text: string): boolean {
+  const first = text.trimStart()[0];
+  return first === "[" || first === "{";
+}
+
+function startsWithFreshBlockTag(lineText: string): boolean {
+  let cursor = 0;
+  while (cursor < lineText.length && isWhitespace(lineText[cursor])) {
+    cursor += 1;
+  }
+  return isTagStart(lineText, cursor);
+}
+
 function spanFromLine(
   line: CommentLineProjection,
   start: number,
@@ -162,6 +188,80 @@ function spanFromLine(
   return {
     start: baseOffset + rawStart,
     end: baseOffset + rawEnd,
+  };
+}
+
+function findMultiLineJsonArgument(
+  lines: readonly CommentLineProjection[],
+  startLineIndex: number,
+  valueStart: number,
+  firstLineValueEnd: number
+): MultiLineJsonArgument | null {
+  const firstLine = lines[startLineIndex];
+  if (
+    firstLine === undefined ||
+    !startsWithJsonOpener(firstLine.text.slice(valueStart, firstLineValueEnd))
+  ) {
+    return null;
+  }
+
+  const balanceTracker = createJsonLikeBalanceTracker();
+  const pieces: string[] = [];
+  const rawOffsets: number[] = [];
+  let rawEnd = firstLine.rawContentEnd;
+
+  for (let lineIndex = startLineIndex; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    if (line === undefined) {
+      continue;
+    }
+
+    if (lineIndex > startLineIndex && startsWithFreshBlockTag(line.text)) {
+      return null;
+    }
+
+    const pieceStart = lineIndex === startLineIndex ? valueStart : 0;
+    if (lineIndex > startLineIndex) {
+      pieces.push("\n");
+      rawOffsets.push(-1);
+    }
+
+    const pieceEnd = lineIndex === startLineIndex ? firstLineValueEnd : line.text.length;
+    for (let index = pieceStart; index < pieceEnd; index += 1) {
+      rawOffsets.push(line.rawOffsets[index] ?? line.rawContentEnd);
+    }
+    const piece = line.text.slice(pieceStart, pieceEnd);
+    pieces.push(piece);
+    rawEnd =
+      pieceEnd >= line.text.length
+        ? line.rawContentEnd
+        : (line.rawOffsets[pieceEnd - 1] ?? line.rawContentEnd - 1) + 1;
+
+    const balancedEnd = balanceTracker.append(piece);
+    if (balancedEnd === null) {
+      continue;
+    }
+    const projectedArgumentText = pieces.join("");
+    const trailingText = projectedArgumentText.slice(balancedEnd);
+    if (trailingText.trim() === "") {
+      const closeRawOffset = rawOffsets[balancedEnd - 1];
+      if (closeRawOffset !== undefined && closeRawOffset >= 0) {
+        return {
+          argumentText: projectedArgumentText.slice(0, balancedEnd),
+          rawEnd: closeRawOffset + 1,
+        };
+      }
+    }
+
+    return {
+      argumentText: projectedArgumentText,
+      rawEnd,
+    };
+  }
+
+  return {
+    argumentText: pieces.join(""),
+    rawEnd,
   };
 }
 
@@ -305,13 +405,23 @@ export function parseCommentBlock(
 ): ParsedCommentBlock {
   const tags: ParsedCommentTag[] = [];
   const baseOffset = options?.offset ?? 0;
+  const lines = projectCommentLines(commentText);
+  let consumedRawUntil = -1;
 
-  for (const line of projectCommentLines(commentText)) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    if (line === undefined) {
+      continue;
+    }
     const tagStarts = collectTagStarts(line.text);
 
     for (let tagIndex = 0; tagIndex < tagStarts.length; tagIndex += 1) {
       const tagStart = tagStarts[tagIndex];
       if (tagStart === undefined) {
+        continue;
+      }
+      const tagStartRaw = line.rawOffsets[tagStart];
+      if (tagStartRaw === undefined || tagStartRaw < consumedRawUntil) {
         continue;
       }
 
@@ -343,14 +453,41 @@ export function parseCommentBlock(
         }
       }
 
-      const payloadSpan =
+      let payloadSpan =
         payloadStart < trimmedTagSegmentEnd
           ? spanFromLine(line, payloadStart, trimmedTagSegmentEnd, baseOffset)
           : null;
-      const valueSpan =
+      let valueSpan =
         valueStart < trimmedTagSegmentEnd
           ? spanFromLine(line, valueStart, trimmedTagSegmentEnd, baseOffset)
           : null;
+      let fullSpan = spanFromLine(line, tagStart, trimmedTagSegmentEnd, baseOffset);
+      let argumentText =
+        valueSpan === null
+          ? ""
+          : commentText.slice(valueSpan.start - baseOffset, valueSpan.end - baseOffset);
+
+      if (
+        valueSpan !== null &&
+        MULTI_LINE_JSON_ARGUMENT_TAGS.has(canonicalName) &&
+        startsWithJsonOpener(line.text.slice(valueStart, trimmedTagSegmentEnd))
+      ) {
+        const multiLineArgument = findMultiLineJsonArgument(
+          lines,
+          lineIndex,
+          valueStart,
+          trimmedTagSegmentEnd
+        );
+        if (multiLineArgument !== null && multiLineArgument.rawEnd >= valueSpan.end - baseOffset) {
+          const absoluteEnd = baseOffset + multiLineArgument.rawEnd;
+          valueSpan = { start: valueSpan.start, end: absoluteEnd };
+          payloadSpan =
+            payloadSpan === null ? null : { start: payloadSpan.start, end: absoluteEnd };
+          fullSpan = { start: fullSpan.start, end: absoluteEnd };
+          argumentText = multiLineArgument.argumentText;
+          consumedRawUntil = Math.max(consumedRawUntil, multiLineArgument.rawEnd);
+        }
+      }
 
       const parsedTarget =
         target === null
@@ -369,16 +506,13 @@ export function parseCommentBlock(
         rawTagName: rawName,
         normalizedTagName: canonicalName,
         recognized: getTagDefinition(canonicalName, options?.extensions) !== null,
-        fullSpan: spanFromLine(line, tagStart, trimmedTagSegmentEnd, baseOffset),
+        fullSpan,
         tagNameSpan: spanFromLine(line, tagStart, tagEnd, baseOffset),
         payloadSpan,
         colonSpan: parsedTarget?.colonSpan ?? null,
         target: parsedTarget,
         argumentSpan: valueSpan,
-        argumentText:
-          valueSpan === null
-            ? ""
-            : commentText.slice(valueSpan.start - baseOffset, valueSpan.end - baseOffset),
+        argumentText,
       });
     }
   }

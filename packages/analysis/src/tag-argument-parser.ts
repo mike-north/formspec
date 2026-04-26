@@ -1,6 +1,7 @@
 import type { JsonValue } from "@formspec/core/internals";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import { parseTagSyntax, type ParsedCommentTag } from "./comment-syntax.js";
+import { getJsonLikeBalanceStatus } from "./json-like-balance.js";
 
 /**
  * Discriminates between "build" (compile-time via tsdoc-parser.ts) and
@@ -375,9 +376,9 @@ function parseEnumOptionsArgument(rawArgumentText: string): TagArgumentParseResu
  *   downstream IR compatibility check decides if the raw string matches the
  *   target type (semantic-targets.ts:~1255-1298).
  *
- * Note: parseTagSyntax truncates multi-line JSON at the first newline before
- * this parser runs (upstream issue #327 / PR #314 pin), so `@const [\n1,\n2\n]`
- * arrives as `"["` and hits the fallback path intentionally.
+ * JSON-shaped payloads with unbalanced brackets/braces are argument errors
+ * instead of raw-string fallbacks. Balanced-but-invalid JSON still falls back
+ * to a raw string to preserve existing `@const` semantics.
  */
 function parseConstArgument(rawArgumentText: string): TagArgumentParseResult {
   const trimmed = rawArgumentText.trim();
@@ -388,6 +389,16 @@ function parseConstArgument(rawArgumentText: string): TagArgumentParseResult {
       diagnostic: {
         code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
         message: "Expected a JSON value for @const.",
+      },
+    };
+  }
+
+  if (getJsonLikeBalanceStatus(rawArgumentText) === "unbalanced") {
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
+        message: "Expected a balanced JSON value for @const.",
       },
     };
   }

@@ -267,6 +267,140 @@ describe("parseCommentBlock", () => {
     expect(result.tags[0]?.argumentText).toBe('[{"value": "a"}]');
   });
 
+  it.each([
+    {
+      name: "arrays",
+      comment: "/**\n * @const [\n * 1,\n * 2\n * ]\n */",
+      expected: "[\n1,\n2\n]",
+    },
+    {
+      name: "objects",
+      comment: '/**\n * @const {\n * "a": 1,\n * "b": 2\n * }\n */',
+      expected: '{\n"a": 1,\n"b": 2\n}',
+    },
+    {
+      name: "nested values",
+      comment: '/**\n * @const {\n * "items": [\n * {"id": 1}\n * ]\n * }\n */',
+      expected: '{\n"items": [\n{"id": 1}\n]\n}',
+    },
+    {
+      name: "brackets inside strings",
+      comment: '/**\n * @const {\n * "text": "has [brackets] inside"\n * }\n */',
+      expected: '{\n"text": "has [brackets] inside"\n}',
+    },
+    {
+      name: "escaped quotes inside strings",
+      comment: '/**\n * @const {\n * "q": "contains \\"quote\\""\n * }\n */',
+      expected: '{\n"q": "contains \\"quote\\""\n}',
+    },
+  ])("preserves multi-line JSON $name as one bracketed argument", ({ comment, expected }) => {
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.argumentText).toBe(expected);
+  });
+
+  it("continues parsing following block tags after a multi-line JSON argument", () => {
+    const comment = '/**\n * First summary line.\n * @const {\n * "a": 1\n * }\n * @minimum 0\n */';
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0]?.normalizedTagName).toBe("const");
+    expect(result.tags[0]?.argumentText).toBe('{\n"a": 1\n}');
+    expect(result.tags[1]?.normalizedTagName).toBe("minimum");
+    expect(result.tags[1]?.argumentText).toBe("0");
+  });
+
+  it("continues parsing following same-line tags after JSON-shaped arguments", () => {
+    const comment = '/** @const {"a":1} @minimum 0 */';
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0]?.normalizedTagName).toBe("const");
+    expect(result.tags[0]?.argumentText).toBe('{"a":1}');
+    expect(result.tags[1]?.normalizedTagName).toBe("minimum");
+    expect(result.tags[1]?.argumentText).toBe("0");
+  });
+
+  it("expands all source spans for multi-line JSON arguments", () => {
+    const offset = 50;
+    const comment = '/**\n * @const {\n * "a": 1\n * }\n * @minimum 0\n */';
+    const result = parseCommentBlock(comment, { offset });
+    const [constTag, minimumTag] = result.tags;
+    const sliceSpan = (span: { start: number; end: number } | null): string | null =>
+      span === null ? null : comment.slice(span.start - offset, span.end - offset);
+
+    expect(constTag?.argumentText).toBe('{\n"a": 1\n}');
+    expect(sliceSpan(constTag?.argumentSpan ?? null)).toBe('{\n * "a": 1\n * }');
+    expect(sliceSpan(constTag?.payloadSpan ?? null)).toBe('{\n * "a": 1\n * }');
+    expect(sliceSpan(constTag?.fullSpan ?? null)).toBe('@const {\n * "a": 1\n * }');
+    expect(minimumTag?.argumentText).toBe("0");
+  });
+
+  it("preserves multi-line @defaultValue JSON payloads", () => {
+    const comment = '/**\n * @defaultValue {\n * "enabled": true\n * }\n */';
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.normalizedTagName).toBe("defaultValue");
+    expect(result.tags[0]?.argumentText).toBe('{\n"enabled": true\n}');
+  });
+
+  it("preserves multi-line @example JSON payloads", () => {
+    const comment = '/**\n * @example [\n * "draft",\n * "sent"\n * ]\n */';
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.normalizedTagName).toBe("example");
+    expect(result.tags[0]?.argumentText).toBe('[\n"draft",\n"sent"\n]');
+  });
+
+  it("keeps trailing text after a multi-line JSON close in the argument", () => {
+    const comment = "/**\n * @const [\n * 1\n * ] trailing\n */";
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.argumentText).toBe("[\n1\n] trailing");
+  });
+
+  it("leaves a new block tag visible when a JSON-shaped argument is unterminated", () => {
+    const comment = "/**\n * @const [\n * 1,\n * @minimum 0\n */";
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0]?.normalizedTagName).toBe("const");
+    expect(result.tags[0]?.argumentText).toBe("[");
+    expect(result.tags[1]?.normalizedTagName).toBe("minimum");
+    expect(result.tags[1]?.argumentText).toBe("0");
+  });
+
+  it("does not sweep non-JSON multi-line tags into the first argument", () => {
+    const comment = "/**\n * @minimum 0\n * @maximum 10\n */";
+    const result = parseCommentBlock(comment);
+
+    expect(result.tags).toHaveLength(2);
+    expect(result.tags[0]?.argumentText).toBe("0");
+    expect(result.tags[1]?.argumentText).toBe("10");
+  });
+
+  it("does not truncate non-JSON text that starts with balanced brackets", () => {
+    const result = parseCommentBlock(
+      "/** @displayName :plural [Customer Names](https://example.com) */"
+    );
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.argumentText).toBe("[Customer Names](https://example.com)");
+  });
+
+  it("does not sweep multi-line bracketed text for non-JSON-valued tags", () => {
+    const result = parseCommentBlock(
+      "/**\n * @displayName :plural [\n * Customer Names\n * ]\n */"
+    );
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags[0]?.argumentText).toBe("[");
+  });
+
   // ---------------------------------------------------------------------------
   // recognized field
   // ---------------------------------------------------------------------------

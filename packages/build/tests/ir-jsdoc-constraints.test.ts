@@ -279,6 +279,50 @@ describe("extractJSDocConstraintNodes", () => {
     });
   });
 
+  it("produces ConstConstraintNode for multi-line @const JSON arrays", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /**
+         * @const [
+         * 1,
+         * 2
+         * ]
+         */
+        x!: unknown;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "const",
+      value: [1, 2],
+    });
+  });
+
+  it("produces ConstConstraintNode for multi-line @const JSON objects", () => {
+    const prop = getPropertyFromSource(`
+      class Foo {
+        /**
+         * @const {
+         *   "enabled": true,
+         *   "mode": "email"
+         * }
+         */
+        x!: unknown;
+      }
+    `);
+
+    const result = extractJSDocConstraintNodes(prop);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      kind: "constraint",
+      constraintKind: "const",
+      value: { enabled: true, mode: "email" },
+    });
+  });
+
   it("preserves falsy JSON values for @const", () => {
     const zeroProp = getPropertyFromSource(`
       class Foo {

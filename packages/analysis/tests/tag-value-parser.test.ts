@@ -126,23 +126,22 @@ describe("tag-value-parser", () => {
       });
     });
 
-    it("truncates multi-line JSON to first line and raw-string falls back (@const [\\n1,\\n2\\n])", () => {
-      // parseTagSyntax operates on the first line only — newlines are treated as
-      // tag-block terminators. The text reaching the JSON.parse try is "[" (just
-      // the opening bracket), which fails to parse, so the catch branch returns
-      // the trimmed first-line text verbatim as the const value.
-      // TODO: Phase 1 typed parser should decide whether to propagate this
-      // truncation or to accept multi-line spans. See
-      // docs/refactors/synthetic-checker-retirement.md §9.1 #5.
+    it("parses multi-line JSON arrays (@const [\\n1,\\n2\\n])", () => {
       const parsed = parseConstraintTagValue("const", "[\n1,\n2\n]", PROVENANCE);
 
       expect(parsed).not.toBeNull();
       expect(parsed).toEqual({
         kind: "constraint",
         constraintKind: "const",
-        value: "[",
+        value: [1, 2],
         provenance: PROVENANCE,
       });
+    });
+
+    it("rejects unterminated JSON-shaped @const payloads", () => {
+      const parsed = parseConstraintTagValue("const", "[\n1,\n2", PROVENANCE);
+
+      expect(parsed).toBeNull();
     });
 
     it("falls back to raw string for trailing-comma array (@const [1,2,])", () => {
