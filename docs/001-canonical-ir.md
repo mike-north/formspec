@@ -198,9 +198,11 @@ interface ReferenceTypeNode {
 }
 ```
 
-The IR registry (section 9) maintains a `TypeDefinition` map from reference names to their resolved `TypeNode`. Generators walk this map to emit `$defs` in JSON Schema (PP7).
+The IR registry (section 10.3) maintains a `TypeDefinition` map from reference names to their resolved `TypeNode`. Generators walk this map to emit `$defs` in JSON Schema (PP7).
 
-**Current rule:** Circular type graphs are not supported in this revision. The analyzer should emit a clear source-located diagnostic rather than silently degrading to a fallback object schema. Future support for registry-backed recursive references is tracked in [issue #105](https://github.com/mike-north/formspec/issues/105).
+**Recursive named-type rule:** Named recursive type graphs are supported when the recursive shape is reachable through a named class, interface, or type alias. During analysis, the type registry seeds the named type before resolving its full body; recursive back-edges then become `ReferenceTypeNode` values whose `name` points at the seeded registry entry. This preserves the recursive structure without inlining indefinitely, and downstream JSON Schema generation emits a stable `$defs` entry with `$ref` back-edges.
+
+Anonymous recursive shapes are not part of this supported path because they have no stable registry identity to reference. They should be diagnosed as `ANONYMOUS_RECURSIVE_TYPE` rather than silently collapsing to an empty fallback object; that diagnostic work is tracked in [issue #422](https://github.com/mike-north/formspec/issues/422).
 
 ### 2.8 Dynamic Types
 

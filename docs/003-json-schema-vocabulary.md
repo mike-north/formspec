@@ -448,9 +448,44 @@ Sibling keywords alongside `$ref` are standard JSON Schema 2020-12. Draft 2019-0
 
 ### 5.5 Circular Reference Handling
 
-Circular types are not supported in this revision. When the analyzer detects a recursive type graph (for example, `type TreeNode = { value: number; children?: TreeNode[] }`), it should emit a clear source-located diagnostic instead of attempting fallback generation.
+Named recursive type graphs are supported through the same `$defs` + `$ref` mechanism used for other named references. The canonical IR registry contains one entry for each named recursive type, and recursive back-edges inside that entry lower to `$ref` values that point back to the same `$defs` key.
 
-Future support for recursive `$defs` + `$ref` emission is tracked in [issue #105](https://github.com/mike-north/formspec/issues/105).
+For example, a named recursive type:
+
+```typescript
+export class CircularNode {
+  id!: string;
+  next?: CircularNode;
+}
+
+export class CircularForm {
+  node!: CircularNode;
+}
+```
+
+emits one reusable definition and references it from both the root field and the recursive property:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "node": { "$ref": "#/$defs/CircularNode" }
+  },
+  "required": ["node"],
+  "$defs": {
+    "CircularNode": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "next": { "$ref": "#/$defs/CircularNode" }
+      },
+      "required": ["id"]
+    }
+  }
+}
+```
+
+This supersedes the prior diagnostic-only circular-reference rule tracked by [issue #105](https://github.com/mike-north/formspec/issues/105), which was completed by recursive named-type support. Anonymous recursive shapes remain unsupported until they can produce a clear `ANONYMOUS_RECURSIVE_TYPE` diagnostic; that follow-up is tracked in [issue #422](https://github.com/mike-north/formspec/issues/422).
 
 ---
 

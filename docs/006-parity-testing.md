@@ -236,6 +236,15 @@ Source: see 005 §6.2 for the TypeScript definition and JSON Schema output for `
 
 **Why this is a good fixture:** The `:value` and `:currency` path targets exercise the path-target grammar. The `total` field has four constraints targeting two different subfields, requiring the generator to emit an `allOf` with multiple property-level constraints (003 §5.4). This is the most structurally complex single-field case in the fixture suite.
 
+### 2.7 Coverage Note: Recursive Named Types
+
+This is not a strict TSDoc to ChainDSL parity fixture in this revision. The current ChainDSL fixture surface does not author recursive named type definitions directly, so a synthetic parity fixture would test registry plumbing rather than equivalent author intent. Existing tests cover recursive class handling, recursive type-alias handling, generic IR emission, and CLI generation:
+
+- `packages/build/tests/ir-analyzer.test.ts` verifies that recursive class properties resolve as named `ReferenceTypeNode` values and that the type registry contains the recursive named type.
+- `packages/build/tests/ir-json-schema-generator.test.ts` verifies that a self-referential named type emits a `$defs` entry whose recursive property points back to `#/$defs/<TypeName>`.
+- `packages/build/tests/defs-deduplication.test.ts` verifies a recursive `Tree` type alias whose `$defs.Tree` body remains a real object instead of a dangling self-reference.
+- `e2e/tests/cli-subprocess.test.ts` uses `e2e/fixtures/cli/circular-node.ts` to verify the CLI generates recursive schemas for circular references.
+
 ---
 
 ## 3. TSDoc ↔ Chain DSL Equivalence Test Patterns
