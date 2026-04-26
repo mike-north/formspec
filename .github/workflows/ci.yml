@@ -49,25 +49,44 @@ jobs:
 
       - name: Compute matrix
         id: compute
-        # Skip the "5.x" entry when the workspace's default TypeScript is
-        # already on 5.x — the main build-and-test job covers it. When the
+        # TypeScript 7.x is the Go rewrite with a substantively different API
+        # surface — we'll handle that as a separate, deliberate migration
+        # rather than silently testing it via dist-tag drift. Every matrix
+        # entry below is therefore clamped to <7: dist-tags are resolved to
+        # concrete versions at run time and dropped if they've crossed into
+        # 7.x; the nightly entry uses an explicit <7 semver range.
+        #
+        # The "5.x" entry is skipped when the workspace's default TypeScript
+        # is already on 5.x — the main build-and-test job covers it. When the
         # default is bumped to 6.x or later, the 5.x entry auto-enables to
         # keep backwards-compatibility coverage.
         run: |
           node --input-type=module <<'EOF' >> "$GITHUB_OUTPUT"
           import { readFileSync } from "node:fs";
+          import { execSync } from "node:child_process";
           const pkg = JSON.parse(readFileSync("package.json", "utf8"));
           const spec = pkg.devDependencies?.typescript ?? "";
           const defaultMajor = Number((spec.match(/\d+/) ?? ["0"])[0]);
+          const distTags = JSON.parse(
+            execSync("npm view typescript dist-tags --json", { encoding: "utf8" })
+          );
+          const resolveBelow7 = (tag) => {
+            const v = distTags[tag];
+            if (!v) return null;
+            return Number(v.split(".")[0]) < 7 ? v : null;
+          };
           const include = [];
           if (defaultMajor !== 5) {
             include.push({ label: "5.x", typescript: "5", experimental: false });
           }
-          include.push({ label: "latest", typescript: "latest", experimental: false });
-          include.push({ label: "beta", typescript: "beta", experimental: true });
-          // 6.x nightly. Pinned to <7 because TypeScript 7.x is the Go
-          // rewrite with a different API surface — we'll handle that as a
-          // separate, deliberate migration rather than silently testing it.
+          const latest = resolveBelow7("latest");
+          if (latest) {
+            include.push({ label: `latest (${latest})`, typescript: latest, experimental: false });
+          }
+          const beta = resolveBelow7("beta");
+          if (beta) {
+            include.push({ label: `beta (${beta})`, typescript: beta, experimental: true });
+          }
           include.push({ label: "6.x nightly", typescript: ">=6.0.0-dev <7.0.0-0", experimental: true });
           console.log(`include=${JSON.stringify(include)}`);
           EOF
