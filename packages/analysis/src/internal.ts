@@ -138,6 +138,12 @@ export type {
   AnalyzeMetadataWithCheckerOptions,
 } from "./metadata-analysis.js";
 export {
+  collectInheritedTypeAnnotations,
+  extractNamedTypeAnnotations,
+  hasInheritableTypeAnnotation,
+} from "./heritage-annotations.js";
+export type { HeritageAnnotationExtractor } from "./heritage-annotations.js";
+export {
   collectCompatiblePathTargets,
   getEnumMemberCompletions,
   getTypeSemanticCapabilities,
