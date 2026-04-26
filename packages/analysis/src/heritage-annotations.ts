@@ -28,10 +28,8 @@ import type { AnnotationNode } from "@formspec/core/internals";
  * annotations (e.g., `@description`, `@remarks`) are intentionally not
  * inherited here to keep the change surface-narrow; broader inheritance is
  * tracked in issue #371.
- *
- * @internal
  */
-export const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationKind"]> =
+const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationKind"]> =
   new Set<AnnotationNode["annotationKind"]>(["format"]);
 
 /**
@@ -51,13 +49,8 @@ function getInheritableAnnotationStringValue(annotation: AnnotationNode): string
  * heritage inheritance for its kind. An annotation whose string payload is
  * empty or whitespace-only (`/** @format * /`) is not treated as an
  * override — the base-declared value still flows through.
- *
- * Exported for build-side consumers that need to gate `$defs` emission on
- * meaningfully-populated annotations (e.g., `hasInheritableTypeAnnotation`).
- *
- * @internal
  */
-export function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean {
+function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean {
   const value = getInheritableAnnotationStringValue(annotation);
   if (value === undefined) return true;
   return value.trim().length > 0;
