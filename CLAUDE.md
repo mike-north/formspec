@@ -121,8 +121,8 @@ Packages must build in dependency order. The root `pnpm run build` handles this 
 - **Type tests**: tsd — `pnpm --filter @formspec/dsl run test:types`
 - **ESLint rule tests**: RuleTester via Vitest — `pnpm --filter @formspec/eslint-plugin run test`
 - **E2E tests**: `pnpm run test:e2e`
-- Type test files go in `src/__tests__/*.test-d.ts`
-- Static analysis pipeline tests use fixture files in `src/__tests__/fixtures/`
+- Type test files go in `tests/*.test-d.ts`
+- Static analysis pipeline tests use fixture files in `tests/fixtures/`
 - The `@formspec/build` package must be built before its tests run (`pnpm run build && vitest run`)
 
 ## Releasing

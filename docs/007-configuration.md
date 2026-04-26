@@ -38,7 +38,7 @@ This document does **not** cover:
 
 ### 1.3 Starting Point
 
-The `FormSpecConfig` type already exists in `@formspec/config` (`packages/constraints/src/types.ts`, line 218) with a `constraints` field and a forward-looking comment:
+At the time this spec was authored, the initial `FormSpecConfig` shape contained only constraints plus a forward-looking comment:
 
 ```typescript
 export interface FormSpecConfig {
@@ -316,7 +316,7 @@ const { config, configPath } = await loadFormSpecConfig({ searchFrom: "./src" })
 
 const result = generateSchemas({
   config,
-  configPath,  // enables defineCustomType<T>() symbol-based detection
+  configPath, // enables defineCustomType<T>() symbol-based detection
   filePath: "./src/config.ts",
   typeName: "DiscountConfig",
   errorReporting: "throw",
@@ -453,10 +453,10 @@ Config files are loaded using [`jiti`](https://github.com/unjs/jiti), a runtime 
 
 The YAML config system has no users. It is replaced entirely:
 
-- `@formspec/constraints` is renamed to `@formspec/config`
+- The former constraint-configuration package is renamed to `@formspec/config`
 - `FormSpecConfig` type is expanded with `extensions`, `metadata`, `vendorPrefix`, `enumSerialization`
 - `defineFormSpecConfig` and `loadFormSpecConfig` are added as new exports
-- The YAML loader (`packages/constraints/src/loader.ts`) is replaced with a TypeScript file loader
+- The legacy YAML loader is replaced with a TypeScript config-file loader
 - The `ConstraintConfig` type is unchanged — it becomes one field of the expanded `FormSpecConfig`
 
 ### 6.2 Per-Consumer Wiring → Config Object
@@ -498,16 +498,16 @@ createServer({ config });
 
 ### 6.3 Deprecated APIs
 
-| Deprecated                               | Replacement                                                    | Package                     |
-| ---------------------------------------- | -------------------------------------------------------------- | --------------------------- |
-| `extensionRegistry` on `generateSchemas` | `config.extensions`                                            | `@formspec/build`           |
-| `vendorPrefix` on `generateSchemas`      | `config.vendorPrefix`                                          | `@formspec/build`           |
-| `enumSerialization` on `generateSchemas` | `config.enumSerialization`                                     | `@formspec/build`           |
-| `metadata` on `generateSchemas`          | `config.metadata`                                              | `@formspec/build`           |
-| `extensions` on `createServer`           | `config`                                                       | `@formspec/language-server` |
-| `.formspec.yml` file format              | `formspec.config.ts`                                           | `@formspec/config`          |
-| `loadConstraintConfig` (YAML loader)     | `loadFormSpecConfig`                                           | `@formspec/config`          |
-| `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter       | `@formspec/core`            |
+| Deprecated                                | Replacement                                             | Package                     |
+| ----------------------------------------- | ------------------------------------------------------- | --------------------------- |
+| `extensionRegistry` on `generateSchemas`  | `config.extensions`                                     | `@formspec/build`           |
+| `vendorPrefix` on `generateSchemas`       | `config.vendorPrefix`                                   | `@formspec/build`           |
+| `enumSerialization` on `generateSchemas`  | `config.enumSerialization`                              | `@formspec/build`           |
+| `metadata` on `generateSchemas`           | `config.metadata`                                       | `@formspec/build`           |
+| `extensions` on `createServer`            | `config`                                                | `@formspec/language-server` |
+| `.formspec.yml` file format               | `formspec.config.ts`                                    | `@formspec/config`          |
+| `loadConstraintConfig` (YAML loader)      | `loadFormSpecConfig`                                    | `@formspec/config`          |
+| `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter | `@formspec/core`            |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
 
@@ -515,9 +515,9 @@ Deprecated APIs remain functional. Direct options override config when both are 
 
 ## 7. Package Changes
 
-### 7.1 Rename `@formspec/constraints` → `@formspec/config`
+### 7.1 Rename the former constraint-configuration package to `@formspec/config`
 
-The existing `@formspec/constraints` package already owns `FormSpecConfig`, `ConstraintConfig`, the config loader, and the defaults. Renaming it to `@formspec/config` reflects its expanded role as the configuration system for the entire pipeline.
+The former constraint-configuration package already owns `FormSpecConfig`, `ConstraintConfig`, the config loader, and the defaults. Renaming it to `@formspec/config` reflects its expanded role as the configuration system for the entire pipeline.
 
 All existing exports (`ConstraintConfig`, `ResolvedConstraintConfig`, `ValidationIssue`, `ValidationResult`, `Severity`, `mergeWithDefaults`, `validateFormSpec`) remain unchanged — the rename is additive.
 
@@ -543,7 +543,7 @@ export { resolveExtensionRegistry } from "./resolve.js";
 
 ### 7.4 Downstream Impact
 
-All packages that depend on `@formspec/constraints` update their dependency to `@formspec/config`. Since the constraint types and APIs are re-exported unchanged, this is a mechanical rename with no code changes in consumers beyond `package.json` and import paths.
+All packages that depended on the former constraint-configuration package update their dependency to `@formspec/config`. Since the constraint types and APIs are re-exported unchanged, this is a mechanical rename with no code changes in consumers beyond `package.json` and import paths.
 
 ---
 
