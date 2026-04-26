@@ -2237,6 +2237,8 @@ function tryResolveNamedPrimitiveAlias(
   }
 
   const aliasName = aliasDecl.name.text;
+  const aliasProvenance = provenanceForDeclaration(aliasDecl, file);
+  assertTypeRegistryDeclarationSource(typeRegistry, aliasName, aliasProvenance);
   if (!typeRegistry[aliasName]) {
     const aliasType = checker.getTypeFromTypeNode(aliasDecl.type);
     const constraints = [
@@ -2286,7 +2288,7 @@ function tryResolveNamedPrimitiveAlias(
       ),
       ...(constraints.length > 0 && { constraints }),
       ...(annotations.length > 0 && { annotations }),
-      provenance: provenanceForDeclaration(aliasDecl, file),
+      provenance: aliasProvenance,
     };
   }
 
@@ -2495,6 +2497,11 @@ function resolveUnionType(
   }
 
   if (typeName && typeName in typeRegistry) {
+    assertTypeRegistryDeclarationSource(
+      typeRegistry,
+      typeName,
+      provenanceForDeclaration(namedDecl ?? sourceNode, file)
+    );
     return { kind: "reference", name: typeName, typeArguments: [] };
   }
 
@@ -2533,6 +2540,8 @@ function resolveUnionType(
     // node we synthesized here — that would destroy the real `$defs` entry and leave
     // a dangling self-reference like `{ "Tree": { "$ref": "#/$defs/Tree" } }`.
     const existing = typeRegistry[typeName];
+    const typeProvenance = provenanceForDeclaration(namedDecl ?? sourceNode, file);
+    assertTypeRegistryDeclarationSource(typeRegistry, typeName, typeProvenance);
     if (existing !== undefined && existing.type !== RESOLVING_TYPE_PLACEHOLDER) {
       return { kind: "reference", name: typeName, typeArguments: [] };
     }
@@ -2560,7 +2569,7 @@ function resolveUnionType(
       ...(metadata !== undefined && { metadata }),
       type: result,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
-      provenance: provenanceForDeclaration(namedDecl ?? sourceNode, file),
+      provenance: typeProvenance,
     };
     return { kind: "reference", name: typeName, typeArguments: [] };
   };
@@ -2937,12 +2946,24 @@ function resolveObjectType(
   if (
     registryTypeName !== undefined &&
     shouldRegisterNamedType &&
+    typeRegistry[registryTypeName] !== undefined
+  ) {
+    assertTypeRegistryDeclarationSource(
+      typeRegistry,
+      registryTypeName,
+      provenanceForDeclaration(effectiveNamedDecl, file)
+    );
+  }
+  if (
+    registryTypeName !== undefined &&
+    shouldRegisterNamedType &&
     !typeRegistry[registryTypeName]
   ) {
+    const typeProvenance = provenanceForDeclaration(effectiveNamedDecl, file);
     typeRegistry[registryTypeName] = {
       name: registryTypeName,
       type: RESOLVING_TYPE_PLACEHOLDER,
-      provenance: provenanceForDeclaration(effectiveNamedDecl, file),
+      provenance: typeProvenance,
     };
   }
 
@@ -3006,12 +3027,14 @@ function resolveObjectType(
               }
             )
           : undefined;
+      const typeProvenance = provenanceForDeclaration(effectiveNamedDecl, file);
+      assertTypeRegistryDeclarationSource(typeRegistry, registryTypeName, typeProvenance);
       typeRegistry[registryTypeName] = {
         name: registryTypeName,
         ...(metadata !== undefined && { metadata }),
         type: recordNode,
         ...(annotations !== undefined && annotations.length > 0 && { annotations }),
-        provenance: provenanceForDeclaration(effectiveNamedDecl, file),
+        provenance: typeProvenance,
       };
       return {
         kind: "reference",
@@ -3144,12 +3167,14 @@ function resolveObjectType(
             }
           )
         : undefined;
+    const typeProvenance = provenanceForDeclaration(effectiveNamedDecl, file);
+    assertTypeRegistryDeclarationSource(typeRegistry, registryTypeName, typeProvenance);
     typeRegistry[registryTypeName] = {
       name: registryTypeName,
       ...(metadata !== undefined && { metadata }),
       type: objectNode,
       ...(annotations !== undefined && annotations.length > 0 && { annotations }),
-      provenance: provenanceForDeclaration(effectiveNamedDecl, file),
+      provenance: typeProvenance,
     };
     return {
       kind: "reference",
@@ -3463,7 +3488,35 @@ function provenanceForDeclaration(node: ts.Node | undefined, file: string): Prov
   if (!node) {
     return provenanceForFile(file);
   }
-  return provenanceForNode(node, file);
+  return provenanceForNode(node, node.getSourceFile().fileName);
+}
+
+function assertTypeRegistryDeclarationSource(
+  typeRegistry: Record<string, TypeDefinition>,
+  typeName: string,
+  provenance: Provenance
+): void {
+  const existing = typeRegistry[typeName];
+  if (existing === undefined || isSameTypeRegistryDeclaration(existing.provenance, provenance)) {
+    return;
+  }
+
+  // The registry is keyed by unqualified type names, so cross-file collisions
+  // would otherwise make one declaration silently stand in for another.
+  throw new Error(
+    `Type registry collision: "${typeName}" was already registered from ${existing.provenance.file}; ` +
+      `cannot re-register from a different source file (${provenance.file}). ` +
+      "Rename one of the conflicting types."
+  );
+}
+
+function isSameTypeRegistryDeclaration(left: Provenance, right: Provenance): boolean {
+  return (
+    left.surface === right.surface &&
+    left.file === right.file &&
+    left.line === right.line &&
+    left.column === right.column
+  );
 }
 
 // =============================================================================
