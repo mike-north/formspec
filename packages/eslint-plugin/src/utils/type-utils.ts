@@ -38,10 +38,10 @@
  * ### The rule
  *
  * Always reference flags by enum member: `type.flags & ts.TypeFlags.Null`
- * — never by literal value. The `import * as ts from "typescript"` above
- * (rather than `import type ts`) is intentional: it gives us the runtime
- * enum object whose values are correct for whichever TS version the host
- * project resolves. `typescript` is already a peer-dep of this package,
+ * — never by literal value. The `import * as ts from "typescript"` in this
+ * module (rather than `import type ts`) is intentional: it gives us the
+ * runtime enum object whose values are correct for whichever TS version the
+ * host project resolves. `typescript` is already a peer-dep of this package,
  * so this adds no install-size cost.
  *
  * If a future TS major reshuffles `TypeFlags` again, the enum-reference

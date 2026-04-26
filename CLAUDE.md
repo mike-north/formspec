@@ -138,11 +138,13 @@ pnpm run release            # Build and publish (CI usually does this)
 
 ## Supported TypeScript versions
 
-FormSpec packages with a `typescript` peer-dep declare `>=5.9.3 <7`. The CI matrix in `.github/workflows/ci.yml` exercises:
+FormSpec packages with a `typescript` peer-dep declare `>=5.7.3 <7`. The CI matrix in `.github/workflows/ci.yml` exercises:
 
 - the workspace's pinned TS major (currently 6.x — required, blocking),
-- the previous stable major (5.x — required, regression coverage),
+- the previous stable major (5.x — experimental, non-blocking regression coverage),
 - the `beta` and nightly dist-tags (experimental, non-blocking).
+
+The matrix derives the `experimental` flag from a major-version mismatch with the workspace's pinned TS major, so non-default majors are informational rather than gating. Once a TS major has had time to soak through real usage, we promote it to required by bumping the workspace's `devDependencies.typescript`.
 
 TypeScript 7.x is the Go rewrite with a substantively different API surface. We do not test against it via dist-tag drift; it will be a deliberate, separate migration.
 

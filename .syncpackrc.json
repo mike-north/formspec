@@ -23,11 +23,18 @@
       "pinVersion": "workspace:*"
     },
     {
-      "label": "TypeScript peer-deps advertise the supported range, which is wider than what the workspace develops against",
+      "label": "TypeScript peer-deps advertise the supported range, and the e2e workspace runs compatibility tests against that same range — both wider than the workspace's pinned dev TS",
       "dependencies": ["typescript"],
       "dependencyTypes": ["peer"],
       "packages": ["**"],
-      "pinVersion": ">=5.9.3 <7"
+      "pinVersion": ">=5.7.3 <7"
+    },
+    {
+      "label": "The e2e workspace runs compatibility tests across the supported TypeScript range — its devDep tracks the peer-dep range, not the workspace pin",
+      "dependencies": ["typescript"],
+      "dependencyTypes": ["dev"],
+      "packages": ["@formspec/e2e"],
+      "pinVersion": ">=5.7.3 <7"
     }
   ],
   "sortAz": [
