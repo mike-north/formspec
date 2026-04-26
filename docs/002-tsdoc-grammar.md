@@ -69,7 +69,7 @@ Identity metadata does not affect the valid value set, but it is not modeled as 
 
 | Tag                | Canonical treatment                  | Primary schema/UI target                 | Notes                                                                                                                                                                           |
 | ------------------ | ------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@displayName`     | explicit input to `ResolvedMetadata` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), singular-only on classes/interfaces, and per-variant on array fields                                                                  |
+| `@displayName`     | explicit input to `ResolvedMetadata` | JSON Schema `title`, UI Schema label     | Per-field, per-member (`:member` syntax), per-variant on classes and array fields, singular-only on interfaces/type aliases                                                     |
 | `@apiName`         | explicit input to `ResolvedMetadata` | JSON Schema property names, `$defs` keys | Controls JSON representation names. Per-variant (`:plural`, `:singular`) on classes; bare on fields                                                                             |
 | ~~`@description`~~ | ~~`DescriptionAnnotation`~~          | ~~JSON Schema `description`~~            | **Removed.** Not a standard TSDoc tag; invisible to API Documenter; requires `tsdoc.json` registration. Use summary text instead. See §2.3 for the replacement precedence rule. |
 | `@placeholder`     | `PlaceholderAnnotation`              | UI Schema only (`options.placeholder`)   | Not a JSON Schema concept                                                                                                                                                       |
@@ -346,7 +346,7 @@ With member-target syntax (for string-literal union members):
 mode: "sync" | "async";
 ```
 
-**Variant qualifiers** — `:singular` and `:plural` — provide context-specific display names for array fields. Classes and interfaces do **not** support plural display names in this revision; they accept only the singular form, either bare or via `:singular`.
+**Variant qualifiers** — `:singular` and `:plural` — provide context-specific display names for array fields and class declarations. Classes can represent API resources that need both singular and plural human-readable names. Interfaces and type aliases accept only the singular form, either bare or via `:singular`.
 
 ```typescript
 /**
@@ -387,6 +387,13 @@ class HouseLocation {}
 /** @displayName :singular Home */
 class HouseLocation {}
 // → explicit singular "Home"
+
+/**
+ * @displayName :singular Product
+ * @displayName :plural Products
+ */
+class Product {}
+// → fully explicit singular/plural class display names
 ```
 
 With type-level `displayName: { mode: "infer-if-missing", infer(...) }`, the first example instead resolves to an inferred singular display name.
@@ -403,15 +410,15 @@ Array fields retain the full singular/plural distinction because they can natura
 
 4. **Explicit variants** — `@displayName :singular Home` + `@displayName :plural Properties`. No inference is needed; both forms are author-specified.
 
-Using `:plural` on classes, interfaces, type aliases, primitive fields, or other non-array contexts is a static error. Using `:singular` outside classes/interfaces and array fields is also a static error.
+Using `:plural` on interfaces, type aliases, primitive fields, or other non-array non-class contexts is a static error. Using `:singular` outside classes, interfaces, type aliases, and array fields is also a static error.
 
-**Schema mapping:** On classes/interfaces, the singular display name is used for the root schema's `"title"`. This means `@displayName Insurance Plan` and `@displayName :singular Insurance Plan` both yield a root schema title of `"Insurance Plan"`.
+**Schema mapping:** On classes/interfaces, the singular display name is used for the root schema's `"title"`. This means `@displayName Insurance Plan` and `@displayName :singular Insurance Plan` both yield a root schema title of `"Insurance Plan"`. A class-level plural display name is metadata for consumers that need collection labels; it does not replace the root schema title.
 
 **Lint diagnostics for display name number agreement:**
 
 - **Warning** if a bare `@displayName` on a class/interface appears to be plural — suggests correcting it to the singular form.
 - **Warning** if `@displayName :singular` appears to be plural — likely a copy-paste mistake.
-- **Warning** if `@displayName :plural` on an array field appears to be singular — likely a mistake in the other direction.
+- **Warning** if `@displayName :plural` on an array field or class declaration appears to be singular — likely a mistake in the other direction.
 - All three warnings are configurable (severity can be set to `off` per PP9) and bypassable with an inline suppression comment. These are intended to catch mistakes, not enforce a naming convention.
 
 #### `@apiName`
@@ -449,7 +456,7 @@ interface User {
 }
 ```
 
-**On classes/interfaces** — same metadata-policy resolution model as `@displayName`, with `:singular` and `:plural` variants. The singular form controls the `$defs` key and single-object references; the plural form controls array/collection contexts when pluralization is in use:
+**On classes** — same metadata-policy resolution model as `@displayName`, with `:singular` and `:plural` variants. The singular form controls the `$defs` key and single-object references; the plural form controls array/collection contexts when pluralization is in use:
 
 ```typescript
 class HouseLocation {}
@@ -469,7 +476,7 @@ class HouseLocation {}
 
 With type-level `apiName: { mode: "infer-if-missing", infer(...) }`, the first example resolves an inferred singular API name. With pluralization enabled, a corresponding inferred plural may also be resolved from the singular value.
 
-Using `:singular` or `:plural` on a field (as opposed to a class/interface or array field) is a static error.
+Using `:singular` or `:plural` on a primitive field, interface, or type alias is a static error. Array fields may use both variants for item and collection names.
 
 **Lint diagnostics for API name number agreement:**
 
@@ -542,7 +549,7 @@ interface D extends B, C {}
 
 **Known limitations:**
 
-- The inheritance walker targets the case where the *derived* declaration is a class or interface. When the *derived* declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
+- The inheritance walker targets the case where the _derived_ declaration is a class or interface. When the _derived_ declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
 - Only `@format` currently participates. Proposals to broaden the allow-list should address override semantics, conflict resolution, and emission coverage for each new kind (see [issue #380](https://github.com/mike-north/formspec/issues/380)).
 
 #### `@defaultValue`

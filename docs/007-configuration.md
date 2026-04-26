@@ -316,7 +316,7 @@ const { config, configPath } = await loadFormSpecConfig({ searchFrom: "./src" })
 
 const result = generateSchemas({
   config,
-  configPath,  // enables defineCustomType<T>() symbol-based detection
+  configPath, // enables defineCustomType<T>() symbol-based detection
   filePath: "./src/config.ts",
   typeName: "DiscountConfig",
   errorReporting: "throw",
@@ -498,16 +498,17 @@ createServer({ config });
 
 ### 6.3 Deprecated APIs
 
-| Deprecated                               | Replacement                                                    | Package                     |
-| ---------------------------------------- | -------------------------------------------------------------- | --------------------------- |
-| `extensionRegistry` on `generateSchemas` | `config.extensions`                                            | `@formspec/build`           |
-| `vendorPrefix` on `generateSchemas`      | `config.vendorPrefix`                                          | `@formspec/build`           |
-| `enumSerialization` on `generateSchemas` | `config.enumSerialization`                                     | `@formspec/build`           |
-| `metadata` on `generateSchemas`          | `config.metadata`                                              | `@formspec/build`           |
-| `extensions` on `createServer`           | `config`                                                       | `@formspec/language-server` |
-| `.formspec.yml` file format              | `formspec.config.ts`                                           | `@formspec/config`          |
-| `loadConstraintConfig` (YAML loader)     | `loadFormSpecConfig`                                           | `@formspec/config`          |
-| `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter       | `@formspec/core`            |
+| Deprecated                                | Replacement                                             | Package                     |
+| ----------------------------------------- | ------------------------------------------------------- | --------------------------- |
+| `extensionRegistry` on `generateSchemas`  | `config.extensions`                                     | `@formspec/build`           |
+| `vendorPrefix` on `generateSchemas`       | `config.vendorPrefix`                                   | `@formspec/build`           |
+| `enumSerialization` on `generateSchemas`  | `config.enumSerialization`                              | `@formspec/build`           |
+| `metadata` on `generateSchemas`           | `config.metadata`                                       | `@formspec/build`           |
+| `extensions` on `createServer`            | `config`                                                | `@formspec/language-server` |
+| `.formspec.yml` file format               | `formspec.config.ts`                                    | `@formspec/config`          |
+| `loadConfig` (deprecated wrapper)         | `loadFormSpecConfig`                                    | `@formspec/config`          |
+| `loadConstraintConfig` (YAML loader)      | `loadFormSpecConfig`                                    | `@formspec/config`          |
+| `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter | `@formspec/core`            |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
 

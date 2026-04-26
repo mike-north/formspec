@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
+import type { TSESLint } from "@typescript-eslint/utils";
 import * as ts from "typescript";
 import {
   createDeclarationVisitor,
@@ -26,9 +27,7 @@ type MessageIds =
   | "nullableTargetField"
   | "nonStringLikeTargetField";
 
-function getLocalTypeParameterNames(
-  node: SupportedDeclaration
-): Set<string> {
+function getLocalTypeParameterNames(node: SupportedDeclaration): Set<string> {
   switch (node.type) {
     case AST_NODE_TYPES.ClassDeclaration:
     case AST_NODE_TYPES.TSInterfaceDeclaration:
@@ -123,6 +122,31 @@ function isIdentifierLike(value: string): boolean {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/u.test(value);
 }
 
+function reportInvalidPlacementTags(
+  node: TSESTree.Node,
+  context: Readonly<TSESLint.RuleContext<MessageIds, []>>
+): void {
+  const tags = scanFormSpecTags(node, context.sourceCode).filter(
+    (tag) => tag.normalizedName === "discriminator"
+  );
+  for (const tag of tags) {
+    context.report({
+      loc: tag.comment.loc,
+      messageId: "invalidPlacement",
+    });
+  }
+}
+
+function isFunctionParameter(node: TSESTree.Identifier): boolean {
+  const parent = node.parent;
+  return (
+    (parent.type === AST_NODE_TYPES.FunctionDeclaration ||
+      parent.type === AST_NODE_TYPES.FunctionExpression ||
+      parent.type === AST_NODE_TYPES.ArrowFunctionExpression) &&
+    parent.params.includes(node)
+  );
+}
+
 /**
  * ESLint rule that validates built-in `@discriminator` declarations.
  *
@@ -160,130 +184,151 @@ export const validDiscriminator = createRule<[], MessageIds>({
   create(context) {
     const services = ESLintUtils.getParserServices(context);
 
-    return createDeclarationVisitor((node) => {
-      const tags = scanFormSpecTags(node, context.sourceCode).filter(
-        (tag) => tag.normalizedName === "discriminator"
-      );
-      if (tags.length === 0) {
-        return;
-      }
-
-      if (
-        node.type === AST_NODE_TYPES.PropertyDefinition ||
-        node.type === AST_NODE_TYPES.TSPropertySignature ||
-        (node.type === AST_NODE_TYPES.TSTypeAliasDeclaration &&
-          !isObjectLikeTypeAliasDeclaration(node, services))
-      ) {
-        for (const tag of tags) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "invalidPlacement",
-          });
+    return {
+      MethodDefinition(node) {
+        reportInvalidPlacementTags(node, context);
+      },
+      FunctionDeclaration(node) {
+        reportInvalidPlacementTags(node, context);
+      },
+      FunctionExpression(node) {
+        reportInvalidPlacementTags(node, context);
+      },
+      ArrowFunctionExpression(node) {
+        reportInvalidPlacementTags(node, context);
+      },
+      Identifier(node) {
+        // Function parameters are not handled by the declaration visitor, but
+        // they can still carry leading TSDoc comments in authored source.
+        if (isFunctionParameter(node)) {
+          reportInvalidPlacementTags(node, context);
         }
-        return;
-      }
-
-      const declarationType = getDeclarationType(node, services);
-      if (!declarationType) {
-        for (const tag of tags) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "invalidPlacement",
-          });
-        }
-        return;
-      }
-      const localTypeParameters = getLocalTypeParameterNames(node);
-      const checker = services.program.getTypeChecker();
-      const directMembers = getDirectPropertyMembers(node, services);
-
-      for (const tag of tags) {
-        const target = tag.target;
-        if (target === null) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "missingTarget",
-          });
-          continue;
-        }
-
-        if (target.value.includes(".")) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "nestedTarget",
-          });
-          continue;
-        }
-
-        const targetMember = directMembers.find(
-          (member) => getDeclarationName(member) === target.value
+      },
+      ...createDeclarationVisitor((node) => {
+        const tags = scanFormSpecTags(node, context.sourceCode).filter(
+          (tag) => tag.normalizedName === "discriminator"
         );
-        if (!targetMember) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "missingTargetField",
-            data: { target: target.value },
-          });
-          continue;
-        }
-        const targetLoc = targetMember.key.loc;
-
-        if (!isIdentifierLike(tag.valueText)) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "invalidSourceOperand",
-          });
-          continue;
+        if (tags.length === 0) {
+          return;
         }
 
-        if (!localTypeParameters.has(tag.valueText)) {
-          context.report({
-            loc: tag.comment.loc,
-            messageId: "nonLocalTypeParameter",
-            data: { typeParameter: tag.valueText },
-          });
-          continue;
+        if (
+          node.type === AST_NODE_TYPES.PropertyDefinition ||
+          node.type === AST_NODE_TYPES.TSPropertySignature ||
+          (node.type === AST_NODE_TYPES.TSTypeAliasDeclaration &&
+            !isObjectLikeTypeAliasDeclaration(node, services))
+        ) {
+          for (const tag of tags) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "invalidPlacement",
+            });
+          }
+          return;
         }
 
-        if (isOptionalProperty(targetMember, services)) {
-          context.report({
-            loc: targetLoc,
-            messageId: "optionalTargetField",
-            data: { target: target.value },
-          });
-          continue;
+        const declarationType = getDeclarationType(node, services);
+        if (!declarationType) {
+          for (const tag of tags) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "invalidPlacement",
+            });
+          }
+          return;
         }
+        const localTypeParameters = getLocalTypeParameterNames(node);
+        const checker = services.program.getTypeChecker();
+        const directMembers = getDirectPropertyMembers(node, services);
 
-        const targetType = getDeclarationType(targetMember, services);
-        if (targetType === null) {
-          context.report({
-            loc: targetLoc,
-            messageId: "missingTargetField",
-            data: { target: target.value },
-          });
-          continue;
-        }
+        for (const tag of tags) {
+          const target = tag.target;
+          if (target === null) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "missingTarget",
+            });
+            continue;
+          }
 
-        if (isNullableType(targetType)) {
-          context.report({
-            loc: targetLoc,
-            messageId: "nullableTargetField",
-            data: { target: target.value },
-          });
-          continue;
-        }
+          if (target.value.includes(".")) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "nestedTarget",
+            });
+            continue;
+          }
 
-        if (!isStringType(targetType, checker)) {
-          context.report({
-            loc: targetLoc,
-            messageId: "nonStringLikeTargetField",
-            data: {
-              target: target.value,
-              actualType: getResolvedTypeName(targetType, services),
-            },
-          });
+          const targetMember = directMembers.find(
+            (member) => getDeclarationName(member) === target.value
+          );
+          if (!targetMember) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "missingTargetField",
+              data: { target: target.value },
+            });
+            continue;
+          }
+          const targetLoc = targetMember.key.loc;
+
+          if (!isIdentifierLike(tag.valueText)) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "invalidSourceOperand",
+            });
+            continue;
+          }
+
+          if (!localTypeParameters.has(tag.valueText)) {
+            context.report({
+              loc: tag.comment.loc,
+              messageId: "nonLocalTypeParameter",
+              data: { typeParameter: tag.valueText },
+            });
+            continue;
+          }
+
+          if (isOptionalProperty(targetMember, services)) {
+            context.report({
+              loc: targetLoc,
+              messageId: "optionalTargetField",
+              data: { target: target.value },
+            });
+            continue;
+          }
+
+          const targetType = getDeclarationType(targetMember, services);
+          if (targetType === null) {
+            context.report({
+              loc: targetLoc,
+              messageId: "missingTargetField",
+              data: { target: target.value },
+            });
+            continue;
+          }
+
+          if (isNullableType(targetType)) {
+            context.report({
+              loc: targetLoc,
+              messageId: "nullableTargetField",
+              data: { target: target.value },
+            });
+            continue;
+          }
+
+          if (!isStringType(targetType, checker)) {
+            context.report({
+              loc: targetLoc,
+              messageId: "nonStringLikeTargetField",
+              data: {
+                target: target.value,
+                actualType: getResolvedTypeName(targetType, services),
+              },
+            });
+          }
         }
-      }
-    });
+      }),
+    };
   },
 });

@@ -881,12 +881,15 @@ interface InvoiceFormData {
 
 ## Appendix A: Custom Keyword Summary
 
-| Keyword (default prefix)          | Type     | Validation?                         | Applies to                                       |
-| --------------------------------- | -------- | ----------------------------------- | ------------------------------------------------ |
-| `x-formspec-option-source`        | string   | Annotation only                     | `type: "string"`                                 |
-| `x-formspec-option-source-params` | string[] | Annotation only                     | `type: "string"` with `x-formspec-option-source` |
-| `x-formspec-schema-source`        | string   | Annotation only                     | `type: "object"`                                 |
-| `x-<vendor>-max-sig-fig`          | integer  | Yes — validates (extension-defined) | Extension-defined types                          |
+| Keyword (default prefix)             | Type     | Validation?                         | Applies to                                       |
+| ------------------------------------ | -------- | ----------------------------------- | ------------------------------------------------ |
+| `x-formspec-option-source`           | string   | Annotation only                     | `type: "string"`                                 |
+| `x-formspec-option-source-params`    | string[] | Annotation only                     | `type: "string"` with `x-formspec-option-source` |
+| `x-formspec-schema-source`           | string   | Annotation only                     | `type: "object"`                                 |
+| `x-formspec-display-names`           | object   | Annotation only                     | Enum schemas with resolved member display names  |
+| `x-formspec-deprecation-description` | string   | Annotation only                     | Schemas with `"deprecated": true`                |
+| `x-formspec-remarks`                 | string   | Annotation only                     | Any schema with supplementary `@remarks` content |
+| `x-<vendor>-max-sig-fig`             | integer  | Yes — validates (extension-defined) | Extension-defined types                          |
 
 Extension-specific keywords follow the pattern `x-<vendor>-<extension-name>` and are annotation-only unless the extension also provides validator/runtime support per E2.
 

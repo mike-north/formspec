@@ -306,30 +306,32 @@ The active built-in rules define the current public rule inventory for implement
 
 **`formspec/recommended` rule set:**
 
-| Rule                                                | Codes / message IDs                                                                                                                  | Default severity |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `tag-recognition/no-unknown-tags`                   | `UNKNOWN_TAG`                                                                                                                        | warn             |
-| `tag-recognition/require-tag-arguments`             | `MISSING_TAG_ARGUMENT`                                                                                                               | error            |
-| `tag-recognition/no-disabled-tags`                  | `TAG_DISABLED`                                                                                                                       | warn             |
-| `tag-recognition/no-markdown-formatting`            | `markdownFormattingForbidden`                                                                                                        | warn             |
-| `tag-recognition/tsdoc-comment-syntax`              | `tsdocSyntax`                                                                                                                        | error            |
-| `value-parsing/valid-numeric-value`                 | `INVALID_NUMERIC_VALUE`                                                                                                              | error            |
-| `value-parsing/valid-integer-value`                 | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                       | error            |
-| `value-parsing/valid-regex-pattern`                 | `INVALID_REGEX_PATTERN`                                                                                                              | error            |
-| `value-parsing/valid-json-value`                    | `INVALID_JSON_VALUE`                                                                                                                 | error            |
-| `type-compatibility/tag-type-check`                 | `TYPE_MISMATCH`                                                                                                                      | error            |
-| `target-resolution/valid-path-target`               | `UNKNOWN_PATH_TARGET`                                                                                                                | error            |
-| `target-resolution/valid-member-target`             | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error            |
-| `target-resolution/no-unsupported-targeting`        | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error            |
-| `target-resolution/no-member-target-on-object`      | `MEMBER_TARGET_ON_NON_UNION`                                                                                                         | error            |
-| `constraint-validation/no-contradictions`           | `CONSTRAINT_CONTRADICTION`                                                                                                           | error            |
-| `constraint-validation/no-duplicate-tags`           | `DUPLICATE_TAG`                                                                                                                      | warn             |
-| `constraint-validation/no-contradictory-rules`      | `CONTRADICTORY_RULE_EFFECTS`                                                                                                         | error            |
-| `constraint-validation/valid-discriminator`         | `invalidPlacement`, `missingTarget`, `nestedTarget`, `invalidSourceOperand`, `nonLocalTypeParameter`, target-field shape diagnostics | error            |
-| `constraint-validation/no-double-underscore-fields` | `phantomField`                                                                                                                       | warn             |
-| `documentation/no-unsupported-description-tag`      | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                        | error            |
-| `dsl-policy/allowed-field-types`                    | `disallowedFieldType`                                                                                                                | error            |
-| `dsl-policy/allowed-layouts`                        | `disallowedGroup`, `disallowedConditional`                                                                                           | error            |
+| Rule                                                 | Codes / message IDs                                                                                                                  | Default severity |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| `tag-recognition/no-unknown-tags`                    | `UNKNOWN_TAG`                                                                                                                        | warn             |
+| `tag-recognition/require-tag-arguments`              | `MISSING_TAG_ARGUMENT`                                                                                                               | error            |
+| `tag-recognition/no-disabled-tags`                   | `TAG_DISABLED`                                                                                                                       | warn             |
+| `tag-recognition/no-markdown-formatting`             | `markdownFormattingForbidden`                                                                                                        | warn             |
+| `tag-recognition/tsdoc-comment-syntax`               | `tsdocSyntax`                                                                                                                        | error            |
+| `value-parsing/valid-numeric-value`                  | `INVALID_NUMERIC_VALUE`                                                                                                              | error            |
+| `value-parsing/valid-integer-value`                  | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                       | error            |
+| `value-parsing/valid-regex-pattern`                  | `INVALID_REGEX_PATTERN`                                                                                                              | error            |
+| `value-parsing/valid-json-value`                     | `INVALID_JSON_VALUE`                                                                                                                 | error            |
+| `type-compatibility/tag-type-check`                  | `TYPE_MISMATCH`                                                                                                                      | error            |
+| `target-resolution/valid-path-target`                | `UNKNOWN_PATH_TARGET`                                                                                                                | error            |
+| `target-resolution/valid-member-target`              | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error            |
+| `target-resolution/no-unsupported-targeting`         | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error            |
+| `target-resolution/no-member-target-on-object`       | `MEMBER_TARGET_ON_NON_UNION`                                                                                                         | error            |
+| `target-resolution/valid-target-variant`             | `invalidPluralTarget`, `invalidSingularTarget`                                                                                       | error            |
+| `constraint-validation/no-contradictions`            | `CONSTRAINT_CONTRADICTION`                                                                                                           | error            |
+| `constraint-validation/no-duplicate-tags`            | `DUPLICATE_TAG`                                                                                                                      | warn             |
+| `constraint-validation/no-contradictory-rules`       | `CONTRADICTORY_RULE_EFFECTS`                                                                                                         | error            |
+| `constraint-validation/valid-discriminator`          | `invalidPlacement`, `missingTarget`, `nestedTarget`, `invalidSourceOperand`, `nonLocalTypeParameter`, target-field shape diagnostics | error            |
+| `constraint-validation/no-double-underscore-fields`  | `phantomField`                                                                                                                       | warn             |
+| `constraint-validation/no-default-on-required-field` | `defaultOnRequiredField`                                                                                                             | error            |
+| `documentation/no-unsupported-description-tag`       | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                        | error            |
+| `dsl-policy/allowed-field-types`                     | `disallowedFieldType`                                                                                                                | error            |
+| `dsl-policy/allowed-layouts`                         | `disallowedGroup`, `disallowedConditional`                                                                                           | error            |
 
 Deprecated aliases remain registered for existing ESLint configurations, but they are not included in `formspec/recommended` or `formspec/strict`:
 
