@@ -188,7 +188,7 @@ Things FormSpec explicitly does NOT guarantee. These are useful for preventing s
 
 **NP5: No guaranteed JSON Schema draft compatibility beyond the target draft.** FormSpec targets a specific JSON Schema draft (2020-12 or as determined by the vocabulary design). Backward compatibility with older drafts (draft-07, draft-04) is not guaranteed.
 
-**NP6: No visual form builder.** FormSpec is a code-first tool. The playground provides preview feedback, not a drag-and-drop editor. WYSIWYG authoring is not a design goal.
+**NP6: No visual form builder.** FormSpec is a code-first tool. The planned playground provides preview feedback, not a drag-and-drop editor. WYSIWYG authoring is not a design goal.
 
 ---
 

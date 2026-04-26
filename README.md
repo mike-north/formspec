@@ -284,7 +284,6 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/ts-plugin`       | TypeScript language-service plugin and reusable semantic service                    |
 | `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags                         |
 | `@formspec/cli`             | Build-time CLI for schema and IR generation                                         |
-| `@formspec/playground`      | Private monorepo playground app                                                     |
 
 ## Monorepo Development
 

@@ -39,7 +39,6 @@ const NON_CONSTRAINT_FIELD_TAGS: readonly {
 }[] = [
   // annotation tags
   { tagName: "displayName", tagArg: '"My Field"' },
-  { tagName: "description", tagArg: "A description" },
   { tagName: "format", tagArg: "email" },
   { tagName: "placeholder", tagArg: "Enter a value" },
   { tagName: "order", tagArg: "1" },
@@ -49,7 +48,7 @@ const NON_CONSTRAINT_FIELD_TAGS: readonly {
   { tagName: "showWhen", tagArg: 'status === "active"' },
   { tagName: "hideWhen", tagArg: 'status === "hidden"' },
   { tagName: "enableWhen", tagArg: 'tier === "pro"' },
-  { tagName: "disableWhen", tagArg: 'locked === true' },
+  { tagName: "disableWhen", tagArg: "locked === true" },
   // ecosystem tags
   { tagName: "defaultValue", tagArg: '"default"' },
   { tagName: "deprecated" },

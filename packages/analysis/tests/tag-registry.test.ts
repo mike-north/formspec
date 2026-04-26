@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defineExtension, defineMetadataSlot } from "@formspec/core";
 import {
+  getAllTagDefinitions,
   getTagDefinition,
   readExtensionRegistryFromSettings,
   readExtensionTagNames,
@@ -58,6 +59,35 @@ describe("tag-registry", () => {
     expect(getTagDefinition("ApiName")?.canonicalName).toBe("apiName");
   });
 
+  it("does not register the removed @description tag", () => {
+    expect(getTagDefinition("description")).toBeNull();
+    expect(getTagDefinition("Description")).toBeNull();
+    expect(getAllTagDefinitions().map((tag) => tag.canonicalName)).not.toContain("description");
+  });
+
+  it("does not allow extensions to reintroduce the removed @description tag", () => {
+    const extension = {
+      extensionId: "x-example/description",
+      constraintTags: [
+        {
+          tagName: "description",
+        },
+      ],
+      metadataSlots: [
+        defineMetadataSlot({
+          slotId: "customDescription",
+          tagName: "Description",
+          declarationKinds: ["field"],
+        }),
+      ],
+    };
+
+    expect(getTagDefinition("description", [extension])).toBeNull();
+    expect(getAllTagDefinitions([extension]).map((tag) => tag.canonicalName)).not.toContain(
+      "description"
+    );
+  });
+
   // Regression: prior to fixing `buildExtraTagDefinition`, non-constraint
   // tags inherited a `capabilities` array derived from their value-kind
   // (e.g. `@displayName` → "string-like"), which then propagated into the
@@ -67,7 +97,6 @@ describe("tag-registry", () => {
     const NON_CONSTRAINT_TAGS = [
       // annotation
       "displayName",
-      "description",
       "format",
       "placeholder",
       "order",
