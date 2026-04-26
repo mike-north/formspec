@@ -4,6 +4,7 @@
 
 <!-- end auto-generated rule header -->
 
-`@remarks` is emitted as `x-formspec-remarks`, not as JSON Schema
-`description`. Add summary text before the first tag when the field also needs
-author-facing help text in JSON Schema, editor tooltips, and rendered form help.
+`@remarks` is emitted as `x-<vendor>-remarks` (default:
+`x-formspec-remarks`), not as JSON Schema `description`. Add summary text
+before the first tag when the field also needs author-facing help text in
+JSON Schema, editor tooltips, and rendered form help.

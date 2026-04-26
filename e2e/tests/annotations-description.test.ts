@@ -68,16 +68,18 @@ describe("Annotation: summary text and @remarks", () => {
     // ESLint's plugin type and @typescript-eslint's RuleModule type are
     // structurally compatible at runtime, but their declarations diverge.
     const formspecPlugin = { meta, rules } as unknown as ESLintNamespace.Plugin;
-    const overrideConfig = {
-      files: ["**/*.ts"],
-      languageOptions: {
-        parser: tsParser,
+    const overrideConfig = [
+      {
+        files: ["**/*.ts"],
+        languageOptions: {
+          parser: tsParser,
+        },
+        plugins: { formspec: formspecPlugin },
+        rules: {
+          "formspec/documentation/remarks-without-summary": "warn",
+        },
       },
-      plugins: { formspec: formspecPlugin },
-      rules: {
-        "formspec/documentation/remarks-without-summary": "warn",
-      },
-    } satisfies Linter.Config;
+    ] satisfies Linter.Config[];
     const eslint = new ESLint({
       cwd: path.dirname(fixturePath),
       overrideConfigFile: true,
