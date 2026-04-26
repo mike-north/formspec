@@ -29,7 +29,7 @@ Owning bounded context: `DomainModelContext`.
 
 ### Field
 
-A leaf in a form definition that maps to a single value in the resulting data model. Examples: `TextField`, `NumberField`, `BooleanField`, `StaticEnumField`, `DynamicEnumField`, `ArrayField`, `ObjectField`.
+A leaf in a form definition that maps to a single value in the resulting data model. Examples: `TextField`, `NumberField`, `BooleanField`, `StaticEnumField`, `DynamicEnumField`, `ArrayField`, `ObjectField`. The discriminated union of all field types is exported as `AnyField`; there is no exported type literally named `Field`.
 
 Note: `ObjectField` creates schema nesting; `Group` does not. See **Group vs Object** below.
 
@@ -70,7 +70,7 @@ Owning bounded context: `DomainModelContext`.
 
 ### `FieldNode`
 
-The IR-level representation of a Field. Distinct from a `Field` from `@formspec/core/types/elements.ts`: a `Field` is the authoring-surface type, and a `FieldNode` is its IR shape after canonicalization, with resolved type, constraints, and annotations attached.
+The IR-level representation of a Field. Distinct from the authoring-surface field types in `@formspec/core/types/elements.ts` (`AnyField` and its members): the authoring types describe what an author writes, and a `FieldNode` is the post-canonicalization IR shape with resolved type, constraints, and annotations attached.
 
 ### `TypeNode`
 
@@ -88,7 +88,7 @@ The IR representation of a value-influencing annotation (`@displayName`, `@defau
 
 Origin metadata attached to every IR-level constraint and annotation: the surface (chain DSL vs TSDoc), file, line, column, and the originating tag name. Diagnostics use Provenance to point at the author's source rather than at the IR (principle D2). See principle S3.
 
-Owning bounded context: `DomainModelContext`. Currently constructed in multiple places — consolidating this is captured as a future Phase 5 follow-up.
+Owning bounded context: `DomainModelContext`.
 
 ### Path Target
 
@@ -109,6 +109,18 @@ Owning bounded context: `ChainDslContext`.
 The TypeScript-class authoring surface. The author writes a TypeScript class or interface with TSDoc tags; FormSpec extracts the schema shape via the TypeScript Compiler API. No runtime reflection (principle PP4).
 
 Owning bounded context: `StaticAnalysisContext` (extraction) + `CompilationContext` (canonicalization).
+
+### Mixed Authoring
+
+A form definition that combines both authoring surfaces in one project — for example, a chain-DSL form whose object fields are typed by a TSDoc-annotated class. Compilation orchestrates the two paths via `buildMixedAuthoringSchemas` so that constraints from both surfaces flow into the same FormIR.
+
+Owning bounded context: `CompilationContext`.
+
+### `FormSpecAnalysisFileSnapshot` (FileSnapshot)
+
+The wire-safe, transport-shaped representation of a TypeScript file's FormSpec-relevant analysis output, exported from `@formspec/analysis/protocol`. Used to ship analysis results across process boundaries (for example, from a TS server plugin to the language server). The prose name "FileSnapshot" is fine for casual reference; the precise type identifier is `FormSpecAnalysisFileSnapshot`.
+
+Owning bounded context: `StaticAnalysisContext`.
 
 ### TSDoc Tag / JSDoc Tag
 
@@ -196,8 +208,20 @@ Owning bounded context: `ConfigurationContext`. See [`docs/007-configuration.md`
 
 A FormSpec feature that the configuration system can enable or disable per project (e.g., "dynamic enums," "conditional layout," "placeholder option"). Capability restrictions are enforced at three layers: ESLint plugin (build-time), `validateFormSpecElements()` (programmatic), and `@formspec/config/browser` (browser-embedded).
 
+### Capability Registry
+
+The internal data structure inside `@formspec/config` that holds the active set of allowed capabilities for a given resolved config. Consumed by `validateFormSpecElements()` and by the ESLint plugin's allowed-types and allowed-layouts rules. Distinct from a single **Capability** declaration — the registry is the aggregate enforcement state for a project or per-package override.
+
+Owning bounded context: `ConfigurationContext`.
+
 ---
 
 ## Where this glossary lives in the model
 
 Each entry above names an **owning bounded context** as defined in [`formspec.cml`](./formspec.cml). When code or docs introduce a new term, add it here and tie it to the context that owns it. When in doubt about which context owns a term, the rule is: the context whose package would _break_ if the term were removed owns it.
+
+## Where to go next
+
+- [`formspec.cml`](./formspec.cml) — the formal context map and bounded-context model.
+- [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) — prose tour of the contexts and their relationships.
+- [`docs/000-principles.md`](./docs/000-principles.md) — the architectural principles every change must respect.

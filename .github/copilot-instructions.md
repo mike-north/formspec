@@ -24,17 +24,13 @@ Use canonical terms from `GLOSSARY.md` verbatim. Common drifts to flag:
 
 - `@formspec/constraints` — does not exist; use `@formspec/config`.
 - "JSDoc constraint" where "TSDoc tag" is meant.
-- "Resolver" used for the underlying data store (use "Data Source").
 - `loadConfig` — deprecated; new code calls `loadFormSpecConfig`.
 - `.formspec.yml` — legacy; current convention is `formspec.config.ts` (or `.mts`/`.js`/`.mjs`).
-- Inventing a third name for `FormIR` / "Canonical IR" — both existing names are fine in their context.
 
 ## Architectural principles to enforce
 
-- **A1** — Generators consume the IR, never the chain DSL value or the TypeScript AST directly.
-- **A3** — Generation is a pure function of the IR. No ambient module state; no side-effecting config loading inside generators.
-- **A5** — Pipeline phases run in order (Parse → Analyze → Canonicalize → Validate → Generate). No phase reaches back into an earlier phase's data.
-- **S1** — Constraints narrow; never broaden. A change that lets a constraint relax a previously narrowed set is a bug.
+- **A1 / A3 / A5** — Generators consume the IR (never chain DSL or AST). Generation is a pure function of the IR (no ambient state). Pipeline phases run in order (Parse → Analyze → Canonicalize → Validate → Generate); no phase reaches back.
+- **S1** — Constraints narrow; never broaden.
 - **S3** — Every IR-level constraint and annotation carries `Provenance`. Flag new IR-construction sites that omit it.
 - **S4** — Type determines applicable constraints. `@minLength` on a number field is a static error, not a runtime no-op.
 - **C1** — Constraints compose by intersection; annotations compose by override (closest-to-use wins). New metadata must declare its kind.
@@ -44,9 +40,10 @@ Use canonical terms from `GLOSSARY.md` verbatim. Common drifts to flag:
 
 ## Test discipline
 
-- Bug fixes require a regression test that fails against the pre-fix code.
-- Spec-first assertions: flag `toMatchSnapshot()` / `loadExpected()` as the only correctness mechanism — these are tautological. Each assertion should trace to a spec section.
-- `tsd` type tests need both positive (`expectType` / `expectAssignable`) and negative (`expectError`) cases.
+- Bug fixes require a regression test that fails pre-fix and references the bug (issue number or summary) in its name or comment.
+- Spec-first: expected IR/schema values are hand-derived from the spec/design doc and cite the section (e.g., `// per design 003 §2.3`). Exemplars: `packages/build/tests/parity/` (hand-written `expected-ir.ts` constants) and `packages/build/tests/ir-json-schema-generator.test.ts`. Flag `toMatchSnapshot()` / `loadExpected()` as the only correctness mechanism — tautological.
+- Pick the test layer deliberately: unit for pure logic; integration when a change crosses a package boundary declared in `formspec.cml`; e2e for multi-context flows; UAT (CLI subprocess) for user-visible CLI output.
+- `tsd` type tests need positive (`expectType` / `expectAssignable`) and negative (`expectError`) cases.
 - Deterministic time: fixed date constants or `vi.useFakeTimers()`; never `new Date()` / `Date.now()` in fixtures.
 - If a unit test mocks a dependency, an integration test must exercise the real one somewhere.
 
