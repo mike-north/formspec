@@ -9,7 +9,7 @@ It re-exports the most commonly used pieces from:
 - `@formspec/build`
 - `@formspec/runtime`
 
-It does not include the CLI, ESLint plugin, language server, or playground app.
+It does not include the CLI, ESLint plugin, or language server.
 
 ## Install
 

@@ -78,7 +78,6 @@ formspec (umbrella — re-exports everything)
 @formspec/validator        (JSON Schema validation — @cfworker/json-schema)
 @formspec/ts-plugin        (TypeScript plugin + composable semantic service — reference implementation inside tsserver, depends on @formspec/analysis)
 @formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers, depends on @formspec/analysis and @formspec/core)
-@formspec/playground       (interactive browser editor — private, depends on all)
 @formspec/e2e             (workspace for end-to-end tests and benchmarks)
 ```
 
@@ -106,7 +105,7 @@ Packages must build in dependency order. The root `pnpm run build` handles this 
 6. `@formspec/ts-plugin` (depends on analysis)
 7. `@formspec/language-server` (depends on analysis, core)
 8. `formspec` (umbrella, depends on core, dsl, build, runtime)
-9. `@formspec/playground` and `@formspec/e2e` (depend on many/all packages)
+9. `@formspec/e2e` (depends on many/all packages)
 
 ### Entry Points
 
