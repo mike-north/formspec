@@ -229,7 +229,11 @@ BoundedContext UmbrellaContext implements FormSpecModelDomain {
 //   [SK]  = Shared Kernel (bidirectional shared model)
 //
 // Every cross-context coupling in this map corresponds to a real
-// dependency declared in package.json. Logical / data-flow couplings that
+// dependency declared in package.json — and conversely, every real
+// dependency between FormSpec packages is declared as an edge here.
+// (The CI guardrail planned for Phase 2 enforces both directions:
+// no edge in the map without a package.json dep, no package.json dep
+// without an edge in the map.) Logical / data-flow couplings that
 // are not code-level dependencies (for example: ValidatorContext consumes
 // JSON Schema produced by CompilationContext) are noted in domainVisionStatement
 // rather than as ContextMap edges, because no code import flows between them.
@@ -265,7 +269,7 @@ ContextMap FormSpecContextMap {
 
 	StaticAnalysisContext [D, CF]<-[U, OHS, PL] DomainModelContext {
 		implementationTechnology = "TypeScript types via @formspec/core public + /internals exports"
-		exposedAggregates = "PathTarget, JsonValue, BUILTIN_CONSTRAINT_DEFINITIONS, ConstraintInfo"
+		exposedAggregates = "PathTarget, JsonValue, BUILTIN_CONSTRAINT_DEFINITIONS, normalizeConstraintTagName"
 	}
 
 	CompilationContext [D, CF]<-[U, OHS, PL] DomainModelContext {
@@ -310,7 +314,7 @@ ContextMap FormSpecContextMap {
 
 	CompilationContext [D, CF]<-[U, OHS, PL] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis public + /internal exports"
-		exposedAggregates = "ParsedCommentTag, ConstraintInfo, FileSnapshot"
+		exposedAggregates = "FormSpecAnalysisFileSnapshot, ParsedCommentTag (via /internal), parseConstraintTagValue (via /internal), analyzeMetadataForSourceFile"
 	}
 
 	EslintContext [D, CF]<-[U, OHS] StaticAnalysisContext {
@@ -325,7 +329,7 @@ ContextMap FormSpecContextMap {
 
 	LanguageServerContext [D, CF]<-[U, OHS, PL] StaticAnalysisContext {
 		implementationTechnology = "TypeScript types via @formspec/analysis (including /protocol for transport)"
-		exposedAggregates = "FileSnapshot, diagnostic helpers"
+		exposedAggregates = "FormSpecAnalysisFileSnapshot, FormSpecAnalysisDiagnostic, FormSpecAnalysisManifest"
 	}
 
 	// -------------------------------------------------------------------------
