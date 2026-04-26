@@ -95,6 +95,7 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 ### Documentation
 
 - `documentation/no-unsupported-description-tag`
+- `documentation/remarks-without-summary`
 
 ### DSL Policy
 
@@ -181,6 +182,7 @@ export default [...formspec.configs.recommended, { rules: { "tsdoc/syntax": "off
 | [constraints-allowed-field-types](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraints-allowed-field-types.md)                                     | Validates that field types are allowed by the project's DSL policy                               |    | ❌  |
 | [constraints-allowed-layouts](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/constraints-allowed-layouts.md)                                             | Validates that layout constructs (group, conditionals) are allowed by the project's DSL policy   |    | ❌  |
 | [documentation/no-unsupported-description-tag](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/documentation/no-unsupported-description-tag.md)           | Bans @description, which is not a standard TSDoc tag                                             |    |    |
+| [documentation/remarks-without-summary](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/documentation/remarks-without-summary.md)                         | Warns when @remarks appears without summary text                                                 |    |    |
 | [dsl-policy/allowed-field-types](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/dsl-policy/allowed-field-types.md)                                       | Validates that field types are allowed by the project's DSL policy                               |    |    |
 | [dsl-policy/allowed-layouts](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/dsl-policy/allowed-layouts.md)                                               | Validates that layout constructs (group, conditionals) are allowed by the project's DSL policy   |    |    |
 | [tag-recognition/no-disabled-tags](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/tag-recognition/no-disabled-tags.md)                                   | Reports FormSpec tags disabled by project configuration                                          |    |    |

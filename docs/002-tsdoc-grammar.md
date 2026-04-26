@@ -542,7 +542,7 @@ interface D extends B, C {}
 
 **Known limitations:**
 
-- The inheritance walker targets the case where the *derived* declaration is a class or interface. When the *derived* declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
+- The inheritance walker targets the case where the _derived_ declaration is a class or interface. When the _derived_ declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
 - Only `@format` currently participates. Proposals to broaden the allow-list should address override semantics, conflict resolution, and emission coverage for each new kind (see [issue #380](https://github.com/mike-north/formspec/issues/380)).
 
 #### `@defaultValue`
@@ -1162,7 +1162,7 @@ The following categories group the symbolic codes conceptually:
 **Auto-fix (D5):** Offer to remove the first occurrence.
 
 **`REMARKS_WITHOUT_SUMMARY`: Remarks without summary text**
-**Severity:** info
+**Severity:** info. ESLint projects this as `warn` because ESLint flat config has no `info` severity.
 **Condition:** `@remarks` is present but no summary text (bare text before the first block tag) exists on the same declaration.
 **Message:** `"@remarks" is present but no summary text was found. Add summary text before the first tag so that JSON Schema "description", VS Code tooltips, and Dashboard form help text are populated.`
 **Auto-fix (D5):** None (the author must write summary text).

@@ -206,7 +206,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Redefined `@remarks` role from `@description` fallback to a separate channel.
   - `@remarks` no longer populates JSON Schema `description`. It populates `x-<vendor>-remarks` instead.
   - SDK codegen can include `x-<vendor>-remarks` in doc comments; API Documenter renders source `@remarks` natively.
-  - A `REMARKS_WITHOUT_SUMMARY` diagnostic (info) is emitted when `@remarks` is present but no summary text exists.
+  - A `REMARKS_WITHOUT_SUMMARY` diagnostic (info; projected as ESLint `warn`) is emitted when `@remarks` is present but no summary text exists.
 - Replaced `DESCRIPTION_REMARKS_CONFLICT` diagnostic with `REMARKS_WITHOUT_SUMMARY` and `UNSUPPORTED_DESCRIPTION_TAG`.
 - Updated `DescriptionAnnotation` source note: now populated from TSDoc summary text rather than `@description` tag.
 - Added `RemarksAnnotation` IR node mapping to `x-<vendor>-remarks`.
