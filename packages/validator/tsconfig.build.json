@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // @cfworker/json-schema's published .d.ts references the global `URL`
+    // type without a triple-slash reference. Adding DOM to lib makes `URL`
+    // visible during declaration emit. Required under TS 6.x, which no
+    // longer falls back to picking it up from auto-included @types/node.
+    "lib": ["ES2022", "DOM"]
   },
   "include": [
     "src/**/*"
