@@ -145,6 +145,12 @@ export class PaymentService {
     };
   }
 
+  multiParameter(type: string, id: string, label?: string): SubmitResult {
+    return {
+      approved: type.length > 0 && id.length > 0 && label !== "",
+    };
+  }
+
   status(): PaymentStatus {
     return "ok";
   }

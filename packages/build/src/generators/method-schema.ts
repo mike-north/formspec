@@ -222,7 +222,7 @@ function generateParamsSchemas(
     jsonSchema: {
       type: "object",
       properties,
-      ...(required.length > 0 ? { required } : {}),
+      ...(required.length > 0 ? { required: required.sort() } : {}),
     },
     uiSchema: null,
     formSpecExport: null,

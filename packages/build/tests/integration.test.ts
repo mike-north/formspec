@@ -65,7 +65,7 @@ describe("Integration: Complete form workflow", () => {
         state: { type: "string" },
         zip: { type: "string" },
       },
-      required: ["street", "city"],
+      required: ["city", "street"],
     });
 
     // Verify array structure

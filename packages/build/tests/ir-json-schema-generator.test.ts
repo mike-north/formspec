@@ -780,7 +780,7 @@ describe("generateJsonSchemaFromIR", () => {
       expect((prop["properties"] as Record<string, unknown>)["street"]).toEqual({ type: "string" });
       expect((prop["properties"] as Record<string, unknown>)["city"]).toEqual({ type: "string" });
       expect((prop["properties"] as Record<string, unknown>)["zip"]).toEqual({ type: "string" });
-      expect(prop["required"]).toEqual(["street", "city"]);
+      expect(prop["required"]).toEqual(["city", "street"]);
       expect(prop["required"]).not.toContain("zip");
     });
 
@@ -1646,6 +1646,17 @@ describe("generateJsonSchemaFromIR", () => {
       expect(schema.required).toEqual(["name"]);
     });
 
+    it("sorts root required field names alphabetically and excludes optional fields", () => {
+      const ir = makeIR([
+        makeField("type", { kind: "primitive", primitiveKind: "string" }, true),
+        makeField("label", { kind: "primitive", primitiveKind: "string" }, false),
+        makeField("id", { kind: "primitive", primitiveKind: "string" }, true),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.required).toEqual(["id", "type"]);
+    });
+
     it("deduplicates required entries (e.g., fields repeated across branches)", () => {
       const ir: FormIR = {
         kind: "form-ir",
@@ -1986,7 +1997,7 @@ describe("generateJsonSchemaFromIR", () => {
       // Root-level assertions
       expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
       expect(schema.type).toBe("object");
-      expect(schema.required).toEqual(["customerName", "status", "billingAddress"]);
+      expect(schema.required).toEqual(["billingAddress", "customerName", "status"]);
 
       const props = schema.properties as Record<string, Record<string, unknown>>;
 
@@ -2033,7 +2044,7 @@ describe("generateJsonSchemaFromIR", () => {
             pattern: "^[A-Z]{2}$",
           },
         },
-        required: ["street", "city", "country"],
+        required: ["city", "country", "street"],
       });
     });
   });

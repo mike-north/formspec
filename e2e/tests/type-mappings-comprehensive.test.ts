@@ -109,7 +109,7 @@ describe("Type Mappings — comprehensive", () => {
         city: { type: "string" },
         country: { type: "string" },
       },
-      required: ["street", "city", "country"],
+      required: ["city", "country", "street"],
     });
   });
 
