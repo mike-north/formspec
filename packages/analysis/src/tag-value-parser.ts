@@ -15,6 +15,7 @@ import {
   type TypeNode,
 } from "@formspec/core/internals";
 import { parseTagSyntax } from "./comment-syntax.js";
+import { getJsonLikeBalanceStatus } from "./json-like-balance.js";
 
 const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {
   minimum: "minimum",
@@ -163,6 +164,9 @@ export function parseConstraintTagValue(
     if (tagName === "const") {
       const trimmedText = effectiveText.trim();
       if (trimmedText === "") {
+        return null;
+      }
+      if (getJsonLikeBalanceStatus(effectiveText) === "unbalanced") {
         return null;
       }
 

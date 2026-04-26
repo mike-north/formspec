@@ -137,6 +137,33 @@ describe("@uniqueItems typed-parser Role-C canaries (snapshot consumer)", () => 
       "Expected no TYPE_MISMATCH — synthetic checker must not run after Role-C rejection"
     ).toBe(false);
   });
+
+  it("emits INVALID_TAG_ARGUMENT for unterminated multi-line @const JSON", () => {
+    const source = [
+      "class Form {",
+      "  /**",
+      "   * @const [",
+      "   * 1,",
+      "   * 2",
+      "   */",
+      "  value!: string;",
+      "}",
+    ].join("\n");
+
+    const { checker, sourceFile } = createProgram(
+      source,
+      "/virtual/snapshot-canary-const-multiline-unterminated.ts"
+    );
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    const invalidArgDiags = snapshot.diagnostics.filter(
+      (diagnostic) => diagnostic.code === "INVALID_TAG_ARGUMENT"
+    );
+
+    expect(
+      invalidArgDiags,
+      "Expected unterminated multi-line @const JSON to reject through the source diagnostic path"
+    ).toHaveLength(1);
+  });
 });
 
 // =============================================================================
