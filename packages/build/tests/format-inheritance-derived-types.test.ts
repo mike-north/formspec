@@ -15,8 +15,15 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import * as ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateSchemas, type GenerateSchemasOptions } from "../src/generators/class-schema.js";
+import {
+  generateSchemas,
+  generateSchemasFromProgram,
+  type GenerateSchemasOptions,
+} from "../src/generators/class-schema.js";
+import { analyzeInterfaceToIR } from "../src/analyzer/class-analyzer.js";
+import { createProgramContextFromProgram, findInterfaceByName } from "../src/analyzer/program.js";
 
 function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
   return generateSchemas({ ...options, errorReporting: "throw" });
@@ -53,6 +60,33 @@ const INTERFACE_INHERITANCE_SOURCE = [
   "export class Order {",
   "  subtotal!: MonetaryAmount;",
   "  tip!: PositiveMonetaryAmount;",
+  "}",
+].join("\n");
+
+/**
+ * Issue #381 multi-file fixture. The base declaration lives in `base.ts` and
+ * the derived declaration lives in `host.ts`, matching the provenance bug
+ * shape from the post-merge audit of #369. The inherited annotation must be
+ * parsed against the base declaration's own source file, not the derived file.
+ */
+const MULTI_FILE_BASE_SOURCE = [
+  "/** @format monetary-amount */",
+  "export interface MonetaryAmount {",
+  "  amount: number;",
+  "  currency: string;",
+  "}",
+].join("\n");
+
+const MULTI_FILE_HOST_SOURCE = [
+  'import type { MonetaryAmount } from "./base.js";',
+  "",
+  "export interface PositiveAmount extends MonetaryAmount {",
+  "  /** @exclusiveMinimum 0 */",
+  "  amount: number;",
+  "}",
+  "",
+  "export class Order {",
+  "  total!: PositiveAmount;",
   "}",
 ].join("\n");
 
@@ -603,6 +637,8 @@ const TYPE_ALIAS_GENERIC_PASS_THROUGH_SOURCE = [
 
 let tmpDir: string;
 let interfaceInheritanceFixturePath: string;
+let multiFileBaseFixturePath: string;
+let multiFileHostFixturePath: string;
 let overrideFixturePath: string;
 let classInheritanceFixturePath: string;
 let multiLevelFixturePath: string;
@@ -647,6 +683,12 @@ beforeAll(() => {
 
   interfaceInheritanceFixturePath = path.join(tmpDir, "interface-inheritance.ts");
   fs.writeFileSync(interfaceInheritanceFixturePath, INTERFACE_INHERITANCE_SOURCE);
+
+  multiFileBaseFixturePath = path.join(tmpDir, "base.ts");
+  fs.writeFileSync(multiFileBaseFixturePath, MULTI_FILE_BASE_SOURCE);
+
+  multiFileHostFixturePath = path.join(tmpDir, "host.ts");
+  fs.writeFileSync(multiFileHostFixturePath, MULTI_FILE_HOST_SOURCE);
 
   overrideFixturePath = path.join(tmpDir, "override.ts");
   fs.writeFileSync(overrideFixturePath, OVERRIDE_SOURCE);
@@ -754,6 +796,54 @@ describe("type-level @format inheritance on derived types — issue #367", () =>
     // spec: issue #367 — base-declared @format must flow to derived $defs entry.
     expect(base["format"]).toBe("monetary-amount");
     expect(derived["format"]).toBe("monetary-amount");
+  });
+
+  it("inherits @format across files and preserves base-file annotation provenance — issue #381", () => {
+    const program = ts.createProgram({
+      rootNames: [multiFileBaseFixturePath, multiFileHostFixturePath],
+      options: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        strict: true,
+        skipLibCheck: true,
+      },
+    });
+
+    const result = generateSchemasFromProgram({
+      program,
+      filePath: multiFileHostFixturePath,
+      typeName: "Order",
+      errorReporting: "throw",
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["PositiveAmount"], "$defs.PositiveAmount");
+
+    // spec: issue #381 — schema generation must inherit the base-declared
+    // format even when the base and derived declarations are in separate files.
+    expect(derived["format"]).toBe("monetary-amount");
+
+    const ctx = createProgramContextFromProgram(program, multiFileHostFixturePath);
+    const positiveAmount = findInterfaceByName(ctx.sourceFile, "PositiveAmount");
+    if (positiveAmount === null) throw new Error("PositiveAmount interface not found");
+
+    const analysis = analyzeInterfaceToIR(positiveAmount, ctx.checker, multiFileHostFixturePath);
+    const inheritedFormat = analysis.annotations?.find(
+      (annotation) => annotation.annotationKind === "format"
+    );
+
+    // spec: issue #381 — inherited annotations must keep provenance anchored
+    // to the base declaration's file. Using the derived file here would make
+    // downstream diagnostics and source mapping point at the wrong module.
+    expect(inheritedFormat).toMatchObject({
+      annotationKind: "format",
+      value: "monetary-amount",
+      provenance: {
+        file: multiFileBaseFixturePath,
+      },
+    });
+    expect(inheritedFormat?.provenance.file).not.toBe(multiFileHostFixturePath);
   });
 
   it("explicit @format on derived interface overrides inherited base format, while a sibling with no local @format still inherits the base format", () => {
