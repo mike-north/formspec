@@ -1,8 +1,14 @@
 import * as path from "node:path";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import type { Provenance } from "@formspec/core/internals";
 import type { IRClassAnalysis } from "../src/analyzer/class-analyzer.js";
+import {
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+} from "../src/analyzer/diagnostics.js";
 import { createExtensionRegistry } from "../src/extensions/index.js";
 import {
   generateClassSchemasDetailed,
@@ -21,6 +27,7 @@ import type { ValidationResult } from "../src/validate/index.js";
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
 const classSchemaRegressionsPath = path.join(fixturesDir, "class-schema-regressions.ts");
+const edgeCasesPath = path.join(fixturesDir, "edge-cases.ts");
 const testFile = "/project/src/class-schema.test.ts";
 
 function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
@@ -60,6 +67,24 @@ function getGenerationFailureMessage(typeName: string): string {
   }
 
   throw new Error(`Expected generateSchemas to fail for ${typeName}`);
+}
+
+function writeTempSource(source: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-class-schema-"));
+  const filePath = path.join(dir, "model.ts");
+  fs.writeFileSync(filePath, source);
+  return filePath;
+}
+
+function anonymousRecursiveClassSource(): string {
+  return [
+    "export class AnonymousRecursiveForm {",
+    "  root!: {",
+    "    value: string;",
+    '    children?: AnonymousRecursiveForm["root"][];',
+    "  };",
+    "}",
+  ].join("\n");
 }
 
 describe("generateSchemas", () => {
@@ -273,6 +298,37 @@ describe("generateSchemas", () => {
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("TYPE_MISMATCH");
   });
 
+  it("returns ANONYMOUS_RECURSIVE_TYPE diagnostics without schema output", () => {
+    const filePath = writeTempSource(anonymousRecursiveClassSource());
+
+    try {
+      const result = generateSchemas({
+        filePath,
+        typeName: "AnonymousRecursiveForm",
+        errorReporting: "diagnostics",
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.jsonSchema).toBeUndefined();
+      expect(result.uiSchema).toBeUndefined();
+      expect(result.diagnostics).toHaveLength(1);
+      expect(result.diagnostics[0]).toEqual({
+        code: ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+        message: ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+        severity: "error",
+        primaryLocation: {
+          surface: "tsdoc",
+          file: filePath,
+          line: 4,
+          column: 15,
+        },
+        relatedLocations: [],
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
   it("throws when errorReporting is throw", () => {
     expect(() =>
       generateSchemasOrThrow({
@@ -280,6 +336,81 @@ describe("generateSchemas", () => {
         typeName: "MismatchedForm",
       })
     ).toThrow(/TYPE_MISMATCH/);
+  });
+
+  it("throws with ANONYMOUS_RECURSIVE_TYPE for anonymous recursive shapes", () => {
+    const filePath = writeTempSource(anonymousRecursiveClassSource());
+
+    try {
+      expect(() =>
+        generateSchemasOrThrow({
+          filePath,
+          typeName: "AnonymousRecursiveForm",
+        })
+      ).toThrow(/ANONYMOUS_RECURSIVE_TYPE/);
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("keeps named recursive types on stable $defs references", () => {
+    const result = generateSchemasOrThrow({
+      filePath: edgeCasesPath,
+      typeName: "CircularNode",
+    });
+
+    expect(result.jsonSchema.$defs?.["CircularNode"]).toMatchObject({
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        next: { $ref: "#/$defs/CircularNode" },
+      },
+    });
+    expect(result.jsonSchema.properties?.["next"]).toEqual({ $ref: "#/$defs/CircularNode" });
+  });
+
+  it("keeps named recursive type aliases on stable $defs references", () => {
+    const filePath = writeTempSource(
+      ["export type Tree = {", "  value: number;", "  children?: Tree[];", "};"].join("\n")
+    );
+
+    try {
+      const result = generateSchemas({
+        filePath,
+        typeName: "Tree",
+        errorReporting: "diagnostics",
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        throw new Error("Expected named recursive type alias schema generation to succeed");
+      }
+      expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain(
+        ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE
+      );
+      expect(result.jsonSchema).toBeDefined();
+      if (result.jsonSchema === undefined) {
+        throw new Error("Expected named recursive type alias to produce a JSON Schema");
+      }
+      const jsonSchema = result.jsonSchema;
+
+      expect(jsonSchema.$defs?.["Tree"]).toMatchObject({
+        type: "object",
+        properties: {
+          value: { type: "number" },
+          children: {
+            type: "array",
+            items: { $ref: "#/$defs/Tree" },
+          },
+        },
+      });
+      expect(jsonSchema.properties?.["children"]).toEqual({
+        type: "array",
+        items: { $ref: "#/$defs/Tree" },
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
   });
 
   it("returns structured diagnostics instead of throwing from the detailed API", () => {

@@ -542,7 +542,7 @@ interface D extends B, C {}
 
 **Known limitations:**
 
-- The inheritance walker targets the case where the *derived* declaration is a class or interface. When the *derived* declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
+- The inheritance walker targets the case where the _derived_ declaration is a class or interface. When the _derived_ declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
 - Only `@format` currently participates. Proposals to broaden the allow-list should address override semantics, conflict resolution, and emission coverage for each new kind (see [issue #380](https://github.com/mike-north/formspec/issues/380)).
 
 #### `@defaultValue`
@@ -1046,6 +1046,12 @@ The following categories group the symbolic codes conceptually:
 **Condition:** A constraint tag is applied to a field whose TypeScript type is not compatible (S4). For example, `@minLength` on a `number` field.
 **Message:** `"@{tagName}" cannot be applied to a field of type "{typeName}". Valid types: {validTypes}.`
 **Auto-fix:** None (the author must either change the field type or remove the tag).
+
+**`ANONYMOUS_RECURSIVE_TYPE`: Anonymous recursive type shape**
+**Severity:** error
+**Condition:** A recursive object shape is encountered without a named class, interface, or type alias that can seed the type registry for `$ref` emission.
+**Message:** `Anonymous recursive type detected. Extract this type to a named class, interface, or type alias to enable recursive $ref emission.`
+**Auto-fix:** None. Extraction requires choosing a stable type name and declaration scope, so the author must make that design choice.
 
 ---
 

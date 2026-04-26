@@ -33,6 +33,7 @@ const canonicalRuleIds = [
   "value-parsing/valid-regex-pattern",
   "value-parsing/valid-json-value",
   "type-compatibility/tag-type-check",
+  "type-compatibility/no-anonymous-recursive-type",
   "target-resolution/valid-path-target",
   "target-resolution/valid-member-target",
   "target-resolution/no-unsupported-targeting",
@@ -152,12 +153,14 @@ describe("@formspec/eslint-plugin exports", () => {
 
     expect(configs.recommended[0]?.rules).toMatchObject({
       "formspec/tag-recognition/no-markdown-formatting": "warn",
+      "formspec/type-compatibility/no-anonymous-recursive-type": "error",
       "formspec/documentation/no-unsupported-description-tag": "error",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",
     });
     expect(configs.strict[0]?.rules).toMatchObject({
       "formspec/tag-recognition/no-markdown-formatting": "error",
+      "formspec/type-compatibility/no-anonymous-recursive-type": "error",
       "formspec/documentation/no-unsupported-description-tag": "error",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",

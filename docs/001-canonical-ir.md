@@ -202,7 +202,7 @@ The IR registry (section 10.3) maintains a `TypeDefinition` map from reference n
 
 **Recursive named-type rule:** Named recursive type graphs are supported when the recursive shape is reachable through a named class, interface, or type alias. During analysis, the type registry seeds the named type before resolving its full body; recursive back-edges then become `ReferenceTypeNode` values whose `name` points at the seeded registry entry. This preserves the recursive structure without inlining indefinitely, and downstream JSON Schema generation emits a stable `$defs` entry with `$ref` back-edges.
 
-Anonymous recursive shapes are not part of this supported path because they have no stable registry identity to reference. They should be diagnosed as `ANONYMOUS_RECURSIVE_TYPE` rather than silently collapsing to an empty fallback object; that diagnostic work is tracked in [issue #422](https://github.com/mike-north/formspec/issues/422).
+Anonymous recursive shapes are not part of this supported path because they have no stable registry identity to reference. The analyzer emits `ANONYMOUS_RECURSIVE_TYPE` rather than silently collapsing to an empty fallback object, advising authors to extract the recursive shape to a named class, interface, or type alias.
 
 ### 2.8 Dynamic Types
 

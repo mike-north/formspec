@@ -234,7 +234,7 @@ Each rule category maps to either a diagnostic category from 002 §6 or an autho
 | ----------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `tag-recognition`       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, related    | Unknown tags, missing arguments, disabled tags, and extension setup   |
 | `value-parsing`         | `INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, related                                      | Malformed numeric, regex, JSON, and date values                       |
-| `type-compatibility`    | `TYPE_MISMATCH`                                                                                       | Tags applied to incompatible field types                              |
+| `type-compatibility`    | `TYPE_MISMATCH`, `ANONYMOUS_RECURSIVE_TYPE`                                                           | Type/tag compatibility issues, including incompatible tags and shapes |
 | `target-resolution`     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                               | Invalid path-target and member-target references                      |
 | `constraint-validation` | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, discriminator diagnostics, related                       | Contradictions, duplicates, discriminator structure, rule conflicts   |
 | `documentation`         | `UNSUPPORTED_DESCRIPTION_TAG`, future documentation-hygiene diagnostics                               | Documentation-specific TSDoc usage                                    |
@@ -318,6 +318,7 @@ The active built-in rules define the current public rule inventory for implement
 | `value-parsing/valid-regex-pattern`                 | `INVALID_REGEX_PATTERN`                                                                                                              | error            |
 | `value-parsing/valid-json-value`                    | `INVALID_JSON_VALUE`                                                                                                                 | error            |
 | `type-compatibility/tag-type-check`                 | `TYPE_MISMATCH`                                                                                                                      | error            |
+| `type-compatibility/no-anonymous-recursive-type`    | `ANONYMOUS_RECURSIVE_TYPE`                                                                                                           | error            |
 | `target-resolution/valid-path-target`               | `UNKNOWN_PATH_TARGET`                                                                                                                | error            |
 | `target-resolution/valid-member-target`             | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error            |
 | `target-resolution/no-unsupported-targeting`        | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error            |
@@ -839,7 +840,7 @@ This enables the Outcome 8 scenario from 003 §6.1 without requiring the extensi
 | --------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Tag recognition       | `UNKNOWN_TAG`, `MISSING_TAG_ARGUMENT`, `TAG_DISABLED`, `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE`, related | Unknown tags, missing arguments, disabled tags, and extension setup failures |
 | Value parsing         | `INVALID_NUMERIC_VALUE`, `INVALID_REGEX_PATTERN`, related                                          | Malformed numeric, regex, JSON, and date values                              |
-| Type compatibility    | `TYPE_MISMATCH`                                                                                    | Tags applied to incompatible field types                                     |
+| Type compatibility    | `TYPE_MISMATCH`, `ANONYMOUS_RECURSIVE_TYPE`                                                        | Type/tag compatibility issues, including incompatible tags and shapes        |
 | Target resolution     | `UNKNOWN_PATH_TARGET`, `UNKNOWN_MEMBER_TARGET`, related                                            | Invalid path-target and member-target references                             |
 | Constraint validation | `CONSTRAINT_CONTRADICTION`, `DUPLICATE_TAG`, related                                               | Contradictions, duplicates, rule effect conflicts                            |
 

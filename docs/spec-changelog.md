@@ -10,17 +10,28 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 
 # 2026-04-26
 
+## 002-tsdoc-grammar
+
+- Added `ANONYMOUS_RECURSIVE_TYPE` to the type-compatibility diagnostic taxonomy.
+  - Anonymous recursive object shapes are now an error with guidance to extract the shape to a named class, interface, or type alias.
+  - No auto-fix is defined because choosing the declaration name and scope is author intent.
+
+## 004-tooling
+
+- Added `type-compatibility/no-anonymous-recursive-type` to the ESLint recommended and strict rule inventory.
+  - The rule reports the build analyzer's `ANONYMOUS_RECURSIVE_TYPE` diagnostic at the recursive source edge.
+
 ## 001-canonical-ir
 
 - Updated §2.7 to match the 2026-03-26 circular-reference supersession.
   - Named recursive class/interface/type-alias graphs are supported through registry-backed `ReferenceTypeNode` back-edges.
-  - Anonymous recursive shapes remain deferred to the `ANONYMOUS_RECURSIVE_TYPE` diagnostic tracked in [#422](https://github.com/mike-north/formspec/issues/422).
+  - Anonymous recursive shapes now produce the `ANONYMOUS_RECURSIVE_TYPE` diagnostic rather than silently collapsing.
 
 ## 003-json-schema-vocabulary
 
 - Updated §5.5 to describe recursive `$defs` / `$ref` emission for named recursive types.
   - The prior diagnostic-only language now points to completed tracker [#105](https://github.com/mike-north/formspec/issues/105), not future work.
-  - Anonymous recursive diagnostics remain a separate follow-up in [#422](https://github.com/mike-north/formspec/issues/422).
+  - Anonymous recursive shapes now remain unsupported through a clear `ANONYMOUS_RECURSIVE_TYPE` diagnostic.
 
 ## 006-parity-testing
 

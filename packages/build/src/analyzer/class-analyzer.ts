@@ -45,6 +45,10 @@ import {
   resolveCustomTypeFromTsType,
 } from "../extensions/resolve-custom-type.js";
 import {
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+} from "./diagnostics.js";
+import {
   extractTypeNodeFromSource,
   getTypeAliasDeclarationFromTypeReference,
 } from "../extensions/ts-type-utils.js";
@@ -811,6 +815,38 @@ function makeAnalysisDiagnostic(
     primaryLocation,
     relatedLocations,
   };
+}
+
+function sameProvenance(left: Provenance, right: Provenance): boolean {
+  return (
+    left.surface === right.surface &&
+    left.file === right.file &&
+    left.line === right.line &&
+    left.column === right.column &&
+    left.tagName === right.tagName
+  );
+}
+
+function pushAnonymousRecursiveTypeDiagnostic(
+  diagnostics: ConstraintSemanticDiagnostic[],
+  primaryLocation: Provenance
+): void {
+  const alreadyReported = diagnostics.some(
+    (diagnostic) =>
+      diagnostic.code === ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE &&
+      sameProvenance(diagnostic.primaryLocation, primaryLocation)
+  );
+  if (alreadyReported) {
+    return;
+  }
+
+  diagnostics.push(
+    makeAnalysisDiagnostic(
+      ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+      ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+      primaryLocation
+    )
+  );
 }
 
 function getLeadingParsedTags(node: ts.Node): readonly ParsedCommentTag[] {
@@ -2760,7 +2796,6 @@ function resolveObjectType(
 
   if (visiting.has(type)) {
     // Recursive object expansion is deferred through the named-type registry.
-    // Anonymous cycles still collapse to a closed empty object sentinel.
     if (registryTypeName !== undefined && shouldRegisterNamedType) {
       return {
         kind: "reference",
@@ -2768,6 +2803,10 @@ function resolveObjectType(
         typeArguments: referenceTypeArguments.map((argument) => argument.typeNode),
       };
     }
+    pushAnonymousRecursiveTypeDiagnostic(
+      collectedDiagnostics,
+      provenanceForDeclaration(sourceNode, file)
+    );
     return { kind: "object", properties: [], additionalProperties: false };
   }
 
