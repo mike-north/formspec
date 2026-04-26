@@ -21,6 +21,13 @@
       "dependencyTypes": ["dev", "peer", "prod"],
       "packages": ["**"],
       "pinVersion": "workspace:*"
+    },
+    {
+      "label": "TypeScript peer-deps advertise the supported range, which is wider than what the workspace develops against",
+      "dependencies": ["typescript"],
+      "dependencyTypes": ["peer"],
+      "packages": ["**"],
+      "pinVersion": ">=5.9.3 <7"
     }
   ],
   "sortAz": [

@@ -46,7 +46,7 @@
     "pino-pretty": "^11.0.0"
   },
   "peerDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": ">=5.9.3 <7"
   },
   "devDependencies": {
     "pino": "^9.0.0",
