@@ -68,6 +68,11 @@ describe("getCompletionItems", () => {
     expect(discriminator?.kind).toBe(CompletionItemKind.Keyword);
   });
 
+  it("does not include the unsupported @description tag", () => {
+    const items = getCompletionItems();
+    expect(items.find((item) => item.label === "@description")).toBeUndefined();
+  });
+
   it("includes extension-defined tags when extensions are provided", () => {
     const extension = defineExtension({
       extensionId: "x-test/numeric",

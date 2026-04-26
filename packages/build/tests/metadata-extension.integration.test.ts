@@ -167,6 +167,40 @@ describe("build metadata extension integration", () => {
     ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
   });
 
+  it("rejects extension constraint tags that reuse reserved unsupported tag names", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata",
+          constraintTags: [
+            defineConstraintTag({
+              tagName: "Description",
+              constraintName: "description",
+              parseValue: (raw) => raw,
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Extension tag "@description" is reserved and unsupported.');
+  });
+
+  it("rejects extension metadata tags that reuse reserved unsupported tag names", () => {
+    expect(() =>
+      createExtensionRegistry([
+        defineExtension({
+          extensionId: "x-test/metadata",
+          metadataSlots: [
+            defineMetadataSlot({
+              slotId: "customDescription",
+              tagName: "Description",
+              declarationKinds: ["field"],
+            }),
+          ],
+        }),
+      ])
+    ).toThrow('Metadata tag "@description" is reserved and unsupported.');
+  });
+
   it("rejects metadata tags that differ from constraint tags only by leading case", () => {
     expect(() =>
       createExtensionRegistry([

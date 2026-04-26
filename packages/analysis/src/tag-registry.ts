@@ -188,7 +188,6 @@ const BOOLEAN_VALUE_TAGS = new Set(["uniqueItems"]);
 const STRING_VALUE_TAGS = new Set([
   "pattern",
   "displayName",
-  "description",
   "format",
   "placeholder",
   "group",
@@ -622,15 +621,6 @@ const EXTRA_TAG_SPECS = {
       variant: TYPE_PLACEMENTS,
     },
   },
-  description: {
-    requiresArgument: true,
-    supportedTargets: ["none"],
-    allowDuplicates: false,
-    category: "annotation",
-    placements: [...TYPE_PLACEMENTS, ...FIELD_PLACEMENTS],
-    completionDetail: "Description text for a type or field.",
-    hoverSummary: "Provides descriptive documentation for a type or field.",
-  },
   format: {
     requiresArgument: true,
     supportedTargets: ["none"],
@@ -1037,6 +1027,8 @@ function readExtensionDefinitionTagNames(
   return names;
 }
 
+const RESERVED_UNSUPPORTED_TAG_NAMES = new Set(["description"]);
+
 /**
  * Reads every tag name registered by extensions in FormSpec settings.
  *
@@ -1068,6 +1060,10 @@ export function getTagDefinition(
   extensions?: readonly ExtensionTagSource[]
 ): TagDefinition | null {
   const normalized = normalizeFormSpecTagName(rawName);
+  if (RESERVED_UNSUPPORTED_TAG_NAMES.has(normalized)) {
+    return null;
+  }
+
   const builtin = BUILTIN_TAG_DEFINITIONS[normalized];
   if (builtin !== undefined) {
     return builtin;

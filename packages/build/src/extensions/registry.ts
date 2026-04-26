@@ -188,6 +188,7 @@ export interface MutableExtensionRegistry extends ExtensionRegistry {
 // =============================================================================
 
 const BUILTIN_METADATA_TAGS = new Set(["apiName", "displayName"]);
+const RESERVED_UNSUPPORTED_TAGS = new Set(["description"]);
 
 function buildConstraintTagSources(
   extensions: readonly ExtensionDefinition[]
@@ -332,6 +333,9 @@ export function createExtensionRegistry(
     if (ext.constraintTags !== undefined) {
       for (const tag of ext.constraintTags) {
         const canonicalTagName = normalizeFormSpecTagName(tag.tagName);
+        if (RESERVED_UNSUPPORTED_TAGS.has(canonicalTagName)) {
+          throw new Error(`Extension tag "@${canonicalTagName}" is reserved and unsupported.`);
+        }
         if (constraintTagMap.has(canonicalTagName)) {
           throw new Error(`Duplicate custom constraint tag: "@${canonicalTagName}"`);
         }
@@ -372,6 +376,9 @@ export function createExtensionRegistry(
           throw new Error(
             `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
           );
+        }
+        if (RESERVED_UNSUPPORTED_TAGS.has(canonicalTagName)) {
+          throw new Error(`Metadata tag "@${canonicalTagName}" is reserved and unsupported.`);
         }
         if (constraintTagMap.has(canonicalTagName)) {
           throw new Error(
