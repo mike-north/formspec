@@ -2,6 +2,17 @@
 
 Guidance for coding agents working in this repository.
 
+## Read these first
+
+Before making any change, read in this order:
+
+1. [`formspec.cml`](./formspec.cml) — the formal bounded-context model. Authoritative.
+2. [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) — prose reader companion to the CML.
+3. [`GLOSSARY.md`](./GLOSSARY.md) — project vocabulary; pin the right term before writing code or commits.
+4. [`docs/000-principles.md`](./docs/000-principles.md) — the architectural invariants the system upholds.
+
+When in doubt about which package owns a concept, search `GLOSSARY.md` and `formspec.cml`. When in doubt about a cross-package change, the relationships in `formspec.cml` are the contract.
+
 ## Overview
 
 FormSpec is a TypeScript monorepo for defining type-safe forms that compile to JSON Schema 2020-12 and JSON Forms UI Schema.
@@ -14,7 +25,7 @@ Primary packages:
 - `@formspec/build` — schema generation and static TypeScript analysis
 - `@formspec/runtime` — resolver helpers for dynamic enum/schema sources
 - `@formspec/analysis` — shared semantic-analysis protocol types and helpers
-- `@formspec/constraints` — `.formspec.yml` parsing and DSL capability validation
+- `@formspec/config` — `formspec.config.ts` loading and DSL capability validation
 - `@formspec/eslint-plugin` — lint rules for tags and DSL usage
 - `@formspec/ts-plugin` — TypeScript language-service plugin and semantic service
 - `@formspec/language-server` — reference LSP implementation over shared helpers

@@ -2,6 +2,8 @@
 
 FormSpec is a TypeScript monorepo for defining type-safe forms that compile to [JSON Schema](https://json-schema.org/) (for validation) and [JSON Forms UI Schema](https://jsonforms.io/) (for rendering).
 
+> **Companion documents.** This file describes the implementation: package responsibilities, build pipeline, and tooling. For the architectural _model_ — bounded contexts, subdomains, and inter-context relationships in formal Context Mapper Language — see [`formspec.cml`](./formspec.cml). The reader-friendly companion is [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md). The project's vocabulary lives in [`GLOSSARY.md`](./GLOSSARY.md). Architectural invariants are in [`docs/000-principles.md`](./docs/000-principles.md).
+
 ## Package Dependency Graph
 
 ```
@@ -14,7 +16,7 @@ formspec (umbrella — re-exports everything)
 @formspec/cli              (CLI tool)
 └── @formspec/build/internals
 
-@formspec/constraints      (constraint validation)
+@formspec/config           (constraint validation + formspec.config.ts loader)
 └── @formspec/core
 
 @formspec/analysis         (shared comment-tag analysis utilities)
@@ -22,7 +24,8 @@ formspec (umbrella — re-exports everything)
 
 @formspec/eslint-plugin    (lint rules for FormSpec)
 ├── @formspec/analysis
-├── @formspec/constraints
+├── @formspec/build
+├── @formspec/config
 └── @formspec/core
 
 @formspec/validator        (JSON Schema validator — @cfworker/json-schema)
@@ -43,10 +46,10 @@ formspec (umbrella — re-exports everything)
 Packages build in dependency order. `pnpm run build` at the root handles this automatically.
 
 1. `@formspec/core` — no dependencies
-2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/constraints` — depend on core
+2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/config` — depend on core
 3. `@formspec/analysis` — depends on core
-4. `@formspec/build` — depends on core
-5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/constraints/analysis
+4. `@formspec/build` — depends on core, analysis, config
+5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/config/analysis
 6. `@formspec/ts-plugin` — depends on analysis
 7. `@formspec/language-server` — depends on analysis, core
 8. `formspec` — umbrella, depends on all above
@@ -174,30 +177,39 @@ Combines static analysis with optional runtime loading:
 
 Options include `--emit-ir` (output Canonical IR as JSON) and `--validate-only` (validate without writing files).
 
-## Constraints (`@formspec/constraints`)
+## Constraints (`@formspec/config`)
 
-Restricts which FormSpec features are allowed, configured via `.formspec.yml`:
+Restricts which FormSpec features are allowed, configured in TypeScript via `formspec.config.ts` (or `.mts`/`.js`/`.mjs`). See [`docs/007-configuration.md`](./docs/007-configuration.md) for the full configuration spec.
 
-```yaml
-constraints:
-  fieldTypes:
-    dynamicEnum: error # Disallow dynamic enums
-    dynamicSchema: error # Disallow dynamic schemas
-  layout:
-    group: off # Allow groups
-    conditionals: warn # Warn on conditionals
-    maxNestingDepth: 3 # Limit nesting
-  fieldOptions:
-    placeholder: off # Allow placeholders
+```typescript
+// formspec.config.ts
+import { defineFormSpecConfig } from "@formspec/config";
+
+export default defineFormSpecConfig({
+  constraints: {
+    fieldTypes: {
+      dynamicEnum: "error", // Disallow dynamic enums
+      dynamicSchema: "error", // Disallow dynamic schemas
+    },
+    layout: {
+      group: "off", // Allow groups
+      conditionals: "warn", // Warn on conditionals
+      maxNestingDepth: 3, // Limit nesting
+    },
+    fieldOptions: {
+      placeholder: "off", // Allow placeholders
+    },
+  },
+});
 ```
 
 ### Enforcement Layers
 
-| Layer            | Tool                            | When                           |
-| ---------------- | ------------------------------- | ------------------------------ |
-| **Build-time**   | `@formspec/eslint-plugin`       | During linting / CI            |
-| **Programmatic** | `validateFormSpec()`            | At runtime or in build scripts |
-| **Browser**      | `@formspec/constraints/browser` | In the playground              |
+| Layer            | Tool                       | When                           |
+| ---------------- | -------------------------- | ------------------------------ |
+| **Build-time**   | `@formspec/eslint-plugin`  | During linting / CI            |
+| **Programmatic** | `validateFormSpec()`       | At runtime or in build scripts |
+| **Browser**      | `@formspec/config/browser` | In browser-embedded validation |
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 
@@ -210,10 +222,10 @@ constraints:
 
 ### Chain DSL Rules
 
-| Rule                              | Purpose                                                                       |
-| --------------------------------- | ----------------------------------------------------------------------------- |
-| `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `.formspec.yml` |
-| `constraints-allowed-layouts`     | `group()`, `when()` validated against `.formspec.yml`                         |
+| Rule                              | Purpose                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `formspec.config.ts` |
+| `constraints-allowed-layouts`     | `group()`, `when()` validated against `formspec.config.ts`                         |
 
 ## Tooling Architecture
 
@@ -304,14 +316,14 @@ DEBUG=formspec:analysis:constraint-validator:registry pnpm run build
 
 Each constraint-tag evaluation emits one structured record at `debug` level.
 
-| Field | Type | Description |
-|---|---|---|
-| `consumer` | `"build" \| "snapshot"` | Which pipeline emitted this entry |
-| `tag` | `string` | Normalized tag name, e.g. `"minimum"` |
-| `placement` | `string` | Declaration placement, e.g. `"class-field"` |
-| `subjectTypeKind` | `string` | Human-readable type description, e.g. `"primitive/string"`, `"object/Decimal"` |
-| `roleOutcome` | `string` | Final role in the validation pipeline (see below) |
-| `elapsedMicros` | `number` | Microseconds for this tag's full validation path |
+| Field             | Type                    | Description                                                                    |
+| ----------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| `consumer`        | `"build" \| "snapshot"` | Which pipeline emitted this entry                                              |
+| `tag`             | `string`                | Normalized tag name, e.g. `"minimum"`                                          |
+| `placement`       | `string`                | Declaration placement, e.g. `"class-field"`                                    |
+| `subjectTypeKind` | `string`                | Human-readable type description, e.g. `"primitive/string"`, `"object/Decimal"` |
+| `roleOutcome`     | `string`                | Final role in the validation pipeline (see below)                              |
+| `elapsedMicros`   | `number`                | Microseconds for this tag's full validation path                               |
 
 #### Role outcome values
 
@@ -320,17 +332,17 @@ validation now flows through three roles in order: Role A (placement), Role B
 (capability guard, including path-target resolution), Role C (typed-parser
 argument validation). A `C-pass` outcome means all three roles accepted.
 
-| Value | Meaning |
-|---|---|
-| `A-pass` | Placement check passed; tag accepted without reaching role C |
-| `A-reject` | Placement check failed (`INVALID_TAG_PLACEMENT`) |
-| `B-pass` | Path/target check passed (for path-targeted constraints) |
-| `B-reject` | Capability or path-target check failed (`TYPE_MISMATCH`, `UNKNOWN_PATH_TARGET`, `UNSUPPORTED_TARGETING_SYNTAX`) |
-| `C-pass` | Typed-parser argument validation passed — terminal success outcome |
+| Value      | Meaning                                                                                                                          |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `A-pass`   | Placement check passed; tag accepted without reaching role C                                                                     |
+| `A-reject` | Placement check failed (`INVALID_TAG_PLACEMENT`)                                                                                 |
+| `B-pass`   | Path/target check passed (for path-targeted constraints)                                                                         |
+| `B-reject` | Capability or path-target check failed (`TYPE_MISMATCH`, `UNKNOWN_PATH_TARGET`, `UNSUPPORTED_TARGETING_SYNTAX`)                  |
+| `C-pass`   | Typed-parser argument validation passed — terminal success outcome                                                               |
 | `C-reject` | Typed-parser argument validation failed (`INVALID_TAG_ARGUMENT`, `MISSING_TAG_ARGUMENT`, `TYPE_MISMATCH` from `@const` IR check) |
-| `D1` | Direct-field custom-constraint dispatch (custom-type broadening) |
-| `D2` | Path-target built-in broadening dispatch |
-| `bypass` | Broadening registry short-circuit (tag accepted without role-C check) |
+| `D1`       | Direct-field custom-constraint dispatch (custom-type broadening)                                                                 |
+| `D2`       | Path-target built-in broadening dispatch                                                                                         |
+| `bypass`   | Broadening registry short-circuit (tag accepted without role-C check)                                                            |
 
 ### Sample log excerpt
 
