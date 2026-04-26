@@ -210,7 +210,7 @@ describe("tag-registry", () => {
     const settings = {
       formspec: {
         extensionRegistry: {
-          extensions: [{ constraintTags: [{ tagName: "@AfterDate" }] }],
+          extensions: [null, [], { constraintTags: [{ tagName: "@AfterDate" }] }],
           findTypeByName: true,
           findBuiltinConstraintBroadening: {},
         },
@@ -220,6 +220,7 @@ describe("tag-registry", () => {
     const registry = readExtensionRegistryFromSettings(settings);
 
     expect(registry?.extensions).toHaveLength(1);
+    expect(registry?.extensions?.[0]).toEqual({ constraintTags: [{ tagName: "@AfterDate" }] });
     expect(registry?.findTypeByName).toBeUndefined();
     expect(registry?.findBuiltinConstraintBroadening).toBeUndefined();
     expect([...readExtensionTagNames(settings)]).toEqual(["afterDate"]);

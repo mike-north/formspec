@@ -959,7 +959,8 @@ export function readExtensionRegistryFromSettings(
   const findTypeByName = record["findTypeByName"];
   const findBuiltinConstraintBroadening = record["findBuiltinConstraintBroadening"];
   const validShape =
-    (extensions === undefined || Array.isArray(extensions)) &&
+    (extensions === undefined ||
+      (Array.isArray(extensions) && extensions.every(isSettingsExtensionDefinition))) &&
     (findTypeByName === undefined || typeof findTypeByName === "function") &&
     (findBuiltinConstraintBroadening === undefined ||
       typeof findBuiltinConstraintBroadening === "function");
@@ -1006,7 +1007,7 @@ function readRegisteredExtensionTagName(record: unknown, propertyName: string): 
 }
 
 function isSettingsExtensionDefinition(value: unknown): value is SettingsExtensionDefinition {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function readArrayProperty(
