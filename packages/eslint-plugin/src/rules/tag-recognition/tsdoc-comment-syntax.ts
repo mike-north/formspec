@@ -1,8 +1,11 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
+import {
+  TAGS_REQUIRING_RAW_TEXT,
+  getOrCreateTSDocParser,
+  readExtensionTagNames,
+} from "@formspec/analysis/internal";
 import { createDeclarationVisitor } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags, getLeadingJSDocComments } from "../../utils/tag-scanner.js";
-import { readExtensionTagNames } from "../../utils/tag-metadata.js";
-import { TAGS_REQUIRING_RAW_TEXT, getOrCreateTSDocParser } from "@formspec/analysis/internal";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`

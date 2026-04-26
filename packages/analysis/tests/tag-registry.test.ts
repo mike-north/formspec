@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { defineExtension, defineMetadataSlot } from "@formspec/core";
-import { getTagDefinition } from "../src/internal.js";
+import {
+  getTagDefinition,
+  readExtensionRegistryFromSettings,
+  readExtensionTagNames,
+} from "../src/internal.js";
 
 describe("tag-registry", () => {
   it("restores pre-extraction ecosystem and structure tags", () => {
@@ -151,5 +155,73 @@ describe("tag-registry", () => {
     expect(() => getTagDefinition("externalName", [extension])).toThrow(
       'Metadata tag "@externalName" must allow bare usage or declare at least one qualifier.'
     );
+  });
+
+  it("reads every extension-registered tag name from FormSpec settings", () => {
+    const tagNames = readExtensionTagNames({
+      formspec: {
+        extensionRegistry: {
+          extensions: [
+            {
+              constraintTags: [{ tagName: "@AfterDate" }, { tagName: "afterDate" }],
+              metadataSlots: [{ tagName: "ExternalName" }],
+              annotations: [{ annotationName: "@PrimaryField" }],
+            },
+            null,
+            {
+              constraintTags: [{ tagName: 123 }],
+              metadataSlots: [{ tagName: null }],
+              annotations: [{ annotationName: undefined }],
+            },
+          ],
+        },
+      },
+    });
+
+    expect([...tagNames].sort()).toEqual(["afterDate", "externalName", "primaryField"]);
+  });
+
+  it("returns the settings-bound extension registry through a shared reader", () => {
+    const extensionRegistry = {
+      extensions: [],
+      findTypeByName: (typeName: string) =>
+        typeName === "Decimal"
+          ? {
+              extensionId: "x-example/decimal",
+              registration: { typeName: "Decimal" },
+            }
+          : undefined,
+      findBuiltinConstraintBroadening: (typeId: string, tagName: string) =>
+        typeId === "x-example/decimal/Decimal" && tagName === "minimum" ? {} : undefined,
+    };
+
+    expect(
+      readExtensionRegistryFromSettings({
+        formspec: { extensionRegistry },
+      })
+    ).toBe(extensionRegistry);
+    expect(readExtensionRegistryFromSettings({ formspec: {} })).toBeUndefined();
+    expect(
+      readExtensionRegistryFromSettings({ formspec: { extensionRegistry: null } })
+    ).toBeUndefined();
+  });
+
+  it("ignores malformed registry methods without losing valid extension names", () => {
+    const settings = {
+      formspec: {
+        extensionRegistry: {
+          extensions: [{ constraintTags: [{ tagName: "@AfterDate" }] }],
+          findTypeByName: true,
+          findBuiltinConstraintBroadening: {},
+        },
+      },
+    };
+
+    const registry = readExtensionRegistryFromSettings(settings);
+
+    expect(registry?.extensions).toHaveLength(1);
+    expect(registry?.findTypeByName).toBeUndefined();
+    expect(registry?.findBuiltinConstraintBroadening).toBeUndefined();
+    expect([...readExtensionTagNames(settings)]).toEqual(["afterDate"]);
   });
 });
