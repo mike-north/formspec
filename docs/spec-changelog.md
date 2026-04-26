@@ -8,6 +8,28 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Group entries by the spec document being changed.
 - Link each entry back to the corresponding item in `scratch/spec-risk-log.md` when applicable.
 
+# 2026-04-26
+
+## 001-canonical-ir
+
+- Updated §2.7 to match the 2026-03-26 circular-reference supersession.
+  - Named recursive class/interface/type-alias graphs are supported through registry-backed `ReferenceTypeNode` back-edges.
+  - Anonymous recursive shapes remain deferred to the `ANONYMOUS_RECURSIVE_TYPE` diagnostic tracked in [#422](https://github.com/mike-north/formspec/issues/422).
+
+## 003-json-schema-vocabulary
+
+- Updated §5.5 to describe recursive `$defs` / `$ref` emission for named recursive types.
+  - The prior diagnostic-only language now points to completed tracker [#105](https://github.com/mike-north/formspec/issues/105), not future work.
+  - Anonymous recursive diagnostics remain a separate follow-up in [#422](https://github.com/mike-north/formspec/issues/422).
+
+## 006-parity-testing
+
+- Documented recursive named-type coverage as existing analyzer, generator, and CLI/e2e evidence rather than adding a strict TSDoc-to-ChainDSL parity fixture in this doc-only update.
+
+## e2e-test-matrix
+
+- Added recursive named-type coverage to the already-covered fixture list, backed by the existing `cli/circular-node` fixture and focused build tests.
+
 ## 000-principles.md
 
 - Added a naming principle for TSDoc tags.

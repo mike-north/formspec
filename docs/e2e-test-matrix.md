@@ -25,6 +25,7 @@
 - Field-level narrowing of alias constraints (inherited-constraints)
 - Path-target on `$ref` type — sibling keywords alongside `$ref` (path-target-constraints; see 003 §5.4)
 - Path-target on array item type — transparency (path-target-constraints)
+- Recursive named type → `$defs` with self-referential `$ref` (cli/circular-node; build analyzer/generator tests)
 - Chain DSL: groups, conditionals, labeled enums, dynamic enums, objects, arrays (chain-dsl fixtures)
 
 ### NOT yet covered (this matrix adds these)
