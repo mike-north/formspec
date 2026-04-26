@@ -28,6 +28,11 @@ describe("getHoverForTag", () => {
     expect(getHoverForTag("not-a-constraint")).toBeNull();
   });
 
+  it("returns null for the unsupported @description tag", () => {
+    expect(getHoverForTag("description")).toBeNull();
+    expect(getHoverForTag("@description")).toBeNull();
+  });
+
   it("returns hover content for every built-in constraint name", () => {
     for (const name of Object.keys(BUILTIN_CONSTRAINT_DEFINITIONS)) {
       const hover = getHoverForTag(name);

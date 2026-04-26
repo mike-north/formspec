@@ -78,6 +78,151 @@ ruleTester.run("documentation/no-unsupported-description-tag", noUnsupportedDesc
     {
       code: `class Form { /** @description A name */ name!: string; }`,
       errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `class Form { /** A name */ name!: string; }`,
+    },
+    {
+      code: `class Form { /** Existing summary. @description */ name!: string; }`,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `class Form { /** Existing summary. */ name!: string; }`,
+    },
+    {
+      code: `class Form { /** Existing summary. @description Additional details. @minimum 1 */ count!: number; }`,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `class Form { /** Existing summary. Additional details. @minimum 1 */ count!: number; }`,
+    },
+    {
+      code: `class Form { /** Existing summary. @description One. @description Two. @minimum 1 */ count!: number; }`,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `class Form { /** Existing summary. One. Two. @minimum 1 */ count!: number; }`,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * @description
+           * First line.
+           * Second line.
+           */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `
+        class Form {
+          /**
+           * First line.
+           * Second line.
+           */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * @Description
+           * Capitalized first line.
+           * Second line.
+           */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `
+        class Form {
+          /**
+           * Capitalized first line.
+           * Second line.
+           */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * Existing summary.
+           * @description
+           * @minimum 1
+           */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `
+        class Form {
+          /**
+           * Existing summary.
+           * @minimum 1
+           */
+          count!: number;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * Existing summary.
+           * @description Additional details.
+           * @description More details.
+           * @minimum 1
+           */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `
+        class Form {
+          /**
+           * Existing summary.
+           *
+           * Additional details.
+           *
+           * More details.
+           * @minimum 1
+           */
+          count!: number;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * @description A displayable name.
+           * @displayName Full Name
+           * @remarks Use the legal name.
+           */
+          name!: string;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: `
+        class Form {
+          /**
+           * A displayable name.
+           * @displayName Full Name
+           * @remarks Use the legal name.
+           */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           * @description :member Per-member description.
+           * @minimum 1
+           */
+          count!: number;
+        }
+      `,
+      errors: [{ messageId: "descriptionTagForbidden" }],
+      output: null,
     },
   ],
 });
