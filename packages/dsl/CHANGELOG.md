@@ -1,5 +1,11 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.64
+
+### Patch Changes
+
+- [#412](https://github.com/mike-north/formspec/pull/412) [`f91cc78`](https://github.com/mike-north/formspec/commit/f91cc78817cfb3fc5a1a492f3812c2e6dc186c46) Thanks [@mike-north](https://github.com/mike-north)! - Drop the no-op `baseUrl: "."` from each package's build tsconfig and pin `types: ["node"]` at the workspace root. `paths` resolves relative to the tsconfig file when `baseUrl` is omitted (TS 4.1+), so emitted declarations are unchanged. Required for clean builds under TypeScript 6.x, which deprecates `baseUrl` and no longer auto-includes `@types/node` globals.
+
 ## 0.1.0-alpha.63
 
 ### Patch Changes
