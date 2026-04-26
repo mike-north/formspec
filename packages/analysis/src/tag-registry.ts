@@ -114,6 +114,26 @@ export interface ExtensionTagSource {
   readonly customTypes?: readonly ExtensionCustomTypeSource[];
 }
 
+export interface SettingsExtensionTypeRegistration {
+  readonly extensionId: string;
+  readonly registration: { readonly typeName: string };
+}
+
+export interface SettingsExtensionDefinition {
+  readonly constraintTags?: readonly { readonly tagName: unknown }[];
+  readonly metadataSlots?: readonly { readonly tagName: unknown }[];
+  readonly annotations?: readonly { readonly annotationName: unknown }[];
+}
+
+export interface SettingsExtensionRegistry {
+  readonly extensions?: readonly SettingsExtensionDefinition[];
+  readonly findTypeByName?: (typeName: string) => SettingsExtensionTypeRegistration | undefined;
+  readonly findBuiltinConstraintBroadening?: (
+    typeId: string,
+    tagName: string
+  ) => object | undefined;
+}
+
 export const FORM_SPEC_PLACEMENTS = [
   "class",
   "class-field",
@@ -814,7 +834,8 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     // regardless of its type, so their value-kind must not leak into a field
     // constraint. `EXTRA_TAG_SPECS` currently has no constraint entries, but
     // we keep the `spec.category === "constraint"` check for future-proofing.
-    capabilities: spec.category === "constraint" ? capabilitiesForValueKind(valueKind) : ([] as const),
+    capabilities:
+      spec.category === "constraint" ? capabilitiesForValueKind(valueKind) : ([] as const),
     completionDetail: spec.completionDetail,
     hoverSummary: spec.hoverSummary,
     hoverMarkdown: buildHoverMarkdown(canonicalName, spec.hoverSummary, signatures, valueLabel),
@@ -916,6 +937,130 @@ const EXTRA_TAG_DEFINITIONS: Record<string, TagDefinition> = Object.fromEntries(
 
 export function normalizeFormSpecTagName(rawName: string): string {
   return normalizeConstraintTagName(rawName);
+}
+
+/**
+ * Reads the extension registry that FormSpec integrations place in settings.
+ *
+ * ESLint, the TypeScript plugin, and the language server all receive this value
+ * through a weakly typed host boundary, so the shared analysis layer owns the
+ * defensive object checks instead of each consumer casting settings locally.
+ */
+export function readExtensionRegistryFromSettings(
+  settings: Readonly<Record<string, unknown>>
+): SettingsExtensionRegistry | undefined {
+  const formspec = settings["formspec"];
+  if (typeof formspec !== "object" || formspec === null) return undefined;
+  const registry = (formspec as Record<string, unknown>)["extensionRegistry"];
+  if (typeof registry !== "object" || registry === null) return undefined;
+
+  const record = registry as Record<string, unknown>;
+  const extensions = record["extensions"];
+  const findTypeByName = record["findTypeByName"];
+  const findBuiltinConstraintBroadening = record["findBuiltinConstraintBroadening"];
+  const validShape =
+    (extensions === undefined ||
+      (Array.isArray(extensions) && extensions.every(isSettingsExtensionDefinition))) &&
+    (findTypeByName === undefined || typeof findTypeByName === "function") &&
+    (findBuiltinConstraintBroadening === undefined ||
+      typeof findBuiltinConstraintBroadening === "function");
+
+  if (validShape) {
+    return registry as SettingsExtensionRegistry;
+  }
+
+  return {
+    ...(Array.isArray(extensions)
+      ? { extensions: extensions.filter(isSettingsExtensionDefinition) }
+      : {}),
+    ...(typeof findTypeByName === "function"
+      ? {
+          findTypeByName: findTypeByName as NonNullable<
+            SettingsExtensionRegistry["findTypeByName"]
+          >,
+        }
+      : {}),
+    ...(typeof findBuiltinConstraintBroadening === "function"
+      ? {
+          findBuiltinConstraintBroadening: findBuiltinConstraintBroadening as NonNullable<
+            SettingsExtensionRegistry["findBuiltinConstraintBroadening"]
+          >,
+        }
+      : {}),
+  };
+}
+
+/**
+ * Strips a leading `@` from a tag name before applying FormSpec's shared tag
+ * normalization. Extension registries can store names in either spelling, while
+ * parsed comments use normalized names without the TSDoc prefix.
+ */
+function normalizeExtensionTagName(rawName: string): string {
+  const stripped = rawName.startsWith("@") ? rawName.slice(1) : rawName;
+  return normalizeFormSpecTagName(stripped);
+}
+
+function readRegisteredExtensionTagName(record: unknown, propertyName: string): string | null {
+  if (typeof record !== "object" || record === null) return null;
+  const rawName = (record as Record<string, unknown>)[propertyName];
+  return typeof rawName === "string" ? normalizeExtensionTagName(rawName) : null;
+}
+
+function isSettingsExtensionDefinition(value: unknown): value is SettingsExtensionDefinition {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readArrayProperty(
+  record: SettingsExtensionDefinition,
+  propertyName: string
+): readonly unknown[] {
+  const value = (record as Record<string, unknown>)[propertyName];
+  return Array.isArray(value) ? value : [];
+}
+
+function readExtensionDefinitionTagNames(
+  extension: SettingsExtensionDefinition
+): readonly string[] {
+  const names: string[] = [];
+  for (const tag of readArrayProperty(extension, "constraintTags")) {
+    const name = readRegisteredExtensionTagName(tag, "tagName");
+    if (name !== null) names.push(name);
+  }
+  for (const slot of readArrayProperty(extension, "metadataSlots")) {
+    const name = readRegisteredExtensionTagName(slot, "tagName");
+    if (name !== null) names.push(name);
+  }
+  for (const annotation of readArrayProperty(extension, "annotations")) {
+    const name = readRegisteredExtensionTagName(annotation, "annotationName");
+    if (name !== null) names.push(name);
+  }
+  return names;
+}
+
+/**
+ * Reads every tag name registered by extensions in FormSpec settings.
+ *
+ * Constraint tags, metadata slots, and annotations store their names under
+ * different property names; callers should treat them as one extension-defined
+ * tag-name set. Malformed settings entries are ignored so host tooling never
+ * crashes while linting partially configured projects.
+ */
+export function readExtensionTagNames(
+  settings: Readonly<Record<string, unknown>>
+): ReadonlySet<string> {
+  const registry = readExtensionRegistryFromSettings(settings);
+  const extensions =
+    registry === undefined ? undefined : (registry as Record<string, unknown>)["extensions"];
+  if (!Array.isArray(extensions)) return new Set();
+
+  const names = new Set<string>();
+  for (const extension of extensions) {
+    if (!isSettingsExtensionDefinition(extension)) continue;
+    for (const name of readExtensionDefinitionTagNames(extension)) {
+      names.add(name);
+    }
+  }
+  return names;
 }
 
 export function getTagDefinition(

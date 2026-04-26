@@ -77,6 +77,9 @@ export type {
   TagDefinition,
   TagSignature,
   TagSignatureParameter,
+  SettingsExtensionDefinition,
+  SettingsExtensionRegistry,
+  SettingsExtensionTypeRegistration,
 } from "./tag-registry.js";
 export {
   FORM_SPEC_PLACEMENTS,
@@ -86,6 +89,8 @@ export {
   getTagDefinition,
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
+  readExtensionRegistryFromSettings,
+  readExtensionTagNames,
 } from "./tag-registry.js";
 export {
   getFormSpecManifestPath,

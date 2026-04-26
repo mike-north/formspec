@@ -9,26 +9,17 @@ import {
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 import { getFieldTypeCategory, type FieldTypeCategory } from "../../utils/type-utils.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";
-import { getTagDefinition, type SemanticCapability } from "@formspec/analysis/internal";
+import {
+  getTagDefinition,
+  readExtensionRegistryFromSettings,
+  type SemanticCapability,
+} from "@formspec/analysis/internal";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
 type MessageIds = "typeMismatch";
-
-/**
- * Minimal interface for the extension registry stored in ESLint settings.
- * Avoids importing @formspec/build in the rule itself.
- */
-interface SettingsExtensionRegistry {
-  findTypeByName(
-    typeName: string
-  ):
-    | { readonly extensionId: string; readonly registration: { readonly typeName: string } }
-    | undefined;
-  findBuiltinConstraintBroadening(typeId: string, tagName: string): object | undefined;
-}
 
 const CAPABILITY_TO_FIELD_TYPES: Record<SemanticCapability, FieldTypeCategory[]> = {
   "numeric-comparable": ["number", "bigint"],
@@ -83,12 +74,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
     const services = ESLintUtils.getParserServices(context);
     const checker = services.program.getTypeChecker();
 
-    const registry =
-      (context.settings as Record<string, unknown>)["formspec"] !== undefined
-        ? ((context.settings as Record<string, Record<string, unknown>>)["formspec"]?.[
-            "extensionRegistry"
-          ] as SettingsExtensionRegistry | undefined)
-        : undefined;
+    const registry = readExtensionRegistryFromSettings(context.settings);
 
     return createDeclarationVisitor((node) => {
       const declarationType = getDeclarationType(node, services);
@@ -131,7 +117,10 @@ export const tagTypeCheck = createRule<[], MessageIds>({
         // Check for builtin constraint broadening via extension registry.
         // Use checker.typeToString for the name — it correctly resolves
         // type aliases (e.g., `type Decimal = ...` → "Decimal").
-        if (registry !== undefined) {
+        if (
+          registry?.findTypeByName !== undefined &&
+          registry.findBuiltinConstraintBroadening !== undefined
+        ) {
           const typeName = checker.typeToString(resolved.type);
           const typeResult = registry.findTypeByName(typeName);
           if (typeResult !== undefined) {

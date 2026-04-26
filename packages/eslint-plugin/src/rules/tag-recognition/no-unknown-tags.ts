@@ -1,7 +1,8 @@
 import { ESLintUtils } from "@typescript-eslint/utils";
+import { readExtensionTagNames } from "@formspec/analysis/internal";
 import { createDeclarationVisitor } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
-import { getTagMetadata, readExtensionTagNames } from "../../utils/tag-metadata.js";
+import { getTagMetadata } from "../../utils/tag-metadata.js";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`

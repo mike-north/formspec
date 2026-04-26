@@ -911,5 +911,24 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
       `,
       errors: [{ messageId: "typeMismatch" }],
     },
+    // Malformed registry methods are ignored at the weak ESLint settings
+    // boundary instead of crashing before reporting the normal mismatch.
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          label!: string;
+        }
+      `,
+      settings: {
+        formspec: {
+          extensionRegistry: {
+            findTypeByName: true,
+            findBuiltinConstraintBroadening: {},
+          },
+        },
+      },
+      errors: [{ messageId: "typeMismatch" }],
+    },
   ],
 });
