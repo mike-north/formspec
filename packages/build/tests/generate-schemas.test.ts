@@ -132,7 +132,7 @@ describe("generateSchemas", () => {
       "total",
       "address",
     ]);
-    expect(result.jsonSchema.required).toEqual(["first_name", "total", "address"]);
+    expect(result.jsonSchema.required).toEqual(["address", "first_name", "total"]);
     expect(result.jsonSchema.$defs).toMatchObject({
       PostalAddress: {
         type: "object",

@@ -8,6 +8,8 @@ import {
   generateSchemasFromType,
   resolveModuleExportDeclaration,
 } from "../src/index.js";
+import type { MethodInfo } from "../src/analyzer/class-analyzer.js";
+import { generateMethodSchemas } from "../src/internals.js";
 
 const fixturePath = path.join(__dirname, "fixtures", "method-signature-schemas.ts");
 
@@ -27,6 +29,27 @@ function getMethod(
   }
 
   return method;
+}
+
+/** Builds the MethodInfo shape consumed by the internal method-schema generator. */
+function getMethodInfo(method: ts.MethodDeclaration, checker: ts.TypeChecker): MethodInfo {
+  const signature = checker.getSignatureFromDeclaration(method);
+  if (signature === undefined) {
+    throw new Error(`Method "${method.name.getText()}" signature not found`);
+  }
+
+  return {
+    name: method.name.getText(),
+    parameters: method.parameters.map((parameter) => ({
+      name: parameter.name.getText(),
+      typeNode: parameter.type,
+      type: checker.getTypeAtLocation(parameter),
+      formSpecExportName: null,
+      optional: parameter.questionToken !== undefined || parameter.initializer !== undefined,
+    })),
+    returnTypeNode: method.type,
+    returnType: checker.getReturnTypeOfSignature(signature),
+  };
 }
 
 describe("method-signature schema generation", () => {
@@ -160,7 +183,7 @@ describe("method-signature schema generation", () => {
       inline_amount_cents: { type: "number" },
       currency: { type: "string", title: "Inline Currency" },
     });
-    expect(schemas.jsonSchema.required).toEqual(["inline_amount_cents", "currency"]);
+    expect(schemas.jsonSchema.required).toEqual(["currency", "inline_amount_cents"]);
     expect(schemas.uiSchema).toMatchObject({
       type: "VerticalLayout",
       elements: [
@@ -191,6 +214,23 @@ describe("method-signature schema generation", () => {
       type: "VerticalLayout",
       elements: [{ type: "Control", scope: "#/properties/inline_ok" }],
     });
+  });
+
+  it("sorts required arrays for generated multi-parameter method schemas", () => {
+    const context = createStaticBuildContext(fixturePath);
+    const declaration = resolveModuleExportDeclaration(context, "PaymentService");
+    if (declaration === null || !ts.isClassDeclaration(declaration)) {
+      throw new Error("PaymentService class not found");
+    }
+
+    const method = getMethod(declaration, "multiParameter");
+    const schemas = generateMethodSchemas(
+      getMethodInfo(method, context.checker),
+      context.checker,
+      new Map()
+    );
+
+    expect(schemas.params?.jsonSchema.required).toEqual(["id", "type"]);
   });
 
   it("supports advanced generation from a resolved TypeScript type", () => {
@@ -406,7 +446,9 @@ describe("metadata policy that would rename the synthetic __result wrapper (regr
     },
   };
 
-  function getPaymentService(context: ReturnType<typeof createStaticBuildContext>): ts.ClassDeclaration {
+  function getPaymentService(
+    context: ReturnType<typeof createStaticBuildContext>
+  ): ts.ClassDeclaration {
     const declaration = resolveModuleExportDeclaration(context, "PaymentService");
     if (declaration === null || !ts.isClassDeclaration(declaration)) {
       throw new Error("PaymentService class not found");

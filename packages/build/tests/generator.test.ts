@@ -376,7 +376,7 @@ describe("generateJsonSchema - object fields", () => {
         city: { type: "string" },
         zip: { type: "string" },
       },
-      required: ["street", "city"],
+      required: ["city", "street"],
     });
   });
 });

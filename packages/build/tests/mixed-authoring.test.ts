@@ -48,7 +48,7 @@ describe("buildMixedAuthoringSchemas", () => {
         },
         postalCode: { type: "string", title: "Postal Code" },
       },
-      required: ["country", "city"],
+      required: ["city", "country"],
     });
 
     expect(result.uiSchema).toEqual({
@@ -138,7 +138,7 @@ describe("buildMixedAuthoringSchemas", () => {
       overlays: requiredCountryShippingAddressOverlays,
     });
 
-    expect(result.jsonSchema.required).toEqual(["country", "city"]);
+    expect(result.jsonSchema.required).toEqual(["city", "country"]);
     expect(result.jsonSchema.properties?.["country"]).toEqual({
       type: "string",
       title: "Country",

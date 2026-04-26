@@ -282,8 +282,8 @@ export function generateJsonSchemaFromIR(
 
   collectFields(ir.elements, properties, required, ctx);
 
-  // Deduplicate required (same field can appear across conditional branches).
-  const uniqueRequired = [...new Set(required)];
+  // Deduplicate and sort required names so output stays stable across IR traversal changes.
+  const uniqueRequired = [...new Set(required)].sort();
 
   const result: JsonSchema2020 = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -733,7 +733,7 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
   const schema: JsonSchema2020 = { type: "object", properties };
 
   if (required.length > 0) {
-    schema.required = required;
+    schema.required = required.sort();
   }
 
   if (!type.additionalProperties) {
