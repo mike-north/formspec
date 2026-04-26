@@ -18,9 +18,9 @@ type SupportedNamedDeclaration =
 
 type MessageIds = "anonymousRecursiveType";
 
+// Keep the code literal local to avoid widening `@formspec/build/internals`;
+// report text comes from the analyzer diagnostic so message wording cannot drift.
 const anonymousRecursiveTypeDiagnosticCode = "ANONYMOUS_RECURSIVE_TYPE";
-const anonymousRecursiveTypeDiagnosticMessage =
-  "Anonymous recursive type detected. Extract this type to a named class, interface, or type alias to enable recursive $ref emission.";
 
 function normalizeComparableFileName(fileName: string): string {
   if (fileName.startsWith("<") && fileName.endsWith(">")) {
@@ -51,6 +51,16 @@ function diagnosticsFromAnalysisResult(
   return result.diagnostics ?? [];
 }
 
+function diagnosticsFromAnalyzerCall(
+  analyze: () => AnalyzerResult
+): readonly ConstraintSemanticDiagnostic[] {
+  try {
+    return diagnosticsFromAnalysisResult(analyze());
+  } catch {
+    return [];
+  }
+}
+
 /**
  * ESLint rule that surfaces analyzer diagnostics for anonymous recursive
  * object shapes so authors can extract them to named declarations before
@@ -68,7 +78,7 @@ export const noAnonymousRecursiveType = createRule<[], MessageIds>({
     },
     schema: [],
     messages: {
-      anonymousRecursiveType: anonymousRecursiveTypeDiagnosticMessage,
+      anonymousRecursiveType: "{{message}}",
     },
   },
   defaultOptions: [],
@@ -83,19 +93,19 @@ export const noAnonymousRecursiveType = createRule<[], MessageIds>({
       switch (node.type) {
         case AST_NODE_TYPES.ClassDeclaration: {
           const tsNode = services.esTreeNodeToTSNodeMap.get(node);
-          return diagnosticsFromAnalysisResult(
+          return diagnosticsFromAnalyzerCall(() =>
             analyzeClassToIR(tsNode, checker, tsNode.getSourceFile().fileName)
           );
         }
         case AST_NODE_TYPES.TSInterfaceDeclaration: {
           const tsNode = services.esTreeNodeToTSNodeMap.get(node);
-          return diagnosticsFromAnalysisResult(
+          return diagnosticsFromAnalyzerCall(() =>
             analyzeInterfaceToIR(tsNode, checker, tsNode.getSourceFile().fileName)
           );
         }
         case AST_NODE_TYPES.TSTypeAliasDeclaration: {
           const tsNode = services.esTreeNodeToTSNodeMap.get(node);
-          return diagnosticsFromAnalysisResult(
+          return diagnosticsFromAnalyzerCall(() =>
             analyzeTypeAliasToIR(tsNode, checker, tsNode.getSourceFile().fileName)
           );
         }
@@ -131,6 +141,9 @@ export const noAnonymousRecursiveType = createRule<[], MessageIds>({
             column: diagnostic.primaryLocation.column,
           },
           messageId: "anonymousRecursiveType",
+          data: {
+            message: diagnostic.message,
+          },
         });
       }
     }
