@@ -14,6 +14,7 @@ import plugin, {
   configs,
   meta,
   noDescriptionTag,
+  remarksWithoutSummary,
   noUnsupportedDescriptionTag,
   rules,
 } from "../src/index.js";
@@ -43,6 +44,7 @@ const canonicalRuleIds = [
   "constraint-validation/valid-discriminator",
   "constraint-validation/no-double-underscore-fields",
   "documentation/no-unsupported-description-tag",
+  "documentation/remarks-without-summary",
   "dsl-policy/allowed-field-types",
   "dsl-policy/allowed-layouts",
 ] as const;
@@ -101,6 +103,7 @@ describe("@formspec/eslint-plugin exports", () => {
     }
 
     expect(noUnsupportedDescriptionTag.name).toBe("documentation/no-unsupported-description-tag");
+    expect(remarksWithoutSummary.name).toBe("documentation/remarks-without-summary");
     /* eslint-disable @typescript-eslint/no-deprecated -- These assertions pin the compatibility export. */
     expect(noDescriptionTag.name).toBe("constraint-validation/no-description-tag");
     expect((noDescriptionTag.meta as DeprecatedRuleMeta).deprecated).toBe(true);
@@ -153,12 +156,14 @@ describe("@formspec/eslint-plugin exports", () => {
     expect(configs.recommended[0]?.rules).toMatchObject({
       "formspec/tag-recognition/no-markdown-formatting": "warn",
       "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/documentation/remarks-without-summary": "warn",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",
     });
     expect(configs.strict[0]?.rules).toMatchObject({
       "formspec/tag-recognition/no-markdown-formatting": "error",
       "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/documentation/remarks-without-summary": "warn",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",
     });

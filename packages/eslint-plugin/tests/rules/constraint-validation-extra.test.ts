@@ -2,6 +2,7 @@ import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as vitest from "vitest";
 import { noDuplicateTags } from "../../src/rules/constraint-validation/no-duplicate-tags.js";
 import { noUnsupportedDescriptionTag } from "../../src/rules/documentation/no-unsupported-description-tag.js";
+import { remarksWithoutSummary } from "../../src/rules/documentation/remarks-without-summary.js";
 import { noContradictoryRules } from "../../src/rules/constraint-validation/no-contradictory-rules.js";
 import { validDiscriminator } from "../../src/rules/constraint-validation/valid-discriminator.js";
 import { noDoubleUnderscoreFields } from "../../src/rules/constraint-validation/no-double-underscore-fields.js";
@@ -23,6 +24,7 @@ const ruleTester = new RuleTester({
     "@rule-tester/documentation": {
       rules: {
         "no-unsupported-description-tag": noUnsupportedDescriptionTag,
+        "remarks-without-summary": remarksWithoutSummary,
       },
     },
   },
@@ -223,6 +225,79 @@ ruleTester.run("documentation/no-unsupported-description-tag", noUnsupportedDesc
       `,
       errors: [{ messageId: "descriptionTagForbidden" }],
       output: null,
+    },
+  ],
+});
+
+ruleTester.run("documentation/remarks-without-summary", remarksWithoutSummary, {
+  valid: [
+    { code: `class Form { /** A name */ name!: string; }` },
+    {
+      code: `
+        class Form {
+          /**
+           * Helpful author-facing text.
+           * @remarks Programmatic detail.
+           */
+          notes!: string;
+        }
+      `,
+    },
+    {
+      code: `class Form { /** Helpful author-facing text. @remarks Programmatic detail. */ notes!: string; }`,
+    },
+    {
+      code: `
+        /**
+         * Form for collecting feedback.
+         * @remarks Programmatic detail.
+         */
+        class FeedbackForm {
+          notes!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /**
+           *
+           */
+          notes!: string;
+        }
+      `,
+    },
+    { code: `class Form { notes!: string; }` },
+  ],
+  invalid: [
+    {
+      code: `class Form { /** @remarks Remarks only. */ notes!: string; }`,
+      errors: [{ messageId: "remarksWithoutSummary" }],
+    },
+    {
+      code: `
+        class Form {
+          /**
+           *
+           * @remarks Remarks only, no summary text.
+           * Additional details stay in the remarks block.
+           */
+          notes!: string;
+        }
+      `,
+      errors: [{ messageId: "remarksWithoutSummary" }],
+    },
+    {
+      code: `
+        /**
+         * @deprecated Use FeedbackForm instead.
+         * @remarks Remarks after another block tag still need summary text.
+         */
+        interface LegacyFeedbackForm {
+          notes: string;
+        }
+      `,
+      errors: [{ messageId: "remarksWithoutSummary" }],
     },
   ],
 });

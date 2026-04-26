@@ -173,7 +173,7 @@ This phase validates constraint composition across the resolved IR nodes:
    - Array length: `@minItems` > `@maxItems`
    - Rule effects: `@showWhen` + `@hideWhen` on same field; `@enableWhen` + `@disableWhen`
 3. Checks for duplicate tags where only one instance is meaningful (producing `DUPLICATE_TAG`)
-4. Reserves future documentation-hygiene diagnostics such as `REMARKS_WITHOUT_SUMMARY`
+4. Checks for `@remarks` without summary text (producing `REMARKS_WITHOUT_SUMMARY`)
 5. Checks for unsupported `@description` tag usage (producing `UNSUPPORTED_DESCRIPTION_TAG`)
 6. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
 
@@ -302,34 +302,35 @@ const noContradictions: Rule.RuleModule = {
 
 ### 3.3 Built-In Rule Set
 
-The active built-in rules define the current public rule inventory for implemented tooling diagnostics and DSL-policy checks. They are grouped into the recommended configuration (`formspec/recommended`) and a stricter configuration (`formspec/strict`) that upgrades configurable warnings to errors.
+The active built-in rules define the current public rule inventory for implemented tooling diagnostics and DSL-policy checks. They are grouped into the recommended configuration (`formspec/recommended`) and a stricter configuration (`formspec/strict`) that upgrades configurable warnings to errors. FormSpec `info` diagnostics remain `info` in the diagnostic model; ESLint projects them as `warn` because ESLint flat config does not have an `info` severity.
 
 **`formspec/recommended` rule set:**
 
-| Rule                                                | Codes / message IDs                                                                                                                  | Default severity |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `tag-recognition/no-unknown-tags`                   | `UNKNOWN_TAG`                                                                                                                        | warn             |
-| `tag-recognition/require-tag-arguments`             | `MISSING_TAG_ARGUMENT`                                                                                                               | error            |
-| `tag-recognition/no-disabled-tags`                  | `TAG_DISABLED`                                                                                                                       | warn             |
-| `tag-recognition/no-markdown-formatting`            | `markdownFormattingForbidden`                                                                                                        | warn             |
-| `tag-recognition/tsdoc-comment-syntax`              | `tsdocSyntax`                                                                                                                        | error            |
-| `value-parsing/valid-numeric-value`                 | `INVALID_NUMERIC_VALUE`                                                                                                              | error            |
-| `value-parsing/valid-integer-value`                 | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                       | error            |
-| `value-parsing/valid-regex-pattern`                 | `INVALID_REGEX_PATTERN`                                                                                                              | error            |
-| `value-parsing/valid-json-value`                    | `INVALID_JSON_VALUE`                                                                                                                 | error            |
-| `type-compatibility/tag-type-check`                 | `TYPE_MISMATCH`                                                                                                                      | error            |
-| `target-resolution/valid-path-target`               | `UNKNOWN_PATH_TARGET`                                                                                                                | error            |
-| `target-resolution/valid-member-target`             | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error            |
-| `target-resolution/no-unsupported-targeting`        | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error            |
-| `target-resolution/no-member-target-on-object`      | `MEMBER_TARGET_ON_NON_UNION`                                                                                                         | error            |
-| `constraint-validation/no-contradictions`           | `CONSTRAINT_CONTRADICTION`                                                                                                           | error            |
-| `constraint-validation/no-duplicate-tags`           | `DUPLICATE_TAG`                                                                                                                      | warn             |
-| `constraint-validation/no-contradictory-rules`      | `CONTRADICTORY_RULE_EFFECTS`                                                                                                         | error            |
-| `constraint-validation/valid-discriminator`         | `invalidPlacement`, `missingTarget`, `nestedTarget`, `invalidSourceOperand`, `nonLocalTypeParameter`, target-field shape diagnostics | error            |
-| `constraint-validation/no-double-underscore-fields` | `phantomField`                                                                                                                       | warn             |
-| `documentation/no-unsupported-description-tag`      | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                        | error            |
-| `dsl-policy/allowed-field-types`                    | `disallowedFieldType`                                                                                                                | error            |
-| `dsl-policy/allowed-layouts`                        | `disallowedGroup`, `disallowedConditional`                                                                                           | error            |
+| Rule                                                | Codes / message IDs                                                                                                                  | Default ESLint severity         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| `tag-recognition/no-unknown-tags`                   | `UNKNOWN_TAG`                                                                                                                        | warn                            |
+| `tag-recognition/require-tag-arguments`             | `MISSING_TAG_ARGUMENT`                                                                                                               | error                           |
+| `tag-recognition/no-disabled-tags`                  | `TAG_DISABLED`                                                                                                                       | warn                            |
+| `tag-recognition/no-markdown-formatting`            | `markdownFormattingForbidden`                                                                                                        | warn                            |
+| `tag-recognition/tsdoc-comment-syntax`              | `tsdocSyntax`                                                                                                                        | error                           |
+| `value-parsing/valid-numeric-value`                 | `INVALID_NUMERIC_VALUE`                                                                                                              | error                           |
+| `value-parsing/valid-integer-value`                 | `INVALID_NON_NEGATIVE_INTEGER`                                                                                                       | error                           |
+| `value-parsing/valid-regex-pattern`                 | `INVALID_REGEX_PATTERN`                                                                                                              | error                           |
+| `value-parsing/valid-json-value`                    | `INVALID_JSON_VALUE`                                                                                                                 | error                           |
+| `type-compatibility/tag-type-check`                 | `TYPE_MISMATCH`                                                                                                                      | error                           |
+| `target-resolution/valid-path-target`               | `UNKNOWN_PATH_TARGET`                                                                                                                | error                           |
+| `target-resolution/valid-member-target`             | `UNKNOWN_MEMBER_TARGET`                                                                                                              | error                           |
+| `target-resolution/no-unsupported-targeting`        | `UNSUPPORTED_TARGETING_SYNTAX`                                                                                                       | error                           |
+| `target-resolution/no-member-target-on-object`      | `MEMBER_TARGET_ON_NON_UNION`                                                                                                         | error                           |
+| `constraint-validation/no-contradictions`           | `CONSTRAINT_CONTRADICTION`                                                                                                           | error                           |
+| `constraint-validation/no-duplicate-tags`           | `DUPLICATE_TAG`                                                                                                                      | warn                            |
+| `constraint-validation/no-contradictory-rules`      | `CONTRADICTORY_RULE_EFFECTS`                                                                                                         | error                           |
+| `constraint-validation/valid-discriminator`         | `invalidPlacement`, `missingTarget`, `nestedTarget`, `invalidSourceOperand`, `nonLocalTypeParameter`, target-field shape diagnostics | error                           |
+| `constraint-validation/no-double-underscore-fields` | `phantomField`                                                                                                                       | warn                            |
+| `documentation/no-unsupported-description-tag`      | `UNSUPPORTED_DESCRIPTION_TAG`                                                                                                        | error                           |
+| `documentation/remarks-without-summary`             | `REMARKS_WITHOUT_SUMMARY`                                                                                                            | warn (projects FormSpec `info`) |
+| `dsl-policy/allowed-field-types`                    | `disallowedFieldType`                                                                                                                | error                           |
+| `dsl-policy/allowed-layouts`                        | `disallowedGroup`, `disallowedConditional`                                                                                           | error                           |
 
 Deprecated aliases remain registered for existing ESLint configurations, but they are not included in `formspec/recommended` or `formspec/strict`:
 
@@ -338,8 +339,6 @@ Deprecated aliases remain registered for existing ESLint configurations, but the
 | `constraint-validation/no-description-tag` | `documentation/no-unsupported-description-tag` |
 | `constraints-allowed-field-types`          | `dsl-policy/allowed-field-types`               |
 | `constraints-allowed-layouts`              | `dsl-policy/allowed-layouts`                   |
-
-`documentation/remarks-without-summary` is specified for future documentation-hygiene work but is not part of this rule inventory.
 
 ### 3.4 Rule Configuration Interface
 
