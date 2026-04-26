@@ -56,10 +56,17 @@ jobs:
         # concrete versions at run time and dropped if they've crossed into
         # 7.x; the nightly entry uses an explicit <7 semver range.
         #
+        # `experimental` (which drives `continue-on-error`) is derived from
+        # whether the resolved major matches the workspace's declared
+        # TypeScript major (the root devDependency). Mismatches are
+        # informational — they surface incompatibilities without blocking
+        # merges. Once the workspace bumps its default to 6.x, 6.x rows
+        # stop being experimental automatically.
+        #
         # The "5.x" entry is skipped when the workspace's default TypeScript
-        # is already on 5.x — the main build-and-test job covers it. When the
-        # default is bumped to 6.x or later, the 5.x entry auto-enables to
-        # keep backwards-compatibility coverage.
+        # is already on 5.x — the main build-and-test job covers it. When
+        # the default moves on, the 5.x entry auto-enables to keep
+        # backwards-compatibility coverage.
         run: |
           node --input-type=module <<'EOF' >> "$GITHUB_OUTPUT"
           import { readFileSync } from "node:fs";
@@ -70,24 +77,35 @@ jobs:
           const distTags = JSON.parse(
             execSync("npm view typescript dist-tags --json", { encoding: "utf8" })
           );
+          const majorOf = (v) => Number(v.split(".")[0]);
           const resolveBelow7 = (tag) => {
             const v = distTags[tag];
-            if (!v) return null;
-            return Number(v.split(".")[0]) < 7 ? v : null;
+            return v && majorOf(v) < 7 ? v : null;
           };
+          const isExperimental = (major) => major !== defaultMajor;
           const include = [];
           if (defaultMajor !== 5) {
-            include.push({ label: "5.x", typescript: "5", experimental: false });
+            include.push({ label: "5.x", typescript: "5", experimental: isExperimental(5) });
           }
           const latest = resolveBelow7("latest");
           if (latest) {
-            include.push({ label: `latest (${latest})`, typescript: latest, experimental: false });
+            include.push({
+              label: `latest (${latest})`,
+              typescript: latest,
+              experimental: isExperimental(majorOf(latest)),
+            });
           }
           const beta = resolveBelow7("beta");
           if (beta) {
+            // Pre-release is always experimental.
             include.push({ label: `beta (${beta})`, typescript: beta, experimental: true });
           }
-          include.push({ label: "6.x nightly", typescript: ">=6.0.0-dev <7.0.0-0", experimental: true });
+          // Nightly is always experimental.
+          include.push({
+            label: "6.x nightly",
+            typescript: ">=6.0.0-dev <7.0.0-0",
+            experimental: true,
+          });
           console.log(`include=${JSON.stringify(include)}`);
           EOF
 
