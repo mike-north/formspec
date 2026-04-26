@@ -5,6 +5,11 @@
     "lib": ["ES2022"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // Pin Node typings explicitly so globals like `console`, `URL`, and
+    // `setTimeout` resolve under TS 6.x. Earlier TypeScript versions
+    // auto-included every package under `node_modules/@types`; TS 6 no
+    // longer does, so the workspace must opt in.
+    "types": ["node"],
 
     // Strict Type Checking
     "strict": true,
