@@ -1,6 +1,6 @@
 # FormSpec Review Guidance
 
-Authoritative refs (cite when relevant): `formspec.cml`, `BOUNDED_CONTEXTS.md`, `GLOSSARY.md`, `docs/000-principles.md`.
+Authoritative artifacts: `formspec.cml`, `BOUNDED_CONTEXTS.md`, `GLOSSARY.md`, `docs/000-principles.md`.
 
 ## Imports
 
@@ -23,7 +23,7 @@ Authoritative refs (cite when relevant): `formspec.cml`, `BOUNDED_CONTEXTS.md`, 
 - A TSDoc tag misapplied to an incompatible type (e.g., `@minLength` on `number`) is a bug — analysis must reject it as a static error. (S4)
 - `Group` does not change schema shape; `when()` does not remove fields from JSON Schema. (C2/C3)
 - Extension JSON Schema keywords use the configurable vendor prefix; hardcoded `"x-formspec-…"` literals are wrong. (E3)
-- No runtime reflection — no `Reflect.metadata`, no decorators, no `eval`. Metadata extraction is static via the TypeScript Compiler API. (PP4)
+- Schema generation is static — no `Reflect.metadata`, no `emitDecoratorMetadata`, no `eval`. All metadata flows through the TypeScript Compiler API at build time. (PP4)
 
 ## Tests
 
