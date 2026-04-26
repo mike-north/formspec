@@ -12,6 +12,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   PUBLIC_ENTRY_POINTS,
+  PUBLISHABLE_PACKAGE_DIRS,
   makeTempDir,
   packAllPackages,
   runConsumerCheck,
@@ -53,28 +54,44 @@ afterAll(() => {
 });
 
 describe(".d.ts consumer compatibility", () => {
-  it("declares an entry-point inventory that matches every published package", () => {
-    // Sanity: every publishable package's `.` export should be in the
-    // inventory. Subpath exports are listed individually. Excluded entries
-    // count as covered (they live in the inventory, just gated). This
-    // guards against silently dropping a new package from the harness.
-    const specifiers = new Set(PUBLIC_ENTRY_POINTS.map((e) => e.specifier));
-    const expectedRootSpecifiers = [
-      "@formspec/analysis",
-      "@formspec/build",
-      "@formspec/cli",
-      "@formspec/config",
-      "@formspec/core",
-      "@formspec/dsl",
-      "@formspec/eslint-plugin",
-      "@formspec/language-server",
-      "@formspec/runtime",
-      "@formspec/ts-plugin",
-      "@formspec/validator",
-      "formspec",
-    ];
-    for (const expected of expectedRootSpecifiers) {
-      expect(specifiers.has(expected), `missing entry-point for ${expected}`).toBe(true);
+  it("inventory covers every non-private workspace package", () => {
+    // Derive the truth from disk so adding a new public package without
+    // updating `PUBLISHABLE_PACKAGE_DIRS` or `PUBLIC_ENTRY_POINTS` fails
+    // this test instead of silently leaving the new package un-covered.
+    //
+    // - Walk every dir under packages/, drop private packages.
+    // - Assert each non-private package's directory appears in
+    //   PUBLISHABLE_PACKAGE_DIRS (so its tarball gets packed).
+    // - Assert each non-private package's `.` specifier appears in
+    //   PUBLIC_ENTRY_POINTS (so the consumer fixture imports it).
+    //   Subpath exports are not auto-validated here — they vary per
+    //   package and live in PUBLIC_ENTRY_POINTS as explicit entries.
+    const packagesDir = path.join(REPO_ROOT, "packages");
+    const onDisk: { dir: string; name: string }[] = [];
+    for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const pkgJsonPath = path.join(packagesDir, entry.name, "package.json");
+      if (!fs.existsSync(pkgJsonPath)) continue;
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8")) as {
+        name: string;
+        private?: boolean;
+      };
+      if (pkg.private) continue;
+      onDisk.push({ dir: `packages/${entry.name}`, name: pkg.name });
+    }
+
+    const inventorySpecifiers = new Set(PUBLIC_ENTRY_POINTS.map((e) => e.specifier));
+    const inventoryDirs = new Set(PUBLISHABLE_PACKAGE_DIRS);
+
+    for (const pkg of onDisk) {
+      expect(
+        inventoryDirs.has(pkg.dir),
+        `PUBLISHABLE_PACKAGE_DIRS is missing ${pkg.dir}; the harness will not pack this package.`
+      ).toBe(true);
+      expect(
+        inventorySpecifiers.has(pkg.name),
+        `PUBLIC_ENTRY_POINTS is missing the root specifier "${pkg.name}"; the consumer fixture will not import it.`
+      ).toBe(true);
     }
   });
 
@@ -104,7 +121,7 @@ describe(".d.ts consumer compatibility", () => {
           // Surface tsc's diagnostic output directly. Vitest will quote the
           // message, which keeps line/column information legible in CI logs.
           throw new Error(
-            `tsc --noEmit (typescript ${tsVersion}) failed with exit code ${result.exitCode}\n` +
+            `tsc --noEmit (typescript ${tsVersion}) failed with exit code ${String(result.exitCode)}\n` +
               `STDOUT:\n${result.stdout}\n` +
               `STDERR:\n${result.stderr}`
           );
@@ -155,7 +172,12 @@ describe(".d.ts consumer compatibility", () => {
           `,
         });
         expect(result.exitCode).not.toBe(0);
-        expect(result.stdout).toMatch(/error TS/);
+        // Check both streams: while `tsc --noEmit` emits diagnostics on
+        // stdout today, future TypeScript releases (or environments that
+        // detect TTY differently) could move them to stderr. Asserting on
+        // the combined output keeps the harness self-test resilient.
+        const combined = `${result.stdout}\n${result.stderr}`;
+        expect(combined).toMatch(/error TS/);
       },
       300_000
     );

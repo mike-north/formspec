@@ -104,8 +104,15 @@ export const PUBLIC_ENTRY_POINTS: readonly PublicEntryPoint[] = [
   { specifier: "formspec", importName: "formspec" },
 ];
 
-/** Workspace package directories whose tarballs the consumer installs. */
-const PUBLISHABLE_PACKAGE_DIRS: readonly string[] = [
+/**
+ * Workspace package directories whose tarballs the consumer installs.
+ *
+ * Exported so the test suite can verify this list matches the actual
+ * publishable packages on disk — adding a new public package without
+ * adding it here should fail the inventory test, not silently leave the
+ * harness un-coverage.
+ */
+export const PUBLISHABLE_PACKAGE_DIRS: readonly string[] = [
   "packages/analysis",
   "packages/build",
   "packages/cli",
@@ -145,7 +152,23 @@ export interface ConsumerHarnessOptions {
   indexTsOverride?: string;
 }
 
-/** Runs `pnpm pack` once per package; idempotent on the tarball dir. */
+/**
+ * Runs `pnpm pack` for each publishable package and returns the resulting
+ * tarball paths. Idempotent: if the expected tarball already exists in
+ * `tarballDir` (matched by package name + version), the pack step is
+ * skipped. The test suite invokes this once at suite startup; calling it
+ * again from `runConsumerCheck` is therefore essentially free.
+ *
+ * Skip semantics: tarball name encodes the version, and pnpm pack
+ * deterministically writes that filename. So an existing tarball with a
+ * matching filename means "we packed this exact version already." It does
+ * **not** check tarball mtime against source mtime — if a developer
+ * mutates package source between runs without bumping the version (or
+ * cleaning the tarball dir), the cached tarball will be reused. Since the
+ * suite always creates a fresh tarball dir under `os.tmpdir()`, this is
+ * not a concern in practice; the caveat exists for callers who pass a
+ * persistent tarball dir.
+ */
 export function packAllPackages(repoRoot: string, tarballDir: string): PackedTarball[] {
   fs.mkdirSync(tarballDir, { recursive: true });
   const packed: PackedTarball[] = [];
@@ -154,10 +177,6 @@ export function packAllPackages(repoRoot: string, tarballDir: string): PackedTar
     const pkgJson = JSON.parse(
       fs.readFileSync(path.join(absDir, "package.json"), "utf8")
     ) as { name: string; version: string };
-    execFileSync("pnpm", ["pack", "--pack-destination", tarballDir], {
-      cwd: absDir,
-      stdio: ["ignore", "ignore", "inherit"],
-    });
     // Tarball naming follows pnpm's convention:
     //   `@formspec/foo` v1.2.3 → `formspec-foo-1.2.3.tgz`
     //   `formspec` v1.2.3 → `formspec-1.2.3.tgz`
@@ -166,10 +185,16 @@ export function packAllPackages(repoRoot: string, tarballDir: string): PackedTar
       : pkgJson.name;
     const tarballPath = path.join(tarballDir, `${flatName}-${pkgJson.version}.tgz`);
     if (!fs.existsSync(tarballPath)) {
-      throw new Error(
-        `Expected tarball at ${tarballPath} after \`pnpm pack\` of ${pkgJson.name}, ` +
-          `but it does not exist. Tarball naming may have drifted.`
-      );
+      execFileSync("pnpm", ["pack", "--pack-destination", tarballDir], {
+        cwd: absDir,
+        stdio: ["ignore", "ignore", "inherit"],
+      });
+      if (!fs.existsSync(tarballPath)) {
+        throw new Error(
+          `Expected tarball at ${tarballPath} after \`pnpm pack\` of ${pkgJson.name}, ` +
+            `but it does not exist. Tarball naming may have drifted.`
+        );
+      }
     }
     packed.push({ packageName: pkgJson.name, tarballPath });
   }
@@ -312,9 +337,11 @@ function spawnSyncCapturing(bin: string, args: string[], cwd: string): RunResult
   // want to assert on the exit code in tests rather than try/catch.
   const r = spawnSync(bin, args, { cwd, encoding: "utf8" });
   return {
+    // `r.status` is null when the process was killed by a signal — surface
+    // that as -1 so callers can distinguish from a clean zero exit.
     exitCode: r.status ?? -1,
-    stdout: r.stdout ?? "",
-    stderr: r.stderr ?? "",
+    stdout: r.stdout,
+    stderr: r.stderr,
   };
 }
 
