@@ -467,6 +467,7 @@ emits one reusable definition and references it from both the root field and the
 
 ```json
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "node": { "$ref": "#/$defs/CircularNode" }
