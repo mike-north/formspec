@@ -1,0 +1,22 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+  "extends": "../../api-extractor-base.json",
+  "mainEntryPointFilePath": "<projectFolder>/dist/src/base.d.ts",
+  "projectFolder": ".",
+  "apiReport": {
+    "enabled": true,
+    "reportFileName": "eslint-plugin-base",
+    "reportFolder": "<projectFolder>/api-report/"
+  },
+  "docModel": {
+    "enabled": true,
+    "apiJsonFilePath": "<projectFolder>/temp/eslint-plugin-base.api.json"
+  },
+  "dtsRollup": {
+    "enabled": true,
+    "untrimmedFilePath": "<projectFolder>/dist/eslint-plugin-base-internal.d.ts",
+    "alphaTrimmedFilePath": "<projectFolder>/dist/eslint-plugin-base-alpha.d.ts",
+    "betaTrimmedFilePath": "<projectFolder>/dist/eslint-plugin-base-beta.d.ts",
+    "publicTrimmedFilePath": "<projectFolder>/dist/base.d.ts"
+  }
+}
