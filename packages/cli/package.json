@@ -30,7 +30,7 @@
     "api-extractor:local": "api-extractor run --local && node ../../scripts/normalize-generated-markdown.mjs api-report"
   },
   "dependencies": {
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.0",
     "@formspec/build": "workspace:*",
     "@formspec/config": "workspace:*",
     "pino": "^9.0.0",

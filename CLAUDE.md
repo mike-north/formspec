@@ -135,3 +135,23 @@ pnpm run release            # Build and publish (CI usually does this)
 - TSDoc constraint tags (`/** @minimum 0 @maximum 100 */`) are extracted via static AST analysis
 - Do not use `@description`; use summary text before block tags and `@remarks` for programmatic notes
 - API Extractor manages public API surface for library packages — commit `api-report/` files
+
+## Supported TypeScript versions
+
+FormSpec packages with a `typescript` peer-dep declare `>=5.7.3 <7`. The CI matrix in `.github/workflows/ci.yml` exercises:
+
+- the workspace's pinned TS major (currently 6.x — required, blocking),
+- the previous stable major (5.x — experimental, non-blocking regression coverage),
+- the `beta` and nightly dist-tags (experimental, non-blocking).
+
+The matrix derives the `experimental` flag from a major-version mismatch with the workspace's pinned TS major, so non-default majors are informational rather than gating. Once a TS major has had time to soak through real usage, we promote it to required by bumping the workspace's `devDependencies.typescript`.
+
+TypeScript 7.x is the Go rewrite with a substantively different API surface. We do not test against it via dist-tag drift; it will be a deliberate, separate migration.
+
+### TypeScript compiler API quirks across majors
+
+When code reaches into TypeScript's compiler API (`ts.Type`, `ts.Symbol`, `ts.TypeChecker`, etc.), be aware that some internals are not part of the public API contract and shift between majors. The most common pitfall:
+
+- **`ts.TypeFlags` numeric values were renumbered between TS 5.x and TS 6.x.** Always reference flags by enum member (`type.flags & ts.TypeFlags.Null`), never by hardcoded number (`type.flags & 65536`). See [`packages/eslint-plugin/src/utils/type-utils.ts`](packages/eslint-plugin/src/utils/type-utils.ts) for a full table and rationale.
+
+When in doubt, `import * as ts from "typescript"` (rather than `import type`) so enum references resolve at runtime against the host's installed TypeScript.
