@@ -11,8 +11,7 @@ import {
   analyzeMetadataForNodeWithChecker,
   collectInheritedTypeAnnotations as collectInheritedTypeAnnotationsImpl,
   extractNamedTypeAnnotations as extractNamedTypeAnnotationsImpl,
-  INHERITABLE_TYPE_ANNOTATION_KINDS,
-  isOverridingInheritableAnnotation,
+  hasInheritableTypeAnnotation as hasInheritableTypeAnnotationImpl,
   parseCommentBlock,
   type ConstraintSemanticDiagnostic,
   type HeritageAnnotationExtractor,
@@ -375,12 +374,16 @@ function resolveNodeMetadata(
 // can reuse it without depending on @formspec/build. Build supplies the
 // JSDoc-extraction callback because the build TSDoc parser knows about the
 // extension registry — analysis stays parser-agnostic.
+//
+// The thin adapters below preserve the historical `(decl, ..., extensionRegistry)`
+// signatures so the ~10 existing call sites within this analyzer don't need
+// to repeat the closure-construction boilerplate.
 // =============================================================================
 
 /**
  * Builds a {@link HeritageAnnotationExtractor} that delegates to build's
  * TSDoc parser, with the active extension registry baked in. Used to feed
- * {@link collectInheritedTypeAnnotationsImpl} from analysis.
+ * the heritage helpers in `@formspec/analysis`.
  */
 function makeHeritageAnnotationExtractor(
   extensionRegistry: ExtensionRegistry | undefined
@@ -389,17 +392,12 @@ function makeHeritageAnnotationExtractor(
   return (decl, file) => extractJSDocAnnotationNodes(decl, file, parseOptions);
 }
 
-/**
- * Build-side adapter for the heritage walk in `@formspec/analysis`. Preserves
- * the historical `(decl, existing, checker, extensionRegistry)` signature so
- * existing call sites within this analyzer do not need to change.
- */
 function collectInheritedTypeAnnotations(
   derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   existingAnnotations: readonly AnnotationNode[],
   checker: ts.TypeChecker,
   extensionRegistry: ExtensionRegistry | undefined
-): AnnotationNode[] {
+): readonly AnnotationNode[] {
   return collectInheritedTypeAnnotationsImpl(
     derivedDecl,
     existingAnnotations,
@@ -408,16 +406,12 @@ function collectInheritedTypeAnnotations(
   );
 }
 
-/**
- * Build-side adapter for the named-type annotation extractor in
- * `@formspec/analysis`. Preserves the historical signature.
- */
 function extractNamedTypeAnnotations(
   namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
   file: string,
   extensionRegistry: ExtensionRegistry | undefined
-): AnnotationNode[] {
+): readonly AnnotationNode[] {
   return extractNamedTypeAnnotationsImpl(
     namedDecl,
     checker,
@@ -2672,9 +2666,8 @@ function getPassThroughTypeAliasFromSourceNode(
 }
 
 /**
- * Returns `true` when `aliasDecl` carries an inheritable type-level
- * annotation (currently only `@format`), either locally or reachable through
- * the alias / heritage chain. Used to decide whether a pass-through alias
+ * Build-side adapter for the inheritable-annotation predicate in
+ * `@formspec/analysis`. Used to decide whether a pass-through alias
  * warrants its own `$defs` entry (issue #374) or should collapse to the
  * base type (issue #364 sibling-keyword composition).
  */
@@ -2684,17 +2677,12 @@ function hasInheritableTypeAnnotation(
   extensionRegistry: ExtensionRegistry | undefined
 ): boolean {
   const file = aliasDecl.getSourceFile().fileName;
-  const local = extractJSDocAnnotationNodes(aliasDecl, file, makeParseOptions(extensionRegistry));
-  for (const annotation of local) {
-    if (!INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) continue;
-    if (!isOverridingInheritableAnnotation(annotation)) continue;
-    return true;
-  }
-  const inherited = collectInheritedTypeAnnotations(aliasDecl, local, checker, extensionRegistry);
-  for (const annotation of inherited) {
-    if (INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) return true;
-  }
-  return false;
+  return hasInheritableTypeAnnotationImpl(
+    aliasDecl,
+    checker,
+    file,
+    makeHeritageAnnotationExtractor(extensionRegistry)
+  );
 }
 
 function resolveObjectType(

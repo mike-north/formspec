@@ -59,6 +59,12 @@ function makeFormatAnnotation(value: string, file = "/virtual/formspec.ts"): For
  * Stub extractor that returns a `@format` annotation whenever the declaration's
  * leading JSDoc text contains a `@format <value>` line. Keeps these tests
  * decoupled from the build TSDoc parser while exercising the BFS faithfully.
+ *
+ * NOTE: `decl.getFullText()` includes leading trivia, so any `@format ...`
+ * substring in surrounding comments would be attributed to this declaration.
+ * Test fixtures keep `@format` strictly inside JSDoc blocks. End-to-end
+ * behavior with the real TSDoc parser is covered by
+ * `@formspec/build/tests/format-inheritance-derived-types.test.ts`.
  */
 const FORMAT_TAG_PATTERN = /@format\s+([^\s*]+)/;
 
@@ -220,6 +226,60 @@ describe("collectInheritedTypeAnnotations", () => {
 
     expect(inherited).toEqual([]);
     expect(calls).toBe(0);
+  });
+
+  it("symmetric diamond: earliest base in extends list wins", () => {
+    // The BFS enqueues base-clauses left-to-right. Both `Left` and `Right`
+    // carry an inheritable kind; nearest-ancestor + earliest-clause wins.
+    const { sourceFile, checker } = createProgram(`
+      /** @format left-format */
+      interface Left { x: number; }
+      /** @format right-format */
+      interface Right { x: number; }
+      export interface Leaf extends Left, Right { x: number; }
+    `);
+    const leaf = findInterface(sourceFile, "Leaf");
+
+    const inherited = collectInheritedTypeAnnotations(leaf, [], checker, makeStubExtractor());
+
+    expect(inherited).toHaveLength(1);
+    expect((inherited[0] as FormatAnnotationNode).value).toBe("left-format");
+  });
+
+  it("asymmetric diamond: nearer ancestor beats farther ancestor under same root", () => {
+    // BFS depth: Mid is at depth 1, Root is at depth 2 from `Leaf`. Mid wins.
+    const { sourceFile, checker } = createProgram(`
+      /** @format root-format */
+      interface Root { x: number; }
+      /** @format mid-format */
+      interface Mid extends Root { x: number; }
+      // Leaf reaches Root via two paths: directly (depth 1), and via Mid (depth 2).
+      // The direct path is enqueued first, so Root would be found at depth 1 too —
+      // but Mid is also at depth 1 and listed first in the extends clause.
+      export interface Leaf extends Mid, Root { x: number; }
+    `);
+    const leaf = findInterface(sourceFile, "Leaf");
+
+    const inherited = collectInheritedTypeAnnotations(leaf, [], checker, makeStubExtractor());
+
+    expect(inherited).toHaveLength(1);
+    expect((inherited[0] as FormatAnnotationNode).value).toBe("mid-format");
+  });
+
+  it("falls through to a deeper base when the nearer base has no inheritable annotation", () => {
+    // Mid intentionally has no @format; the BFS keeps walking past it to Root.
+    const { sourceFile, checker } = createProgram(`
+      /** @format root-format */
+      interface Root { x: number; }
+      interface Mid extends Root { x: number; }
+      export interface Leaf extends Mid { x: number; }
+    `);
+    const leaf = findInterface(sourceFile, "Leaf");
+
+    const inherited = collectInheritedTypeAnnotations(leaf, [], checker, makeStubExtractor());
+
+    expect(inherited).toHaveLength(1);
+    expect((inherited[0] as FormatAnnotationNode).value).toBe("root-format");
   });
 
   it("survives self-referential heritage without infinite-looping", () => {

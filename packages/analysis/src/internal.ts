@@ -135,8 +135,7 @@ export type {
 export {
   collectInheritedTypeAnnotations,
   extractNamedTypeAnnotations,
-  INHERITABLE_TYPE_ANNOTATION_KINDS,
-  isOverridingInheritableAnnotation,
+  hasInheritableTypeAnnotation,
 } from "./heritage-annotations.js";
 export type { HeritageAnnotationExtractor } from "./heritage-annotations.js";
 export {

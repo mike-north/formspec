@@ -69,6 +69,9 @@ export function isOverridingInheritableAnnotation(annotation: AnnotationNode): b
  * its TSDoc parser plus an extension registry; another consumer may use a
  * cached or simplified extractor).
  *
+ * Implementations may throw; the heritage walk does not catch — callers
+ * decide whether to soft-fail (e.g., skip a hover) or propagate.
+ *
  * @internal
  */
 export type HeritageAnnotationExtractor = (
@@ -113,7 +116,7 @@ export function collectInheritedTypeAnnotations(
   existingAnnotations: readonly AnnotationNode[],
   checker: ts.TypeChecker,
   extractAnnotations: HeritageAnnotationExtractor
-): AnnotationNode[] {
+): readonly AnnotationNode[] {
   // A local annotation only suppresses heritage inheritance when it carries a
   // meaningful payload. Empty/whitespace-only `@format` must fall through to
   // the base-declared value. See issue #367 review discussion.
@@ -259,9 +262,34 @@ export function extractNamedTypeAnnotations(
   checker: ts.TypeChecker,
   file: string,
   extractAnnotations: HeritageAnnotationExtractor
-): AnnotationNode[] {
+): readonly AnnotationNode[] {
   const local = extractAnnotations(namedDecl, file);
   const inherited = collectInheritedTypeAnnotations(namedDecl, local, checker, extractAnnotations);
   if (inherited.length === 0) return [...local];
   return [...local, ...inherited];
+}
+
+/**
+ * Returns `true` when `namedDecl` carries an inheritable type-level
+ * annotation (currently only `@format`), either locally with a meaningful
+ * payload or reachable through the alias / heritage chain. Used by build to
+ * decide whether a pass-through alias warrants its own `$defs` entry
+ * (issue #374) or should collapse to the base (issue #364 sibling-keyword
+ * composition).
+ *
+ * @internal
+ */
+export function hasInheritableTypeAnnotation(
+  namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  checker: ts.TypeChecker,
+  file: string,
+  extractAnnotations: HeritageAnnotationExtractor
+): boolean {
+  const all = extractNamedTypeAnnotations(namedDecl, checker, file, extractAnnotations);
+  for (const annotation of all) {
+    if (!INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) continue;
+    if (!isOverridingInheritableAnnotation(annotation)) continue;
+    return true;
+  }
+  return false;
 }
