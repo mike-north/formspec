@@ -36,9 +36,6 @@ formspec (umbrella — re-exports everything)
 @formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers)
 ├── @formspec/analysis
 └── @formspec/core
-
-@formspec/playground       (interactive browser editor — private)
-└── [all packages]
 ```
 
 ### Build Order
@@ -53,7 +50,6 @@ Packages build in dependency order. `pnpm run build` at the root handles this au
 6. `@formspec/ts-plugin` — depends on analysis
 7. `@formspec/language-server` — depends on analysis, core
 8. `formspec` — umbrella, depends on all above
-9. `@formspec/playground` — depends on everything, private
 
 ## DSL
 
@@ -243,11 +239,11 @@ themselves how diagnostics are surfaced.
 
 `@formspec/build` provides three entry points for different consumers:
 
-| Entry Point                 | Audience             | Exports                                                                           |
-| --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
-| `@formspec/build`           | Public API           | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
-| `@formspec/build/browser`   | Browser (playground) | Schema generators without Node.js fs/path                                         |
-| `@formspec/build/internals` | CLI (unstable)       | `createProgramContext`, `analyzeClass`, `generateClassSchemas`                    |
+| Entry Point                 | Audience          | Exports                                                                           |
+| --------------------------- | ----------------- | --------------------------------------------------------------------------------- |
+| `@formspec/build`           | Public API        | `buildFormSchemas`, `writeSchemas`, `generateSchemasFromClass`, schema generators |
+| `@formspec/build/browser`   | Browser consumers | Schema generators without Node.js fs/path                                         |
+| `@formspec/build/internals` | CLI (unstable)    | `createProgramContext`, `analyzeClass`, `generateClassSchemas`                    |
 
 ## Testing Strategy
 
@@ -260,7 +256,7 @@ themselves how diagnostics are surfaced.
 | **Integration**      | Vitest     | `src/__tests__/integration.test.ts` | Full pipeline (DSL → schema)               |
 | **Fixture-based**    | Vitest     | `src/__tests__/fixtures/`           | Real TypeScript files through the analyzer |
 | **ESLint rule**      | RuleTester | `src/__tests__/rules/*.test.ts`     | Valid/invalid code patterns per rule       |
-| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`   | Schema snapshot validation                 |
+| **Example projects** | Vitest     | `examples/*/test/schemas.test.ts`   | Future worked-example validation           |
 
 ### Test Infrastructure
 
@@ -268,15 +264,15 @@ themselves how diagnostics are surfaced.
 - **Timeout config**: 15s for packages with heavy TS analysis (cli, eslint-plugin); 5s default
 - **Circular reference tests**: Use Vitest timeout guards to prevent hangs
 
-## Playground (`@formspec/playground`)
+## Planned workspace areas
 
-Interactive browser-based editor (React + Vite + Monaco Editor):
+### Playground (`@formspec/playground`)
 
-1. **Editor**: Monaco with TypeScript syntax highlighting
-2. **Compiler**: `ts.transpileModule()` → execute → `buildFormSchemas()` → constraint validation
-3. **Output tabs**: JSON Schema, UI Schema, live form preview (JSON Forms), lint results, constraints
-4. **Persistence**: Code and constraint settings saved to localStorage
-5. **Debounced**: Compilation runs on idle after 500ms of inactivity
+`@formspec/playground` is planned as a private browser-based editor and preview app, but it is not currently present in the workspace. When implemented, it should consume the existing browser-safe entry points rather than introducing new core semantics.
+
+### Examples (`examples/`)
+
+`examples/` is reserved for worked examples and integration patterns. It is currently a documentation stub; add real examples as subdirectories so the existing `examples/*` workspace glob can pick them up.
 
 ## Versioning & Publishing
 
