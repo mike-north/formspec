@@ -1,10 +1,67 @@
 /**
  * Utility functions for TypeScript type checking in ESLint rules.
+ *
+ * ## TypeScript cross-version notes (please read before editing flag checks)
+ *
+ * The helpers below classify a `ts.Type` by inspecting its bitfield `flags`
+ * against entries from the `ts.TypeFlags` enum (e.g. `ts.TypeFlags.String`,
+ * `ts.TypeFlags.Null`). It is essential that these checks reference the enum
+ * members **by name**, not by their underlying numeric values.
+ *
+ * ### Why this matters
+ *
+ * `ts.TypeFlags` is an internal TypeScript enum whose numeric values are not
+ * part of the public API contract. The TypeScript team has reshuffled the
+ * enum across major versions — most recently between TS 5.x and TS 6.x:
+ *
+ * | Flag             | TS 5.x value | TS 6.x value |
+ * | ---------------- | ------------ | ------------ |
+ * | `Null`           | 65536        | 8            |
+ * | `Undefined`      | 32768        | 4            |
+ * | `String`         | 4            | 32           |
+ * | `Number`         | 8            | 64           |
+ * | `Boolean`        | 16           | 256          |
+ * | `StringLiteral`  | 128          | 1024         |
+ * | `NumberLiteral`  | 256          | 2048         |
+ * | `BooleanLiteral` | 512          | 8192         |
+ * | `BigInt`         | 64           | 128          |
+ * | `BigIntLiteral`  | 2048         | 4096         |
+ * | `Object`         | 524288       | (changed)    |
+ *
+ * If these checks are written with hardcoded numeric literals (e.g.
+ * `type.flags & 65536`), they pass under one TS major and silently produce
+ * wrong answers under another — `type.flags & 65536` matches an unrelated
+ * flag in TS 6, so an `isNullableType` that returned `true` under TS 5
+ * silently returns `false` under TS 6. The cascading effect on rule
+ * `messageId`s is invisible to type-checking and only caught by tests.
+ *
+ * ### The rule
+ *
+ * Always reference flags by enum member: `type.flags & ts.TypeFlags.Null`
+ * — never by literal value. The `import * as ts from "typescript"` above
+ * (rather than `import type ts`) is intentional: it gives us the runtime
+ * enum object whose values are correct for whichever TS version the host
+ * project resolves. `typescript` is already a peer-dep of this package,
+ * so this adds no install-size cost.
+ *
+ * If a future TS major reshuffles `TypeFlags` again, the enum-reference
+ * form keeps working with no code changes; the literal form would need a
+ * full audit and likely silently break consumers.
+ *
+ * ### What to do if you find a hardcoded flag number
+ *
+ * Replace it with the equivalent `ts.TypeFlags.X` reference. If you're
+ * unsure which name corresponds to a number, check `node_modules/typescript/lib/typescript.d.ts`
+ * — the enum member names are stable across versions even when the
+ * numeric values shift.
+ *
+ * @see https://github.com/microsoft/TypeScript — `TypeFlags` enum definition
+ *      lives in `src/compiler/types.ts` of the TypeScript repository
  */
 
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import type ts from "typescript";
+import * as ts from "typescript";
 
 /**
  * Field type categories for FormSpec.
@@ -39,12 +96,12 @@ export function isStringType(
   seen.add(type);
 
   // Check for string primitive
-  if (type.flags & 4 /* ts.TypeFlags.String */) {
+  if (type.flags & ts.TypeFlags.String) {
     return true;
   }
 
   // Check for string literal
-  if (type.flags & 128 /* ts.TypeFlags.StringLiteral */) {
+  if (type.flags & ts.TypeFlags.StringLiteral) {
     return true;
   }
 
@@ -72,12 +129,12 @@ export function isStringType(
  */
 export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for number primitive
-  if (type.flags & 8 /* ts.TypeFlags.Number */) {
+  if (type.flags & ts.TypeFlags.Number) {
     return true;
   }
 
   // Check for number literal
-  if (type.flags & 256 /* ts.TypeFlags.NumberLiteral */) {
+  if (type.flags & ts.TypeFlags.NumberLiteral) {
     return true;
   }
 
@@ -93,11 +150,11 @@ export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
  * Checks if a TypeScript type is a bigint type.
  */
 export function isBigIntType(type: ts.Type): boolean {
-  if (type.flags & 64 /* ts.TypeFlags.BigInt */) {
+  if (type.flags & ts.TypeFlags.BigInt) {
     return true;
   }
 
-  if (type.flags & 2048 /* ts.TypeFlags.BigIntLiteral */) {
+  if (type.flags & ts.TypeFlags.BigIntLiteral) {
     return true;
   }
 
@@ -119,12 +176,12 @@ export function isBigIntType(type: ts.Type): boolean {
  */
 export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for boolean primitive
-  if (type.flags & 16 /* ts.TypeFlags.Boolean */) {
+  if (type.flags & ts.TypeFlags.Boolean) {
     return true;
   }
 
   // Check for boolean literal (true or false)
-  if (type.flags & 512 /* ts.TypeFlags.BooleanLiteral */) {
+  if (type.flags & ts.TypeFlags.BooleanLiteral) {
     return true;
   }
 
@@ -142,8 +199,8 @@ export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
 export function isNullableType(type: ts.Type): boolean {
   if (!type.isUnion()) {
     return (
-      (type.flags & 65536) /* ts.TypeFlags.Null */ !== 0 ||
-      (type.flags & 32768) /* ts.TypeFlags.Undefined */ !== 0
+      (type.flags & ts.TypeFlags.Null) !== 0 ||
+      (type.flags & ts.TypeFlags.Undefined) !== 0
     );
   }
 
@@ -196,7 +253,7 @@ function stripNullishFromUnion(type: ts.Type): ts.Type {
   if (!type.isUnion()) return type;
 
   const nonNullish = type.types.filter(
-    (t) => !((t.flags & (32768 | 65536)) /* ts.TypeFlags.Undefined | ts.TypeFlags.Null */)
+    (t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null))
   );
 
   if (nonNullish.length === 0) return type;
@@ -227,7 +284,7 @@ export function getFieldTypeCategory(type: ts.Type, checker: ts.TypeChecker): Fi
   if (isArrayType(stripped, checker)) return "array";
 
   // Check for object types (but not arrays)
-  if (stripped.flags & 524288 /* ts.TypeFlags.Object */) {
+  if (stripped.flags & ts.TypeFlags.Object) {
     return "object";
   }
 
