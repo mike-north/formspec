@@ -88,6 +88,11 @@ export type NamedRuleModule<MessageIds extends string, Options extends readonly 
 };
 
 // @public
+export const noAnonymousRecursiveType: ESLintUtils.RuleModule<"anonymousRecursiveType", [], unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
+// @public
 export const noContradictions: NamedRuleModule<NoContradictionsMessageIds, []>;
 
 // @public
@@ -182,6 +187,9 @@ const plugin: {
         readonly "type-compatibility/tag-type-check": TSESLint.RuleModule<"typeMismatch", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
+        readonly "type-compatibility/no-anonymous-recursive-type": TSESLint.RuleModule<"anonymousRecursiveType", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
         readonly "target-resolution/valid-path-target": TSESLint.RuleModule<"unknownPathTarget", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
@@ -255,6 +263,9 @@ export const rules: {
         name: string;
     };
     readonly "type-compatibility/tag-type-check": TSESLint.RuleModule<"typeMismatch", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "type-compatibility/no-anonymous-recursive-type": TSESLint.RuleModule<"anonymousRecursiveType", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "target-resolution/valid-path-target": TSESLint.RuleModule<"unknownPathTarget", [], unknown, TSESLint.RuleListener> & {

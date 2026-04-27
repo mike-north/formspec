@@ -76,6 +76,7 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 ### Type Compatibility
 
 - `type-compatibility/tag-type-check`
+- `type-compatibility/no-anonymous-recursive-type`
 
 ### Target Resolution
 
@@ -194,6 +195,7 @@ export default [...formspec.configs.recommended, { rules: { "tsdoc/syntax": "off
 | [target-resolution/no-unsupported-targeting](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/no-unsupported-targeting.md)               | Disallows path or member target syntax on tags that do not support it                            |    |    |
 | [target-resolution/valid-member-target](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/valid-member-target.md)                         | Validates member-target references against string literal union fields                           |    |    |
 | [target-resolution/valid-path-target](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/target-resolution/valid-path-target.md)                             | Validates path-target references against the resolved field type                                 |    |    |
+| [type-compatibility/no-anonymous-recursive-type](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/type-compatibility/no-anonymous-recursive-type.md)       | Reports anonymous recursive object shapes that must be extracted to a named type                 |    |    |
 | [type-compatibility/tag-type-check](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/type-compatibility/tag-type-check.md)                                 | Ensures FormSpec tags are applied to compatible field types                                      |    |    |
 | [value-parsing/valid-integer-value](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/value-parsing/valid-integer-value.md)                                 | Validates integer-valued FormSpec tags                                                           |    |    |
 | [value-parsing/valid-json-value](https://github.com/mike-north/formspec/blob/main/packages/eslint-plugin/docs/rules/value-parsing/valid-json-value.md)                                       | Validates JSON-valued FormSpec tags                                                              |    |    |
