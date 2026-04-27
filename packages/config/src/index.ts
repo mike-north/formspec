@@ -24,11 +24,14 @@
  *
  * @example
  * ```ts
- * import { loadConfig, validateFormSpecElements } from '@formspec/config';
+ * import { loadFormSpecConfig, validateFormSpecElements } from '@formspec/config';
  * import { formspec, field } from '@formspec/dsl';
  *
  * // Load configuration from formspec.config.ts
- * const { config } = await loadConfig();
+ * const result = await loadFormSpecConfig();
+ * if (!result.found) {
+ *   throw new Error('No formspec.config.ts found');
+ * }
  *
  * // Create a form
  * const form = formspec(
@@ -37,10 +40,10 @@
  * );
  *
  * // Validate against the configured DSL policy
- * const result = validateFormSpecElements(form.elements, { constraints: config });
+ * const validation = validateFormSpecElements(form.elements, { constraints: result.config });
  *
- * if (!result.valid) {
- *   console.error('Validation failed:', result.issues);
+ * if (!validation.valid) {
+ *   console.error('Validation failed:', validation.issues);
  * }
  * ```
  *
