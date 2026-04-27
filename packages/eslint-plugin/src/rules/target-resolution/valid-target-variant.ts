@@ -11,6 +11,11 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+const ruleDocs = {
+  description: "Validates singular and plural variant target placement for FormSpec naming tags",
+  requiresTypeChecking: true,
+};
+
 function isNamingVariant(tag: ScannedTag): boolean {
   return (
     (tag.normalizedName === "displayName" || tag.normalizedName === "apiName") &&
@@ -55,10 +60,7 @@ export const validTargetVariant = createRule<[], "invalidPluralTarget" | "invali
   name: "target-resolution/valid-target-variant",
   meta: {
     type: "problem",
-    docs: {
-      description:
-        "Validates singular and plural variant target placement for FormSpec naming tags",
-    },
+    docs: ruleDocs,
     schema: [],
     messages: {
       invalidPluralTarget:

@@ -14,7 +14,7 @@ function hasDefaultValueTag(node: SupportedDeclaration, sourceCode: SourceCode):
 function isOptionalField(
   node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature
 ): boolean {
-  return node.optional === true;
+  return node.optional;
 }
 
 /**

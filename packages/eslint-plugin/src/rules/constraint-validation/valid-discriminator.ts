@@ -177,6 +177,9 @@ export const validDiscriminator = createRule<[], MessageIds>({
     return {
       MethodDefinition(node) {
         reportInvalidPlacementTags(node, context);
+        for (const param of node.value.params) {
+          reportInvalidPlacementTags(param, context);
+        }
       },
       FunctionDeclaration(node) {
         reportInvalidPlacementTags(node, context);
