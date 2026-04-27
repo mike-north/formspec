@@ -41,6 +41,34 @@ Good built-in examples:
 
 These names are good because the semantic role is visible in the tag itself. By contrast, generic names like `@data` are weak when they obscure the primary meaning at the point of use — for example, `@data countries` says almost nothing about whether the comment is describing selectable options, backing records, provenance, or some other unrelated notion of "data". This principle applies to both built-in tags and extension tags.
 
+**PP14: Deprecation over breaking changes.** Use deprecation as the primary tool for evolving the FormSpec API. Breaking changes should be avoided whenever an additive deprecation path is reasonable.
+
+When removing, renaming, or restructuring a public API element:
+
+1. **Add the new form.** Function, type, rule ID, export — whatever shape the replacement takes.
+2. **Retain the old form as a deprecated alias** that delegates to the new form.
+   - TypeScript exports: `@deprecated` JSDoc tag with a clear migration message.
+   - ESLint rules: `meta.deprecated: true` plus `meta.replacedBy`.
+   - Configuration keys: accepted at runtime; emit a deprecation warning to logs.
+3. **Land the deprecation in a minor or patch release.** Consumers see warnings; their code keeps working.
+4. **Remove the old form only in a major release.**
+
+Major releases are intentionally boring. A major release should consist of:
+
+- Removing previously deprecated exports and aliases.
+- Removing dead code paths that exist only to support deprecations.
+- No new behavior or functionality changes that were not already shipped under deprecation.
+
+Rationale: this discipline makes the upgrade path predictable. A consumer can stay on the latest minor of any major version indefinitely. Migration to the next major is mechanical (delete the deprecated calls the lints flagged) rather than investigative.
+
+Exceptions are acceptable when:
+
+- The element has demonstrably zero users (verified via search across known consumers and `npm` dependents).
+- A security or correctness issue makes maintaining the deprecation path unsafe.
+- The element is `@alpha` or `@beta` and the deprecation cost exceeds the value (cf. API Extractor release tags). This exception is currently load-bearing during pre-1.0 development (see PP12) and should narrow as APIs stabilize.
+
+When taking an exception, document the reason in the changeset.
+
 ---
 
 ## 2. Semantic Properties
