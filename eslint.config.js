@@ -17,6 +17,8 @@ export default [
             "scripts/normalize-generated-markdown.mjs",
             "scripts/check-stale-doc-references.mjs",
             "scripts/check-stale-doc-references.test.mjs",
+            "scripts/compute-typescript-minor-smoke-matrix.mjs",
+            "scripts/compute-typescript-minor-smoke-matrix.test.mjs",
           ],
         },
         tsconfigRootDir: import.meta.dirname,

@@ -1,0 +1,132 @@
+name: TypeScript minor smoke (Tier 3)
+
+on:
+  schedule:
+    - cron: "0 3 * * 0" # Sunday 03:00 UTC weekly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compute-minor-matrix:
+    name: Compute minor matrix from peer-dep range
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.compute.outputs.include }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Compute matrix
+        id: compute
+        run: node scripts/compute-typescript-minor-smoke-matrix.mjs >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: Smoke (TS ${{ matrix.label }})
+    needs: compute-minor-matrix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+
+    strategy:
+      fail-fast: false
+      # The report step creates or comments on a single tracking issue, so rows
+      # run serially to avoid duplicate issue creation during multi-minor failures.
+      max-parallel: 1
+      matrix:
+        include: ${{ fromJson(needs.compute-minor-matrix.outputs.include) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Pin TypeScript version via pnpm override
+        run: npm pkg set "pnpm.overrides.typescript=${{ matrix.typescript }}"
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Print resolved TypeScript version
+        run: pnpm exec tsc --version
+
+      - name: Build and typecheck
+        id: smoke
+        continue-on-error: true
+        run: |
+          pnpm run build
+          pnpm run typecheck
+
+      - name: Report smoke failure
+        if: steps.smoke.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LABEL_NAME: tier-3-ts-smoke-failure
+          LABEL_COLOR: FBCA04
+          LABEL_DESCRIPTION: Tier-3 weekly TS-minor smoke detected a failure
+        run: |
+          set -euo pipefail
+
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          Tier-3 TS-minor smoke failed for TypeScript ${{ matrix.label }} (${{ matrix.typescript }}).
+
+          See <https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID>.
+          EOF
+
+          if ! gh label create "$LABEL_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --color "$LABEL_COLOR" \
+            --description "$LABEL_DESCRIPTION" \
+            --force; then
+            echo "::warning::Unable to create or update $LABEL_NAME label."
+          fi
+
+          existing="$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --label "$LABEL_NAME" \
+            --json number \
+            --jq '.[0].number')"
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file "$body_file"
+          else
+            issue_body_file="$(mktemp)"
+            cat "$body_file" > "$issue_body_file"
+            cat >> "$issue_body_file" <<'EOF'
+
+          This issue tracks failures from the weekly Tier-3 smoke run (`.github/workflows/typescript-minor-smoke.yml`). Each failure adds a comment to the current open tracking issue, or creates a new tracking issue if none is open.
+          EOF
+
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Tier-3 TS-minor smoke failure" \
+              --label "$LABEL_NAME" \
+              --body-file "$issue_body_file"
+          fi
+
+          {
+            echo "### Tier-3 TypeScript Minor Smoke"
+            echo ""
+            echo "TypeScript ${{ matrix.label }} (${{ matrix.typescript }}) failed."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -158,6 +158,15 @@ FormSpec packages with a `typescript` peer-dep declare `>=5.7.3 <7`. The CI matr
 
 The matrix derives the `experimental` flag from a major-version mismatch with the workspace's pinned TS major, so non-default majors are informational rather than gating. Once a TS major has had time to soak through real usage, we promote it to required by bumping the workspace's `devDependencies.typescript`.
 
+### TypeScript test matrix
+
+- **Tier 1 (per-PR):** full pipeline against latest of each supported TypeScript major. `.github/workflows/ci.yml` computes these rows through `typescript-matrix` and runs them through `typescript-versions`; the workspace's pinned major is required, while other supported majors remain informational until promoted.
+- **Tier 2 (per-PR, experimental):** full pipeline against pre-release tracks such as `beta` and `6.x nightly`. These rows are intentionally non-blocking so upstream pre-release drift does not block regular FormSpec work.
+- **Tier 3 (weekly cron, informational):** typecheck-only smoke against the latest patch of every supported TypeScript minor. `.github/workflows/typescript-minor-smoke.yml` derives rows from `packages/analysis/package.json`, runs `pnpm run build && pnpm run typecheck`, and opens or comments on a `tier-3-ts-smoke-failure` tracking issue rather than blocking PRs.
+- **TS 7 (`tsgo`):** separate experimental coverage, tracked in [#449](https://github.com/mike-north/formspec/issues/449).
+
+Patch-level matrix coverage is intentionally out of scope. TypeScript patches are bug-fix releases, and dist-tag drift on `latest` already exercises patch-level movement.
+
 TypeScript 7.x is the Go rewrite with a substantively different API surface. We do not test against it via dist-tag drift; it will be a deliberate, separate migration.
 
 ### TypeScript compiler API quirks across majors
