@@ -8,6 +8,17 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Group entries by the spec document being changed.
 - Link each entry back to the corresponding item in `scratch/spec-risk-log.md` when applicable.
 
+# 2026-04-27
+
+## 000-principles.md
+
+- Added PP15 — Constraint kinds.
+  - "Constraint" is the umbrella term for narrowing rules in FormSpec.
+  - **Data constraints** narrow valid values of a field; authored as TSDoc tags, represented in the IR as `ConstraintNode`, emitted as JSON Schema validation keywords.
+  - **DSL policy** narrows which FormSpec features a project may author; composed of building-block constraints (field-type, layout, rule-effect, etc.) loaded from `FormSpecConfig` and enforced at authoring/lint time.
+  - Spec docs that introduce constraint-related concepts must specify which kind they mean.
+  - Resolves the documentation half of [#419](https://github.com/mike-north/formspec/issues/419); the DSL-policy factoring follow-up is tracked in [#420](https://github.com/mike-north/formspec/issues/420).
+
 # 2026-04-26
 
 ## 002-tsdoc-grammar
