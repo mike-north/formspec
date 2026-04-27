@@ -30,11 +30,17 @@ import {
   analyzeInterfaceToIR,
   analyzeTypeAliasToIR,
 } from "../src/analyzer/class-analyzer.js";
+import {
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+  ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+} from "../src/analyzer/diagnostics.js";
 import { createExtensionRegistry } from "../src/extensions/index.js";
 
 const fixturesDir = path.join(__dirname, "fixtures");
 const sampleFormsPath = path.join(fixturesDir, "sample-forms.ts");
 const interfaceFixturePath = path.join(fixturesDir, "example-interface-types.ts");
+
+type AnonymousRecursiveDeclarationKind = "class" | "interface" | "type alias";
 
 // =============================================================================
 // Helper functions
@@ -63,6 +69,39 @@ function writeTempSource(source: string): string {
   const filePath = path.join(dir, "model.ts");
   fs.writeFileSync(filePath, source);
   return filePath;
+}
+
+function anonymousRecursiveSource(kind: AnonymousRecursiveDeclarationKind): string {
+  if (kind === "class") {
+    return [
+      "export class AnonymousRecursiveForm {",
+      "  root!: {",
+      "    value: string;",
+      '    children?: AnonymousRecursiveForm["root"][];',
+      "  };",
+      "}",
+    ].join("\n");
+  }
+
+  if (kind === "interface") {
+    return [
+      "export interface AnonymousRecursiveForm {",
+      "  root: {",
+      "    value: string;",
+      '    children?: AnonymousRecursiveForm["root"][];',
+      "  };",
+      "}",
+    ].join("\n");
+  }
+
+  return [
+    "export type AnonymousRecursiveForm = {",
+    "  root: {",
+    "    value: string;",
+    '    children?: AnonymousRecursiveForm["root"][];',
+    "  };",
+    "};",
+  ].join("\n");
 }
 
 // =============================================================================
@@ -813,4 +852,54 @@ describe("analyzeClassToIR — Record<string, T> type detection", () => {
       });
     }
   });
+
+  it.each<AnonymousRecursiveDeclarationKind>(["class", "interface", "type alias"])(
+    "emits an error diagnostic for anonymous recursive %s shapes",
+    (kind) => {
+      const filePath = writeTempSource(anonymousRecursiveSource(kind));
+
+      try {
+        const ctx = createProgramContext(filePath);
+        const diagnostics = (() => {
+          if (kind === "class") {
+            const declaration = findClassByName(ctx.sourceFile, "AnonymousRecursiveForm");
+            if (!declaration) throw new Error("AnonymousRecursiveForm class not found");
+            return analyzeClassToIR(declaration, ctx.checker, filePath).diagnostics ?? [];
+          }
+
+          if (kind === "interface") {
+            const declaration = findInterfaceByName(ctx.sourceFile, "AnonymousRecursiveForm");
+            if (!declaration) throw new Error("AnonymousRecursiveForm interface not found");
+            return analyzeInterfaceToIR(declaration, ctx.checker, filePath).diagnostics ?? [];
+          }
+
+          const declaration = findTypeAliasByName(ctx.sourceFile, "AnonymousRecursiveForm");
+          if (!declaration) throw new Error("AnonymousRecursiveForm type alias not found");
+          const result = analyzeTypeAliasToIR(declaration, ctx.checker, filePath);
+          if (!result.ok) {
+            throw new Error(
+              `Expected AnonymousRecursiveForm type alias to analyze: ${result.error}`
+            );
+          }
+          return result.analysis.diagnostics ?? [];
+        })();
+
+        expect(diagnostics).toHaveLength(1);
+        expect(diagnostics[0]).toEqual({
+          code: ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_CODE,
+          message: ANONYMOUS_RECURSIVE_TYPE_DIAGNOSTIC_MESSAGE,
+          severity: "error",
+          primaryLocation: {
+            surface: "tsdoc",
+            file: filePath,
+            line: 4,
+            column: 15,
+          },
+          relatedLocations: [],
+        });
+      } finally {
+        fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+      }
+    }
+  );
 });

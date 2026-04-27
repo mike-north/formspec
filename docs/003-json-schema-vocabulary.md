@@ -486,7 +486,7 @@ emits one reusable definition and references it from both the root field and the
 }
 ```
 
-This supersedes the prior diagnostic-only circular-reference rule tracked by [issue #105](https://github.com/mike-north/formspec/issues/105), which was completed by recursive named-type support. Anonymous recursive shapes remain unsupported until they can produce a clear `ANONYMOUS_RECURSIVE_TYPE` diagnostic; that follow-up is tracked in [issue #422](https://github.com/mike-north/formspec/issues/422).
+This supersedes the prior diagnostic-only circular-reference rule tracked by [issue #105](https://github.com/mike-north/formspec/issues/105), which was completed by recursive named-type support. Anonymous recursive shapes remain unsupported for `$defs` emission and produce the `ANONYMOUS_RECURSIVE_TYPE` diagnostic so authors can extract the shape to a named declaration.
 
 ---
 

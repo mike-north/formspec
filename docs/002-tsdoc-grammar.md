@@ -1054,6 +1054,12 @@ The following categories group the symbolic codes conceptually:
 **Message:** `"@{tagName}" cannot be applied to a field of type "{typeName}". Valid types: {validTypes}.`
 **Auto-fix:** None (the author must either change the field type or remove the tag).
 
+**`ANONYMOUS_RECURSIVE_TYPE`: Anonymous recursive type shape**
+**Severity:** error
+**Condition:** A recursive object shape is encountered without a named class, interface, or type alias that can seed the type registry for `$ref` emission.
+**Message:** `Anonymous recursive type detected. Extract this type to a named class, interface, or type alias to enable recursive $ref emission.`
+**Auto-fix:** None. Extraction requires choosing a stable type name and declaration scope, so the author must make that design choice.
+
 ---
 
 ### Target resolution
