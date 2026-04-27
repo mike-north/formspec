@@ -1,5 +1,31 @@
 # @formspec/cli
 
+## 0.1.0-alpha.65
+
+### Patch Changes
+
+- [#431](https://github.com/mike-north/formspec/pull/431) [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53) Thanks [@mike-north](https://github.com/mike-north)! - Bump the bundled `typescript` runtime dependency from `^5.9.3` to `^6.0.0`. The CLI now performs schema generation against TypeScript 6.x internally. Source code that compiles cleanly under TS 5.9 also compiles under TS 6.0, so this is functionally invisible to consumers.
+
+- [#465](https://github.com/mike-north/formspec/pull/465) [`f603680`](https://github.com/mike-north/formspec/commit/f60368008efd87b1b8e2b564faacafdbeaa942e3) Thanks [@mike-north](https://github.com/mike-north)! - Reconcile `@formspec/config` documentation with its unified-configuration identity (resolves [#419](https://github.com/mike-north/formspec/issues/419) — documentation half).
+
+  The package JSDoc on `packages/config/src/index.ts` now describes `@formspec/config` as the unified configuration package (schemas, extensions, serialization, metadata policy, pipeline settings) and acknowledges that DSL-policy validation lives here transitionally pending the factoring tracked in [#420](https://github.com/mike-north/formspec/issues/420). The `package.json` description is updated to mention DSL-policy validation explicitly. No source-code or runtime behavior changes.
+
+  The transitive-dependent patch bumps (`@formspec/build`, `@formspec/cli`, `@formspec/eslint-plugin`, `@formspec/language-server`, `formspec`) are required by the monorepo's mechanical changeset gate; they carry no functional changes.
+
+- [#460](https://github.com/mike-north/formspec/pull/460) [`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8) Thanks [@mike-north](https://github.com/mike-north)! - Finish `@description` removal by dropping it from shared tag metadata and adding an autofix that moves unsupported `@description` content into TSDoc summary text.
+
+- [#450](https://github.com/mike-north/formspec/pull/450) [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca) Thanks [@mike-north](https://github.com/mike-north)! - Support bracketed multi-line JSON tag arguments in comment parsing, including `@const` arrays and objects.
+
+- [#462](https://github.com/mike-north/formspec/pull/462) [`865f4e7`](https://github.com/mike-north/formspec/commit/865f4e749f9557d084298f258df4be9a3c56b481) Thanks [@mike-north](https://github.com/mike-north)! - Emit `ANONYMOUS_RECURSIVE_TYPE` for unsupported anonymous recursive type shapes, fail schema generation with diagnostics for those shapes, and surface the lint rule through the ESLint recommended and strict rule sets. Named recursive `$defs` / `$ref` behavior is unchanged.
+
+- [#445](https://github.com/mike-north/formspec/pull/445) [`9fe2efc`](https://github.com/mike-north/formspec/commit/9fe2efc984b2ae000d3776aa3e1e2d5f2413e287) Thanks [@mike-north](https://github.com/mike-north)! - Sort generated JSON Schema `required` arrays alphabetically for deterministic output.
+
+- [#446](https://github.com/mike-north/formspec/pull/446) [`69f296c`](https://github.com/mike-north/formspec/commit/69f296ce9834069301ed7bf9b8c9cca0919c240a) Thanks [@mike-north](https://github.com/mike-north)! - Add a regression test pinning multi-file `@format` inheritance provenance.
+
+- Updated dependencies [[`f603680`](https://github.com/mike-north/formspec/commit/f60368008efd87b1b8e2b564faacafdbeaa942e3), [`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8), [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca), [`865f4e7`](https://github.com/mike-north/formspec/commit/865f4e749f9557d084298f258df4be9a3c56b481), [`9fe2efc`](https://github.com/mike-north/formspec/commit/9fe2efc984b2ae000d3776aa3e1e2d5f2413e287), [`69f296c`](https://github.com/mike-north/formspec/commit/69f296ce9834069301ed7bf9b8c9cca0919c240a), [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53)]:
+  - @formspec/config@0.1.0-alpha.65
+  - @formspec/build@0.1.0-alpha.65
+
 ## 0.1.0-alpha.64
 
 ### Patch Changes
