@@ -272,8 +272,10 @@ The service exposes these methods:
 | `dispose()`                              | Clears pending refresh timers and cached semantic snapshots.            |
 
 If `getProgram` returns `undefined` or the requested source file is unavailable,
-completion and hover queries return `null`. Diagnostics and file-snapshot
-queries return a snapshot with a `MISSING_SOURCE_FILE` infrastructure warning.
+completion and hover queries return `null`. Diagnostics queries return a
+diagnostics result with an empty `sourceHash` plus a `MISSING_SOURCE_FILE`
+infrastructure diagnostic, while file-snapshot queries return an empty snapshot
+with that diagnostic.
 
 `getStats()` returns `FormSpecSemanticServiceStats`. Hosts can use it for
 capacity planning and performance monitoring: `queryTotals` counts completion,
