@@ -235,6 +235,12 @@ This is intentionally white-labelable: downstream tools can reuse the same
 TypeScript `Program`, call `FormSpecSemanticService` directly, and decide for
 themselves how diagnostics are surfaced.
 
+Embedding hosts use the `@formspec/ts-plugin` package root as the public API:
+CommonJS/`require` resolves to `./index.cjs`, while ESM/`import` resolves to
+`./dist/index.js`. `docs/004-tooling.md` §2.7 is the normative reference for
+`FormSpecSemanticService`, its options and stats, and
+`createLanguageServiceProxy`.
+
 ## Entry Points
 
 `@formspec/build` provides three entry points for different consumers:

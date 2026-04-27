@@ -111,17 +111,7 @@ The TypeScript compiler API is accessed via a shared `TypeResolutionContext`. ES
 #### 2.4.1 Reference Host Pattern
 
 Downstream TypeScript hosts that already control their own plugin/runtime can
-skip IPC entirely:
-
-1. Construct `FormSpecSemanticService` with the host's existing `getProgram`
-2. Call `getDiagnostics(filePath)`, `getCompletionContext(filePath, offset)`,
-   and `getHover(filePath, offset)` directly
-3. Render author feedback from canonical `code` + structured `data`
-4. Treat the shipped FormSpec `tsserver` plugin and LSP as reference
-   implementations of the same composition model
-
-The source repository includes a concrete reference example in the TypeScript
-plugin package and a test that exercises it against a real TypeScript program.
+skip IPC entirely; see §2.7 for the normative embedding contract.
 
 #### 2.4.2 Benchmark Harness
 
@@ -219,6 +209,158 @@ declare function analyzeDeclaration(
 ```
 
 The pipeline is pure and stateless per invocation — no ambient configuration, no cross-call state (per A3). ESLint calls it once per relevant AST node during a lint run; the TypeScript plugin calls it incrementally against the host editor's existing project state and caches/serializes the result for the lightweight language server.
+
+### 2.7 Embedding the Semantic Service
+
+`@formspec/ts-plugin` exposes its semantic service as a public embedding API for
+downstream TypeScript hosts. A host that already owns a TypeScript `Program`
+should pass that program through `getProgram`; the service must not create a
+second long-lived program for the same workspace. This keeps FormSpec analysis
+aligned with the host's compiler state and with the single-program model used
+by the shipped `tsserver` plugin; see Theme 7 tracker
+[#435](https://github.com/mike-north/formspec/issues/435).
+
+Consumers import from the package root:
+
+```typescript
+import { FormSpecSemanticService, createLanguageServiceProxy } from "@formspec/ts-plugin";
+```
+
+The package root is dual-mode. CommonJS `require("@formspec/ts-plugin")`
+resolves to `./index.cjs`, which is the entry point `tsserver` can load as a
+plugin module. ESM `import` resolves to `./dist/index.js`. Consumers should not
+deep-import files from `dist/` or `src/`; the package root is the supported
+public import surface, and deep imports are unsupported.
+
+Transport and IPC payload types are outside this embedding guide; use
+`packages/ts-plugin/api-report/ts-plugin.api.md` for the exact current
+package-root export inventory.
+
+#### 2.7.1 `FormSpecSemanticService`
+
+`FormSpecSemanticService` is the in-process semantic API. Its constructor accepts
+`FormSpecSemanticServiceOptions`.
+
+Required options:
+
+| Option              | Meaning                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| `workspaceRoot`     | Root directory used for runtime paths and contextual logging.            |
+| `typescriptVersion` | Version string reported by the host TypeScript runtime.                  |
+| `getProgram`        | Callback returning the current host `Program`, or `undefined` if absent. |
+
+Optional options:
+
+| Option                      | Meaning                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `logger`                    | Receives profiling and refresh-failure messages.                  |
+| `enablePerformanceLogging`  | Enables structured semantic-query hotspot logging.                |
+| `performanceLogThresholdMs` | Minimum query duration before a performance log entry is emitted. |
+| `snapshotDebounceMs`        | Debounce window for background snapshot refreshes.                |
+| `now`                       | Injectable clock for tests and deterministic snapshot timestamps. |
+
+The service exposes these methods:
+
+| Method                                   | Purpose                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| `getCompletionContext(filePath, offset)` | Returns semantic completion context for a comment cursor position.      |
+| `getDiagnostics(filePath)`               | Returns canonical diagnostics for the file in the current host program. |
+| `getFileSnapshot(filePath)`              | Returns the full serialized semantic snapshot for a file.               |
+| `getHover(filePath, offset)`             | Returns semantic hover payload for a comment or declaration position.   |
+| `getStats()`                             | Returns query, path, and file-snapshot cache counters.                  |
+| `scheduleSnapshotRefresh(filePath)`      | Schedules a debounced background refresh for the file snapshot cache.   |
+| `dispose()`                              | Clears pending refresh timers and cached semantic snapshots.            |
+
+If `getProgram` returns `undefined` or the requested source file is unavailable,
+completion and hover queries return `null`. Diagnostics and file-snapshot
+queries return a snapshot with a `MISSING_SOURCE_FILE` infrastructure warning.
+
+`getStats()` returns `FormSpecSemanticServiceStats`. Hosts can use it for
+capacity planning and performance monitoring: `queryTotals` counts completion,
+hover, diagnostics, and file-snapshot calls; `queryPathTotals` splits
+diagnostics and file-snapshot calls into cold and warm snapshot-backed paths;
+`fileSnapshotCacheHits` and `fileSnapshotCacheMisses` expose cache behavior.
+The API report is the exact source for field-level details.
+
+#### 2.7.2 Standalone Host Example
+
+A standalone host that owns a TypeScript `Program` can call the service directly
+and render user-facing feedback from stable diagnostic `code` plus structured
+`data`:
+
+```typescript
+import * as ts from "typescript";
+import { FormSpecSemanticService } from "@formspec/ts-plugin";
+
+const semanticService = new FormSpecSemanticService({
+  workspaceRoot,
+  typescriptVersion: ts.version,
+  getProgram: () => program,
+});
+
+const diagnostics = semanticService.getDiagnostics(filePath).diagnostics;
+const hover = semanticService.getHover(filePath, offset);
+const completion = semanticService.getCompletionContext(filePath, offset);
+
+renderHostAuthoringState({ hover, completion });
+
+for (const diagnostic of diagnostics) {
+  renderHostDiagnostic({
+    code: diagnostic.code,
+    severity: diagnostic.severity,
+    facts: diagnostic.data,
+  });
+}
+
+semanticService.dispose();
+```
+
+In a real host, keep one service alive for the workspace or project so snapshot
+caches and debounced refreshes remain useful. Call `dispose()` when the host or
+plugin is torn down.
+
+`packages/ts-plugin/tests/downstream-authoring-host.test.ts` exercises direct
+service construction against a real `Program` and uses
+`packages/ts-plugin/src/reference-host-example.ts` as the diagnostic-rendering
+helper. `packages/ts-plugin/tests/semantic-service.test.ts` covers direct
+diagnostics, hover, and completion calls.
+
+#### 2.7.3 `tsserver` Plugin Host Example
+
+A host that is itself a `tsserver` plugin can keep FormSpec snapshots fresh by
+wrapping the existing TypeScript language service:
+
+```typescript
+import type * as tsServer from "typescript/lib/tsserverlibrary.js";
+import { FormSpecSemanticService, createLanguageServiceProxy } from "@formspec/ts-plugin";
+
+export function init(modules: {
+  readonly typescript: typeof tsServer;
+}): tsServer.server.PluginModule {
+  const typescriptVersion = modules.typescript.version;
+
+  return {
+    create(info) {
+      const semanticService = new FormSpecSemanticService({
+        workspaceRoot: info.project.getCurrentDirectory(),
+        typescriptVersion,
+        getProgram: () => info.languageService.getProgram(),
+        logger: info.project.projectService.logger,
+      });
+
+      return createLanguageServiceProxy(info.languageService, semanticService);
+    },
+  };
+}
+```
+
+`createLanguageServiceProxy(languageService, semanticService)` delegates normal
+TypeScript editor operations to the original language service and schedules
+snapshot refreshes for semantic diagnostics, completions, and quick-info calls.
+The packaged FormSpec `tsserver` plugin is a reference implementation of this
+composition model. The proxy does not publish FormSpec diagnostics by itself;
+hosts that want to surface FormSpec findings must call
+`semanticService.getDiagnostics(filePath)` or use the plugin transport.
 
 ---
 
