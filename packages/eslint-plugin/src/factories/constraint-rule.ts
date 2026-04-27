@@ -34,6 +34,8 @@ const createRule = ESLintUtils.RuleCreator(
 
 /**
  * Options for the `createConstraintRule` factory.
+ *
+ * @public
  */
 export interface ConstraintRuleOptions {
   /**
@@ -90,6 +92,8 @@ type MessageIds = "typeMismatch" | "invalidValue";
  *
  * @param options - Configuration for the generated rule
  * @returns A typed `@typescript-eslint` rule module
+ *
+ * @public
  */
 export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []> {
   const { tagName, applicableTypes, validateValue } = options;

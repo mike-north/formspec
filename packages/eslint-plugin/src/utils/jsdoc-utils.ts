@@ -9,7 +9,11 @@ import {
   normalizeConstraintTagName,
 } from "@formspec/core/internals";
 
-/** A constraint extracted from a JSDoc comment tag. */
+/**
+ * A constraint extracted from a JSDoc comment tag.
+ *
+ * @public
+ */
 export interface JSDocConstraint {
   /** The constraint name (e.g., "minimum", "maximum") */
   name: string;
@@ -50,6 +54,8 @@ const PATTERN_TAG_REGEX = /@[Pp]attern\s+(?!:\w+\s)(.+?)(?=\s*\*\/|\s*$)/gm;
  * @param node - The AST node to check for preceding JSDoc comments
  * @param sourceCode - The ESLint source code object
  * @returns Array of parsed JSDoc constraints
+ *
+ * @public
  */
 export function getJSDocConstraints(
   node: TSESTree.Node,
@@ -116,6 +122,8 @@ export function getJSDocConstraints(
  * @param constraints - The array of JSDoc constraints to search
  * @param name - The constraint name to find
  * @returns The matching constraint or null if not found
+ *
+ * @public
  */
 export function findJSDocConstraint(
   constraints: JSDocConstraint[],
@@ -124,7 +132,11 @@ export function findJSDocConstraint(
   return constraints.find((c) => c.name === name) ?? null;
 }
 
-/** A raw JSDoc tag occurrence — name + raw string value + comment node. */
+/**
+ * A raw JSDoc tag occurrence — name + raw string value + comment node.
+ *
+ * @public
+ */
 export interface RawJSDocTag {
   /** The tag name (without the `@` prefix). */
   name: string;
@@ -153,6 +165,8 @@ export interface RawJSDocTag {
  * @param node - The AST node to check for preceding JSDoc comments
  * @param sourceCode - The ESLint source code object
  * @returns Array of raw tag occurrences
+ *
+ * @public
  */
 export function getArbitraryJSDocTag(
   tagName: string,

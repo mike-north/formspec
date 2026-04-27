@@ -1168,7 +1168,7 @@ The following categories group the symbolic codes conceptually:
 **Auto-fix (D5):** Offer to remove the first occurrence.
 
 **`REMARKS_WITHOUT_SUMMARY`: Remarks without summary text**
-**Severity:** info
+**Severity:** info. ESLint projects this as `warn` because ESLint flat config has no `info` severity.
 **Condition:** `@remarks` is present but no summary text (bare text before the first block tag) exists on the same declaration.
 **Message:** `"@remarks" is present but no summary text was found. Add summary text before the first tag so that JSON Schema "description", VS Code tooltips, and Dashboard form help text are populated.`
 **Auto-fix (D5):** None (the author must write summary text).

@@ -75,6 +75,14 @@ ruleTester.run("no-unknown-tags", noUnknownTags, {
     {
       code: `
         class Form {
+          /** @description Use summary text instead. */
+          name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
           /** Legal name @minimum 1 */
           name!: string;
         }

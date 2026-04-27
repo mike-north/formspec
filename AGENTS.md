@@ -31,7 +31,6 @@ Primary packages:
 - `@formspec/language-server` — reference LSP implementation over shared helpers
 - `@formspec/cli` — CLI for schema and IR generation
 - `@formspec/validator` — runtime JSON Schema validation
-- `@formspec/playground` — private browser playground app
 - `@formspec/e2e` — end-to-end and benchmark workspace (`/e2e`)
 
 ## Repo Commands
@@ -58,7 +57,6 @@ pnpm --filter @formspec/build run test
 pnpm --filter @formspec/dsl run test:types
 pnpm --filter @formspec/eslint-plugin run fix:eslint-docs
 pnpm --filter @formspec/eslint-plugin run check:eslint-docs
-pnpm --filter @formspec/playground run dev
 ```
 
 ## Working Rules
