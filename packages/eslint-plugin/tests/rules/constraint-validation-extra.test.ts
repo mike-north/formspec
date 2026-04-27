@@ -6,6 +6,7 @@ import { remarksWithoutSummary } from "../../src/rules/documentation/remarks-wit
 import { noContradictoryRules } from "../../src/rules/constraint-validation/no-contradictory-rules.js";
 import { validDiscriminator } from "../../src/rules/constraint-validation/valid-discriminator.js";
 import { noDoubleUnderscoreFields } from "../../src/rules/constraint-validation/no-double-underscore-fields.js";
+import { noDefaultOnRequiredField } from "../../src/rules/constraint-validation/no-default-on-required-field.js";
 
 RuleTester.afterAll = vitest.afterAll;
 RuleTester.it = vitest.it;
@@ -517,11 +518,92 @@ ruleTester.run("valid-discriminator", validDiscriminator, {
     },
     {
       code: `
+        class TaggedValue<T> {
+          /** @discriminator :kind T */
+          method(): string {
+            return "kind";
+          }
+        }
+      `,
+      errors: [{ messageId: "invalidPlacement" }],
+    },
+    {
+      code: `
+        /** @discriminator :kind T */
+        function taggedValue<T>() {
+          return { kind: "value" };
+        }
+      `,
+      errors: [{ messageId: "invalidPlacement" }],
+    },
+    {
+      code: `
+        function taggedValue<T>(
+          /** @discriminator :kind T */
+          value: string
+        ) {
+          return value;
+        }
+      `,
+      errors: [{ messageId: "invalidPlacement" }],
+    },
+    {
+      code: `
         type TaggedValue<T> = string;
         /** @discriminator :kind T */
         type Invalid = TaggedValue<string>;
       `,
       errors: [{ messageId: "invalidPlacement" }],
+    },
+  ],
+});
+
+ruleTester.run("no-default-on-required-field", noDefaultOnRequiredField, {
+  valid: [
+    {
+      code: `
+        interface Form {
+          /** @defaultValue false */
+          optIn?: boolean;
+        }
+      `,
+    },
+    {
+      code: `
+        interface Form {
+          /** @defaultValue pending */
+          status?: "pending" | "active" | undefined;
+        }
+      `,
+    },
+  ],
+  invalid: [
+    {
+      code: `
+        class Form {
+          /** @defaultValue false */
+          optIn!: boolean;
+        }
+      `,
+      errors: [{ messageId: "defaultOnRequiredField" }],
+    },
+    {
+      code: `
+        interface Form {
+          /** @defaultValue pending */
+          status: "pending" | "active";
+        }
+      `,
+      errors: [{ messageId: "defaultOnRequiredField" }],
+    },
+    {
+      code: `
+        interface Form {
+          /** @defaultValue pending */
+          status: "pending" | "active" | undefined;
+        }
+      `,
+      errors: [{ messageId: "defaultOnRequiredField" }],
     },
   ],
 });

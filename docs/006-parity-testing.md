@@ -62,7 +62,7 @@ These are confidence tests for user integrations, not parity tests.
 - **001 (Canonical IR):** Parity tests compare `FieldNode`, `ResolvedMetadata`, and `ConstraintNode` instances by structural equality on semantic fields. This document relies on 001's IR type definitions and metadata-resolution semantics.
 - **002 (TSDoc Grammar):** Each shared static TSDoc tag in the tag inventory (§2) has a corresponding chain DSL option. Runtime-capable ChainDSL-only constructs are excluded from parity and instead covered by mixed-authoring composition tests.
 - **003 (JSON Schema Vocabulary):** Parity at the JSON Schema output level verifies A3. The test fixtures from this document exercise the full mapping in 003 §2.
-- **005 (Numeric Types):** Extension stress-test fixtures (`Decimal`, `DateOnly`) validate that parity holds across the extension boundary — not just for built-in types.
+- **005 (Numeric Types):** Future extension stress-test fixtures should validate that parity holds across the extension boundary — not just for built-in types.
 
 ---
 
@@ -113,76 +113,58 @@ Under the current integer model, `Integer` is represented in the IR as `{ kind: 
 }
 ```
 
-### 2.3 Fixture: Percent
+### 2.3 Fixture: UserRegistration
 
-**What it tests:** integer type derivation and refinement with [0, 100] range, `@multipleOf` composition on an integer-valued field, contradiction detection between use-site and alias chain.
+**What it tests:** primitive text fields, boolean fields, string-literal enum fields, and all-required class-field parity.
 
 ```typescript
 // TSDoc surface
-/** @maximum 99_999_999_999_999 */
-type Integer = number;
-
-/**
- * @minimum 0
- * @maximum 100
- */
-type Percent = Integer;
-
-interface Promotion {
-  /**
-   * @displayName Discount
-   * @multipleOf 5
-   */
-  discountPercent: Percent;
+class UserRegistrationForm {
+  email!: string;
+  username!: string;
+  agreedToTerms!: boolean;
+  accountType!: "personal" | "business" | "enterprise";
 }
 ```
 
-**Why this is a good fixture:** `discountPercent` inherits bounds from `Percent` (which inherits `@maximum` and integer semantics from `Integer`) and adds a `@multipleOf 5` constraint at the use site. The use-site `@maximum 100` from `Percent` overrides the `Integer` alias chain's `@maximum 99_999_999_999_999` in the effective bound — testing that the Validate phase takes the minimum of all upper bounds. The `@multipleOf 1` on `Integer` and `@multipleOf 5` at the use site compose to an effective `multipleOf: 5` (since every multiple of 5 is also a multiple of 1).
+**Why this is a good fixture:** It pins the common required-form baseline with multiple primitive kinds and an inline enum. The fixture intentionally avoids annotations and constraints so it can isolate plain field-shape parity between class extraction and Chain DSL canonicalization.
 
 ### 2.4 Fixture: PlanStatus
 
-**What it tests:** String literal union (enum) with `@displayName` per-member annotation, default `enum` JSON Schema output plus a complete `x-formspec-display-names` extension, `@defaultValue`.
+**What it tests:** Required string literal union (enum) field with `@displayName` field and per-member annotations, default `enum` JSON Schema output, and a complete `x-formspec-display-names` extension.
 
 ```typescript
 // TSDoc surface
-/**
- * @displayName Plan Status
- * @displayName :active Active
- * @displayName :paused Paused
- * @displayName :cancelled Cancelled
- * @defaultValue active
- */
-type PlanStatus = "active" | "paused" | "cancelled";
-
-interface Subscription {
-  status: PlanStatus;
+class SubscriptionForm {
+  /**
+   * @displayName Plan Status
+   * @displayName :active Active
+   * @displayName :paused Paused
+   * @displayName :cancelled Cancelled
+   */
+  status!: "active" | "paused" | "cancelled";
 }
 ```
 
-**Why this is a good fixture:** Per-member display names use the member-target grammar from S5. The generated JSON Schema must use flat `enum` plus a complete `x-formspec-display-names` extension by default (see 003 §2.3), while still preserving the `@defaultValue` annotation at the `status` field level in the schema output rather than inside the `PlanStatus` `$defs` entry.
+**Why this is a good fixture:** Per-member display names use the member-target grammar from S5. The generated JSON Schema must use flat `enum` plus a complete `x-formspec-display-names` extension by default (see 003 §2.3), while both surfaces agree that the enum field is required.
 
 **Expected JSON Schema for `status`:**
 
 ```json
 {
-  "$ref": "#/$defs/PlanStatus",
-  "default": "active"
+  "enum": ["active", "paused", "cancelled"],
+  "x-formspec-display-names": {
+    "active": "Active",
+    "paused": "Paused",
+    "cancelled": "Cancelled"
+  },
+  "title": "Plan Status"
 }
 ```
 
 ```json
 {
-  "$defs": {
-    "PlanStatus": {
-      "enum": ["active", "paused", "cancelled"],
-      "x-formspec-display-names": {
-        "active": "Active",
-        "paused": "Paused",
-        "cancelled": "Cancelled"
-      },
-      "title": "Plan Status"
-    }
-  }
+  "required": ["status"]
 }
 ```
 
@@ -226,15 +208,39 @@ interface CustomerForm {
 
 **Why this is a good fixture:** The `Address` type appears twice in `CustomerForm` — once required and once optional — exercising the `$defs` + `$ref` deduplication (PP7, 003 §5.1). The `country` field has three constraints that compose correctly.
 
-### 2.6 Fixture: MonetaryAmount with Subfield Targeting
+### 2.6 Fixture: ProductConfig
 
-**What it tests:** Subfield constraint targeting via `:path` grammar (S5), `allOf` + `$ref` emission for constrained object fields, pattern constraints on string subfields.
+**What it tests:** Class-surface TSDoc extraction, required and optional field parity, and inline object-field parity between TSDoc anonymous object types and Chain DSL `field.objectWithConfig(...)`.
 
-Source: see 005 §6.2 for the TypeScript definition and JSON Schema output for `total` and `discount`.
+```typescript
+// TSDoc surface
+export class ProductConfigForm {
+  sku!: string;
+  name!: string;
+  available?: boolean;
+  pricing!: {
+    basePrice: number;
+    currency: string;
+  };
+}
+```
 
-**What this fixture tests that 005 does not show:** the chain DSL surface for `total` and `discount` using `subfieldConstraints`, and the IR-level parity between the TSDoc extractor and the chain DSL canonicalizer for path-targeted constraints.
+```typescript
+// Chain DSL surface
+export const productConfigForm = formspec(
+  field.text("sku", { required: true }),
+  field.text("name", { required: true }),
+  field.boolean("available"),
+  field.objectWithConfig(
+    "pricing",
+    { required: true },
+    field.number("basePrice", { required: true }),
+    field.text("currency", { required: true })
+  )
+);
+```
 
-**Why this is a good fixture:** The `:value` and `:currency` path targets exercise the path-target grammar. The `total` field has four constraints targeting two different subfields, requiring the generator to emit an `allOf` with multiple property-level constraints (003 §5.4). This is the most structurally complex single-field case in the fixture suite.
+**Why this is a good fixture:** The nested `pricing` object verifies that both surfaces can produce the same inline `ObjectTypeNode` without relying on a named `$defs` reference. The mix of required and optional fields also keeps the parity fixture aligned with real product configuration forms rather than a synthetic subfield-targeting example that is not present in the current registry.
 
 ### 2.7 Coverage Note: Recursive Named Types
 
@@ -253,30 +259,27 @@ For each fixture, both the TSDoc surface and the chain DSL surface are authored,
 
 ### 3.1 Fixture Layout
 
-Parity test fixtures follow this directory layout:
+Parity tests currently use one consolidated `parity.test.ts` file with a fixture registry. Each fixture contributes a TSDoc source, an equivalent chain DSL source, and a hand-authored expected IR:
 
 ```
 packages/build/tests/parity/
+
   fixtures/
     usd-cents/
       tsdoc.ts          ← TSDoc-surface TypeScript source
       chain-dsl.ts      ← Equivalent chain DSL definition
       expected-ir.ts    ← Hand-authored expected IR (no provenance)
-      expected-schema.json  ← Hand-authored expected JSON Schema
-    percent/
-      ...
     plan-status/
       ...
     address/
       ...
-    monetary-amount/
+    product-config/
       ...
-  usd-cents.test.ts
-  percent.test.ts
-  plan-status.test.ts
-  address.test.ts
-  monetary-amount.test.ts
+    user-registration/
+      ...
 ```
+
+The registry array in `parity.test.ts` drives the shared assertion pattern for every fixture: chain DSL → expected IR, TSDoc → expected IR, and cross-surface IR equality after provenance stripping.
 
 ### 3.2 USDCents: Both Surfaces
 
@@ -333,17 +336,14 @@ export { lineItemForm };
 **TSDoc surface (`plan-status/tsdoc.ts`):**
 
 ```typescript
-/**
- * @displayName Plan Status
- * @displayName :active Active
- * @displayName :paused Paused
- * @displayName :cancelled Cancelled
- */
-type PlanStatus = "active" | "paused" | "cancelled";
-
-interface Subscription {
-  /** @defaultValue active */
-  status: PlanStatus;
+class SubscriptionForm {
+  /**
+   * @displayName Plan Status
+   * @displayName :active Active
+   * @displayName :paused Paused
+   * @displayName :cancelled Cancelled
+   */
+  status!: "active" | "paused" | "cancelled";
 }
 ```
 
@@ -352,81 +352,70 @@ interface Subscription {
 ```typescript
 import { field, formspec } from "@formspec/dsl";
 
-const subscriptionForm = formspec(
-  field.enum("status", ["active", "paused", "cancelled"] as const, {
-    displayName: "Plan Status",
-    defaultValue: "active",
-    memberDisplayNames: {
-      active: "Active",
-      paused: "Paused",
-      cancelled: "Cancelled",
-    },
-  })
+const planStatusForm = formspec(
+  field.enum(
+    "status",
+    [
+      { id: "active", label: "Active" },
+      { id: "paused", label: "Paused" },
+      { id: "cancelled", label: "Cancelled" },
+    ] as const,
+    {
+      label: "Plan Status",
+      required: true,
+    }
+  )
 );
 
-export { subscriptionForm };
+export { planStatusForm };
 ```
 
-### 3.4 MonetaryAmount: Both Surfaces
+### 3.4 Address, ProductConfig, and UserRegistration: Both Surfaces
 
-**TSDoc surface (`monetary-amount/tsdoc.ts`):** See 005 §6.2 for the full TypeScript definition. The fixture file reproduces that definition verbatim; it is not duplicated here.
+The remaining registry fixtures follow the same file layout and assertion path as `usd-cents` and `plan-status`:
 
-**Chain DSL surface (`monetary-amount/chain-dsl.ts`):**
+- `address/` verifies named object reuse, `$defs`-style reference intent, nested string constraints, and mixed required/optional fields.
+- `product-config/` verifies class extraction with primitive fields, optionality, and an inline object field whose Chain DSL equivalent uses `field.objectWithConfig(...)`.
+- `user-registration/` verifies a plain required form with text, boolean, and string-literal enum fields.
 
-```typescript
-import { field, formspec } from "@formspec/dsl";
+Each fixture has exactly three source files:
 
-const invoiceForm = formspec(
-  field.object("total", {
-    displayName: "Total Amount",
-    type: "MonetaryAmount",
-    subfieldConstraints: {
-      value: { minimum: 0.01, maximum: 9999999.99, multipleOf: 0.01 },
-      currency: { pattern: "^[A-Z]{3}$" },
-    },
-  }),
-  field.object("discount", {
-    type: "MonetaryAmount",
-    optional: true,
-    subfieldConstraints: {
-      value: { minimum: 0 },
-    },
-  })
-);
-
-export { invoiceForm };
+```text
+fixtures/<name>/
+  tsdoc.ts
+  chain-dsl.ts
+  expected-ir.ts
 ```
+
+The current consolidated parity suite does not use per-fixture `*.test.ts` files or hand-authored `expected-schema.json` files. JSON Schema generator behavior is tested separately from the canonical IR parity registry.
 
 ### 3.5 Test Assertion Pattern
 
 Each parity test follows the same structure:
 
 ```typescript
-// monetary-amount.test.ts
-import { describe, it, expect } from "vitest";
-import { extractFormIR } from "@formspec/build/internals";
-import { canonicalizeDSL } from "@formspec/build/internals";
-import { compareIR } from "../helpers/ir-comparison";
-import { invoiceForm } from "./fixtures/monetary-amount/chain-dsl";
-import { expectedIR } from "./fixtures/monetary-amount/expected-ir";
+for (const fixture of parityFixtures) {
+  describe(`${fixture.name} parity`, () => {
+    it("chain DSL produces expected IR", () => {
+      const ir = canonicalizeChainDSL(fixture.chainForm);
+      expect(stripProvenance(ir)).toEqual(fixture.expectedIR);
+    });
 
-describe("parity: MonetaryAmount", () => {
-  it("TSDoc surface produces expected IR", async () => {
-    const ir = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
-    expect(compareIR(ir, expectedIR)).toEqual({ equivalent: true, differences: [] });
-  });
+    it("TSDoc produces expected IR", () => {
+      const fixturePath = nodePath.join(fixturesDir, fixture.name, "tsdoc.ts");
+      const ir = canonicalizeFixtureClass(fixturePath, fixture.className);
+      expect(stripProvenance(ir)).toEqual(fixture.expectedIR);
+    });
 
-  it("Chain DSL surface produces expected IR", () => {
-    const ir = canonicalizeDSL(invoiceForm);
-    expect(compareIR(ir, expectedIR)).toEqual({ equivalent: true, differences: [] });
-  });
+    it("both surfaces produce identical IR", () => {
+      const chainIR = canonicalizeChainDSL(fixture.chainForm);
+      const fixturePath = nodePath.join(fixturesDir, fixture.name, "tsdoc.ts");
+      const tsdocIR = canonicalizeFixtureClass(fixturePath, fixture.className);
 
-  it("Both surfaces produce identical IR", async () => {
-    const tsdocIR = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
-    const chainIR = canonicalizeDSL(invoiceForm);
-    expect(compareIR(tsdocIR, chainIR)).toEqual({ equivalent: true, differences: [] });
+      expect(compareIR(chainIR, tsdocIR)).toEqual([]);
+    });
   });
-});
+}
 ```
 
 The three-test pattern is intentional:
@@ -441,18 +430,13 @@ The three-test pattern is intentional:
 
 ### 4.1 The `compareIR` Helper
 
-The `compareIR` function compares two `FormIR` instances structurally, excluding provenance fields. It returns a structured result rather than throwing directly, enabling the test to report which fields differ:
+The `compareIR` function compares two `FormIR` instances structurally, excluding provenance fields. It returns an empty array when the IRs are equivalent, or one `IRDifference` per divergence:
 
 ```typescript
 // packages/build/tests/helpers/ir-comparison.ts
 
-export interface IRComparisonResult {
-  equivalent: boolean;
-  differences: IRDifference[];
-}
-
-export interface IRDifference {
-  path: string; // JSON pointer to the differing location, e.g. "/fields/0/constraints/1/value"
+interface IRDifference {
+  path: string; // JSONPath-like location, e.g. "elements[0].constraints[1].value"
   expected: unknown; // value from the first argument
   actual: unknown; // value from the second argument
 }
@@ -464,10 +448,14 @@ export interface IRDifference {
  * @see 001 §3 for the IR type definitions
  * @see 006 §4 for the comparison semantics
  */
-export function compareIR(a: FormIR, b: FormIR): IRComparisonResult {
-  const stripped_a = stripProvenance(a);
-  const stripped_b = stripProvenance(b);
-  return deepCompare(stripped_a, stripped_b);
+export function compareIR(a: FormIR, b: FormIR): IRDifference[] {
+  const strippedA = stripProvenance(a);
+  const strippedB = stripProvenance(b);
+  const differences: IRDifference[] = [];
+
+  collectDifferences(strippedA, strippedB, "", differences);
+
+  return differences;
 }
 ```
 
@@ -549,36 +537,27 @@ Testing A3 requires:
 3. Asserting the JSON Schema outputs are exactly equal (not just semantically equivalent — structurally identical, including key order and formatting)
 
 ```typescript
-// monetary-amount.test.ts (continued)
-import fs from "node:fs";
-import path from "node:path";
-import { generateJsonSchema } from "@formspec/build";
+// generator parity assertion sketch
+import { generateJsonSchemaFromIR } from "@formspec/build/internals";
 
-const expectedSchema = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "fixtures/monetary-amount/expected-schema.json"), "utf-8")
-);
+describe("A3 generator parity", () => {
+  it("both surfaces produce identical JSON Schema from equivalent IR", () => {
+    const chainIR = canonicalizeChainDSL(fixture.chainForm);
+    const tsdocIR = canonicalizeFixtureClass(fixturePath, fixture.className);
 
-describe("A3 parity: MonetaryAmount", () => {
-  it("both surfaces produce identical JSON Schema", async () => {
-    const tsdocIR = await extractFormIR("./fixtures/monetary-amount/tsdoc.ts");
-    const chainIR = canonicalizeDSL(invoiceForm);
-
-    const tsdocSchema = generateJsonSchema(tsdocIR);
-    const chainSchema = generateJsonSchema(chainIR);
+    const tsdocSchema = generateJsonSchemaFromIR(tsdocIR);
+    const chainSchema = generateJsonSchemaFromIR(chainIR);
 
     // A3: same IR → same output (exact structural equality)
     expect(tsdocSchema).toEqual(chainSchema);
-
-    // Also verify against the hand-authored expected schema
-    expect(tsdocSchema).toEqual(expectedSchema);
   });
 
   it("generator is pure: same IR produces same output on repeated calls", () => {
-    const ir = canonicalizeDSL(invoiceForm);
+    const ir = canonicalizeChainDSL(fixture.chainForm);
 
-    const output1 = generateJsonSchema(ir);
-    const output2 = generateJsonSchema(ir);
-    const output3 = generateJsonSchema(ir);
+    const output1 = generateJsonSchemaFromIR(ir);
+    const output2 = generateJsonSchemaFromIR(ir);
+    const output3 = generateJsonSchemaFromIR(ir);
 
     expect(output1).toEqual(output2);
     expect(output2).toEqual(output3);
@@ -599,11 +578,11 @@ JSON Schema output tests use `toEqual` (deep structural equality), which for pla
 
 ```typescript
 it("serialized output is deterministic across runs", () => {
-  const ir1 = canonicalizeDSL(invoiceForm);
-  const ir2 = canonicalizeDSL(invoiceForm);
+  const ir1 = canonicalizeChainDSL(fixture.chainForm);
+  const ir2 = canonicalizeChainDSL(fixture.chainForm);
 
-  const json1 = JSON.stringify(generateJsonSchema(ir1));
-  const json2 = JSON.stringify(generateJsonSchema(ir2));
+  const json1 = JSON.stringify(generateJsonSchemaFromIR(ir1));
+  const json2 = JSON.stringify(generateJsonSchemaFromIR(ir2));
 
   expect(json1).toBe(json2); // string equality, not deep equality
 });
@@ -611,141 +590,28 @@ it("serialized output is deterministic across runs", () => {
 
 ### 5.3 Output Comparison Against Hand-Authored Expected Schemas
 
-Each fixture's `expected-schema.json` is authored by hand and committed to the repository. It serves as the specification for what the correct output looks like. The test verifies that both surfaces produce output that matches this specification.
+The current consolidated parity registry uses hand-authored `expected-ir.ts` files as the normative fixture expectations. It does not currently include `expected-schema.json` files under `packages/build/tests/parity/fixtures`.
 
-The `expected-schema.json` files are subject to review in pull requests. Changes to these files signal a change to the observable output contract and must be intentional.
+When a parity fixture grows a hand-authored schema expectation, that schema file should be reviewed as observable output contract. Until then, JSON Schema output checks should derive from equivalent canonical IR and generator-specific assertions rather than from nonexistent fixture files.
 
 ---
 
 ## 6. Extensibility Stress-Test Fixtures
 
-Extension types (`Decimal`, `DateOnly`) are included in the parity test suite as first-class fixtures. They verify that parity holds across the extension boundary — not just for built-in types. If the extension API is correctly implemented (E1), extension types should be indistinguishable from built-in types in parity tests.
+Extension parity is planned but not part of the current consolidated registry in `packages/build/tests/parity/parity.test.ts`. The live registry currently covers only:
 
-### 6.1 Decimal Fixture
+- `address`
+- `user-registration`
+- `product-config`
+- `plan-status`
+- `usd-cents`
 
-**What it exercises:** Extension type registration (E5), constraint tag broadening for `@minimum`/`@maximum` on `Decimal`, custom `@maxSigFig` constraint tag, custom vocabulary keyword `x-myorg-maxSigFig` in JSON Schema output.
+Future extension fixtures should use the same `tsdoc.ts`, `chain-dsl.ts`, and `expected-ir.ts` shape as the current registry. Candidate extension fixtures include:
 
-**TSDoc surface (`decimal/tsdoc.ts`):** See 005 §4.2 (Outcome 7) for the `Decimal8` and `PositiveDecimal8` alias chain definitions. The fixture file extends that definition with the `PricingRule` interface; the alias chain source is not duplicated here.
+- `decimal` for extension type registration, decimal-preserving numeric constraints, and custom vocabulary keywords such as `x-myorg-maxSigFig`
+- `date-only` for non-numeric extension types, date-bound constraints, and `format: "date"` schema output
 
-**Chain DSL surface (`decimal/chain-dsl.ts`):**
-
-```typescript
-import { field, formspec } from "@formspec/dsl";
-
-const pricingRuleForm = formspec(
-  field.custom("baseRate", {
-    typeName: "PositiveDecimal8",
-    displayName: "Base Rate",
-    minimum: "0.01",
-    maximum: "999999.99",
-  }),
-  field.custom("overrideRate", {
-    typeName: "PositiveDecimal8",
-    optional: true,
-    displayName: "Override Rate",
-    minimum: "0",
-    maximum: "999999.99",
-    maxSigFig: 4,
-  })
-);
-
-export { pricingRuleForm };
-```
-
-**What parity verification checks:**
-
-1. `baseRate` IR has `minimum: "0.01"` (string, not number — decimal precision preserved per B3), `maximum: "999999.99"`, and inherits `maxSigFig: 8` and `minimum: "0"` from the alias chain.
-2. `overrideRate` IR has `maxSigFig: 4` at the use site, which is a valid narrowing of the inherited `maxSigFig: 8` (S1).
-3. Effective `maxSigFig` for `overrideRate` is `4` — the minimum of the use-site and inherited values.
-4. JSON Schema output includes `x-myorg-maxSigFig: 8` for `baseRate` and `x-myorg-maxSigFig: 4` for `overrideRate`.
-
-**Contradiction test within the Decimal fixture:**
-
-```typescript
-// Included in the diagnostic consistency section (§7) for the Decimal fixture
-/** @maxSigFig 12 */ // ERROR: cannot broaden inherited @maxSigFig 8
-type BroadDecimal = Decimal8;
-```
-
-Both the TSDoc extractor and the chain DSL canonicalizer must produce equivalent diagnostics for this contradiction (see §7).
-
-### 6.2 DateOnly Fixture
-
-**What it exercises:** Non-numeric extension type, `@before`/`@after` constraint tag broadening, `format: "date"` from the type's `jsonSchemaBase` registration, optional fields, constraint intersection for date bounds.
-
-**TSDoc surface (`date-only/tsdoc.ts`):**
-
-```typescript
-import type { DateOnly } from "@myorg/formspec-date-only";
-
-interface AuditPeriod {
-  /**
-   * @displayName Period Start
-   * @after 2000-01-01
-   */
-  startDate: DateOnly;
-
-  /**
-   * @displayName Period End
-   * @after 2000-01-01
-   * @before 2099-12-31
-   */
-  endDate: DateOnly;
-
-  /**
-   * @displayName Reviewed On
-   * @after 2000-01-01
-   */
-  reviewedOn?: DateOnly;
-}
-```
-
-**Chain DSL surface (`date-only/chain-dsl.ts`):**
-
-```typescript
-import { field, formspec } from "@formspec/dsl";
-
-const auditPeriodForm = formspec(
-  field.custom("startDate", {
-    typeName: "DateOnly",
-    displayName: "Period Start",
-    after: "2000-01-01",
-  }),
-  field.custom("endDate", {
-    typeName: "DateOnly",
-    displayName: "Period End",
-    after: "2000-01-01",
-    before: "2099-12-31",
-  }),
-  field.custom("reviewedOn", {
-    typeName: "DateOnly",
-    optional: true,
-    displayName: "Reviewed On",
-    after: "2000-01-01",
-  })
-);
-
-export { auditPeriodForm };
-```
-
-**What parity verification checks:**
-
-1. All three fields have `type: "string"` and `format: "date"` in JSON Schema output — sourced from the type's `jsonSchemaBase`, not from per-field `@format` annotations.
-2. `endDate` has two date bound constraints that compose correctly.
-3. `reviewedOn` is marked optional (absent from `required`).
-4. The `DateOnly` type is lifted to `$defs` and referenced via `$ref` in each field (PP7).
-
-### 6.3 What Extension Fixtures Validate About E1
-
-If both the Decimal and DateOnly parity tests pass:
-
-- Extension type registration works correctly (Outcome 1 from 003 §6.1)
-- Constraint tag broadening works for both numeric and non-numeric domains (Outcome 2)
-- Custom constraint tags compose identically to built-in constraints (Outcome 3)
-- Alias chain inheritance works for extension types exactly as for built-in types (Outcome 7)
-- JSON Schema output includes custom vocabulary keywords (Outcome 5)
-
-This satisfies the E1 ("built-in types use the same extension API") acceptance criteria. Extension types are not second-class citizens in the test suite.
+When those fixtures are added, they should be registered in `parity.test.ts` and accompanied by real fixture files before this document describes them as active coverage.
 
 ---
 
@@ -786,27 +652,6 @@ describe("diagnostic parity: constraint broadening", () => {
     expect(compareDiagnostics(tsdocDiagnostics, chainDiagnostics)).toEqual({
       equivalent: true,
       differences: [],
-    });
-  });
-
-  it("@maxSigFig broadening through alias chain (Decimal extension)", async () => {
-    // Both surfaces should produce CONSTRAINT_BROADENING with
-    // severity: "error" and reference both constraint locations
-    const tsdocDiagnostics = await extractWithDiagnostics(
-      "./fixtures/diagnostics/decimal-maxsigfig-broadening-tsdoc.ts"
-    );
-    const chainDiagnostics = canonicalizeWithDiagnostics(decimalBroadeningDSLForm);
-
-    expect(compareDiagnostics(tsdocDiagnostics, chainDiagnostics)).toEqual({
-      equivalent: true,
-      differences: [],
-    });
-
-    // Also verify the diagnostic code and severity directly
-    expect(tsdocDiagnostics).toHaveLength(1);
-    expect(tsdocDiagnostics[0]).toMatchObject({
-      code: "CONSTRAINT_BROADENING",
-      severity: "error",
     });
   });
 });
@@ -856,7 +701,7 @@ Each category of diagnostic is covered by at least one parity test:
 | Broadening attempt               | `@minimum 0` on `NonNegative` (inherits `@minimum 5`)      | `CONSTRAINT_BROADENING`    | Yes           |
 | Wrong type for tag               | `@minLength` on `number` field                             | `TYPE_MISMATCH`            | Yes           |
 | Unknown tag                      | `@unsupportedTag`                                          | `UNKNOWN_TAG`              | Yes           |
-| Extension-specific contradiction | `@maxSigFig 12` on `Decimal8` (inherits `@maxSigFig 8`)    | `CONSTRAINT_BROADENING`    | Yes           |
+| Extension-specific contradiction | `@maxSigFig 12` on `Decimal8` (inherits `@maxSigFig 8`)    | `CONSTRAINT_BROADENING`    | Planned       |
 | Missing required display names   | Enum with member display names on some but not all members | `INCOMPLETE_DISPLAY_NAMES` | Yes           |
 
 ---
@@ -910,7 +755,7 @@ The existing test infrastructure in the monorepo uses Vitest. Parity tests follo
 
 ```bash
 # Run only parity tests
-pnpm --filter @formspec/build run test -- --testPathPattern=parity
+pnpm --filter @formspec/build exec vitest run tests/parity
 
 # Run all build package tests (including parity)
 pnpm --filter @formspec/build run test
@@ -929,18 +774,18 @@ Parity tests run in the same CI job as unit tests (no separate job needed). The 
 pnpm run build && pnpm --filter @formspec/build run test
 ```
 
-Extension fixture tests that depend on `@formspec/test-fixtures` are included in the same job — the private fixtures package is part of the workspace and is built in the normal build order.
+Future extension parity fixtures should run in this same job once they are added to the real fixture registry.
 
 ### 8.5 Maintenance Obligations
 
 When adding a new TSDoc tag or chain DSL option:
 
 1. Add the tag/option to the appropriate canonical fixture (or create a new fixture if it tests a new concern)
-2. Update `expected-ir.ts` and `expected-schema.json` for all affected fixtures
+2. Update `expected-ir.ts` for all affected fixtures, plus `expected-schema.json` only for fixtures that explicitly add hand-authored schema checks
 3. Add or update the corresponding parity test assertions
 4. If the new tag has an error path, add a diagnostic consistency test case (§7.4)
 
-The `expected-ir.ts` and `expected-schema.json` files are the specification. Changes to them are breaking changes to the observable contract and must be reviewed carefully.
+The `expected-ir.ts` files are the current parity fixture specification. Any future `expected-schema.json` files will be output-contract fixtures too, and changes to those files must be reviewed carefully.
 
 ---
 

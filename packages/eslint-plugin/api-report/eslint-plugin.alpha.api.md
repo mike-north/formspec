@@ -103,6 +103,11 @@ export const noContradictoryRules: ESLintUtils.RuleModule<"contradictoryRuleEffe
     name: string;
 };
 
+// @public
+export const noDefaultOnRequiredField: ESLintUtils.RuleModule<"defaultOnRequiredField", [], unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
 // @public @deprecated
 export const noDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []>;
 
@@ -202,6 +207,9 @@ const plugin: {
         readonly "target-resolution/no-member-target-on-object": TSESLint.RuleModule<"memberTargetOnNonUnion", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
+        readonly "target-resolution/valid-target-variant": TSESLint.RuleModule<"invalidPluralTarget" | "invalidSingularTarget", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
         readonly "constraint-validation/no-contradictions": NamedRuleModule<NoContradictionsMessageIds, []>;
         readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
             name: string;
@@ -213,6 +221,9 @@ const plugin: {
             name: string;
         };
         readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
+            name: string;
+        };
+        readonly "constraint-validation/no-default-on-required-field": TSESLint.RuleModule<"defaultOnRequiredField", [], unknown, TSESLint.RuleListener> & {
             name: string;
         };
         readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
@@ -280,6 +291,9 @@ export const rules: {
     readonly "target-resolution/no-member-target-on-object": TSESLint.RuleModule<"memberTargetOnNonUnion", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
+    readonly "target-resolution/valid-target-variant": TSESLint.RuleModule<"invalidPluralTarget" | "invalidSingularTarget", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
     readonly "constraint-validation/no-contradictions": NamedRuleModule<NoContradictionsMessageIds, []>;
     readonly "constraint-validation/no-duplicate-tags": TSESLint.RuleModule<"duplicateTag" | "duplicateDiscriminatorTag", [], unknown, TSESLint.RuleListener> & {
         name: string;
@@ -291,6 +305,9 @@ export const rules: {
         name: string;
     };
     readonly "constraint-validation/no-double-underscore-fields": TSESLint.RuleModule<"phantomField", [], unknown, TSESLint.RuleListener> & {
+        name: string;
+    };
+    readonly "constraint-validation/no-default-on-required-field": TSESLint.RuleModule<"defaultOnRequiredField", [], unknown, TSESLint.RuleListener> & {
         name: string;
     };
     readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
@@ -337,6 +354,11 @@ export const validPathTarget: ESLintUtils.RuleModule<"unknownPathTarget", [], un
 
 // @public
 export const validRegexPattern: ESLintUtils.RuleModule<"invalidRegexPattern", [], unknown, ESLintUtils.RuleListener> & {
+    name: string;
+};
+
+// @public
+export const validTargetVariant: ESLintUtils.RuleModule<"invalidPluralTarget" | "invalidSingularTarget", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
 

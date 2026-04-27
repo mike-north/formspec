@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
-import { meta, rules } from "@formspec/eslint-plugin";
+import formspecPlugin from "@formspec/eslint-plugin";
 
 describe("Annotation: summary text and @remarks", () => {
   let tempDir: string;
@@ -67,14 +67,13 @@ describe("Annotation: summary text and @remarks", () => {
     const fixturePath = resolveFixture("tsdoc-class", "annotations-description.ts");
     // ESLint's plugin type and @typescript-eslint's RuleModule type are
     // structurally compatible at runtime, but their declarations diverge.
-    const formspecPlugin = { meta, rules } as unknown as ESLintNamespace.Plugin;
     const overrideConfig = [
       {
         files: ["**/*.ts"],
         languageOptions: {
           parser: tsParser,
         },
-        plugins: { formspec: formspecPlugin },
+        plugins: { formspec: formspecPlugin as unknown as ESLintNamespace.Plugin },
         rules: {
           "formspec/documentation/remarks-without-summary": "warn",
         },

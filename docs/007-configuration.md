@@ -506,6 +506,7 @@ createServer({ config });
 | `metadata` on `generateSchemas`           | `config.metadata`                                       | `@formspec/build`           |
 | `extensions` on `createServer`            | `config`                                                | `@formspec/language-server` |
 | `.formspec.yml` file format               | `formspec.config.ts`                                    | `@formspec/config`          |
+
 | `loadConstraintConfig` (YAML loader)      | `loadFormSpecConfig`                                    | `@formspec/config`          |
 | `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter | `@formspec/core`            |
 
