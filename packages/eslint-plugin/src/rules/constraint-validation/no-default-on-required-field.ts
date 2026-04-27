@@ -1,7 +1,5 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from "@typescript-eslint/utils";
-import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type { SourceCode } from "@typescript-eslint/utils/ts-eslint";
-import * as ts from "typescript";
 import { createDeclarationVisitor, type SupportedDeclaration } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
 
@@ -13,22 +11,10 @@ function hasDefaultValueTag(node: SupportedDeclaration, sourceCode: SourceCode):
   return scanFormSpecTags(node, sourceCode).some((tag) => tag.normalizedName === "defaultValue");
 }
 
-function hasQuestionToken(
-  node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature,
-  services: ParserServicesWithTypeInformation
-): boolean {
-  const tsNode = services.esTreeNodeToTSNodeMap.get(node);
-  return (
-    (ts.isPropertyDeclaration(tsNode) || ts.isPropertySignature(tsNode)) &&
-    tsNode.questionToken !== undefined
-  );
-}
-
 function isOptionalField(
-  node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature,
-  services: ParserServicesWithTypeInformation
+  node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature
 ): boolean {
-  return hasQuestionToken(node, services);
+  return node.optional === true;
 }
 
 /**
@@ -51,8 +37,6 @@ export const noDefaultOnRequiredField = createRule<[], "defaultOnRequiredField">
   },
   defaultOptions: [],
   create(context) {
-    const services = ESLintUtils.getParserServices(context);
-
     return createDeclarationVisitor((node) => {
       if (
         node.type !== AST_NODE_TYPES.PropertyDefinition &&
@@ -61,7 +45,7 @@ export const noDefaultOnRequiredField = createRule<[], "defaultOnRequiredField">
         return;
       }
 
-      if (!hasDefaultValueTag(node, context.sourceCode) || isOptionalField(node, services)) {
+      if (!hasDefaultValueTag(node, context.sourceCode) || isOptionalField(node)) {
         return;
       }
 

@@ -121,8 +121,8 @@ Packages must build in dependency order. The root `pnpm run build` handles this 
 - **Type tests**: tsd — `pnpm --filter @formspec/dsl run test:types`
 - **ESLint rule tests**: RuleTester via Vitest — `pnpm --filter @formspec/eslint-plugin run test`
 - **E2E tests**: `pnpm run test:e2e`
-- Type test files go in `src/__tests__/*.test-d.ts`
-- Static analysis pipeline tests use fixture files in `src/__tests__/fixtures/`
+- Type test files go in `tests/*.test-d.ts`
+- Static analysis pipeline tests use fixture files in `tests/fixtures/`
 - The `@formspec/build` package must be built before its tests run (`pnpm run build && vitest run`)
 
 ## Releasing
@@ -143,6 +143,10 @@ pnpm run release            # Build and publish (CI usually does this)
 - TSDoc constraint tags (`/** @minimum 0 @maximum 100 */`) are extracted via static AST analysis
 - Do not use `@description`; use summary text before block tags and `@remarks` for programmatic notes
 - API Extractor manages public API surface for library packages — commit `api-report/` files
+
+## Evolving the public API
+
+Per **PP14 — Deprecation over breaking changes** in [`docs/000-principles.md`](./docs/000-principles.md), prefer additive deprecation over outright removal when changing public APIs. When renaming, restructuring, or removing a public surface (TypeScript exports, ESLint rule IDs, configuration keys), add the new form, keep the old form as a deprecated alias that delegates to the new form, land the deprecation in a minor or patch release, and only remove the alias in a major release. Use `@deprecated` JSDoc tags on TypeScript exports, `meta.deprecated: true` plus `meta.replacedBy` on ESLint rules, and runtime warnings on configuration keys. Major releases should be mechanical — they remove deprecated aliases and dead deprecation-support code, not introduce new behavior. Exceptions (zero-user APIs, security/correctness fixes, `@alpha`/`@beta` churn) must be documented in the changeset. When proposing API changes — including in PR descriptions and design issues — explicitly state the chosen evolution strategy and, if breaking, justify the exception.
 
 ## Supported TypeScript versions
 

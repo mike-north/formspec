@@ -41,6 +41,7 @@ import {
   validTargetVariant,
   noDuplicateTags,
   noUnsupportedDescriptionTag as noUnsupportedDescriptionTagRule,
+  remarksWithoutSummary as remarksWithoutSummaryRule,
   noContradictoryRules,
   validDiscriminator,
   noDoubleUnderscoreFields,
@@ -158,6 +159,14 @@ export const tsdocCommentSyntax: NamedRuleModule<"tsdocSyntax", []> = tsdocComme
 export const noUnsupportedDescriptionTag: NamedRuleModule<"descriptionTagForbidden", []> =
   noUnsupportedDescriptionTagRule;
 
+/**
+ * Warns when `@remarks` appears without summary text.
+ *
+ * @public
+ */
+export const remarksWithoutSummary: NamedRuleModule<"remarksWithoutSummary", []> =
+  remarksWithoutSummaryRule;
+
 const deprecatedNoDescriptionTag = createDeprecatedRuleAlias(
   noUnsupportedDescriptionTag,
   "constraint-validation/no-description-tag",
@@ -232,6 +241,7 @@ export const rules = {
   "constraint-validation/no-double-underscore-fields": noDoubleUnderscoreFields,
   "constraint-validation/no-default-on-required-field": noDefaultOnRequiredField,
   "documentation/no-unsupported-description-tag": noUnsupportedDescriptionTag,
+  "documentation/remarks-without-summary": remarksWithoutSummary,
   "dsl-policy/allowed-field-types": allowedFieldTypes,
   "dsl-policy/allowed-layouts": allowedLayouts,
 
@@ -296,6 +306,7 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/constraint-validation/no-double-underscore-fields": "warn",
       "formspec/constraint-validation/no-default-on-required-field": "error",
       "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/documentation/remarks-without-summary": "warn",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",
     },
@@ -303,7 +314,8 @@ const recommendedConfig: TSESLint.FlatConfig.ConfigArray = [
 ];
 
 /**
- * Strict configuration - all rules as errors.
+ * Strict configuration - configurable warnings are upgraded to errors, while
+ * FormSpec info diagnostics remain ESLint warnings.
  *
  * @public
  */
@@ -338,6 +350,7 @@ const strictConfig: TSESLint.FlatConfig.ConfigArray = [
       "formspec/constraint-validation/no-double-underscore-fields": "error",
       "formspec/constraint-validation/no-default-on-required-field": "error",
       "formspec/documentation/no-unsupported-description-tag": "error",
+      "formspec/documentation/remarks-without-summary": "warn",
       "formspec/dsl-policy/allowed-field-types": "error",
       "formspec/dsl-policy/allowed-layouts": "error",
     },

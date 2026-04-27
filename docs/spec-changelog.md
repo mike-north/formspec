@@ -25,6 +25,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 ## 006-parity-testing
 
 - Documented recursive named-type coverage as existing analyzer, generator, and CLI/e2e evidence rather than adding a strict TSDoc-to-ChainDSL parity fixture in this doc-only update.
+- Refreshed parity-test organization examples to the package-level `tests/` layout introduced by PR #410.
 
 ## e2e-test-matrix
 
@@ -32,6 +33,11 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 
 ## 000-principles.md
 
+- Added PP14 — Deprecation over breaking changes ([#434](https://github.com/mike-north/formspec/issues/434)).
+  - Deprecation with an aliased replacement is the default mechanism for evolving public APIs (TypeScript exports, ESLint rule IDs, configuration keys).
+  - Removals land only in major releases; major releases are intentionally boring — they remove previously deprecated aliases and dead deprecation-support code, not introduce new behavior.
+  - Documented exceptions for zero-user APIs, security/correctness fixes, and `@alpha`/`@beta` churn — the alpha/beta exception is currently load-bearing during pre-1.0 development (PP12) and should narrow as APIs stabilize.
+  - CLAUDE.md gains a corresponding "Evolving the public API" section so contributors and AI agents internalize the principle when proposing API changes.
 - Added a naming principle for TSDoc tags.
   - FormSpec TSDoc tags should read as complete thoughts, even when they are not full sentences.
   - Generic names like `@data` are disfavored when they obscure the primary meaning being captured at the comment site.
@@ -206,7 +212,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Redefined `@remarks` role from `@description` fallback to a separate channel.
   - `@remarks` no longer populates JSON Schema `description`. It populates `x-<vendor>-remarks` instead.
   - SDK codegen can include `x-<vendor>-remarks` in doc comments; API Documenter renders source `@remarks` natively.
-  - A `REMARKS_WITHOUT_SUMMARY` diagnostic (info) is emitted when `@remarks` is present but no summary text exists.
+  - A `REMARKS_WITHOUT_SUMMARY` diagnostic (info; projected as ESLint `warn`) is emitted when `@remarks` is present but no summary text exists.
 - Replaced `DESCRIPTION_REMARKS_CONFLICT` diagnostic with `REMARKS_WITHOUT_SUMMARY` and `UNSUPPORTED_DESCRIPTION_TAG`.
 - Updated `DescriptionAnnotation` source note: now populated from TSDoc summary text rather than `@description` tag.
 - Added `RemarksAnnotation` IR node mapping to `x-<vendor>-remarks`.

@@ -219,6 +219,7 @@ const plugin: {
             name: string;
         };
         readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
+        readonly "documentation/remarks-without-summary": NamedRuleModule<"remarksWithoutSummary", []>;
         readonly "dsl-policy/allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
         readonly "dsl-policy/allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
         readonly "constraint-validation/no-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
@@ -232,6 +233,9 @@ const plugin: {
     withConfig: typeof withConfig;
 };
 export default plugin;
+
+// @public
+export const remarksWithoutSummary: NamedRuleModule<"remarksWithoutSummary", []>;
 
 // @public
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
@@ -296,6 +300,7 @@ export const rules: {
         name: string;
     };
     readonly "documentation/no-unsupported-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;
+    readonly "documentation/remarks-without-summary": NamedRuleModule<"remarksWithoutSummary", []>;
     readonly "dsl-policy/allowed-field-types": NamedRuleModule<"disallowedFieldType", AllowedFieldTypesOptions>;
     readonly "dsl-policy/allowed-layouts": NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
     readonly "constraint-validation/no-description-tag": NamedRuleModule<"descriptionTagForbidden", []>;

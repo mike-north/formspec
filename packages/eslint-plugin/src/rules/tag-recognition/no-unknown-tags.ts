@@ -8,6 +8,8 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
 );
 
+const RESERVED_DOCUMENTATION_TAGS = new Set(["description"]);
+
 /**
  * ESLint rule that reports unknown FormSpec tags.
  *
@@ -34,6 +36,7 @@ export const noUnknownTags = createRule<[], "unknownTag">({
 
     return createDeclarationVisitor((node) => {
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
+        if (RESERVED_DOCUMENTATION_TAGS.has(tag.normalizedName)) continue;
         if (getTagMetadata(tag.rawName) !== null) continue;
         if (extensionTagNameSet.has(tag.normalizedName)) continue;
         context.report({

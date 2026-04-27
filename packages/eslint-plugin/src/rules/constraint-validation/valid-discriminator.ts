@@ -137,16 +137,6 @@ function reportInvalidPlacementTags(
   }
 }
 
-function isFunctionParameter(node: TSESTree.Identifier): boolean {
-  const parent = node.parent;
-  return (
-    (parent.type === AST_NODE_TYPES.FunctionDeclaration ||
-      parent.type === AST_NODE_TYPES.FunctionExpression ||
-      parent.type === AST_NODE_TYPES.ArrowFunctionExpression) &&
-    parent.params.includes(node)
-  );
-}
-
 /**
  * ESLint rule that validates built-in `@discriminator` declarations.
  *
@@ -190,18 +180,20 @@ export const validDiscriminator = createRule<[], MessageIds>({
       },
       FunctionDeclaration(node) {
         reportInvalidPlacementTags(node, context);
+        for (const param of node.params) {
+          reportInvalidPlacementTags(param, context);
+        }
       },
       FunctionExpression(node) {
         reportInvalidPlacementTags(node, context);
+        for (const param of node.params) {
+          reportInvalidPlacementTags(param, context);
+        }
       },
       ArrowFunctionExpression(node) {
         reportInvalidPlacementTags(node, context);
-      },
-      Identifier(node) {
-        // Function parameters are not handled by the declaration visitor, but
-        // they can still carry leading TSDoc comments in authored source.
-        if (isFunctionParameter(node)) {
-          reportInvalidPlacementTags(node, context);
+        for (const param of node.params) {
+          reportInvalidPlacementTags(param, context);
         }
       },
       ...createDeclarationVisitor((node) => {

@@ -15,6 +15,8 @@ export default [
             "eslint.config.js",
             "scripts/check-typeflags-magic-numbers.mjs",
             "scripts/normalize-generated-markdown.mjs",
+            "scripts/check-stale-doc-references.mjs",
+            "scripts/check-stale-doc-references.test.mjs",
           ],
         },
         tsconfigRootDir: import.meta.dirname,

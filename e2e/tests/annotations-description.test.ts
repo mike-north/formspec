@@ -4,10 +4,14 @@
  * @see 003-json-schema-vocabulary.md §3.2: x-<vendor>-remarks annotation keyword
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { ESLint } from "eslint";
+import type { ESLint as ESLintNamespace, Linter } from "eslint";
+import tsParser from "@typescript-eslint/parser";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { runCli, resolveFixture, findSchemaFile } from "../helpers/schema-assertions.js";
+import { meta, rules } from "@formspec/eslint-plugin";
 
 describe("Annotation: summary text and @remarks", () => {
   let tempDir: string;
@@ -57,6 +61,41 @@ describe("Annotation: summary text and @remarks", () => {
   it("notes: @remarks alone produces x-formspec-remarks but no description", () => {
     expect(properties["notes"]["description"]).toBeUndefined();
     expect(properties["notes"]["x-formspec-remarks"]).toBe("Remarks only, no summary text.");
+  });
+
+  it("notes: @remarks alone reports REMARKS_WITHOUT_SUMMARY through ESLint", async () => {
+    const fixturePath = resolveFixture("tsdoc-class", "annotations-description.ts");
+    // ESLint's plugin type and @typescript-eslint's RuleModule type are
+    // structurally compatible at runtime, but their declarations diverge.
+    const formspecPlugin = { meta, rules } as unknown as ESLintNamespace.Plugin;
+    const overrideConfig = [
+      {
+        files: ["**/*.ts"],
+        languageOptions: {
+          parser: tsParser,
+        },
+        plugins: { formspec: formspecPlugin },
+        rules: {
+          "formspec/documentation/remarks-without-summary": "warn",
+        },
+      },
+    ] satisfies Linter.Config[];
+    const eslint = new ESLint({
+      cwd: path.dirname(fixturePath),
+      overrideConfigFile: true,
+      overrideConfig,
+    });
+
+    const [result] = await eslint.lintFiles([fixturePath]);
+    if (result === undefined) throw new Error("Expected lint result");
+
+    expect(result.messages).toHaveLength(1);
+    expect(result.messages[0]).toMatchObject({
+      ruleId: "formspec/documentation/remarks-without-summary",
+      severity: 1,
+      messageId: "remarksWithoutSummary",
+      line: 15,
+    });
   });
 
   // @see 002-tsdoc-grammar.md §2.2: absence of annotation → keyword not emitted
