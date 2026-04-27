@@ -69,6 +69,13 @@ Exceptions are acceptable when:
 
 When taking an exception, document the reason in the changeset.
 
+**PP15: Constraint kinds.** FormSpec uses "constraint" as a generic term for narrowing rules. Two distinct kinds operate at different levels:
+
+- **Data constraints** narrow valid values of a field. They are authored as TSDoc tags, represented in the IR as `ConstraintNode`, and emitted as JSON Schema validation keywords.
+- **DSL policy** narrows which FormSpec features a project may author. It is composed of building-block constraints (field-type, layout, rule-effect, etc.) loaded from `FormSpecConfig` and enforced at authoring/lint time.
+
+Spec docs that introduce constraint-related concepts must specify which kind they mean.
+
 ---
 
 ## 2. Semantic Properties
