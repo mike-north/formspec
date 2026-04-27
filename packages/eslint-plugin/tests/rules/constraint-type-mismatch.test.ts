@@ -170,6 +170,29 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
     },
+    {
+      code: `
+        export declare const __integerBrand: unique symbol;
+        export declare const __positiveIntegerBrand: unique symbol;
+
+        export type Integer = number & {
+          readonly [__integerBrand]: true;
+        };
+
+        export type PositiveInteger = number & {
+          readonly [__integerBrand]: true;
+          readonly [__positiveIntegerBrand]: true;
+        };
+
+        export interface MyFields {
+          /** @minimum 0 @maximum 100 */
+          count: Integer;
+
+          /** @exclusiveMinimum 0 @exclusiveMaximum 1000 @multipleOf 5 */
+          batchSize: PositiveInteger;
+        }
+      `,
+    },
 
     // -------------------------------------------------------------------------
     // @minLength on string fields

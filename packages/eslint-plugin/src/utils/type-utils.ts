@@ -125,11 +125,13 @@ export function isStringType(
 /**
  * Checks if a TypeScript type is a number type.
  *
- * Handles number primitives, number literals, and unions of number types.
+ * Handles number primitives, number literals, unions of number types, and
+ * branded intersections whose numeric member is a number type.
  *
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
- * @returns True if the type is number, a number literal, or a union of number types
+ * @returns True if the type is number, a number literal, a union of number
+ * types, or an intersection containing a number type
  *
  * @public
  */
@@ -147,6 +149,10 @@ export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
   // Check for union of number literals
   if (type.isUnion()) {
     return type.types.every((t) => isNumberType(t, checker));
+  }
+
+  if (type.isIntersection()) {
+    return type.types.some((t) => isNumberType(t, checker));
   }
 
   return false;
