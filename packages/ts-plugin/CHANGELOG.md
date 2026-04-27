@@ -1,5 +1,22 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.65
+
+### Minor Changes
+
+- [#431](https://github.com/mike-north/formspec/pull/431) [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53) Thanks [@mike-north](https://github.com/mike-north)! - Widen the `typescript` peer-dep range from `^5.9.3` to `>=5.7.3 <7`. FormSpec now officially supports TypeScript 5.7 through 6.x. The `<7` upper bound is deliberate — TypeScript 7.x is the Go rewrite with a substantively different API surface, and that migration will be handled separately. The 5.7 floor reflects the lowest version where the workspace's full toolchain (build, typecheck, test, lint) passes end-to-end; build/test alone work down to 5.5, but `@typescript-eslint/parser` 8.x's project-service mode misbehaves below 5.7.
+
+  `@formspec/language-server` and `formspec` (the umbrella) inherit this support transitively through their dependencies on `@formspec/analysis` and `@formspec/build` respectively.
+
+### Patch Changes
+
+- [#460](https://github.com/mike-north/formspec/pull/460) [`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8) Thanks [@mike-north](https://github.com/mike-north)! - Finish `@description` removal by dropping it from shared tag metadata and adding an autofix that moves unsupported `@description` content into TSDoc summary text.
+
+- [#450](https://github.com/mike-north/formspec/pull/450) [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca) Thanks [@mike-north](https://github.com/mike-north)! - Support bracketed multi-line JSON tag arguments in comment parsing, including `@const` arrays and objects.
+
+- Updated dependencies [[`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8), [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca), [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53)]:
+  - @formspec/analysis@0.1.0-alpha.65
+
 ## 0.1.0-alpha.64
 
 ### Patch Changes

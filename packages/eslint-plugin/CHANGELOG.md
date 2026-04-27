@@ -1,5 +1,55 @@
 # @formspec/eslint-plugin
 
+## 0.1.0-alpha.65
+
+### Minor Changes
+
+- [#453](https://github.com/mike-north/formspec/pull/453) [`4fd83da`](https://github.com/mike-north/formspec/commit/4fd83da2603e1e9686f967feede9230006d22601) Thanks [@mike-north](https://github.com/mike-north)! - Reconcile the public ESLint rule inventory with the tooling spec.
+  - Add canonical rule IDs `formspec/documentation/no-unsupported-description-tag`, `formspec/dsl-policy/allowed-field-types`, and `formspec/dsl-policy/allowed-layouts`.
+  - Keep `formspec/constraint-validation/no-description-tag`, `formspec/constraints-allowed-field-types`, and `formspec/constraints-allowed-layouts` as deprecated aliases for existing ESLint configs.
+  - Enable `formspec/tag-recognition/no-markdown-formatting` as a warning in `recommended` and an error in `strict`, and enable the DSL-policy rules in both presets.
+
+- [#463](https://github.com/mike-north/formspec/pull/463) [`ecdce95`](https://github.com/mike-north/formspec/commit/ecdce95f2c63dfa89fa339163a811aca89988296) Thanks [@mike-north](https://github.com/mike-north)! - Add lint diagnostics for invalid singular/plural naming variant targets, defaults on required fields, and misplaced discriminator tags.
+
+- [#459](https://github.com/mike-north/formspec/pull/459) [`491404a`](https://github.com/mike-north/formspec/commit/491404af4a564205e16f0d5f739aaaa7c75a3ef9) Thanks [@mike-north](https://github.com/mike-north)! - Add `formspec/documentation/remarks-without-summary`, a documentation-hygiene rule for the `REMARKS_WITHOUT_SUMMARY` info diagnostic when `@remarks` appears without summary text before the first tag. The rule is included in both recommended and strict presets as an ESLint warning because ESLint flat config does not have an info severity.
+
+- [#431](https://github.com/mike-north/formspec/pull/431) [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53) Thanks [@mike-north](https://github.com/mike-north)! - Widen the `typescript` peer-dep range from `^5.9.3` to `>=5.7.3 <7`. FormSpec now officially supports TypeScript 5.7 through 6.x. The `<7` upper bound is deliberate — TypeScript 7.x is the Go rewrite with a substantively different API surface, and that migration will be handled separately. The 5.7 floor reflects the lowest version where the workspace's full toolchain (build, typecheck, test, lint) passes end-to-end; build/test alone work down to 5.5, but `@typescript-eslint/parser` 8.x's project-service mode misbehaves below 5.7.
+
+  `@formspec/language-server` and `formspec` (the umbrella) inherit this support transitively through their dependencies on `@formspec/analysis` and `@formspec/build` respectively.
+
+### Patch Changes
+
+- [#465](https://github.com/mike-north/formspec/pull/465) [`f603680`](https://github.com/mike-north/formspec/commit/f60368008efd87b1b8e2b564faacafdbeaa942e3) Thanks [@mike-north](https://github.com/mike-north)! - Reconcile `@formspec/config` documentation with its unified-configuration identity (resolves [#419](https://github.com/mike-north/formspec/issues/419) — documentation half).
+
+  The package JSDoc on `packages/config/src/index.ts` now describes `@formspec/config` as the unified configuration package (schemas, extensions, serialization, metadata policy, pipeline settings) and acknowledges that DSL-policy validation lives here transitionally pending the factoring tracked in [#420](https://github.com/mike-north/formspec/issues/420). The `package.json` description is updated to mention DSL-policy validation explicitly. No source-code or runtime behavior changes.
+
+  The transitive-dependent patch bumps (`@formspec/build`, `@formspec/cli`, `@formspec/eslint-plugin`, `@formspec/language-server`, `formspec`) are required by the monorepo's mechanical changeset gate; they carry no functional changes.
+
+- [#431](https://github.com/mike-north/formspec/pull/431) [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@formspec/eslint-plugin` rules under TypeScript 6.x by replacing hardcoded `ts.TypeFlags` numeric literals in the type-classification helpers with `ts.TypeFlags.X` enum references. TS 6 renumbered the entire `TypeFlags` enum, which caused `isStringType`, `isNumberType`, `isBooleanType`, `isNullableType`, and `getFieldTypeCategory` to produce wrong results (e.g. reporting `nonStringLikeTargetField` instead of `nullableTargetField` for `string | null`). Behavior under TS 5.x is unchanged.
+
+- [#460](https://github.com/mike-north/formspec/pull/460) [`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8) Thanks [@mike-north](https://github.com/mike-north)! - Finish `@description` removal by dropping it from shared tag metadata and adding an autofix that moves unsupported `@description` content into TSDoc summary text.
+
+- [#456](https://github.com/mike-north/formspec/pull/456) [`5c5ab75`](https://github.com/mike-north/formspec/commit/5c5ab75e90c5063512739f7bb8ffe77de5d54d7e) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@formspec/eslint-plugin/base` shipping with no `.d.ts` rollup, which made consumer projects fall back to implicit `any` for `createConstraintRule` and the JSDoc/type utility helpers.
+
+  The package's `exports["./base"].types` pointed at `./dist/base.d.ts`, but the build never produced that file — only the bundled `.cjs`/`.js` outputs and per-source declarations under `dist/src/`. Added a second API Extractor configuration (`api-extractor.base.json`) targeting `src/base.ts`, wired into the `build` and `api-extractor[:local]` scripts so both the index and base entry points get rolled up. Added `@public` release tags to the symbols re-exported from `base.ts` so API Extractor accepts the new entry point.
+
+- [#450](https://github.com/mike-north/formspec/pull/450) [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca) Thanks [@mike-north](https://github.com/mike-north)! - Support bracketed multi-line JSON tag arguments in comment parsing, including `@const` arrays and objects.
+
+- [#462](https://github.com/mike-north/formspec/pull/462) [`865f4e7`](https://github.com/mike-north/formspec/commit/865f4e749f9557d084298f258df4be9a3c56b481) Thanks [@mike-north](https://github.com/mike-north)! - Emit `ANONYMOUS_RECURSIVE_TYPE` for unsupported anonymous recursive type shapes, fail schema generation with diagnostics for those shapes, and surface the lint rule through the ESLint recommended and strict rule sets. Named recursive `$defs` / `$ref` behavior is unchanged.
+
+- [#445](https://github.com/mike-north/formspec/pull/445) [`9fe2efc`](https://github.com/mike-north/formspec/commit/9fe2efc984b2ae000d3776aa3e1e2d5f2413e287) Thanks [@mike-north](https://github.com/mike-north)! - Sort generated JSON Schema `required` arrays alphabetically for deterministic output.
+
+- [#446](https://github.com/mike-north/formspec/pull/446) [`69f296c`](https://github.com/mike-north/formspec/commit/69f296ce9834069301ed7bf9b8c9cca0919c240a) Thanks [@mike-north](https://github.com/mike-north)! - Add a regression test pinning multi-file `@format` inheritance provenance.
+
+- [#444](https://github.com/mike-north/formspec/pull/444) [`4c26e5b`](https://github.com/mike-north/formspec/commit/4c26e5bf7c4c42cca8042b150af4c8cd671a63ba) Thanks [@mike-north](https://github.com/mike-north)! - Add focused regression coverage for TypeScript-backed field type classification helpers.
+
+- [#458](https://github.com/mike-north/formspec/pull/458) [`170f772`](https://github.com/mike-north/formspec/commit/170f772a8173f0f83c7a7c837eca874bae034736) Thanks [@mike-north](https://github.com/mike-north)! - Add a repository lint guard that rejects hardcoded numeric TypeScript compiler flag bitmasks in package source files.
+
+- Updated dependencies [[`f603680`](https://github.com/mike-north/formspec/commit/f60368008efd87b1b8e2b564faacafdbeaa942e3), [`5107fee`](https://github.com/mike-north/formspec/commit/5107fee15f6a3b590445cd1689840633ec3dded8), [`ee358d0`](https://github.com/mike-north/formspec/commit/ee358d0ab2b71b95df99ff84c40f437ace3a54ca), [`865f4e7`](https://github.com/mike-north/formspec/commit/865f4e749f9557d084298f258df4be9a3c56b481), [`9fe2efc`](https://github.com/mike-north/formspec/commit/9fe2efc984b2ae000d3776aa3e1e2d5f2413e287), [`69f296c`](https://github.com/mike-north/formspec/commit/69f296ce9834069301ed7bf9b8c9cca0919c240a), [`96d2c16`](https://github.com/mike-north/formspec/commit/96d2c16d6e17c186c48860230ec51846e6a65d53)]:
+  - @formspec/config@0.1.0-alpha.65
+  - @formspec/build@0.1.0-alpha.65
+  - @formspec/analysis@0.1.0-alpha.65
+
 ## 0.1.0-alpha.64
 
 ### Patch Changes
