@@ -76,6 +76,8 @@ When taking an exception, document the reason in the changeset.
 
 Spec docs that introduce constraint-related concepts must specify which kind they mean.
 
+**PP16: Single-program analysis.** Constraint validation operates on the host TypeScript program. Tag arguments are parsed by a typed argument parser; their compatibility with the targeted type is checked by reading the host `ts.TypeChecker`. FormSpec analysis must not construct a second `ts.Program` at analysis time. This bounds memory and latency to the consumer's existing TypeScript work, and avoids the divergence problems that arose when two parallel checkers operated on the same source.
+
 ---
 
 ## 2. Semantic Properties
@@ -236,6 +238,6 @@ Subsequent design documents reference these principles by ID. For traceability:
 | PP2, PP3, PP7, A1, A4, A5, S1–S7, C1, D1, D2, D4, E1–E5, NP1       | 001 (Canonical IR)           |
 | PP1, PP2, PP9, PP10, S4–S7, D1–D6                                  | 002 (TSDoc Grammar)          |
 | PP2, PP6, PP7, PP9, PP10, S1, B3, B4, E3                           | 003 (JSON Schema Vocabulary) |
-| A7, PP9, PP10, PP11, D1–D6, E1                                     | 004 (Tooling)                |
+| A7, PP9, PP10, PP11, PP16, D1–D6, E1                               | 004 (Tooling)                |
 | PP2, PP3, S1, S2, S4, S7, B3, B4, C1, E1–E5                        | 005 (Numeric Types)          |
 | PP3, PP5, PP6, PP7, A1–A4, S1, S5, C1, D1, D3, D4, E1, E4, E5, NP1 | 006 (Parity Testing)         |

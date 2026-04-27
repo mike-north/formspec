@@ -174,7 +174,7 @@ export function renderHybridToolingBenchmarkReport(
     "- `startupMs` is the wrapper/service startup cost before the measured query path runs",
     "- `coldMs` is the first query against a fresh mode/scenario instance",
     "- `warmMs` repeats the same query immediately after to show cache reuse",
-    "- snapshot and synthetic cache counters come from the semantic service that actually performed the work",
+    "- snapshot cache counters come from the semantic service that actually performed the work",
     "",
   ];
 

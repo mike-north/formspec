@@ -37,8 +37,8 @@ export function _collectBrandIdentifiers(type: ts.Type): readonly string[] {
  * includes a `number` base and a computed property keyed by `__integerBrand`.
  *
  * Used by both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
- * (`file-snapshots.ts`) to bypass the synthetic-checker constraint path for
- * imported types whose names the synthetic program cannot resolve.
+ * (`file-snapshots.ts`) so imported branded types are recognized consistently
+ * from the host checker.
  *
  * Call `stripNullishUnion` (re-exported from `@formspec/analysis/internal`)
  * before this function to handle nullable and optional fields

@@ -231,6 +231,9 @@ FormSpec editor tooling uses a hybrid split:
 - `@formspec/ts-plugin` owns the reusable semantic service that works directly against a host `Program`/`TypeChecker`. Its shipped tsserver plugin and IPC server are reference implementations built on that same public service.
 - `@formspec/language-server` exports composable completion, hover, and diagnostics helpers. Its packaged LSP is a thin reference implementation that wires those helpers together.
 
+Per PP16, constraint validation reads that host program and does not create a
+second TypeScript `Program` during analysis.
+
 This is intentionally white-labelable: downstream tools can reuse the same
 TypeScript `Program`, call `FormSpecSemanticService` directly, and decide for
 themselves how diagnostics are surfaced.
@@ -323,10 +326,10 @@ Each constraint-tag evaluation emits one structured record at `debug` level.
 
 #### Role outcome values
 
-Phase 5C retired the synthetic TypeScript program batch. Constraint-tag
-validation now flows through three roles in order: Role A (placement), Role B
-(capability guard, including path-target resolution), Role C (typed-parser
-argument validation). A `C-pass` outcome means all three roles accepted.
+Constraint-tag validation flows through three roles in order: Role A
+(placement), Role B (capability guard, including path-target resolution), and
+Role C (typed-parser argument validation). A `C-pass` outcome means all three
+roles accepted.
 
 | Value      | Meaning                                                                                                                          |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
