@@ -9,4 +9,4 @@
 "formspec": patch
 ---
 
-Document the single-program analysis architecture and update stale post-synthetic-checker comments.
+Document the single-program analysis architecture, update stale post-synthetic-checker comments, and align snapshot broadening-bypass logging.

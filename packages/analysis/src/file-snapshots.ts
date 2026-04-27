@@ -1696,7 +1696,16 @@ function buildTagDiagnostics(
       } else {
         // Extension-broadened (D1/D2) — bypass the typed parser; D1/D2
         // handling is performed by the downstream registry dispatch.
-        // Log at trace level if enabled.
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "bypass",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",
@@ -1706,6 +1715,7 @@ function buildTagDiagnostics(
             roleOutcome: "bypass",
           });
         }
+        continue;
       }
     }
 

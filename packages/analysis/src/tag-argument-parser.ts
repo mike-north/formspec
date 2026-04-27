@@ -217,9 +217,9 @@ function parseNumericArgument(
     };
   }
 
-  // Pin current consumer behavior: Infinity, -Infinity, and NaN are accepted
-  // as valid numeric arguments. Snapshot analysis preserves these identifiers
-  // as numeric sentinels. See §3 "Tie-break Infinity/NaN" and §9.3 #16.
+  // Pin shared parser behavior: Infinity, -Infinity, and NaN are accepted as
+  // valid numeric arguments and represented as numeric sentinels. See §3
+  // "Tie-break Infinity/NaN" and §9.3 #16.
   if (text === "Infinity") {
     return { ok: true, value: { kind: "number", value: Infinity } };
   }
