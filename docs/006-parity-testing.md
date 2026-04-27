@@ -170,43 +170,19 @@ class SubscriptionForm {
 
 ### 2.5 Fixture: Address
 
-**What it tests:** Object type with nested constraints, `$defs` + `$ref` for a reusable type, multi-field required/optional mix.
+**What it tests:** Plain text-field parity with a required/optional mix and no annotations or constraints.
 
 ```typescript
 // TSDoc surface
-interface Address {
-  /**
-   * @displayName Street
-   * @minLength 1
-   * @maxLength 200
-   */
-  street: string;
-
-  /** @displayName City */
-  city: string;
-
-  /**
-   * @displayName Country Code
-   * @minLength 2
-   * @maxLength 2
-   * @pattern ^[A-Z]{2}$
-   */
-  country: string;
-
-  /** @displayName Postal Code */
-  postalCode?: string;
-}
-
-interface CustomerForm {
-  /** @displayName Billing Address */
-  billing: Address;
-
-  /** @displayName Shipping Address */
-  shipping?: Address;
+class AddressForm {
+  street!: string;
+  city!: string;
+  postalCode!: string;
+  country?: string;
 }
 ```
 
-**Why this is a good fixture:** The `Address` type appears twice in `CustomerForm` — once required and once optional — exercising the `$defs` + `$ref` deduplication (PP7, 003 §5.1). The `country` field has three constraints that compose correctly.
+**Why this is a good fixture:** The fixture isolates direct text-field parity without alias, object-reference, or constraint normalization. It verifies that required class fields (`street`, `city`, `postalCode`) and an optional class field (`country`) produce the same provenance-free IR as the equivalent chain DSL form.
 
 ### 2.6 Fixture: ProductConfig
 
@@ -310,26 +286,23 @@ interface LineItem {
 ```typescript
 import { field, formspec } from "@formspec/dsl";
 
-// The chain DSL expresses constraint inheritance through type references.
-// The DSL consumer names the type and the build pipeline resolves it to
-// the same IR that the TSDoc extractor produces.
-// Integer semantics are expressed through the named type reference —
-// the "Integer" $defs entry resolves to JSON Schema type "integer".
-
 const lineItemForm = formspec(
-  field.number("unitPrice", { displayName: "Unit Price", type: "USDCents" }),
+  field.number("unitPrice", {
+    required: true,
+    min: 0,
+    multipleOf: 1,
+  }),
   field.number("quantity", {
-    displayName: "Quantity",
-    type: "USDCents",
-    minimum: 1,
-    maximum: 9999,
+    required: true,
+    min: 1,
+    multipleOf: 1,
   })
 );
 
 export { lineItemForm };
 ```
 
-**Note on chain DSL type references:** The chain DSL references type names (e.g., `type: "USDCents"`) that are resolved against the project's registered type aliases. The type alias registration (`USDCents = Integer = number` with bounds, where `Integer` canonicalizes to integer semantics) is defined in a shared configuration file and loaded by the build pipeline. This is how constraint inheritance propagates through the chain DSL: the type name carries the alias chain's constraints.
+**Note on fixture normalization:** The TSDoc fixture uses helper aliases (`Integer`, `USDCents`, and `Quantity`) to exercise alias-chain extraction. The chain DSL fixture represents the same effective field semantics directly with numeric options. The parity helper normalizes TSDoc-only helper aliases before comparison so the test checks the shared field-level IR semantics that both surfaces can express today.
 
 ### 3.3 PlanStatus: Both Surfaces
 
@@ -374,7 +347,7 @@ export { planStatusForm };
 
 The remaining registry fixtures follow the same file layout and assertion path as `usd-cents` and `plan-status`:
 
-- `address/` verifies named object reuse, `$defs`-style reference intent, nested string constraints, and mixed required/optional fields.
+- `address/` verifies plain text fields with a mixed required/optional shape and no annotations or constraints.
 - `product-config/` verifies class extraction with primitive fields, optionality, and an inline object field whose Chain DSL equivalent uses `field.objectWithConfig(...)`.
 - `user-registration/` verifies a plain required form with text, boolean, and string-literal enum fields.
 
@@ -387,7 +360,7 @@ fixtures/<name>/
   expected-ir.ts
 ```
 
-The current consolidated parity suite does not use per-fixture `*.test.ts` files or hand-authored `expected-schema.json` files. JSON Schema generator behavior is tested separately from the canonical IR parity registry.
+The current consolidated parity suite does not use per-fixture test files or hand-authored schema expectation files. JSON Schema generator behavior is tested separately from the canonical IR parity registry.
 
 ### 3.5 Test Assertion Pattern
 
@@ -433,7 +406,7 @@ The three-test pattern is intentional:
 The `compareIR` function compares two `FormIR` instances structurally, excluding provenance fields. It returns an empty array when the IRs are equivalent, or one `IRDifference` per divergence:
 
 ```typescript
-// packages/build/tests/helpers/ir-comparison.ts
+// packages/build/tests/parity/utils.ts
 
 interface IRDifference {
   path: string; // JSONPath-like location, e.g. "elements[0].constraints[1].value"
@@ -590,7 +563,7 @@ it("serialized output is deterministic across runs", () => {
 
 ### 5.3 Output Comparison Against Hand-Authored Expected Schemas
 
-The current consolidated parity registry uses hand-authored `expected-ir.ts` files as the normative fixture expectations. It does not currently include `expected-schema.json` files under `packages/build/tests/parity/fixtures`.
+The current consolidated parity registry uses hand-authored `expected-ir.ts` files as the normative fixture expectations. It does not currently include hand-authored schema expectation files under `packages/build/tests/parity/fixtures`.
 
 When a parity fixture grows a hand-authored schema expectation, that schema file should be reviewed as observable output contract. Until then, JSON Schema output checks should derive from equivalent canonical IR and generator-specific assertions rather than from nonexistent fixture files.
 
@@ -629,80 +602,18 @@ Two diagnostic sets are equivalent when:
 - Message text and `fixSuggestion` are verified separately against surface-appropriate expected values; they are not part of parity comparison
 - **Excluded from comparison:** `location` (file, line, column) — the TSDoc surface points to a comment in a `.ts` file; the chain DSL surface points to a method call site. Surface-specific source locations are expected and intentional (A4).
 
-### 7.2 Contradiction Test Pattern
+### 7.2 Planned Diagnostic Test Cases by Category
 
-```typescript
-// packages/build/tests/parity/diagnostics.test.ts
-
-import { describe, it, expect } from "vitest";
-import { extractWithDiagnostics } from "@formspec/build/internals";
-import { canonicalizeWithDiagnostics } from "@formspec/build/internals";
-import { compareDiagnostics } from "../helpers/diagnostic-comparison";
-
-describe("diagnostic parity: constraint broadening", () => {
-  it("inverted numeric bounds", async () => {
-    // TSDoc: @minimum 10 @maximum 5 on the same number field
-    const tsdocDiagnostics = await extractWithDiagnostics(
-      "./fixtures/diagnostics/inverted-bounds-tsdoc.ts"
-    );
-
-    // Chain DSL: field.number("x", { minimum: 10, maximum: 5 })
-    const chainDiagnostics = canonicalizeWithDiagnostics(invertedBoundsDSLForm);
-
-    expect(compareDiagnostics(tsdocDiagnostics, chainDiagnostics)).toEqual({
-      equivalent: true,
-      differences: [],
-    });
-  });
-});
-```
-
-### 7.3 Diagnostic Comparison Helper
-
-```typescript
-// packages/build/tests/helpers/diagnostic-comparison.ts
-
-export interface DiagnosticComparisonResult {
-  equivalent: boolean;
-  differences: DiagnosticDifference[];
-}
-
-export interface DiagnosticDifference {
-  index: number; // index into the sorted diagnostic array
-  field: string; // which field differs: "code", "severity", "message", etc.
-  expected: unknown;
-  actual: unknown;
-}
-
-/**
- * Compares two diagnostic arrays for semantic equivalence.
- * Source locations (file, line, column) are excluded from comparison.
- * Diagnostics are sorted by code before comparison for determinism (D3).
- *
- * @see 000-principles.md D1–D6 for diagnostic property requirements
- */
-export function compareDiagnostics(
-  a: readonly Diagnostic[],
-  b: readonly Diagnostic[]
-): DiagnosticComparisonResult;
-
-// sortDiagnostics: sorts a diagnostic array by `code` using locale-aware string ordering.
-// Used internally to normalize order before element-wise comparison (D3).
-function sortDiagnostics(diagnostics: readonly Diagnostic[]): readonly Diagnostic[];
-```
-
-### 7.4 Diagnostic Test Cases by Category
-
-Each category of diagnostic is covered by at least one parity test:
+Diagnostic parity is planned but is not part of the current consolidated parity registry. When diagnostic parity tests are added, they should cover these categories with the same source-location exclusion described above:
 
 | Category                         | Example input                                              | Expected code              | Parity tested |
 | -------------------------------- | ---------------------------------------------------------- | -------------------------- | ------------- |
-| Numeric contradiction            | `@minimum 10 @maximum 5`                                   | `CONSTRAINT_CONTRADICTION` | Yes           |
-| Broadening attempt               | `@minimum 0` on `NonNegative` (inherits `@minimum 5`)      | `CONSTRAINT_BROADENING`    | Yes           |
-| Wrong type for tag               | `@minLength` on `number` field                             | `TYPE_MISMATCH`            | Yes           |
-| Unknown tag                      | `@unsupportedTag`                                          | `UNKNOWN_TAG`              | Yes           |
+| Numeric contradiction            | `@minimum 10 @maximum 5`                                   | `CONSTRAINT_CONTRADICTION` | Planned       |
+| Broadening attempt               | `@minimum 0` on `NonNegative` (inherits `@minimum 5`)      | `CONSTRAINT_BROADENING`    | Planned       |
+| Wrong type for tag               | `@minLength` on `number` field                             | `TYPE_MISMATCH`            | Planned       |
+| Unknown tag                      | `@unsupportedTag`                                          | `UNKNOWN_TAG`              | Planned       |
 | Extension-specific contradiction | `@maxSigFig 12` on `Decimal8` (inherits `@maxSigFig 8`)    | `CONSTRAINT_BROADENING`    | Planned       |
-| Missing required display names   | Enum with member display names on some but not all members | `INCOMPLETE_DISPLAY_NAMES` | Yes           |
+| Missing required display names   | Enum with member display names on some but not all members | `INCOMPLETE_DISPLAY_NAMES` | Planned       |
 
 ---
 
@@ -710,17 +621,13 @@ Each category of diagnostic is covered by at least one parity test:
 
 ### 8.1 File Naming Conventions
 
-| Test file pattern                              | Purpose                                  |
-| ---------------------------------------------- | ---------------------------------------- |
-| `tests/parity/*.test.ts`                       | Surface parity tests (TSDoc ↔ chain DSL) |
-| `tests/parity/fixtures/*/tsdoc.ts`             | TSDoc surface fixture                    |
-| `tests/parity/fixtures/*/chain-dsl.ts`         | Chain DSL surface fixture                |
-| `tests/parity/fixtures/*/expected-ir.ts`       | Hand-authored expected IR                |
-| `tests/parity/fixtures/*/expected-schema.json` | Hand-authored expected JSON Schema       |
-| `tests/parity/diagnostics.test.ts`             | Diagnostic consistency across surfaces   |
-| `tests/parity/a3-purity.test.ts`               | Generator purity (A3)                    |
-| `tests/helpers/ir-comparison.ts`               | `compareIR` helper                       |
-| `tests/helpers/diagnostic-comparison.ts`       | `compareDiagnostics` helper              |
+| Test file pattern                        | Purpose                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| `tests/parity/parity.test.ts`            | Consolidated surface parity suite with the fixture registry array       |
+| `tests/parity/fixtures/*/tsdoc.ts`       | TSDoc surface fixture                                                   |
+| `tests/parity/fixtures/*/chain-dsl.ts`   | Chain DSL surface fixture                                               |
+| `tests/parity/fixtures/*/expected-ir.ts` | Hand-authored expected IR compared against both canonicalized surfaces  |
+| `tests/parity/utils.ts`                  | Provenance stripping and IR comparison helpers shared by parity asserts |
 
 ### 8.2 Location in the Monorepo
 
@@ -730,38 +637,18 @@ Parity tests live in `@formspec/build` because:
 2. The chain DSL canonicalizer is part of `@formspec/build` (it canonicalizes `FormSpec<Elements>` to the canonical IR).
 3. Testing parity requires invoking the TypeScript compiler API (for TSDoc extraction), which is a dependency of `@formspec/build` and not available in lighter packages.
 
-Extension fixture tests (`Decimal`, `DateOnly`) are in `@formspec/build`'s test suite but depend on extension packages defined in the monorepo's test fixtures directory:
-
-```
-packages/build/tests/
-  parity/
-    fixtures/
-      decimal/          ← uses @formspec/test-fixtures/decimal
-      date-only/        ← uses @formspec/test-fixtures/date-only
-
-packages/test-fixtures/   ← private package, not published
-  src/
-    decimal/
-      index.ts            ← Decimal type + extension registration
-    date-only/
-      index.ts            ← DateOnly type + extension registration
-```
-
-The `@formspec/test-fixtures` package is `"private": true` and is never published. It exists solely to support parity and extensibility tests.
+Future extension fixture tests (`Decimal`, `DateOnly`) should live in `@formspec/build`'s test suite once the supporting private fixture package exists. Until those files are added to the real registry, extension parity remains planned coverage rather than active coverage.
 
 ### 8.3 Relationship to Existing Test Infrastructure
 
 The existing test infrastructure in the monorepo uses Vitest. Parity tests follow the same conventions:
 
 ```bash
-# Run only parity tests
-pnpm --filter @formspec/build exec vitest run tests/parity
+# Run build-package tests, including parity, through the package script
+pnpm --filter @formspec/build run test -- tests/parity
 
 # Run all build package tests (including parity)
 pnpm --filter @formspec/build run test
-
-# Type-level tests for IR types (tsd)
-pnpm --filter @formspec/build run test:types
 ```
 
 The `expected-ir.ts` fixture files use TypeScript types from `@formspec/core`. This gives the hand-authored expected values the benefit of TypeScript's type checker: a malformed expected IR is a compile error, not a silent test failure.
@@ -781,19 +668,19 @@ Future extension parity fixtures should run in this same job once they are added
 When adding a new TSDoc tag or chain DSL option:
 
 1. Add the tag/option to the appropriate canonical fixture (or create a new fixture if it tests a new concern)
-2. Update `expected-ir.ts` for all affected fixtures, plus `expected-schema.json` only for fixtures that explicitly add hand-authored schema checks
+2. Update `expected-ir.ts` for all affected fixtures, plus schema expectation files only for fixtures that explicitly add hand-authored schema checks
 3. Add or update the corresponding parity test assertions
-4. If the new tag has an error path, add a diagnostic consistency test case (§7.4)
+4. If the new tag has an error path, add or update the planned diagnostic consistency coverage (§7.2)
 
-The `expected-ir.ts` files are the current parity fixture specification. Any future `expected-schema.json` files will be output-contract fixtures too, and changes to those files must be reviewed carefully.
+The `expected-ir.ts` files are the current parity fixture specification. Any future schema expectation files will be output-contract fixtures too, and changes to those files must be reviewed carefully.
 
 ---
 
 ## Appendix: Open Decisions Summary
 
-| #    | Section  | Question                                                                                                                                           | Status                                                                                                                                                                                                                                                                                                                                           |
-| ---- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OD-1 | §3.2     | How does the chain DSL express type alias constraint inheritance — by name reference resolved at build time, or by explicit constraint repetition? | By name reference — `type: "USDCents"` loads the alias chain from the project's type registry                                                                                                                                                                                                                                                    |
-| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                                                                | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                                                                                                                                 |
-| OD-3 | §6, §8.2 | Should extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests?                                            | **DECIDED:** In `packages/test-fixtures/` as a private, unpublished workspace package. This allows the fixture extensions to have their own `package.json`, `tsconfig.json`, and build step, while remaining clearly separated from distributable code. Tests in `packages/build/tests/` reference the fixture package via workspace dependency. |
-| OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                                                       | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                                                                                                                                |
+| #    | Section  | Question                                                                                                       | Status                                                                                                                                                                                                                                 |
+| ---- | -------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OD-1 | §3.2     | How does the current chain DSL parity fixture express TSDoc-only type alias constraint inheritance?            | By explicit effective constraints. The TSDoc fixture exercises alias-chain extraction; the chain DSL fixture repeats the effective `min`/`multipleOf` constraints and parity normalization compares the shared field semantics.        |
+| OD-2 | §4.3     | Should snapshot tests be part of parity validation?                                                            | **DECIDED:** No — snapshots are not part of the normative parity strategy; parity uses hand-authored expectations and structural assertions only                                                                                       |
+| OD-3 | §6, §8.2 | Should future extension fixture packages (`@formspec/test-fixtures`) be in `packages/` or alongside the tests? | **DECIDED for future extension parity:** place them in `packages/test-fixtures/` as a private, unpublished workspace package once extension fixtures are added. The current consolidated registry does not include extension fixtures. |
+| OD-4 | §7.1     | Should diagnostic message text be compared character-for-character, or only code + severity?                   | Code + severity in parity comparison; message text is verified separately against expected values                                                                                                                                      |
