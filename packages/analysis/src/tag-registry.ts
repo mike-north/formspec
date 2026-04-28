@@ -97,9 +97,9 @@ export interface ExtensionConstraintTagSource {
 }
 
 /**
- * Synthetic type declaration info for extension-registered custom types.
- * Used to emit type aliases in the synthetic program so declarations
- * referencing these types can be included in supportingDeclarations.
+ * Type declaration metadata for extension-registered custom types.
+ * Used by host-checker-aware consumers to recognize declarations that reference
+ * extension-provided type names.
  */
 export interface ExtensionCustomTypeSource {
   /** TypeScript surface names that resolve to this type (e.g., ['Decimal']) */

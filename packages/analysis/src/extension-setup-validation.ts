@@ -8,6 +8,9 @@
  * Produces two diagnostic codes:
  *   - `SYNTHETIC_SETUP_FAILURE` — invalid identifier, duplicate registration
  *   - `UNSUPPORTED_CUSTOM_TYPE_OVERRIDE` — unsupported TypeScript global-builtin override
+ *
+ * `SYNTHETIC_SETUP_FAILURE` predates the single-program analysis model and is
+ * retained as a stable internal diagnostic code.
  */
 
 import type { Provenance } from "@formspec/core/internals";

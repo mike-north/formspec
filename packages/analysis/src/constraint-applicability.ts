@@ -3,7 +3,7 @@
  * snapshot consumer.
  *
  * The build consumer (`tsdoc-parser.ts`) calls `supportsConstraintCapability()`
- * before the synthetic-checker call to emit `TYPE_MISMATCH` when a constraint's
+ * before argument validation to emit `TYPE_MISMATCH` when a constraint's
  * required semantic capability is absent from the field type (e.g. `@minimum 0`
  * on a `string` field has no `numeric-comparable` capability).
  *

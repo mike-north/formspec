@@ -217,9 +217,9 @@ function parseNumericArgument(
     };
   }
 
-  // Pin current consumer behavior: Infinity, -Infinity, and NaN are accepted
-  // as valid numeric arguments. The synthetic snapshot path passes these
-  // identifiers through as-is. See §3 "Tie-break Infinity/NaN" and §9.3 #16.
+  // Pin shared parser behavior: Infinity, -Infinity, and NaN are accepted as
+  // valid numeric arguments and represented as numeric sentinels. See §3
+  // "Tie-break Infinity/NaN" and §9.3 #16.
   if (text === "Infinity") {
     return { ok: true, value: { kind: "number", value: Infinity } };
   }
@@ -435,8 +435,8 @@ function parseConstArgument(rawArgumentText: string): TagArgumentParseResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Parses a single constraint-tag argument literal. Role C of the
- * synthetic-checker retirement plan §1.
+ * Parses a single constraint-tag argument literal for the Role C typed-parser
+ * validation step.
  *
  * @param tagName - normalized tag name (no leading "@")
  * @param rawArgumentText - argument text AFTER parseTagSyntax has stripped
@@ -560,7 +560,7 @@ export function mapTypedParserDiagnosticCode(
 
 /**
  * Derives the effective argument text that should be passed to
- * `parseTagArgument` (Role C of the synthetic-checker retirement plan).
+ * `parseTagArgument` for the Role C typed-parser validation step.
  *
  * Both the build consumer (`tsdoc-parser.ts`) and the snapshot consumer
  * (`file-snapshots.ts`) need to extract the same argument text from a tag

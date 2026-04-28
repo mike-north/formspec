@@ -1321,8 +1321,8 @@ function buildTagDiagnostics(
     // semantic.tagDefinition is always non-null here (the null case causes an
     // early `continue` at the top of the loop).
     //
-    // §5 Phase 5C — this placement check is the only Role-A guard; the former
-    // synthetic-program fallback has been retired.
+    // This placement check is the only Role-A guard in the host-program
+    // analysis path.
     {
       const definition = semantic.tagDefinition;
       const targetKind = target?.kind ?? null;
@@ -1431,10 +1431,9 @@ function buildTagDiagnostics(
         // loop (isIntegerBypass check above). This guard only runs on the
         // non-broadened, non-bypassed path.
         //
-        // §5 Phase 5C — Role B now covers BOTH direct-field (target === null)
-        // and path-target (target.kind === "path") validation. Previously path
-        // targets were validated through the synthetic checker; Phase 5C retires
-        // that surface so Role B is the only remaining capability check.
+        // Role B covers BOTH direct-field (target === null) and path-target
+        // (target.kind === "path") validation. It is the host-checker-backed
+        // capability check for the resolved target type.
         //
         // For path targets we resolve the terminal type via resolvePathTargetType
         // and run the capability check against that resolved type. Path
@@ -1481,10 +1480,8 @@ function buildTagDiagnostics(
               if (pathTargetResolution === null) {
                 // tag.target.path is null — the path target text failed to
                 // parse (e.g. `@minimum :invalid-syntax 0` where the segment
-                // contains non-identifier characters). Before Phase 5C this
-                // fell through to the synthetic lowering which would reject it
-                // there; now that the synthetic checker is retired we must emit
-                // a diagnostic here instead of silently accepting it.
+                // contains non-identifier characters). The host-program path
+                // must emit a diagnostic here instead of silently accepting it.
                 pathRejection = {
                   code: "INVALID_PATH_TARGET",
                   message: `Tag "@${tag.normalizedTagName}" has an invalid path target.`,
@@ -1699,7 +1696,16 @@ function buildTagDiagnostics(
       } else {
         // Extension-broadened (D1/D2) — bypass the typed parser; D1/D2
         // handling is performed by the downstream registry dispatch.
-        // Log at trace level if enabled.
+        if (snapshotLogsEnabled) {
+          logTagApplication(snapshotLog, {
+            consumer: "snapshot",
+            tag: tag.normalizedTagName,
+            placement,
+            subjectTypeKind: subjectTypeKindForLog,
+            roleOutcome: "bypass",
+            elapsedMicros: elapsedMicros(tagStartMicros),
+          });
+        }
         if (typedParserTraceEnabled) {
           typedParserLog.trace("typed-parser bypass", {
             consumer: "snapshot",
@@ -1709,13 +1715,13 @@ function buildTagDiagnostics(
             roleOutcome: "bypass",
           });
         }
+        continue;
       }
     }
 
-    // §5 Phase 5C — all validation is now complete via Role A (placement
+    // All validation is now complete via Role A (placement
     // pre-check), Role B (capability guard, including path-target resolution),
-    // and Role C (typed-parser argument validation). The synthetic
-    // TypeScript program batch has been retired. Log C-pass for structured
+    // and Role C (typed-parser argument validation). Log C-pass for structured
     // tracing and move on.
     if (snapshotLogsEnabled) {
       logTagApplication(snapshotLog, {

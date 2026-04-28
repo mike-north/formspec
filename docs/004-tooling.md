@@ -26,6 +26,7 @@ The tooling layer sits between the authoring surface (TSDoc tags, chain DSL) and
 | **PP9** (configurable surface area)                 | Every FormSpec diagnostic severity is overridable via project configuration. Rules can be set to `off`, `warn`, or `error` per project                                                                                                                 |
 | **PP10** (white-labelable)                          | Canonical machine-readable diagnostic codes and structured raw facts stay stable, while downstream organizations own final presentation and branding                                                                                                   |
 | **PP11** (consumer-controlled messaging)            | Downstream tooling can ignore default messages and render from `code` + structured `data`. This phase does not require project-level message-template configuration                                                                                    |
+| **PP16** (single-program analysis)                  | Constraint validation reuses the host TypeScript `Program` and `TypeChecker`; FormSpec analysis does not construct a second `ts.Program`                                                                                                               |
 | **E1** (built-in types use the same extension API)  | The ESLint rule infrastructure described here is the same API used by built-in rules. Extensions get tag-on-type validation, contradiction detection, and path-target resolution for free                                                              |
 
 ### Relationship to Other Documents
@@ -134,8 +135,7 @@ The report prints:
 - `coldMs` for the first diagnostics/completion/hover query on a fresh instance
 - `warmMs` for the immediately repeated query
 - file-snapshot cache hit/miss totals
-- synthetic batch cache hit/miss totals
-- synthetic compiler program counts and application counts
+- per-operation summaries, such as diagnostic counts, completion counts, or hover text availability
 
 Use the benchmark to guide downstream integration choices:
 
@@ -168,6 +168,13 @@ This phase validates constraint composition across the resolved IR nodes:
 6. Propagates constraints through the type inheritance chain when type context is available, detecting cross-type contradictions (producing `CONSTRAINT_CONTRADICTION` with both source locations per D2)
 
 Extension-registered constraints participate in contradiction detection by declaring their contradiction predicate (see §4.2).
+
+PP16 governs this phase operationally. Role A validates placement first. Role B
+checks compatibility against the host `TypeChecker` and the registered semantic
+capabilities for the direct field or resolved path target. Role C validates tag
+arguments with the typed argument parser. Accepted constraints then flow into
+IR-level composition and contradiction checks. No analysis-time path constructs a
+second `ts.Program`.
 
 ### 2.6 Pipeline TypeScript Interface
 
@@ -602,7 +609,7 @@ Per A7, the language server owns the authoring experience: completions, hover, g
 
 FormSpec uses a hybrid architecture:
 
-- `@formspec/ts-plugin` is the semantic authority. It runs inside `tsserver`, reuses the host editor's existing `Program` and `TypeChecker`, and performs expensive semantic work such as path resolution, placement checks, compiler-backed synthetic signature validation, and effective constraint-state computation. Its shipped plugin wrapper is a reference implementation over the public in-process semantic service.
+- `@formspec/ts-plugin` is the semantic authority. It runs inside `tsserver`, reuses the host editor's existing `Program` and `TypeChecker`, and performs expensive semantic work such as path resolution, placement checks, host-checker-backed argument validation (PP16), and effective constraint-state computation. Its shipped plugin wrapper is a reference implementation over the public in-process semantic service.
 - `@formspec/language-server` is a lightweight standalone LSP surface. It keeps cheap syntax-local behavior in-process, then enriches hover/completion responses with semantic results produced by the TypeScript plugin. Its shipped server is a reference implementation over exported completion, hover, and diagnostics helpers.
 
 The two components communicate on the workspace host via:

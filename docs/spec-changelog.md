@@ -19,6 +19,17 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - Spec docs that introduce constraint-related concepts must specify which kind they mean.
   - Resolves the documentation half of [#419](https://github.com/mike-north/formspec/issues/419); the DSL-policy factoring follow-up is tracked in [#420](https://github.com/mike-north/formspec/issues/420).
 
+- Added PP16 — Single-program analysis ([#435](https://github.com/mike-north/formspec/issues/435)).
+  - Constraint validation now normatively reads the host TypeScript `Program` and `TypeChecker`.
+  - Tag arguments are validated by the typed argument parser; analysis must not construct a second `ts.Program`.
+
+## 004-tooling.md
+
+- Updated the tooling architecture for the post-synthetic-checker analysis model ([#435](https://github.com/mike-north/formspec/issues/435)).
+  - Benchmark prose now documents the current hybrid-tooling report columns: startup/cold/warm timings, snapshot cache hit/miss counts, and per-operation summaries.
+  - Constraint-validation prose now describes host-checker capability checks, typed argument parsing, and IR-level validation under PP16.
+  - Language-server prose now refers to host-checker-backed argument validation rather than synthetic signature validation.
+
 # 2026-04-26
 
 ## 002-tsdoc-grammar
