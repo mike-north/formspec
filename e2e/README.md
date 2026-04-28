@@ -25,7 +25,8 @@ pnpm --filter @formspec/e2e run benchmark:hybrid-tooling
 **Baseline:** `docs/refactors/phase-0-baseline.md`
 
 Measures `generateSchemasFromProgram` wall time and peak RSS, plus
-`FormSpecSemanticService.getDiagnostics` file-snapshot cache hit/miss totals.
+`FormSpecSemanticService.getDiagnostics` file-snapshot cache per-run hit/miss
+deltas (fresh-service).
 Used as the Phase 0-C baseline for the synthetic-checker retirement refactor.
 
 ```bash
