@@ -200,7 +200,7 @@ When in doubt, prefer **Resolver** for the function and **data source** for the 
 
 The project-level configuration file consumed by `@formspec/config`. Discovery searches for `formspec.config.ts`, `formspec.config.mts`, `formspec.config.js`, or `formspec.config.mjs` (in that order) starting from the working directory. Authors write the file as TypeScript using `defineFormSpecConfig({...})` and register extensions, custom constraints, vendor prefix, metadata policy, enum serialization, DSL policy, and per-package overrides.
 
-`.formspec.yml` is **legacy** and is no longer the default convention; YAML strings can still be parsed via `loadConfigFromString()` in the browser entry for embedded scenarios.
+YAML config files and YAML-string loading are removed. Embedded and browser-like hosts use the same public `@formspec/config` surface as Node consumers; callers that need discovery/loading outside Node provide a `FileSystem` adapter to `loadFormSpecConfig`.
 
 Owning bounded context: `ConfigurationContext`. See [`docs/007-configuration.md`](./docs/007-configuration.md).
 
@@ -212,7 +212,7 @@ Owning bounded context: `DSLPolicyContext`.
 
 ### Capability
 
-A FormSpec authoring feature that DSL policy can enable or disable per project (e.g., "dynamic enums," "conditional layout," "placeholder option"). Capability restrictions are enforced at three layers: ESLint plugin (build-time), `validateFormSpecElements()` (programmatic), and browser-embedded validation through the public `@formspec/config/browser` entry point. Internal packages may use the private `@formspec/dsl-policy/browser` implementation directly.
+A FormSpec authoring feature that DSL policy can enable or disable per project (e.g., "dynamic enums," "conditional layout," "placeholder option"). Capability restrictions are enforced at three layers: ESLint plugin (build-time), `validateFormSpecElements()` from `@formspec/config` (programmatic), and browser-embedded validation through the same public `@formspec/config` entry point. Internal packages may use the private `@formspec/dsl-policy/browser` implementation directly.
 
 ### Capability Registry
 

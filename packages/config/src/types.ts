@@ -328,7 +328,7 @@ export interface ValidationResult {
 }
 
 /**
- * Top-level FormSpec configuration file structure.
+ * Top-level FormSpec configuration structure.
  *
  * @public
  */

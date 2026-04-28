@@ -1,63 +1,80 @@
-# @formspec/constraints
+# @formspec/config
 
-Constraint configuration and validation for FormSpec DSL usage.
+Unified configuration and DSL-policy validation for FormSpec projects.
 
 Use this package when you want project-level rules such as:
 
 - disallowing certain field types
 - limiting layout nesting
 - restricting selected field options
-- validating `.formspec.yml`-driven capability policies
+- registering extensions and project-wide FormSpec settings
 
 ## Install
 
 ```bash
-pnpm add @formspec/constraints
+pnpm add @formspec/config
 ```
 
-## `.formspec.yml`
+## `formspec.config.ts`
 
-```yaml
-constraints:
-  fieldTypes:
-    dynamicEnum: warn
-    dynamicSchema: error
+```ts
+import { defineFormSpecConfig } from "@formspec/config";
 
-  layout:
-    conditionals: off
-    maxNestingDepth: 2
-
-  fieldOptions:
-    placeholder: off
-    minItems: warn
+export default defineFormSpecConfig({
+  constraints: {
+    fieldTypes: {
+      dynamicEnum: "warn",
+      dynamicSchema: "error",
+    },
+    layout: {
+      conditionals: "off",
+      maxNestingDepth: 2,
+    },
+    fieldOptions: {
+      placeholder: "off",
+      minItems: "warn",
+    },
+  },
+});
 ```
 
 ## Programmatic Use
 
 ```ts
-import { loadConfig, mergeWithDefaults, validateFormSpecElements } from "@formspec/constraints";
+import { loadFormSpecConfig, validateFormSpecElements } from "@formspec/config";
 import { field, formspec } from "@formspec/dsl";
 
-const { config } = await loadConfig();
-const resolved = mergeWithDefaults(config.constraints);
+const result = await loadFormSpecConfig();
+const constraints = result.found ? result.config.constraints : undefined;
 
 const form = formspec(field.text("name"), field.dynamicEnum("country", "countries"));
-const result = validateFormSpecElements(form.elements, { constraints: resolved });
+const validation = validateFormSpecElements(form.elements, { constraints });
 ```
 
-## Browser Entry Point
+## Static Non-Node Imports
 
-Use `@formspec/constraints/browser` when you need validation in browser code and do not want the file-based config loader:
+The main `@formspec/config` entry point does not statically import Node filesystem modules, so browser-oriented tools can import policy helpers without pulling in `node:fs` or `node:path`. Hosts that need config discovery can pass a `FileSystem` adapter for path and file operations:
 
 ```ts
-import { loadConfigFromString, validateFormSpec } from "@formspec/constraints/browser";
+import { loadFormSpecConfig, type FileSystem } from "@formspec/config";
+
+const fileSystem: FileSystem = {
+  exists: async (path) => existsInHost(path),
+  readFile: async (path) => readFromHost(path),
+  resolve: (...segments) => resolveInHost(...segments),
+  dirname: (path) => dirnameInHost(path),
+};
+
+await loadFormSpecConfig({ searchFrom: ".", fileSystem });
 ```
+
+The adapter covers discovery, existence checks, workspace-root checks, and file reads. Evaluating a TypeScript config module still uses the current Node-compatible `jiti` loader; a non-Node module evaluator is future work.
 
 ## Main Exports
 
-- `loadConfig`
-- `loadConfigFromString`
-- `defineConstraints`
+- `loadFormSpecConfig`
+- `defineFormSpecConfig`
+- `defineDSLPolicy`
 - `mergeWithDefaults`
 - `validateFormSpecElements`
 - `validateFormSpec`

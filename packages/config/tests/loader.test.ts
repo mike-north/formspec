@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdir, writeFile, rm, readFile as readNodeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname as nodeDirname, join, resolve as nodeResolve } from "node:path";
 import {
   DEFAULT_CONSTRAINTS,
   DEFAULT_DSL_POLICY,
@@ -10,6 +10,7 @@ import {
   loadConfig,
   loadFormSpecConfig,
 } from "../src/index.js";
+import type { FileSystem } from "../src/index.js";
 
 async function mkTempDir(): Promise<string> {
   const base = join(
@@ -33,6 +34,50 @@ afterEach(async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+interface TrackingFileSystem {
+  readonly fileSystem: FileSystem;
+  readonly existsPaths: string[];
+  readonly readFilePaths: string[];
+  readonly resolveCalls: readonly string[][];
+  readonly dirnamePaths: string[];
+}
+
+function createTrackingFileSystem(): TrackingFileSystem {
+  const existsPaths: string[] = [];
+  const readFilePaths: string[] = [];
+  const resolveCalls: string[][] = [];
+  const dirnamePaths: string[] = [];
+
+  return {
+    fileSystem: {
+      async exists(path) {
+        existsPaths.push(path);
+        try {
+          return (await stat(path)).isFile();
+        } catch {
+          return false;
+        }
+      },
+      async readFile(path) {
+        readFilePaths.push(path);
+        return readNodeFile(path, "utf-8");
+      },
+      resolve(...segments) {
+        resolveCalls.push(segments);
+        return nodeResolve(...segments);
+      },
+      dirname(path) {
+        dirnamePaths.push(path);
+        return nodeDirname(path);
+      },
+    },
+    existsPaths,
+    readFilePaths,
+    resolveCalls,
+    dirnamePaths,
+  };
+}
 
 /**
  * Writes a `formspec.config.ts` in a fresh temp dir and asserts that loading
@@ -162,6 +207,23 @@ export default defineFormSpecConfig({
       );
     });
 
+    it("uses the injected filesystem for explicit configPath resolution and existence checks", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { vendorPrefix: "x-adapter" };`, "utf-8");
+      const tracking = createTrackingFileSystem();
+
+      const result = await loadFormSpecConfig({
+        configPath: filePath,
+        fileSystem: tracking.fileSystem,
+      });
+
+      expect(result.found).toBe(true);
+      expect(tracking.resolveCalls).toContainEqual([filePath]);
+      expect(tracking.existsPaths).toContain(filePath);
+      expect(tracking.readFilePaths).not.toContain(filePath);
+    });
+
     it("returns empty config for a file with empty default export", async () => {
       const dir = await createTempDir();
       const filePath = join(dir, "formspec.config.ts");
@@ -265,7 +327,69 @@ export default defineFormSpecConfig({
       expect(result.found).toBe(false);
     });
 
-    it("defaults searchFrom to process.cwd() when no options are provided", async () => {
+    it("uses the injected filesystem for discovery existence, path resolution, and parent traversal", async () => {
+      const rootDir = await createTempDir();
+      const nestedDir = join(rootDir, "packages", "my-pkg", "src");
+      await mkdir(nestedDir, { recursive: true });
+      const configPath = join(rootDir, "formspec.config.ts");
+      await writeFile(configPath, `export default { vendorPrefix: "x-discovered" };`, "utf-8");
+      const tracking = createTrackingFileSystem();
+
+      const result = await loadFormSpecConfig({
+        searchFrom: nestedDir,
+        fileSystem: tracking.fileSystem,
+      });
+
+      expect(result.found).toBe(true);
+      expect(tracking.resolveCalls).toContainEqual([nestedDir]);
+      expect(tracking.resolveCalls).toContainEqual([rootDir, "formspec.config.ts"]);
+      expect(tracking.existsPaths).toContain(configPath);
+      expect(tracking.readFilePaths).not.toContain(configPath);
+      expect(tracking.dirnamePaths).toContain(nestedDir);
+    });
+
+    it("checks workspace roots through the injected filesystem", async () => {
+      const workspaceRoot = await createTempDir();
+      await writeFile(
+        join(workspaceRoot, "package.json"),
+        JSON.stringify({ name: "monorepo", workspaces: ["packages/*"] }),
+        "utf-8"
+      );
+      const pkgDir = join(workspaceRoot, "packages", "my-pkg");
+      await mkdir(pkgDir, { recursive: true });
+      const tracking = createTrackingFileSystem();
+
+      const result = await loadFormSpecConfig({
+        searchFrom: pkgDir,
+        fileSystem: tracking.fileSystem,
+      });
+
+      expect(result.found).toBe(false);
+      expect(tracking.readFilePaths).toContain(join(workspaceRoot, "package.json"));
+    });
+
+    it("resolves the default search directory through the injected filesystem", async () => {
+      const tracking = createTrackingFileSystem();
+
+      await loadFormSpecConfig({ fileSystem: tracking.fileSystem });
+
+      expect(tracking.resolveCalls).toContainEqual(["."]);
+    });
+
+    it("checks candidate config paths through the injected filesystem when no config exists", async () => {
+      const dir = await createTempDir();
+      const tracking = createTrackingFileSystem();
+
+      const result = await loadFormSpecConfig({ searchFrom: dir, fileSystem: tracking.fileSystem });
+
+      expect(result.found).toBe(false);
+      expect(tracking.existsPaths).toContain(join(dir, "formspec.config.ts"));
+      expect(tracking.existsPaths).toContain(join(dir, "formspec.config.mts"));
+      expect(tracking.existsPaths).toContain(join(dir, "formspec.config.js"));
+      expect(tracking.existsPaths).toContain(join(dir, "formspec.config.mjs"));
+    });
+
+    it("defaults searchFrom when no options are provided", async () => {
       // Just verify the call doesn't throw and returns a result shape
       const result = await loadFormSpecConfig();
 
@@ -335,6 +459,26 @@ describe("loadConfig (deprecated wrapper)", () => {
     expect(result.found).toBe(false);
     expect(result.configPath).toBeNull();
     expect(result.config.fieldTypes.text).toBe("off");
+  });
+
+  it("delegates filesystem access to loadFormSpecConfig", async () => {
+    const dir = await createTempDir();
+    const filePath = join(dir, "formspec.config.ts");
+    await writeFile(
+      filePath,
+      `export default { constraints: { fieldTypes: { dynamicEnum: "error" } } };`,
+      "utf-8"
+    );
+    const tracking = createTrackingFileSystem();
+
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- testing deprecated API
+    const result = await loadConfig({ configPath: filePath, fileSystem: tracking.fileSystem });
+
+    expect(result.found).toBe(true);
+    expect(result.config.fieldTypes.dynamicEnum).toBe("error");
+    expect(tracking.resolveCalls).toContainEqual([filePath]);
+    expect(tracking.existsPaths).toContain(filePath);
+    expect(tracking.readFilePaths).not.toContain(filePath);
   });
 });
 

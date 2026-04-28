@@ -43,8 +43,8 @@
  * @packageDocumentation
  */
 
-// Browser-safe DSL-policy facade, defaults, validators, and types.
-export * from "./browser.js";
+// DSL-policy facade, defaults, validators, and types.
+export * from "./policy.js";
 
 export type {
   AnyField,
@@ -72,6 +72,7 @@ export {
   loadFormSpecConfig,
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- backward-compatible re-export
   loadConfig,
+  type FileSystem,
   type LoadConfigOptions,
   type LoadConfigResult,
   type LoadConfigFoundResult,

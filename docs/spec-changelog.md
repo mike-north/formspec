@@ -23,6 +23,9 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - `@formspec/config` carries policy as `FormSpecConfig.constraints` and re-exports the policy surface for compatibility.
   - ESLint DSL-policy rules may consume bundled browser-safe policy helpers from `@formspec/dsl-policy/browser`.
   - Stale `.formspec.yml` message, disabled-tag, and extension-configuration references now identify those surfaces as planned or legacy rather than current active configuration.
+- Removed remaining references to YAML-backed FormSpec project configuration.
+  - Severity overrides stay in ESLint configuration.
+  - Future disabled-tag policy belongs in `formspec.config.ts`.
 
 ## 007-configuration.md
 
@@ -31,6 +34,10 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
   - Existing public imports from `@formspec/config` remain valid through compatibility re-exports and deprecated aliases for the old constraint-named APIs.
   - Published packages bundle private DSL-policy helpers rather than exposing `@formspec/dsl-policy` as an install-time dependency.
   - ESLint and language-server per-file config integration is documented as target behavior where it is not yet implemented.
+- Recorded the issue #429 TS-only config cleanup.
+  - YAML files and `loadConfigFromString` are removed.
+  - The public `@formspec/config/browser` and `formspec.schema.json` subpaths are removed.
+  - `LoadConfigOptions.fileSystem` is the non-Node discovery/read adapter; module evaluation remains a separate future concern.
 
 # 2026-04-27
 

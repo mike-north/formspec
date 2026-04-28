@@ -59,7 +59,7 @@ Domain FormSpec {
 	Subdomain ConfigurationDomain {
 		type = SUPPORTING
 		domainVisionStatement
-			= "User-facing extension and constraint registration plus shared DSL-policy restriction. Project configuration is authored as TypeScript via formspec.config.ts (.mts/.js/.mjs variants accepted); legacy YAML strings are still parseable via the browser entry."
+			= "User-facing extension and constraint registration plus shared DSL-policy restriction. Project configuration is authored as TypeScript via formspec.config.ts (.mts/.js/.mjs variants accepted); non-Node hosts use the FileSystem adapter for discovery and file reads."
 	}
 
 	Subdomain RuntimeDomain {
@@ -172,11 +172,12 @@ BoundedContext ConfigurationContext implements ConfigurationDomain {
 	implementationTechnology = "TypeScript + jiti — npm package @formspec/config"
 	responsibilities
 		= "loadFormSpecConfig() — discover and parse formspec.config.{ts,mts,js,mjs}",
+		  "FileSystem adapter — inject config discovery and file-read operations for non-Node hosts",
 		  "defineFormSpecConfig() and defineDSLPolicy() — typed configuration authoring",
-		  "DSL-policy compatibility exports from DSLPolicyContext",
-		  "Browser-safe subset (loadConfigFromString) for embedded YAML-string parsing"
+		  "DSL-policy compatibility exports from DSLPolicyContext"
 	// Published types:
 	//   public (.):    loadFormSpecConfig, loadConfig (deprecated),
+	//                  FileSystem, LoadConfigOptions,
 	//                  defineFormSpecConfig, defineDSLPolicy,
 	//                  validateFormSpecElements, validateFormSpec,
 	//                  resolveConfigForFile, FormSpecConfig, DSLPolicy,
@@ -185,8 +186,6 @@ BoundedContext ConfigurationContext implements ConfigurationDomain {
 	//                  Deprecated aliases include defineConstraints,
 	//                  ConstraintConfig, ResolvedConstraintConfig, and
 	//                  DEFAULT_CONSTRAINTS.
-	//   /browser:      loadConfigFromString and validation surface without
-	//                  Node fs/path or jiti.
 }
 
 BoundedContext DSLPolicyContext implements ConfigurationDomain {

@@ -50,7 +50,7 @@ export interface FormSpecConfig {
 }
 ```
 
-This document specifies the expansion of `FormSpecConfig` from constraint-only configuration to full pipeline configuration, and the migration of the config file format from YAML to TypeScript.
+This document specifies the expansion of `FormSpecConfig` from constraint-only configuration to full pipeline configuration, and the removal of the old YAML-era configuration surface in favor of TypeScript modules.
 
 ---
 
@@ -60,7 +60,7 @@ This document specifies the expansion of `FormSpecConfig` from constraint-only c
 
 1. **Config-first.** `FormSpecConfig` is the canonical source of all FormSpec settings. Consumers that previously accepted individual options (`extensionRegistry`, `vendorPrefix`) derive them from the config.
 
-2. **Programmatic by default.** Extensions require executable code (`defineExtension`, `defineCustomType`), so the config is TypeScript, not YAML. This replaces the current `.formspec.yml` system (which has no users).
+2. **Programmatic by default.** Extensions require executable code (`defineExtension`, `defineCustomType`), so the config is TypeScript, not YAML. YAML config files and YAML-string parsing are not supported.
 
 3. **Single object, all consumers.** The same `FormSpecConfig` instance is passed to build, lint, language server, and CLI. Each consumer reads the fields it needs.
 
@@ -85,7 +85,7 @@ export interface FormSpecConfig {
    * DSL-policy surface configuration — controls which field types,
    * layouts, UI features, and field/control options are allowed.
    *
-   * Subsumes the existing `.formspec.yml` `constraints` section.
+   * Carries the project DSL policy.
    */
   readonly constraints?: DSLPolicy;
 
@@ -451,18 +451,38 @@ When a consumer auto-discovers (CLI, language server, TS plugin):
 
 Config files are loaded using [`jiti`](https://github.com/unjs/jiti), a runtime TypeScript loader that supports ESM imports and TypeScript syntax without prior compilation. `jiti` is the same loader used by Vite, Nuxt, and Tailwind CSS for their TypeScript config files.
 
+`loadFormSpecConfig` accepts an optional `FileSystem` adapter so the main `@formspec/config` entry point can be imported in non-Node hosts without statically importing Node built-ins:
+
+```typescript
+interface FileSystem {
+  exists(path: string): Promise<boolean>;
+  readFile(path: string): Promise<string>;
+  resolve(...segments: string[]): string;
+  dirname(path: string): string;
+}
+
+interface LoadConfigOptions {
+  searchFrom?: string;
+  configPath?: string;
+  fileSystem?: FileSystem;
+}
+```
+
+When `fileSystem` is omitted, `@formspec/config` lazily loads the default Node adapter for `node:fs/promises` and `node:path` at call time. The adapter covers discovery, existence checks, workspace-root checks, and file reads. It does not replace module evaluation: loading a config file still uses `jiti.import(filePath)`, which expects a Node-compatible path and module system. A non-Node module evaluator is a separate future concern.
+
 ---
 
 ## 6. Migration
 
 ### 6.1 `.formspec.yml` → `formspec.config.ts`
 
-The YAML config system has no users. It is replaced entirely:
+The YAML config system had no users and is removed entirely:
 
 - The former constraint-configuration package is renamed to `@formspec/config`
 - `FormSpecConfig` type is expanded with `extensions`, `metadata`, `vendorPrefix`, `enumSerialization`
 - `defineFormSpecConfig` and `loadFormSpecConfig` are added as new exports
 - The legacy YAML loader is replaced with a TypeScript config-file loader
+- `loadConfigFromString`, the public `@formspec/config/browser` subpath, and `formspec.schema.json` are removed
 - The DSL-policy schema is unchanged, but its canonical umbrella type is renamed from `ConstraintConfig` to `DSLPolicy` to preserve the distinction from value constraints.
 - DSL-policy types, defaults, and validators move to the private internal `@formspec/dsl-policy` package; `@formspec/config` keeps public compatibility re-exports and deprecated aliases.
 
@@ -514,7 +534,6 @@ createServer({ config });
 | `extensions` on `createServer`            | `config`                                                | `@formspec/language-server` |
 | `.formspec.yml` file format               | `formspec.config.ts`                                    | `@formspec/config`          |
 | `loadConfig` (deprecated wrapper)         | `loadFormSpecConfig`                                    | `@formspec/config`          |
-| `loadConstraintConfig` (YAML loader)      | `loadFormSpecConfig`                                    | `@formspec/config`          |
 | `ConstraintConfig`                        | `DSLPolicy`                                             | `@formspec/config`          |
 | `ResolvedConstraintConfig`                | `ResolvedDSLPolicy`                                     | `@formspec/config`          |
 | `defineConstraints()`                     | `defineDSLPolicy()`                                     | `@formspec/config`          |
@@ -522,6 +541,8 @@ createServer({ config });
 | `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter | `@formspec/core`            |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
+
+Removed alpha-era YAML surfaces do not have compatibility aliases: `loadConfigFromString`, `@formspec/config/browser`, and `@formspec/config/formspec.schema.json` are gone. Consumers import validators and DSL-policy helpers from `@formspec/config`; consumers that need discovery/loading in a non-Node host pass `LoadConfigOptions.fileSystem`.
 
 ---
 
@@ -542,8 +563,8 @@ export type { FormSpecConfig } from "./types.js";
 // Factory
 export { defineFormSpecConfig } from "./define.js";
 
-// TypeScript config file loader (replaces YAML loader)
-export { loadFormSpecConfig } from "./loader.js";
+// TypeScript config file loader and filesystem adapter
+export { loadFormSpecConfig, type FileSystem, type LoadConfigOptions } from "./loader.js";
 
 // Per-file config resolution
 export { resolveConfigForFile } from "./resolve.js";
@@ -556,9 +577,9 @@ export { resolveConfigForFile } from "./resolve.js";
 - policy types such as `DSLPolicy`, `FieldTypeConstraints`, `LayoutConstraints`, and `ResolvedDSLPolicy`
 - defaults and merge behavior (`DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`)
 - validators (`validateFormSpecElements()`, `validateFormSpec()`, field-type helpers, layout helpers, and field-option helpers)
-- a browser-safe entry point for linting and embedded validation
+- a browser-safe entry point for linting and embedded validation through the private internal package
 
-`@formspec/config` wraps and re-exports these APIs as the public compatibility surface. `@formspec/eslint-plugin` uses the private implementation for DSL-policy rules that do not need config-file loading.
+`@formspec/config` wraps and re-exports these APIs as the public compatibility surface through its main entry point. `@formspec/eslint-plugin` uses the private implementation for DSL-policy rules that do not need config-file loading.
 
 ### 7.4 New Dependencies
 

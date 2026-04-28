@@ -86,7 +86,6 @@ export const PUBLIC_ENTRY_POINTS: readonly PublicEntryPoint[] = [
   { specifier: "@formspec/build/internals", importName: "buildInternals" },
   { specifier: "@formspec/cli", importName: "cli" },
   { specifier: "@formspec/config", importName: "config" },
-  { specifier: "@formspec/config/browser", importName: "configBrowser" },
   { specifier: "@formspec/core", importName: "core" },
   { specifier: "@formspec/core/internals", importName: "coreInternals" },
   { specifier: "@formspec/dsl", importName: "dsl" },
@@ -174,9 +173,10 @@ export function packAllPackages(repoRoot: string, tarballDir: string): PackedTar
   const packed: PackedTarball[] = [];
   for (const relDir of PUBLISHABLE_PACKAGE_DIRS) {
     const absDir = path.join(repoRoot, relDir);
-    const pkgJson = JSON.parse(
-      fs.readFileSync(path.join(absDir, "package.json"), "utf8")
-    ) as { name: string; version: string };
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(absDir, "package.json"), "utf8")) as {
+      name: string;
+      version: string;
+    };
     // Tarball naming follows pnpm's convention:
     //   `@formspec/foo` v1.2.3 → `formspec-foo-1.2.3.tgz`
     //   `formspec` v1.2.3 → `formspec-1.2.3.tgz`
@@ -305,10 +305,7 @@ export function runConsumerCheck(opts: ConsumerHarnessOptions): RunResult {
     buildPackageJson(tarballs, opts.typescriptVersion)
   );
   fs.writeFileSync(path.join(opts.consumerDir, "tsconfig.json"), buildTsconfig());
-  fs.writeFileSync(
-    path.join(opts.consumerDir, "index.ts"),
-    opts.indexTsOverride ?? buildIndexTs()
-  );
+  fs.writeFileSync(path.join(opts.consumerDir, "index.ts"), opts.indexTsOverride ?? buildIndexTs());
 
   // Force a clean install so the requested `typescript@<version>` is what
   // resolves. `npm install` is intentional here (not pnpm): a real consumer
