@@ -59,6 +59,10 @@ jobs:
         # concrete versions at run time and dropped if they've crossed into
         # 7.x; the nightly entry uses an explicit <7 semver range.
         #
+        # Keep matrix labels stable. README badges target these check-run
+        # names, while the install override and `tsc --version` step expose
+        # the concrete resolved compiler version for each dist-tag row.
+        #
         # `experimental` (which drives `continue-on-error`) is derived from
         # whether the resolved major matches the workspace's declared
         # TypeScript major (the root devDependency). Mismatches are
@@ -93,7 +97,7 @@ jobs:
           const latest = resolveBelow7("latest");
           if (latest) {
             include.push({
-              label: `latest (${latest})`,
+              label: "latest",
               typescript: latest,
               experimental: isExperimental(majorOf(latest)),
             });
@@ -101,7 +105,7 @@ jobs:
           const beta = resolveBelow7("beta");
           if (beta) {
             // Pre-release is always experimental.
-            include.push({ label: `beta (${beta})`, typescript: beta, experimental: true });
+            include.push({ label: "beta", typescript: beta, experimental: true });
           }
           // Nightly is always experimental.
           include.push({
