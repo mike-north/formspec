@@ -8,8 +8,8 @@ developer tools — they are not part of the test suite run by `pnpm test`.
 ### `analysis-bench.ts` — Phase 0-C analysis pipeline baseline
 
 Measures `generateSchemasFromProgram` wall time + peak RSS and
-`FormSpecSemanticService.getDiagnostics` synthetic-program count against the
-20-field `AnalysisBenchFixture`.
+`FormSpecSemanticService.getDiagnostics` file-snapshot cache per-run
+hit/miss deltas (fresh-service) against the 20-field `AnalysisBenchFixture`.
 
 **Run:**
 

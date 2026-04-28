@@ -1,34 +1,33 @@
 /**
  * Phase 0-C microbenchmark: analysis-pipeline baseline.
  *
- * Measures three metrics for a single `generateSchemasFromProgram` call
- * against the 20-field AnalysisBenchFixture:
+ * Measures build-path timing and plugin-path cache behavior against the
+ * 20-field AnalysisBenchFixture:
  *
- *   1. wallTimeMs      — end-to-end elapsed time
- *   2. peakRssBytes    — peak resident set size observed via polling
- *   3. syntheticProgramCount — ts.createProgram invocations inside the
- *                             synthetic constraint-checker
+ *   1. wallTimeMs             — build-path end-to-end elapsed time
+ *   2. peakRssBytes           — build-path peak resident set size
+ *   3. fileSnapshotCache      — plugin-path cache hit/miss deltas
  *
  * ### Run model
  *
- * Five runs are collected per metric path. Run 1 is the **cold run** for the
- * measured call (first invocation/JIT effects + empty synthetic-batch cache;
- * module imports run before the timer starts). Runs 2–5 are **warm runs**
- * (subsequent invocations with the synthetic-batch cache populated). Median is
- * computed over warm runs (2–5) for wall time and RSS. The cold-run
- * synthetic-program count is reported separately because subsequent runs hit
- * the module-level LRU cache in @formspec/analysis and produce a count of 0.
+ * Five runs are collected per metric path. For the build path, run 1 is the
+ * **cold run** for the measured call (first invocation/JIT effects; module
+ * imports run before the timer starts). Runs 2–5 are **warm runs**, and the
+ * median is computed over warm runs for wall time and RSS.
  *
- * ### Synthetic-program count methodology
+ * For the plugin path, each run creates a fresh `FormSpecSemanticService` and
+ * records file-snapshot cache deltas for one diagnostics query. Those deltas
+ * show initial snapshot behavior for the query path, not cross-run cache reuse.
+ *
+ * ### File-snapshot cache methodology
  *
  * TypeScript 5.9+ exports are sealed (non-configurable getters), so
  * monkey-patching `ts.createProgram` at runtime is not possible on Node.js 24.
- * Instead the count is obtained via the `FormSpecSemanticService` from
- * `@formspec/ts-plugin`, which exposes `syntheticCompileCount` in its
- * `getStats()` method and increments it on every synthetic-checker
- * `ts.createProgram` call. The service is driven to produce diagnostics for
- * the fixture file, which exercises the same constraint-validation path as
- * `generateSchemasFromProgram`.
+ * Instead the benchmark drives `FormSpecSemanticService` diagnostics for the
+ * fixture file and reads `getStats()` before and after each fresh-service
+ * query. The file-snapshot cache deltas exercise the same host-program,
+ * typed-parser validation model while keeping the benchmark aligned with
+ * single-program analysis.
  *
  * Run with:
  *   pnpm --filter @formspec/e2e run bench:analysis
@@ -122,15 +121,14 @@ function runBuildBenchOnce(filePath: string): BuildRunResult {
 }
 
 // ---------------------------------------------------------------------------
-// §5 Phase 5C — synthetic program count measurement is retired.
+// §5 Phase 5C — parallel program-construction measurement is retired.
 //
 // Historically this benchmark reported `syntheticCompileCount` from
 // FormSpecSemanticService.getStats() as a proxy for how many parallel
-// ts.createProgram calls the analysis pipeline was issuing. The synthetic
-// TypeScript program has been deleted, so the counter always reads zero and
-// has been removed from the stats surface. The plugin-path loop is kept to
-// continue measuring the warm/cold query path totals and file-snapshot cache
-// hit ratio, which remain meaningful for wall-time / RSS tracking.
+// ts.createProgram calls the analysis pipeline was issuing. That stats field
+// has been removed with the synthetic TypeScript program. The plugin-path loop
+// is kept to continue measuring fresh-service query-path cache deltas, which
+// remain meaningful for wall-time / RSS tracking.
 // ---------------------------------------------------------------------------
 
 interface PluginRunResult {
@@ -182,9 +180,7 @@ function median(values: readonly number[]): number {
 const RUNS = 5;
 
 async function main(): Promise<void> {
-  const workspaceRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), "formspec-analysis-bench-")
-  );
+  const workspaceRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-analysis-bench-"));
 
   try {
     // Write the fixture TypeScript file to a temp directory so ts.createProgram
@@ -219,14 +215,14 @@ async function main(): Promise<void> {
 
     // --- TS-plugin-path measurements ---
     // §5 Phase 5C — no more synthetic program counter; we still record
-    // file-snapshot cache hit/miss ratios across cold/warm runs because they
-    // are the most useful signal for caching regressions.
+    // file-snapshot cache hit/miss deltas for fresh-service diagnostics
+    // queries because they are useful for tracking snapshot-construction
+    // behavior.
     const allPluginResults: PluginRunResult[] = [];
 
     process.stderr.write("\n  Plugin-path (FormSpecSemanticService.getDiagnostics):\n");
     for (let i = 0; i < RUNS; i++) {
-      const label = i === 0 ? "cold" : "warm";
-      process.stderr.write(`    run ${String(i + 1)}/${String(RUNS)} [${label}]...`);
+      process.stderr.write(`    run ${String(i + 1)}/${String(RUNS)} [fresh-service]...`);
       const result = runPluginBenchOnce(workspaceRoot, fixturePath);
       allPluginResults.push(result);
       process.stderr.write(
@@ -241,12 +237,8 @@ async function main(): Promise<void> {
 
     // Human-readable summary to stderr
     process.stderr.write("\n--- Analysis Baseline (Phase 5C) ---\n");
-    process.stderr.write(
-      `  wallTimeMs cold:             ${coldWallTimeMs.toFixed(2)}\n`
-    );
-    process.stderr.write(
-      `  wallTimeMs warm (median):    ${medianWarmWallTimeMs.toFixed(2)}\n`
-    );
+    process.stderr.write(`  wallTimeMs cold:             ${coldWallTimeMs.toFixed(2)}\n`);
+    process.stderr.write(`  wallTimeMs warm (median):    ${medianWarmWallTimeMs.toFixed(2)}\n`);
     process.stderr.write(
       `  peakRssBytes warm (median):  ${String(Math.round(medianWarmPeakRssBytes))} (${(medianWarmPeakRssBytes / 1024 / 1024).toFixed(1)} MB)\n`
     );
@@ -265,7 +257,7 @@ async function main(): Promise<void> {
           warmMedian: medianWarmWallTimeMs,
           all: allWallTimeMs,
           path: "generateSchemasFromProgram",
-          note: "Run 1 (cold) measures the first invocation of generateSchemasFromProgram with an empty synthetic-batch cache. Module imports run before the timer starts, so module-load overhead is excluded. Warm median (runs 2-5) is the steady-state cost.",
+          note: "Run 1 (cold) measures the first invocation of generateSchemasFromProgram. Module imports run before the timer starts, so module-load overhead is excluded. Warm median (runs 2-5) is the steady-state cost.",
         },
         peakRssBytes: {
           warmMedian: medianWarmPeakRssBytes,
@@ -279,8 +271,9 @@ async function main(): Promise<void> {
           note:
             "§5 Phase 5C — `syntheticProgramCount` retired with the synthetic " +
             "program batch. `fileSnapshotCache.hits/misses` now provide the " +
-            "warm/cold signal: the first (cold) run records a miss, subsequent " +
-            "(warm) runs should report a hit for the same source text.",
+            "fresh-service query-path signal: each run creates a new " +
+            "FormSpecSemanticService and records cache deltas for one " +
+            "diagnostics query.",
         },
       },
       commitSha,

@@ -22,7 +22,8 @@
  *   1. wallTimeMs   — end-to-end elapsed time (cold + warm median over 3 runs)
  *   2. peakRSS_MB   — peak resident set size (polling, warm median)
  *   3. didOOM       — whether the process OOMs at a 1 GB heap cap
- *   4. syntheticCompileCount — ts.createProgram invocations per run
+ *   4. syntheticCompileCount — legacy compatibility field, always 0 after
+ *      synthetic-checker retirement
  *
  * ### OOM detection
  *

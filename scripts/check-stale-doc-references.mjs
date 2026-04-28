@@ -4,7 +4,17 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
-const STALE_PATTERNS = ["src/__tests__/", "@formspec/constraints", "packages/constraints/"];
+const STALE_PATTERNS = [
+  "src/__tests__/",
+  "@formspec/constraints",
+  "packages/constraints/",
+  "synthetic `ts.createProgram`",
+  "synthetic ts.createProgram",
+  "ts.createProgram invocations per run",
+  "synthetic-program count",
+  "synthetic-batch cache",
+  "synthetic constraint-checker",
+];
 
 /**
  * @typedef {object} StaleDocReferenceMatch
@@ -17,6 +27,9 @@ const STALE_PATTERNS = ["src/__tests__/", "@formspec/constraints", "packages/con
  * @property {boolean} ok
  * @property {StaleDocReferenceMatch[]} matches
  * @property {string} report
+ *
+ * @typedef {object} CurrentFileScanOptions
+ * @property {boolean} [optional]
  */
 
 /**
@@ -26,22 +39,57 @@ const STALE_PATTERNS = ["src/__tests__/", "@formspec/constraints", "packages/con
  * @param {string} root
  * @returns {AsyncGenerator<string>}
  */
-async function* currentMarkdownFiles(root) {
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith(".md")) {
-      yield entry.name;
+async function* currentGuidanceFiles(root) {
+  yield* currentTopLevelFiles(root, "", (name) => name.endsWith(".md"));
+  yield* currentTopLevelFiles(root, "e2e", (name) => name.endsWith(".md"), { optional: true });
+  yield* currentDocsMarkdownFiles(root, "docs", { optional: true });
+  yield* currentTopLevelFiles(
+    root,
+    "e2e/benchmarks",
+    (name) => name.endsWith(".md") || name.endsWith(".ts"),
+    { optional: true }
+  );
+}
+
+/**
+ * Top-level files in selected guidance directories are current documentation
+ * surfaces. Nested benchmark baselines and archival fixtures are intentionally
+ * out of scope for this gate.
+ *
+ * @param {string} root
+ * @param {string} relativeDir
+ * @param {(name: string) => boolean} matches
+ * @param {CurrentFileScanOptions} [options]
+ * @returns {AsyncGenerator<string>}
+ */
+async function* currentTopLevelFiles(root, relativeDir, matches, options = {}) {
+  let entries;
+  try {
+    entries = await readdir(path.join(root, relativeDir || "."), { withFileTypes: true });
+  } catch (error) {
+    if (options.optional && error && typeof error === "object" && "code" in error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        return;
+      }
     }
+
+    throw error;
   }
 
-  yield* currentDocsMarkdownFiles(root, "docs");
+  for (const entry of entries) {
+    if (entry.isFile() && matches(entry.name)) {
+      yield relativeDir === "" ? entry.name : path.posix.join(relativeDir, entry.name);
+    }
+  }
 }
 
 /**
  * @param {string} root
  * @param {string} relativeDir
+ * @param {CurrentFileScanOptions} [options]
  * @returns {AsyncGenerator<string>}
  */
-async function* currentDocsMarkdownFiles(root, relativeDir) {
+async function* currentDocsMarkdownFiles(root, relativeDir, options = {}) {
   if (relativeDir === "docs/refactors") {
     return;
   }
@@ -49,8 +97,14 @@ async function* currentDocsMarkdownFiles(root, relativeDir) {
   let entries;
   try {
     entries = await readdir(path.join(root, relativeDir), { withFileTypes: true });
-  } catch {
-    return;
+  } catch (error) {
+    if (options.optional && error && typeof error === "object" && "code" in error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        return;
+      }
+    }
+
+    throw error;
   }
 
   for (const entry of entries) {
@@ -116,7 +170,7 @@ export async function checkStaleDocReferences(options = {}) {
   /** @type {StaleDocReferenceMatch[]} */
   const matches = [];
 
-  for await (const filePath of currentMarkdownFiles(root)) {
+  for await (const filePath of currentGuidanceFiles(root)) {
     const source = await readFile(path.join(root, filePath), "utf8");
     for (const pattern of STALE_PATTERNS) {
       for (const location of findPatternLocations(source, pattern)) {

@@ -24,8 +24,10 @@ pnpm --filter @formspec/e2e run benchmark:hybrid-tooling
 **Fixture:** `benchmarks/analysis-bench-fixture.ts` — 20-field `AnalysisBenchFixture` interface
 **Baseline:** `docs/refactors/phase-0-baseline.md`
 
-Measures `generateSchemasFromProgram` wall time, peak RSS, and synthetic `ts.createProgram`
-invocation count. Used as the Phase 0-C baseline for the synthetic-checker retirement refactor.
+Measures `generateSchemasFromProgram` wall time and peak RSS, plus
+`FormSpecSemanticService.getDiagnostics` file-snapshot cache per-run hit/miss
+deltas (fresh-service).
+Used as the Phase 0-C baseline for the synthetic-checker retirement refactor.
 
 ```bash
 pnpm --filter @formspec/e2e run bench:analysis
@@ -214,9 +216,10 @@ pnpm --filter @formspec/e2e run bench:stripe-realistic-tsserver
 | **eslint** | **519.1 MB** (warm median) | 420.2 ms | 2.8 ms | **false** |
 | **tsserver-plugin** | **567.4 MB** (session) | 373.8 ms | ~0 ms | **false** |
 
-Notes on tsserver-plugin: the bench creates one service and calls `getDiagnostics` 3× (open-file
-+ 2 keystrokes) on the same instance. Session RSS is measured across all three calls. Warm
-wall-time is near-zero because the service caches analysis results across calls.
+Notes on tsserver-plugin: the bench creates one service and calls `getDiagnostics` 3× (one
+open-file call plus two keystroke re-analyses) on the same instance. Session RSS is measured
+across all three calls. Warm wall-time is near-zero because the service caches analysis results
+across calls.
 
 All four surfaces came in under 1 GB — none OOMed on this machine (M-series arm64, Node v24.14.0).
 Build / snapshot are above 840 MB, within 180 MB of the 1 GB cap. A machine with less available

@@ -34,6 +34,19 @@ async function withFixture(files, testFn) {
 }
 
 void describe("checkStaleDocReferences", () => {
+  void it("rejects missing scan roots instead of passing cleanly", async () => {
+    const missingRoot = path.join(
+      tmpdir(),
+      `formspec-stale-docs-missing-${String(process.pid)}-${String(Date.now())}`
+    );
+
+    await rm(missingRoot, { force: true, recursive: true });
+
+    await assert.rejects(() => checkStaleDocReferences({ root: missingRoot }), {
+      code: "ENOENT",
+    });
+  });
+
   void it("flags each blocked literal in root Markdown files", async () => {
     await withFixture(
       {
@@ -91,6 +104,68 @@ void describe("checkStaleDocReferences", () => {
     );
   });
 
+  void it("flags retired benchmark wording in current benchmark docs and sources", async () => {
+    await withFixture(
+      {
+        "e2e/README.md": [
+          "Measures `generateSchemasFromProgram` wall time, peak RSS, and synthetic `ts.createProgram`",
+          "invocation count.",
+        ].join("\n"),
+        "e2e/benchmarks/README.md": [
+          "Reports synthetic-program count.",
+          "Historical synthetic ts.createProgram wording.",
+        ].join("\n"),
+        "e2e/benchmarks/analysis-bench.ts":
+          "const note = 'empty synthetic-batch cache in the synthetic constraint-checker';",
+        "e2e/benchmarks/stripe-realistic-tsserver-bench.ts":
+          "syntheticCompileCount — ts.createProgram invocations per run",
+      },
+      async (root) => {
+        const result = await checkStaleDocReferences({ root });
+
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.matches, [
+          {
+            filePath: "e2e/benchmarks/analysis-bench.ts",
+            line: 1,
+            column: 21,
+            pattern: "synthetic-batch cache",
+          },
+          {
+            filePath: "e2e/benchmarks/analysis-bench.ts",
+            line: 1,
+            column: 50,
+            pattern: "synthetic constraint-checker",
+          },
+          {
+            filePath: "e2e/benchmarks/README.md",
+            line: 1,
+            column: 9,
+            pattern: "synthetic-program count",
+          },
+          {
+            filePath: "e2e/benchmarks/README.md",
+            line: 2,
+            column: 12,
+            pattern: "synthetic ts.createProgram",
+          },
+          {
+            filePath: "e2e/benchmarks/stripe-realistic-tsserver-bench.ts",
+            line: 1,
+            column: 25,
+            pattern: "ts.createProgram invocations per run",
+          },
+          {
+            filePath: "e2e/README.md",
+            line: 1,
+            column: 64,
+            pattern: "synthetic `ts.createProgram`",
+          },
+        ]);
+      }
+    );
+  });
+
   void it("accepts current test paths", async () => {
     await withFixture(
       {
@@ -98,6 +173,38 @@ void describe("checkStaleDocReferences", () => {
           "Parity tests live in packages/build/tests/parity/.",
           "Fixtures now live in tests/fixtures/.",
         ].join("\n"),
+      },
+      async (root) => {
+        const result = await checkStaleDocReferences({ root });
+
+        assert.equal(result.ok, true);
+        assert.deepEqual(result.matches, []);
+      }
+    );
+  });
+
+  void it("accepts current benchmark cache wording", async () => {
+    await withFixture(
+      {
+        "e2e/README.md": "Measures file-snapshot cache hit/miss totals.",
+        "e2e/benchmarks/README.md": "Reports file-snapshot cache hit/miss totals.",
+        "e2e/benchmarks/analysis-bench.ts": "const note = 'empty file-snapshot cache';",
+      },
+      async (root) => {
+        const result = await checkStaleDocReferences({ root });
+
+        assert.equal(result.ok, true);
+        assert.deepEqual(result.matches, []);
+      }
+    );
+  });
+
+  void it("does not flag compatibility field names by themselves", async () => {
+    await withFixture(
+      {
+        "e2e/benchmarks/stripe-realistic-tsserver-bench.ts":
+          "readonly syntheticCompileCount: number;",
+        "e2e/README.md": "`syntheticProgramCount` = 0 after synthetic deletion.",
       },
       async (root) => {
         const result = await checkStaleDocReferences({ root });
@@ -174,9 +281,13 @@ void describe("checkStaleDocReferences", () => {
   });
 
   void it("runs as a CLI entrypoint when invoked with a relative script path", async () => {
-    const result = await execFileAsync(process.execPath, ["scripts/check-stale-doc-references.mjs"], {
-      cwd: repoRoot,
-    });
+    const result = await execFileAsync(
+      process.execPath,
+      ["scripts/check-stale-doc-references.mjs"],
+      {
+        cwd: repoRoot,
+      }
+    );
 
     assert.match(result.stdout, /No stale doc references found/);
   });
