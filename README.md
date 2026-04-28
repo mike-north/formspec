@@ -2,6 +2,9 @@
 
 Type-safe form definitions that compile to JSON Schema 2020-12 and JSON Forms UI Schema.
 
+[![CI + TS matrix](https://img.shields.io/github/actions/workflow/status/mike-north/formspec/ci.yml?branch=main&label=CI%20%2B%20TS%20matrix&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml)
+[![TS minor smoke](https://img.shields.io/github/actions/workflow/status/mike-north/formspec/typescript-minor-smoke.yml?branch=main&label=TS%20minor%20smoke&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/typescript-minor-smoke.yml)
+
 > **Architecture orientation.** New contributors and AI agents should read [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) (a tour of the project's bounded contexts and how they relate) and [`GLOSSARY.md`](./GLOSSARY.md) (the project's vocabulary). The formal model lives in [`formspec.cml`](./formspec.cml).
 
 ## What It Covers
@@ -20,6 +23,12 @@ pnpm add formspec
 ```
 
 Use the umbrella package when you want the common runtime-facing APIs in one import. Tooling packages such as the CLI, ESLint plugin, and language server are published separately.
+
+## TypeScript Support
+
+Packages that expose or consume the TypeScript compiler API currently support TypeScript `>=5.7.3 <7`. The per-PR CI workflow runs the main build, tests, lint, and typecheck against the workspace TypeScript version, plus non-blocking compatibility rows for other supported majors and pre-release tracks.
+
+TypeScript 7 is covered separately through a non-blocking `tsgo` native-preview CI row using `@typescript/native-preview@beta`. TS 7 is experimental coverage, not an official supported major yet.
 
 ## Quick Start
 
@@ -284,6 +293,21 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 | `@formspec/ts-plugin`       | TypeScript language-service plugin and reusable semantic service                    |
 | `@formspec/language-server` | Completion, hover, and definition support for FormSpec tags                         |
 | `@formspec/cli`             | Build-time CLI for schema and IR generation                                         |
+
+## Published Packages
+
+[![NPM](https://nodei.co/npm/formspec.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/formspec/)
+[![NPM](https://nodei.co/npm/@formspec/core.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/core/)
+[![NPM](https://nodei.co/npm/@formspec/dsl.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/dsl/)
+[![NPM](https://nodei.co/npm/@formspec/build.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/build/)
+[![NPM](https://nodei.co/npm/@formspec/runtime.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/runtime/)
+[![NPM](https://nodei.co/npm/@formspec/analysis.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/analysis/)
+[![NPM](https://nodei.co/npm/@formspec/config.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/config/)
+[![NPM](https://nodei.co/npm/@formspec/validator.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/validator/)
+[![NPM](https://nodei.co/npm/@formspec/eslint-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/eslint-plugin/)
+[![NPM](https://nodei.co/npm/@formspec/ts-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/ts-plugin/)
+[![NPM](https://nodei.co/npm/@formspec/language-server.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/language-server/)
+[![NPM](https://nodei.co/npm/@formspec/cli.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/cli/)
 
 ## Monorepo Development
 

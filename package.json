@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm run test:scripts && pnpm -r run test",
-    "test:scripts": "node --test scripts/*.test.mjs",
+    "test:scripts": "node --test scripts/*.test.mjs && tsx --test scripts/*.test.mts",
     "test:e2e": "pnpm run build && pnpm --filter @formspec/e2e run test",
     "typecheck": "pnpm -r run typecheck",
     "api-extractor": "pnpm -r run api-extractor",
@@ -47,6 +47,7 @@
     "prettier": "^3.5.0",
     "syncpack": "^14.3.0",
     "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.0",
     "typescript-eslint": "^8.21.0"
   },

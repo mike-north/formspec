@@ -170,6 +170,8 @@ Patch-level matrix coverage is intentionally out of scope. TypeScript patches ar
 
 TypeScript 7.x is the Go rewrite with a substantively different API surface. FormSpec is not opting into official TS 7 support until a future deliberate migration, and we do not test TS 7 through dist-tag drift. The `tsgo` job is native-preview coverage only; the workflow comments own the temporary compatibility details for existing TS 6 tooling.
 
+For changes that touch TypeScript compiler API imports, TypeScript package dependencies, TypeScript-version CI, or TS 7 `tsgo` failures, load the supplemental guide in [`docs/typescript-compiler-compatibility.md`](./docs/typescript-compiler-compatibility.md). Do not load it for ordinary feature work that does not affect those areas.
+
 ### TypeScript compiler API quirks across majors
 
 When code reaches into TypeScript's compiler API (`ts.Type`, `ts.Symbol`, `ts.TypeChecker`, etc.), be aware that some internals are not part of the public API contract and shift between majors. The most common pitfall:

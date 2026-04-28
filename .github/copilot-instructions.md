@@ -25,6 +25,14 @@ Authoritative artifacts: `formspec.cml`, `BOUNDED_CONTEXTS.md`, `GLOSSARY.md`, `
 - Extension JSON Schema keywords use the configurable vendor prefix; hardcoded `"x-formspec-…"` literals are wrong. (E3)
 - Schema generation is static — no `Reflect.metadata`, no `emitDecoratorMetadata`, no `eval`. All metadata flows through the TypeScript Compiler API at build time. (PP4)
 
+## TypeScript compatibility reviews
+
+For diffs that touch TypeScript compiler API imports, direct `typescript` dependencies, TypeScript-version workflows, or the TS 7 `tsgo` native-preview job, also review against `docs/typescript-compiler-compatibility.md`.
+
+- Flag new TypeScript-using workspaces that are not discoverable by `scripts/tsgo-ci.mts`.
+- Flag raw compiler API expansion that should become part of the longer-term facade tracked in #476.
+- Flag attempts to make TS 7 blocking, test it through `typescript` dist-tag drift, or bypass the `assert-alias` guard.
+
 ## Tests
 
 - Bug fixes need a regression test that fails pre-fix and names the bug.
