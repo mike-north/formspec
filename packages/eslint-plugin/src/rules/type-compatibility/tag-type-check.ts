@@ -7,10 +7,11 @@ import {
   resolveTagTarget,
 } from "../../utils/rule-helpers.js";
 import { scanFormSpecTags } from "../../utils/tag-scanner.js";
-import { getFieldTypeCategory, type FieldTypeCategory } from "../../utils/type-utils.js";
 import { getTagMetadata } from "../../utils/tag-metadata.js";
 import {
+  _capabilityLabel,
   getTagDefinition,
+  hasTypeSemanticCapability,
   readExtensionRegistryFromSettings,
   type SemanticCapability,
 } from "@formspec/analysis/internal";
@@ -21,34 +22,19 @@ const createRule = ESLintUtils.RuleCreator(
 
 type MessageIds = "typeMismatch";
 
-const CAPABILITY_TO_FIELD_TYPES: Record<SemanticCapability, FieldTypeCategory[]> = {
-  "numeric-comparable": ["number", "bigint"],
-  "string-like": ["string"],
-  "array-like": ["array"],
-  "enum-member-addressable": ["string", "union"],
-  "json-like": [],
-  "condition-like": [],
-  "object-like": ["object"],
-};
-
-function getExpectedTypesForTag(tagName: string): FieldTypeCategory[] | null {
+function getRequiredCapabilityForTag(tagName: string): SemanticCapability | null {
   const definition = getTagDefinition(tagName);
   if (definition === null) return null;
-  const capabilities = definition.capabilities;
-  if (capabilities.length === 0) return null;
-  const types: FieldTypeCategory[] = [];
-  for (const cap of capabilities) {
-    // CAPABILITY_TO_FIELD_TYPES covers all SemanticCapability variants
-    const capTypes = CAPABILITY_TO_FIELD_TYPES[cap];
-    if (capTypes.length === 0) {
-      // json-like or condition-like: skip type check entirely
-      return null;
-    }
-    for (const t of capTypes) {
-      if (!types.includes(t)) types.push(t);
-    }
+  const capability = definition.capabilities[0];
+  if (capability === undefined) return null;
+
+  // Preserve the current ESLint rule behavior for capabilities that do not
+  // translate cleanly into a single field-kind diagnostic label.
+  if (capability === "json-like" || capability === "condition-like") {
+    return null;
   }
-  return types.length > 0 ? types : null;
+
+  return capability;
 }
 
 /**
@@ -81,8 +67,8 @@ export const tagTypeCheck = createRule<[], MessageIds>({
       if (!declarationType) return;
       const fieldName = getDeclarationName(node);
       for (const tag of scanFormSpecTags(node, context.sourceCode)) {
-        const expectedTypes = getExpectedTypesForTag(tag.normalizedName);
-        if (!expectedTypes) continue;
+        const requiredCapability = getRequiredCapabilityForTag(tag.normalizedName);
+        if (requiredCapability === null) continue;
         const metadata = getTagMetadata(tag.rawName);
         const supportsValueLessCheck =
           metadata?.valueKind === "boolean" || metadata?.requiresArgument === false;
@@ -111,8 +97,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
 
         const resolved = resolveTagTarget(tag, declarationType, services);
         if (!resolved.valid || !resolved.type) continue;
-        const actualCategory = getFieldTypeCategory(resolved.type, checker);
-        if (expectedTypes.includes(actualCategory)) continue;
+        if (hasTypeSemanticCapability(resolved.type, checker, requiredCapability)) continue;
 
         // Check for builtin constraint broadening via extension registry.
         // Use checker.typeToString for the name — it correctly resolves
@@ -135,7 +120,7 @@ export const tagTypeCheck = createRule<[], MessageIds>({
           messageId: "typeMismatch",
           data: {
             tag: tag.rawName,
-            expected: expectedTypes.join(" or "),
+            expected: _capabilityLabel(requiredCapability),
             field: fieldName,
             actualType: getResolvedTypeName(resolved.type, services),
           },

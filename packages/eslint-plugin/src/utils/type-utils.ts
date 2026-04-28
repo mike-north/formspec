@@ -78,6 +78,10 @@ export type FieldTypeCategory =
   | "union"
   | "unknown";
 
+function isIntersectionWithBase(type: ts.Type, predicate: (member: ts.Type) => boolean): boolean {
+  return type.isIntersection() && type.types.some((member) => predicate(member));
+}
+
 /**
  * Checks if a TypeScript type is a string type.
  *
@@ -94,29 +98,65 @@ export function isStringType(
   checker: ts.TypeChecker,
   seen = new Set<ts.Type>()
 ): boolean {
-  if (seen.has(type)) {
+  const stripped = stripNullishFromUnion(type);
+  if (seen.has(stripped)) {
     return false;
   }
-  seen.add(type);
+  seen.add(stripped);
 
   // Check for string primitive
-  if (type.flags & ts.TypeFlags.String) {
+  if (stripped.flags & ts.TypeFlags.String) {
     return true;
   }
 
   // Check for string literal
-  if (type.flags & ts.TypeFlags.StringLiteral) {
+  if (stripped.flags & ts.TypeFlags.StringLiteral) {
     return true;
   }
 
   // Check for union of string literals (e.g., "a" | "b")
-  if (type.isUnion()) {
-    return type.types.every((t) => isStringType(t, checker, seen));
+  if (stripped.isUnion()) {
+    return stripped.types.every((t) => isStringType(t, checker, seen));
   }
 
-  const baseConstraint = checker.getBaseConstraintOfType(type);
-  if (baseConstraint !== undefined && baseConstraint !== type) {
+  if (isIntersectionWithBase(stripped, (t) => isStringType(t, checker, seen))) {
+    return true;
+  }
+
+  const baseConstraint = checker.getBaseConstraintOfType(stripped);
+  if (baseConstraint !== undefined && baseConstraint !== stripped) {
     return isStringType(baseConstraint, checker, seen);
+  }
+
+  return false;
+}
+
+function isNumberTypeInner(type: ts.Type, checker: ts.TypeChecker, seen: Set<ts.Type>): boolean {
+  const stripped = stripNullishFromUnion(type);
+  if (seen.has(stripped)) {
+    return false;
+  }
+  seen.add(stripped);
+
+  if (stripped.flags & ts.TypeFlags.Number) {
+    return true;
+  }
+
+  if (stripped.flags & ts.TypeFlags.NumberLiteral) {
+    return true;
+  }
+
+  if (stripped.isUnion()) {
+    return stripped.types.every((t) => isNumberTypeInner(t, checker, seen));
+  }
+
+  if (isIntersectionWithBase(stripped, (t) => isNumberTypeInner(t, checker, seen))) {
+    return true;
+  }
+
+  const baseConstraint = checker.getBaseConstraintOfType(stripped);
+  if (baseConstraint !== undefined && baseConstraint !== stripped) {
+    return isNumberTypeInner(baseConstraint, checker, seen);
   }
 
   return false;
@@ -125,31 +165,40 @@ export function isStringType(
 /**
  * Checks if a TypeScript type is a number type.
  *
- * Handles number primitives, number literals, and unions of number types.
+ * Handles number primitives, number literals, unions of number types, and
+ * branded intersections whose numeric member is a number type.
  *
  * @param type - The TypeScript type to check
  * @param checker - The TypeScript type checker instance
- * @returns True if the type is number, a number literal, or a union of number types
+ * @returns True if the type is number, a number literal, a union of number
+ * types, or an intersection containing a number type
  *
  * @public
  */
 export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
-  // Check for number primitive
-  if (type.flags & ts.TypeFlags.Number) {
+  return isNumberTypeInner(type, checker, new Set<ts.Type>());
+}
+
+function isBigIntTypeInner(type: ts.Type, seen: Set<ts.Type>): boolean {
+  const stripped = stripNullishFromUnion(type);
+  if (seen.has(stripped)) {
+    return false;
+  }
+  seen.add(stripped);
+
+  if (stripped.flags & ts.TypeFlags.BigInt) {
     return true;
   }
 
-  // Check for number literal
-  if (type.flags & ts.TypeFlags.NumberLiteral) {
+  if (stripped.flags & ts.TypeFlags.BigIntLiteral) {
     return true;
   }
 
-  // Check for union of number literals
-  if (type.isUnion()) {
-    return type.types.every((t) => isNumberType(t, checker));
+  if (stripped.isUnion()) {
+    return stripped.types.every((t) => isBigIntTypeInner(t, seen));
   }
 
-  return false;
+  return isIntersectionWithBase(stripped, (t) => isBigIntTypeInner(t, seen));
 }
 
 /**
@@ -158,16 +207,35 @@ export function isNumberType(type: ts.Type, checker: ts.TypeChecker): boolean {
  * @public
  */
 export function isBigIntType(type: ts.Type): boolean {
-  if (type.flags & ts.TypeFlags.BigInt) {
+  return isBigIntTypeInner(type, new Set<ts.Type>());
+}
+
+function isBooleanTypeInner(type: ts.Type, checker: ts.TypeChecker, seen: Set<ts.Type>): boolean {
+  const stripped = stripNullishFromUnion(type);
+  if (seen.has(stripped)) {
+    return false;
+  }
+  seen.add(stripped);
+
+  if (stripped.flags & ts.TypeFlags.Boolean) {
     return true;
   }
 
-  if (type.flags & ts.TypeFlags.BigIntLiteral) {
+  if (stripped.flags & ts.TypeFlags.BooleanLiteral) {
     return true;
   }
 
-  if (type.isUnion()) {
-    return type.types.every((t) => isBigIntType(t));
+  if (stripped.isUnion()) {
+    return stripped.types.every((t) => isBooleanTypeInner(t, checker, seen));
+  }
+
+  if (isIntersectionWithBase(stripped, (t) => isBooleanTypeInner(t, checker, seen))) {
+    return true;
+  }
+
+  const baseConstraint = checker.getBaseConstraintOfType(stripped);
+  if (baseConstraint !== undefined && baseConstraint !== stripped) {
+    return isBooleanTypeInner(baseConstraint, checker, seen);
   }
 
   return false;
@@ -185,22 +253,7 @@ export function isBigIntType(type: ts.Type): boolean {
  * @public
  */
 export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
-  // Check for boolean primitive
-  if (type.flags & ts.TypeFlags.Boolean) {
-    return true;
-  }
-
-  // Check for boolean literal (true or false)
-  if (type.flags & ts.TypeFlags.BooleanLiteral) {
-    return true;
-  }
-
-  // Check for union of true | false
-  if (type.isUnion()) {
-    return type.types.every((t) => isBooleanType(t, checker));
-  }
-
-  return false;
+  return isBooleanTypeInner(type, checker, new Set<ts.Type>());
 }
 
 /**
@@ -208,10 +261,7 @@ export function isBooleanType(type: ts.Type, checker: ts.TypeChecker): boolean {
  */
 export function isNullableType(type: ts.Type): boolean {
   if (!type.isUnion()) {
-    return (
-      (type.flags & ts.TypeFlags.Null) !== 0 ||
-      (type.flags & ts.TypeFlags.Undefined) !== 0
-    );
+    return (type.flags & ts.TypeFlags.Null) !== 0 || (type.flags & ts.TypeFlags.Undefined) !== 0;
   }
 
   return type.types.some((t) => isNullableType(t));
