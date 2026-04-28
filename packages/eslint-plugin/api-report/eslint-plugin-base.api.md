@@ -26,20 +26,20 @@ export { AnalyzeMetadataForSourceFileOptions }
 export { AnalyzeMetadataOptions }
 
 // @public
+export type ConstraintRuleMessageIds = "typeMismatch" | "invalidValue";
+
+// @public
 export interface ConstraintRuleOptions {
     applicableTypes: FieldTypeCategory[];
     tagName: string;
     validateValue?: (value: string) => string | null;
 }
 
-// Warning: (ae-forgotten-export) The symbol "MessageIds" needs to be exported by the entry point base.d.ts
-//
 // @public
-export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []>;
+export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<ConstraintRuleMessageIds, []>;
 
 // @public
 export interface ExplicitMetadataSource {
-    // Warning: (ae-forgotten-export) The symbol "ExplicitMetadataSourceForm" needs to be exported by the entry point base.d.ts
     readonly form: ExplicitMetadataSourceForm;
     readonly fullRange: MetadataSourceSpan;
     readonly qualifier?: string | undefined;
@@ -48,6 +48,9 @@ export interface ExplicitMetadataSource {
     readonly tagNameRange: MetadataSourceSpan;
     readonly valueRange: MetadataSourceSpan;
 }
+
+// @public
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
 
 // @public
 export type FieldTypeCategory = "string" | "number" | "bigint" | "boolean" | "array" | "object" | "union" | "unknown";
@@ -92,11 +95,9 @@ export interface JSDocConstraint {
 // @public
 export interface MetadataAnalysisResult {
     readonly applicableSlots: readonly MetadataApplicableSlot[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataDeclarationKind" needs to be exported by the entry point base.d.ts
     readonly declarationKind: MetadataDeclarationKind;
     readonly entries: readonly MetadataResolvedEntry[];
     readonly logicalName: string;
-    // Warning: (ae-forgotten-export) The symbol "ResolvedMetadata" needs to be exported by the entry point base.d.ts
     readonly resolvedMetadata?: ResolvedMetadata | undefined;
 }
 
@@ -104,9 +105,27 @@ export interface MetadataAnalysisResult {
 export interface MetadataApplicableSlot {
     readonly allowBare: boolean;
     readonly qualifiers: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataSlotId" needs to be exported by the entry point base.d.ts
     readonly slotId: MetadataSlotId;
     readonly tagName: string;
+}
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    // Warning: (ae-forgotten-export) The symbol "MetadataAuthoringSurface" needs to be exported by the entry point base.d.ts
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export interface MetadataQualifierRegistration {
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly qualifier: string;
+    readonly sourceQualifier?: string | undefined;
 }
 
 // @public
@@ -114,25 +133,32 @@ export interface MetadataResolvedEntry {
     readonly explicitSource?: ExplicitMetadataSource | undefined;
     readonly qualifier?: string | undefined;
     readonly slotId: MetadataSlotId;
-    // Warning: (ae-forgotten-export) The symbol "MetadataSource" needs to be exported by the entry point base.d.ts
     readonly source: MetadataSource;
     readonly tagName: string;
     readonly value: string;
 }
 
 // @public
+export type MetadataSlotId = string;
+
+// Warning: (ae-forgotten-export) The symbol "MetadataSlotInferenceContext" needs to be exported by the entry point base.d.ts
+//
+// @public
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext) => string;
+
+// @public
 export interface MetadataSlotRegistration {
     readonly allowBare?: boolean | undefined;
     readonly declarationKinds: readonly MetadataDeclarationKind[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataSlotInferenceFn" needs to be exported by the entry point base.d.ts
     readonly inferValue?: MetadataSlotInferenceFn | undefined;
-    // Warning: (ae-forgotten-export) The symbol "MetadataInferenceContext" needs to be exported by the entry point base.d.ts
     readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
-    // Warning: (ae-forgotten-export) The symbol "MetadataQualifierRegistration" needs to be exported by the entry point base.d.ts
     readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
     readonly slotId: MetadataSlotId;
     readonly tagName: string;
 }
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
 
 // @public
 export interface MetadataSourceSpan {
@@ -145,6 +171,15 @@ export interface RawJSDocTag {
     comment: TSESTree.Comment;
     name: string;
     value: string;
+}
+
+// @public
+export interface ResolvedMetadata {
+    // Warning: (ae-forgotten-export) The symbol "ResolvedScalarMetadata" needs to be exported by the entry point base.d.ts
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
 }
 
 // (No @packageDocumentation comment for this package)

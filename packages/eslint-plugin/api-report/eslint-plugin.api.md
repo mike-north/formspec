@@ -15,17 +15,10 @@ import type { TSESLint } from '@typescript-eslint/utils';
 // @public
 export const allowedFieldTypes: NamedRuleModule<AllowedFieldTypesMessageIds, AllowedFieldTypesOptions>;
 
+// Warning: (ae-forgotten-export) The symbol "FieldTypeConstraints" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface AllowedFieldTypesConfig {
-    array?: "error" | "warn" | "off";
-    boolean?: "error" | "warn" | "off";
-    dynamicEnum?: "error" | "warn" | "off";
-    dynamicSchema?: "error" | "warn" | "off";
-    number?: "error" | "warn" | "off";
-    object?: "error" | "warn" | "off";
-    staticEnum?: "error" | "warn" | "off";
-    text?: "error" | "warn" | "off";
-}
+export type AllowedFieldTypesConfig = FieldTypeConstraints;
 
 // @public
 export type AllowedFieldTypesMessageIds = "disallowedFieldType";
@@ -36,12 +29,10 @@ export type AllowedFieldTypesOptions = [AllowedFieldTypesConfig];
 // @public
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
 
+// Warning: (ae-forgotten-export) The symbol "LayoutConstraints" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface AllowedLayoutsConfig {
-    conditionals?: "error" | "warn" | "off";
-    group?: "error" | "warn" | "off";
-    maxNestingDepth?: number;
-}
+export type AllowedLayoutsConfig = LayoutConstraints;
 
 // @public
 export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditional";
@@ -66,8 +57,19 @@ export const configs: {
 };
 
 // @public
+export interface DSLPolicy {
+    // Warning: (ae-forgotten-export) The symbol "ControlOptionConstraints" needs to be exported by the entry point index.d.ts
+    controlOptions?: ControlOptionConstraints;
+    // Warning: (ae-forgotten-export) The symbol "FieldOptionConstraints" needs to be exported by the entry point index.d.ts
+    fieldOptions?: FieldOptionConstraints;
+    fieldTypes?: FieldTypeConstraints;
+    layout?: LayoutConstraints;
+    // Warning: (ae-forgotten-export) The symbol "UISchemaConstraints" needs to be exported by the entry point index.d.ts
+    uiSchema?: UISchemaConstraints;
+}
+
+// @public
 export interface ExplicitMetadataSource {
-    // Warning: (ae-forgotten-export) The symbol "ExplicitMetadataSourceForm" needs to be exported by the entry point index.d.ts
     readonly form: ExplicitMetadataSourceForm;
     readonly fullRange: MetadataSourceSpan;
     readonly qualifier?: string | undefined;
@@ -78,17 +80,25 @@ export interface ExplicitMetadataSource {
 }
 
 // @public
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
+
+// @public
 export interface FormSpecConfig {
-    // Warning: (ae-forgotten-export) The symbol "DSLPolicy" needs to be exported by the entry point index.d.ts
     readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
     readonly vendorPrefix?: string;
+}
+
+// @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: DSLPolicy;
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+    readonly metadata?: MetadataPolicyInput;
 }
 
 // @public
@@ -100,11 +110,9 @@ export const meta: {
 // @public
 export interface MetadataAnalysisResult {
     readonly applicableSlots: readonly MetadataApplicableSlot[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataDeclarationKind_2" needs to be exported by the entry point index.d.ts
-    readonly declarationKind: MetadataDeclarationKind_2;
+    readonly declarationKind: MetadataDeclarationKind;
     readonly entries: readonly MetadataResolvedEntry[];
     readonly logicalName: string;
-    // Warning: (ae-forgotten-export) The symbol "ResolvedMetadata" needs to be exported by the entry point index.d.ts
     readonly resolvedMetadata?: ResolvedMetadata | undefined;
 }
 
@@ -112,35 +120,60 @@ export interface MetadataAnalysisResult {
 export interface MetadataApplicableSlot {
     readonly allowBare: boolean;
     readonly qualifiers: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataSlotId_2" needs to be exported by the entry point index.d.ts
-    readonly slotId: MetadataSlotId_2;
+    readonly slotId: MetadataSlotId;
     readonly tagName: string;
+}
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    // Warning: (ae-forgotten-export) The symbol "MetadataAuthoringSurface_2" needs to be exported by the entry point index.d.ts
+    readonly surface: MetadataAuthoringSurface_2;
+}
+
+// @public
+export interface MetadataQualifierRegistration {
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly qualifier: string;
+    readonly sourceQualifier?: string | undefined;
 }
 
 // @public
 export interface MetadataResolvedEntry {
     readonly explicitSource?: ExplicitMetadataSource | undefined;
     readonly qualifier?: string | undefined;
-    readonly slotId: MetadataSlotId_2;
-    // Warning: (ae-forgotten-export) The symbol "MetadataSource" needs to be exported by the entry point index.d.ts
+    readonly slotId: MetadataSlotId;
     readonly source: MetadataSource;
     readonly tagName: string;
     readonly value: string;
 }
 
 // @public
+export type MetadataSlotId = string;
+
+// Warning: (ae-forgotten-export) The symbol "MetadataSlotInferenceContext_2" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext_2) => string;
+
+// @public
 export interface MetadataSlotRegistration {
     readonly allowBare?: boolean | undefined;
-    readonly declarationKinds: readonly MetadataDeclarationKind_2[];
-    // Warning: (ae-forgotten-export) The symbol "MetadataSlotInferenceFn_2" needs to be exported by the entry point index.d.ts
-    readonly inferValue?: MetadataSlotInferenceFn_2 | undefined;
-    // Warning: (ae-forgotten-export) The symbol "MetadataInferenceContext_2" needs to be exported by the entry point index.d.ts
-    readonly isApplicable?: ((context: MetadataInferenceContext_2) => boolean) | undefined;
-    // Warning: (ae-forgotten-export) The symbol "MetadataQualifierRegistration_2" needs to be exported by the entry point index.d.ts
-    readonly qualifiers?: readonly MetadataQualifierRegistration_2[] | undefined;
-    readonly slotId: MetadataSlotId_2;
+    readonly declarationKinds: readonly MetadataDeclarationKind[];
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
+    readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
+    readonly slotId: MetadataSlotId;
     readonly tagName: string;
 }
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
 
 // @public
 export interface MetadataSourceSpan {
@@ -315,6 +348,15 @@ export const remarksWithoutSummary: NamedRuleModule<"remarksWithoutSummary", []>
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export interface ResolvedMetadata {
+    // Warning: (ae-forgotten-export) The symbol "ResolvedScalarMetadata" needs to be exported by the entry point index.d.ts
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
+}
 
 // @public
 export const rules: {

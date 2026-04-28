@@ -26,6 +26,9 @@ export { AnalyzeMetadataForSourceFileOptions }
 export { AnalyzeMetadataOptions }
 
 // @public
+export type ConstraintRuleMessageIds = "typeMismatch" | "invalidValue";
+
+// @public
 export interface ConstraintRuleOptions {
     applicableTypes: FieldTypeCategory[];
     tagName: string;
@@ -33,7 +36,7 @@ export interface ConstraintRuleOptions {
 }
 
 // @public
-export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []>;
+export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<ConstraintRuleMessageIds, []>;
 
 // @public
 export interface ExplicitMetadataSource {
@@ -45,6 +48,9 @@ export interface ExplicitMetadataSource {
     readonly tagNameRange: MetadataSourceSpan;
     readonly valueRange: MetadataSourceSpan;
 }
+
+// @public
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
 
 // @public
 export type FieldTypeCategory = "string" | "number" | "bigint" | "boolean" | "array" | "object" | "union" | "unknown";
@@ -104,6 +110,24 @@ export interface MetadataApplicableSlot {
 }
 
 // @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    readonly surface: MetadataAuthoringSurface;
+}
+
+// @public
+export interface MetadataQualifierRegistration {
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly qualifier: string;
+    readonly sourceQualifier?: string | undefined;
+}
+
+// @public
 export interface MetadataResolvedEntry {
     readonly explicitSource?: ExplicitMetadataSource | undefined;
     readonly qualifier?: string | undefined;
@@ -112,6 +136,12 @@ export interface MetadataResolvedEntry {
     readonly tagName: string;
     readonly value: string;
 }
+
+// @public
+export type MetadataSlotId = string;
+
+// @public
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext) => string;
 
 // @public
 export interface MetadataSlotRegistration {
@@ -125,6 +155,9 @@ export interface MetadataSlotRegistration {
 }
 
 // @public
+export type MetadataSource = "explicit" | "inferred";
+
+// @public
 export interface MetadataSourceSpan {
     readonly end: number;
     readonly start: number;
@@ -135,6 +168,14 @@ export interface RawJSDocTag {
     comment: TSESTree.Comment;
     name: string;
     value: string;
+}
+
+// @public
+export interface ResolvedMetadata {
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
 }
 
 // (No @packageDocumentation comment for this package)

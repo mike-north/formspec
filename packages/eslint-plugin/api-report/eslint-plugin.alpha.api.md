@@ -16,16 +16,7 @@ import type { TSESLint } from '@typescript-eslint/utils';
 export const allowedFieldTypes: NamedRuleModule<AllowedFieldTypesMessageIds, AllowedFieldTypesOptions>;
 
 // @public
-export interface AllowedFieldTypesConfig {
-    array?: "error" | "warn" | "off";
-    boolean?: "error" | "warn" | "off";
-    dynamicEnum?: "error" | "warn" | "off";
-    dynamicSchema?: "error" | "warn" | "off";
-    number?: "error" | "warn" | "off";
-    object?: "error" | "warn" | "off";
-    staticEnum?: "error" | "warn" | "off";
-    text?: "error" | "warn" | "off";
-}
+export type AllowedFieldTypesConfig = FieldTypeConstraints;
 
 // @public
 export type AllowedFieldTypesMessageIds = "disallowedFieldType";
@@ -37,11 +28,7 @@ export type AllowedFieldTypesOptions = [AllowedFieldTypesConfig];
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
 
 // @public
-export interface AllowedLayoutsConfig {
-    conditionals?: "error" | "warn" | "off";
-    group?: "error" | "warn" | "off";
-    maxNestingDepth?: number;
-}
+export type AllowedLayoutsConfig = LayoutConstraints;
 
 // @public
 export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditional";
@@ -66,6 +53,15 @@ export const configs: {
 };
 
 // @public
+export interface DSLPolicy {
+    controlOptions?: ControlOptionConstraints;
+    fieldOptions?: FieldOptionConstraints;
+    fieldTypes?: FieldTypeConstraints;
+    layout?: LayoutConstraints;
+    uiSchema?: UISchemaConstraints;
+}
+
+// @public
 export interface ExplicitMetadataSource {
     readonly form: ExplicitMetadataSourceForm;
     readonly fullRange: MetadataSourceSpan;
@@ -75,6 +71,9 @@ export interface ExplicitMetadataSource {
     readonly tagNameRange: MetadataSourceSpan;
     readonly valueRange: MetadataSourceSpan;
 }
+
+// @public
+export type ExplicitMetadataSourceForm = "bare" | "qualified";
 
 // @public
 export interface FormSpecConfig {
@@ -87,6 +86,13 @@ export interface FormSpecConfig {
 }
 
 // @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: DSLPolicy;
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+    readonly metadata?: MetadataPolicyInput;
+}
+
+// @public
 export const meta: {
     name: string;
     version: string;
@@ -95,7 +101,7 @@ export const meta: {
 // @public
 export interface MetadataAnalysisResult {
     readonly applicableSlots: readonly MetadataApplicableSlot[];
-    readonly declarationKind: MetadataDeclarationKind_2;
+    readonly declarationKind: MetadataDeclarationKind;
     readonly entries: readonly MetadataResolvedEntry[];
     readonly logicalName: string;
     readonly resolvedMetadata?: ResolvedMetadata | undefined;
@@ -105,30 +111,57 @@ export interface MetadataAnalysisResult {
 export interface MetadataApplicableSlot {
     readonly allowBare: boolean;
     readonly qualifiers: readonly string[];
-    readonly slotId: MetadataSlotId_2;
+    readonly slotId: MetadataSlotId;
     readonly tagName: string;
+}
+
+// @public
+export type MetadataDeclarationKind = "type" | "field" | "method";
+
+// @public
+export interface MetadataInferenceContext {
+    readonly buildContext?: unknown;
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly logicalName: string;
+    readonly surface: MetadataAuthoringSurface_2;
+}
+
+// @public
+export interface MetadataQualifierRegistration {
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly qualifier: string;
+    readonly sourceQualifier?: string | undefined;
 }
 
 // @public
 export interface MetadataResolvedEntry {
     readonly explicitSource?: ExplicitMetadataSource | undefined;
     readonly qualifier?: string | undefined;
-    readonly slotId: MetadataSlotId_2;
+    readonly slotId: MetadataSlotId;
     readonly source: MetadataSource;
     readonly tagName: string;
     readonly value: string;
 }
 
 // @public
+export type MetadataSlotId = string;
+
+// @public
+export type MetadataSlotInferenceFn = (context: MetadataSlotInferenceContext_2) => string;
+
+// @public
 export interface MetadataSlotRegistration {
     readonly allowBare?: boolean | undefined;
-    readonly declarationKinds: readonly MetadataDeclarationKind_2[];
-    readonly inferValue?: MetadataSlotInferenceFn_2 | undefined;
-    readonly isApplicable?: ((context: MetadataInferenceContext_2) => boolean) | undefined;
-    readonly qualifiers?: readonly MetadataQualifierRegistration_2[] | undefined;
-    readonly slotId: MetadataSlotId_2;
+    readonly declarationKinds: readonly MetadataDeclarationKind[];
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
+    readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
+    readonly slotId: MetadataSlotId;
     readonly tagName: string;
 }
+
+// @public
+export type MetadataSource = "explicit" | "inferred";
 
 // @public
 export interface MetadataSourceSpan {
@@ -303,6 +336,14 @@ export const remarksWithoutSummary: NamedRuleModule<"remarksWithoutSummary", []>
 export const requireTagArguments: ESLintUtils.RuleModule<"missingTagArgument", [], unknown, ESLintUtils.RuleListener> & {
     name: string;
 };
+
+// @public
+export interface ResolvedMetadata {
+    readonly apiName?: ResolvedScalarMetadata;
+    readonly apiNamePlural?: ResolvedScalarMetadata;
+    readonly displayName?: ResolvedScalarMetadata;
+    readonly displayNamePlural?: ResolvedScalarMetadata;
+}
 
 // @public
 export const rules: {

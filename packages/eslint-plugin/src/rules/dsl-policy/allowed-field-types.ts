@@ -10,6 +10,7 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
+import type { FieldTypeConstraints } from "@formspec/config";
 import { getFieldTypeSeverity } from "@formspec/dsl-policy/browser";
 
 const createRule = ESLintUtils.RuleCreator(
@@ -28,24 +29,7 @@ export type MessageIds = "disallowedFieldType";
  *
  * @public
  */
-export interface AllowedFieldTypesConfig {
-  /** field.text() - basic text input */
-  text?: "error" | "warn" | "off";
-  /** field.number() - numeric input */
-  number?: "error" | "warn" | "off";
-  /** field.boolean() - checkbox/toggle */
-  boolean?: "error" | "warn" | "off";
-  /** field.enum() with literal options */
-  staticEnum?: "error" | "warn" | "off";
-  /** field.dynamicEnum() - runtime-fetched options */
-  dynamicEnum?: "error" | "warn" | "off";
-  /** field.dynamicSchema() - runtime-fetched schema */
-  dynamicSchema?: "error" | "warn" | "off";
-  /** field.array() / field.arrayWithConfig() */
-  array?: "error" | "warn" | "off";
-  /** field.object() / field.objectWithConfig() */
-  object?: "error" | "warn" | "off";
-}
+export type AllowedFieldTypesConfig = FieldTypeConstraints;
 
 /**
  * Maps DSL method names to constraint config keys.

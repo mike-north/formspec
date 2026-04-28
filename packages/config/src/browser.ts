@@ -125,7 +125,7 @@ export function loadConfigFromString(yamlContent: string): ResolvedDSLPolicy {
 /**
  * Validates FormSpec elements against DSL policy.
  *
- * @beta
+ * @public
  */
 export function validateFormSpecElements(
   elements: readonly FormElement[],
@@ -137,7 +137,7 @@ export function validateFormSpecElements(
 /**
  * Validates a complete FormSpec against DSL policy.
  *
- * @beta
+ * @public
  */
 export function validateFormSpec(
   formSpec: FormSpec<readonly FormElement[]>,

@@ -37,7 +37,7 @@ export function mergeWithDefaults(config: DSLPolicy | undefined): ResolvedDSLPol
  * Creates a DSL policy directly from an object.
  * Useful for programmatic configuration without a config file.
  *
- * @beta
+ * @public
  */
 export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy {
   return defineInternalDSLPolicy(config);
@@ -47,7 +47,7 @@ export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy {
  * Creates a DSL policy directly from an object.
  *
  * @deprecated Use `defineDSLPolicy`.
- * @beta
+ * @public
  */
 export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy {
   return defineDSLPolicy(config);

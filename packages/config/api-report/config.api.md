@@ -62,10 +62,10 @@ export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy;
 // @beta
 export const DEFAULT_DSL_POLICY: ResolvedDSLPolicy;
 
-// @beta @deprecated
+// @public @deprecated
 export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy;
 
-// @beta
+// @public
 export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy;
 
 // @public
@@ -405,10 +405,10 @@ export function validateFieldOptions(context: FieldOptionsContext, constraints: 
 // @beta
 export function validateFieldTypes(context: FieldTypeContext, constraints: FieldTypeConstraints): ValidationIssue[];
 
-// @beta
+// @public
 export function validateFormSpec(formSpec: FormSpec<readonly FormElement[]>, options?: FormSpecValidationOptions): ValidationResult;
 
-// @beta
+// @public
 export function validateFormSpecElements(elements: readonly FormElement[], options?: FormSpecValidationOptions): ValidationResult;
 
 // @beta

@@ -53,6 +53,12 @@ export interface ControlOptionConstraints {
     showUnfocusedDescription?: Severity;
 }
 
+// @public @deprecated
+export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy;
+
+// @public
+export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy;
+
 // @public
 export function defineFormSpecConfig(config: FormSpecConfig): FormSpecConfig;
 
@@ -329,6 +335,12 @@ export interface UISchemaConstraints {
     layouts?: LayoutTypeConstraints;
     rules?: RuleConstraints;
 }
+
+// @public
+export function validateFormSpec(formSpec: FormSpec<readonly FormElement[]>, options?: FormSpecValidationOptions): ValidationResult;
+
+// @public
+export function validateFormSpecElements(elements: readonly FormElement[], options?: FormSpecValidationOptions): ValidationResult;
 
 // @public
 export interface ValidationIssue {

@@ -35,6 +35,20 @@ export interface CreateServerOptions {
     readonly workspaceRoots?: readonly string[];
 }
 
+// @public
+export interface DSLPolicy {
+    // Warning: (ae-forgotten-export) The symbol "ControlOptionConstraints" needs to be exported by the entry point index.d.ts
+    controlOptions?: ControlOptionConstraints;
+    // Warning: (ae-forgotten-export) The symbol "FieldOptionConstraints" needs to be exported by the entry point index.d.ts
+    fieldOptions?: FieldOptionConstraints;
+    // Warning: (ae-forgotten-export) The symbol "FieldTypeConstraints" needs to be exported by the entry point index.d.ts
+    fieldTypes?: FieldTypeConstraints;
+    // Warning: (ae-forgotten-export) The symbol "LayoutConstraints" needs to be exported by the entry point index.d.ts
+    layout?: LayoutConstraints;
+    // Warning: (ae-forgotten-export) The symbol "UISchemaConstraints" needs to be exported by the entry point index.d.ts
+    uiSchema?: UISchemaConstraints;
+}
+
 export { ExtensionDefinition }
 
 // @public
@@ -66,16 +80,21 @@ export interface FormSpecAnalysisDiagnosticLocation {
 
 // @public
 export interface FormSpecConfig {
-    // Warning: (ae-forgotten-export) The symbol "DSLPolicy" needs to be exported by the entry point index.d.ts
     readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition_2[];
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput;
-    // Warning: (ae-forgotten-export) The symbol "FormSpecPackageOverride" needs to be exported by the entry point index.d.ts
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
     readonly vendorPrefix?: string;
+}
+
+// @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: DSLPolicy;
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+    readonly metadata?: MetadataPolicyInput;
 }
 
 // @public

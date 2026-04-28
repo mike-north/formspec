@@ -138,6 +138,15 @@ export interface DiscriminatorResolutionOptions {
     readonly apiNamePrefix?: string | undefined;
 }
 
+// @public
+export interface DSLPolicy {
+    controlOptions?: ControlOptionConstraints;
+    fieldOptions?: FieldOptionConstraints;
+    fieldTypes?: FieldTypeConstraints;
+    layout?: LayoutConstraints;
+    uiSchema?: UISchemaConstraints;
+}
+
 export { DynamicEnumField }
 
 export { DynamicSchemaField }
@@ -188,6 +197,13 @@ export interface FormSpecConfig {
     readonly metadata?: MetadataPolicyInput_2;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
     readonly vendorPrefix?: string;
+}
+
+// @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: DSLPolicy;
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+    readonly metadata?: MetadataPolicyInput_2;
 }
 
 // @public

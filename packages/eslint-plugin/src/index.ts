@@ -16,15 +16,23 @@ export type {
 } from "@formspec/analysis";
 export type {
   ExplicitMetadataSource,
+  ExplicitMetadataSourceForm,
+  MetadataDeclarationKind,
+  MetadataInferenceContext,
+  MetadataQualifierRegistration,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataResolvedEntry,
   MetadataSlotRegistration,
+  MetadataSlotId,
+  MetadataSlotInferenceFn,
+  MetadataSource,
   MetadataSourceSpan,
+  ResolvedMetadata,
 } from "@formspec/core";
 import packageJson from "../package.json" with { type: "json" };
 import type { FormSpecConfig } from "@formspec/config";
-export type { FormSpecConfig } from "@formspec/config";
+export type { DSLPolicy, FormSpecConfig, FormSpecPackageOverride } from "@formspec/config";
 import { createExtensionRegistry } from "@formspec/build";
 import {
   noUnknownTags,
