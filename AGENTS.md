@@ -96,3 +96,9 @@ pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 - [README.md](./README.md)
 - [docs/002-tsdoc-grammar.md](./docs/002-tsdoc-grammar.md)
 - [docs/004-tooling.md](./docs/004-tooling.md)
+
+## Supplemental Resources
+
+Load these only when the change touches the named area:
+
+- [docs/typescript-compiler-compatibility.md](./docs/typescript-compiler-compatibility.md) — read before changing TypeScript compiler API imports, TypeScript package dependencies, TypeScript-version CI, or the TS 7 `tsgo` native-preview job.

@@ -164,11 +164,13 @@ The matrix derives the `experimental` flag from a major-version mismatch with th
 - **Tier 1 (per-PR):** full pipeline against latest of each supported TypeScript major. `.github/workflows/ci.yml` computes these rows through `typescript-matrix` and runs them through `typescript-versions`; the workspace's pinned major is required, while other supported majors remain informational until promoted.
 - **Tier 2 (per-PR, experimental):** full pipeline against pre-release tracks such as `beta` and `6.x nightly`. These rows are intentionally non-blocking so upstream pre-release drift does not block regular FormSpec work.
 - **Tier 3 (weekly cron, informational):** typecheck-only smoke against the latest patch of every supported TypeScript minor. `.github/workflows/typescript-minor-smoke.yml` derives rows from `packages/analysis/package.json`, runs `pnpm run build && pnpm run typecheck`, and opens or comments on a `tier-3-ts-smoke-failure` tracking issue rather than blocking PRs.
-- **TS 7 (`tsgo`):** separate experimental coverage, tracked in [#449](https://github.com/mike-north/formspec/issues/449).
+- **TS 7 (`tsgo`):** separate experimental coverage, tracked in [#449](https://github.com/mike-north/formspec/issues/449). `.github/workflows/ci.yml` installs `@typescript/native-preview@beta` in the dedicated non-blocking `Test (TypeScript 7.0 native preview)` job.
 
 Patch-level matrix coverage is intentionally out of scope. TypeScript patches are bug-fix releases, and dist-tag drift on `latest` already exercises patch-level movement.
 
-TypeScript 7.x is the Go rewrite with a substantively different API surface. We do not test against it via dist-tag drift; it will be a deliberate, separate migration.
+TypeScript 7.x is the Go rewrite with a substantively different API surface. FormSpec is not opting into official TS 7 support until a future deliberate migration, and we do not test TS 7 through dist-tag drift. The `tsgo` job is native-preview coverage only; the workflow comments own the temporary compatibility details for existing TS 6 tooling.
+
+For changes that touch TypeScript compiler API imports, TypeScript package dependencies, TypeScript-version CI, or TS 7 `tsgo` failures, load the supplemental guide in [`docs/typescript-compiler-compatibility.md`](./docs/typescript-compiler-compatibility.md). Do not load it for ordinary feature work that does not affect those areas.
 
 ### TypeScript compiler API quirks across majors
 
