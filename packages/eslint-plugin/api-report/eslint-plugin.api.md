@@ -10,33 +10,44 @@ import { analyzeMetadataForSourceFile } from '@formspec/analysis';
 import { AnalyzeMetadataForSourceFileOptions } from '@formspec/analysis';
 import { AnalyzeMetadataOptions } from '@formspec/analysis';
 import { ESLintUtils } from '@typescript-eslint/utils';
-import { ExplicitMetadataSource } from '@formspec/core';
-import { FieldTypeConstraints as FieldTypeConstraints_2 } from '@formspec/config/browser';
-import { LayoutConstraints as LayoutConstraints_2 } from '@formspec/config/browser';
-import { MetadataAnalysisResult } from '@formspec/core';
-import { MetadataApplicableSlot } from '@formspec/core';
-import { MetadataResolvedEntry } from '@formspec/core';
-import { MetadataSlotRegistration } from '@formspec/core';
-import { MetadataSourceSpan } from '@formspec/core';
 import type { TSESLint } from '@typescript-eslint/utils';
 
 // @public
 export const allowedFieldTypes: NamedRuleModule<AllowedFieldTypesMessageIds, AllowedFieldTypesOptions>;
 
 // @public
+export interface AllowedFieldTypesConfig {
+    array?: "error" | "warn" | "off";
+    boolean?: "error" | "warn" | "off";
+    dynamicEnum?: "error" | "warn" | "off";
+    dynamicSchema?: "error" | "warn" | "off";
+    number?: "error" | "warn" | "off";
+    object?: "error" | "warn" | "off";
+    staticEnum?: "error" | "warn" | "off";
+    text?: "error" | "warn" | "off";
+}
+
+// @public
 export type AllowedFieldTypesMessageIds = "disallowedFieldType";
 
 // @public
-export type AllowedFieldTypesOptions = [FieldTypeConstraints_2];
+export type AllowedFieldTypesOptions = [AllowedFieldTypesConfig];
 
 // @public
 export const allowedLayouts: NamedRuleModule<AllowedLayoutsMessageIds, AllowedLayoutsOptions>;
 
 // @public
+export interface AllowedLayoutsConfig {
+    conditionals?: "error" | "warn" | "off";
+    group?: "error" | "warn" | "off";
+    maxNestingDepth?: number;
+}
+
+// @public
 export type AllowedLayoutsMessageIds = "disallowedGroup" | "disallowedConditional";
 
 // @public
-export type AllowedLayoutsOptions = [LayoutConstraints_2];
+export type AllowedLayoutsOptions = [AllowedLayoutsConfig];
 
 export { analyzeMetadataForNode }
 
@@ -54,12 +65,22 @@ export const configs: {
     readonly strict: TSESLint.FlatConfig.ConfigArray;
 };
 
-export { ExplicitMetadataSource }
+// @public
+export interface ExplicitMetadataSource {
+    // Warning: (ae-forgotten-export) The symbol "ExplicitMetadataSourceForm" needs to be exported by the entry point index.d.ts
+    readonly form: ExplicitMetadataSourceForm;
+    readonly fullRange: MetadataSourceSpan;
+    readonly qualifier?: string | undefined;
+    readonly qualifierRange?: MetadataSourceSpan | undefined;
+    readonly tagName: string;
+    readonly tagNameRange: MetadataSourceSpan;
+    readonly valueRange: MetadataSourceSpan;
+}
 
 // @public
 export interface FormSpecConfig {
-    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
-    readonly constraints?: ConstraintConfig;
+    // Warning: (ae-forgotten-export) The symbol "DSLPolicy" needs to be exported by the entry point index.d.ts
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition[];
@@ -76,15 +97,56 @@ export const meta: {
     version: string;
 };
 
-export { MetadataAnalysisResult }
+// @public
+export interface MetadataAnalysisResult {
+    readonly applicableSlots: readonly MetadataApplicableSlot[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataDeclarationKind_2" needs to be exported by the entry point index.d.ts
+    readonly declarationKind: MetadataDeclarationKind_2;
+    readonly entries: readonly MetadataResolvedEntry[];
+    readonly logicalName: string;
+    // Warning: (ae-forgotten-export) The symbol "ResolvedMetadata" needs to be exported by the entry point index.d.ts
+    readonly resolvedMetadata?: ResolvedMetadata | undefined;
+}
 
-export { MetadataApplicableSlot }
+// @public
+export interface MetadataApplicableSlot {
+    readonly allowBare: boolean;
+    readonly qualifiers: readonly string[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataSlotId_2" needs to be exported by the entry point index.d.ts
+    readonly slotId: MetadataSlotId_2;
+    readonly tagName: string;
+}
 
-export { MetadataResolvedEntry }
+// @public
+export interface MetadataResolvedEntry {
+    readonly explicitSource?: ExplicitMetadataSource | undefined;
+    readonly qualifier?: string | undefined;
+    readonly slotId: MetadataSlotId_2;
+    // Warning: (ae-forgotten-export) The symbol "MetadataSource" needs to be exported by the entry point index.d.ts
+    readonly source: MetadataSource;
+    readonly tagName: string;
+    readonly value: string;
+}
 
-export { MetadataSlotRegistration }
+// @public
+export interface MetadataSlotRegistration {
+    readonly allowBare?: boolean | undefined;
+    readonly declarationKinds: readonly MetadataDeclarationKind_2[];
+    // Warning: (ae-forgotten-export) The symbol "MetadataSlotInferenceFn_2" needs to be exported by the entry point index.d.ts
+    readonly inferValue?: MetadataSlotInferenceFn_2 | undefined;
+    // Warning: (ae-forgotten-export) The symbol "MetadataInferenceContext_2" needs to be exported by the entry point index.d.ts
+    readonly isApplicable?: ((context: MetadataInferenceContext_2) => boolean) | undefined;
+    // Warning: (ae-forgotten-export) The symbol "MetadataQualifierRegistration_2" needs to be exported by the entry point index.d.ts
+    readonly qualifiers?: readonly MetadataQualifierRegistration_2[] | undefined;
+    readonly slotId: MetadataSlotId_2;
+    readonly tagName: string;
+}
 
-export { MetadataSourceSpan }
+// @public
+export interface MetadataSourceSpan {
+    readonly end: number;
+    readonly start: number;
+}
 
 // @public
 export type NamedRuleModule<MessageIds extends string, Options extends readonly unknown[]> = TSESLint.RuleModule<MessageIds, Options> & {

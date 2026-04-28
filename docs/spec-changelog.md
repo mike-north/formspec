@@ -8,6 +8,30 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Group entries by the spec document being changed.
 - Link each entry back to the corresponding item in `scratch/spec-risk-log.md` when applicable.
 
+# 2026-04-28
+
+## 000-principles.md
+
+- Extended the PP15 cross-reference for the DSL-policy package split.
+  - PP15 remains the governing taxonomy for data constraints versus DSL policy.
+  - Configuration and tooling docs now reference PP15 where they describe DSL-policy ownership and migration.
+
+## 004-tooling.md
+
+- Clarified DSL-policy implementation ownership.
+  - The private internal `@formspec/dsl-policy` package owns shared policy types, defaults, and validators.
+  - `@formspec/config` carries policy as `FormSpecConfig.constraints` and re-exports the policy surface for compatibility.
+  - ESLint DSL-policy rules may consume bundled browser-safe policy helpers from `@formspec/dsl-policy/browser`.
+  - Stale `.formspec.yml` message, disabled-tag, and extension-configuration references now identify those surfaces as planned or legacy rather than current active configuration.
+
+## 007-configuration.md
+
+- Recorded the DSL-policy package split.
+  - `DSLPolicy`, resolved policy types, defaults, and validators are implemented in the private internal `@formspec/dsl-policy` package.
+  - Existing public imports from `@formspec/config` remain valid through compatibility re-exports and deprecated aliases for the old constraint-named APIs.
+  - Published packages bundle private DSL-policy helpers rather than exposing `@formspec/dsl-policy` as an install-time dependency.
+  - ESLint and language-server per-file config integration is documented as target behavior where it is not yet implemented.
+
 # 2026-04-27
 
 ## 000-principles.md

@@ -277,6 +277,7 @@ describe("validateFormSpecElements", () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-deprecated -- compatibility tests cover deprecated alias */
 describe("defineConstraints", () => {
   it("merges partial config with defaults", () => {
     const config = defineConstraints({
@@ -306,6 +307,7 @@ describe("defineConstraints", () => {
     expect(config.layout.maxNestingDepth).toBe(2);
   });
 });
+/* eslint-enable @typescript-eslint/no-deprecated */
 
 describe("validateFormSpec", () => {
   it("validates a FormSpec object directly", () => {

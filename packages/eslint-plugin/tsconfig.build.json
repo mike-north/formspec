@@ -9,10 +9,22 @@
         "../analysis/dist/internal.d.ts"
       ],
       "@formspec/build": [
-        "../build/dist/build-internal.d.ts"
+        "../build/dist/build.d.ts"
+      ],
+      "@formspec/build/internals": [
+        "../build/dist/internals.d.ts"
       ],
       "@formspec/config": [
         "../config/dist/config-internal.d.ts"
+      ],
+      "@formspec/core": [
+        "../core/dist/core.d.ts"
+      ],
+      "@formspec/dsl-policy": [
+        "../dsl-policy/dist/index.d.ts"
+      ],
+      "@formspec/dsl-policy/browser": [
+        "../dsl-policy/dist/browser.d.ts"
       ],
       "@formspec/core/internals": [
         "../core/dist/internals.d.ts"

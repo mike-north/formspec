@@ -1,8 +1,8 @@
 import type {
   FormSpecConfig,
   FormSpecPackageOverride,
-  ConstraintConfig,
-  ResolvedConstraintConfig,
+  DSLPolicy,
+  ResolvedDSLPolicy,
 } from "./types.js";
 import { mergeWithDefaults } from "./defaults.js";
 
@@ -15,8 +15,8 @@ import { mergeWithDefaults } from "./defaults.js";
 export interface ResolvedFormSpecConfig {
   /** Resolved extensions (empty array if none configured). */
   readonly extensions: readonly import("@formspec/core").ExtensionDefinition[];
-  /** Resolved constraint config with all defaults filled in. */
-  readonly constraints: ResolvedConstraintConfig;
+  /** Resolved DSL policy with all defaults filled in. */
+  readonly constraints: ResolvedDSLPolicy;
   /** Resolved metadata policy, or undefined for FormSpec built-in. */
   readonly metadata: import("@formspec/core").MetadataPolicyInput | undefined;
   /** Resolved vendor prefix. */
@@ -101,16 +101,13 @@ function applyOverride(
 }
 
 /**
- * Deep-merges constraint configs. Override fields take precedence;
+ * Deep-merges DSL-policy configs. Override fields take precedence;
  * unspecified override sub-fields inherit from the base.
  */
-function deepMergeConstraints(
-  base: ConstraintConfig | undefined,
-  override: ConstraintConfig
-): ConstraintConfig {
+function deepMergeConstraints(base: DSLPolicy | undefined, override: DSLPolicy): DSLPolicy {
   if (base === undefined) return override;
 
-  const merged: ConstraintConfig = {
+  const merged: DSLPolicy = {
     fieldTypes: { ...base.fieldTypes, ...override.fieldTypes },
     layout: { ...base.layout, ...override.layout },
     fieldOptions: { ...base.fieldOptions, ...override.fieldOptions },

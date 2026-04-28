@@ -46,6 +46,7 @@
     "typescript": ">=5.7.3 <7"
   },
   "devDependencies": {
+    "@formspec/dsl-policy": "workspace:*",
     "@typescript-eslint/parser": "^8.57.0",
     "@typescript-eslint/rule-tester": "^8.57.0",
     "eslint-doc-generator": "^3.3.2",

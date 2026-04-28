@@ -9,7 +9,7 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import { isLayoutTypeAllowed, type LayoutConstraints } from "@formspec/config/browser";
+import { isLayoutTypeAllowed } from "@formspec/dsl-policy/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -27,7 +27,21 @@ export type MessageIds = "disallowedGroup" | "disallowedConditional";
  *
  * @public
  */
-export type Options = [LayoutConstraints];
+export interface AllowedLayoutsConfig {
+  /** group() - visual grouping of fields */
+  group?: "error" | "warn" | "off";
+  /** when() - conditional field visibility */
+  conditionals?: "error" | "warn" | "off";
+  /** Maximum nesting depth for objects/arrays (0 = flat only) */
+  maxNestingDepth?: number;
+}
+
+/**
+ * Rule options accepted by `allowedLayouts`.
+ *
+ * @public
+ */
+export type Options = [AllowedLayoutsConfig];
 /**
  * ESLint rule that validates allowed layout constructs against project constraints.
  *

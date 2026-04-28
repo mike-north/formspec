@@ -151,7 +151,7 @@ A **set-influencing** piece of metadata that narrows the set of allowed values f
 Constraint logic is owned by:
 
 - `DomainModelContext` (`@formspec/core`) — the `Constraint` IR type and registration interfaces.
-- `ConfigurationContext` (`@formspec/config`) — user-facing registration via `defineConstraints`.
+- `ConfigurationContext` (`@formspec/config`) — project configuration carries extension definitions that may register custom data constraints.
 - `CompilationContext` (`@formspec/build`) — extraction from source and application during IR construction.
 - `ValidatorContext` (`@formspec/validator`) — runtime enforcement against generated schemas.
 - `StaticAnalysisContext` (`@formspec/analysis`) — semantic diagnostics about constraint usage.
@@ -198,21 +198,27 @@ When in doubt, prefer **Resolver** for the function and **data source** for the 
 
 ### `formspec.config.ts`
 
-The project-level configuration file consumed by `@formspec/config`. Discovery searches for `formspec.config.ts`, `formspec.config.mts`, `formspec.config.js`, or `formspec.config.mjs` (in that order) starting from the working directory. Authors write the file as TypeScript using `defineFormSpecConfig({...})` and register extensions, custom constraints, vendor prefix, metadata policy, enum serialization, and per-package overrides.
+The project-level configuration file consumed by `@formspec/config`. Discovery searches for `formspec.config.ts`, `formspec.config.mts`, `formspec.config.js`, or `formspec.config.mjs` (in that order) starting from the working directory. Authors write the file as TypeScript using `defineFormSpecConfig({...})` and register extensions, custom constraints, vendor prefix, metadata policy, enum serialization, DSL policy, and per-package overrides.
 
 `.formspec.yml` is **legacy** and is no longer the default convention; YAML strings can still be parsed via `loadConfigFromString()` in the browser entry for embedded scenarios.
 
 Owning bounded context: `ConfigurationContext`. See [`docs/007-configuration.md`](./docs/007-configuration.md).
 
+### DSL Policy
+
+Project policy that restricts which Chain DSL features may be authored, such as allowed field types, layout constructs, UI-schema features, field options, and renderer control options. The policy is stored on `FormSpecConfig.constraints` as `DSLPolicy`. The private internal `@formspec/dsl-policy` package owns the policy types, defaults, and validators; `@formspec/config` re-exports the public compatibility surface. Older names such as `ConstraintConfig` remain deprecated aliases.
+
+Owning bounded context: `DSLPolicyContext`.
+
 ### Capability
 
-A FormSpec feature that the configuration system can enable or disable per project (e.g., "dynamic enums," "conditional layout," "placeholder option"). Capability restrictions are enforced at three layers: ESLint plugin (build-time), `validateFormSpecElements()` (programmatic), and `@formspec/config/browser` (browser-embedded).
+A FormSpec authoring feature that DSL policy can enable or disable per project (e.g., "dynamic enums," "conditional layout," "placeholder option"). Capability restrictions are enforced at three layers: ESLint plugin (build-time), `validateFormSpecElements()` (programmatic), and browser-embedded validation through the public `@formspec/config/browser` entry point. Internal packages may use the private `@formspec/dsl-policy/browser` implementation directly.
 
 ### Capability Registry
 
-The internal data structure inside `@formspec/config` that holds the active set of allowed capabilities for a given resolved config. Consumed by `validateFormSpecElements()` and by the ESLint plugin's allowed-types and allowed-layouts rules. Distinct from a single **Capability** declaration — the registry is the aggregate enforcement state for a project or per-package override.
+The resolved DSL-policy aggregate that holds the active set of allowed capabilities for a project or per-package override. Consumed by `validateFormSpecElements()` and by the ESLint plugin's allowed-types and allowed-layouts rules. Distinct from a single **Capability** declaration — it represents the aggregate enforcement state.
 
-Owning bounded context: `ConfigurationContext`.
+Owning bounded context: `DSLPolicyContext`.
 
 ---
 

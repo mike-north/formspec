@@ -34,7 +34,7 @@ The campaign deliberately stops at the strategic level (BoundedContexts + Contex
 | `AuthoringDomain`        | CORE       | The two surfaces developers use to express form definitions                                                    |
 | `SemanticAnalysisDomain` | SUPPORTING | Static extraction of FormSpec semantics from TypeScript source — packaged for reuse by Compilation and tooling |
 | `CompilationDomain`      | CORE       | Canonicalization plus JSON Schema and UI Schema emission                                                       |
-| `ConfigurationDomain`    | SUPPORTING | `formspec.config.ts` loading and DSL capability restriction                                                    |
+| `ConfigurationDomain`    | SUPPORTING | `formspec.config.ts` loading and shared DSL-policy restriction                                                 |
 | `RuntimeDomain`          | SUPPORTING | Resolver helpers for dynamic data at form-render time                                                          |
 | `DeveloperToolingDomain` | SUPPORTING | IDE, lint, and CLI integrations                                                                                |
 | `ValidationDomain`       | GENERIC    | Standard JSON Schema 2020-12 validation (conforms to an external standard, not to FormSpec specifics)          |
@@ -47,19 +47,20 @@ CORE is where FormSpec's distinctive value lives. SUPPORTING domains are necessa
 
 Each row below maps a CML `BoundedContext` to its npm package and primary responsibilities. Cell labels match the identifiers in [`formspec.cml`](./formspec.cml) — search there for the full vision statement.
 
-| Bounded context         | Package                     | Subdomain                | Role / responsibilities                                                                                                                               |
-| ----------------------- | --------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DomainModelContext`    | `@formspec/core`            | `FormSpecModelDomain`    | Defines and publishes the canonical FormIR. Discriminated FormElement union, IR node types, constraint/annotation registration APIs.                  |
-| `ChainDslContext`       | `@formspec/dsl`             | `AuthoringDomain`        | Fluent builder API: `field.*`, `group`, `when`, `formspec`. Full type inference of the resulting schema.                                              |
-| `StaticAnalysisContext` | `@formspec/analysis`        | `SemanticAnalysisDomain` | TSDoc tag parsing, constraint extraction, FileSnapshot protocol. The "TypeScript-AST work" every IDE/lint tool would otherwise re-implement.          |
-| `CompilationContext`    | `@formspec/build`           | `CompilationDomain`      | Canonicalize chain DSL and class-analysis output to FormIR; emit JSON Schema 2020-12 and JSON Forms UI Schema.                                        |
-| `ConfigurationContext`  | `@formspec/config`          | `ConfigurationDomain`    | Load `formspec.config.ts` (or `.mts`/`.js`/`.mjs`); register extensions and custom constraints; restrict the FormSpec capability surface per project. |
-| `RuntimeContext`        | `@formspec/runtime`         | `RuntimeDomain`          | `defineResolvers()` for dynamic enum and dynamic schema fields, with type-safe end-to-end binding.                                                    |
-| `ValidatorContext`      | `@formspec/validator`       | `ValidationDomain`       | Wraps `@cfworker/json-schema` to provide JSON Schema 2020-12 validation in edge-runtime environments. No FormSpec-specific dependencies.              |
-| `CliContext`            | `@formspec/cli`             | `DeveloperToolingDomain` | Drive schema and IR generation from the command line.                                                                                                 |
-| `EslintContext`         | `@formspec/eslint-plugin`   | `DeveloperToolingDomain` | ESLint rules: constraint type-mismatch, contradictions, capability restrictions, with auto-fixes where unambiguous.                                   |
-| `TsPluginContext`       | `@formspec/ts-plugin`       | `DeveloperToolingDomain` | TypeScript language-service plugin and reusable composable semantic service for IDE integrations.                                                     |
-| `LanguageServerContext` | `@formspec/language-server` | `DeveloperToolingDomain` | LSP reference implementation; thin presentation layer over composable analysis and TS-plugin helpers.                                                 |
+| Bounded context         | Package                     | Subdomain                | Role / responsibilities                                                                                                                      |
+| ----------------------- | --------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DomainModelContext`    | `@formspec/core`            | `FormSpecModelDomain`    | Defines and publishes the canonical FormIR. Discriminated FormElement union, IR node types, constraint/annotation registration APIs.         |
+| `ChainDslContext`       | `@formspec/dsl`             | `AuthoringDomain`        | Fluent builder API: `field.*`, `group`, `when`, `formspec`. Full type inference of the resulting schema.                                     |
+| `StaticAnalysisContext` | `@formspec/analysis`        | `SemanticAnalysisDomain` | TSDoc tag parsing, constraint extraction, FileSnapshot protocol. The "TypeScript-AST work" every IDE/lint tool would otherwise re-implement. |
+| `CompilationContext`    | `@formspec/build`           | `CompilationDomain`      | Canonicalize chain DSL and class-analysis output to FormIR; emit JSON Schema 2020-12 and JSON Forms UI Schema.                               |
+| `ConfigurationContext`  | `@formspec/config`          | `ConfigurationDomain`    | Load `formspec.config.ts` (or `.mts`/`.js`/`.mjs`); register extensions and custom constraints; carry project DSL policy as config data.     |
+| `DSLPolicyContext`      | `@formspec/dsl-policy`      | `ConfigurationDomain`    | Private internal policy types, defaults, and validators for restricting Chain DSL field types, layouts, UI-schema features, and options.     |
+| `RuntimeContext`        | `@formspec/runtime`         | `RuntimeDomain`          | `defineResolvers()` for dynamic enum and dynamic schema fields, with type-safe end-to-end binding.                                           |
+| `ValidatorContext`      | `@formspec/validator`       | `ValidationDomain`       | Wraps `@cfworker/json-schema` to provide JSON Schema 2020-12 validation in edge-runtime environments. No FormSpec-specific dependencies.     |
+| `CliContext`            | `@formspec/cli`             | `DeveloperToolingDomain` | Drive schema and IR generation from the command line.                                                                                        |
+| `EslintContext`         | `@formspec/eslint-plugin`   | `DeveloperToolingDomain` | ESLint rules: constraint type-mismatch, contradictions, capability restrictions, with auto-fixes where unambiguous.                          |
+| `TsPluginContext`       | `@formspec/ts-plugin`       | `DeveloperToolingDomain` | TypeScript language-service plugin and reusable composable semantic service for IDE integrations.                                            |
+| `LanguageServerContext` | `@formspec/language-server` | `DeveloperToolingDomain` | LSP reference implementation; thin presentation layer over composable analysis, configuration, and TS-plugin helpers.                        |
 
 ### Packages excluded from the formal model
 
@@ -101,7 +102,7 @@ CML notation, briefly:
 ChainDslContext   StaticAnalysis  Compilation Configuration  Runtime    (TsPlugin, LSP, ESLint)
 @formspec/dsl     @formspec/      @formspec/  @formspec/     @formspec/
                   analysis        build       config         runtime
-                       │             ▲           │
+                       │             ▲           ▲
                        │  ACL+OHS+PL │           │  OHS
                        └─────────────┤           │
                                      │           │
@@ -112,9 +113,13 @@ ChainDslContext   StaticAnalysis  Compilation Configuration  Runtime    (TsPlugi
 
 Developer tooling — translate upstream semantics into their own vocabularies (ACL):
   CliContext         (@formspec/cli)             ← Compilation (CF), Configuration
-  EslintContext      (@formspec/eslint-plugin)   ← Compilation (ACL), StaticAnalysis (ACL), Configuration
+  EslintContext      (@formspec/eslint-plugin)   ← Compilation (ACL), StaticAnalysis (ACL), Configuration, DSLPolicy
   TsPluginContext    (@formspec/ts-plugin)       ← StaticAnalysis (ACL)
   LanguageServer     (@formspec/language-server) ← StaticAnalysis (ACL), Configuration
+
+Internal policy support:
+  DSLPolicyContext   (@formspec/dsl-policy)      ← DomainModel
+  ConfigurationContext (@formspec/config)        ← DSLPolicy (compatibility re-exports)
 
 Standalone:
   ValidatorContext   (@formspec/validator)       — no internal upstreams; conforms to JSON Schema 2020-12
@@ -125,21 +130,22 @@ Re-export façade (not a bounded context — see "Packages excluded" above):
 
 ### Key edges to know
 
-| Downstream                                                                   | Upstream                | Pattern                 | What it means                                                                                                                                                        |
-| ---------------------------------------------------------------------------- | ----------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Everyone except Validator                                                    | `DomainModelContext`    | `D, CF` ← `U, OHS, PL`  | All FormSpec contexts conform to FormIR types as the published language. A change to `@formspec/core`'s public surface is a project-wide change.                     |
-| `CompilationContext`                                                         | `StaticAnalysisContext` | `D, ACL` ← `U, OHS, PL` | The build pipeline canonicalizes parsed comment-tag info into FormIR — that translation is an Anti-Corruption Layer per principle A4.                                |
-| `LanguageServerContext`                                                      | `StaticAnalysisContext` | `D, ACL` ← `U, OHS, PL` | LSP translates FormSpec analysis output into wire-format LSP types. Textbook ACL.                                                                                    |
-| `EslintContext`, `TsPluginContext`                                           | `StaticAnalysisContext` | `D, ACL` ← `U, OHS`     | Lint and TS-plugin translate analysis output into ESLint / tsserver vocabularies.                                                                                    |
-| `EslintContext`                                                              | `CompilationContext`    | `D, ACL` ← `U, OHS`     | Lint rules adapt build-pipeline outputs into ESLint diagnostics and fix descriptors.                                                                                 |
-| `CompilationContext`, `CliContext`, `EslintContext`, `LanguageServerContext` | `ConfigurationContext`  | `D, CF` ← `U, OHS`      | Capability restrictions and custom constraint registrations originate in `formspec.config.ts`. Downstreams consume `FormSpecConfig` as data, without translating it. |
-| `CliContext`                                                                 | `CompilationContext`    | `D, CF` ← `U, OHS`      | The CLI is a thin wrapper over the build APIs (principle A6); it consumes them verbatim rather than translating.                                                     |
+| Downstream                                                                   | Upstream                | Pattern                 | What it means                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------- | ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Everyone except Validator                                                    | `DomainModelContext`    | `D, CF` ← `U, OHS, PL`  | All FormSpec contexts conform to FormIR types as the published language. A change to `@formspec/core`'s public surface is a project-wide change.                                              |
+| `CompilationContext`                                                         | `StaticAnalysisContext` | `D, ACL` ← `U, OHS, PL` | The build pipeline canonicalizes parsed comment-tag info into FormIR — that translation is an Anti-Corruption Layer per principle A4.                                                         |
+| `LanguageServerContext`                                                      | `StaticAnalysisContext` | `D, ACL` ← `U, OHS, PL` | LSP translates FormSpec analysis output into wire-format LSP types. Textbook ACL.                                                                                                             |
+| `EslintContext`, `TsPluginContext`                                           | `StaticAnalysisContext` | `D, ACL` ← `U, OHS`     | Lint and TS-plugin translate analysis output into ESLint / tsserver vocabularies.                                                                                                             |
+| `EslintContext`                                                              | `CompilationContext`    | `D, ACL` ← `U, OHS`     | Lint rules adapt build-pipeline outputs into ESLint diagnostics and fix descriptors.                                                                                                          |
+| `CompilationContext`, `CliContext`, `EslintContext`, `LanguageServerContext` | `ConfigurationContext`  | `D, CF` ← `U, OHS`      | Project configuration and custom constraint registrations originate in `formspec.config.ts`. Downstreams consume `FormSpecConfig` as data, without translating it.                            |
+| `ConfigurationContext`, `EslintContext`                                      | `DSLPolicyContext`      | `D, CF` ← `U, OHS`      | DSL-policy types, defaults, and validators originate in the private `@formspec/dsl-policy` package; config exposes the public compatibility surface, and ESLint consumes bundled helper APIs. |
+| `CliContext`                                                                 | `CompilationContext`    | `D, CF` ← `U, OHS`      | The CLI is a thin wrapper over the build APIs (principle A6); it consumes them verbatim rather than translating.                                                                              |
 
 ---
 
 ## Practical consequences
 
-**Adding a new field type.** Define the type in `DomainModelContext` (`@formspec/core`). Add a builder in `ChainDslContext` (`@formspec/dsl`). Wire IR generation in `CompilationContext` (`@formspec/build`). If TSDoc tags can produce it, extend `StaticAnalysisContext` (`@formspec/analysis`). If the configuration system needs to be aware of it, update `ConfigurationContext` (`@formspec/config`). Lint rules live in `EslintContext` (`@formspec/eslint-plugin`).
+**Adding a new field type.** Define the type in `DomainModelContext` (`@formspec/core`). Add a builder in `ChainDslContext` (`@formspec/dsl`). Wire IR generation in `CompilationContext` (`@formspec/build`). If TSDoc tags can produce it, extend `StaticAnalysisContext` (`@formspec/analysis`). If project DSL policy needs to restrict it, update `DSLPolicyContext` (`@formspec/dsl-policy`). Lint rules live in `EslintContext` (`@formspec/eslint-plugin`).
 
 **Adding a new constraint.** Define the constraint type in `DomainModelContext`. Register it in `ConfigurationContext`. Implement extraction and application in `CompilationContext`. Add semantic diagnostics in `StaticAnalysisContext`. (Phase 4 of the DDD campaign will codify this split via an ADR — `docs/adr/0001-constraint-ownership.md` (planned, not yet authored) — and barrel files; until that lands, follow the same logical split.)
 

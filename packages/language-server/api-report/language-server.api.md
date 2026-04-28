@@ -66,8 +66,8 @@ export interface FormSpecAnalysisDiagnosticLocation {
 
 // @public
 export interface FormSpecConfig {
-    // Warning: (ae-forgotten-export) The symbol "ConstraintConfig" needs to be exported by the entry point index.d.ts
-    readonly constraints?: ConstraintConfig;
+    // Warning: (ae-forgotten-export) The symbol "DSLPolicy" needs to be exported by the entry point index.d.ts
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     // Warning: (ae-forgotten-export) The symbol "ExtensionDefinition_2" needs to be exported by the entry point index.d.ts
     readonly extensions?: readonly ExtensionDefinition_2[];

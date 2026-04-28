@@ -8,8 +8,8 @@ async function getJiti() {
 }
 import type { LoggerLike } from "@formspec/core";
 import { noopLogger } from "@formspec/core";
-import type { FormSpecConfig, ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
-import { mergeWithDefaults } from "./defaults.js";
+import type { FormSpecConfig, DSLPolicy, ResolvedDSLPolicy } from "./types.js";
+import { defineDSLPolicy, mergeWithDefaults } from "./defaults.js";
 
 /**
  * Config file names to search for, in priority order.
@@ -288,8 +288,8 @@ export async function loadFormSpecConfig(
 }
 
 /**
- * Loads FormSpec constraint configuration from a config file.
- * Returns the resolved constraints with defaults applied.
+ * Loads FormSpec DSL-policy configuration from a config file.
+ * Returns the resolved policy with defaults applied.
  *
  * @deprecated Use `loadFormSpecConfig` instead, which returns the full `FormSpecConfig`.
  *
@@ -299,7 +299,7 @@ export async function loadFormSpecConfig(
  * @public
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<{
-  config: ResolvedConstraintConfig;
+  config: ResolvedDSLPolicy;
   configPath: string | null;
   found: boolean;
 }> {
@@ -322,15 +322,15 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<{
 }
 
 /**
- * Creates a constraint configuration directly from an object.
+ * Creates a DSL policy directly from an object.
  * Useful for programmatic configuration without a config file.
  *
- * @param config - Partial constraint configuration
+ * @param config - Partial DSL-policy configuration
  * @returns Complete configuration with defaults applied
  *
  * @example
  * ```ts
- * const config = defineConstraints({
+ * const config = defineDSLPolicy({
  *   fieldTypes: {
  *     dynamicEnum: 'error',
  *     dynamicSchema: 'error',
@@ -343,6 +343,12 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<{
  *
  * @public
  */
-export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig {
-  return mergeWithDefaults(config);
-}
+export { defineDSLPolicy };
+
+/**
+ * Creates a DSL policy directly from an object.
+ *
+ * @deprecated Use `defineDSLPolicy`.
+ * @public
+ */
+export const defineConstraints = defineDSLPolicy satisfies (config: DSLPolicy) => ResolvedDSLPolicy;

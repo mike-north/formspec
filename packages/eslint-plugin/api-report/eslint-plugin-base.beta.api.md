@@ -9,12 +9,6 @@ import { AnalyzeMetadataForNodeOptions } from '@formspec/analysis';
 import { analyzeMetadataForSourceFile } from '@formspec/analysis';
 import { AnalyzeMetadataForSourceFileOptions } from '@formspec/analysis';
 import { AnalyzeMetadataOptions } from '@formspec/analysis';
-import { ExplicitMetadataSource } from '@formspec/core';
-import { MetadataAnalysisResult } from '@formspec/core';
-import { MetadataApplicableSlot } from '@formspec/core';
-import { MetadataResolvedEntry } from '@formspec/core';
-import { MetadataSlotRegistration } from '@formspec/core';
-import { MetadataSourceSpan } from '@formspec/core';
 import type { ParserServicesWithTypeInformation } from '@typescript-eslint/utils';
 import type { RuleModule } from '@typescript-eslint/utils/ts-eslint';
 import type { SourceCode } from '@typescript-eslint/utils/ts-eslint';
@@ -41,7 +35,16 @@ export interface ConstraintRuleOptions {
 // @public
 export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []>;
 
-export { ExplicitMetadataSource }
+// @public
+export interface ExplicitMetadataSource {
+    readonly form: ExplicitMetadataSourceForm;
+    readonly fullRange: MetadataSourceSpan;
+    readonly qualifier?: string | undefined;
+    readonly qualifierRange?: MetadataSourceSpan | undefined;
+    readonly tagName: string;
+    readonly tagNameRange: MetadataSourceSpan;
+    readonly valueRange: MetadataSourceSpan;
+}
 
 // @public
 export type FieldTypeCategory = "string" | "number" | "bigint" | "boolean" | "array" | "object" | "union" | "unknown";
@@ -83,15 +86,49 @@ export interface JSDocConstraint {
     value: number | string;
 }
 
-export { MetadataAnalysisResult }
+// @public
+export interface MetadataAnalysisResult {
+    readonly applicableSlots: readonly MetadataApplicableSlot[];
+    readonly declarationKind: MetadataDeclarationKind;
+    readonly entries: readonly MetadataResolvedEntry[];
+    readonly logicalName: string;
+    readonly resolvedMetadata?: ResolvedMetadata | undefined;
+}
 
-export { MetadataApplicableSlot }
+// @public
+export interface MetadataApplicableSlot {
+    readonly allowBare: boolean;
+    readonly qualifiers: readonly string[];
+    readonly slotId: MetadataSlotId;
+    readonly tagName: string;
+}
 
-export { MetadataResolvedEntry }
+// @public
+export interface MetadataResolvedEntry {
+    readonly explicitSource?: ExplicitMetadataSource | undefined;
+    readonly qualifier?: string | undefined;
+    readonly slotId: MetadataSlotId;
+    readonly source: MetadataSource;
+    readonly tagName: string;
+    readonly value: string;
+}
 
-export { MetadataSlotRegistration }
+// @public
+export interface MetadataSlotRegistration {
+    readonly allowBare?: boolean | undefined;
+    readonly declarationKinds: readonly MetadataDeclarationKind[];
+    readonly inferValue?: MetadataSlotInferenceFn | undefined;
+    readonly isApplicable?: ((context: MetadataInferenceContext) => boolean) | undefined;
+    readonly qualifiers?: readonly MetadataQualifierRegistration[] | undefined;
+    readonly slotId: MetadataSlotId;
+    readonly tagName: string;
+}
 
-export { MetadataSourceSpan }
+// @public
+export interface MetadataSourceSpan {
+    readonly end: number;
+    readonly start: number;
+}
 
 // @public
 export interface RawJSDocTag {

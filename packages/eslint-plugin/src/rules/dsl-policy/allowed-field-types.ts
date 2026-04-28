@@ -10,7 +10,7 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import { getFieldTypeSeverity, type FieldTypeConstraints } from "@formspec/config/browser";
+import { getFieldTypeSeverity } from "@formspec/dsl-policy/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -22,10 +22,35 @@ const createRule = ESLintUtils.RuleCreator(
  * @public
  */
 export type MessageIds = "disallowedFieldType";
+
+/**
+ * Rule options accepted by `allowedFieldTypes`.
+ *
+ * @public
+ */
+export interface AllowedFieldTypesConfig {
+  /** field.text() - basic text input */
+  text?: "error" | "warn" | "off";
+  /** field.number() - numeric input */
+  number?: "error" | "warn" | "off";
+  /** field.boolean() - checkbox/toggle */
+  boolean?: "error" | "warn" | "off";
+  /** field.enum() with literal options */
+  staticEnum?: "error" | "warn" | "off";
+  /** field.dynamicEnum() - runtime-fetched options */
+  dynamicEnum?: "error" | "warn" | "off";
+  /** field.dynamicSchema() - runtime-fetched schema */
+  dynamicSchema?: "error" | "warn" | "off";
+  /** field.array() / field.arrayWithConfig() */
+  array?: "error" | "warn" | "off";
+  /** field.object() / field.objectWithConfig() */
+  object?: "error" | "warn" | "off";
+}
+
 /**
  * Maps DSL method names to constraint config keys.
  */
-const METHOD_TO_CONSTRAINT: Record<string, keyof FieldTypeConstraints> = {
+const METHOD_TO_CONSTRAINT: Record<string, keyof AllowedFieldTypesConfig> = {
   text: "text",
   number: "number",
   boolean: "boolean",
@@ -59,7 +84,7 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
  *
  * @public
  */
-export type Options = [FieldTypeConstraints];
+export type Options = [AllowedFieldTypesConfig];
 /**
  * ESLint rule that validates allowed field types against project constraints.
  *
@@ -118,7 +143,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
         }
 
         // Map constraint key to internal field type for severity check
-        const fieldTypeMap: Record<keyof FieldTypeConstraints, string> = {
+        const fieldTypeMap: Record<keyof AllowedFieldTypesConfig, string> = {
           text: "text",
           number: "number",
           boolean: "boolean",

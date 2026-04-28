@@ -1,4 +1,9 @@
-import type { FieldTypeConstraints, Severity, ValidationIssue } from "../types.js";
+import type {
+  FieldTypeConstraints,
+  FieldTypeContext,
+  Severity,
+  ValidationIssue,
+} from "../types.js";
 
 /**
  * Maps FormSpec field._field values to constraint config keys.
@@ -27,20 +32,6 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
   array: "array field",
   object: "object field",
 };
-
-/**
- * Context for field type validation.
- *
- * @beta
- */
-export interface FieldTypeContext {
-  /** The _field discriminator value (e.g., "text", "number", "enum") */
-  fieldType: string;
-  /** The field name */
-  fieldName: string;
-  /** Optional path for nested fields */
-  path?: string;
-}
 
 /**
  * Validates a field type against constraints.

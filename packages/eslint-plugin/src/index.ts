@@ -56,10 +56,12 @@ import {
   type MessageIds as NoContradictionsMessageIds,
 } from "./rules/constraint-validation/no-contradictions.js";
 import type {
+  AllowedFieldTypesConfig,
   MessageIds as AllowedFieldTypesMessageIds,
   Options as AllowedFieldTypesOptions,
 } from "./rules/dsl-policy/allowed-field-types.js";
 import type {
+  AllowedLayoutsConfig,
   MessageIds as AllowedLayoutsMessageIds,
   Options as AllowedLayoutsOptions,
 } from "./rules/dsl-policy/allowed-layouts.js";
@@ -106,8 +108,10 @@ function createDeprecatedRuleAlias<MessageIds extends string, Options extends re
 export type {
   AllowedFieldTypesMessageIds,
   AllowedFieldTypesOptions,
+  AllowedFieldTypesConfig,
   AllowedLayoutsMessageIds,
   AllowedLayoutsOptions,
+  AllowedLayoutsConfig,
   NoContradictionsMessageIds,
   NoDisabledTagsMessageIds,
   NoDisabledTagsOptions,

@@ -40,14 +40,8 @@ export interface Conditional<FieldName extends string, Value, Elements extends r
     readonly value: Value;
 }
 
-// @public
-export interface ConstraintConfig {
-    controlOptions?: ControlOptionConstraints;
-    fieldOptions?: FieldOptionConstraints;
-    fieldTypes?: FieldTypeConstraints;
-    layout?: LayoutConstraints;
-    uiSchema?: UISchemaConstraints;
-}
+// @public @deprecated
+export type ConstraintConfig = DSLPolicy;
 
 // @public
 export interface ControlOptionConstraints {
@@ -62,14 +56,29 @@ export interface ControlOptionConstraints {
 // @beta
 export const DEFAULT_CONFIG: FormSpecConfig;
 
-// @beta
-export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig;
+// @beta @deprecated
+export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy;
 
-// @public
-export function defineConstraints(config: ConstraintConfig): ResolvedConstraintConfig;
+// @beta
+export const DEFAULT_DSL_POLICY: ResolvedDSLPolicy;
+
+// @beta @deprecated
+export const defineConstraints: typeof defineDSLPolicy;
+
+// @beta
+export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy;
 
 // @public
 export function defineFormSpecConfig(config: FormSpecConfig): FormSpecConfig;
+
+// @public
+export interface DSLPolicy {
+    controlOptions?: ControlOptionConstraints;
+    fieldOptions?: FieldOptionConstraints;
+    fieldTypes?: FieldTypeConstraints;
+    layout?: LayoutConstraints;
+    uiSchema?: UISchemaConstraints;
+}
 
 // @public
 export interface DynamicEnumField<N extends string, Source extends string> {
@@ -159,7 +168,7 @@ export interface FormSpec<Elements extends readonly FormElement[]> {
 
 // @public
 export interface FormSpecConfig {
-    readonly constraints?: ConstraintConfig;
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition[];
     readonly metadata?: MetadataPolicyInput;
@@ -169,14 +178,14 @@ export interface FormSpecConfig {
 
 // @public
 export interface FormSpecPackageOverride {
-    readonly constraints?: ConstraintConfig;
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly metadata?: MetadataPolicyInput;
 }
 
 // @public
 export interface FormSpecValidationOptions {
-    constraints?: ConstraintConfig;
+    constraints?: DSLPolicy;
 }
 
 // @beta
@@ -230,7 +239,7 @@ export interface LayoutTypeConstraints {
 
 // @public @deprecated
 export function loadConfig(options?: LoadConfigOptions): Promise<{
-    config: ResolvedConstraintConfig;
+    config: ResolvedDSLPolicy;
     configPath: string | null;
     found: boolean;
 }>;
@@ -241,6 +250,9 @@ export interface LoadConfigFoundResult {
     configPath: string;
     found: true;
 }
+
+// @beta
+export function loadConfigFromString(yamlContent: string): ResolvedDSLPolicy;
 
 // @public
 export interface LoadConfigNotFoundResult {
@@ -271,7 +283,7 @@ export interface LoggerLike {
 }
 
 // @beta
-export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig;
+export function mergeWithDefaults(config: DSLPolicy | undefined): ResolvedDSLPolicy;
 
 // @public
 export interface NumberField<N extends string> {
@@ -302,8 +314,11 @@ export interface ObjectField<N extends string, Properties extends readonly FormE
 // @public
 export function resolveConfigForFile(config: FormSpecConfig, filePath: string, configDir: string): ResolvedFormSpecConfig;
 
+// @public @deprecated
+export type ResolvedConstraintConfig = ResolvedDSLPolicy;
+
 // @public
-export interface ResolvedConstraintConfig {
+export interface ResolvedDSLPolicy {
     controlOptions: Required<ControlOptionConstraints>;
     fieldOptions: Required<FieldOptionConstraints>;
     fieldTypes: Required<FieldTypeConstraints>;
@@ -313,7 +328,7 @@ export interface ResolvedConstraintConfig {
 
 // @public
 export interface ResolvedFormSpecConfig {
-    readonly constraints: ResolvedConstraintConfig;
+    readonly constraints: ResolvedDSLPolicy;
     readonly enumSerialization: "enum" | "oneOf" | "smart-size";
     readonly extensions: readonly ExtensionDefinition[];
     readonly metadata: MetadataPolicyInput | undefined;
@@ -388,10 +403,10 @@ export function validateFieldOptions(context: FieldOptionsContext, constraints: 
 // @beta
 export function validateFieldTypes(context: FieldTypeContext, constraints: FieldTypeConstraints): ValidationIssue[];
 
-// @public
+// @beta
 export function validateFormSpec(formSpec: FormSpec<readonly FormElement[]>, options?: FormSpecValidationOptions): ValidationResult;
 
-// @public
+// @beta
 export function validateFormSpecElements(elements: readonly FormElement[], options?: FormSpecValidationOptions): ValidationResult;
 
 // @beta

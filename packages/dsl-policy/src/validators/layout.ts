@@ -1,20 +1,4 @@
-import type { LayoutConstraints, Severity, ValidationIssue } from "../types.js";
-
-/**
- * Context for layout validation.
- *
- * @beta
- */
-export interface LayoutContext {
-  /** The type of layout element ("group" | "conditional") */
-  layoutType: "group" | "conditional";
-  /** Optional label for the element (for groups) */
-  label?: string;
-  /** Current nesting depth */
-  depth: number;
-  /** Path to this element */
-  path?: string;
-}
+import type { LayoutConstraints, LayoutContext, Severity, ValidationIssue } from "../types.js";
 
 /**
  * Validates a layout element against constraints.

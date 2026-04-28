@@ -41,6 +41,7 @@
     "yaml": "^2.7.0"
   },
   "devDependencies": {
+    "@formspec/dsl-policy": "workspace:*",
     "@formspec/dsl": "workspace:*",
     "tsd": "^0.31.0",
     "vitest": "^3.2.4"

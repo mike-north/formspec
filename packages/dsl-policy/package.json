@@ -1,0 +1,47 @@
+{
+  "name": "@formspec/dsl-policy",
+  "version": "0.0.0-private",
+  "private": true,
+  "description": "Private internal DSL-policy types, defaults, and validators",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js",
+      "require": "./dist/browser.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup && tsc --emitDeclarationOnly -p tsconfig.build.json",
+    "clean": "rm -rf dist temp",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@formspec/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@formspec/dsl": "workspace:*",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "formspec",
+    "dsl-policy",
+    "constraints",
+    "validation"
+  ],
+  "license": "MIT"
+}

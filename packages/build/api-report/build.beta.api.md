@@ -182,7 +182,7 @@ export { FormSpec }
 
 // @public
 export interface FormSpecConfig {
-    readonly constraints?: ConstraintConfig;
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition_3[];
     readonly metadata?: MetadataPolicyInput_2;
