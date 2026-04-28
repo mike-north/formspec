@@ -26,7 +26,7 @@ import {
   validateFormSpec as validateInternalFormSpec,
   validateFormSpecElements as validateInternalFormSpecElements,
   validateLayout as validateInternalLayout,
-} from "@formspec/dsl-policy/browser";
+} from "@formspec/dsl-policy";
 import { parse as parseYaml } from "yaml";
 import {
   DEFAULT_CONFIG,
