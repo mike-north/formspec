@@ -16,17 +16,34 @@ import {
 const fixtureFileName = "/type-utils-fixture.ts";
 
 const fixtureSource = `
+declare const __integerBrand: unique symbol;
+declare const __emailBrand: unique symbol;
+declare const __amountBrand: unique symbol;
+declare const __flagBrand: unique symbol;
+
+type Integer = number & { readonly [__integerBrand]: true };
+type Email = string & { readonly [__emailBrand]: true };
+type Amount = bigint & { readonly [__amountBrand]: true };
+type Flag = boolean & { readonly [__flagBrand]: true };
+
 interface Fixture {
   text: string;
   textLiteral: "draft";
   count: number;
   countLiteral: 42;
+  brandedCount: Integer;
   big: bigint;
   bigLiteral: 42n;
+  brandedBig: Amount;
   enabled: boolean;
   enabledLiteral: true;
+  brandedEnabled: Flag;
+  brandedText: Email;
   maybeText: string | null;
   maybeCount: number | undefined;
+  maybeBrandedText: Email | null;
+  maybeBrandedCount: Integer | undefined;
+  maybeBrandedBig: Amount | null;
   nested: { id: string };
   mixed: string | number;
 }
@@ -114,15 +131,19 @@ describe("type-utils", () => {
 
     expect(isStringType(fixture.typeOf("text"), fixture.checker)).toBe(true);
     expect(isStringType(fixture.typeOf("textLiteral"), fixture.checker)).toBe(true);
+    expect(isStringType(fixture.typeOf("brandedText"), fixture.checker)).toBe(true);
 
     expect(isNumberType(fixture.typeOf("count"), fixture.checker)).toBe(true);
     expect(isNumberType(fixture.typeOf("countLiteral"), fixture.checker)).toBe(true);
+    expect(isNumberType(fixture.typeOf("brandedCount"), fixture.checker)).toBe(true);
 
     expect(isBigIntType(fixture.typeOf("big"))).toBe(true);
     expect(isBigIntType(fixture.typeOf("bigLiteral"))).toBe(true);
+    expect(isBigIntType(fixture.typeOf("brandedBig"))).toBe(true);
 
     expect(isBooleanType(fixture.typeOf("enabled"), fixture.checker)).toBe(true);
     expect(isBooleanType(fixture.typeOf("enabledLiteral"), fixture.checker)).toBe(true);
+    expect(isBooleanType(fixture.typeOf("brandedEnabled"), fixture.checker)).toBe(true);
   });
 
   it("rejects neighboring scalar types", () => {
@@ -147,6 +168,18 @@ describe("type-utils", () => {
 
     expect(getFieldTypeCategory(fixture.typeOf("maybeText"), fixture.checker)).toBe("string");
     expect(getFieldTypeCategory(fixture.typeOf("maybeCount"), fixture.checker)).toBe("number");
+    expect(getFieldTypeCategory(fixture.typeOf("maybeBrandedText"), fixture.checker)).toBe(
+      "string"
+    );
+    expect(getFieldTypeCategory(fixture.typeOf("maybeBrandedCount"), fixture.checker)).toBe(
+      "number"
+    );
+    expect(getFieldTypeCategory(fixture.typeOf("maybeBrandedBig"), fixture.checker)).toBe(
+      "bigint"
+    );
+    expect(getFieldTypeCategory(fixture.typeOf("brandedEnabled"), fixture.checker)).toBe(
+      "boolean"
+    );
     expect(getFieldTypeCategory(fixture.typeOf("nested"), fixture.checker)).toBe("object");
     expect(getFieldTypeCategory(fixture.typeOf("mixed"), fixture.checker)).toBe("union");
   });

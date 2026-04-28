@@ -2,4 +2,4 @@
 "@formspec/eslint-plugin": patch
 ---
 
-Fix `@formspec/eslint-plugin` type classification so built-in numeric constraint tags accept branded number intersections such as `Integer` and `PositiveInteger`. This prevents false-positive type-mismatch errors for `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, and `@multipleOf` when those tags are applied to number aliases defined as `number & { ...brand... }`.
+Align `@formspec/eslint-plugin` tag applicability checks with `@formspec/analysis` semantic capabilities, so built-in tags classify branded primitive intersections consistently. Numeric constraint tags such as `@minimum`, `@maximum`, `@exclusiveMinimum`, `@exclusiveMaximum`, and `@multipleOf` now accept branded numeric aliases like `Integer`, `PositiveInteger`, and branded `bigint` types without false-positive type-mismatch errors, while incorrect cross-kind usages still report mismatches.

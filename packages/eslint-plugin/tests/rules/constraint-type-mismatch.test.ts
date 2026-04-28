@@ -193,6 +193,42 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
     },
+    {
+      code: `
+        export declare const __integerBrand: unique symbol;
+        export declare const __positiveIntegerBrand: unique symbol;
+
+        export type Integer = number & {
+          readonly [__integerBrand]: true;
+        };
+
+        export type PositiveInteger = number & {
+          readonly [__integerBrand]: true;
+          readonly [__positiveIntegerBrand]: true;
+        };
+
+        export type Count = Integer | PositiveInteger;
+
+        export interface MyFields {
+          /** @minimum 0 @maximum 1000 */
+          count: Count;
+        }
+      `,
+    },
+    {
+      code: `
+        export declare const __amountBrand: unique symbol;
+
+        export type Amount = bigint & {
+          readonly [__amountBrand]: true;
+        };
+
+        export interface MyFields {
+          /** @minimum 0 @maximum 1000 @multipleOf 5 */
+          amount: Amount;
+        }
+      `,
+    },
 
     // -------------------------------------------------------------------------
     // @minLength on string fields
@@ -212,6 +248,20 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @minLength 1 */
           name!: string;
+        }
+      `,
+    },
+    {
+      code: `
+        export declare const __emailBrand: unique symbol;
+
+        export type Email = string & {
+          readonly [__emailBrand]: true;
+        };
+
+        export interface MyFields {
+          /** @minLength 3 @maxLength 255 @pattern .+@.+ */
+          email: Email;
         }
       `,
     },
@@ -601,6 +651,21 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
       `,
       errors: [{ messageId: "typeMismatch" }],
     },
+    {
+      code: `
+        export declare const __emailBrand: unique symbol;
+
+        export type Email = string & {
+          readonly [__emailBrand]: true;
+        };
+
+        class Form {
+          /** @Minimum 0 */
+          email!: Email;
+        }
+      `,
+      errors: [{ messageId: "typeMismatch" }],
+    },
 
     // -------------------------------------------------------------------------
     // @maximum on non-number fields
@@ -761,6 +826,21 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @MinLength 1 */
           tags!: string[];
+        }
+      `,
+      errors: [{ messageId: "typeMismatch" }],
+    },
+    {
+      code: `
+        export declare const __integerBrand: unique symbol;
+
+        export type Integer = number & {
+          readonly [__integerBrand]: true;
+        };
+
+        class Form {
+          /** @MinLength 1 */
+          count!: Integer;
         }
       `,
       errors: [{ messageId: "typeMismatch" }],
