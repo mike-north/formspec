@@ -63,7 +63,7 @@ export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy;
 export const DEFAULT_DSL_POLICY: ResolvedDSLPolicy;
 
 // @beta @deprecated
-export const defineConstraints: typeof defineDSLPolicy;
+export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy;
 
 // @beta
 export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy;

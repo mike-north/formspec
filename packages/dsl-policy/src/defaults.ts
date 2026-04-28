@@ -58,13 +58,17 @@ export const DEFAULT_DSL_POLICY: ResolvedDSLPolicy = {
   },
 };
 
+function getDefaultDSLPolicyAlias(): ResolvedDSLPolicy {
+  return DEFAULT_DSL_POLICY;
+}
+
 /**
  * Default DSL-policy configuration that allows all features.
  *
  * @deprecated Use `DEFAULT_DSL_POLICY`.
  * @beta
  */
-export const DEFAULT_CONSTRAINTS = DEFAULT_DSL_POLICY;
+export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy = getDefaultDSLPolicyAlias();
 
 /**
  * Merges user policy with defaults.
@@ -129,4 +133,6 @@ export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy {
  * @deprecated Use `defineDSLPolicy`.
  * @beta
  */
-export const defineConstraints = defineDSLPolicy;
+export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy {
+  return defineDSLPolicy(config);
+}
