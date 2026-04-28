@@ -2,8 +2,13 @@
 
 Type-safe form definitions that compile to JSON Schema 2020-12 and JSON Forms UI Schema.
 
-[![CI + TS matrix](https://img.shields.io/github/actions/workflow/status/mike-north/formspec/ci.yml?branch=main&label=CI%20%2B%20TS%20matrix&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml)
-[![TS minor smoke](https://img.shields.io/github/actions/workflow/status/mike-north/formspec/typescript-minor-smoke.yml?branch=main&label=TS%20minor%20smoke&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/typescript-minor-smoke.yml)
+| TypeScript CI row             | Status                                                                                                                                                                                                                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript 5.x                | [![TS 5.x](https://img.shields.io/github/check-runs/mike-north/formspec/main?nameFilter=Test%20%28TypeScript%205.x%29&label=TS%205.x&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml?query=branch%3Amain)                             |
+| TypeScript latest             | [![TS latest](https://img.shields.io/github/check-runs/mike-north/formspec/main?nameFilter=Test%20%28TypeScript%20latest%29&label=TS%20latest&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml?query=branch%3Amain)                    |
+| TypeScript beta               | [![TS beta](https://img.shields.io/github/check-runs/mike-north/formspec/main?nameFilter=Test%20%28TypeScript%20beta%29&label=TS%20beta&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml?query=branch%3Amain)                          |
+| TypeScript 6.x nightly        | [![TS 6.x nightly](https://img.shields.io/github/check-runs/mike-north/formspec/main?nameFilter=Test%20%28TypeScript%206.x%20nightly%29&label=TS%206.x%20nightly&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml?query=branch%3Amain) |
+| TypeScript 7.0 native preview | [![TS 7 tsgo](https://img.shields.io/github/check-runs/mike-north/formspec/main?nameFilter=Test%20%28TypeScript%207.0%20native%20preview%29&label=TS%207%20tsgo&style=flat-square)](https://github.com/mike-north/formspec/actions/workflows/ci.yml?query=branch%3Amain)  |
 
 > **Architecture orientation.** New contributors and AI agents should read [`BOUNDED_CONTEXTS.md`](./BOUNDED_CONTEXTS.md) (a tour of the project's bounded contexts and how they relate) and [`GLOSSARY.md`](./GLOSSARY.md) (the project's vocabulary). The formal model lives in [`formspec.cml`](./formspec.cml).
 
@@ -296,18 +301,20 @@ The default vendor prefix is `x-formspec`. `@formspec/build` also supports custo
 
 ## Published Packages
 
-[![NPM](https://nodei.co/npm/formspec.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/formspec/)
-[![NPM](https://nodei.co/npm/@formspec/core.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/core/)
-[![NPM](https://nodei.co/npm/@formspec/dsl.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/dsl/)
-[![NPM](https://nodei.co/npm/@formspec/build.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/build/)
-[![NPM](https://nodei.co/npm/@formspec/runtime.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/runtime/)
-[![NPM](https://nodei.co/npm/@formspec/analysis.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/analysis/)
-[![NPM](https://nodei.co/npm/@formspec/config.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/config/)
-[![NPM](https://nodei.co/npm/@formspec/validator.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/validator/)
-[![NPM](https://nodei.co/npm/@formspec/eslint-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/eslint-plugin/)
-[![NPM](https://nodei.co/npm/@formspec/ts-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/ts-plugin/)
-[![NPM](https://nodei.co/npm/@formspec/language-server.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/language-server/)
-[![NPM](https://nodei.co/npm/@formspec/cli.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/cli/)
+| Package                     | npm                                                                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `formspec`                  | [![NPM](https://nodei.co/npm/formspec.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/formspec/)                                   |
+| `@formspec/core`            | [![NPM](https://nodei.co/npm/@formspec/core.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/core/)                       |
+| `@formspec/dsl`             | [![NPM](https://nodei.co/npm/@formspec/dsl.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/dsl/)                         |
+| `@formspec/build`           | [![NPM](https://nodei.co/npm/@formspec/build.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/build/)                     |
+| `@formspec/runtime`         | [![NPM](https://nodei.co/npm/@formspec/runtime.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/runtime/)                 |
+| `@formspec/analysis`        | [![NPM](https://nodei.co/npm/@formspec/analysis.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/analysis/)               |
+| `@formspec/config`          | [![NPM](https://nodei.co/npm/@formspec/config.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/config/)                   |
+| `@formspec/validator`       | [![NPM](https://nodei.co/npm/@formspec/validator.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/validator/)             |
+| `@formspec/eslint-plugin`   | [![NPM](https://nodei.co/npm/@formspec/eslint-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/eslint-plugin/)     |
+| `@formspec/ts-plugin`       | [![NPM](https://nodei.co/npm/@formspec/ts-plugin.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/ts-plugin/)             |
+| `@formspec/language-server` | [![NPM](https://nodei.co/npm/@formspec/language-server.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/language-server/) |
+| `@formspec/cli`             | [![NPM](https://nodei.co/npm/@formspec/cli.svg?style=flat-square&data=n,v,u,d&color=brightgreen)](https://nodei.co/npm/@formspec/cli/)                         |
 
 ## Monorepo Development
 
