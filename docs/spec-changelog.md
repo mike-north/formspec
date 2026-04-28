@@ -29,6 +29,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 
 ## 004-tooling
 
+- Added §2.7 for the public `@formspec/ts-plugin` embedding API and reduced §2.4.1 to a cross-reference.
 - Added `type-compatibility/no-anonymous-recursive-type` to the ESLint recommended and strict rule inventory.
   - The rule reports the build analyzer's `ANONYMOUS_RECURSIVE_TYPE` diagnostic at the recursive source edge.
 

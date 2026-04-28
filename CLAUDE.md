@@ -90,7 +90,8 @@ formspec (umbrella — re-exports everything)
 5. **Dynamic Fields**: `field.dynamicEnum()` for runtime-fetched options; resolver functions defined via `defineResolvers()`
 6. **TSDoc Constraints**: Tags like `/** @minimum 0 */` produce constraint nodes in the Canonical IR; they propagate through nested class types
 7. **Canonical IR**: All form definitions pass through an intermediate representation before schema generation
-8. **Hybrid Tooling**: `@formspec/ts-plugin` exposes the reusable semantic service that works against a host TypeScript program; the shipped tsserver plugin and `@formspec/language-server` are reference implementations built on those lower-level APIs
+8. **Hybrid Tooling**: `@formspec/ts-plugin` exposes the reusable semantic service that works against a host TypeScript program; the shipped tsserver plugin and `@formspec/language-server` are reference implementations built on those lower-level APIs. Embedding hosts import the package root:
+   CommonJS/`require` resolves to `./index.cjs`, ESM/`import` resolves to `./dist/index.js`, and `docs/004-tooling.md` §2.7 is the normative embedding guide.
 9. **Description Semantics**: Summary text becomes JSON Schema `description`; `@description` is intentionally unsupported; `@remarks` is carried separately as metadata
 
 ### Build Order
