@@ -16,15 +16,23 @@ export type {
 } from "@formspec/analysis";
 export type {
   ExplicitMetadataSource,
+  ExplicitMetadataSourceForm,
+  MetadataDeclarationKind,
+  MetadataInferenceContext,
+  MetadataQualifierRegistration,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataResolvedEntry,
   MetadataSlotRegistration,
+  MetadataSlotId,
+  MetadataSlotInferenceFn,
+  MetadataSource,
   MetadataSourceSpan,
+  ResolvedMetadata,
 } from "@formspec/core";
 import packageJson from "../package.json" with { type: "json" };
 import type { FormSpecConfig } from "@formspec/config";
-export type { FormSpecConfig } from "@formspec/config";
+export type { DSLPolicy, FormSpecConfig, FormSpecPackageOverride } from "@formspec/config";
 import { createExtensionRegistry } from "@formspec/build";
 import {
   noUnknownTags,
@@ -56,10 +64,12 @@ import {
   type MessageIds as NoContradictionsMessageIds,
 } from "./rules/constraint-validation/no-contradictions.js";
 import type {
+  AllowedFieldTypesConfig,
   MessageIds as AllowedFieldTypesMessageIds,
   Options as AllowedFieldTypesOptions,
 } from "./rules/dsl-policy/allowed-field-types.js";
 import type {
+  AllowedLayoutsConfig,
   MessageIds as AllowedLayoutsMessageIds,
   Options as AllowedLayoutsOptions,
 } from "./rules/dsl-policy/allowed-layouts.js";
@@ -106,8 +116,10 @@ function createDeprecatedRuleAlias<MessageIds extends string, Options extends re
 export type {
   AllowedFieldTypesMessageIds,
   AllowedFieldTypesOptions,
+  AllowedFieldTypesConfig,
   AllowedLayoutsMessageIds,
   AllowedLayoutsOptions,
+  AllowedLayoutsConfig,
   NoContradictionsMessageIds,
   NoDisabledTagsMessageIds,
   NoDisabledTagsOptions,

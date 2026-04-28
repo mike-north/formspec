@@ -14,14 +14,15 @@ This document specifies a unified `FormSpecConfig` object that serves as the can
 
 ### 1.1 Principles Satisfied
 
-| Principle                               | Section    | How                                                                                               |
-| --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------- |
-| PP9 (Configurable surface area)         | §2, §3     | Config carries all tunables: extensions, constraints, vendor prefix, enum serialization, metadata |
-| PP10 (White-labelable)                  | §3.4       | `vendorPrefix` controls all emitted vendor-scoped keywords                                        |
-| A3 (Generation is pure function of IR)  | §4.1       | Config is an explicit input, not ambient state                                                    |
-| A6 (Library-first, CLI as thin wrapper) | §4         | Every consumer accepts `FormSpecConfig` programmatically; CLI loads it from a file                |
-| A7 (Clear lint vs. LS boundary)         | §4.3, §4.4 | Both tools read the same config for their distinct responsibilities                               |
-| E3 (Custom vocabulary namespaced)       | §3.4       | Vendor prefix flows from config to all extension keyword emission                                 |
+| Principle                               | Section    | How                                                                                              |
+| --------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| PP9 (Configurable surface area)         | §2, §3     | Config carries all tunables: extensions, DSL policy, vendor prefix, enum serialization, metadata |
+| PP10 (White-labelable)                  | §3.4       | `vendorPrefix` controls all emitted vendor-scoped keywords                                       |
+| PP15 (Preserve constraint taxonomy)     | §3.2, §7.3 | DSL policy is named separately from value constraints                                            |
+| A3 (Generation is pure function of IR)  | §4.1       | Config is an explicit input, not ambient state                                                   |
+| A6 (Library-first, CLI as thin wrapper) | §4         | Every consumer accepts `FormSpecConfig` programmatically; CLI loads it from a file               |
+| A7 (Clear lint vs. LS boundary)         | §4.3, §4.4 | Both tools read the same config for their distinct responsibilities                              |
+| E3 (Custom vocabulary namespaced)       | §3.4       | Vendor prefix flows from config to all extension keyword emission                                |
 
 ### 1.2 Scope
 
@@ -42,7 +43,7 @@ At the time this spec was authored, the initial `FormSpecConfig` shape contained
 
 ```typescript
 export interface FormSpecConfig {
-  constraints?: ConstraintConfig;
+  constraints?: DSLPolicy;
   // Future: other top-level config sections
   // build?: BuildConfig;
   // presets?: string[];
@@ -71,6 +72,7 @@ This document specifies the expansion of `FormSpecConfig` from constraint-only c
 
 ````typescript
 import type { ExtensionDefinition, MetadataPolicyInput } from "@formspec/core";
+import type { DSLPolicy } from "@formspec/config";
 
 export interface FormSpecConfig {
   /**
@@ -80,12 +82,12 @@ export interface FormSpecConfig {
   readonly extensions?: readonly ExtensionDefinition[];
 
   /**
-   * Constraint surface configuration — controls which field types,
+   * DSL-policy surface configuration — controls which field types,
    * layouts, UI features, and field/control options are allowed.
    *
    * Subsumes the existing `.formspec.yml` `constraints` section.
    */
-  readonly constraints?: ConstraintConfig;
+  readonly constraints?: DSLPolicy;
 
   /**
    * Metadata inference and naming policy. Controls how apiName,
@@ -149,8 +151,8 @@ export interface FormSpecConfig {
  * Only fields that vary per package are overridable.
  */
 export interface FormSpecPackageOverride {
-  /** Override constraint surface for this package. */
-  readonly constraints?: ConstraintConfig;
+  /** Override DSL policy for this package. */
+  readonly constraints?: DSLPolicy;
   /** Override enum serialization for this package. */
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
   /** Override metadata policy for this package. */
@@ -201,7 +203,7 @@ for (const ext of extensions) {
 }
 ```
 
-The language server and ESLint plugin use the same resolver — when analyzing a file, they pass the file's path and get the effective config with the right constraint surface.
+Consumers that need per-file behavior use the same resolver — when analyzing a file, they pass the file's path and get the effective config with the right DSL-policy surface. Build/CLI config resolution is implemented today; ESLint and language-server consumers should use the same resolver as their `FormSpecConfig` integrations are completed.
 
 ---
 
@@ -229,7 +231,9 @@ When the build pipeline encounters a TypeScript type that may be a custom FormSp
 
 ### 3.2 `constraints`
 
-**Optional.** A `ConstraintConfig` object controlling which field types, layouts, UI features, and options are allowed. This is the same type currently used by the `.formspec.yml` system — it moves from YAML to the TypeScript config without changes to the constraint schema.
+**Optional.** A `DSLPolicy` object controlling which Chain DSL field types, layouts, UI-schema features, and options are allowed. The config key remains `constraints` for compatibility with the legacy shape, but the umbrella type is named `DSLPolicy` to avoid confusing authoring-policy controls with data constraints such as `@minimum` or `ConstraintNode`.
+
+The DSL-policy schema and validators are owned by the private internal `@formspec/dsl-policy` package. `@formspec/config` stores the policy under `FormSpecConfig.constraints` and publicly re-exports `DSLPolicy`, `ResolvedDSLPolicy`, `DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`, and `validateFormSpec*()`. The old `ConstraintConfig`, `ResolvedConstraintConfig`, `DEFAULT_CONSTRAINTS`, and `defineConstraints()` names remain as deprecated compatibility aliases.
 
 ### 3.3 `metadata`
 
@@ -297,7 +301,7 @@ export default defineFormSpecConfig({
 });
 ```
 
-The language server, ESLint plugin, and build tooling all resolve the effective config for a given file using the algorithm in §2.4.
+Build tooling resolves the effective config for a given file using the algorithm in §2.4. ESLint and language-server integrations should use the same algorithm when their config-file wiring needs per-file package overrides.
 
 ---
 
@@ -354,11 +358,13 @@ import config from "./formspec.config.ts";
 export default [...formspec.withConfig(config).configs.recommended];
 ```
 
-`withConfig` resolves the extension registry and makes it available to all rules. Rules use it to:
+`withConfig` resolves the extension registry and makes it available to rules that need semantic extension awareness. Those rules use it to:
 
 - Derive constraint applicability from extension capabilities
 - Check `builtinConstraintBroadenings` before reporting type mismatches
 - Recognize custom tags and annotations
+
+DSL-policy rules that only need field-type or layout policy helpers consume those helpers from the private `@formspec/dsl-policy/browser` implementation at build time. Today those rules receive policy through their ESLint rule options. A later integration may derive those options from the effective `FormSpecConfig.constraints` value once per-file config wiring is available in the plugin.
 
 Without `withConfig`, the plugin behaves as today — built-in constraints only.
 
@@ -371,7 +377,7 @@ import config from "./formspec.config.ts";
 createServer({ config });
 ```
 
-Uses extensions for tag completions, hover info, and diagnostic enrichment. Watches the config file for changes.
+Uses extensions for tag completions, hover info, and diagnostic enrichment. Config-file watching and cache invalidation are target behavior for the language-server integration; they are not required for the initial policy-package extraction.
 
 ### 4.5 TypeScript Plugin
 
@@ -457,7 +463,8 @@ The YAML config system has no users. It is replaced entirely:
 - `FormSpecConfig` type is expanded with `extensions`, `metadata`, `vendorPrefix`, `enumSerialization`
 - `defineFormSpecConfig` and `loadFormSpecConfig` are added as new exports
 - The legacy YAML loader is replaced with a TypeScript config-file loader
-- The `ConstraintConfig` type is unchanged — it becomes one field of the expanded `FormSpecConfig`
+- The DSL-policy schema is unchanged, but its canonical umbrella type is renamed from `ConstraintConfig` to `DSLPolicy` to preserve the distinction from value constraints.
+- DSL-policy types, defaults, and validators move to the private internal `@formspec/dsl-policy` package; `@formspec/config` keeps public compatibility re-exports and deprecated aliases.
 
 ### 6.2 Per-Consumer Wiring → Config Object
 
@@ -508,6 +515,10 @@ createServer({ config });
 | `.formspec.yml` file format               | `formspec.config.ts`                                    | `@formspec/config`          |
 | `loadConfig` (deprecated wrapper)         | `loadFormSpecConfig`                                    | `@formspec/config`          |
 | `loadConstraintConfig` (YAML loader)      | `loadFormSpecConfig`                                    | `@formspec/config`          |
+| `ConstraintConfig`                        | `DSLPolicy`                                             | `@formspec/config`          |
+| `ResolvedConstraintConfig`                | `ResolvedDSLPolicy`                                     | `@formspec/config`          |
+| `defineConstraints()`                     | `defineDSLPolicy()`                                     | `@formspec/config`          |
+| `DEFAULT_CONSTRAINTS`                     | `DEFAULT_DSL_POLICY`                                    | `@formspec/config`          |
 | `tsTypeNames` on `CustomTypeRegistration` | `brand` field or `defineCustomType<T>()` type parameter | `@formspec/core`            |
 
 Deprecated APIs remain functional. Direct options override config when both are present.
@@ -518,9 +529,9 @@ Deprecated APIs remain functional. Direct options override config when both are 
 
 ### 7.1 Rename the former constraint-configuration package to `@formspec/config`
 
-The former constraint-configuration package already owns `FormSpecConfig`, `ConstraintConfig`, the config loader, and the defaults. Renaming it to `@formspec/config` reflects its expanded role as the configuration system for the entire pipeline.
+The former constraint-configuration package already owns `FormSpecConfig` and the config loader. Renaming it to `@formspec/config` reflects its expanded role as the configuration system for the entire pipeline.
 
-All existing exports (`ConstraintConfig`, `ResolvedConstraintConfig`, `ValidationIssue`, `ValidationResult`, `Severity`, `mergeWithDefaults`, `validateFormSpec`) remain unchanged — the rename is additive.
+DSL-policy exports (`DSLPolicy`, `ResolvedDSLPolicy`, `ValidationIssue`, `ValidationResult`, `Severity`, `DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`, `validateFormSpec()`) are available through `@formspec/config`. The old constraint-named exports remain available as deprecated aliases for compatibility, but their implementation is owned by `@formspec/dsl-policy`.
 
 ### 7.2 New Exports
 
@@ -534,17 +545,29 @@ export { defineFormSpecConfig } from "./define.js";
 // TypeScript config file loader (replaces YAML loader)
 export { loadFormSpecConfig } from "./loader.js";
 
-// Config → ExtensionRegistry resolution
-export { resolveExtensionRegistry } from "./resolve.js";
+// Per-file config resolution
+export { resolveConfigForFile } from "./resolve.js";
 ```
 
-### 7.3 New Dependencies
+### 7.3 Internal DSL-policy package
+
+`@formspec/dsl-policy` is a private internal workspace package that owns the policy-only implementation. It is not published, has no API Extractor report, and is bundled into published packages that need its runtime helpers. Application authors import DSL-policy APIs from `@formspec/config`.
+
+- policy types such as `DSLPolicy`, `FieldTypeConstraints`, `LayoutConstraints`, and `ResolvedDSLPolicy`
+- defaults and merge behavior (`DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`)
+- validators (`validateFormSpecElements()`, `validateFormSpec()`, field-type helpers, layout helpers, and field-option helpers)
+- a browser-safe entry point for linting and embedded validation
+
+`@formspec/config` wraps and re-exports these APIs as the public compatibility surface. `@formspec/eslint-plugin` uses the private implementation for DSL-policy rules that do not need config-file loading.
+
+### 7.4 New Dependencies
 
 - [`jiti`](https://github.com/unjs/jiti) — runtime TypeScript config file loading without prior compilation
+- `@formspec/dsl-policy` — private internal workspace package for DSL-policy types, defaults, and validators; used at build time and bundled where needed, not exposed as a published dependency
 
-### 7.4 Downstream Impact
+### 7.5 Downstream Impact
 
-All packages that depended on the former constraint-configuration package update their dependency to `@formspec/config`. Since the constraint types and APIs are re-exported unchanged, this is a mechanical rename with no code changes in consumers beyond `package.json` and import paths.
+Packages that need project config loading continue to depend on `@formspec/config`. Internal packages that only need DSL-policy helpers may use `@formspec/dsl-policy`, but published packages must not expose it as an install-time dependency. Since the policy types and APIs are available from `@formspec/config`, existing public consumers do not need import-path changes.
 
 ---
 
@@ -560,4 +583,4 @@ All packages that depended on the former constraint-configuration package update
 
 ### DQ-3: Config file caching
 
-**Decision:** Cache with file-watcher invalidation. Config files change rarely; reloading on every access would be wasteful.
+**Decision:** Target cache behavior is file-watcher invalidation. Config files change rarely; reloading on every access would be wasteful. Current package extraction does not add the language-server watcher or cross-consumer cache invalidation machinery.

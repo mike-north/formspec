@@ -1,7 +1,7 @@
 import type { FormElement, FormSpec, AnyField } from "@formspec/core";
 import type {
-  ConstraintConfig,
-  ResolvedConstraintConfig,
+  FormSpecValidationOptions,
+  ResolvedDSLPolicy,
   ValidationIssue,
   ValidationResult,
 } from "../types.js";
@@ -11,21 +11,11 @@ import { validateLayout } from "./layout.js";
 import { validateFieldOptions, extractFieldOptions } from "./field-options.js";
 
 /**
- * Options for validating FormSpec elements.
- *
- * @public
- */
-export interface FormSpecValidationOptions {
-  /** Constraint configuration (will be merged with defaults) */
-  constraints?: ConstraintConfig;
-}
-
-/**
- * Validates FormSpec elements against constraints.
+ * Validates FormSpec elements against DSL policy.
  *
  * This is the main entry point for validating a form specification
- * against a constraint configuration. It walks through all elements
- * and checks each one against the configured constraints.
+ * against a DSL policy. It walks through all elements and checks each
+ * one against the configured policy.
  *
  * @param elements - FormSpec elements to validate
  * @param options - Validation options including constraints
@@ -34,7 +24,7 @@ export interface FormSpecValidationOptions {
  * @example
  * ```ts
  * import { formspec, field, group } from '@formspec/dsl';
- * import { validateFormSpecElements, defineConstraints } from '@formspec/config';
+ * import { validateFormSpecElements, defineDSLPolicy } from '@formspec/config';
  *
  * const form = formspec(
  *   group("Contact",
@@ -44,10 +34,10 @@ export interface FormSpecValidationOptions {
  * );
  *
  * const result = validateFormSpecElements(form.elements, {
- *   constraints: {
+ *   constraints: defineDSLPolicy({
  *     fieldTypes: { dynamicEnum: 'error' },
  *     layout: { group: 'error' },
- *   },
+ *   }),
  * });
  *
  * if (!result.valid) {
@@ -74,7 +64,7 @@ export function validateFormSpecElements(
 }
 
 /**
- * Validates a complete FormSpec against constraints.
+ * Validates a complete FormSpec against DSL policy.
  *
  * @param formSpec - The FormSpec to validate
  * @param options - Validation options including constraints
@@ -94,7 +84,7 @@ export function validateFormSpec(
  */
 function walkElements(
   elements: readonly FormElement[],
-  constraints: ResolvedConstraintConfig,
+  constraints: ResolvedDSLPolicy,
   issues: ValidationIssue[],
   pathPrefix: string,
   depth: number
@@ -118,7 +108,7 @@ function walkElements(
  */
 function validateField(
   field: AnyField,
-  constraints: ResolvedConstraintConfig,
+  constraints: ResolvedDSLPolicy,
   issues: ValidationIssue[],
   pathPrefix: string,
   depth: number
@@ -194,7 +184,7 @@ function validateGroup(
     readonly label: string;
     readonly elements: readonly FormElement[];
   },
-  constraints: ResolvedConstraintConfig,
+  constraints: ResolvedDSLPolicy,
   issues: ValidationIssue[],
   pathPrefix: string,
   depth: number
@@ -227,7 +217,7 @@ function validateConditional(
     readonly value: unknown;
     readonly elements: readonly FormElement[];
   },
-  constraints: ResolvedConstraintConfig,
+  constraints: ResolvedDSLPolicy,
   issues: ValidationIssue[],
   pathPrefix: string,
   depth: number

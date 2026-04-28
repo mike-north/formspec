@@ -1,32 +1,10 @@
-import type { FieldOptionConstraints, Severity, ValidationIssue } from "../types.js";
-
-/**
- * Known field options that can be validated.
- *
- * @beta
- */
-export type FieldOption =
-  | "label"
-  | "placeholder"
-  | "required"
-  | "minValue"
-  | "maxValue"
-  | "minItems"
-  | "maxItems";
-
-/**
- * Context for field option validation.
- *
- * @beta
- */
-export interface FieldOptionsContext {
-  /** The field name */
-  fieldName: string;
-  /** Which options are present on this field */
-  presentOptions: FieldOption[];
-  /** Path to this field */
-  path?: string;
-}
+import type {
+  FieldOption,
+  FieldOptionConstraints,
+  FieldOptionsContext,
+  Severity,
+  ValidationIssue,
+} from "../types.js";
 
 /**
  * Validates field options against constraints.

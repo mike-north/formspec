@@ -23,7 +23,10 @@
 
 // Factory for building custom constraint tag rules
 export { createConstraintRule } from "./factories/constraint-rule.js";
-export type { ConstraintRuleOptions } from "./factories/constraint-rule.js";
+export type {
+  ConstraintRuleMessageIds,
+  ConstraintRuleOptions,
+} from "./factories/constraint-rule.js";
 
 // JSDoc parsing utilities — extension authors can reuse these for custom rules
 export {
@@ -42,11 +45,19 @@ export type {
 } from "@formspec/analysis";
 export type {
   ExplicitMetadataSource,
+  ExplicitMetadataSourceForm,
+  MetadataDeclarationKind,
+  MetadataInferenceContext,
+  MetadataQualifierRegistration,
   MetadataAnalysisResult,
   MetadataApplicableSlot,
   MetadataResolvedEntry,
   MetadataSlotRegistration,
+  MetadataSlotId,
+  MetadataSlotInferenceFn,
+  MetadataSource,
   MetadataSourceSpan,
+  ResolvedMetadata,
 } from "@formspec/core";
 
 // Type utilities — expose the helpers that power type-compatibility rules

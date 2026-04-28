@@ -13,29 +13,18 @@ formspec (umbrella — re-exports everything)
 ├── @formspec/build        (schema generators + static analysis)
 └── @formspec/runtime      (dynamic field resolvers)
 
-@formspec/cli              (CLI tool)
-└── @formspec/build/internals
-
-@formspec/config           (constraint validation + formspec.config.ts loader)
-└── @formspec/core
-
-@formspec/analysis         (shared comment-tag analysis utilities)
-└── @formspec/core
-
-@formspec/eslint-plugin    (lint rules for FormSpec)
-├── @formspec/analysis
-├── @formspec/build
-├── @formspec/config
-└── @formspec/core
-
-@formspec/validator        (JSON Schema validator — @cfworker/json-schema)
-
-@formspec/ts-plugin        (TypeScript plugin + composable semantic service — reference implementation inside tsserver)
-└── @formspec/analysis
-
-@formspec/language-server  (reference LSP implementation — thin presentation layer over composable helpers)
-├── @formspec/analysis
-└── @formspec/core
+@formspec/core             (no internal dependencies)
+@formspec/dsl              → @formspec/core
+@formspec/runtime          → @formspec/core
+@formspec/analysis         → @formspec/core
+@formspec/dsl-policy       → @formspec/core
+@formspec/config           → @formspec/core, @formspec/dsl-policy
+@formspec/build            → @formspec/core, @formspec/analysis, @formspec/config
+@formspec/cli              → @formspec/build, @formspec/config
+@formspec/eslint-plugin    → @formspec/analysis, @formspec/build, @formspec/config, @formspec/core, @formspec/dsl-policy
+@formspec/ts-plugin        → @formspec/analysis, @formspec/core
+@formspec/language-server  → @formspec/analysis, @formspec/config, @formspec/core
+@formspec/validator        (JSON Schema validator — no internal dependencies)
 ```
 
 ### Build Order
@@ -43,13 +32,13 @@ formspec (umbrella — re-exports everything)
 Packages build in dependency order. `pnpm run build` at the root handles this automatically.
 
 1. `@formspec/core` — no dependencies
-2. `@formspec/dsl`, `@formspec/runtime`, `@formspec/config` — depend on core
-3. `@formspec/analysis` — depends on core
+2. `@formspec/dsl-policy` — depends on core
+3. `@formspec/dsl`, `@formspec/runtime`, `@formspec/config`, `@formspec/analysis` — depend on core, and config also depends on DSL policy
 4. `@formspec/build` — depends on core, analysis, config
-5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/config/analysis
-6. `@formspec/ts-plugin` — depends on analysis
-7. `@formspec/language-server` — depends on analysis, core
-8. `formspec` — umbrella, depends on all above
+5. `@formspec/cli`, `@formspec/eslint-plugin` — depend on build/config/analysis, and ESLint also depends on DSL policy
+6. `@formspec/ts-plugin` — depends on analysis, core
+7. `@formspec/language-server` — depends on analysis, config, core
+8. `formspec` — umbrella, depends on core, dsl, build, runtime
 
 ## DSL
 
@@ -173,9 +162,15 @@ Combines static analysis with optional runtime loading:
 
 Options include `--emit-ir` (output Canonical IR as JSON) and `--validate-only` (validate without writing files).
 
-## Constraints (`@formspec/config`)
+## Configuration and DSL Policy (`@formspec/config`, `@formspec/dsl-policy`)
 
-Restricts which FormSpec features are allowed, configured in TypeScript via `formspec.config.ts` (or `.mts`/`.js`/`.mjs`). See [`docs/007-configuration.md`](./docs/007-configuration.md) for the full configuration spec.
+FormSpec separates project configuration from DSL-policy enforcement:
+
+- `@formspec/config` loads `formspec.config.ts` (or `.mts`/`.js`/`.mjs`) and exposes the `FormSpecConfig` authoring surface.
+- `@formspec/dsl-policy` is a private internal package that owns `DSLPolicy`, `DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`, and the validators for field-type, layout, UI-schema, field-option, and control-option policy.
+- `@formspec/config` exposes the public DSL-policy compatibility surface. New public consumers should import policy APIs from `@formspec/config`; internal packages may use `@formspec/dsl-policy` and must bundle it rather than expose it as a published dependency.
+
+See [`docs/007-configuration.md`](./docs/007-configuration.md) for the full configuration spec.
 
 ```typescript
 // formspec.config.ts
@@ -201,11 +196,11 @@ export default defineFormSpecConfig({
 
 ### Enforcement Layers
 
-| Layer            | Tool                       | When                           |
-| ---------------- | -------------------------- | ------------------------------ |
-| **Build-time**   | `@formspec/eslint-plugin`  | During linting / CI            |
-| **Programmatic** | `validateFormSpec()`       | At runtime or in build scripts |
-| **Browser**      | `@formspec/config/browser` | In browser-embedded validation |
+| Layer            | Tool                                                                                   | When                           |
+| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
+| **Build-time**   | `@formspec/eslint-plugin`                                                              | During linting / CI            |
+| **Programmatic** | Public: `validateFormSpec()` from `@formspec/config`; internal: `@formspec/dsl-policy` | At runtime or in build scripts |
+| **Browser**      | Public: `@formspec/config/browser`; internal: `@formspec/dsl-policy/browser`           | In browser-embedded validation |
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 
@@ -218,10 +213,12 @@ export default defineFormSpecConfig({
 
 ### Chain DSL Rules
 
-| Rule                              | Purpose                                                                            |
-| --------------------------------- | ---------------------------------------------------------------------------------- |
-| `constraints-allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against `formspec.config.ts` |
-| `constraints-allowed-layouts`     | `group()`, `when()` validated against `formspec.config.ts`                         |
+| Rule                             | Purpose                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| `dsl-policy/allowed-field-types` | `field.text()`, `field.dynamicEnum()`, etc. validated against project DSL policy |
+| `dsl-policy/allowed-layouts`     | `group()`, `when()` validated against project DSL policy                         |
+
+The previous `constraints-allowed-field-types` and `constraints-allowed-layouts` rule IDs remain as deprecated aliases.
 
 ## Tooling Architecture
 

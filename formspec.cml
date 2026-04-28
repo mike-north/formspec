@@ -59,7 +59,7 @@ Domain FormSpec {
 	Subdomain ConfigurationDomain {
 		type = SUPPORTING
 		domainVisionStatement
-			= "User-facing extension and constraint registration plus DSL capability restriction. Authored as TypeScript via formspec.config.ts (.mts/.js/.mjs variants accepted); legacy YAML strings are still parseable via the browser entry."
+			= "User-facing extension and constraint registration plus shared DSL-policy restriction. Project configuration is authored as TypeScript via formspec.config.ts (.mts/.js/.mjs variants accepted); legacy YAML strings are still parseable via the browser entry."
 	}
 
 	Subdomain RuntimeDomain {
@@ -168,22 +168,45 @@ BoundedContext CompilationContext implements CompilationDomain {
 BoundedContext ConfigurationContext implements ConfigurationDomain {
 	type = APPLICATION
 	domainVisionStatement
-		= "Load formspec.config.ts (or .mts/.js/.mjs) configuration; let consumers register extensions and custom constraints via defineFormSpecConfig; restrict the FormSpec capability surface (allowed field types, layout features, field options) per project."
+		= "Load formspec.config.ts (or .mts/.js/.mjs) configuration; let consumers register extensions and custom constraints via defineFormSpecConfig; carry project DSL policy in FormSpecConfig.constraints; re-export DSL-policy APIs for compatibility."
 	implementationTechnology = "TypeScript + jiti — npm package @formspec/config"
 	responsibilities
 		= "loadFormSpecConfig() — discover and parse formspec.config.{ts,mts,js,mjs}",
-		  "defineFormSpecConfig() and defineConstraints() — typed configuration authoring",
-		  "validateFormSpecElements() / validateFormSpec() — DSL capability validation",
+		  "defineFormSpecConfig() and defineDSLPolicy() — typed configuration authoring",
+		  "DSL-policy compatibility exports from DSLPolicyContext",
 		  "Browser-safe subset (loadConfigFromString) for embedded YAML-string parsing"
 	// Published types:
 	//   public (.):    loadFormSpecConfig, loadConfig (deprecated),
-	//                  defineFormSpecConfig, defineConstraints,
+	//                  defineFormSpecConfig, defineDSLPolicy,
 	//                  validateFormSpecElements, validateFormSpec,
-	//                  resolveConfigForFile, FormSpecConfig, ConstraintConfig,
-	//                  ResolvedConstraintConfig, ValidationIssue, ValidationResult,
-	//                  DEFAULT_CONFIG, DEFAULT_CONSTRAINTS, mergeWithDefaults.
+	//                  resolveConfigForFile, FormSpecConfig, DSLPolicy,
+	//                  ResolvedDSLPolicy, ValidationIssue, ValidationResult,
+	//                  DEFAULT_CONFIG, DEFAULT_DSL_POLICY, mergeWithDefaults.
+	//                  Deprecated aliases include defineConstraints,
+	//                  ConstraintConfig, ResolvedConstraintConfig, and
+	//                  DEFAULT_CONSTRAINTS.
 	//   /browser:      loadConfigFromString and validation surface without
 	//                  Node fs/path or jiti.
+}
+
+BoundedContext DSLPolicyContext implements ConfigurationDomain {
+	type = FEATURE
+	domainVisionStatement
+		= "Define the shared DSL-policy language for restricting Chain DSL authoring features: field types, layout features, UI-schema features, field options, and control options. This internal package owns the defaults and validators consumed by config and lint tooling."
+	implementationTechnology = "TypeScript — private internal npm package @formspec/dsl-policy"
+	responsibilities
+		= "DSLPolicy and resolved DSL-policy types",
+		  "DEFAULT_DSL_POLICY, defineDSLPolicy(), and mergeWithDefaults()",
+		  "validateFormSpecElements() / validateFormSpec() — DSL-policy validation",
+		  "Browser-safe DSL-policy validator entry point"
+	// Published types:
+	//   private (.):   DSLPolicy, ResolvedDSLPolicy, Severity,
+	//                  FieldTypeConstraints, LayoutConstraints,
+	//                  FieldOptionConstraints, ControlOptionConstraints,
+	//                  DEFAULT_DSL_POLICY, defineDSLPolicy, mergeWithDefaults,
+	//                  validateFormSpecElements, validateFormSpec,
+	//                  validation helpers for field types, layouts, and options.
+	//   /browser:      Same DSL-policy surface without Node-specific imports.
 }
 
 BoundedContext RuntimeContext implements RuntimeDomain {
@@ -231,7 +254,7 @@ BoundedContext EslintContext implements DeveloperToolingDomain {
 	responsibilities
 		= "Constraint-type-mismatch rule",
 		  "Consistent-constraints rule (e.g., @minimum ≤ @maximum)",
-		  "Constraints-allowed-field-types and constraints-allowed-layouts rules",
+		  "DSL-policy allowed-field-types and allowed-layouts rules",
 		  "Auto-fix delivery for unambiguous corrections"
 }
 
@@ -302,6 +325,7 @@ ContextMap FormSpecContextMap {
 	contains StaticAnalysisContext
 	contains CompilationContext
 	contains ConfigurationContext
+	contains DSLPolicyContext
 	contains RuntimeContext
 	contains ValidatorContext
 	contains CliContext
@@ -333,6 +357,11 @@ ContextMap FormSpecContextMap {
 	ConfigurationContext [D, CF]<-[U, OHS, PL] DomainModelContext {
 		implementationTechnology = "TypeScript types via @formspec/core"
 		exposedAggregates = "Constraint registration interfaces, FieldType discriminants"
+	}
+
+	DSLPolicyContext [D, CF]<-[U, OHS, PL] DomainModelContext {
+		implementationTechnology = "TypeScript types via @formspec/core"
+		exposedAggregates = "FormElement, FormSpec, FieldType discriminants"
 	}
 
 	RuntimeContext [D, CF]<-[U, OHS, PL] DomainModelContext {
@@ -387,13 +416,19 @@ ContextMap FormSpecContextMap {
 	}
 
 	// -------------------------------------------------------------------------
-	// ConfigurationContext is upstream of any context that needs to know
-	// which capabilities the user has restricted.
+	// ConfigurationContext owns project configuration loading. DSLPolicyContext
+	// owns the policy vocabulary and validators for restricted authoring
+	// capabilities.
 	// -------------------------------------------------------------------------
+
+	ConfigurationContext [D, CF]<-[U, OHS] DSLPolicyContext {
+		implementationTechnology = "TypeScript via @formspec/dsl-policy"
+		exposedAggregates = "DSLPolicy, DEFAULT_DSL_POLICY, defineDSLPolicy, mergeWithDefaults, DSL-policy validators"
+	}
 
 	CompilationContext [D, CF]<-[U, OHS] ConfigurationContext {
 		implementationTechnology = "TypeScript via @formspec/config"
-		exposedAggregates = "FormSpecConfig, defineConstraints"
+		exposedAggregates = "FormSpecConfig, defineFormSpecConfig"
 	}
 
 	CliContext [D, CF]<-[U, OHS] ConfigurationContext {
@@ -402,13 +437,18 @@ ContextMap FormSpecContextMap {
 	}
 
 	EslintContext [D, CF]<-[U, OHS] ConfigurationContext {
-		implementationTechnology = "TypeScript via @formspec/config (including /browser for env-conditioned use)"
-		exposedAggregates = "validateFormSpecElements, capability registry"
+		implementationTechnology = "TypeScript via @formspec/config"
+		exposedAggregates = "FormSpecConfig and withConfig() input"
+	}
+
+	EslintContext [D, CF]<-[U, OHS] DSLPolicyContext {
+		implementationTechnology = "TypeScript via @formspec/dsl-policy/browser"
+		exposedAggregates = "field-type and layout policy helpers"
 	}
 
 	LanguageServerContext [D, CF]<-[U, OHS] ConfigurationContext {
 		implementationTechnology = "TypeScript via @formspec/config"
-		exposedAggregates = "loadConfig, capability registry"
+		exposedAggregates = "loadConfig, FormSpecConfig"
 	}
 
 	// -------------------------------------------------------------------------

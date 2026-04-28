@@ -35,6 +35,15 @@ export interface CreateServerOptions {
     readonly workspaceRoots?: readonly string[];
 }
 
+// @public
+export interface DSLPolicy {
+    controlOptions?: ControlOptionConstraints;
+    fieldOptions?: FieldOptionConstraints;
+    fieldTypes?: FieldTypeConstraints;
+    layout?: LayoutConstraints;
+    uiSchema?: UISchemaConstraints;
+}
+
 export { ExtensionDefinition }
 
 // @public
@@ -66,12 +75,19 @@ export interface FormSpecAnalysisDiagnosticLocation {
 
 // @public
 export interface FormSpecConfig {
-    readonly constraints?: ConstraintConfig;
+    readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly extensions?: readonly ExtensionDefinition_2[];
     readonly metadata?: MetadataPolicyInput;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
     readonly vendorPrefix?: string;
+}
+
+// @public
+export interface FormSpecPackageOverride {
+    readonly constraints?: DSLPolicy;
+    readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+    readonly metadata?: MetadataPolicyInput;
 }
 
 // @public

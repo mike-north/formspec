@@ -2,7 +2,14 @@ import { describe, it, expect, afterEach } from "vitest";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadFormSpecConfig, loadConfig, defineConstraints } from "../src/index.js";
+import {
+  DEFAULT_CONSTRAINTS,
+  DEFAULT_DSL_POLICY,
+  defineConstraints,
+  defineDSLPolicy,
+  loadConfig,
+  loadFormSpecConfig,
+} from "../src/index.js";
 
 async function mkTempDir(): Promise<string> {
   const base = join(
@@ -331,7 +338,25 @@ describe("loadConfig (deprecated wrapper)", () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-deprecated -- compatibility tests cover deprecated aliases */
 describe("defineConstraints", () => {
+  it("keeps canonical DSL-policy names aligned with deprecated aliases", () => {
+    const policy = defineDSLPolicy({
+      fieldTypes: {
+        dynamicEnum: "error",
+      },
+    });
+
+    const legacyPolicy = defineConstraints({
+      fieldTypes: {
+        dynamicEnum: "error",
+      },
+    });
+
+    expect(policy).toEqual(legacyPolicy);
+    expect(DEFAULT_DSL_POLICY).toBe(DEFAULT_CONSTRAINTS);
+  });
+
   it("creates config from object literal", () => {
     const config = defineConstraints({
       fieldTypes: {
@@ -373,3 +398,4 @@ describe("defineConstraints", () => {
     expect(config.uiSchema.layouts.VerticalLayout).toBe("off"); // default
   });
 });
+/* eslint-enable @typescript-eslint/no-deprecated */

@@ -1,63 +1,57 @@
-import type { ConstraintConfig, FormSpecConfig, ResolvedConstraintConfig } from "./types.js";
+import {
+  DEFAULT_DSL_POLICY as INTERNAL_DEFAULT_DSL_POLICY,
+  defineDSLPolicy as defineInternalDSLPolicy,
+  mergeWithDefaults as mergeInternalWithDefaults,
+} from "@formspec/dsl-policy";
+import type { DSLPolicy, FormSpecConfig, ResolvedDSLPolicy } from "./types.js";
 
 /**
- * Default constraint configuration that allows all features.
- * All constraints default to "off" (allowed).
+ * Default DSL-policy configuration that allows all features.
  *
  * @beta
  */
-export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
-  fieldTypes: {
-    text: "off",
-    number: "off",
-    boolean: "off",
-    staticEnum: "off",
-    dynamicEnum: "off",
-    dynamicSchema: "off",
-    array: "off",
-    object: "off",
-  },
-  layout: {
-    group: "off",
-    conditionals: "off",
-    maxNestingDepth: Infinity,
-  },
-  uiSchema: {
-    layouts: {
-      VerticalLayout: "off",
-      HorizontalLayout: "off",
-      Group: "off",
-      Categorization: "off",
-      Category: "off",
-    },
-    rules: {
-      enabled: "off",
-      effects: {
-        SHOW: "off",
-        HIDE: "off",
-        ENABLE: "off",
-        DISABLE: "off",
-      },
-    },
-  },
-  fieldOptions: {
-    label: "off",
-    placeholder: "off",
-    required: "off",
-    minValue: "off",
-    maxValue: "off",
-    minItems: "off",
-    maxItems: "off",
-  },
-  controlOptions: {
-    format: "off",
-    readonly: "off",
-    multi: "off",
-    showUnfocusedDescription: "off",
-    hideRequiredAsterisk: "off",
-    custom: {},
-  },
-};
+export const DEFAULT_DSL_POLICY: ResolvedDSLPolicy = INTERNAL_DEFAULT_DSL_POLICY;
+
+function getDefaultDSLPolicyAlias(): ResolvedDSLPolicy {
+  return DEFAULT_DSL_POLICY;
+}
+
+/**
+ * Default DSL-policy configuration that allows all features.
+ *
+ * @deprecated Use `DEFAULT_DSL_POLICY`.
+ * @beta
+ */
+export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy = getDefaultDSLPolicyAlias();
+
+/**
+ * Merges user policy with defaults.
+ *
+ * @beta
+ */
+export function mergeWithDefaults(config: DSLPolicy | undefined): ResolvedDSLPolicy {
+  return mergeInternalWithDefaults(config);
+}
+
+/**
+ * Creates a DSL policy directly from an object.
+ * Useful for programmatic configuration without a config file.
+ *
+ * @public
+ */
+export function defineDSLPolicy(config: DSLPolicy): ResolvedDSLPolicy {
+  return defineInternalDSLPolicy(config);
+}
+
+/**
+ * Creates a DSL policy directly from an object.
+ *
+ * @deprecated Use `defineDSLPolicy`.
+ * @public
+ */
+export function defineConstraints(config: DSLPolicy): ResolvedDSLPolicy {
+  return defineDSLPolicy(config);
+}
 
 /**
  * Default FormSpec configuration.
@@ -65,52 +59,5 @@ export const DEFAULT_CONSTRAINTS: ResolvedConstraintConfig = {
  * @beta
  */
 export const DEFAULT_CONFIG: FormSpecConfig = {
-  constraints: DEFAULT_CONSTRAINTS,
+  constraints: DEFAULT_DSL_POLICY,
 };
-
-/**
- * Merges user constraints with defaults, filling in any missing values.
- *
- * @beta
- */
-export function mergeWithDefaults(config: ConstraintConfig | undefined): ResolvedConstraintConfig {
-  if (!config) {
-    return DEFAULT_CONSTRAINTS;
-  }
-
-  return {
-    fieldTypes: {
-      ...DEFAULT_CONSTRAINTS.fieldTypes,
-      ...config.fieldTypes,
-    },
-    layout: {
-      ...DEFAULT_CONSTRAINTS.layout,
-      ...config.layout,
-    },
-    uiSchema: {
-      layouts: {
-        ...DEFAULT_CONSTRAINTS.uiSchema.layouts,
-        ...config.uiSchema?.layouts,
-      },
-      rules: {
-        enabled: config.uiSchema?.rules?.enabled ?? DEFAULT_CONSTRAINTS.uiSchema.rules.enabled,
-        effects: {
-          ...DEFAULT_CONSTRAINTS.uiSchema.rules.effects,
-          ...config.uiSchema?.rules?.effects,
-        },
-      },
-    },
-    fieldOptions: {
-      ...DEFAULT_CONSTRAINTS.fieldOptions,
-      ...config.fieldOptions,
-    },
-    controlOptions: {
-      ...DEFAULT_CONSTRAINTS.controlOptions,
-      ...config.controlOptions,
-      custom: {
-        ...DEFAULT_CONSTRAINTS.controlOptions.custom,
-        ...config.controlOptions?.custom,
-      },
-    },
-  };
-}

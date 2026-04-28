@@ -76,7 +76,12 @@ export interface ConstraintRuleOptions {
   validateValue?: (value: string) => string | null;
 }
 
-type MessageIds = "typeMismatch" | "invalidValue";
+/**
+ * Message identifiers emitted by rules produced by `createConstraintRule`.
+ *
+ * @public
+ */
+export type ConstraintRuleMessageIds = "typeMismatch" | "invalidValue";
 
 /**
  * Creates an ESLint rule that validates a custom JSDoc constraint tag.
@@ -95,12 +100,14 @@ type MessageIds = "typeMismatch" | "invalidValue";
  *
  * @public
  */
-export function createConstraintRule(options: ConstraintRuleOptions): RuleModule<MessageIds, []> {
+export function createConstraintRule(
+  options: ConstraintRuleOptions
+): RuleModule<ConstraintRuleMessageIds, []> {
   const { tagName, applicableTypes, validateValue } = options;
 
   const applicableTypesLabel = applicableTypes.length > 0 ? applicableTypes.join(", ") : "(any)";
 
-  return createRule<[], MessageIds>({
+  return createRule<[], ConstraintRuleMessageIds>({
     name: `constraint-rule/${tagName}`,
     meta: {
       type: "problem",

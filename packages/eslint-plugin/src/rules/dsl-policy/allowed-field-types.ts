@@ -10,7 +10,8 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import { getFieldTypeSeverity, type FieldTypeConstraints } from "@formspec/config/browser";
+import type { FieldTypeConstraints } from "@formspec/config";
+import { getFieldTypeSeverity } from "@formspec/dsl-policy/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -22,10 +23,18 @@ const createRule = ESLintUtils.RuleCreator(
  * @public
  */
 export type MessageIds = "disallowedFieldType";
+
+/**
+ * Rule options accepted by `allowedFieldTypes`.
+ *
+ * @public
+ */
+export type AllowedFieldTypesConfig = FieldTypeConstraints;
+
 /**
  * Maps DSL method names to constraint config keys.
  */
-const METHOD_TO_CONSTRAINT: Record<string, keyof FieldTypeConstraints> = {
+const METHOD_TO_CONSTRAINT: Record<string, keyof AllowedFieldTypesConfig> = {
   text: "text",
   number: "number",
   boolean: "boolean",
@@ -59,7 +68,7 @@ const FIELD_TYPE_NAMES: Record<string, string> = {
  *
  * @public
  */
-export type Options = [FieldTypeConstraints];
+export type Options = [AllowedFieldTypesConfig];
 /**
  * ESLint rule that validates allowed field types against project constraints.
  *
@@ -118,7 +127,7 @@ export const allowedFieldTypes = createRule<Options, MessageIds>({
         }
 
         // Map constraint key to internal field type for severity check
-        const fieldTypeMap: Record<keyof FieldTypeConstraints, string> = {
+        const fieldTypeMap: Record<keyof AllowedFieldTypesConfig, string> = {
           text: "text",
           number: "number",
           boolean: "boolean",

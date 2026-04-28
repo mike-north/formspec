@@ -1,4 +1,4 @@
-declare module "@formspec/config/browser" {
+declare module "@formspec/dsl-policy/browser" {
   export interface FieldTypeConstraints {
     text?: "error" | "warn" | "off";
     number?: "error" | "warn" | "off";

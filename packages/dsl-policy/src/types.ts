@@ -1,5 +1,5 @@
 /**
- * Severity level for DSL-policy violations.
+ * Severity level for constraint violations.
  * - "error": Violation fails validation
  * - "warn": Violation emits warning but passes
  * - "off": Feature is allowed (no violation)
@@ -48,7 +48,7 @@ export interface LayoutConstraints {
 }
 
 /**
- * JSON Forms layout type constraints.
+ * JSONForms layout type constraints.
  *
  * @public
  */
@@ -66,7 +66,7 @@ export interface LayoutTypeConstraints {
 }
 
 /**
- * JSON Forms rule effect constraints.
+ * JSONForms rule effect constraints.
  *
  * @public
  */
@@ -82,7 +82,7 @@ export interface RuleEffectConstraints {
 }
 
 /**
- * JSON Forms rule constraints.
+ * JSONForms rule constraints.
  *
  * @public
  */
@@ -94,7 +94,7 @@ export interface RuleConstraints {
 }
 
 /**
- * UI schema feature constraints - control JSON Forms-specific features.
+ * UI Schema feature constraints - control JSONForms-specific features.
  *
  * @public
  */
@@ -128,7 +128,7 @@ export interface FieldOptionConstraints {
 }
 
 /**
- * Control options constraints - control which JSON Forms Control.options are allowed.
+ * Control options constraints - control which JSONForms Control.options are allowed.
  * These are renderer-specific options that may not be universally supported.
  *
  * @public
@@ -158,12 +158,22 @@ export interface DSLPolicy {
   fieldTypes?: FieldTypeConstraints;
   /** Layout and structure constraints */
   layout?: LayoutConstraints;
-  /** UI schema feature constraints */
+  /** UI Schema feature constraints */
   uiSchema?: UISchemaConstraints;
   /** Field configuration option constraints */
   fieldOptions?: FieldOptionConstraints;
   /** Control options constraints */
   controlOptions?: ControlOptionConstraints;
+}
+
+/**
+ * Options for validating FormSpec elements against a DSL policy.
+ *
+ * @public
+ */
+export interface FormSpecValidationOptions {
+  /** DSL-policy configuration (will be merged with defaults). */
+  constraints?: DSLPolicy;
 }
 
 /**
@@ -226,16 +236,6 @@ export interface ResolvedDSLPolicy {
 export type ResolvedConstraintConfig = ResolvedDSLPolicy;
 
 /**
- * Options for validating FormSpec elements against a DSL policy.
- *
- * @public
- */
-export interface FormSpecValidationOptions {
-  /** DSL-policy configuration (will be merged with defaults). */
-  constraints?: DSLPolicy;
-}
-
-/**
  * Context for field type validation.
  *
  * @beta
@@ -294,7 +294,7 @@ export interface FieldOptionsContext {
 }
 
 /**
- * A single validation issue found during DSL-policy checking.
+ * A single validation issue found during constraint checking.
  *
  * @public
  */
@@ -305,7 +305,7 @@ export interface ValidationIssue {
   message: string;
   /** Severity level of this issue */
   severity: "error" | "warning";
-  /** Which policy category this issue belongs to */
+  /** Which constraint category this issue belongs to */
   category: "fieldTypes" | "layout" | "uiSchema" | "fieldOptions" | "controlOptions";
   /** JSON pointer or field path to the issue location */
   path?: string;
@@ -316,7 +316,7 @@ export interface ValidationIssue {
 }
 
 /**
- * Result of validating a FormSpec or schema against DSL policy.
+ * Result of validating a FormSpec or schema against constraints.
  *
  * @public
  */
@@ -325,67 +325,4 @@ export interface ValidationResult {
   valid: boolean;
   /** List of all issues found */
   issues: ValidationIssue[];
-}
-
-/**
- * Top-level FormSpec configuration file structure.
- *
- * @public
- */
-export interface FormSpecConfig {
-  /**
-   * Extension definitions providing custom types, constraints,
-   * annotations, and vocabulary keywords.
-   */
-  readonly extensions?: readonly import("@formspec/core").ExtensionDefinition[];
-
-  /**
-   * DSL-policy surface configuration controlling which field types,
-   * layouts, UI features, and field/control options are allowed.
-   */
-  readonly constraints?: DSLPolicy;
-
-  /**
-   * Metadata inference and naming policy. Controls how apiName,
-   * displayName, and plural forms are derived when not authored.
-   */
-  readonly metadata?: import("@formspec/core").MetadataPolicyInput;
-
-  /**
-   * Vendor prefix for extension-emitted JSON Schema keywords.
-   * Must start with "x-".
-   * @defaultValue "x-formspec"
-   */
-  readonly vendorPrefix?: string;
-
-  /**
-   * JSON Schema representation for static enums.
-   * - "enum": compact `enum` output, plus a display-name extension when labels exist
-   * - "oneOf": per-member `const` output, with `title` only for distinct labels
-   * - "smart-size": uses `enum` unless a distinct display label would be lost
-   * @defaultValue "enum"
-   */
-  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
-
-  /**
-   * Per-package configuration overrides for monorepos.
-   * Keys are glob patterns matched against file paths relative to
-   * the config file's directory. Values merge with root settings.
-   */
-  readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
-}
-
-/**
- * Per-package overrides that merge with the root config.
- * Only settings that genuinely vary per package are overridable.
- *
- * @public
- */
-export interface FormSpecPackageOverride {
-  /** Override DSL policy for this package. */
-  readonly constraints?: DSLPolicy;
-  /** Override enum serialization for this package. */
-  readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
-  /** Override metadata policy for this package. */
-  readonly metadata?: import("@formspec/core").MetadataPolicyInput;
 }

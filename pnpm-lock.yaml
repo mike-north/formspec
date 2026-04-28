@@ -212,6 +212,9 @@ importers:
         specifier: ^2.7.0
         version: 2.8.2
     devDependencies:
+      '@formspec/dsl-policy':
+        specifier: workspace:*
+        version: link:../dsl-policy
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../dsl
@@ -244,6 +247,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/dsl-policy:
+    dependencies:
+      '@formspec/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@formspec/dsl':
+        specifier: workspace:*
+        version: link:../dsl
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/eslint-plugin:
     dependencies:
       '@formspec/analysis':
@@ -268,6 +284,9 @@ importers:
         specifier: '>=5.7.3 <7'
         version: 6.0.3
     devDependencies:
+      '@formspec/dsl-policy':
+        specifier: workspace:*
+        version: link:../dsl-policy
       '@typescript-eslint/parser':
         specifier: ^8.57.0
         version: 8.59.0(eslint@9.39.2(jiti@2.6.1))(typescript@6.0.3)

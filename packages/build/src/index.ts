@@ -88,7 +88,7 @@ export type {
  * @internal
  */
 export type { SetupDiagnostic } from "@formspec/analysis/internal";
-export type { FormSpecConfig } from "@formspec/config";
+export type { DSLPolicy, FormSpecConfig, FormSpecPackageOverride } from "@formspec/config";
 
 export type {
   UISchema,

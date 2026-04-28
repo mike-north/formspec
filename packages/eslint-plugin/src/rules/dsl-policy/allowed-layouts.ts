@@ -9,7 +9,8 @@
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
 import type { TSESTree } from "@typescript-eslint/utils";
-import { isLayoutTypeAllowed, type LayoutConstraints } from "@formspec/config/browser";
+import type { LayoutConstraints } from "@formspec/config";
+import { isLayoutTypeAllowed } from "@formspec/dsl-policy/browser";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -27,7 +28,14 @@ export type MessageIds = "disallowedGroup" | "disallowedConditional";
  *
  * @public
  */
-export type Options = [LayoutConstraints];
+export type AllowedLayoutsConfig = LayoutConstraints;
+
+/**
+ * Rule options accepted by `allowedLayouts`.
+ *
+ * @public
+ */
+export type Options = [AllowedLayoutsConfig];
 /**
  * ESLint rule that validates allowed layout constructs against project constraints.
  *

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "paths": {
+      "@formspec/core": ["../core/dist/core.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

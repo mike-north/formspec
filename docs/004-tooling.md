@@ -391,6 +391,12 @@ Each rule category maps to either a diagnostic category from 002 §6 or an autho
 | `documentation`         | `UNSUPPORTED_DESCRIPTION_TAG`, future documentation-hygiene diagnostics                               | Documentation-specific TSDoc usage                                    |
 | `dsl-policy`            | DSL-policy rule message IDs such as `disallowedFieldType`, `disallowedGroup`, `disallowedConditional` | Project policy over allowed Chain DSL field types and layout features |
 
+The shared DSL-policy vocabulary and helper validators live in the private internal
+`@formspec/dsl-policy` package. `@formspec/config` carries that policy as
+`FormSpecConfig.constraints` and re-exports the policy surface for compatibility,
+while ESLint rules may consume bundled policy helpers from
+`@formspec/dsl-policy/browser` when they do not need config-file loading.
+
 Rules within each category are named `formspec/<category>/<specific-rule>`, for example:
 
 - `formspec/constraint-validation/no-contradictions`
@@ -496,7 +502,7 @@ Deprecated aliases remain registered for existing ESLint configurations, but the
 
 ### 3.4 Rule Configuration Interface
 
-Per PP9, every rule's severity is overridable in the project's ESLint configuration. Per PP11, message templates are overridable in `.formspec.yml`.
+Per PP9, every rule's severity is overridable in the project's ESLint configuration. This phase does not add project-level message-template configuration; per PP11, downstream tools can white-label diagnostics by rendering their own messages from stable diagnostic codes and structured data (see §8.3).
 
 `@formspec/eslint-plugin` ships a recommended flat config for easy adoption. Consumers import it directly into `eslint.config.js` without manually listing plugins or rules:
 
@@ -529,17 +535,7 @@ export default [
 ];
 ```
 
-For message template overrides (PP11), the consumer configures them in `.formspec.yml`:
-
-```yaml
-# .formspec.yml
-diagnostics:
-  messages:
-    UNKNOWN_TAG: 'Unrecognized tag "@{tagName}". Valid tags: {validTags}.'
-    CONSTRAINT_CONTRADICTION: "Conflicting constraints detected: {details}"
-```
-
-Message templates use `{placeholder}` syntax. The available placeholders for each code are documented in 002 §6 and are part of the stable public API.
+The available structured data for each code is documented in 002 §6 and is part of the stable public API.
 
 ---
 
@@ -693,9 +689,9 @@ The language server provides go-to-definition for two FormSpec-specific construc
 
 Per 002 §3.2, conditional tags use `{@link}` to reference a condition type. The TSDoc `{@link}` syntax already has IDE support for navigating to the referenced type — the language server ensures that FormSpec-specific condition types participate in this navigation correctly. No additional implementation is required for this case; it is handled by the TypeScript language service's existing `{@link}` support.
 
-**Tag name references in `.formspec.yml`:**
+**Tag name references in configuration policy:**
 
-When the author has configured disabled tags or message overrides in `.formspec.yml` and the language server provides YAML support, tag names in configuration are resolvable to their registry declarations. This is a lower-priority capability and may be deferred to a follow-on release.
+If a future `formspec.config.ts` policy adds disabled tags or message-template declarations, tag names in that configuration should be resolvable to their registry declarations. This is a lower-priority capability and may be deferred to a follow-on release.
 
 ### 5.5 Signature Help
 
@@ -957,30 +953,13 @@ This phase does not add project-level message-template configuration. Instead, F
 
 ### 8.4 Disabled Tags (PP9)
 
-Tags can be disabled project-wide in `.formspec.yml`. Disabled tags that appear in source produce `TAG_DISABLED` at the configured severity (default `warn`):
-
-```yaml
-# .formspec.yml
-tags:
-  disabled:
-    - maxSigFig # This project does not use decimal precision constraints
-    - before # This project has no date-bounded fields
-    - after
-```
+Disabled-tag policy is a planned PP9 capability, not a current config field. When added, it belongs in `formspec.config.ts` alongside the rest of `FormSpecConfig`, not in the legacy `.formspec.yml` format. Disabled tags that appear in source should produce `TAG_DISABLED` at the configured severity (default `warn`).
 
 Disabling a tag removes it from language server completions — the author will not be offered a tag that would immediately produce a lint warning. This implements PP9's intent: authors working within a constrained profile should not feel like they are fighting a library that tries to enable too much.
 
 ### 8.5 Extension Configuration
 
-Extensions can declare configuration keys that appear under the `extensions:` namespace in `.formspec.yml`. The extension receives its configuration block at initialization and can use it to parameterize both the tag registry entries and the ESLint rules.
-
-```yaml
-# .formspec.yml — consumer's configuration of a hypothetical decimal extension
-extensions:
-  decimal:
-    maxSigFigUpperLimit: 38 # Passed to the extension at initialization
-    precisionLoss: "error" # B3 — configurable lossy transformation policy
-```
+Extension-specific settings are planned configuration inputs. When added, they should be represented in `formspec.config.ts` so extensions can receive typed configuration at initialization and use it to parameterize both tag registry entries and ESLint rules.
 
 This enables the Outcome 8 scenario from 003 §6.1 without requiring the extension to define its own configuration file or parsing logic.
 
