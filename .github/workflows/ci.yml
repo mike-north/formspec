@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -150,6 +153,142 @@ jobs:
 
       - name: Type check
         run: pnpm run typecheck
+
+  typescript-7-tsgo:
+    name: Test (TypeScript 7.0 native preview)
+    runs-on: ubuntu-latest
+    continue-on-error: true # experimental: TS 7 is the Go rewrite with a separate API surface
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Pin TypeScript via the typescript6 alias and native-preview
+        # Keep tools that import from "typescript" on the TS 6 JS API shim,
+        # while the native-preview package supplies the tsgo compiler binary.
+        # This follows Microsoft's TS 7 beta side-by-side guidance.
+        run: |
+          npm pkg set "pnpm.overrides.typescript=npm:@typescript/typescript6@^6.0.0"
+          npm pkg set "pnpm.overrides.@typescript/typescript6>typescript=^6.0.0"
+          npm pkg set "devDependencies.@typescript/native-preview=beta"
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Expose TypeScript 6 compatibility bins and server subpaths
+        # @typescript/typescript6 deliberately names its compiler tsc6 so it
+        # can coexist with a future TS 7 tsc. Existing package scripts invoke
+        # tsc directly, and @formspec/ts-plugin imports tsserverlibrary.
+        # These local CI-only bridges keep that TS 6 surface available while
+        # package imports from "typescript" resolve through the JS API shim.
+        run: |
+          root_tsc6="$(pwd)/node_modules/.bin/tsc6"
+          for bin in node_modules/.bin packages/*/node_modules/.bin e2e/node_modules/.bin; do
+            if [ -d "$bin" ]; then
+              printf '#!/usr/bin/env sh\nexec "%s" "$@"\n' "$root_tsc6" > "$bin/tsc"
+              chmod +x "$bin/tsc"
+            fi
+          done
+          node <<'EOF'
+          const { existsSync, symlinkSync } = require("node:fs");
+          const { createRequire } = require("node:module");
+          const { dirname, join } = require("node:path");
+
+          const aliasPackageJson = require.resolve("typescript/package.json");
+          const requireFromAlias = createRequire(aliasPackageJson);
+          const aliasLib = join(dirname(aliasPackageJson), "lib");
+          const realTypescriptLib = dirname(requireFromAlias.resolve("typescript/lib/typescript.js"));
+
+          for (const fileName of ["tsserver.js", "tsserverlibrary.d.ts", "tsserverlibrary.js"]) {
+            const target = join(aliasLib, fileName);
+            if (!existsSync(target)) {
+              symlinkSync(join(realTypescriptLib, fileName), target);
+            }
+          }
+          EOF
+
+      - name: Assert TypeScript API alias resolution
+        run: |
+          node <<'EOF'
+          const { createRequire } = require("node:module");
+          const { resolve } = require("node:path");
+
+          const workspaceRoots = [
+            ".",
+            "packages/analysis",
+            "packages/build",
+            "packages/cli",
+            "packages/eslint-plugin",
+            "packages/ts-plugin",
+            "e2e",
+          ];
+
+          for (const workspaceRoot of workspaceRoots) {
+            const requireFromWorkspace = createRequire(resolve(workspaceRoot, "package.json"));
+            const pkg = requireFromWorkspace("typescript/package.json");
+            if (pkg.name !== "@typescript/typescript6") {
+              throw new Error(
+                `${workspaceRoot} resolved ${pkg.name}@${pkg.version}, expected @typescript/typescript6`,
+              );
+            }
+            console.log(`${workspaceRoot}: ${pkg.name}@${pkg.version}`);
+          }
+          EOF
+
+      - name: Print resolved versions
+        run: |
+          pnpm exec tsc --version
+          pnpm exec tsgo --version
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Typecheck with tsgo
+        # FIXME(#469): scoped skipLibCheck workaround for the @types/chai
+        # "containSubset" duplicate-identifier error under tsgo.
+        # Temporarily scope the root config to the package typecheck surface
+        # for this direct tsgo invocation. e2e tsgo coverage remains tracked
+        # in #471, and type-level negative tests continue to run through tsd.
+        run: |
+          backup="${RUNNER_TEMP:-$(pwd)}/formspec-tsconfig.json"
+          cp tsconfig.json "$backup"
+          restore_tsconfig() {
+            cp "$backup" tsconfig.json
+          }
+          trap restore_tsconfig EXIT
+          node <<'EOF'
+          const { readFileSync, writeFileSync } = require("node:fs");
+          const ts = require("typescript");
+
+          const fileName = "tsconfig.json";
+          const parsed = ts.parseConfigFileTextToJson(fileName, readFileSync(fileName, "utf8"));
+          if (parsed.error) {
+            throw new Error(ts.formatDiagnosticsWithColorAndContext([parsed.error], {
+              getCanonicalFileName: (name) => name,
+              getCurrentDirectory: () => process.cwd(),
+              getNewLine: () => "\n",
+            }));
+          }
+
+          parsed.config.include = ["packages/*/src/**/*", "packages/*/tests/**/*"];
+          parsed.config.exclude = ["packages/*/tests/**/*.test-d.ts"];
+          writeFileSync(fileName, `${JSON.stringify(parsed.config, null, 2)}\n`);
+          EOF
+          pnpm exec tsgo --noEmit --skipLibCheck
+
+      - name: Run tests
+        # Tests still execute through tsc/tsup-backed tooling. Running them here
+        # validates that the TS 6 API alias remains compatible end-to-end.
+        run: pnpm run test
 
   knip:
     runs-on: ubuntu-latest

@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["tsgo"],
   "workspaces": {
     "packages/core": {
       "entry": ["tests/**/*.test-d.ts"]
@@ -8,10 +9,7 @@
       "entry": ["tests/**/*.test-d.ts"]
     },
     "packages/build": {
-      "entry": [
-        "tests/fixtures/**/*.ts",
-        "tests/parity/fixtures/**/*.ts"
-      ],
+      "entry": ["tests/fixtures/**/*.ts", "tests/parity/fixtures/**/*.ts"],
       "ignore": ["tests/fixtures/method-signature-schemas.ts"]
     },
     "packages/cli": {
@@ -21,11 +19,7 @@
       "ignoreDependencies": ["pino-pretty"]
     },
     "e2e": {
-      "entry": [
-        "benchmarks/**/*.{ts,cjs}",
-        "fixtures/**/*.ts",
-        "helpers/**/*.ts"
-      ],
+      "entry": ["benchmarks/**/*.{ts,cjs}", "fixtures/**/*.ts", "helpers/**/*.ts"],
       "project": ["**/*.{ts,cjs}"],
       "ignoreDependencies": ["@formspec/cli", "@formspec/core"]
     }
