@@ -4,22 +4,11 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@formspec/core": [
-        "../core/dist/core.d.ts"
-      ],
-      "@formspec/dsl-policy": [
-        "../dsl-policy/dist/index.d.ts"
-      ],
-      "@formspec/dsl-policy/browser": [
-        "../dsl-policy/dist/browser.d.ts"
-      ],
-      "@formspec/dsl": [
-        "../dsl/dist/dsl.d.ts"
-      ]
+      "@formspec/core": ["../core/dist/core.d.ts"],
+      "@formspec/dsl-policy": ["../dsl-policy/dist/index.d.ts"],
+      "@formspec/dsl": ["../dsl/dist/dsl.d.ts"]
     },
     "resolveJsonModule": true
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

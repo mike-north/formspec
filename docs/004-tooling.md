@@ -923,7 +923,7 @@ Diagnostic branding is owned by the consumer. FormSpec keeps the canonical machi
 
 ### 8.2 Per-Rule Severity Overrides (PP9)
 
-Severity overrides live in ESLint configuration (the standard ESLint mechanism), not in `.formspec.yml`. This maintains compatibility with existing ESLint tooling and avoids a parallel configuration system.
+Severity overrides live in ESLint configuration (the standard ESLint mechanism), not in FormSpec project configuration. This maintains compatibility with existing ESLint tooling and avoids a parallel severity system.
 
 ```javascript
 // eslint.config.js
@@ -953,7 +953,7 @@ This phase does not add project-level message-template configuration. Instead, F
 
 ### 8.4 Disabled Tags (PP9)
 
-Disabled-tag policy is a planned PP9 capability, not a current config field. When added, it belongs in `formspec.config.ts` alongside the rest of `FormSpecConfig`, not in the legacy `.formspec.yml` format. Disabled tags that appear in source should produce `TAG_DISABLED` at the configured severity (default `warn`).
+Disabled-tag policy is a planned PP9 capability, not a current config field. When added, it belongs in `formspec.config.ts` alongside the rest of `FormSpecConfig`. Disabled tags that appear in source should produce `TAG_DISABLED` at the configured severity (default `warn`).
 
 Disabling a tag removes it from language server completions — the author will not be offered a tag that would immediately produce a lint warning. This implements PP9's intent: authors working within a constrained profile should not feel like they are fighting a library that tries to enable too much.
 

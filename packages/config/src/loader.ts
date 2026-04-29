@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { resolve, dirname } from "node:path";
 // Lazy import — jiti is Node-only and must not be statically analyzed
 // by browser bundlers (e.g., the playground's Vite build).
 async function getJiti() {
@@ -10,6 +8,8 @@ import type { LoggerLike } from "@formspec/core";
 import { noopLogger } from "@formspec/core";
 import type { FormSpecConfig, DSLPolicy, ResolvedDSLPolicy } from "./types.js";
 import { defineDSLPolicy, mergeWithDefaults } from "./defaults.js";
+import { nodeFileSystem, type FileSystem } from "./file-system.js";
+export type { FileSystem } from "./file-system.js";
 
 /**
  * Config file names to search for, in priority order.
@@ -29,7 +29,7 @@ const CONFIG_FILE_NAMES = [
 export interface LoadConfigOptions {
   /**
    * The directory to start searching from.
-   * Defaults to process.cwd().
+   * Defaults to `"."`, resolved by the active filesystem adapter.
    */
   searchFrom?: string;
 
@@ -38,6 +38,14 @@ export interface LoadConfigOptions {
    * If provided, skips file discovery entirely.
    */
   configPath?: string;
+
+  /**
+   * Optional filesystem adapter for config discovery, existence checks, and
+   * workspace-root file reads.
+   * Non-Node environments must provide one. When omitted, FormSpec lazily
+   * loads the default Node adapter at call time.
+   */
+  fileSystem?: FileSystem;
 
   /**
    * Optional logger for diagnostic output. Defaults to a no-op logger so
@@ -81,10 +89,10 @@ export type LoadConfigResult = LoadConfigFoundResult | LoadConfigNotFoundResult;
  * Checks if a directory is a workspace root by looking for a package.json
  * with a "workspaces" field.
  */
-async function isWorkspaceRoot(dir: string): Promise<boolean> {
-  const pkgPath = resolve(dir, "package.json");
+async function isWorkspaceRoot(fileSystem: FileSystem, dir: string): Promise<boolean> {
+  const pkgPath = fileSystem.resolve(dir, "package.json");
   try {
-    const content = await readFile(pkgPath, "utf-8");
+    const content = await fileSystem.readFile(pkgPath);
     const pkg = JSON.parse(content) as Record<string, unknown>;
     return "workspaces" in pkg;
   } catch {
@@ -96,27 +104,24 @@ async function isWorkspaceRoot(dir: string): Promise<boolean> {
  * Walks up the directory tree from startDir, searching for a config file.
  * Stops at the filesystem root or a directory containing a workspace root package.json.
  */
-async function findConfigFile(startDir: string): Promise<string | null> {
-  let currentDir = resolve(startDir);
+async function findConfigFile(fileSystem: FileSystem, startDir: string): Promise<string | null> {
+  let currentDir = fileSystem.resolve(startDir);
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with explicit break conditions
   while (true) {
     for (const fileName of CONFIG_FILE_NAMES) {
-      const filePath = resolve(currentDir, fileName);
-      try {
-        await readFile(filePath);
+      const filePath = fileSystem.resolve(currentDir, fileName);
+      if (await fileSystem.exists(filePath)) {
         return filePath;
-      } catch {
-        // File doesn't exist, try next name
       }
     }
 
     // Stop at workspace root — don't cross workspace boundaries
-    if (await isWorkspaceRoot(currentDir)) {
+    if (await isWorkspaceRoot(fileSystem, currentDir)) {
       break;
     }
 
-    const parentDir = dirname(currentDir);
+    const parentDir = fileSystem.dirname(currentDir);
     // Reached filesystem root when dirname returns same path
     if (parentDir === currentDir) {
       break;
@@ -253,24 +258,23 @@ function validateEnumSerializationValue(value: unknown, label: string, filePath:
 export async function loadFormSpecConfig(
   options: LoadConfigOptions = {}
 ): Promise<LoadConfigResult> {
-  const { searchFrom = process.cwd(), configPath, logger: rawLogger } = options;
+  const { searchFrom, configPath, logger: rawLogger, fileSystem: rawFileSystem } = options;
+  const fileSystem = rawFileSystem ?? (await nodeFileSystem());
   const logger = (rawLogger ?? noopLogger).child({ stage: "config" });
 
   let resolvedPath: string | null = null;
 
   if (configPath) {
-    resolvedPath = resolve(configPath);
-    try {
-      await readFile(resolvedPath);
-    } catch {
+    resolvedPath = fileSystem.resolve(configPath);
+    if (!(await fileSystem.exists(resolvedPath))) {
       throw new Error(`Config file not found at ${resolvedPath}`);
     }
   } else {
-    resolvedPath = await findConfigFile(searchFrom);
+    resolvedPath = await findConfigFile(fileSystem, searchFrom ?? ".");
   }
 
   if (!resolvedPath) {
-    logger.debug("no config file found", { searchFrom });
+    logger.debug("no config file found", { searchFrom: searchFrom ?? "." });
     return { found: false };
   }
 

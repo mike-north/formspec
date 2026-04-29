@@ -1,15 +1,9 @@
 /**
- * Browser-safe exports from @formspec/config.
+ * Public DSL-policy facade for @formspec/config.
  *
- * This entry point excludes the file-based config loader (loadFormSpecConfig)
- * which requires Node.js APIs. Use this entry point for browser builds.
- *
- * For browser use:
- * - Use loadConfigFromString() to parse embedded YAML config strings
- * - Use defineDSLPolicy() for programmatic DSL-policy configuration
- * - Use validateFormSpec() for validation
- *
- * @packageDocumentation
+ * The implementation lives in the private @formspec/dsl-policy package.
+ * @formspec/config re-exports the stable public compatibility surface so
+ * application authors do not import private workspace packages.
  */
 
 import type { FormElement, FormSpec } from "@formspec/core";
@@ -27,7 +21,6 @@ import {
   validateFormSpecElements as validateInternalFormSpecElements,
   validateLayout as validateInternalLayout,
 } from "@formspec/dsl-policy";
-import { parse as parseYaml } from "yaml";
 import {
   DEFAULT_CONFIG,
   DEFAULT_CONSTRAINTS,
@@ -62,7 +55,6 @@ import type {
 } from "./types.js";
 import type { ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
 
-// Re-export browser-safe types.
 export type {
   ControlOptionConstraints,
   DSLPolicy,
@@ -92,35 +84,11 @@ export type {
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 export type { ConstraintConfig, ResolvedConstraintConfig };
 
-// Re-export defaults and factories with local public types.
 export { DEFAULT_CONFIG, DEFAULT_DSL_POLICY, defineDSLPolicy, mergeWithDefaults };
 
 // Deprecated names are re-exported intentionally for compatibility.
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 export { DEFAULT_CONSTRAINTS, defineConstraints };
-
-/**
- * Synchronously loads DSL-policy config from a pre-parsed YAML string.
- * Useful for browser environments or when config is already available.
- *
- * @param yamlContent - The YAML content to parse
- * @returns The parsed and merged DSL policy
- *
- * @beta
- */
-export function loadConfigFromString(yamlContent: string): ResolvedDSLPolicy {
-  const parsed = parseYaml(yamlContent) as FormSpecConfig | null | undefined;
-
-  if (parsed === null || parsed === undefined) {
-    return mergeWithDefaults(undefined);
-  }
-
-  if (typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`Invalid config content: expected an object, got ${typeof parsed}`);
-  }
-
-  return mergeWithDefaults(parsed.constraints);
-}
 
 /**
  * Validates FormSpec elements against DSL policy.
@@ -192,7 +160,7 @@ export function validateLayout(
 }
 
 /**
- * Checks whether a layout construct is allowed by DSL-policy constraints.
+ * Checks whether a layout type is allowed by DSL-policy constraints.
  *
  * @beta
  */
@@ -225,7 +193,7 @@ export function validateFieldOptions(
 }
 
 /**
- * Extracts which field options are present on a field-like object.
+ * Extracts present DSL field options from a field object.
  *
  * @beta
  */

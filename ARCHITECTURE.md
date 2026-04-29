@@ -196,11 +196,11 @@ export default defineFormSpecConfig({
 
 ### Enforcement Layers
 
-| Layer            | Tool                                                                                   | When                           |
-| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
-| **Build-time**   | `@formspec/eslint-plugin`                                                              | During linting / CI            |
-| **Programmatic** | Public: `validateFormSpec()` from `@formspec/config`; internal: `@formspec/dsl-policy` | At runtime or in build scripts |
-| **Browser**      | Public: `@formspec/config/browser`; internal: `@formspec/dsl-policy/browser`           | In browser-embedded validation |
+| Layer            | Tool                                                                                   | When                                                    |
+| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Build-time**   | `@formspec/eslint-plugin`                                                              | During linting / CI                                     |
+| **Programmatic** | Public: `validateFormSpec()` from `@formspec/config`; internal: `@formspec/dsl-policy` | At runtime or in build scripts                          |
+| **Browser**      | Public: `@formspec/config`; internal: `@formspec/dsl-policy/browser`                   | In browser-embedded validation and typed config helpers |
 
 ## ESLint Plugin (`@formspec/eslint-plugin`)
 

@@ -159,6 +159,14 @@ export interface FieldTypeContext {
 }
 
 // @public
+export interface FileSystem {
+    dirname(path: string): string;
+    exists(path: string): Promise<boolean>;
+    readFile(path: string): Promise<string>;
+    resolve(...segments: string[]): string;
+}
+
+// @public
 export type FormElement = AnyField | Group<readonly FormElement[]> | Conditional<string, unknown, readonly FormElement[]>;
 
 // @public
@@ -253,9 +261,6 @@ export interface LoadConfigFoundResult {
     found: true;
 }
 
-// @beta
-export function loadConfigFromString(yamlContent: string): ResolvedDSLPolicy;
-
 // @public
 export interface LoadConfigNotFoundResult {
     found: false;
@@ -264,6 +269,7 @@ export interface LoadConfigNotFoundResult {
 // @public
 export interface LoadConfigOptions {
     configPath?: string;
+    fileSystem?: FileSystem;
     logger?: LoggerLike | undefined;
     searchFrom?: string;
 }
