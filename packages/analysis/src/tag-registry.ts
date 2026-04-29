@@ -938,7 +938,6 @@ function buildExtensionMetadataTagDefinition(
 }
 
 function buildExtensionAnnotationTagDefinition(
-  extensionId: string,
   annotation: ExtensionAnnotationTagSource
 ): TagDefinition {
   const canonicalName = normalizeFormSpecTagName(annotation.annotationName);
@@ -947,14 +946,11 @@ function buildExtensionAnnotationTagDefinition(
   const signatures = [
     createSignature(canonicalName, ALL_PLACEMENTS, null, valueKind, payloadLabel),
   ] as const satisfies readonly TagSignature[];
-  const defaultHoverSummary = `Extension-defined annotation tag from \`${extensionId}\`.`;
-  const hoverSummary = annotation.tagDocumentation?.hoverSummary ?? defaultHoverSummary;
+  const hoverSummary = annotation.tagDocumentation?.hoverSummary ?? "";
   const hoverMarkdown =
     annotation.tagDocumentation?.hoverMarkdown ??
     [
       `**@${canonicalName}** \`${payloadLabel}\``,
-      "",
-      hoverSummary,
       "",
       `**Signature:** \`@${canonicalName} ${payloadLabel}\``,
     ].join("\n");
@@ -971,9 +967,7 @@ function buildExtensionAnnotationTagDefinition(
       ? {}
       : { inheritFromBase: annotation.inheritFromBase }),
     capabilities: [] as const,
-    completionDetail:
-      annotation.tagDocumentation?.completionDetail ??
-      `Extension annotation tag from ${extensionId}`,
+    completionDetail: annotation.tagDocumentation?.completionDetail ?? "",
     hoverSummary,
     hoverMarkdown,
     signatures,
@@ -1029,12 +1023,20 @@ function doesInheritFromBase(policy: AnnotationInheritancePolicy | undefined): b
     case "never":
       return false;
     default:
-      return assertNever(effectivePolicy);
+      throw new UnreachableError(
+        effectivePolicy,
+        `Unsupported annotation inheritance policy: ${String(effectivePolicy)}`
+      );
   }
 }
 
-function assertNever(value: never): never {
-  throw new Error(`Unsupported annotation inheritance policy: ${String(value)}`);
+/** Error for runtime paths that are statically unreachable in exhaustive switches. */
+class UnreachableError extends Error {
+  constructor(value: never, message: string) {
+    super(message);
+    this.name = "UnreachableError";
+    void value;
+  }
 }
 
 export function getInheritableAnnotationKeys(
@@ -1236,10 +1238,7 @@ export function getTagDefinition(
   );
 
   if (extensionAnnotation !== undefined) {
-    return buildExtensionAnnotationTagDefinition(
-      extensionAnnotation.extensionId,
-      extensionAnnotation.annotation
-    );
+    return buildExtensionAnnotationTagDefinition(extensionAnnotation.annotation);
   }
 
   const extensionMetadata = getExtensionMetadataSlots(extensions).find(

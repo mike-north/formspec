@@ -192,7 +192,13 @@ describe("tag-registry", () => {
         }),
       ],
     });
-    expect(getTagDefinition("DisplayLocale", extensions)?.inheritFromBase).toBeUndefined();
+    const displayLocaleDefinition = getTagDefinition("DisplayLocale", extensions);
+    expect(displayLocaleDefinition).toMatchObject({
+      completionDetail: "",
+      hoverSummary: "",
+    });
+    expect(displayLocaleDefinition?.hoverMarkdown).not.toContain("Extension");
+    expect(displayLocaleDefinition?.inheritFromBase).toBeUndefined();
     expect(getTagDefinition("DisplayRegion", extensions)?.inheritFromBase).toBe("never");
     expect(
       getAllTagDefinitions(extensions).filter((definition) =>

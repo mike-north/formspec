@@ -341,9 +341,7 @@ export function createExtensionRegistry(
           throw new Error(`Duplicate custom constraint tag: "@${canonicalTagName}"`);
         }
         if (annotationTagMap.has(canonicalTagName) || metadataTagMap.has(canonicalTagName)) {
-          throw new Error(
-            `Extension tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
-          );
+          throw new Error(formatTagConflictMessage(canonicalTagName, canonicalTagName));
         }
         constraintTagMap.set(canonicalTagName, {
           extensionId: ext.extensionId,
@@ -366,15 +364,11 @@ export function createExtensionRegistry(
           throw new Error(`Duplicate annotation tag: "@${canonicalTagName}"`);
         }
         if (constraintTagMap.has(canonicalTagName) || metadataTagMap.has(canonicalTagName)) {
-          throw new Error(
-            `Annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
-          );
+          throw new Error(formatTagConflictMessage(canonicalTagName, canonicalTagName));
         }
         const existingTag = getTagDefinition(canonicalTagName, reservedTagSources);
         if (existingTag !== null) {
-          throw new Error(
-            `Annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
-          );
+          throw new Error(formatTagConflictMessage(canonicalTagName, existingTag.canonicalName));
         }
         annotationMap.set(qualifiedId, annotation);
         annotationTagMap.set(canonicalTagName, qualifiedId);
@@ -406,14 +400,10 @@ export function createExtensionRegistry(
           throw new Error(`Metadata tag "@${canonicalTagName}" is reserved and unsupported.`);
         }
         if (constraintTagMap.has(canonicalTagName)) {
-          throw new Error(
-            `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
-          );
+          throw new Error(formatTagConflictMessage(canonicalTagName, canonicalTagName));
         }
         if (annotationTagMap.has(canonicalTagName)) {
-          throw new Error(
-            `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
-          );
+          throw new Error(formatTagConflictMessage(canonicalTagName, canonicalTagName));
         }
         if (
           Object.hasOwn(
@@ -422,7 +412,7 @@ export function createExtensionRegistry(
           )
         ) {
           throw new Error(
-            `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${normalizeConstraintTagName(canonicalTagName)}".`
+            formatTagConflictMessage(canonicalTagName, normalizeConstraintTagName(canonicalTagName))
           );
         }
         const existingTag = getTagDefinition(canonicalTagName, reservedTagSources);
@@ -431,9 +421,7 @@ export function createExtensionRegistry(
             ? new Error(
                 `Metadata tag "@${canonicalTagName}" conflicts with built-in metadata tags.`
               )
-            : new Error(
-                `Metadata tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
-              );
+            : new Error(formatTagConflictMessage(canonicalTagName, existingTag.canonicalName));
         }
         metadataTagMap.set(canonicalTagName, true);
       }
@@ -466,4 +454,8 @@ export function createExtensionRegistry(
       builtinBroadeningMap.get(`${typeId}:${tagName}`),
     findAnnotation: (annotationId: string) => annotationMap.get(annotationId),
   };
+}
+
+function formatTagConflictMessage(tagName: string, existingTagName: string): string {
+  return `Tag "@${tagName}" conflicts with existing tag "@${existingTagName}".`;
 }

@@ -272,7 +272,7 @@ describe("Extension API", () => {
             ],
           }),
         ])
-      ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+      ).toThrow('Tag "@currency" conflicts with existing tag "@currency".');
     });
 
     it("throws on duplicate type IDs across extensions", () => {
@@ -340,7 +340,7 @@ describe("Extension API", () => {
       });
 
       expect(() => createExtensionRegistry([extension])).toThrow(
-        'Annotation tag "@format" conflicts with existing FormSpec tag "@format".'
+        'Tag "@format" conflicts with existing tag "@format".'
       );
     });
 
