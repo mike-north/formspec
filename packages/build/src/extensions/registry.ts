@@ -365,7 +365,7 @@ export function createExtensionRegistry(
           );
         }
         if (annotationTagMap.has(canonicalTagName)) {
-          throw new Error(`Duplicate custom annotation tag: "@${canonicalTagName}"`);
+          throw new Error(`Duplicate annotation tag: "@${canonicalTagName}"`);
         }
         if (constraintTagMap.has(canonicalTagName) || metadataTagMap.has(canonicalTagName)) {
           throw new Error(

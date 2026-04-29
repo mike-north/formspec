@@ -69,6 +69,23 @@ _(Optional)_ Optional type-level inheritance behavior for semantic consumers.
 </td></tr>
 <tr><td>
 
+[tagDocumentation?](./build.customannotationregistration.tagdocumentation.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+CustomAnnotationTagDocumentation
+
+</td><td>
+
+_(Optional)_ Optional editor documentation for the annotation's TSDoc authoring tag.
+
+</td></tr>
+<tr><td>
+
 [toJsonSchema?](./build.customannotationregistration.tojsonschema.md)
 
 </td><td>

@@ -329,7 +329,7 @@ describe("Extension API", () => {
       });
 
       expect(() => createExtensionRegistry([ext1, ext2])).toThrow(
-        'Duplicate custom annotation tag: "@displayUnit"'
+        'Duplicate annotation tag: "@displayUnit"'
       );
     });
 

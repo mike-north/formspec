@@ -126,7 +126,15 @@ export interface CustomAnnotationNode {
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
     readonly inheritFromBase?: AnnotationInheritancePolicy;
+    readonly tagDocumentation?: CustomAnnotationTagDocumentation;
     readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
+}
+
+// @public
+export interface CustomAnnotationTagDocumentation {
+    readonly completionDetail?: string;
+    readonly hoverMarkdown?: string;
+    readonly hoverSummary?: string;
 }
 
 // @beta

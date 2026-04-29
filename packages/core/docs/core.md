@@ -299,6 +299,15 @@ Custom annotations are referenced by FormSpec's internal custom-annotation nodes
 </td></tr>
 <tr><td>
 
+[CustomAnnotationTagDocumentation](./core.customannotationtagdocumentation.md)
+
+</td><td>
+
+Documentation text for an extension annotation's TSDoc authoring tag.
+
+</td></tr>
+<tr><td>
+
 [CustomConstraintNode](./core.customconstraintnode.md)
 
 </td><td>

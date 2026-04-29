@@ -150,6 +150,9 @@ function toExtensionTagSources(
             ...(annotation.inheritFromBase === undefined
               ? {}
               : { inheritFromBase: annotation.inheritFromBase }),
+            ...(annotation.tagDocumentation === undefined
+              ? {}
+              : { tagDocumentation: annotation.tagDocumentation }),
           })),
         }),
     ...(extension.metadataSlots === undefined ? {} : { metadataSlots: extension.metadataSlots }),

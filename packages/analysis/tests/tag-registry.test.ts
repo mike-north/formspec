@@ -154,6 +154,11 @@ describe("tag-registry", () => {
         defineAnnotation({
           annotationName: "DisplayCurrency",
           inheritFromBase: "local-wins",
+          tagDocumentation: {
+            completionDetail: "Currency display annotation",
+            hoverSummary: "Controls how money values display currency.",
+            hoverMarkdown: "Use `@displayCurrency <currency-code>` on money-shaped declarations.",
+          },
         }),
         defineAnnotation({
           annotationName: "DisplayLocale",
@@ -169,7 +174,10 @@ describe("tag-registry", () => {
     expect(getTagDefinition("DisplayCurrency", extensions)).toMatchObject({
       canonicalName: "displayCurrency",
       category: "annotation",
+      completionDetail: "Currency display annotation",
       inheritFromBase: "local-wins",
+      hoverSummary: "Controls how money values display currency.",
+      hoverMarkdown: "Use `@displayCurrency <currency-code>` on money-shaped declarations.",
     });
     expect(getTagDefinition("DisplayLocale", extensions)?.inheritFromBase).toBeUndefined();
     expect(getTagDefinition("DisplayRegion", extensions)?.inheritFromBase).toBe("never");
@@ -214,13 +222,13 @@ describe("tag-registry", () => {
     });
 
     expect(() => getTagDefinition("DisplayUnit", [currencyExtension, inventoryExtension])).toThrow(
-      'Duplicate custom annotation tag: "@displayUnit"'
+      'Duplicate annotation tag: "@displayUnit"'
     );
     expect(() => getAllTagDefinitions([currencyExtension, inventoryExtension])).toThrow(
-      'Duplicate custom annotation tag: "@displayUnit"'
+      'Duplicate annotation tag: "@displayUnit"'
     );
     expect(() => getInheritableAnnotationKeys([currencyExtension, inventoryExtension])).toThrow(
-      'Duplicate custom annotation tag: "@displayUnit"'
+      'Duplicate annotation tag: "@displayUnit"'
     );
   });
 
