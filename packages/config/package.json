@@ -44,7 +44,7 @@
     "@formspec/dsl-policy": "workspace:*",
     "@formspec/dsl": "workspace:*",
     "tsd": "^0.31.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.5"
   },
   "tsd": {
     "directory": "tests"

@@ -7,6 +7,5 @@ export default defineConfig({
     // timeouts after successful test completion.
     pool: "forks",
     maxWorkers: 1,
-    minWorkers: 1,
   },
 });

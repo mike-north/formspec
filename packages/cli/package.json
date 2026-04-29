@@ -39,7 +39,7 @@
   "devDependencies": {
     "@formspec/core": "workspace:*",
     "@formspec/dsl": "workspace:*",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.5"
   },
   "publishConfig": {
     "access": "public"

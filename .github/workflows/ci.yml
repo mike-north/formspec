@@ -208,10 +208,10 @@ jobs:
         run: pnpm run build
 
       - name: Typecheck with tsgo
-        # FIXME(#469): scoped skipLibCheck workaround for the @types/chai
-        # "containSubset" duplicate-identifier error under tsgo.
-        # This wraps the package source/test surface plus the dedicated e2e
-        # tsgo project config. Type-level negative tests continue through tsd.
+        # Temporarily scope the root config to the package typecheck surface,
+        # then run the dedicated e2e tsgo project config. The Vitest 4 test
+        # dependency removes the @types/chai "containSubset" duplicate tracked
+        # in #469, so both direct checks run without skipLibCheck.
         run: pnpm exec tsx scripts/tsgo-ci.mts typecheck
 
       - name: Run tests

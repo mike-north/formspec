@@ -221,7 +221,7 @@ void describe("e2e tsgo config", () => {
 });
 
 void describe("runTsgoTypecheck", () => {
-  void it("runs package and e2e tsgo checks after restoring the root tsconfig", async () => {
+  void it("runs package and e2e tsgo checks without skipLibCheck after restoring the root tsconfig", async () => {
     const originalConfig = '{ "compilerOptions": { "strict": true } }\n';
 
     await withFixture(
@@ -243,8 +243,8 @@ void describe("runTsgoTypecheck", () => {
         });
 
         assert.deepEqual(commandArgs, [
-          ["exec", "tsgo", "--noEmit", "--skipLibCheck"],
-          ["exec", "tsgo", "--noEmit", "--skipLibCheck", "-p", "e2e/tsconfig.tsgo.json"],
+          ["exec", "tsgo", "--noEmit"],
+          ["exec", "tsgo", "--noEmit", "-p", "e2e/tsconfig.tsgo.json"],
         ]);
         assert.deepEqual(commandConfigs, [
           {
@@ -284,7 +284,7 @@ void describe("runTsgoTypecheck", () => {
           /package tsgo typecheck failed with exit status 1/
         );
 
-        assert.deepEqual(commandArgs, [["exec", "tsgo", "--noEmit", "--skipLibCheck"]]);
+        assert.deepEqual(commandArgs, [["exec", "tsgo", "--noEmit"]]);
         assert.equal(await readFile(path.join(root, "tsconfig.json"), "utf8"), originalConfig);
       }
     );
@@ -322,8 +322,8 @@ void describe("runTsgoTypecheck", () => {
         );
 
         assert.deepEqual(commandArgs, [
-          ["exec", "tsgo", "--noEmit", "--skipLibCheck"],
-          ["exec", "tsgo", "--noEmit", "--skipLibCheck", "-p", "e2e/tsconfig.tsgo.json"],
+          ["exec", "tsgo", "--noEmit"],
+          ["exec", "tsgo", "--noEmit", "-p", "e2e/tsconfig.tsgo.json"],
         ]);
         assert.deepEqual(e2eCommandConfig, { compilerOptions: { strict: true } });
         assert.equal(await readFile(path.join(root, "tsconfig.json"), "utf8"), originalConfig);

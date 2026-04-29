@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const SCOPED_TSGO_INCLUDE = ["packages/*/src/**/*", "packages/*/tests/**/*"];
 const SCOPED_TSGO_EXCLUDE = ["packages/*/tests/**/*.test-d.ts"];
-const TSGO_BASE_ARGS = ["exec", "tsgo", "--noEmit", "--skipLibCheck"] as const;
+const TSGO_BASE_ARGS = ["exec", "tsgo", "--noEmit"] as const;
 const PACKAGE_TSGO_ARGS = TSGO_BASE_ARGS;
 const E2E_TSGO_ARGS = [...TSGO_BASE_ARGS, "-p", "e2e/tsconfig.tsgo.json"] as const;
 const TYPE_SCRIPT_SERVER_SUBPATHS = ["tsserver.js", "tsserverlibrary.d.ts", "tsserverlibrary.js"];
