@@ -734,8 +734,9 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
     schema.required = required.sort();
   }
 
-  // #416 PR-2 will emit the passthroughObject policy keyword from this flag.
-  void type.passthrough;
+  if (type.passthrough === true) {
+    // #416 PR-2 will emit the passthroughObject policy keyword from this flag.
+  }
 
   if (type.additionalProperties === true) {
     schema.additionalProperties = true;
