@@ -1,6 +1,6 @@
 {
   "name": "@formspec/config",
-  "version": "0.1.0-alpha.65",
+  "version": "0.1.0-alpha.66",
   "description": "Unified configuration for FormSpec - extensions, constraints, metadata, pipeline settings, and DSL-policy validation",
   "type": "module",
   "main": "./dist/index.cjs",

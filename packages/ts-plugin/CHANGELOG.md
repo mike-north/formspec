@@ -1,5 +1,14 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.66
+
+### Patch Changes
+
+- [#468](https://github.com/mike-north/formspec/pull/468) [`ec2c6df`](https://github.com/mike-north/formspec/commit/ec2c6df45d70b71448ff44feafd93c9ffb8df4aa) Thanks [@mike-north](https://github.com/mike-north)! - Document the single-program analysis architecture, update stale post-synthetic-checker comments, and align snapshot broadening-bypass logging.
+
+- Updated dependencies [[`ec2c6df`](https://github.com/mike-north/formspec/commit/ec2c6df45d70b71448ff44feafd93c9ffb8df4aa)]:
+  - @formspec/analysis@0.1.0-alpha.66
+
 ## 0.1.0-alpha.65
 
 ### Minor Changes
