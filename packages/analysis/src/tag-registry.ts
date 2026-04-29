@@ -1293,13 +1293,27 @@ function getExtensionAnnotationTags(
   tagName: string;
   annotation: ExtensionAnnotationTagSource;
 }[] {
-  return (
-    extensions?.flatMap((extension) =>
-      (extension.annotations ?? []).map((annotation) => ({
+  if (extensions === undefined) return [];
+
+  const seenTags = new Set<string>();
+  const tags: {
+    extensionId: string;
+    tagName: string;
+    annotation: ExtensionAnnotationTagSource;
+  }[] = [];
+  for (const extension of extensions) {
+    for (const annotation of extension.annotations ?? []) {
+      const tagName = normalizeFormSpecTagName(annotation.annotationName);
+      if (seenTags.has(tagName)) {
+        throw new Error(`Duplicate custom annotation tag: "@${tagName}"`);
+      }
+      seenTags.add(tagName);
+      tags.push({
         extensionId: extension.extensionId,
-        tagName: normalizeFormSpecTagName(annotation.annotationName),
+        tagName,
         annotation,
-      }))
-    ) ?? []
-  );
+      });
+    }
+  }
+  return tags;
 }

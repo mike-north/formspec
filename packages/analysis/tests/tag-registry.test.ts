@@ -193,7 +193,7 @@ describe("tag-registry", () => {
     expect(getInheritableAnnotationKeys(extensions)).toBe(getInheritableAnnotationKeys(extensions));
   });
 
-  it("keeps same-named custom annotation opt-ins isolated by extension identity", () => {
+  it("rejects duplicate normalized custom annotation tag names", () => {
     const currencyExtension = defineExtension({
       extensionId: "x-example/currency",
       annotations: [
@@ -213,13 +213,15 @@ describe("tag-registry", () => {
       ],
     });
 
-    expect(
-      [...getInheritableAnnotationKeys([currencyExtension, inventoryExtension])].sort()
-    ).toEqual([
-      "custom:x-example/currency/DisplayUnit",
-      "custom:x-example/inventory/DisplayUnit",
-      "format",
-    ]);
+    expect(() => getTagDefinition("DisplayUnit", [currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate custom annotation tag: "@displayUnit"'
+    );
+    expect(() => getAllTagDefinitions([currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate custom annotation tag: "@displayUnit"'
+    );
+    expect(() => getInheritableAnnotationKeys([currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate custom annotation tag: "@displayUnit"'
+    );
   });
 
   it("assigns empty capabilities to extension metadata tags regardless of value kind", () => {
