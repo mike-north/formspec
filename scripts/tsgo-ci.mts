@@ -16,6 +16,9 @@ import { fileURLToPath } from "node:url";
 
 const SCOPED_TSGO_INCLUDE = ["packages/*/src/**/*", "packages/*/tests/**/*"];
 const SCOPED_TSGO_EXCLUDE = ["packages/*/tests/**/*.test-d.ts"];
+const TSGO_BASE_ARGS = ["exec", "tsgo", "--noEmit", "--skipLibCheck"] as const;
+const PACKAGE_TSGO_ARGS = TSGO_BASE_ARGS;
+const E2E_TSGO_ARGS = [...TSGO_BASE_ARGS, "-p", "e2e/tsconfig.tsgo.json"] as const;
 const TYPE_SCRIPT_SERVER_SUBPATHS = ["tsserver.js", "tsserverlibrary.d.ts", "tsserverlibrary.js"];
 const TYPE_SCRIPT_DEPENDENCY_SECTIONS = [
   "dependencies",
@@ -37,6 +40,8 @@ export interface CommandResult {
   signal?: string | null;
   error?: Error;
 }
+
+type TsgoCommandRunner = (args: readonly string[]) => CommandResult;
 
 function resolveFromRepoRoot(repoRoot: string, ...segments: string[]): string {
   return path.resolve(repoRoot, ...segments);
@@ -217,42 +222,46 @@ export function writeScopedTsgoRootConfig({
   writeFileSync(fileName, `${JSON.stringify(config, null, 2)}\n`);
 }
 
-export function runScopedTsgoTypecheck({
+function assertSuccessfulCommandResult(result: CommandResult, label: string): void {
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+
+  if (result.signal !== undefined && result.signal !== null) {
+    throw new Error(`${label} terminated by signal ${result.signal}`);
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`${label} failed with exit status ${String(result.status)}`);
+  }
+}
+
+export function runTsgoTypecheck({
   repoRoot = process.cwd(),
   typescript = loadTypeScriptFromRepoRoot(repoRoot),
-  runCommand = () =>
-    spawnSync("pnpm", ["exec", "tsgo", "--noEmit", "--skipLibCheck"], {
+  runCommand = (args) =>
+    spawnSync("pnpm", [...args], {
       cwd: repoRoot,
       stdio: "inherit",
     }) as SpawnSyncReturns<Buffer>,
 }: {
   repoRoot?: string;
   typescript?: TypeScriptModule;
-  runCommand?: () => CommandResult;
+  runCommand?: TsgoCommandRunner;
 } = {}): CommandResult {
   const fileName = resolveFromRepoRoot(repoRoot, "tsconfig.json");
   const originalConfig = readFileSync(fileName, "utf8");
 
   try {
     writeScopedTsgoRootConfig({ repoRoot, typescript });
-    const result = runCommand();
-
-    if (result.error !== undefined) {
-      throw result.error;
-    }
-
-    if (result.signal !== undefined && result.signal !== null) {
-      throw new Error(`tsgo typecheck terminated by signal ${result.signal}`);
-    }
-
-    if (result.status !== 0) {
-      throw new Error(`tsgo typecheck failed with exit status ${String(result.status)}`);
-    }
-
-    return result;
+    assertSuccessfulCommandResult(runCommand(PACKAGE_TSGO_ARGS), "package tsgo typecheck");
   } finally {
     writeFileSync(fileName, originalConfig);
   }
+
+  const e2eResult = runCommand(E2E_TSGO_ARGS);
+  assertSuccessfulCommandResult(e2eResult, "e2e tsgo typecheck");
+  return e2eResult;
 }
 
 function printAliasResolution(): void {
@@ -276,7 +285,7 @@ function main(): void {
       printAliasResolution();
       break;
     case "typecheck":
-      runScopedTsgoTypecheck();
+      runTsgoTypecheck();
       break;
     default:
       printUsage();

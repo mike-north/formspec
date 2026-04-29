@@ -1,8 +1,10 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import * as ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
+import { TextDocument } from "vscode-languageserver-textdocument";
 import { FORMSPEC_ANALYSIS_PROTOCOL_VERSION } from "../../packages/analysis/src/protocol.js";
 import { getHoverAtOffset } from "../../packages/language-server/src/providers/hover.js";
 import { getCompletionItemsAtOffset } from "../../packages/language-server/src/providers/completion.js";
@@ -196,17 +198,12 @@ describe("hybrid tooling system", () => {
       ])
     );
 
-    const document = {
-      uri: `file://${context.filePath}`,
-      positionAt(offset: number) {
-        const priorText = context.documentText.slice(0, offset);
-        const lines = priorText.split("\n");
-        return {
-          line: lines.length - 1,
-          character: lines.at(-1)?.length ?? 0,
-        };
-      },
-    };
+    const document = TextDocument.create(
+      pathToFileURL(context.filePath).href,
+      "typescript",
+      1,
+      context.documentText
+    );
     const lspDiagnostics = toLspDiagnostics(document, diagnostics ?? [], {
       source: "formspec-reference",
     });

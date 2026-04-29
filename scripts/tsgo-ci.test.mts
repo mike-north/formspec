@@ -10,7 +10,7 @@ import {
   assertTypeScript6AliasResolution,
   discoverTypeScriptApiWorkspaceRoots,
   prepareTypeScript6Compatibility,
-  runScopedTsgoTypecheck,
+  runTsgoTypecheck,
   writeScopedTsgoRootConfig,
 } from "./tsgo-ci.mts";
 
@@ -197,8 +197,31 @@ void describe("writeScopedTsgoRootConfig", () => {
   });
 });
 
-void describe("runScopedTsgoTypecheck", () => {
-  void it("restores the root tsconfig after a passing tsgo command", async () => {
+void describe("e2e tsgo config", () => {
+  void it("keeps broad e2e coverage scoped away from benchmarks", async () => {
+    const parsed = parseJsonRecord(await readFile("e2e/tsconfig.tsgo.json", "utf8"));
+    const compilerOptions = parsed["compilerOptions"];
+    assert.equal(typeof compilerOptions, "object");
+    assert.notEqual(compilerOptions, null);
+    assert.equal(Array.isArray(compilerOptions), false);
+
+    const options = compilerOptions as Record<string, unknown>;
+    assert.equal(parsed["extends"], "../tsconfig.json");
+    assert.equal(options["rootDir"], "..");
+    assert.equal(options["noEmit"], true);
+    assert.equal(options["noUncheckedIndexedAccess"], false);
+    assert.equal(options["noPropertyAccessFromIndexSignature"], false);
+    assert.equal(options["paths"], undefined);
+    assert.deepEqual(parsed["include"], ["helpers/**/*.ts", "fixtures/**/*.ts", "tests/**/*.ts"]);
+    assert.deepEqual(parsed["exclude"], [
+      "benchmarks/**/*",
+      "tests/hybrid-tooling-benchmark.test.ts",
+    ]);
+  });
+});
+
+void describe("runTsgoTypecheck", () => {
+  void it("runs package and e2e tsgo checks after restoring the root tsconfig", async () => {
     const originalConfig = '{ "compilerOptions": { "strict": true } }\n';
 
     await withFixture(
@@ -207,29 +230,37 @@ void describe("runScopedTsgoTypecheck", () => {
         "tsconfig.json": originalConfig,
       },
       async (root) => {
-        let commandConfig: unknown;
-        const result = runScopedTsgoTypecheck({
+        const commandArgs: string[][] = [];
+        const commandConfigs: unknown[] = [];
+        const result = runTsgoTypecheck({
           repoRoot: root,
           typescript: ts,
-          runCommand: () => {
-            // The command must see the scoped config before restoration.
-            commandConfig = JSON.parse(readFileSync(path.join(root, "tsconfig.json"), "utf8"));
+          runCommand: (args) => {
+            commandArgs.push([...args]);
+            commandConfigs.push(JSON.parse(readFileSync(path.join(root, "tsconfig.json"), "utf8")));
             return { status: 0 };
           },
         });
 
-        assert.deepEqual(commandConfig, {
-          compilerOptions: { strict: true },
-          include: ["packages/*/src/**/*", "packages/*/tests/**/*"],
-          exclude: ["packages/*/tests/**/*.test-d.ts"],
-        });
+        assert.deepEqual(commandArgs, [
+          ["exec", "tsgo", "--noEmit", "--skipLibCheck"],
+          ["exec", "tsgo", "--noEmit", "--skipLibCheck", "-p", "e2e/tsconfig.tsgo.json"],
+        ]);
+        assert.deepEqual(commandConfigs, [
+          {
+            compilerOptions: { strict: true },
+            include: ["packages/*/src/**/*", "packages/*/tests/**/*"],
+            exclude: ["packages/*/tests/**/*.test-d.ts"],
+          },
+          { compilerOptions: { strict: true } },
+        ]);
         assert.equal(result.status, 0);
         assert.equal(await readFile(path.join(root, "tsconfig.json"), "utf8"), originalConfig);
       }
     );
   });
 
-  void it("restores the root tsconfig after a failing tsgo command", async () => {
+  void it("restores the root tsconfig after a failing package tsgo command", async () => {
     const originalConfig = '{ "compilerOptions": { "strict": true } }\n';
 
     await withFixture(
@@ -238,16 +269,63 @@ void describe("runScopedTsgoTypecheck", () => {
         "tsconfig.json": originalConfig,
       },
       async (root) => {
+        const commandArgs: string[][] = [];
+
         assert.throws(
           () =>
-            runScopedTsgoTypecheck({
+            runTsgoTypecheck({
               repoRoot: root,
               typescript: ts,
-              runCommand: () => ({ status: 1 }),
+              runCommand: (args) => {
+                commandArgs.push([...args]);
+                return { status: 1 };
+              },
             }),
-          /tsgo typecheck failed with exit status 1/
+          /package tsgo typecheck failed with exit status 1/
         );
 
+        assert.deepEqual(commandArgs, [["exec", "tsgo", "--noEmit", "--skipLibCheck"]]);
+        assert.equal(await readFile(path.join(root, "tsconfig.json"), "utf8"), originalConfig);
+      }
+    );
+  });
+
+  void it("reports e2e tsgo failures distinctly after restoring the root tsconfig", async () => {
+    const originalConfig = '{ "compilerOptions": { "strict": true } }\n';
+
+    await withFixture(
+      {
+        "package.json": packageJson({ private: true }),
+        "tsconfig.json": originalConfig,
+      },
+      async (root) => {
+        const commandArgs: string[][] = [];
+        let e2eCommandConfig: unknown;
+
+        assert.throws(
+          () =>
+            runTsgoTypecheck({
+              repoRoot: root,
+              typescript: ts,
+              runCommand: (args) => {
+                commandArgs.push([...args]);
+                if (args.includes("-p")) {
+                  e2eCommandConfig = JSON.parse(
+                    readFileSync(path.join(root, "tsconfig.json"), "utf8")
+                  );
+                  return { status: 1 };
+                }
+                return { status: 0 };
+              },
+            }),
+          /e2e tsgo typecheck failed with exit status 1/
+        );
+
+        assert.deepEqual(commandArgs, [
+          ["exec", "tsgo", "--noEmit", "--skipLibCheck"],
+          ["exec", "tsgo", "--noEmit", "--skipLibCheck", "-p", "e2e/tsconfig.tsgo.json"],
+        ]);
+        assert.deepEqual(e2eCommandConfig, { compilerOptions: { strict: true } });
         assert.equal(await readFile(path.join(root, "tsconfig.json"), "utf8"), originalConfig);
       }
     );

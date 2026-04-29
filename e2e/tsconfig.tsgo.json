@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true,
+    "noUncheckedIndexedAccess": false,
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": ["helpers/**/*.ts", "fixtures/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["benchmarks/**/*", "tests/hybrid-tooling-benchmark.test.ts"]
+}
