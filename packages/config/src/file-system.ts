@@ -1,5 +1,6 @@
 /**
- * Abstraction used by `loadFormSpecConfig` for path resolution and file reads.
+ * Abstraction used by `loadFormSpecConfig` for existence checks, path
+ * resolution, and workspace-root file reads.
  *
  * @public
  */

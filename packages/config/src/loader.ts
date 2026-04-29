@@ -40,7 +40,8 @@ export interface LoadConfigOptions {
   configPath?: string;
 
   /**
-   * Optional filesystem adapter for config discovery and existence checks.
+   * Optional filesystem adapter for config discovery, existence checks, and
+   * workspace-root file reads.
    * Non-Node environments must provide one. When omitted, FormSpec lazily
    * loads the default Node adapter at call time.
    */
