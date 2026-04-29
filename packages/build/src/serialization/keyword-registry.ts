@@ -82,7 +82,7 @@ export function assertUniqueKebabNames(entries: readonly KeywordEntry[]): void {
     const existing = byKebabName.get(kebabName);
     if (existing !== undefined) {
       throw new Error(
-        `FormSpec serialization keywords collide after kebab-casing as "${kebabName}": ` +
+        `Serialization keywords collide after kebab-casing as "${kebabName}": ` +
           `${existing.logicalName} (${existing.vocabularyId}) and ` +
           `${entry.logicalName} (${entry.vocabularyId}).`
       );

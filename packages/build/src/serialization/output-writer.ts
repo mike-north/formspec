@@ -10,6 +10,8 @@ import type { FormSpecSerializationConfig } from "@formspec/config";
 
 /**
  * Known output families, kept open for future internal or extension writers.
+ * The string intersection permits custom kinds while keeping literal completions
+ * for the known built-in output kinds.
  */
 export type OutputKind = "data-schema" | "ui-schema" | (string & {});
 

@@ -14,6 +14,8 @@ import {
   type SerializationContext,
 } from "../../src/serialization/index.js";
 
+// This fixture uses the default prefix; separate generator tests cover
+// user-configured prefixes such as `x-acme`.
 const extensionContext: SerializationContext = {
   vendorPrefix: "x-formspec",
   defaultTransport: "extension",
@@ -53,7 +55,7 @@ describe("serialization keyword emission", () => {
 
   it("rejects unregistered emitted keywords", () => {
     expect(() => emitKey("unregisteredKeyword" as never, extensionContext)).toThrow(
-      /Unregistered FormSpec serialization keyword "unregisteredKeyword"/
+      /Unregistered serialization keyword "unregisteredKeyword"/
     );
   });
 
@@ -63,7 +65,7 @@ describe("serialization keyword emission", () => {
         vendorPrefix: "x-formspec",
         defaultTransport: "vocabulary",
       })
-    ).toThrow(/Vocabulary transport for FormSpec keyword "optionSource" is not implemented/);
+    ).toThrow(/Vocabulary transport for keyword "optionSource" is not implemented/);
   });
 });
 
@@ -128,7 +130,7 @@ describe("JsonSchema2020Writer", () => {
         vendorPrefix: "x-formspec",
         defaultTransport: "vocabulary",
       })
-    ).toThrow(/Vocabulary transport for JSON Schema 2020-12 output is not implemented/);
+    ).toThrow(/JSON Schema 2020-12 writer only supports extension transport/);
   });
 });
 

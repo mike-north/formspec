@@ -33,9 +33,7 @@ export class JsonSchema2020Writer extends OutputWriter<FormIR, JsonSchema2020> {
 
   override emitDocument(input: FormIR, ctx: SerializationContext): JsonSchema2020 {
     if (ctx.defaultTransport !== "extension") {
-      throw new Error(
-        "Vocabulary transport for JSON Schema 2020-12 output is not implemented in PR-1."
-      );
+      throw new Error("JSON Schema 2020-12 writer only supports extension transport.");
     }
 
     return generateJsonSchemaFromIR(input, {
@@ -47,9 +45,7 @@ export class JsonSchema2020Writer extends OutputWriter<FormIR, JsonSchema2020> {
 
   override emitFragment(input: FormIR, ctx: SerializationContext): JsonSchema2020 {
     if (ctx.defaultTransport !== "extension") {
-      throw new Error(
-        "Vocabulary transport for JSON Schema 2020-12 output is not implemented in PR-1."
-      );
+      throw new Error("JSON Schema 2020-12 writer only supports extension transport.");
     }
 
     return generateJsonSchemaFromIR(input, {

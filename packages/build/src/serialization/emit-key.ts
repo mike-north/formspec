@@ -35,7 +35,7 @@ export function emitKey(
 export function emitKey(logicalName: string, ctx: SerializationContext): `x-${string}` {
   const entry = getKeywordEntry(logicalName);
   if (entry === undefined) {
-    throw new Error(`Unregistered FormSpec serialization keyword "${logicalName}".`);
+    throw new Error(`Unregistered serialization keyword "${logicalName}".`);
   }
 
   const resolvedTransport =
@@ -48,13 +48,11 @@ export function emitKey(logicalName: string, ctx: SerializationContext): `x-${st
     const key = `${ctx.vendorPrefix}-${toKebabCase(entry.logicalName)}`;
     if (!FORMSPEC_EXTENSION_KEY_PATTERN.test(key)) {
       throw new Error(
-        `Invalid FormSpec extension keyword "${key}". Expected format x-<vendor>-<kebab-keyword>.`
+        `Invalid extension keyword "${key}". Expected format x-<vendor>-<kebab-keyword>.`
       );
     }
     return key as `x-${string}`;
   }
 
-  throw new Error(
-    `Vocabulary transport for FormSpec keyword "${entry.logicalName}" is not implemented in PR-1.`
-  );
+  throw new Error(`Vocabulary transport for keyword "${entry.logicalName}" is not implemented.`);
 }
