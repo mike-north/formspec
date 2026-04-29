@@ -96,11 +96,11 @@ function getProperty(schema: JsonSchema2020, name: string): JsonSchema2020 {
 
 describe("inline object: path-targeted constraints on missing properties (issue #366)", () => {
   /**
-   * Case 1 (the fix): missing property, additionalProperties: true.
+   * Case 1 (the fix): missing property, policy-defaulted additionalProperties.
    * The constraint target ("street") does not exist in schema.properties.
    * The fix merges the override directly into properties — no allOf wrapper.
    */
-  it("merges missing-property override flat into properties when additionalProperties is true", () => {
+  it("merges missing-property override flat into properties when additionalProperties is policy-defaulted", () => {
     const ir = makeIR([
       {
         kind: "field",
@@ -117,7 +117,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
               provenance: PROVENANCE,
             },
           ],
-          additionalProperties: true,
         },
         required: true,
         constraints: [makePathMinLength(["street"], 1)],
@@ -191,7 +190,7 @@ describe("inline object: path-targeted constraints on missing properties (issue 
    * Both should end up in the flat properties object — no allOf.
    *
    * - "zip" already exists → merged via mergeSchemaOverride (existing path)
-   * - "street" is missing, additionalProperties: true → merged flat (new path)
+   * - "street" is missing, additionalProperties omitted → merged flat (new path)
    * Result should be a single flat object with no allOf.
    */
   it("produces a single flat object when mixing existing and missing property overrides", () => {
@@ -211,7 +210,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
               provenance: PROVENANCE,
             },
           ],
-          additionalProperties: true,
         },
         required: true,
         constraints: [makePathPattern(["zip"], "^\\d{5}$"), makePathMinLength(["street"], 1)],
@@ -251,7 +249,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
         type: {
           kind: "object",
           properties: [],
-          additionalProperties: true,
         },
         required: true,
         constraints: [makePathMinLength(["street"], 1), makePathPattern(["street"], "^\\d+")],
@@ -280,7 +277,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
         type: {
           kind: "object",
           properties: [],
-          additionalProperties: true,
         },
         required: true,
         constraints: [makePathMinLength(["street"], 1), makePathMinLength(["city"], 2)],
@@ -312,7 +308,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
         type: {
           kind: "object",
           properties: [],
-          additionalProperties: true,
         },
         required: true,
         constraints: [makePathMinLength(["address", "street"], 1)],
@@ -357,7 +352,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
                 provenance: PROVENANCE,
               },
             ],
-            additionalProperties: true,
           },
         },
         required: true,
@@ -407,7 +401,6 @@ describe("inline object: path-targeted constraints on missing properties (issue 
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             { kind: "primitive", primitiveKind: "null" },
           ],

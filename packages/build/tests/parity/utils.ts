@@ -89,7 +89,8 @@ export interface ProvenanceFreeObjectProperty {
 export interface ProvenanceFreeObjectTypeNode {
   readonly kind: "object";
   readonly properties: readonly ProvenanceFreeObjectProperty[];
-  readonly additionalProperties: boolean;
+  readonly additionalProperties?: boolean | ProvenanceFreeTypeNode | undefined;
+  readonly passthrough?: boolean;
 }
 
 /** Record type node — valueType is recursively provenance-free. */
@@ -327,7 +328,13 @@ function stripProvenanceFromObjectType(type: ObjectTypeNode): ProvenanceFreeObje
   return {
     kind: "object",
     properties: type.properties.map(stripProvenanceFromObjectProperty),
-    additionalProperties: type.additionalProperties,
+    ...(type.additionalProperties !== undefined && {
+      additionalProperties:
+        typeof type.additionalProperties === "boolean"
+          ? type.additionalProperties
+          : stripProvenanceFromTypeNode(type.additionalProperties),
+    }),
+    ...(type.passthrough !== undefined && { passthrough: type.passthrough }),
   };
 }
 

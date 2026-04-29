@@ -320,7 +320,7 @@ function canonicalizeStaticEnumField(
       return { value: opt } satisfies EnumMember;
     }
     // Object option with id/label
-    return { value: opt.id, displayName: opt.label } satisfies EnumMember;
+    return { value: opt.id, label: opt.label } satisfies EnumMember;
   });
 
   const type: EnumTypeNode = { kind: "enum", members };
@@ -380,7 +380,6 @@ function canonicalizeArrayField(
   const itemsType: ObjectTypeNode = {
     kind: "object",
     properties: itemProperties,
-    additionalProperties: true,
   };
   const type: ArrayTypeNode = { kind: "array", items: itemsType };
 
@@ -422,7 +421,6 @@ function canonicalizeObjectField(
   const type: ObjectTypeNode = {
     kind: "object",
     properties,
-    additionalProperties: true,
   };
   return buildFieldNode(
     field.name,

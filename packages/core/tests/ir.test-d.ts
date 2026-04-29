@@ -137,14 +137,16 @@ expectAssignable<TypeNode>(nullNode);
 // EnumTypeNode
 const enumNode: EnumTypeNode = {
   kind: "enum",
-  members: [{ value: "draft" }, { value: "sent", displayName: "Sent" }, { value: 1 }],
+  members: [{ value: "draft" }, { value: "sent", label: "Sent" }, { value: 1 }],
 };
 expectAssignable<TypeNode>(enumNode);
 
 const enumMember: EnumMember = { value: "active" };
 expectAssignable<EnumMember>(enumMember);
 expectAssignable<EnumMember>({ value: 42 });
-expectAssignable<EnumMember>({ value: "active", displayName: "Active" });
+expectAssignable<EnumMember>({ value: "active", label: "Active" });
+expectError<EnumMember>({ value: "active", label: 123 });
+expectError<EnumMember>({ value: "active", displayName: "Active" });
 
 // ArrayTypeNode
 const arrayNode: ArrayTypeNode = { kind: "array", items: stringNode };
@@ -170,6 +172,40 @@ const objectNode: ObjectTypeNode = {
   additionalProperties: false,
 };
 expectAssignable<TypeNode>(objectNode);
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+});
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  additionalProperties: undefined,
+});
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  additionalProperties: true,
+});
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  additionalProperties: stringNode,
+});
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  passthrough: true,
+});
+expectAssignable<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  passthrough: false,
+});
+expectError<ObjectTypeNode>({
+  kind: "object",
+  properties: [objectProp],
+  passthrough: "true",
+});
 
 // UnionTypeNode (e.g., nullable type T | null)
 const unionNode: UnionTypeNode = {

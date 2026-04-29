@@ -14,9 +14,9 @@ export const expectedIR: ProvenanceFreeFormIR = {
       type: {
         kind: "enum",
         members: [
-          { value: "active", displayName: "Active" },
-          { value: "paused", displayName: "Paused" },
-          { value: "cancelled", displayName: "Cancelled" },
+          { value: "active", label: "Active" },
+          { value: "paused", label: "Paused" },
+          { value: "cancelled", label: "Cancelled" },
         ],
       },
       required: true,

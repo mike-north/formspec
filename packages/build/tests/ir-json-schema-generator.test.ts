@@ -185,7 +185,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 } satisfies ObjectProperty,
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -244,7 +243,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 } satisfies ObjectProperty,
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -386,9 +384,9 @@ describe("generateJsonSchemaFromIR", () => {
         makeField("status", {
           kind: "enum",
           members: [
-            { value: "draft", displayName: "Draft" },
-            { value: "sent", displayName: "Sent to Customer" },
-            { value: "paid", displayName: "Paid in Full" },
+            { value: "draft", label: "Draft" },
+            { value: "sent", label: "Sent to Customer" },
+            { value: "paid", label: "Paid in Full" },
           ],
         }),
       ]);
@@ -410,8 +408,8 @@ describe("generateJsonSchemaFromIR", () => {
         makeField("priority", {
           kind: "enum",
           members: [
-            { value: "low", displayName: "Low" },
-            { value: "high" }, // no displayName
+            { value: "low", label: "Low" },
+            { value: "high" }, // no label
           ],
         }),
       ]);
@@ -441,17 +439,17 @@ describe("generateJsonSchemaFromIR", () => {
     });
 
     it("supports oneOf serialization and omits title when it matches the value (issue #310)", () => {
-      // Updated for #310: title is only emitted when displayName differs from the const value.
-      // "sent" has no displayName, so its title is omitted (was redundant).
-      // "draft" has displayName "Draft" (differs from value) → title emitted.
-      // "paid" has displayName "Paid in Full" (differs from value) → title emitted.
+      // Updated for #310: title is only emitted when label differs from the const value.
+      // "sent" has no label, so its title is omitted (was redundant).
+      // "draft" has label "Draft" (differs from value) → title emitted.
+      // "paid" has label "Paid in Full" (differs from value) → title emitted.
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
           members: [
-            { value: "draft", displayName: "Draft" },
+            { value: "draft", label: "Draft" },
             { value: "sent" },
-            { value: "paid", displayName: "Paid in Full" },
+            { value: "paid", label: "Paid in Full" },
           ],
         }),
       ]);
@@ -467,8 +465,8 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
-    it("supports oneOf serialization when no member has a displayName", () => {
-      // Updated for #310: when no member has a displayName, no titles are emitted.
+    it("supports oneOf serialization when no member has a label", () => {
+      // Updated for #310: when no member has a label, no titles are emitted.
       // Previously emitted title equal to const (e.g. { const: "draft", title: "draft" }),
       // which was redundant.
       const ir = makeIR([
@@ -485,15 +483,15 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
-    it("emits title only for members whose displayName differs from the value (issue #310)", () => {
-      // Mixed: some members have a meaningful displayName, others do not (or it matches).
+    it("emits title only for members whose label differs from the value (issue #310)", () => {
+      // Mixed: some members have a meaningful label, others do not (or it matches).
       const ir = makeIR([
         makeField("currency", {
           kind: "enum",
           members: [
             { value: "USD" },
-            { value: "EUR", displayName: "Euro" },
-            { value: "GBP", displayName: "GBP" }, // displayName === value → omit title
+            { value: "EUR", label: "Euro" },
+            { value: "GBP", label: "GBP" }, // label === value → omit title
           ],
         }),
       ]);
@@ -505,46 +503,46 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
 
-    // Parameterized edge cases for #310: displayName === String(m.value) comparison semantics.
+    // Parameterized edge cases for #310: label === String(m.value) comparison semantics.
     // EnumMember.value is `string | number` — boolean values are not part of the IR type,
     // so there is no boolean edge case to test.
     it.each([
       {
         label: "numeric const matching stringified value — omit title",
         value: 42 as string | number,
-        displayName: "42",
+        memberLabel: "42",
         expectedTitle: false,
       },
       {
-        label: "numeric const with different displayName — emit title",
+        label: "numeric const with different label — emit title",
         value: 1 as string | number,
-        displayName: "One",
+        memberLabel: "One",
         expectedTitle: true,
       },
       {
-        label: "empty-string displayName matching empty-string value — omit title",
+        label: "empty-string label matching empty-string value — omit title",
         value: "" as string | number,
-        displayName: "",
+        memberLabel: "",
         expectedTitle: false,
       },
       {
-        label: "case-differing displayName — emit title (strict !== semantics, issue #310)",
+        label: "case-differing label — emit title (strict !== semantics, issue #310)",
         value: "USD" as string | number,
-        displayName: "usd",
+        memberLabel: "usd",
         expectedTitle: true,
       },
-    ])("oneOf title omission edge case: $label", ({ value, displayName, expectedTitle }) => {
+    ])("oneOf title omission edge case: $label", ({ value, memberLabel, expectedTitle }) => {
       const ir = makeIR([
         makeField("f", {
           kind: "enum",
-          members: [{ value, displayName }],
+          members: [{ value, label: memberLabel }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "oneOf" });
       const prop = (schema.properties as Record<string, unknown>)["f"];
 
       if (expectedTitle) {
-        expect(prop).toEqual({ oneOf: [{ const: value, title: displayName }] });
+        expect(prop).toEqual({ oneOf: [{ const: value, title: memberLabel }] });
       } else {
         expect(prop).toEqual({ oneOf: [{ const: value }] });
       }
@@ -554,7 +552,7 @@ describe("generateJsonSchemaFromIR", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [{ value: "draft", displayName: "draft" }, { value: "sent" }],
+          members: [{ value: "draft", label: "draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
@@ -569,7 +567,7 @@ describe("generateJsonSchemaFromIR", () => {
       const ir = makeIR([
         makeField("status", {
           kind: "enum",
-          members: [{ value: "draft", displayName: "Draft" }, { value: "sent" }],
+          members: [{ value: "draft", label: "Draft" }, { value: "sent" }],
         }),
       ]);
       const schema = generateJsonSchemaFromIR(ir, { enumSerialization: "smart-size" });
@@ -596,8 +594,8 @@ describe("generateJsonSchemaFromIR", () => {
         makeField("status", {
           kind: "enum",
           members: [
-            { value: "draft", displayName: "Draft" },
-            { value: "sent", displayName: "Sent" },
+            { value: "draft", label: "Draft" },
+            { value: "sent", label: "Sent" },
           ],
         }),
       ]);
@@ -618,8 +616,8 @@ describe("generateJsonSchemaFromIR", () => {
         makeField("status", {
           kind: "enum",
           members: [
-            { value: 1, displayName: "Numeric One" },
-            { value: "1", displayName: "String One" },
+            { value: 1, label: "Numeric One" },
+            { value: "1", label: "String One" },
           ],
         }),
       ]);
@@ -632,8 +630,8 @@ describe("generateJsonSchemaFromIR", () => {
         makeField("status", {
           kind: "enum",
           members: [
-            { value: "__proto__", displayName: "Prototype" },
-            { value: "constructor", displayName: "Constructor" },
+            { value: "__proto__", label: "Prototype" },
+            { value: "constructor", label: "Constructor" },
           ],
         }),
       ]);
@@ -794,14 +792,53 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["additionalProperties"]).toBe(false);
     });
 
-    it("omits additionalProperties when IR allows it", () => {
+    it("omits additionalProperties when object openness is policy-defaulted", () => {
+      const ir = makeIR([makeField("obj", { kind: "object", properties: [] })]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["obj"] as Record<string, unknown>;
+
+      expect(prop).not.toHaveProperty("additionalProperties");
+    });
+
+    it("emits additionalProperties:true when IR explicitly opens the object", () => {
       const ir = makeIR([
         makeField("obj", { kind: "object", properties: [], additionalProperties: true }),
       ]);
       const schema = generateJsonSchemaFromIR(ir);
       const prop = (schema.properties as Record<string, unknown>)["obj"] as Record<string, unknown>;
 
-      expect(prop).not.toHaveProperty("additionalProperties");
+      expect(prop["additionalProperties"]).toBe(true);
+    });
+
+    it("emits additionalProperties as a subschema when IR constrains extra values", () => {
+      const ir = makeIR([
+        makeField("obj", {
+          kind: "object",
+          properties: [],
+          additionalProperties: { kind: "primitive", primitiveKind: "string" },
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["obj"] as Record<string, unknown>;
+
+      expect(prop["additionalProperties"]).toEqual({ type: "string" });
+    });
+
+    it("does not emit passthroughObject before issue #416 PR-2 wires the keyword", () => {
+      const ir = makeIR([
+        makeField("obj", {
+          kind: "object",
+          properties: [],
+          additionalProperties: true,
+          passthrough: true,
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+      const prop = (schema.properties as Record<string, unknown>)["obj"] as Record<string, unknown>;
+
+      expect(prop["additionalProperties"]).toBe(true);
+      expect(prop).not.toHaveProperty("passthroughObject");
+      expect(prop).not.toHaveProperty("x-formspec-passthroughObject");
     });
 
     it("applies use-site constraints on object properties", () => {
@@ -1027,7 +1064,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -1062,7 +1098,6 @@ describe("generateJsonSchemaFromIR", () => {
             provenance: PROVENANCE,
           },
         ],
-        additionalProperties: true,
       };
 
       const ir: FormIR = {
@@ -1116,7 +1151,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -1801,8 +1835,8 @@ describe("generateJsonSchemaFromIR", () => {
           makeField("status", {
             kind: "enum",
             members: [
-              { value: "active", displayName: "Active" },
-              { value: "inactive", displayName: "Inactive" },
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
             ],
           }),
         ],
@@ -1821,7 +1855,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -1930,9 +1963,9 @@ describe("generateJsonSchemaFromIR", () => {
             {
               kind: "enum",
               members: [
-                { value: "draft", displayName: "Draft" },
-                { value: "sent", displayName: "Sent to Customer" },
-                { value: "paid", displayName: "Paid in Full" },
+                { value: "draft", label: "Draft" },
+                { value: "sent", label: "Sent to Customer" },
+                { value: "paid", label: "Paid in Full" },
               ],
             },
             true,
@@ -1985,7 +2018,7 @@ describe("generateJsonSchemaFromIR", () => {
         typeRegistry: {
           Address: {
             name: "Address",
-            type: { kind: "object", properties: addressProperties, additionalProperties: true },
+            type: { kind: "object", properties: addressProperties },
             provenance: PROVENANCE,
           },
         },
@@ -2077,7 +2110,6 @@ describe("generateJsonSchemaFromIR", () => {
               provenance: PROVENANCE,
             },
           ],
-          additionalProperties: true,
         } satisfies TypeNode,
         provenance: PROVENANCE,
       },
@@ -2141,7 +2173,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2281,7 +2312,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -2333,7 +2363,6 @@ describe("generateJsonSchemaFromIR", () => {
                         provenance: PROVENANCE,
                       },
                     ],
-                    additionalProperties: true,
                   },
                   optional: false,
                   constraints: [],
@@ -2341,7 +2370,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2415,7 +2443,6 @@ describe("generateJsonSchemaFromIR", () => {
                             provenance: PROVENANCE,
                           },
                         ],
-                        additionalProperties: true,
                       },
                       { kind: "primitive", primitiveKind: "null" },
                     ],
@@ -2426,7 +2453,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2507,7 +2533,6 @@ describe("generateJsonSchemaFromIR", () => {
                               provenance: PROVENANCE,
                             },
                           ],
-                          additionalProperties: true,
                         },
                       },
                       { kind: "primitive", primitiveKind: "null" },
@@ -2519,7 +2544,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2600,7 +2624,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2638,7 +2661,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             provenance: PROVENANCE,
           },
@@ -2684,7 +2706,6 @@ describe("generateJsonSchemaFromIR", () => {
                   provenance: PROVENANCE,
                 },
               ],
-              additionalProperties: true,
             },
             true,
             [
@@ -2718,7 +2739,7 @@ describe("generateJsonSchemaFromIR", () => {
       // it regardless of the `additionalProperties` value.
       expect(address["allOf"]).toBeUndefined();
       expect(address["type"]).toBe("object");
-      // spec 003 §2.5: additionalProperties: true is the default and omitted.
+      // spec 003 §2.5: omitted additionalProperties lets policy decide.
       expect(address["additionalProperties"]).toBeUndefined();
       expect(address["properties"]).toEqual({
         city: { type: "string" },
