@@ -360,22 +360,20 @@ export function createExtensionRegistry(
         }
         const canonicalTagName = normalizeFormSpecTagName(annotation.annotationName);
         if (RESERVED_UNSUPPORTED_TAGS.has(canonicalTagName)) {
-          throw new Error(
-            `Custom annotation tag "@${canonicalTagName}" is reserved and unsupported.`
-          );
+          throw new Error(`Annotation tag "@${canonicalTagName}" is reserved and unsupported.`);
         }
         if (annotationTagMap.has(canonicalTagName)) {
           throw new Error(`Duplicate annotation tag: "@${canonicalTagName}"`);
         }
         if (constraintTagMap.has(canonicalTagName) || metadataTagMap.has(canonicalTagName)) {
           throw new Error(
-            `Custom annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
+            `Annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${canonicalTagName}".`
           );
         }
         const existingTag = getTagDefinition(canonicalTagName, reservedTagSources);
         if (existingTag !== null) {
           throw new Error(
-            `Custom annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
+            `Annotation tag "@${canonicalTagName}" conflicts with existing FormSpec tag "@${existingTag.canonicalName}".`
           );
         }
         annotationMap.set(qualifiedId, annotation);

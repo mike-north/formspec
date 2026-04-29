@@ -238,6 +238,13 @@ export type AnnotationInheritancePolicy = "local-wins" | "never";
 export interface CustomAnnotationTagDocumentation {
   /** Completion detail shown beside the annotation tag. */
   readonly completionDetail?: string;
+  /**
+   * Label for the payload portion of the annotation tag signature.
+   *
+   * The payload remains the full authored text after the tag name, so this can
+   * describe single-argument or multi-argument annotation syntaxes.
+   */
+  readonly payloadLabel?: string;
   /** Short hover summary shown for the annotation tag. */
   readonly hoverSummary?: string;
   /** Full markdown hover body for the annotation tag. */

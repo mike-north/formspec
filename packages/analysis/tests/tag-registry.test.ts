@@ -156,8 +156,10 @@ describe("tag-registry", () => {
           inheritFromBase: "local-wins",
           tagDocumentation: {
             completionDetail: "Currency display annotation",
+            payloadLabel: "<currency-code> [locale]",
             hoverSummary: "Controls how money values display currency.",
-            hoverMarkdown: "Use `@displayCurrency <currency-code>` on money-shaped declarations.",
+            hoverMarkdown:
+              "Use `@displayCurrency <currency-code> [locale]` on money-shaped declarations.",
           },
         }),
         defineAnnotation({
@@ -177,7 +179,18 @@ describe("tag-registry", () => {
       completionDetail: "Currency display annotation",
       inheritFromBase: "local-wins",
       hoverSummary: "Controls how money values display currency.",
-      hoverMarkdown: "Use `@displayCurrency <currency-code>` on money-shaped declarations.",
+      hoverMarkdown:
+        "Use `@displayCurrency <currency-code> [locale]` on money-shaped declarations.",
+      signatures: [
+        expect.objectContaining({
+          label: "@displayCurrency <currency-code> [locale]",
+          parameters: [
+            expect.objectContaining({
+              label: "<currency-code> [locale]",
+            }),
+          ],
+        }),
+      ],
     });
     expect(getTagDefinition("DisplayLocale", extensions)?.inheritFromBase).toBeUndefined();
     expect(getTagDefinition("DisplayRegion", extensions)?.inheritFromBase).toBe("never");
@@ -201,7 +214,7 @@ describe("tag-registry", () => {
     expect(getInheritableAnnotationKeys(extensions)).toBe(getInheritableAnnotationKeys(extensions));
   });
 
-  it("rejects duplicate normalized custom annotation tag names", () => {
+  it("rejects duplicate normalized annotation tag names", () => {
     const currencyExtension = defineExtension({
       extensionId: "x-example/currency",
       annotations: [

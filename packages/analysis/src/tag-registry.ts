@@ -943,7 +943,7 @@ function buildExtensionAnnotationTagDefinition(
 ): TagDefinition {
   const canonicalName = normalizeFormSpecTagName(annotation.annotationName);
   const valueKind = "string";
-  const payloadLabel = "<payload>";
+  const payloadLabel = annotation.tagDocumentation?.payloadLabel ?? "<payload>";
   const signatures = [
     createSignature(canonicalName, ALL_PLACEMENTS, null, valueKind, payloadLabel),
   ] as const satisfies readonly TagSignature[];

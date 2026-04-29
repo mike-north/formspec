@@ -147,7 +147,7 @@ const MULTI_LEVEL_SOURCE = [
 ].join("\n");
 
 const CUSTOM_ANNOTATION_INHERITANCE_SOURCE = [
-  "/** @DisplayCurrency USD */",
+  "/** @displayCurrency USD */",
   "interface BaseMoney {",
   "  amount: number;",
   "}",
@@ -156,7 +156,7 @@ const CUSTOM_ANNOTATION_INHERITANCE_SOURCE = [
   "  amount: number;",
   "}",
   "",
-  "/** @DisplayCurrency EUR */",
+  "/** @displayCurrency EUR */",
   "interface LocalMoney extends BaseMoney {",
   "  amount: number;",
   "}",

@@ -318,7 +318,7 @@ describe("Extension API", () => {
       );
     });
 
-    it("throws on duplicate normalized custom annotation tag names", () => {
+    it("throws on duplicate normalized annotation tag names", () => {
       const ext1 = defineExtension({
         extensionId: "x-acme/currency",
         annotations: [{ annotationName: "DisplayUnit" }],
@@ -333,14 +333,14 @@ describe("Extension API", () => {
       );
     });
 
-    it("throws when a custom annotation tag conflicts with a built-in tag", () => {
+    it("throws when an annotation tag conflicts with a built-in tag", () => {
       const extension = defineExtension({
         extensionId: "x-acme/annotations",
         annotations: [{ annotationName: "format" }],
       });
 
       expect(() => createExtensionRegistry([extension])).toThrow(
-        'Custom annotation tag "@format" conflicts with existing FormSpec tag "@format".'
+        'Annotation tag "@format" conflicts with existing FormSpec tag "@format".'
       );
     });
 

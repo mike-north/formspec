@@ -84,4 +84,21 @@ string
 _(Optional)_ Short hover summary shown for the annotation tag.
 
 </td></tr>
+<tr><td>
+
+payloadLabel?
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+string
+
+</td><td>
+
+_(Optional)_ Label for the payload portion of the annotation tag signature.
+
+</td></tr>
 </tbody></table>

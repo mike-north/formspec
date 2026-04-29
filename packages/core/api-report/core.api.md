@@ -135,6 +135,7 @@ export interface CustomAnnotationTagDocumentation {
     readonly completionDetail?: string;
     readonly hoverMarkdown?: string;
     readonly hoverSummary?: string;
+    readonly payloadLabel?: string;
 }
 
 // @beta
