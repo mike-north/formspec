@@ -6,19 +6,11 @@
  */
 
 export { emitKey } from "./emit-key.js";
-export {
-  assertUniqueKebabNames,
-  KEYWORD_REGISTRY,
-  VOCABULARY_IDS,
-  type KeywordEntry,
-  type SerializationKeywordName,
-  type TransportPreference,
-} from "./keyword-registry.js";
+export { assertUniqueKebabNames, KEYWORD_REGISTRY, VOCABULARY_IDS } from "./keyword-registry.js";
 export { JsonSchema2020Writer } from "./json-schema-2020-writer.js";
 export {
   FORMSPEC_EXTENSION_KEY_PATTERN,
-  FORMSPEC_VENDOR_PREFIX_PATTERN,
   isWellFormedVendorPrefix,
   toKebabCase,
 } from "./vendor-key-format.js";
-export type { OutputKind, SerializationContext } from "./output-writer.js";
+export type { SerializationContext } from "./output-writer.js";

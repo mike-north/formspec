@@ -31,9 +31,11 @@ import type { FormSpecSerializationConfig } from "@formspec/config";
 import type { ExtensionRegistry } from "../extensions/index.js";
 import { getDisplayName, getSerializedName } from "../metadata/index.js";
 import { assertNoSerializedNameCollisions } from "../metadata/collision-guards.js";
-import { emitKey } from "../serialization/emit-key.js";
-import type { SerializationContext } from "../serialization/output-writer.js";
-import { isWellFormedVendorPrefix } from "../serialization/vendor-key-format.js";
+import {
+  emitKey,
+  isWellFormedVendorPrefix,
+  type SerializationContext,
+} from "../serialization/index.js";
 
 // =============================================================================
 // OUTPUT TYPE

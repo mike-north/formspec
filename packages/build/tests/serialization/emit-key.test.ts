@@ -3,14 +3,16 @@ import { defineCustomType, defineExtension, IR_VERSION } from "@formspec/core/in
 import type { FieldNode, FormIR, Provenance } from "@formspec/core/internals";
 import { createExtensionRegistry } from "../../src/extensions/index.js";
 import { generateJsonSchemaFromIR } from "../../src/json-schema/ir-generator.js";
-import { JsonSchema2020Writer } from "../../src/serialization/json-schema-2020-writer.js";
 import {
   assertUniqueKebabNames,
+  FORMSPEC_EXTENSION_KEY_PATTERN,
+  JsonSchema2020Writer,
   KEYWORD_REGISTRY,
-} from "../../src/serialization/keyword-registry.js";
-import { emitKey } from "../../src/serialization/emit-key.js";
-import { FORMSPEC_EXTENSION_KEY_PATTERN, toKebabCase } from "../../src/serialization/index.js";
-import type { SerializationContext } from "../../src/serialization/output-writer.js";
+  toKebabCase,
+  VOCABULARY_IDS,
+  emitKey,
+  type SerializationContext,
+} from "../../src/serialization/index.js";
 
 const extensionContext: SerializationContext = {
   vendorPrefix: "x-formspec",
@@ -131,6 +133,15 @@ describe("JsonSchema2020Writer", () => {
 });
 
 describe("serialization keyword registry", () => {
+  it("defines the v1 vocabulary identifiers used by the registry", () => {
+    expect(VOCABULARY_IDS).toEqual({
+      dynamicOptions: "dynamic-options",
+      dynamicSchema: "dynamic-schema",
+      metadata: "metadata",
+      schemaPolicy: "schema-policy",
+    });
+  });
+
   it("keeps kebab-cased logical names unique for extension transport", () => {
     expect(() => {
       assertUniqueKebabNames(KEYWORD_REGISTRY);

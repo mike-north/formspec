@@ -16,7 +16,7 @@ import {
 import { OutputWriter, type OutputKind, type SerializationContext } from "./output-writer.js";
 
 /** Generator options the JSON Schema writer must preserve while emitting. */
-export interface JsonSchema2020WriterOptions {
+interface JsonSchema2020WriterOptions {
   /** Registry used for custom types, constraints, and annotations. */
   readonly extensionRegistry?: ExtensionRegistry | undefined;
   /** JSON Schema representation to use for static enums. */

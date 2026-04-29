@@ -15,7 +15,7 @@
 export const FORMSPEC_EXTENSION_KEY_PATTERN = /^x-[a-z0-9]+-[a-z][a-z0-9-]*$/;
 
 /** Well-formed vendor prefix pattern for extension transport. */
-export const FORMSPEC_VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+$/;
+const FORMSPEC_VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+$/;
 
 /** Returns whether a configured vendor prefix can produce well-formed keys. */
 export function isWellFormedVendorPrefix(vendorPrefix: string): boolean {
