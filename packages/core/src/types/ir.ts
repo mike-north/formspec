@@ -112,9 +112,6 @@ export type TypeNode =
 /**
  * Primitive types mapping directly to JSON Schema primitives.
  *
- * Note: integer is NOT a primitive kind — integer semantics are expressed
- * via a `multipleOf: 1` constraint on a number type.
- *
  * @beta
  */
 export interface PrimitiveTypeNode {
@@ -132,8 +129,8 @@ export interface PrimitiveTypeNode {
 export interface EnumMember {
   /** The serialized value stored in data. */
   readonly value: string | number;
-  /** Optional per-member display name. */
-  readonly displayName?: string;
+  /** Optional per-member label. */
+  readonly label?: string;
 }
 
 /**
@@ -201,11 +198,26 @@ export interface ObjectTypeNode {
    */
   readonly properties: readonly ObjectProperty[];
   /**
-   * Whether additional properties beyond those listed are permitted.
-   * Ordinary static object types default to true under the current spec.
-   * Explicitly closed-object modes may still set this to false.
+   * Additional-property policy carried by this object node.
+   *
+   * - `undefined` — authoring was silent; emission policy decides whether to
+   *   add `additionalProperties`.
+   * - `true` — the author explicitly declared the object open.
+   * - `false` — the author explicitly declared the object closed.
+   * - `TypeNode` — the author explicitly declared the object open with a type
+   *   constraint for additional values. Reserved for future authoring support.
    */
-  readonly additionalProperties: boolean;
+  readonly additionalProperties?: boolean | TypeNode | undefined;
+  /**
+   * Build-time policy marker for intentionally permissive objects.
+   *
+   * This composes with `additionalProperties`: an object with both
+   * `additionalProperties: true` and `passthrough: true` means the author
+   * explicitly declared the object open and wants the `passthroughObject`
+   * policy keyword emitted. The JSON Schema emitter accepts the flag now;
+   * keyword emission is deferred to #416 PR-2.
+   */
+  readonly passthrough?: boolean;
 }
 
 /**

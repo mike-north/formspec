@@ -126,7 +126,6 @@ function isTypeReference(type: ts.Type): type is ts.TypeReference {
 const RESOLVING_TYPE_PLACEHOLDER: TypeNode = {
   kind: "object",
   properties: [],
-  additionalProperties: true,
 };
 
 function makeParseOptions(
@@ -1781,7 +1780,7 @@ export function getAnalyzableObjectLikePropertyName(name: ts.PropertyName): stri
 }
 
 /**
- * Rewrites enum-member display-name annotations into EnumMember.displayName
+ * Rewrites enum-member display-name annotations into EnumMember.label
  * values and strips those annotations from the field-level annotation list.
  *
  * The TSDoc surface uses `@displayName :value Label` for enum member labels.
@@ -1841,7 +1840,7 @@ function applyEnumMemberDisplayNamesToEnum(
   annotations: readonly AnnotationNode[],
   consumed: Set<AnnotationNode>
 ): EnumTypeNode {
-  const displayNames = new Map<string, string>();
+  const labels = new Map<string, string>();
 
   for (const annotation of annotations) {
     if (annotation.annotationKind !== "displayName") continue;
@@ -1856,18 +1855,18 @@ function applyEnumMemberDisplayNamesToEnum(
     const member = type.members.find((m) => String(m.value) === parsed.value);
     if (!member) continue;
 
-    displayNames.set(String(member.value), parsed.label);
+    labels.set(String(member.value), parsed.label);
   }
 
-  if (displayNames.size === 0) {
+  if (labels.size === 0) {
     return type;
   }
 
   return {
     ...type,
     members: type.members.map((member) => {
-      const displayName = displayNames.get(String(member.value));
-      return displayName !== undefined ? { ...member, displayName } : member;
+      const label = labels.get(String(member.value));
+      return label !== undefined ? { ...member, label } : member;
     }),
   };
 }
@@ -2448,8 +2447,8 @@ function resolveUnionType(
 
   const applyMemberLabels = (members: readonly (string | number)[]): EnumMember[] =>
     members.map((value) => {
-      const displayName = memberDisplayNames.get(String(value));
-      return displayName !== undefined ? { value, displayName } : { value };
+      const label = memberDisplayNames.get(String(value));
+      return label !== undefined ? { value, label } : { value };
     });
 
   const isBooleanUnion =
@@ -3012,7 +3011,6 @@ function resolveObjectType(
             metadataPolicy
           )
         : properties,
-    additionalProperties: true,
   };
 
   // Register named types

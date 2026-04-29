@@ -615,9 +615,9 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
 /**
  * Maps primitive IR types to JSON Schema type keywords.
  *
- * Note: `integer` is NOT a primitive kind in the IR. Integer semantics are
- * expressed via a `multipleOf: 1` constraint on a number type; `applyConstraints`
- * handles the promotion (per the JSON Schema vocabulary spec §2.1).
+ * `integer` is represented directly in the IR and emits JSON Schema `integer`.
+ * Number types can also be promoted to `integer` through a `multipleOf: 1`
+ * constraint in `applyConstraints`.
  */
 function generatePrimitiveType(type: PrimitiveTypeNode): JsonSchema2020 {
   return {
@@ -648,8 +648,7 @@ function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema
     return {
       oneOf: type.members.map((m) => {
         const stringValue = String(m.value);
-        const title =
-          m.displayName !== undefined && m.displayName !== stringValue ? m.displayName : undefined;
+        const title = m.label !== undefined && m.label !== stringValue ? m.label : undefined;
         return title !== undefined ? { const: m.value, title } : { const: m.value };
       }),
     };
@@ -674,13 +673,13 @@ function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema
  */
 function shouldSerializeEnumAsOneOf(type: EnumTypeNode): boolean {
   return type.members.some((member) => {
-    const title = member.displayName ?? String(member.value);
+    const title = member.label ?? String(member.value);
     return title !== String(member.value);
   });
 }
 
 function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, string> | undefined {
-  if (!type.members.some((member) => member.displayName !== undefined)) {
+  if (!type.members.some((member) => member.label !== undefined)) {
     return undefined;
   }
 
@@ -693,7 +692,7 @@ function buildEnumDisplayNameExtension(type: EnumTypeNode): Record<string, strin
           `Use oneOf serialization for mixed string/number enum values that collide.`
       );
     }
-    displayNames[key] = member.displayName ?? key;
+    displayNames[key] = member.label ?? key;
   }
 
   return displayNames;
@@ -714,9 +713,8 @@ function generateArrayType(type: ArrayTypeNode, ctx: GeneratorContext): JsonSche
 /**
  * Generates JSON Schema for an object type.
  *
- * `additionalProperties` is emitted only when the IR explicitly closes the
- * object. Ordinary static object types now canonicalize to
- * `additionalProperties: true`, which omits the keyword per spec 003 §2.5.
+ * `additionalProperties` is emitted only when the IR carries explicit author
+ * intent. When absent, downstream strict-mode policy decides.
  */
 function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   const properties: Record<string, JsonSchema2020> = {};
@@ -736,8 +734,15 @@ function generateObjectType(type: ObjectTypeNode, ctx: GeneratorContext): JsonSc
     schema.required = required.sort();
   }
 
-  if (!type.additionalProperties) {
+  // #416 PR-2 will emit the passthroughObject policy keyword from this flag.
+  void type.passthrough;
+
+  if (type.additionalProperties === true) {
+    schema.additionalProperties = true;
+  } else if (type.additionalProperties === false) {
     schema.additionalProperties = false;
+  } else if (type.additionalProperties !== undefined) {
+    schema.additionalProperties = generateTypeNode(type.additionalProperties, ctx);
   }
 
   return schema;

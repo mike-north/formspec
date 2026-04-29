@@ -291,7 +291,7 @@ describe("canonicalizeChainDSL", () => {
       expect(type.members).toEqual([{ value: "draft" }, { value: "sent" }, { value: "paid" }]);
     });
 
-    it("maps object options to EnumMember with displayName", () => {
+    it("maps object options to EnumMember with label", () => {
       const form = formspec(
         field.enum("priority", [
           { id: "low", label: "Low Priority" },
@@ -303,8 +303,8 @@ describe("canonicalizeChainDSL", () => {
 
       const type = f.type as EnumTypeNode;
       expect(type.members).toEqual([
-        { value: "low", displayName: "Low Priority" },
-        { value: "high", displayName: "High Priority" },
+        { value: "low", label: "Low Priority" },
+        { value: "high", label: "High Priority" },
       ]);
     });
 
@@ -440,14 +440,14 @@ describe("canonicalizeChainDSL", () => {
       expect(f.constraints).toHaveLength(0);
     });
 
-    it("uses open-object defaults on items object", () => {
+    it("omits additionalProperties when array items are policy-defaulted objects", () => {
       const form = formspec(field.array("items", field.text("name")));
       const ir = canonicalizeChainDSL(form);
       const f = getField(ir, "items");
 
       const type = f.type as ArrayTypeNode;
       const items = type.items as ObjectTypeNode;
-      expect(items.additionalProperties).toBe(true);
+      expect(items.additionalProperties).toBeUndefined();
     });
 
     it("item properties have correct optional flag based on required", () => {
@@ -480,7 +480,7 @@ describe("canonicalizeChainDSL", () => {
 
       const type = f.type as ObjectTypeNode;
       expect(type.kind).toBe("object");
-      expect(type.additionalProperties).toBe(true);
+      expect(type.additionalProperties).toBeUndefined();
       expect(type.properties).toHaveLength(2);
       expect(type.properties[0]).toMatchObject({ name: "street" });
       expect(type.properties[1]).toMatchObject({ name: "city" });

@@ -275,7 +275,7 @@ export interface DynamicTypeNode {
 
 // @beta
 export interface EnumMember {
-    readonly displayName?: string;
+    readonly label?: string;
     readonly value: string | number;
 }
 
@@ -793,8 +793,9 @@ export interface ObjectProperty {
 
 // @beta
 export interface ObjectTypeNode {
-    readonly additionalProperties: boolean;
+    readonly additionalProperties?: boolean | TypeNode | undefined;
     readonly kind: "object";
+    readonly passthrough?: boolean;
     readonly properties: readonly ObjectProperty[];
 }
 

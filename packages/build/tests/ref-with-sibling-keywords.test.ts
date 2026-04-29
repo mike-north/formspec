@@ -89,7 +89,6 @@ const MONETARY_AMOUNT_REGISTRY: FormIR["typeRegistry"] = {
           provenance: PROVENANCE,
         },
       ],
-      additionalProperties: true,
     },
     provenance: PROVENANCE,
   },
@@ -433,7 +432,6 @@ describe("$ref with sibling keywords — issue #364", () => {
                       provenance: PROVENANCE,
                     },
                   ],
-                  additionalProperties: true,
                 },
                 optional: false,
                 constraints: [],
@@ -441,7 +439,6 @@ describe("$ref with sibling keywords — issue #364", () => {
                 provenance: PROVENANCE,
               },
             ],
-            additionalProperties: true,
           },
           provenance: PROVENANCE,
         },
@@ -507,7 +504,6 @@ describe("$ref with sibling keywords — issue #364", () => {
               provenance: PROVENANCE,
             },
           ],
-          additionalProperties: true,
         },
         provenance: PROVENANCE,
       },
@@ -671,7 +667,7 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
   // ---------------------------------------------------------------------------
   describe("Site 1: inline-object with path target naming a property that does not exist (#382)", () => {
     it("emits a single flat object (no allOf wrapper) with sibling properties and preserved additionalProperties", () => {
-      // Scenario: an inline object field has `additionalProperties: true` and
+      // Scenario: an inline object field has policy-defaulted additionalProperties and
       // receives a path-targeted constraint pointing at a property that is not
       // declared on the base type. Historically this wrapped the base in
       // `allOf: [base, { properties: { missing: ... } }]`. The fix emits a
@@ -695,7 +691,6 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
                 provenance: PROVENANCE,
               },
             ],
-            additionalProperties: true,
           },
           required: true,
           constraints: [
@@ -721,9 +716,8 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
       // Flat object: type is a sibling key, not buried inside allOf[0].
       expect(address?.["type"]).toBe("object");
 
-      // `additionalProperties: true` is the default and is intentionally
-      // omitted from output (spec 003 §2.5); the semantics are preserved by
-      // absence of the keyword, not by its explicit presence.
+      // Omitted `additionalProperties` lets downstream policy decide (spec 003
+      // §2.5); the semantics are preserved by absence of the keyword.
       expect(address?.["additionalProperties"]).toBeUndefined();
 
       // Base property ("city") and the missing-override property ("missing")
@@ -805,7 +799,6 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
                 provenance: PROVENANCE,
               },
             ],
-            additionalProperties: true,
           },
           required: true,
           constraints: [
@@ -874,7 +867,6 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
             type: {
               kind: "object",
               properties: [],
-              additionalProperties: true,
             },
             required: true,
             constraints: [
@@ -918,7 +910,6 @@ describe("remaining allOf emission sites flattened to siblings — issue #382", 
             type: {
               kind: "object",
               properties: [],
-              additionalProperties: true,
             },
             required: true,
             constraints: [

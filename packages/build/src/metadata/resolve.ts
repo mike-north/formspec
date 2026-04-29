@@ -191,8 +191,8 @@ function resolveEnumTypeMetadata(
   options: ResolveFormIRMetadataOptions
 ): EnumTypeNode {
   const members = type.members.map((member) => {
-    const displayName = resolveEnumMemberDisplayName(
-      member.displayName,
+    const label = resolveEnumMemberDisplayName(
+      member.label,
       options.policy.enumMember.displayName,
       {
         surface: options.surface,
@@ -202,13 +202,11 @@ function resolveEnumTypeMetadata(
       }
     );
 
-    if (displayName === member.displayName) {
+    if (label === member.label) {
       return member;
     }
 
-    return displayName === undefined
-      ? { value: member.value }
-      : { value: member.value, displayName };
+    return label === undefined ? { value: member.value } : { value: member.value, label };
   });
 
   return members.some((member, index) => member !== type.members[index])
@@ -224,13 +222,20 @@ function resolveTypeNodeMetadata(type: TypeNode, options: ResolveFormIRMetadataO
         items: resolveTypeNodeMetadata(type.items, options),
       };
 
-    case "object":
+    case "object": {
+      const additionalProperties =
+        type.additionalProperties !== undefined && typeof type.additionalProperties !== "boolean"
+          ? resolveTypeNodeMetadata(type.additionalProperties, options)
+          : type.additionalProperties;
+
       return {
         ...type,
         properties: type.properties.map((property) =>
           resolveObjectPropertyMetadata(property, options)
         ),
+        ...(additionalProperties !== type.additionalProperties && { additionalProperties }),
       };
+    }
 
     case "record":
       return {

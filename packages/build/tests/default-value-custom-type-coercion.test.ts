@@ -190,7 +190,9 @@ describe("issue #358: @defaultValue coercion for custom-type fields", () => {
       // Covers the `typeof value === "bigint"` branch of the inference fallback.
       // bigint is not a JsonValue; the cast exercises the runtime coercion path
       // that handles bigint values that may reach the pipeline through TSDoc parsing.
-      const ir = makeIR([makeDecimalField("price", [defaultValueAnnotation(9n as unknown as JsonValue)])]);
+      const ir = makeIR([
+        makeDecimalField("price", [defaultValueAnnotation(9n as unknown as JsonValue)]),
+      ]);
       const schema = generateJsonSchemaFromIR(ir, {
         extensionRegistry: registryWith(inferredDecimalType),
       });
@@ -245,7 +247,6 @@ describe("issue #358: @defaultValue coercion for custom-type fields", () => {
             type: {
               kind: "object",
               properties: [priceProperty],
-              additionalProperties: true,
             },
             required: false,
             constraints: [],
