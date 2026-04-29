@@ -63,6 +63,7 @@ export {
   resolveConstraintTargetState,
 } from "./semantic-targets.js";
 export type {
+  ExtensionAnnotationTagSource,
   ExtensionConstraintTagSource,
   ExtensionCustomTypeSource,
   ExtensionTagSource,
@@ -86,6 +87,7 @@ export {
   FORM_SPEC_TARGET_KINDS,
   getAllTagDefinitions,
   getConstraintTagDefinitions,
+  getInheritableAnnotationKeys,
   getTagDefinition,
   getTagHoverMarkdown,
   normalizeFormSpecTagName,
@@ -142,7 +144,10 @@ export {
   extractNamedTypeAnnotations,
   hasInheritableTypeAnnotation,
 } from "./heritage-annotations.js";
-export type { HeritageAnnotationExtractor } from "./heritage-annotations.js";
+export type {
+  HeritageAnnotationExtractor,
+  HeritageAnnotationOptions,
+} from "./heritage-annotations.js";
 export {
   collectCompatiblePathTargets,
   getEnumMemberCompletions,

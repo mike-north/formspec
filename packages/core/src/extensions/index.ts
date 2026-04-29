@@ -219,6 +219,14 @@ export interface CustomConstraintRegistration {
 }
 
 /**
+ * Controls whether a type-level annotation can flow from a base declaration to
+ * a derived declaration during semantic analysis.
+ *
+ * @public
+ */
+export type AnnotationInheritancePolicy = "local-wins" | "never";
+
+/**
  * Registration for a custom annotation that may produce JSON Schema keywords.
  *
  * Custom annotations are referenced by FormSpec's internal custom-annotation nodes.
@@ -229,6 +237,15 @@ export interface CustomConstraintRegistration {
 export interface CustomAnnotationRegistration {
   /** The annotation name, unique within the extension. */
   readonly annotationName: string;
+  /**
+   * Optional type-level inheritance behavior for semantic consumers.
+   *
+   * `"local-wins"` means a derived declaration inherits this annotation from
+   * its base declaration only when the derived declaration does not provide the
+   * same extension annotation identity locally. Omitted registrations behave as
+   * `"never"`.
+   */
+  readonly inheritFromBase?: AnnotationInheritancePolicy;
   /**
    * Optionally converts the annotation value into JSON Schema keywords.
    * If omitted, the annotation has no JSON Schema representation (UI-only).

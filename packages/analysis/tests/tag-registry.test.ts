@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { defineExtension, defineMetadataSlot } from "@formspec/core";
+import { defineAnnotation, defineExtension, defineMetadataSlot } from "@formspec/core";
 import {
   getAllTagDefinitions,
+  getInheritableAnnotationKeys,
   getTagDefinition,
   readExtensionRegistryFromSettings,
   readExtensionTagNames,
@@ -133,6 +134,92 @@ describe("tag-registry", () => {
     expect(getTagDefinition("minLength")?.capabilities).toEqual(["string-like"]);
     expect(getTagDefinition("minItems")?.capabilities).toEqual(["array-like"]);
     expect(getTagDefinition("enumOptions")?.capabilities).toEqual(["enum-member-addressable"]);
+  });
+
+  it("derives inheritable annotation keys from built-in tag definitions", () => {
+    const inheritableBuiltins = getAllTagDefinitions()
+      .filter((definition) => definition.inheritFromBase === "local-wins")
+      .map((definition) => definition.canonicalName)
+      .sort();
+
+    expect(inheritableBuiltins).toEqual(["format"]);
+    expect([...getInheritableAnnotationKeys()]).toEqual(["format"]);
+    expect(getInheritableAnnotationKeys()).toBe(getInheritableAnnotationKeys());
+  });
+
+  it("adds extension custom annotation opt-ins under custom identity keys", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/currency",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayCurrency",
+          inheritFromBase: "local-wins",
+        }),
+        defineAnnotation({
+          annotationName: "DisplayLocale",
+        }),
+        defineAnnotation({
+          annotationName: "DisplayRegion",
+          inheritFromBase: "never",
+        }),
+      ],
+    });
+    const extensions = [extension] as const;
+
+    expect(getTagDefinition("DisplayCurrency", extensions)).toMatchObject({
+      canonicalName: "displayCurrency",
+      category: "annotation",
+      inheritFromBase: "local-wins",
+    });
+    expect(getTagDefinition("DisplayLocale", extensions)?.inheritFromBase).toBeUndefined();
+    expect(getTagDefinition("DisplayRegion", extensions)?.inheritFromBase).toBe("never");
+    expect(
+      getAllTagDefinitions(extensions).filter((definition) =>
+        definition.canonicalName.startsWith("display")
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          canonicalName: "displayCurrency",
+          category: "annotation",
+          inheritFromBase: "local-wins",
+        }),
+      ])
+    );
+    expect([...getInheritableAnnotationKeys(extensions)].sort()).toEqual([
+      "custom:x-example/currency/DisplayCurrency",
+      "format",
+    ]);
+    expect(getInheritableAnnotationKeys(extensions)).toBe(getInheritableAnnotationKeys(extensions));
+  });
+
+  it("keeps same-named custom annotation opt-ins isolated by extension identity", () => {
+    const currencyExtension = defineExtension({
+      extensionId: "x-example/currency",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayUnit",
+          inheritFromBase: "local-wins",
+        }),
+      ],
+    });
+    const inventoryExtension = defineExtension({
+      extensionId: "x-example/inventory",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayUnit",
+          inheritFromBase: "local-wins",
+        }),
+      ],
+    });
+
+    expect(
+      [...getInheritableAnnotationKeys([currencyExtension, inventoryExtension])].sort()
+    ).toEqual([
+      "custom:x-example/currency/DisplayUnit",
+      "custom:x-example/inventory/DisplayUnit",
+      "format",
+    ]);
   });
 
   it("assigns empty capabilities to extension metadata tags regardless of value kind", () => {

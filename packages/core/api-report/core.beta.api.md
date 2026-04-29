@@ -7,6 +7,9 @@
 // @public
 export const __integerBrand: unique symbol;
 
+// @public
+export type AnnotationInheritancePolicy = "local-wins" | "never";
+
 // @beta
 export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
@@ -122,6 +125,7 @@ export interface CustomAnnotationNode {
 // @public
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
+    readonly inheritFromBase?: AnnotationInheritancePolicy;
     readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
 }
 

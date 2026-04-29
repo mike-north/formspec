@@ -117,6 +117,7 @@ const monetaryExtension: ExtensionDefinition = defineExtension({
   annotations: [
     {
       annotationName: "DisplayCurrency",
+      inheritFromBase: "local-wins",
       toJsonSchema: (value, vendorPrefix) => ({
         [`${vendorPrefix}-display-currency`]: value,
       }),
@@ -314,6 +315,32 @@ describe("Extension API", () => {
       });
       expect(() => createExtensionRegistry([ext1, ext2])).toThrow(
         'Duplicate custom annotation ID: "x-acme/baz/Foo"'
+      );
+    });
+
+    it("throws on duplicate normalized custom annotation tag names", () => {
+      const ext1 = defineExtension({
+        extensionId: "x-acme/currency",
+        annotations: [{ annotationName: "DisplayUnit" }],
+      });
+      const ext2 = defineExtension({
+        extensionId: "x-acme/inventory",
+        annotations: [{ annotationName: "displayUnit" }],
+      });
+
+      expect(() => createExtensionRegistry([ext1, ext2])).toThrow(
+        'Duplicate custom annotation tag: "@displayUnit"'
+      );
+    });
+
+    it("throws when a custom annotation tag conflicts with a built-in tag", () => {
+      const extension = defineExtension({
+        extensionId: "x-acme/annotations",
+        annotations: [{ annotationName: "format" }],
+      });
+
+      expect(() => createExtensionRegistry([extension])).toThrow(
+        'Custom annotation tag "@format" conflicts with existing FormSpec tag "@format".'
       );
     });
 
@@ -848,6 +875,7 @@ describe("Extension API", () => {
       const registry = createExtensionRegistry([monetaryExtension]);
       const annotationReg = registry.findAnnotation("x-stripe/monetary/DisplayCurrency");
       expect(annotationReg).toBeDefined();
+      expect(annotationReg?.inheritFromBase).toBe("local-wins");
       expect(annotationReg?.toJsonSchema).toBeDefined();
 
       // Access toJsonSchema from the original extension definition to avoid non-null assertion

@@ -8,6 +8,9 @@
 export const __integerBrand: unique symbol;
 
 // @public
+export type AnnotationInheritancePolicy = "local-wins" | "never";
+
+// @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
 
 // @public
@@ -74,6 +77,7 @@ export function createInitialFieldState<T>(value: T): FieldState<T>;
 // @public
 export interface CustomAnnotationRegistration {
     readonly annotationName: string;
+    readonly inheritFromBase?: AnnotationInheritancePolicy;
     readonly toJsonSchema?: (value: ExtensionPayloadValue, vendorPrefix: string) => Record<string, unknown>;
 }
 

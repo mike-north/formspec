@@ -802,6 +802,15 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
+[AnnotationInheritancePolicy](./core.annotationinheritancepolicy.md)
+
+</td><td>
+
+Controls whether a type-level annotation can flow from a base declaration to a derived declaration during semantic analysis.
+
+</td></tr>
+<tr><td>
+
 [AnnotationNode](./core.annotationnode.md)
 
 </td><td>

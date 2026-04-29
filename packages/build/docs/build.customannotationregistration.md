@@ -52,6 +52,23 @@ The annotation name, unique within the extension.
 </td></tr>
 <tr><td>
 
+[inheritFromBase?](./build.customannotationregistration.inheritfrombase.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+AnnotationInheritancePolicy
+
+</td><td>
+
+_(Optional)_ Optional type-level inheritance behavior for semantic consumers.
+
+</td></tr>
+<tr><td>
+
 [toJsonSchema?](./build.customannotationregistration.tojsonschema.md)
 
 </td><td>

@@ -15,11 +15,12 @@
  *    Both camelCase and PascalCase forms are accepted (e.g., `@Minimum`).
  *
  * 2. **Metadata and annotation tags** (`@apiName`, `@displayName`,
- *    `@format`, `@placeholder`):
+ *    `@format`, `@placeholder`, and extension-registered annotations):
  *    These are parsed as structured custom block tags so summary extraction
  *    stops at recognized FormSpec tags. `@displayName`, `@format`, and
- *    `@placeholder` also map onto annotation IR nodes, while `@apiName`
- *    remains metadata-only and is resolved separately by the class analyzer.
+ *    `@placeholder` map onto built-in annotation IR nodes; extension
+ *    annotations map onto `CustomAnnotationNode`s. `@apiName` remains
+ *    metadata-only and is resolved separately by the class analyzer.
  *
  * The `@deprecated` tag is a standard TSDoc block tag, parsed structurally.
  *
@@ -399,7 +400,6 @@ function placementLabel(
   }
 }
 
-
 function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
   const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
   return (
@@ -688,7 +688,25 @@ function getExtensionTagNames(options?: ParseTSDocOptions): readonly string[] {
     ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
       (extension.metadataSlots ?? []).map((slot) => normalizeFormSpecTagName(slot.tagName))
     ) ?? []),
+    ...(options?.extensionRegistry?.extensions.flatMap((extension) =>
+      (extension.annotations ?? []).map((annotation) =>
+        normalizeFormSpecTagName(annotation.annotationName)
+      )
+    ) ?? []),
   ].sort();
+}
+
+function findCustomAnnotationTag(
+  tagName: string,
+  options?: ParseTSDocOptions
+): { readonly annotationId: string } | undefined {
+  for (const extension of options?.extensionRegistry?.extensions ?? []) {
+    for (const annotation of extension.annotations ?? []) {
+      if (normalizeFormSpecTagName(annotation.annotationName) !== tagName) continue;
+      return { annotationId: `${extension.extensionId}/${annotation.annotationName}` };
+    }
+  }
+  return undefined;
 }
 
 // =============================================================================
@@ -753,6 +771,11 @@ function getExtensionRegistryCacheKey(registry: ExtensionRegistry | undefined): 
         typeNames: extension.types?.map((type) => type.typeName) ?? [],
         constraintTags:
           extension.constraintTags?.map((tag) => normalizeFormSpecTagName(tag.tagName)) ?? [],
+        annotations:
+          extension.annotations?.map((annotation) => ({
+            annotationName: normalizeFormSpecTagName(annotation.annotationName),
+            inheritFromBase: annotation.inheritFromBase ?? "never",
+          })) ?? [],
         metadataSlots:
           extension.metadataSlots?.map((slot) => ({
             tagName: normalizeFormSpecTagName(slot.tagName),
@@ -915,6 +938,21 @@ export function parseTSDocTags(
               }
               break;
           }
+          continue;
+        }
+
+        const customAnnotation = findCustomAnnotationTag(tagName, options);
+        if (customAnnotation !== undefined) {
+          const text = tag.resolvedPayloadText;
+          if (text === "") continue;
+
+          annotations.push({
+            kind: "annotation",
+            annotationKind: "custom",
+            annotationId: customAnnotation.annotationId,
+            value: text,
+            provenance: provenanceForParsedTag(tag, sourceFile, file),
+          });
           continue;
         }
 

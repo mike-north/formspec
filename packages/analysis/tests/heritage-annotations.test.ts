@@ -14,7 +14,11 @@
 
 import { describe, expect, it } from "vitest";
 import * as ts from "typescript";
-import type { AnnotationNode, FormatAnnotationNode } from "@formspec/core/internals";
+import type {
+  AnnotationNode,
+  CustomAnnotationNode,
+  FormatAnnotationNode,
+} from "@formspec/core/internals";
 import {
   collectInheritedTypeAnnotations,
   extractNamedTypeAnnotations,
@@ -53,6 +57,41 @@ function makeFormatAnnotation(value: string, file = "/virtual/formspec.ts"): For
     value,
     provenance: { surface: "tsdoc", file, line: 1, column: 0 },
   };
+}
+
+function makeCustomAnnotation(
+  annotationId: string,
+  value: string,
+  file = "/virtual/formspec.ts"
+): CustomAnnotationNode {
+  return {
+    kind: "annotation",
+    annotationKind: "custom",
+    annotationId,
+    value,
+    provenance: { surface: "tsdoc", file, line: 1, column: 0 },
+  };
+}
+
+function getDeclarationName(decl: ts.Declaration): string | null {
+  const name = ts.getNameOfDeclaration(decl);
+  return name !== undefined && ts.isIdentifier(name) ? name.text : null;
+}
+
+function makeNamedAnnotationExtractor(
+  annotationsByDeclarationName: Readonly<Record<string, readonly AnnotationNode[]>>
+): HeritageAnnotationExtractor {
+  return (decl) => {
+    const name = getDeclarationName(decl);
+    if (name === null) return [];
+    return annotationsByDeclarationName[name] ?? [];
+  };
+}
+
+function inheritanceKeys(keys: readonly string[]): {
+  readonly inheritableAnnotationKeys: ReadonlySet<string>;
+} {
+  return { inheritableAnnotationKeys: new Set(keys) };
 }
 
 /**
@@ -198,12 +237,7 @@ describe("collectInheritedTypeAnnotations", () => {
     `);
     const standalone = findInterface(sourceFile, "Standalone");
 
-    const inherited = collectInheritedTypeAnnotations(
-      standalone,
-      [],
-      checker,
-      makeStubExtractor()
-    );
+    const inherited = collectInheritedTypeAnnotations(standalone, [], checker, makeStubExtractor());
 
     expect(inherited).toEqual([]);
   });
@@ -280,6 +314,91 @@ describe("collectInheritedTypeAnnotations", () => {
 
     expect(inherited).toHaveLength(1);
     expect((inherited[0] as FormatAnnotationNode).value).toBe("root-format");
+  });
+
+  it("inherits extension custom annotations that opt in to the registry key set", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseMoney { amount: number; }
+      export interface DerivedMoney extends BaseMoney { amount: number; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedMoney");
+    const baseCurrency = makeCustomAnnotation("x-example/currency/DisplayCurrency", "USD");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [],
+      checker,
+      makeNamedAnnotationExtractor({ BaseMoney: [baseCurrency] }),
+      inheritanceKeys(["custom:x-example/currency/DisplayCurrency"])
+    );
+
+    expect(inherited).toEqual([baseCurrency]);
+  });
+
+  it("lets a local custom annotation with the same identity win", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseMoney { amount: number; }
+      export interface DerivedMoney extends BaseMoney { amount: number; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedMoney");
+    const localCurrency = makeCustomAnnotation("x-example/currency/DisplayCurrency", "EUR");
+    const baseCurrency = makeCustomAnnotation("x-example/currency/DisplayCurrency", "USD");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [localCurrency],
+      checker,
+      makeNamedAnnotationExtractor({ BaseMoney: [baseCurrency] }),
+      inheritanceKeys(["custom:x-example/currency/DisplayCurrency"])
+    );
+
+    expect(inherited).toEqual([]);
+  });
+
+  it("does not let a different local custom annotation suppress inheritance", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseMoney { amount: number; }
+      export interface DerivedMoney extends BaseMoney { amount: number; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedMoney");
+    const localLocale = makeCustomAnnotation("x-example/currency/DisplayLocale", "en-US");
+    const baseCurrency = makeCustomAnnotation("x-example/currency/DisplayCurrency", "USD");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [localLocale],
+      checker,
+      makeNamedAnnotationExtractor({ BaseMoney: [baseCurrency] }),
+      inheritanceKeys([
+        "custom:x-example/currency/DisplayCurrency",
+        "custom:x-example/currency/DisplayLocale",
+      ])
+    );
+
+    expect(inherited).toEqual([baseCurrency]);
+  });
+
+  it("does not let the same tag name from a different extension suppress inheritance", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseItem { amount: number; }
+      export interface DerivedItem extends BaseItem { amount: number; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedItem");
+    const localCurrencyUnit = makeCustomAnnotation("x-example/currency/DisplayUnit", "USD");
+    const baseInventoryUnit = makeCustomAnnotation("x-example/inventory/DisplayUnit", "case");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [localCurrencyUnit],
+      checker,
+      makeNamedAnnotationExtractor({ BaseItem: [baseInventoryUnit] }),
+      inheritanceKeys([
+        "custom:x-example/currency/DisplayUnit",
+        "custom:x-example/inventory/DisplayUnit",
+      ])
+    );
+
+    expect(inherited).toEqual([baseInventoryUnit]);
   });
 
   it("survives self-referential heritage without infinite-looping", () => {
