@@ -1,5 +1,28 @@
 # @formspec/cli
 
+## 0.1.0-alpha.66
+
+### Patch Changes
+
+- [#468](https://github.com/mike-north/formspec/pull/468) [`ec2c6df`](https://github.com/mike-north/formspec/commit/ec2c6df45d70b71448ff44feafd93c9ffb8df4aa) Thanks [@mike-north](https://github.com/mike-north)! - Document the single-program analysis architecture, update stale post-synthetic-checker comments, and align snapshot broadening-bypass logging.
+
+- [#480](https://github.com/mike-north/formspec/pull/480) [`ae616dc`](https://github.com/mike-north/formspec/commit/ae616dcd521686d80d427241036c057400df9003) Thanks [@mike-north](https://github.com/mike-north)! - Align configuration loading with issue #429 by removing legacy YAML/browser-only surfaces and introducing a filesystem adapter for config discovery.
+
+  ### `@formspec/config`
+  - Added `FileSystem` and `LoadConfigOptions.fileSystem` so non-Node consumers can supply path, existence, and file-read operations while `loadFormSpecConfig` lazily loads Node defaults.
+  - Removed `@formspec/config/browser` and removed `loadConfigFromString`.
+  - Removed `./formspec.schema.json` package export and deleted the shipped schema file.
+  - Removed the `yaml` dependency.
+
+  ### Downstream packages
+  - Re-release packages that depend on `@formspec/config` so their published dependency graph reflects the unified config surface.
+
+- [#477](https://github.com/mike-north/formspec/pull/477) [`c0ade4f`](https://github.com/mike-north/formspec/commit/c0ade4fd8472b35b436b6c43b605b4a9cfce77f1) Thanks [@mike-north](https://github.com/mike-north)! - Extract shared Chain DSL policy types, defaults, and validators into the private internal `@formspec/dsl-policy` package while preserving compatibility re-exports from `@formspec/config`.
+
+- Updated dependencies [[`ec2c6df`](https://github.com/mike-north/formspec/commit/ec2c6df45d70b71448ff44feafd93c9ffb8df4aa), [`ae616dc`](https://github.com/mike-north/formspec/commit/ae616dcd521686d80d427241036c057400df9003), [`c0ade4f`](https://github.com/mike-north/formspec/commit/c0ade4fd8472b35b436b6c43b605b4a9cfce77f1)]:
+  - @formspec/build@0.1.0-alpha.66
+  - @formspec/config@0.1.0-alpha.66
+
 ## 0.1.0-alpha.65
 
 ### Patch Changes
