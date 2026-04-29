@@ -26,7 +26,12 @@
 
 export { createServer } from "./server.js";
 export type { CreateServerOptions } from "./server.js";
-export type { DSLPolicy, FormSpecConfig, FormSpecPackageOverride } from "@formspec/config";
+export type {
+  DSLPolicy,
+  FormSpecConfig,
+  FormSpecPackageOverride,
+  FormSpecSerializationConfig,
+} from "@formspec/config";
 export type { ExtensionDefinition } from "@formspec/core";
 export type {
   CommentSourceSpan,

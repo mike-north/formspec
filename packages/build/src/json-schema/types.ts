@@ -117,19 +117,19 @@ export interface JSONSchema7 {
    * Data source key for dynamic enum fields.
    * Indicates that options should be fetched from a registered resolver.
    */
-  "x-formspec-source"?: string;
+  "x-formspec-option-source"?: string;
 
   /**
    * Field names whose values are needed to fetch dynamic enum options.
    * Used for dependent/cascading dropdowns.
    */
-  "x-formspec-params"?: readonly string[];
+  "x-formspec-option-source-params"?: readonly string[];
 
   /**
    * Schema source identifier for dynamic schema fields.
    * Indicates that the schema should be loaded dynamically at runtime.
    */
-  "x-formspec-schemaSource"?: string;
+  "x-formspec-schema-source"?: string;
 }
 
 /**

@@ -183,6 +183,7 @@ export interface FormSpecConfig {
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly serialization?: FormSpecSerializationConfig;
     readonly vendorPrefix?: string;
 }
 
@@ -191,6 +192,13 @@ export interface FormSpecPackageOverride {
     readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly metadata?: MetadataPolicyInput;
+}
+
+// @public
+export interface FormSpecSerializationConfig {
+    readonly dialectUrl?: string;
+    readonly vocabularyBaseUrl?: string;
+    readonly vocabularyUrls?: Readonly<Record<string, string>>;
 }
 
 // @public
@@ -340,6 +348,7 @@ export interface ResolvedFormSpecConfig {
     readonly enumSerialization: "enum" | "oneOf" | "smart-size";
     readonly extensions: readonly ExtensionDefinition[];
     readonly metadata: MetadataPolicyInput | undefined;
+    readonly serialization: FormSpecConfig["serialization"];
     readonly vendorPrefix: string;
 }
 

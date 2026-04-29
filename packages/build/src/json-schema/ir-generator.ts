@@ -27,9 +27,13 @@ import type {
   ObjectProperty,
 } from "@formspec/core/internals";
 import type { ResolvedMetadata } from "@formspec/core";
+import type { FormSpecSerializationConfig } from "@formspec/config";
 import type { ExtensionRegistry } from "../extensions/index.js";
 import { getDisplayName, getSerializedName } from "../metadata/index.js";
 import { assertNoSerializedNameCollisions } from "../metadata/collision-guards.js";
+import { emitKey } from "../serialization/emit-key.js";
+import type { SerializationContext } from "../serialization/output-writer.js";
+import { isWellFormedVendorPrefix } from "../serialization/vendor-key-format.js";
 
 // =============================================================================
 // OUTPUT TYPE
@@ -120,7 +124,7 @@ export interface JsonSchema2020 {
  * Using a context object rather than return-value threading keeps the
  * recursive generators simple and avoids repeated object spreading.
  */
-interface GeneratorContext {
+interface GeneratorContext extends SerializationContext {
   /** Named type schemas collected during traversal, keyed by reference name. */
   readonly defs: Record<string, JsonSchema2020>;
   /** Logical type name to serialized `$defs` key. */
@@ -158,6 +162,8 @@ export interface GenerateJsonSchemaFromIROptions {
    * @defaultValue "enum"
    */
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
+  /** Forward-looking serialization configuration for vocabulary and dialect transport. */
+  readonly serialization?: FormSpecSerializationConfig | undefined;
 }
 
 /**
@@ -183,9 +189,9 @@ function parseEnumSerialization(value: unknown): GeneratorContext["enumSerializa
 function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContext {
   const vendorPrefix = options?.vendorPrefix ?? "x-formspec";
   const enumSerialization = parseEnumSerialization(options?.enumSerialization);
-  if (!vendorPrefix.startsWith("x-")) {
+  if (!isWellFormedVendorPrefix(vendorPrefix)) {
     throw new Error(
-      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema keywords must start with "x-".`
+      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.`
     );
   }
 
@@ -195,6 +201,8 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
     typeRegistry: {},
     extensionRegistry: options?.extensionRegistry,
     vendorPrefix,
+    defaultTransport: "extension",
+    serialization: options?.serialization,
     enumSerialization,
   };
 }
@@ -599,7 +607,7 @@ function generateTypeNode(type: TypeNode, ctx: GeneratorContext): JsonSchema2020
       return generateReferenceType(type, ctx);
 
     case "dynamic":
-      return generateDynamicType(type);
+      return generateDynamicType(type, ctx);
 
     case "custom":
       return generateCustomType(type, ctx);
@@ -663,7 +671,7 @@ function generateEnumType(type: EnumTypeNode, ctx: GeneratorContext): JsonSchema
   const displayNames = buildEnumDisplayNameExtension(type);
   if (displayNames !== undefined) {
     // Emit either no extension at all or a complete map for every member.
-    schema[`${ctx.vendorPrefix}-display-names` as `x-${string}`] = displayNames;
+    schema[emitKey("displayNames", ctx)] = displayNames;
   }
   return schema;
 }
@@ -1178,18 +1186,19 @@ function getNullableUnionValueSchema(schema: JsonSchema2020): JsonSchema2020 | u
 /**
  * Generates JSON Schema for a dynamic type (runtime-resolved enum or schema).
  *
- * Dynamic enums emit `x-formspec-source` and optionally `x-formspec-params`.
- * Dynamic schemas emit `x-formspec-schemaSource` with `additionalProperties: true`
+ * Dynamic enums emit `x-<vendor>-option-source` and optionally
+ * `x-<vendor>-option-source-params`.
+ * Dynamic schemas emit `x-<vendor>-schema-source` with `additionalProperties: true`
  * since the actual schema is determined at runtime (per the JSON Schema vocabulary spec §3.2).
  */
-function generateDynamicType(type: DynamicTypeNode): JsonSchema2020 {
+function generateDynamicType(type: DynamicTypeNode, ctx: GeneratorContext): JsonSchema2020 {
   if (type.dynamicKind === "enum") {
     const schema: JsonSchema2020 = {
       type: "string",
-      "x-formspec-source": type.sourceKey,
+      [emitKey("optionSource", ctx)]: type.sourceKey,
     };
     if (type.parameterFields.length > 0) {
-      schema["x-formspec-params"] = [...type.parameterFields];
+      schema[emitKey("optionSourceParams", ctx)] = [...type.parameterFields];
     }
     return schema;
   }
@@ -1198,7 +1207,7 @@ function generateDynamicType(type: DynamicTypeNode): JsonSchema2020 {
   return {
     type: "object",
     additionalProperties: true,
-    "x-formspec-schemaSource": type.sourceKey,
+    [emitKey("schemaSource", ctx)]: type.sourceKey,
   };
 }
 
@@ -1331,7 +1340,7 @@ function applyAnnotations(
         break;
 
       case "remarks":
-        schema[`${ctx.vendorPrefix}-remarks` as `x-${string}`] = annotation.value;
+        schema[emitKey("remarks", ctx)] = annotation.value;
         break;
 
       case "defaultValue":
@@ -1345,8 +1354,7 @@ function applyAnnotations(
       case "deprecated":
         schema.deprecated = true;
         if (annotation.message !== undefined && annotation.message !== "") {
-          schema[`${ctx.vendorPrefix}-deprecation-description` as `x-${string}`] =
-            annotation.message;
+          schema[emitKey("deprecationDescription", ctx)] = annotation.message;
         }
         break;
 

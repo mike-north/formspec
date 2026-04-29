@@ -213,7 +213,7 @@ describe("extension runtime integration", () => {
     });
   });
 
-  it('rejects vendor prefixes that do not start with "x-"', () => {
+  it("rejects vendor prefixes that cannot produce well-formed extension keys", () => {
     const registry = createExtensionRegistry([moneyExtension]);
 
     expect(() =>
@@ -222,7 +222,15 @@ describe("extension runtime integration", () => {
         vendorPrefix: "stripe",
       })
     ).toThrow(
-      'Invalid vendorPrefix "stripe". Extension JSON Schema keywords must start with "x-".'
+      'Invalid vendorPrefix "stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.'
+    );
+    expect(() =>
+      generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]), {
+        extensionRegistry: registry,
+        vendorPrefix: "x-Stripe",
+      })
+    ).toThrow(
+      'Invalid vendorPrefix "x-Stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.'
     );
   });
 

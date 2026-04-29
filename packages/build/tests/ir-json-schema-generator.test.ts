@@ -1186,7 +1186,7 @@ describe("generateJsonSchemaFromIR", () => {
   // =============================================================================
 
   describe("dynamic types (§3.2)", () => {
-    it("emits x-formspec-source for dynamic enum", () => {
+    it("emits x-formspec-option-source for dynamic enum", () => {
       const ir = makeIR([
         makeField("country", {
           kind: "dynamic",
@@ -1198,10 +1198,10 @@ describe("generateJsonSchemaFromIR", () => {
       const schema = generateJsonSchemaFromIR(ir);
       const prop = (schema.properties as Record<string, unknown>)["country"];
 
-      expect(prop).toEqual({ type: "string", "x-formspec-source": "countries" });
+      expect(prop).toEqual({ type: "string", "x-formspec-option-source": "countries" });
     });
 
-    it("emits x-formspec-params when parameterFields are present", () => {
+    it("emits x-formspec-option-source-params when parameterFields are present", () => {
       const ir = makeIR([
         makeField("city", {
           kind: "dynamic",
@@ -1215,12 +1215,12 @@ describe("generateJsonSchemaFromIR", () => {
 
       expect(prop).toEqual({
         type: "string",
-        "x-formspec-source": "cities",
-        "x-formspec-params": ["country"],
+        "x-formspec-option-source": "cities",
+        "x-formspec-option-source-params": ["country"],
       });
     });
 
-    it("omits x-formspec-params when parameterFields is empty", () => {
+    it("omits x-formspec-option-source-params when parameterFields is empty", () => {
       const ir = makeIR([
         makeField("country", {
           kind: "dynamic",
@@ -1235,10 +1235,10 @@ describe("generateJsonSchemaFromIR", () => {
         unknown
       >;
 
-      expect(prop).not.toHaveProperty("x-formspec-params");
+      expect(prop).not.toHaveProperty("x-formspec-option-source-params");
     });
 
-    it("emits x-formspec-schemaSource with additionalProperties:true for dynamic schema", () => {
+    it("emits x-formspec-schema-source with additionalProperties:true for dynamic schema", () => {
       const ir = makeIR([
         makeField("payload", {
           kind: "dynamic",
@@ -1253,7 +1253,36 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop).toEqual({
         type: "object",
         additionalProperties: true,
-        "x-formspec-schemaSource": "payloadSchema",
+        "x-formspec-schema-source": "payloadSchema",
+      });
+    });
+
+    it("uses the configured vendorPrefix for dynamic source extensions", () => {
+      const ir = makeIR([
+        makeField("city", {
+          kind: "dynamic",
+          dynamicKind: "enum",
+          sourceKey: "cities",
+          parameterFields: ["country"],
+        }),
+        makeField("payload", {
+          kind: "dynamic",
+          dynamicKind: "schema",
+          sourceKey: "payloadSchema",
+          parameterFields: [],
+        }),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir, { vendorPrefix: "x-acme" });
+
+      expect(schema.properties?.["city"]).toEqual({
+        type: "string",
+        "x-acme-option-source": "cities",
+        "x-acme-option-source-params": ["country"],
+      });
+      expect(schema.properties?.["payload"]).toEqual({
+        type: "object",
+        additionalProperties: true,
+        "x-acme-schema-source": "payloadSchema",
       });
     });
   });

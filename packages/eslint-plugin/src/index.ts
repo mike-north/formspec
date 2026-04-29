@@ -32,7 +32,12 @@ export type {
 } from "@formspec/core";
 import packageJson from "../package.json" with { type: "json" };
 import type { FormSpecConfig } from "@formspec/config";
-export type { DSLPolicy, FormSpecConfig, FormSpecPackageOverride } from "@formspec/config";
+export type {
+  DSLPolicy,
+  FormSpecConfig,
+  FormSpecPackageOverride,
+  FormSpecSerializationConfig,
+} from "@formspec/config";
 import { createExtensionRegistry } from "@formspec/build";
 import {
   noUnknownTags,

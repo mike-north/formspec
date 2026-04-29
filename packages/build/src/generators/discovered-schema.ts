@@ -394,6 +394,7 @@ function toStandaloneJsonSchema(
   const schema = generateJsonSchemaFromIR(ir, {
     extensionRegistry: resolved?.extensionRegistry,
     enumSerialization: resolved?.enumSerialization,
+    serialization: resolved?.serialization,
     vendorPrefix: resolved?.vendorPrefix,
   });
 
@@ -429,6 +430,7 @@ function generateSchemasFromAnalysis(
         extensionRegistry: resolved?.extensionRegistry,
         enumSerialization: resolved?.enumSerialization,
         metadata: resolved?.metadata,
+        serialization: resolved?.serialization,
         vendorPrefix: resolved?.vendorPrefix,
       }
     ),
@@ -696,7 +698,12 @@ export function resolveDeclarationMetadata(
 
   const metadata = analysis.resolvedMetadata;
 
-  enforceRequiredMetadata(metadata, analysis.declarationKind, analysis.logicalName, resolved.metadata);
+  enforceRequiredMetadata(
+    metadata,
+    analysis.declarationKind,
+    analysis.logicalName,
+    resolved.metadata
+  );
   return metadata;
 }
 

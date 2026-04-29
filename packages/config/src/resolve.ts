@@ -23,6 +23,8 @@ export interface ResolvedFormSpecConfig {
   readonly vendorPrefix: string;
   /** Resolved enum serialization mode. */
   readonly enumSerialization: "enum" | "oneOf" | "smart-size";
+  /** Resolved serialization settings for vocabulary and dialect emission. */
+  readonly serialization: FormSpecConfig["serialization"];
 }
 
 /**
@@ -53,6 +55,7 @@ export function resolveConfigForFile(
     metadata: merged.metadata,
     vendorPrefix: merged.vendorPrefix ?? "x-formspec",
     enumSerialization: merged.enumSerialization ?? "enum",
+    serialization: merged.serialization,
   };
 }
 

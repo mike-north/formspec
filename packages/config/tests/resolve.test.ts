@@ -46,6 +46,19 @@ describe("resolveConfigForFile", () => {
     expect(resolved.vendorPrefix).toBe("x-formspec");
   });
 
+  it("carries the root serialization block through resolution", () => {
+    const config: FormSpecConfig = {
+      serialization: {
+        vocabularyBaseUrl: "https://example.com/schema/v1",
+        dialectUrl: "https://example.com/schema/v1/dialect.json",
+      },
+    };
+
+    const resolved = resolveConfigForFile(config, `${CONFIG_DIR}/src/forms.ts`, CONFIG_DIR);
+
+    expect(resolved.serialization).toEqual(config.serialization);
+  });
+
   it("applies the first matching package override's enumSerialization", () => {
     const config: FormSpecConfig = {
       enumSerialization: "enum",

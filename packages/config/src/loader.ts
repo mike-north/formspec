@@ -11,6 +11,8 @@ import { defineDSLPolicy, mergeWithDefaults } from "./defaults.js";
 import { nodeFileSystem, type FileSystem } from "./file-system.js";
 export type { FileSystem } from "./file-system.js";
 
+const VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+$/;
+
 /**
  * Config file names to search for, in priority order.
  */
@@ -169,14 +171,36 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
   }
   if (
     config.vendorPrefix !== undefined &&
-    (typeof config.vendorPrefix !== "string" || !config.vendorPrefix.startsWith("x-"))
+    (typeof config.vendorPrefix !== "string" || !VENDOR_PREFIX_PATTERN.test(config.vendorPrefix))
   ) {
     throw new Error(
-      `Invalid config at ${filePath}: "vendorPrefix" must be a string starting with "x-", got ${JSON.stringify(config.vendorPrefix)}`
+      `Invalid config at ${filePath}: "vendorPrefix" must match /^x-[a-z0-9]+$/, got ${JSON.stringify(config.vendorPrefix)}`
     );
   }
   validateEnumSerializationValue(config.enumSerialization, "enumSerialization", filePath);
+  validateSerializationConfig(config.serialization, "serialization", filePath);
   validatePackageOverrides(config.packages, filePath);
+}
+
+function validateSerializationConfig(value: unknown, label: string, filePath: string): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!isStringKeyedRecord(value)) {
+    throw new Error(
+      `Invalid config at ${filePath}: "${label}" must be an object, got ${JSON.stringify(value)}`
+    );
+  }
+
+  validateOptionalString(value["vocabularyBaseUrl"], `${label}.vocabularyBaseUrl`, filePath);
+  validateOptionalString(value["dialectUrl"], `${label}.dialectUrl`, filePath);
+
+  const vocabularyUrls = value["vocabularyUrls"];
+  if (vocabularyUrls !== undefined && !isStringRecordOfStrings(vocabularyUrls)) {
+    throw new Error(
+      `Invalid config at ${filePath}: "${label}.vocabularyUrls" must be an object mapping vocabulary identifiers to URLs, got ${JSON.stringify(vocabularyUrls)}`
+    );
+  }
 }
 
 function validatePackageOverrides(packages: unknown, filePath: string): void {
@@ -203,6 +227,19 @@ function validatePackageOverrides(packages: unknown, filePath: string): void {
       filePath
     );
   }
+}
+
+function validateOptionalString(value: unknown, label: string, filePath: string): void {
+  if (value !== undefined && typeof value !== "string") {
+    throw new Error(
+      `Invalid config at ${filePath}: "${label}" must be a string, got ${JSON.stringify(value)}`
+    );
+  }
+}
+
+function isStringRecordOfStrings(value: unknown): value is Record<string, string> {
+  if (!isStringKeyedRecord(value)) return false;
+  return Object.values(value).every((entry) => typeof entry === "string");
 }
 
 /**

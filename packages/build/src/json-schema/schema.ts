@@ -108,9 +108,9 @@ export const jsonSchema7Schema: z.ZodType<JSONSchema7> = z.lazy(() =>
       default: z.unknown().optional(),
 
       // FormSpec extensions
-      "x-formspec-source": z.string().optional(),
-      "x-formspec-params": z.array(z.string()).readonly().optional(),
-      "x-formspec-schemaSource": z.string().optional(),
+      "x-formspec-option-source": z.string().optional(),
+      "x-formspec-option-source-params": z.array(z.string()).readonly().optional(),
+      "x-formspec-schema-source": z.string().optional(),
     })
     // passthrough preserves arbitrary x-formspec-* extension properties
     // added by custom constraint tags without causing validation failures

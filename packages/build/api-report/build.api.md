@@ -210,6 +210,7 @@ export interface FormSpecConfig {
     // Warning: (ae-forgotten-export) The symbol "MetadataPolicyInput_2" needs to be exported by the entry point index.d.ts
     readonly metadata?: MetadataPolicyInput_2;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly serialization?: FormSpecSerializationConfig;
     readonly vendorPrefix?: string;
 }
 
@@ -222,6 +223,13 @@ export interface FormSpecPackageOverride {
 
 // @public
 export type FormSpecSchemaExtensions = Record<`x-formspec-${string}`, unknown>;
+
+// @public
+export interface FormSpecSerializationConfig {
+    readonly dialectUrl?: string;
+    readonly vocabularyBaseUrl?: string;
+    readonly vocabularyUrls?: Readonly<Record<string, string>>;
+}
 
 // @public
 export interface GenerateFromClassOptions extends StaticSchemaGenerationOptions {
@@ -431,9 +439,9 @@ export interface JsonSchema2020 {
 
 // @public
 export interface JSONSchema7 {
-    "x-formspec-params"?: readonly string[];
-    "x-formspec-schemaSource"?: string;
-    "x-formspec-source"?: string;
+    "x-formspec-option-source"?: string;
+    "x-formspec-option-source-params"?: readonly string[];
+    "x-formspec-schema-source"?: string;
     $id?: string;
     $ref?: string;
     $schema?: string;

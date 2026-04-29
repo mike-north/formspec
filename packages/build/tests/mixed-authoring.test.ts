@@ -43,8 +43,8 @@ describe("buildMixedAuthoringSchemas", () => {
         city: {
           type: "string",
           title: "City",
-          "x-formspec-source": "cities",
-          "x-formspec-params": ["country"],
+          "x-formspec-option-source": "cities",
+          "x-formspec-option-source-params": ["country"],
         },
         postalCode: { type: "string", title: "Postal Code" },
       },
@@ -58,6 +58,22 @@ describe("buildMixedAuthoringSchemas", () => {
         { type: "Control", scope: "#/properties/city", label: "City" },
         { type: "Control", scope: "#/properties/postalCode", label: "Postal Code" },
       ],
+    });
+  });
+
+  it("resolves vendorPrefix from config for overlay-emitted dynamic keys", () => {
+    const result = buildMixedAuthoringSchemas({
+      filePath: shippingAddressFixture,
+      typeName: "ShippingAddressModel",
+      overlays: shippingAddressOverlays,
+      config: { vendorPrefix: "x-acme" },
+    });
+
+    expect(result.jsonSchema.properties?.["city"]).toEqual({
+      type: "string",
+      title: "City",
+      "x-acme-option-source": "cities",
+      "x-acme-option-source-params": ["country"],
     });
   });
 

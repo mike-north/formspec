@@ -16,7 +16,7 @@ import type { UISchema } from "../ui-schema/types.js";
 import { canonicalizeChainDSL, canonicalizeTSDoc } from "../canonicalize/index.js";
 import { analyzeNamedTypeToIR } from "../analyzer/program.js";
 import type { IRClassAnalysis } from "../analyzer/class-analyzer.js";
-import type { StaticSchemaGenerationOptions } from "./class-schema.js";
+import { resolveStaticOptions, type StaticSchemaGenerationOptions } from "./class-schema.js";
 import { mergeResolvedMetadata } from "../metadata/index.js";
 
 /**
@@ -63,26 +63,23 @@ export function buildMixedAuthoringSchemas(
   options: BuildMixedAuthoringSchemasOptions
 ): MixedAuthoringSchemas {
   const { filePath, typeName, overlays, ...schemaOptions } = options;
+  const resolved = resolveStaticOptions(schemaOptions);
   const analysis = analyzeNamedTypeToIR(
     filePath,
     typeName,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    schemaOptions.extensionRegistry,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    schemaOptions.metadata,
+    resolved.extensionRegistry,
+    resolved.metadata,
     schemaOptions.discriminator
   );
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-  const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays, schemaOptions.metadata);
+  const composedAnalysis = composeAnalysisWithOverlays(analysis, overlays, resolved.metadata);
   const ir = canonicalizeTSDoc(
     composedAnalysis,
     { file: filePath },
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    schemaOptions.metadata !== undefined ? { metadata: schemaOptions.metadata } : undefined
+    resolved.metadata !== undefined ? { metadata: resolved.metadata } : undefined
   );
 
   return {
-    jsonSchema: generateJsonSchemaFromIR(ir, schemaOptions),
+    jsonSchema: generateJsonSchemaFromIR(ir, resolved),
     uiSchema: generateUiSchemaFromIR(ir),
   };
 }

@@ -328,6 +328,23 @@ export interface ValidationResult {
 }
 
 /**
+ * Forward-looking JSON Schema serialization settings.
+ *
+ * These values are currently carried through configuration for future
+ * vocabulary and dialect emission.
+ *
+ * @public
+ */
+export interface FormSpecSerializationConfig {
+  /** Base URL used to construct default FormSpec vocabulary URLs. */
+  readonly vocabularyBaseUrl?: string;
+  /** Per-vocabulary URL overrides keyed by vocabulary identifier. */
+  readonly vocabularyUrls?: Readonly<Record<string, string>>;
+  /** Explicit FormSpec dialect URL override. */
+  readonly dialectUrl?: string;
+}
+
+/**
  * Top-level FormSpec configuration structure.
  *
  * @public
@@ -366,6 +383,12 @@ export interface FormSpecConfig {
    * @defaultValue "enum"
    */
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
+
+  /**
+   * JSON Schema serialization settings for vocabulary and dialect emission.
+   * PR-1 stores and resolves this block; PR-2 consumes it.
+   */
+  readonly serialization?: FormSpecSerializationConfig;
 
   /**
    * Per-package configuration overrides for monorepos.

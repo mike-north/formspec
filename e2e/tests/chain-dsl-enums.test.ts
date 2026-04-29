@@ -1,8 +1,8 @@
 /**
  * @see 003-json-schema-vocabulary.md — §2.3 enum variants: plain string → flat enum,
  *   per-member metadata → flat enum plus display-name extension by default, or oneOf[{const, title}] when requested
- * @see 003-json-schema-vocabulary.md — §3.2 dynamic sources: x-formspec-source,
- *   x-formspec-params (annotation-only, applies to {type: "string"})
+ * @see 003-json-schema-vocabulary.md — §3.2 dynamic sources: x-formspec-option-source,
+ *   x-formspec-option-source-params (annotation-only, applies to {type: "string"})
  */
 import { describe, it, expect } from "vitest";
 import { buildFormSchemas } from "@formspec/build";
@@ -62,23 +62,26 @@ describe("Chain DSL Enums", () => {
       expect(prop["type"]).toBeUndefined();
     });
 
-    // 003 §3.2: "x-formspec-source is a string value = data source key,
+    // 003 §3.2: "x-formspec-option-source is a string value = data source key,
     // applies to {type: 'string'}"
-    it("country: dynamic enum has x-formspec-source", () => {
+    it("country: dynamic enum has x-formspec-option-source", () => {
       const prop = properties["country"];
       expect(prop["type"]).toBe("string");
-      expect(prop["x-formspec-source"]).toBe("countries");
+      expect(prop["x-formspec-option-source"]).toBe("countries");
+      expect(prop["x-formspec-source"]).toBeUndefined();
       // Should NOT have static enum values
       expect(prop["enum"]).toBeUndefined();
       expect(prop["oneOf"]).toBeUndefined();
     });
 
-    // 003 §3.2: "x-formspec-params is a string array, only on schemas with x-formspec-source"
-    it("city: dynamic enum has x-formspec-source and x-formspec-params", () => {
+    // 003 §3.2: "x-formspec-option-source-params is a string array, only on schemas with x-formspec-option-source"
+    it("city: dynamic enum has x-formspec-option-source and x-formspec-option-source-params", () => {
       const prop = properties["city"];
       expect(prop["type"]).toBe("string");
-      expect(prop["x-formspec-source"]).toBe("cities");
-      expect(prop["x-formspec-params"]).toEqual(["country"]);
+      expect(prop["x-formspec-option-source"]).toBe("cities");
+      expect(prop["x-formspec-option-source-params"]).toEqual(["country"]);
+      expect(prop["x-formspec-source"]).toBeUndefined();
+      expect(prop["x-formspec-params"]).toBeUndefined();
     });
 
     it("labeledPriority is required, others are optional", () => {
