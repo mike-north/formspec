@@ -19,7 +19,9 @@ const mocks = vi.hoisted(() => {
     onDidChangeContent: vi.fn(),
     onDidClose: vi.fn(),
   };
-  const textDocuments = vi.fn(() => documents);
+  const textDocuments = vi.fn(function TextDocuments() {
+    return documents;
+  });
 
   return {
     connection,

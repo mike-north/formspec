@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { formspecWithValidation, field, group, when, is, validateForm } from "../src/index.js";
 
 describe("validateForm", () => {
@@ -178,8 +178,8 @@ describe("validateForm", () => {
 });
 
 describe("formspecWithValidation", () => {
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleWarnSpy: MockInstance<typeof console.warn>;
+  let consoleErrorSpy: MockInstance<typeof console.error>;
 
   beforeEach(() => {
     consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);

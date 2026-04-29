@@ -9,13 +9,8 @@ export default defineConfig({
     // (cli-subprocess.test.ts alone takes ~67s). With the default parallelism
     // on GitHub runners, the main process gets saturated with onTaskUpdate RPC
     // calls from many workers at once and birpc's 60s call timeout can fire.
-    // Capping maxForks relieves main-process RPC pressure.
+    // Capping workers relieves main-process RPC pressure.
     pool: "forks",
-    poolOptions: {
-      forks: {
-        maxForks: 2,
-        minForks: 1,
-      },
-    },
+    maxWorkers: 2,
   },
 });

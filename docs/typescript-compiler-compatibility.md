@@ -11,7 +11,7 @@ The TS 7 job deliberately uses two TypeScript surfaces:
 - `@typescript/native-preview@beta` supplies the `tsgo` binary.
 - `@typescript/typescript6` supplies the JavaScript compiler API currently used by FormSpec packages and tooling.
 
-Keep this distinction intact. `pnpm run build`, `pnpm run test`, `tsup`, lint, and API Extractor still run through the TS 6 JavaScript API in that job. The direct native-preview checks are the package-scoped `pnpm exec tsgo --noEmit --skipLibCheck` check and the e2e `pnpm exec tsgo --noEmit --skipLibCheck -p e2e/tsconfig.tsgo.json` check, both wrapped by `scripts/tsgo-ci.mts`.
+Keep this distinction intact. `pnpm run build`, `pnpm run test`, `tsup`, lint, and API Extractor still run through the TS 6 JavaScript API in that job. The direct native-preview checks are the package-scoped `pnpm exec tsgo --noEmit` check and the e2e `pnpm exec tsgo --noEmit -p e2e/tsconfig.tsgo.json` check, both wrapped by `scripts/tsgo-ci.mts`.
 
 ## Key Files
 
@@ -65,7 +65,7 @@ Map failures to the step that owns them:
 - `Expose TypeScript 6 compatibility bins and server subpaths`: the `@typescript/typescript6` package layout changed, `tsc6` is missing, or tsserver subpaths moved.
 - `Assert TypeScript API alias resolution`: a workspace with a direct `typescript` dependency did not resolve to `@typescript/typescript6`. This often means a new package was added outside the discovery rules, or an override no longer applies to that package.
 - `Build` or `Run tests`: the TS 6 JavaScript API alias is not behaving like the supported compiler API. This is not a `tsgo` native check failure.
-- `Typecheck with tsgo`: the native-preview compiler rejected either the scoped package source/test surface or the dedicated e2e tsgo config. The current `skipLibCheck` workaround is tracked in [#469](https://github.com/mike-north/formspec/issues/469).
+- `Typecheck with tsgo`: the native-preview compiler rejected either the scoped package source/test surface or the dedicated e2e tsgo config. If the `@types/chai` / Vitest `containSubset` duplicate returns, reopen the investigation tracked in [#469](https://github.com/mike-north/formspec/issues/469).
 
 When reproducing locally, use a temporary copy so `npm pkg set` and `pnpm install --no-frozen-lockfile` do not dirty the PR worktree. Run the workflow commands in the same order as CI, including `pnpm exec tsx scripts/tsgo-ci.mts prepare-compat`, `assert-alias`, and `typecheck`.
 
