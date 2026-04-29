@@ -210,6 +210,7 @@ const MESSAGE_EQUIVALENCE_FIXTURES: readonly ParityFixture[] = [
 ];
 
 let tempRoot: string;
+let eslint: ESLint;
 
 beforeAll(async () => {
   tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-nway-parity-"));
@@ -229,6 +230,32 @@ beforeAll(async () => {
       2
     )
   );
+
+  const overrideConfig = [
+    {
+      files: ["**/*.ts"],
+      languageOptions: {
+        ecmaVersion: "latest",
+        parser: tsParser,
+        parserOptions: {
+          projectService: true,
+          tsconfigRootDir: tempRoot,
+        },
+        sourceType: "module",
+      },
+      plugins: {
+        formspec: formspecPlugin as unknown as ESLintNamespace.Plugin,
+      },
+      rules: {
+        "formspec/type-compatibility/tag-type-check": "error",
+      },
+    },
+  ] satisfies Linter.Config[];
+  eslint = new ESLint({
+    cwd: tempRoot,
+    overrideConfigFile: true,
+    overrideConfig,
+  });
 });
 
 afterAll(async () => {
@@ -334,11 +361,13 @@ describe("TYPE_MISMATCH message equivalence", () => {
 async function runAllConsumers(
   fixtureFile: FixtureFile
 ): Promise<readonly DiagnosticConsumerResult[]> {
+  const program = createProgram(fixtureFile.filePath);
+
   return [
     runBuildConsumer(fixtureFile),
-    runSnapshotConsumer(fixtureFile),
+    runSnapshotConsumer(fixtureFile, program),
     await runEslintConsumer(fixtureFile),
-    runLanguageServerConsumer(fixtureFile),
+    runLanguageServerConsumer(fixtureFile, program),
   ];
 }
 
@@ -355,8 +384,10 @@ function runBuildConsumer(fixtureFile: FixtureFile): DiagnosticConsumerResult {
   return { consumer: "build", diagnostics: sortDiagnostics(diagnostics) };
 }
 
-function runSnapshotConsumer(fixtureFile: FixtureFile): DiagnosticConsumerResult {
-  const program = createProgram(fixtureFile.filePath);
+function runSnapshotConsumer(
+  fixtureFile: FixtureFile,
+  program: ts.Program
+): DiagnosticConsumerResult {
   const sourceFile = program.getSourceFile(fixtureFile.filePath);
   if (!sourceFile) {
     throw new Error(`Unable to load fixture source file ${fixtureFile.filePath}`);
@@ -374,32 +405,7 @@ function runSnapshotConsumer(fixtureFile: FixtureFile): DiagnosticConsumerResult
 
 async function runEslintConsumer(fixtureFile: FixtureFile): Promise<DiagnosticConsumerResult> {
   // The ESLint consumer intentionally enables only tag-type-check; other ESLint
-  // rules have separate ownership and are documented in SKIPPED_SURFACES.
-  const overrideConfig = [
-    {
-      files: ["**/*.ts"],
-      languageOptions: {
-        ecmaVersion: "latest",
-        parser: tsParser,
-        parserOptions: {
-          projectService: true,
-          tsconfigRootDir: tempRoot,
-        },
-        sourceType: "module",
-      },
-      plugins: {
-        formspec: formspecPlugin as unknown as ESLintNamespace.Plugin,
-      },
-      rules: {
-        "formspec/type-compatibility/tag-type-check": "error",
-      },
-    },
-  ] satisfies Linter.Config[];
-  const eslint = new ESLint({
-    cwd: tempRoot,
-    overrideConfigFile: true,
-    overrideConfig,
-  });
+  // rules have separate ownership and are documented in NON_APPLICABLE_SURFACES.
   const [result] = await eslint.lintFiles([path.basename(fixtureFile.filePath)]);
   if (result === undefined) {
     throw new Error(`Expected ESLint result for ${fixtureFile.filePath}`);
@@ -427,8 +433,10 @@ async function runEslintConsumer(fixtureFile: FixtureFile): Promise<DiagnosticCo
   return { consumer: "eslint", diagnostics: sortDiagnostics(diagnostics) };
 }
 
-function runLanguageServerConsumer(fixtureFile: FixtureFile): DiagnosticConsumerResult {
-  const program = createProgram(fixtureFile.filePath);
+function runLanguageServerConsumer(
+  fixtureFile: FixtureFile,
+  program: ts.Program
+): DiagnosticConsumerResult {
   const service = new FormSpecSemanticService({
     workspaceRoot: tempRoot,
     typescriptVersion: ts.version,
