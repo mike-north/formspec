@@ -1,6 +1,15 @@
 ---
-"@formspec/core": minor
+"@formspec/analysis": patch
 "@formspec/build": patch
+"@formspec/cli": patch
+"@formspec/config": patch
+"@formspec/core": minor
+"@formspec/dsl": patch
+"@formspec/eslint-plugin": patch
+"@formspec/language-server": patch
+"@formspec/runtime": patch
+"@formspec/ts-plugin": patch
+"formspec": patch
 ---
 
 Reconcile the Canonical IR object and enum-member shapes with spec 001 decisions for issue #417 PR-A.
