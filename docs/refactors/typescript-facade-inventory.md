@@ -2,7 +2,7 @@
 
 - Inventory date: 2026-04-29
 - Scanned commit: `122228d8db31c858543d8af6b8098904e5aa5f72`
-- Scope: `packages/*/src/**/*.ts` direct imports from `"typescript"`
+- Scope: `packages/*/src/**/*.{ts,tsx}` direct imports from `"typescript"`
 - Total direct import sites: 28 source files
 - Per-package counts: `@formspec/analysis` 9, `@formspec/build` 12, `@formspec/cli` 1, `@formspec/eslint-plugin` 3, `@formspec/ts-plugin` 3
 
