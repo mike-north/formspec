@@ -511,26 +511,27 @@ Unknown format values are accepted (with an info diagnostic D4) for extensibilit
 
 ##### Inheritance through `extends` heritage
 
-Type-level `@format` flows from a base declaration to a derived class or interface along `extends` clauses. This lets authors declare a semantic format once on a domain base and have every derived narrowing type carry it through without repetition.
+Type-level annotations that opt in to inheritance flow from a base declaration to a derived class or interface along `extends` clauses. This lets authors declare a semantic format or extension annotation once on a domain base and have every derived narrowing type carry it through without repetition.
 
-**Allow-list:** Only a curated set of type-level annotations inherit through heritage. The current membership is `{ @format }`. Other type-level annotations — `@remarks`, `@deprecated`, `@displayName`, `@placeholder`, `@defaultValue`, `@description` (via summary text) — do **not** inherit through `extends`. The allow-list is intentionally narrow; expanding it is a deliberate spec decision, not a silent side effect of touching the walker.
+**Allow-list:** Only annotations whose registration opts in to type-level heritage inheritance participate. The only inheriting built-in annotation is `@format`. Extension-defined custom annotations may opt in by setting `inheritFromBase: "local-wins"` on their `defineAnnotation()` registration. Other built-in type-level annotations — `@remarks`, `@deprecated`, `@displayName`, `@placeholder`, `@defaultValue`, `@description` (via summary text) — do **not** inherit through `extends`.
 
 **Scope — `extends` only:**
 
-- Interface `extends` interface / class `extends` class: `@format` on the base flows to the derived type's `$defs` entry.
-- Interface `extends` type-alias (whose resolved type is object-shaped or an intersection): `@format` on the type alias flows to the derived interface's `$defs` entry. The walker follows the alias's RHS when it is a type reference, so aliases-of-interfaces and multi-level alias chains are covered.
+- Interface `extends` interface / class `extends` class: inheritable annotations on the base flow to the derived type's `$defs` entry.
+- Interface `extends` type-alias (whose resolved type is object-shaped or an intersection): inheritable annotations on the type alias flow to the derived interface's `$defs` entry. The walker follows the alias's RHS when it is a type reference, so aliases-of-interfaces and multi-level alias chains are covered.
+- Type alias RHS chains: inheritable annotations flow through `type Derived = Base` chains when the build pipeline analyzes a named alias entry point.
 - Class `implements` interface: annotations do **not** inherit. `implements` is a structural-conformance assertion, not a semantic-adoption declaration, and silently merging annotations across unrelated nominal types would be misleading.
 
 **Precedence — "nearest annotation by BFS wins, ties broken by declaration order":**
 
-The analyzer walks the heritage graph breadth-first from the derived type. The walker maintains a shared `seen` set, so each declaration is visited at most once. As annotations are found, the kinds that still need values are tracked in a `needed` set; once a kind is filled, the walker never overwrites it later in the walk.
+The analyzer walks the heritage graph breadth-first from the derived type. The walker maintains a shared `seen` set, so each declaration is visited at most once. As annotations are found, the annotation identities that still need values are tracked in a `needed` set; once an identity is filled, the walker never overwrites it later in the walk. Built-ins use their annotation kind as the identity, while custom annotations use their extension-qualified annotation identity so one custom annotation never suppresses another.
 
 Consequences:
 
 1. A shallower annotation always beats a deeper one. If a directly-listed base provides `@format`, deeper ancestors reachable through an earlier-listed but un-annotated base do **not** overwrite it.
 2. At equal depth, declaration order in the `extends` clause is the tie-breaker — the first-listed base's `@format` wins.
-3. A local `@format` on the derived type always wins — inheritance only fills in missing kinds on the derived declaration itself.
-4. A local `@format` with an empty or whitespace-only value is **not** an override; the base-declared value still flows through. This lets authors retain the tag's location (for intent signaling) without dropping the inherited value.
+3. A local annotation with the same identity on the derived type always wins — inheritance only fills in missing identities on the derived declaration itself.
+4. A local inheritable annotation with an empty or whitespace-only string value is **not** an override; the base-declared value still flows through. This lets authors retain the tag's location (for intent signaling) without dropping the inherited value.
 
 **Worked example (asymmetric diamond):**
 
@@ -549,8 +550,8 @@ interface D extends B, C {}
 
 **Known limitations:**
 
-- The inheritance walker targets the case where the _derived_ declaration is a class or interface. When the _derived_ declaration is itself a type alias — e.g. `type Derived = Base` — the walker never runs and `@format` on the base does not propagate to a `$defs` entry for `Derived`. Tracked in [issue #374](https://github.com/mike-north/formspec/issues/374).
-- Only `@format` currently participates. Proposals to broaden the allow-list should address override semantics, conflict resolution, and emission coverage for each new kind (see [issue #380](https://github.com/mike-north/formspec/issues/380)).
+- Among built-ins, only `@format` currently participates. Extension custom annotations participate only when their registration sets `inheritFromBase: "local-wins"`. This is semantic inheritance, not schema serialization; output behavior remains controlled separately.
+- Property-level annotation inheritance and metadata-slot inheritance are out of scope for this type-level heritage rule.
 
 #### `@defaultValue`
 

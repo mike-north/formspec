@@ -2,8 +2,8 @@
  * Heritage-walk helpers for type-level annotation inheritance.
  *
  * Walks `extends` clauses and type-alias RHS chains breadth-first to collect
- * inheritable annotation kinds (currently `@format` per issue #367) that the
- * derived declaration does not declare locally.
+ * inheritable annotation identities that the derived declaration does not
+ * declare locally.
  *
  * Lives in `@formspec/analysis` so the same walk is reusable by IDE surfaces
  * (hover, diagnostics) without depending on `@formspec/build`. The walk
@@ -19,18 +19,11 @@
 
 import * as ts from "typescript";
 import type { AnnotationNode } from "@formspec/core/internals";
+import { getInheritableAnnotationKeys } from "./tag-registry.js";
 
-/**
- * Type-level annotation kinds that should be inherited from base types onto
- * derived types when the derived type does not declare its own value.
- *
- * Scope (issue #367): only `@format` is inherited today. Other type-level
- * annotations (e.g., `@description`, `@remarks`) are intentionally not
- * inherited here to keep the change surface-narrow; broader inheritance is
- * tracked in issue #371.
- */
-const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationKind"]> =
-  new Set<AnnotationNode["annotationKind"]>(["format"]);
+export interface HeritageAnnotationOptions {
+  readonly inheritableAnnotationKeys?: ReadonlySet<string>;
+}
 
 /**
  * Returns the string payload carried by an inheritable annotation, or
@@ -41,6 +34,7 @@ const INHERITABLE_TYPE_ANNOTATION_KINDS: ReadonlySet<AnnotationNode["annotationK
  */
 function getInheritableAnnotationStringValue(annotation: AnnotationNode): string | undefined {
   if (annotation.annotationKind === "format") return annotation.value;
+  if ("value" in annotation && typeof annotation.value === "string") return annotation.value;
   return undefined;
 }
 
@@ -88,15 +82,16 @@ export type HeritageAnnotationExtractor = (
  * The walk is breadth-first across reachable bases. A seen-set on
  * declarations prevents infinite loops on pathological self-referential
  * chains. Annotations already present on the derived type (matched by
- * `annotationKind`) always win — only missing kinds are filled in from the
- * base chain. When multiple bases provide the same kind, the first found
- * wins (earliest in the `extends` clause list, nearest ancestor first).
+ * annotation identity) always win — only missing identities are filled in
+ * from the base chain. When multiple bases provide the same identity, the
+ * first found wins (earliest in the `extends` clause list, nearest ancestor
+ * first).
  *
  * @param derivedDecl - The class / interface / type alias whose effective
  *   annotations are being computed.
  * @param existingAnnotations - Annotations already collected from
  *   `derivedDecl` itself. Local non-empty values suppress inheritance for
- *   their kind.
+ *   their annotation identity.
  * @param checker - TypeScript checker, used to resolve symbols across
  *   alias and import boundaries.
  * @param extractAnnotations - Callback that returns annotation nodes for a
@@ -108,17 +103,25 @@ export function collectInheritedTypeAnnotations(
   derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   existingAnnotations: readonly AnnotationNode[],
   checker: ts.TypeChecker,
-  extractAnnotations: HeritageAnnotationExtractor
+  extractAnnotations: HeritageAnnotationExtractor,
+  options: HeritageAnnotationOptions = {}
 ): readonly AnnotationNode[] {
+  const inheritableAnnotationKeys =
+    options.inheritableAnnotationKeys ?? getInheritableAnnotationKeys();
   // A local annotation only suppresses heritage inheritance when it carries a
   // meaningful payload. Empty/whitespace-only `@format` must fall through to
   // the base-declared value. See issue #367 review discussion.
-  const existingKinds = new Set<AnnotationNode["annotationKind"]>(
-    existingAnnotations.filter(isOverridingInheritableAnnotation).map((a) => a.annotationKind)
+  const existingKeys = new Set<string>(
+    existingAnnotations
+      .filter((annotation) =>
+        inheritableAnnotationKeys.has(getAnnotationInheritanceKey(annotation))
+      )
+      .filter(isOverridingInheritableAnnotation)
+      .map(getAnnotationInheritanceKey)
   );
-  const needed = new Set<AnnotationNode["annotationKind"]>();
-  for (const kind of INHERITABLE_TYPE_ANNOTATION_KINDS) {
-    if (!existingKinds.has(kind)) needed.add(kind);
+  const needed = new Set<string>();
+  for (const key of inheritableAnnotationKeys) {
+    if (!existingKeys.has(key)) needed.add(key);
   }
   if (needed.size === 0) return [];
 
@@ -225,12 +228,13 @@ export function collectInheritedTypeAnnotations(
     const baseFile = baseDecl.getSourceFile().fileName;
     const baseAnnotations = extractAnnotations(baseDecl, baseFile);
     for (const annotation of baseAnnotations) {
-      if (!needed.has(annotation.annotationKind)) continue;
+      const annotationKey = getAnnotationInheritanceKey(annotation);
+      if (!needed.has(annotationKey)) continue;
       // Skip empty-payload annotations on the base as well — they cannot
       // meaningfully fill an inherited slot.
       if (!isOverridingInheritableAnnotation(annotation)) continue;
       inherited.push(annotation);
-      needed.delete(annotation.annotationKind);
+      needed.delete(annotationKey);
     }
     // Continue up the chain if we still need kinds.
     if (needed.size > 0) {
@@ -241,10 +245,16 @@ export function collectInheritedTypeAnnotations(
   return inherited;
 }
 
+function getAnnotationInheritanceKey(annotation: AnnotationNode): string {
+  return annotation.annotationKind === "custom"
+    ? `custom:${annotation.annotationId}`
+    : annotation.annotationKind;
+}
+
 /**
  * Extracts type-level annotations from a named declaration (class, interface,
  * or type alias), applying inheritance where applicable (issues #367, #374,
- * #376). Any inheritable annotation kind absent from the local declaration
+ * #376). Any inheritable annotation identity absent from the local declaration
  * is filled in by walking `extends` clauses and type-alias RHS chains via
  * {@link collectInheritedTypeAnnotations}.
  *
@@ -254,19 +264,26 @@ export function extractNamedTypeAnnotations(
   namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
   file: string,
-  extractAnnotations: HeritageAnnotationExtractor
+  extractAnnotations: HeritageAnnotationExtractor,
+  options: HeritageAnnotationOptions = {}
 ): readonly AnnotationNode[] {
   const local = extractAnnotations(namedDecl, file);
-  const inherited = collectInheritedTypeAnnotations(namedDecl, local, checker, extractAnnotations);
+  const inherited = collectInheritedTypeAnnotations(
+    namedDecl,
+    local,
+    checker,
+    extractAnnotations,
+    options
+  );
   if (inherited.length === 0) return [...local];
   return [...local, ...inherited];
 }
 
 /**
  * Returns `true` when `namedDecl` carries an inheritable type-level
- * annotation (currently only `@format`), either locally with a meaningful
- * payload or reachable through the alias / heritage chain. Used by build to
- * decide whether a pass-through alias warrants its own `$defs` entry
+ * annotation identity, either locally with a meaningful payload or reachable
+ * through the alias / heritage chain. Used by build to decide whether a
+ * pass-through alias warrants its own `$defs` entry
  * (issue #374) or should collapse to the base (issue #364 sibling-keyword
  * composition).
  *
@@ -276,11 +293,14 @@ export function hasInheritableTypeAnnotation(
   namedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   checker: ts.TypeChecker,
   file: string,
-  extractAnnotations: HeritageAnnotationExtractor
+  extractAnnotations: HeritageAnnotationExtractor,
+  options: HeritageAnnotationOptions = {}
 ): boolean {
-  const all = extractNamedTypeAnnotations(namedDecl, checker, file, extractAnnotations);
+  const inheritableAnnotationKeys =
+    options.inheritableAnnotationKeys ?? getInheritableAnnotationKeys();
+  const all = extractNamedTypeAnnotations(namedDecl, checker, file, extractAnnotations, options);
   for (const annotation of all) {
-    if (!INHERITABLE_TYPE_ANNOTATION_KINDS.has(annotation.annotationKind)) continue;
+    if (!inheritableAnnotationKeys.has(getAnnotationInheritanceKey(annotation))) continue;
     if (!isOverridingInheritableAnnotation(annotation)) continue;
     return true;
   }

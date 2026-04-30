@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { defineExtension, defineMetadataSlot } from "@formspec/core";
+import { defineAnnotation, defineExtension, defineMetadataSlot } from "@formspec/core";
 import {
   getAllTagDefinitions,
+  getInheritableAnnotationKeys,
   getTagDefinition,
   readExtensionRegistryFromSettings,
   readExtensionTagNames,
@@ -133,6 +134,121 @@ describe("tag-registry", () => {
     expect(getTagDefinition("minLength")?.capabilities).toEqual(["string-like"]);
     expect(getTagDefinition("minItems")?.capabilities).toEqual(["array-like"]);
     expect(getTagDefinition("enumOptions")?.capabilities).toEqual(["enum-member-addressable"]);
+  });
+
+  it("derives inheritable annotation keys from built-in tag definitions", () => {
+    const inheritableBuiltins = getAllTagDefinitions()
+      .filter((definition) => definition.inheritFromBase === "local-wins")
+      .map((definition) => definition.canonicalName)
+      .sort();
+
+    expect(inheritableBuiltins).toEqual(["format"]);
+    expect([...getInheritableAnnotationKeys()]).toEqual(["format"]);
+    expect(getInheritableAnnotationKeys()).toBe(getInheritableAnnotationKeys());
+  });
+
+  it("adds extension custom annotation opt-ins under custom identity keys", () => {
+    const extension = defineExtension({
+      extensionId: "x-example/currency",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayCurrency",
+          inheritFromBase: "local-wins",
+          tagDocumentation: {
+            completionDetail: "Currency display annotation",
+            payloadLabel: "<currency-code> [locale]",
+            hoverSummary: "Controls how money values display currency.",
+            hoverMarkdown:
+              "Use `@displayCurrency <currency-code> [locale]` on money-shaped declarations.",
+          },
+        }),
+        defineAnnotation({
+          annotationName: "DisplayLocale",
+        }),
+        defineAnnotation({
+          annotationName: "DisplayRegion",
+          inheritFromBase: "never",
+        }),
+      ],
+    });
+    const extensions = [extension] as const;
+
+    expect(getTagDefinition("DisplayCurrency", extensions)).toMatchObject({
+      canonicalName: "displayCurrency",
+      category: "annotation",
+      completionDetail: "Currency display annotation",
+      inheritFromBase: "local-wins",
+      hoverSummary: "Controls how money values display currency.",
+      hoverMarkdown:
+        "Use `@displayCurrency <currency-code> [locale]` on money-shaped declarations.",
+      signatures: [
+        expect.objectContaining({
+          label: "@displayCurrency <currency-code> [locale]",
+          parameters: [
+            expect.objectContaining({
+              label: "<currency-code> [locale]",
+            }),
+          ],
+        }),
+      ],
+    });
+    const displayLocaleDefinition = getTagDefinition("DisplayLocale", extensions);
+    expect(displayLocaleDefinition).toMatchObject({
+      completionDetail: "",
+      hoverSummary: "",
+    });
+    expect(displayLocaleDefinition?.hoverMarkdown).not.toContain("Extension");
+    expect(displayLocaleDefinition?.inheritFromBase).toBeUndefined();
+    expect(getTagDefinition("DisplayRegion", extensions)?.inheritFromBase).toBe("never");
+    expect(
+      getAllTagDefinitions(extensions).filter((definition) =>
+        definition.canonicalName.startsWith("display")
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          canonicalName: "displayCurrency",
+          category: "annotation",
+          inheritFromBase: "local-wins",
+        }),
+      ])
+    );
+    expect([...getInheritableAnnotationKeys(extensions)].sort()).toEqual([
+      "custom:x-example/currency/DisplayCurrency",
+      "format",
+    ]);
+    expect(getInheritableAnnotationKeys(extensions)).toBe(getInheritableAnnotationKeys(extensions));
+  });
+
+  it("rejects duplicate normalized annotation tag names", () => {
+    const currencyExtension = defineExtension({
+      extensionId: "x-example/currency",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayUnit",
+          inheritFromBase: "local-wins",
+        }),
+      ],
+    });
+    const inventoryExtension = defineExtension({
+      extensionId: "x-example/inventory",
+      annotations: [
+        defineAnnotation({
+          annotationName: "DisplayUnit",
+          inheritFromBase: "local-wins",
+        }),
+      ],
+    });
+
+    expect(() => getTagDefinition("DisplayUnit", [currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate annotation tag: "@displayUnit"'
+    );
+    expect(() => getAllTagDefinitions([currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate annotation tag: "@displayUnit"'
+    );
+    expect(() => getInheritableAnnotationKeys([currencyExtension, inventoryExtension])).toThrow(
+      'Duplicate annotation tag: "@displayUnit"'
+    );
   });
 
   it("assigns empty capabilities to extension metadata tags regardless of value kind", () => {

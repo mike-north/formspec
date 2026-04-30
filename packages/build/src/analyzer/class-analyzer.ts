@@ -11,10 +11,12 @@ import {
   analyzeMetadataForNodeWithChecker,
   collectInheritedTypeAnnotations as collectInheritedTypeAnnotationsImpl,
   extractNamedTypeAnnotations as extractNamedTypeAnnotationsImpl,
+  getInheritableAnnotationKeys,
   hasInheritableTypeAnnotation as hasInheritableTypeAnnotationImpl,
   parseCommentBlock,
   type ConstraintSemanticDiagnostic,
   type HeritageAnnotationExtractor,
+  type HeritageAnnotationOptions,
   type ParsedCommentTag,
 } from "@formspec/analysis/internal";
 import type {
@@ -395,6 +397,14 @@ function makeHeritageAnnotationExtractor(
   return (decl, file) => extractJSDocAnnotationNodes(decl, file, parseOptions);
 }
 
+function makeHeritageAnnotationOptions(
+  extensionRegistry: ExtensionRegistry | undefined
+): HeritageAnnotationOptions {
+  return extensionRegistry === undefined
+    ? {}
+    : { inheritableAnnotationKeys: getInheritableAnnotationKeys(extensionRegistry.extensions) };
+}
+
 function collectInheritedTypeAnnotations(
   derivedDecl: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
   existingAnnotations: readonly AnnotationNode[],
@@ -405,7 +415,8 @@ function collectInheritedTypeAnnotations(
     derivedDecl,
     existingAnnotations,
     checker,
-    makeHeritageAnnotationExtractor(extensionRegistry)
+    makeHeritageAnnotationExtractor(extensionRegistry),
+    makeHeritageAnnotationOptions(extensionRegistry)
   );
 }
 
@@ -419,7 +430,8 @@ function extractNamedTypeAnnotations(
     namedDecl,
     checker,
     file,
-    makeHeritageAnnotationExtractor(extensionRegistry)
+    makeHeritageAnnotationExtractor(extensionRegistry),
+    makeHeritageAnnotationOptions(extensionRegistry)
   );
 }
 
@@ -2725,7 +2737,8 @@ function hasInheritableTypeAnnotation(
     aliasDecl,
     checker,
     file,
-    makeHeritageAnnotationExtractor(extensionRegistry)
+    makeHeritageAnnotationExtractor(extensionRegistry),
+    makeHeritageAnnotationOptions(extensionRegistry)
   );
 }
 

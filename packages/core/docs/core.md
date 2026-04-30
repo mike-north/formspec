@@ -299,6 +299,15 @@ Custom annotations are referenced by FormSpec's internal custom-annotation nodes
 </td></tr>
 <tr><td>
 
+[CustomAnnotationTagDocumentation](./core.customannotationtagdocumentation.md)
+
+</td><td>
+
+Documentation text for an extension annotation's TSDoc authoring tag.
+
+</td></tr>
+<tr><td>
+
 [CustomConstraintNode](./core.customconstraintnode.md)
 
 </td><td>
@@ -801,6 +810,15 @@ Description
 
 </th></tr></thead>
 <tbody><tr><td>
+
+[AnnotationInheritancePolicy](./core.annotationinheritancepolicy.md)
+
+</td><td>
+
+Controls whether a type-level annotation can flow from a base declaration to a derived declaration during semantic analysis.
+
+</td></tr>
+<tr><td>
 
 [AnnotationNode](./core.annotationnode.md)
 

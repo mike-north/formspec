@@ -219,6 +219,39 @@ export interface CustomConstraintRegistration {
 }
 
 /**
+ * Controls whether a type-level annotation can flow from a base declaration to
+ * a derived declaration during semantic analysis.
+ *
+ * @public
+ */
+export type AnnotationInheritancePolicy = "local-wins" | "never";
+
+/**
+ * Documentation text for an extension annotation's TSDoc authoring tag.
+ *
+ * These strings are consumed by editor integrations for completion details and
+ * hover text. They do not affect annotation parsing, inheritance, or schema
+ * emission.
+ *
+ * @public
+ */
+export interface CustomAnnotationTagDocumentation {
+  /** Completion detail shown beside the annotation tag. */
+  readonly completionDetail?: string;
+  /**
+   * Label for the payload portion of the annotation tag signature.
+   *
+   * The payload remains the full authored text after the tag name, so this can
+   * describe single-argument or multi-argument annotation syntaxes.
+   */
+  readonly payloadLabel?: string;
+  /** Short hover summary shown for the annotation tag. */
+  readonly hoverSummary?: string;
+  /** Full markdown hover body for the annotation tag. */
+  readonly hoverMarkdown?: string;
+}
+
+/**
  * Registration for a custom annotation that may produce JSON Schema keywords.
  *
  * Custom annotations are referenced by FormSpec's internal custom-annotation nodes.
@@ -229,6 +262,19 @@ export interface CustomConstraintRegistration {
 export interface CustomAnnotationRegistration {
   /** The annotation name, unique within the extension. */
   readonly annotationName: string;
+  /**
+   * Optional type-level inheritance behavior for semantic consumers.
+   *
+   * `"local-wins"` means a derived declaration inherits this annotation from
+   * its base declaration only when the derived declaration does not provide the
+   * same extension annotation identity locally. Omitted registrations behave as
+   * `"never"`.
+   */
+  readonly inheritFromBase?: AnnotationInheritancePolicy;
+  /**
+   * Optional editor documentation for the annotation's TSDoc authoring tag.
+   */
+  readonly tagDocumentation?: CustomAnnotationTagDocumentation;
   /**
    * Optionally converts the annotation value into JSON Schema keywords.
    * If omitted, the annotation has no JSON Schema representation (UI-only).

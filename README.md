@@ -282,6 +282,26 @@ Generated schemas may include vendor keywords such as:
 
 The default vendor prefix is `x-formspec`. `@formspec/build` also supports custom vendor prefixes for extension-generated JSON Schema keywords.
 
+## Custom Annotation Inheritance
+
+Extension-defined annotations can opt in to type-level semantic inheritance. Use `inheritFromBase: "local-wins"` when a derived class, interface, or named type-alias entry point should inherit the annotation from its base chain only if it does not declare the same extension annotation locally.
+
+```ts
+import { defineAnnotation, defineExtension } from "@formspec/core";
+
+const displayCurrency = defineAnnotation({
+  annotationName: "DisplayCurrency",
+  inheritFromBase: "local-wins",
+});
+
+export const currencyExtension = defineExtension({
+  extensionId: "x-example/currency",
+  annotations: [displayCurrency],
+});
+```
+
+`inheritFromBase` is semantic inheritance only. It controls how FormSpec analysis composes annotation IR across declaration heritage; it does not make the annotation serialize to JSON Schema. Schema emission remains controlled by the optional existing `toJsonSchema` hook, so inheritance and serialization are separate concerns. Property-level annotation inheritance and metadata-slot inheritance are out of scope.
+
 ## Package Guide
 
 | Package                     | Purpose                                                                             |

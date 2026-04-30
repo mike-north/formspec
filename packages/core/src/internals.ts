@@ -10,6 +10,7 @@
 export * from "./types/index.js";
 export * from "./extensions/index.js";
 export * from "./guards.js";
+export { UnreachableError } from "./errors.js";
 export {
   _BUILTIN_CONSTRAINT_DEFINITIONS as BUILTIN_CONSTRAINT_DEFINITIONS,
   _isBuiltinConstraintName as isBuiltinConstraintName,

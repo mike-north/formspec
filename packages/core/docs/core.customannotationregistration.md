@@ -52,6 +52,40 @@ The annotation name, unique within the extension.
 </td></tr>
 <tr><td>
 
+[inheritFromBase?](./core.customannotationregistration.inheritfrombase.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[AnnotationInheritancePolicy](./core.annotationinheritancepolicy.md)
+
+</td><td>
+
+_(Optional)_ Optional type-level inheritance behavior for semantic consumers.
+
+</td></tr>
+<tr><td>
+
+[tagDocumentation?](./core.customannotationregistration.tagdocumentation.md)
+
+</td><td>
+
+`readonly`
+
+</td><td>
+
+[CustomAnnotationTagDocumentation](./core.customannotationtagdocumentation.md)
+
+</td><td>
+
+_(Optional)_ Optional editor documentation for the annotation's TSDoc authoring tag.
+
+</td></tr>
+<tr><td>
+
 [toJsonSchema?](./core.customannotationregistration.tojsonschema.md)
 
 </td><td>

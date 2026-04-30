@@ -129,6 +129,8 @@ export type {
   ExtensionTypeKind,
   ExtensionApplicableType,
   ExtensionDefinition,
+  AnnotationInheritancePolicy,
+  CustomAnnotationTagDocumentation,
   CustomTypeRegistration,
   CustomConstraintRegistration,
   ConstraintTagRegistration,

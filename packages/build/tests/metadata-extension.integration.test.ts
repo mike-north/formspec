@@ -164,7 +164,7 @@ describe("build metadata extension integration", () => {
           ],
         }),
       ])
-    ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+    ).toThrow('Tag "@currency" conflicts with existing tag "@currency".');
   });
 
   it("rejects extension constraint tags that reuse reserved unsupported tag names", () => {
@@ -222,7 +222,7 @@ describe("build metadata extension integration", () => {
           ],
         }),
       ])
-    ).toThrow('Metadata tag "@currency" conflicts with existing FormSpec tag "@currency".');
+    ).toThrow('Tag "@currency" conflicts with existing tag "@currency".');
   });
 
   it("rejects metadata tags that differ only by leading case at registry creation", () => {

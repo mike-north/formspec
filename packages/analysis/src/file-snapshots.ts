@@ -142,6 +142,19 @@ function toExtensionTagSources(
             tagName: normalizeFormSpecTagName(tag.tagName),
           })),
         }),
+    ...(extension.annotations === undefined
+      ? {}
+      : {
+          annotations: extension.annotations.map((annotation) => ({
+            annotationName: annotation.annotationName,
+            ...(annotation.inheritFromBase === undefined
+              ? {}
+              : { inheritFromBase: annotation.inheritFromBase }),
+            ...(annotation.tagDocumentation === undefined
+              ? {}
+              : { tagDocumentation: annotation.tagDocumentation }),
+          })),
+        }),
     ...(extension.metadataSlots === undefined ? {} : { metadataSlots: extension.metadataSlots }),
     ...(extension.types === undefined
       ? {}

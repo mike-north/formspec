@@ -22,7 +22,12 @@ Most app code should prefer `formspec` unless you are building tooling, extensio
 
 ```ts
 import type { FormElement, FormIR } from "@formspec/core";
-import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core";
+import {
+  defineAnnotation,
+  defineConstraint,
+  defineCustomType,
+  defineExtension,
+} from "@formspec/core";
 
 function isFieldElement(element: FormElement): boolean {
   return element._type === "field";
@@ -37,13 +42,20 @@ const decimalType = defineCustomType({
   }),
 });
 
+const displayCurrency = defineAnnotation({
+  annotationName: "DisplayCurrency",
+  inheritFromBase: "local-wins",
+});
+
 const extension = defineExtension({
   extensionId: "x-example/decimal",
   types: [decimalType],
   constraints: [],
-  annotations: [],
+  annotations: [displayCurrency],
 });
 ```
+
+`inheritFromBase` is semantic inheritance only. It lets a type-level custom annotation flow through class/interface heritage and named type-alias entry points when the derived declaration does not declare the same extension annotation locally, but it does not serialize the annotation to JSON Schema. Schema emission remains controlled by the optional existing `toJsonSchema` hook, so property-level annotation inheritance and metadata-slot inheritance remain out of scope.
 
 ## Key Exports
 

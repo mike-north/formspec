@@ -1,7 +1,10 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
+  UnreachableError,
   normalizeConstraintTagName,
+  type AnnotationInheritancePolicy,
   type BuiltinConstraintName,
+  type CustomAnnotationTagDocumentation,
   type MetadataDeclarationKind,
   type MetadataSlotRegistration,
 } from "@formspec/core/internals";
@@ -73,6 +76,13 @@ export interface TagDefinition {
   readonly category: FormSpecTagCategory;
   readonly placements: readonly FormSpecPlacement[];
   /**
+   * Type-level semantic inheritance policy for annotation tags. Omitted
+   * registrations behave as `"never"`. `"local-wins"` means a derived
+   * declaration inherits this annotation only when it does not provide the
+   * same annotation identity locally.
+   */
+  readonly inheritFromBase?: AnnotationInheritancePolicy;
+  /**
    * The semantic capabilities required of the field type for this tag to be
    * applicable. At most one capability may be declared per tag.
    *
@@ -96,6 +106,12 @@ export interface ExtensionConstraintTagSource {
   readonly tagName: string;
 }
 
+export interface ExtensionAnnotationTagSource {
+  readonly annotationName: string;
+  readonly inheritFromBase?: AnnotationInheritancePolicy;
+  readonly tagDocumentation?: CustomAnnotationTagDocumentation;
+}
+
 /**
  * Type declaration metadata for extension-registered custom types.
  * Used by host-checker-aware consumers to recognize declarations that reference
@@ -109,6 +125,7 @@ export interface ExtensionCustomTypeSource {
 export interface ExtensionTagSource {
   readonly extensionId: string;
   readonly constraintTags?: readonly ExtensionConstraintTagSource[];
+  readonly annotations?: readonly ExtensionAnnotationTagSource[];
   readonly metadataSlots?: readonly MetadataSlotRegistration[];
   /** Custom types registered by this extension */
   readonly customTypes?: readonly ExtensionCustomTypeSource[];
@@ -358,6 +375,7 @@ interface ExtraTagSpec {
   readonly allowDuplicates: boolean;
   readonly category: FormSpecTagCategory;
   readonly placements: readonly FormSpecPlacement[];
+  readonly inheritFromBase?: AnnotationInheritancePolicy;
   readonly completionDetail: string;
   readonly hoverSummary: string;
   readonly valueKind?: FormSpecValueKind | null;
@@ -627,6 +645,7 @@ const EXTRA_TAG_SPECS = {
     allowDuplicates: false,
     category: "annotation",
     placements: FIELD_PLACEMENTS,
+    inheritFromBase: "local-wins",
     completionDetail: "Format hint for a field.",
     hoverSummary: "Provides a format hint for a field.",
     valueLabel: "<format>",
@@ -818,6 +837,7 @@ function buildExtraTagDefinition(canonicalName: string, spec: ExtraTagSpec): Tag
     allowDuplicates: spec.allowDuplicates,
     category: spec.category,
     placements: spec.placements,
+    ...(spec.inheritFromBase === undefined ? {} : { inheritFromBase: spec.inheritFromBase }),
     // Capabilities express a *field-type* requirement (e.g. `@minLength` needs
     // a string-like field). Only constraint-category tags carry that meaning;
     // annotation, structure, and ecosystem tags describe or decorate the field
@@ -918,6 +938,43 @@ function buildExtensionMetadataTagDefinition(
   };
 }
 
+function buildExtensionAnnotationTagDefinition(
+  annotation: ExtensionAnnotationTagSource
+): TagDefinition {
+  const canonicalName = normalizeFormSpecTagName(annotation.annotationName);
+  const valueKind = "string";
+  const payloadLabel = annotation.tagDocumentation?.payloadLabel ?? "<payload>";
+  const signatures = [
+    createSignature(canonicalName, ALL_PLACEMENTS, null, valueKind, payloadLabel),
+  ] as const satisfies readonly TagSignature[];
+  const hoverSummary = annotation.tagDocumentation?.hoverSummary ?? "";
+  const hoverMarkdown =
+    annotation.tagDocumentation?.hoverMarkdown ??
+    [
+      `**@${canonicalName}** \`${payloadLabel}\``,
+      "",
+      `**Signature:** \`@${canonicalName} ${payloadLabel}\``,
+    ].join("\n");
+
+  return {
+    canonicalName,
+    valueKind,
+    requiresArgument: true,
+    supportedTargets: ["none"] as const,
+    allowDuplicates: false,
+    category: "annotation",
+    placements: ALL_PLACEMENTS,
+    ...(annotation.inheritFromBase === undefined
+      ? {}
+      : { inheritFromBase: annotation.inheritFromBase }),
+    capabilities: [] as const,
+    completionDetail: annotation.tagDocumentation?.completionDetail ?? "",
+    hoverSummary,
+    hoverMarkdown,
+    signatures,
+  };
+}
+
 const EXTRA_TAG_DEFINITIONS: Record<string, TagDefinition> = Object.fromEntries(
   Object.entries(EXTRA_TAG_SPECS).map(([canonicalName, spec]) => [
     canonicalName,
@@ -925,8 +982,69 @@ const EXTRA_TAG_DEFINITIONS: Record<string, TagDefinition> = Object.fromEntries(
   ])
 );
 
+let defaultInheritableAnnotationKeys: ReadonlySet<string> | undefined;
+const inheritableAnnotationKeysByExtensionArray = new WeakMap<
+  readonly ExtensionTagSource[],
+  ReadonlySet<string>
+>();
+
 export function normalizeFormSpecTagName(rawName: string): string {
   return normalizeConstraintTagName(rawName);
+}
+
+function getCustomAnnotationInheritanceKey(extensionId: string, annotationName: string): string {
+  return `custom:${extensionId}/${annotationName}`;
+}
+
+function buildInheritableAnnotationKeys(
+  extensions?: readonly ExtensionTagSource[]
+): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const definition of Object.values(EXTRA_TAG_DEFINITIONS)) {
+    if (!doesInheritFromBase(definition.inheritFromBase)) continue;
+    keys.add(definition.canonicalName);
+  }
+  for (const annotation of getExtensionAnnotationTags(extensions)) {
+    if (!doesInheritFromBase(annotation.annotation.inheritFromBase)) continue;
+    keys.add(
+      getCustomAnnotationInheritanceKey(
+        annotation.extensionId,
+        annotation.annotation.annotationName
+      )
+    );
+  }
+  return keys;
+}
+
+function doesInheritFromBase(policy: AnnotationInheritancePolicy | undefined): boolean {
+  const effectivePolicy = policy ?? "never";
+  switch (effectivePolicy) {
+    case "local-wins":
+      return true;
+    case "never":
+      return false;
+    default:
+      throw new UnreachableError(
+        effectivePolicy,
+        `Unsupported annotation inheritance policy: ${String(effectivePolicy)}`
+      );
+  }
+}
+
+export function getInheritableAnnotationKeys(
+  extensions?: readonly ExtensionTagSource[]
+): ReadonlySet<string> {
+  if (extensions === undefined) {
+    defaultInheritableAnnotationKeys ??= buildInheritableAnnotationKeys();
+    return defaultInheritableAnnotationKeys;
+  }
+
+  const cached = inheritableAnnotationKeysByExtensionArray.get(extensions);
+  if (cached !== undefined) return cached;
+
+  const next = buildInheritableAnnotationKeys(extensions);
+  inheritableAnnotationKeysByExtensionArray.set(extensions, next);
+  return next;
 }
 
 /**
@@ -1107,6 +1225,14 @@ export function getTagDefinition(
     };
   }
 
+  const extensionAnnotation = getExtensionAnnotationTags(extensions).find(
+    (annotation) => annotation.tagName === normalized
+  );
+
+  if (extensionAnnotation !== undefined) {
+    return buildExtensionAnnotationTagDefinition(extensionAnnotation.annotation);
+  }
+
   const extensionMetadata = getExtensionMetadataSlots(extensions).find(
     (slot) => slot.tagName === normalized
   );
@@ -1136,7 +1262,10 @@ export function getAllTagDefinitions(
   const customMetadata = getExtensionMetadataSlots(extensions)
     .map((slot) => getTagDefinition(slot.tagName, extensions))
     .filter((tag): tag is TagDefinition => tag !== null);
-  return [...builtins, ...extras, ...custom, ...customMetadata];
+  const customAnnotations = getExtensionAnnotationTags(extensions)
+    .map((annotation) => getTagDefinition(annotation.tagName, extensions))
+    .filter((tag): tag is TagDefinition => tag !== null);
+  return [...builtins, ...extras, ...custom, ...customMetadata, ...customAnnotations];
 }
 
 export function getTagHoverMarkdown(
@@ -1172,4 +1301,36 @@ function getExtensionMetadataSlots(
       }))
     ) ?? []
   );
+}
+
+function getExtensionAnnotationTags(
+  extensions: readonly ExtensionTagSource[] | undefined
+): readonly {
+  extensionId: string;
+  tagName: string;
+  annotation: ExtensionAnnotationTagSource;
+}[] {
+  if (extensions === undefined) return [];
+
+  const seenTags = new Set<string>();
+  const tags: {
+    extensionId: string;
+    tagName: string;
+    annotation: ExtensionAnnotationTagSource;
+  }[] = [];
+  for (const extension of extensions) {
+    for (const annotation of extension.annotations ?? []) {
+      const tagName = normalizeFormSpecTagName(annotation.annotationName);
+      if (seenTags.has(tagName)) {
+        throw new Error(`Duplicate annotation tag: "@${tagName}"`);
+      }
+      seenTags.add(tagName);
+      tags.push({
+        extensionId: extension.extensionId,
+        tagName,
+        annotation,
+      });
+    }
+  }
+  return tags;
 }

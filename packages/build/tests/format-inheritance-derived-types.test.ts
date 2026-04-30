@@ -24,6 +24,8 @@ import {
 } from "../src/generators/class-schema.js";
 import { analyzeInterfaceToIR } from "../src/analyzer/class-analyzer.js";
 import { createProgramContextFromProgram, findInterfaceByName } from "../src/analyzer/program.js";
+import { createExtensionRegistry } from "../src/extensions/index.js";
+import { defineAnnotation, defineExtension } from "@formspec/core/internals";
 
 function generateSchemasOrThrow(options: Omit<GenerateSchemasOptions, "errorReporting">) {
   return generateSchemas({ ...options, errorReporting: "throw" });
@@ -141,6 +143,27 @@ const MULTI_LEVEL_SOURCE = [
   "",
   "export class Order {",
   "  leaf!: LeafMonetary;",
+  "}",
+].join("\n");
+
+const CUSTOM_ANNOTATION_INHERITANCE_SOURCE = [
+  "/** @displayCurrency USD */",
+  "interface BaseMoney {",
+  "  amount: number;",
+  "}",
+  "",
+  "interface DerivedMoney extends BaseMoney {",
+  "  amount: number;",
+  "}",
+  "",
+  "/** @displayCurrency EUR */",
+  "interface LocalMoney extends BaseMoney {",
+  "  amount: number;",
+  "}",
+  "",
+  "export class Order {",
+  "  total!: DerivedMoney;",
+  "  local!: LocalMoney;",
   "}",
 ].join("\n");
 
@@ -642,6 +665,7 @@ let multiFileHostFixturePath: string;
 let overrideFixturePath: string;
 let classInheritanceFixturePath: string;
 let multiLevelFixturePath: string;
+let customAnnotationInheritanceFixturePath: string;
 let implementsNegativeFixturePath: string;
 let cyclicFixturePath: string;
 let emptyOverrideFixturePath: string;
@@ -698,6 +722,9 @@ beforeAll(() => {
 
   multiLevelFixturePath = path.join(tmpDir, "multi-level.ts");
   fs.writeFileSync(multiLevelFixturePath, MULTI_LEVEL_SOURCE);
+
+  customAnnotationInheritanceFixturePath = path.join(tmpDir, "custom-annotation-inheritance.ts");
+  fs.writeFileSync(customAnnotationInheritanceFixturePath, CUSTOM_ANNOTATION_INHERITANCE_SOURCE);
 
   implementsNegativeFixturePath = path.join(tmpDir, "implements-negative.ts");
   fs.writeFileSync(implementsNegativeFixturePath, IMPLEMENTS_NEGATIVE_SOURCE);
@@ -890,6 +917,73 @@ describe("type-level @format inheritance on derived types — issue #367", () =>
     // inherits the base's @format through an intermediate interface that
     // carries no local annotation.
     expect(leaf["format"]).toBe("monetary-amount");
+  });
+
+  it("inherits extension custom annotations registered with local-wins", () => {
+    const extensionRegistry = createExtensionRegistry([
+      defineExtension({
+        extensionId: "x-example/currency",
+        annotations: [
+          defineAnnotation({
+            annotationName: "DisplayCurrency",
+            inheritFromBase: "local-wins",
+            toJsonSchema: (value, vendorPrefix) => ({
+              [`${vendorPrefix}-display-currency`]: value,
+            }),
+          }),
+        ],
+      }),
+    ]);
+    const program = ts.createProgram({
+      rootNames: [customAnnotationInheritanceFixturePath],
+      options: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        strict: true,
+        skipLibCheck: true,
+      },
+    });
+
+    const result = generateSchemasFromProgram({
+      program,
+      filePath: customAnnotationInheritanceFixturePath,
+      typeName: "Order",
+      errorReporting: "throw",
+      extensionRegistry,
+    });
+
+    const defs = expectRecord(result.jsonSchema.$defs ?? {}, "$defs");
+    const derived = expectRecord(defs["DerivedMoney"], "$defs.DerivedMoney");
+    const local = expectRecord(defs["LocalMoney"], "$defs.LocalMoney");
+
+    expect(derived["x-formspec-display-currency"]).toBe("USD");
+    expect(local["x-formspec-display-currency"]).toBe("EUR");
+
+    const ctx = createProgramContextFromProgram(program, customAnnotationInheritanceFixturePath);
+    const derivedMoney = findInterfaceByName(ctx.sourceFile, "DerivedMoney");
+    if (derivedMoney === null) throw new Error("DerivedMoney interface not found");
+
+    const analysis = analyzeInterfaceToIR(
+      derivedMoney,
+      ctx.checker,
+      customAnnotationInheritanceFixturePath,
+      extensionRegistry
+    );
+    const inheritedCurrency = analysis.annotations?.find(
+      (annotation) =>
+        annotation.annotationKind === "custom" &&
+        annotation.annotationId === "x-example/currency/DisplayCurrency"
+    );
+
+    expect(inheritedCurrency).toMatchObject({
+      annotationKind: "custom",
+      annotationId: "x-example/currency/DisplayCurrency",
+      value: "USD",
+      provenance: {
+        file: customAnnotationInheritanceFixturePath,
+      },
+    });
   });
 
   it("does not inherit @format from interfaces via `implements`", () => {
