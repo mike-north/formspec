@@ -1,5 +1,23 @@
 # @formspec/cli
 
+## 0.1.0-alpha.67
+
+### Patch Changes
+
+- [#486](https://github.com/mike-north/formspec/pull/486) [`8511aaf`](https://github.com/mike-north/formspec/commit/8511aaf8953bfec00285de44c648fac177de1767) Thanks [@mike-north](https://github.com/mike-north)! - Add registration-driven annotation inheritance metadata so extension custom annotations can opt in to type-level heritage inheritance while `@format` remains the only inheriting built-in annotation.
+
+- [#487](https://github.com/mike-north/formspec/pull/487) [`3615988`](https://github.com/mike-north/formspec/commit/3615988029c656fa372d860047c16c50553545cf) Thanks [@mike-north](https://github.com/mike-north)! - Reconcile the Canonical IR object and enum-member shapes with spec 001 decisions for issue #417 PR-A.
+
+  `EnumMember.displayName` is now `EnumMember.label` with no deprecated alias because the package is still alpha. `ObjectTypeNode.additionalProperties` now distinguishes omitted policy-defaulted objects from explicit `true`, explicit `false`, and TypeNode-constrained additional values. `ObjectTypeNode.passthrough` is now available for the future `passthroughObject` policy keyword emission path.
+
+  The JSON Schema emitter now handles all `additionalProperties` arms and preserves the `passthrough` bit as a no-op until #416 PR-2 wires keyword emission.
+
+- [#488](https://github.com/mike-north/formspec/pull/488) [`1f2b3e7`](https://github.com/mike-north/formspec/commit/1f2b3e7eecc7638edb8e303bf127aea2af59efa7) Thanks [@mike-north](https://github.com/mike-north)! - Add serialization config plumbing and centralize FormSpec JSON Schema vendor-key emission. Dynamic source output no longer emits the legacy keys `x-formspec-source`, `x-formspec-params`, or `x-formspec-schemaSource`; it now emits the spec-conformant `x-formspec-option-source`, `x-formspec-option-source-params`, and `x-formspec-schema-source` keys.
+
+- Updated dependencies [[`8511aaf`](https://github.com/mike-north/formspec/commit/8511aaf8953bfec00285de44c648fac177de1767), [`3615988`](https://github.com/mike-north/formspec/commit/3615988029c656fa372d860047c16c50553545cf), [`1f2b3e7`](https://github.com/mike-north/formspec/commit/1f2b3e7eecc7638edb8e303bf127aea2af59efa7)]:
+  - @formspec/build@0.1.0-alpha.67
+  - @formspec/config@0.1.0-alpha.67
+
 ## 0.1.0-alpha.66
 
 ### Patch Changes

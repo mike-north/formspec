@@ -1,5 +1,21 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.67
+
+### Patch Changes
+
+- [#486](https://github.com/mike-north/formspec/pull/486) [`8511aaf`](https://github.com/mike-north/formspec/commit/8511aaf8953bfec00285de44c648fac177de1767) Thanks [@mike-north](https://github.com/mike-north)! - Add registration-driven annotation inheritance metadata so extension custom annotations can opt in to type-level heritage inheritance while `@format` remains the only inheriting built-in annotation.
+
+- [#487](https://github.com/mike-north/formspec/pull/487) [`3615988`](https://github.com/mike-north/formspec/commit/3615988029c656fa372d860047c16c50553545cf) Thanks [@mike-north](https://github.com/mike-north)! - Reconcile the Canonical IR object and enum-member shapes with spec 001 decisions for issue #417 PR-A.
+
+  `EnumMember.displayName` is now `EnumMember.label` with no deprecated alias because the package is still alpha. `ObjectTypeNode.additionalProperties` now distinguishes omitted policy-defaulted objects from explicit `true`, explicit `false`, and TypeNode-constrained additional values. `ObjectTypeNode.passthrough` is now available for the future `passthroughObject` policy keyword emission path.
+
+  The JSON Schema emitter now handles all `additionalProperties` arms and preserves the `passthrough` bit as a no-op until #416 PR-2 wires keyword emission.
+
+- Updated dependencies [[`8511aaf`](https://github.com/mike-north/formspec/commit/8511aaf8953bfec00285de44c648fac177de1767), [`3615988`](https://github.com/mike-north/formspec/commit/3615988029c656fa372d860047c16c50553545cf)]:
+  - @formspec/core@0.1.0-alpha.67
+  - @formspec/analysis@0.1.0-alpha.67
+
 ## 0.1.0-alpha.66
 
 ### Patch Changes

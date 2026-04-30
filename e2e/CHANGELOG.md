@@ -1,5 +1,19 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.67
+
+### Patch Changes
+
+- Updated dependencies [[`8511aaf`](https://github.com/mike-north/formspec/commit/8511aaf8953bfec00285de44c648fac177de1767), [`3615988`](https://github.com/mike-north/formspec/commit/3615988029c656fa372d860047c16c50553545cf), [`1f2b3e7`](https://github.com/mike-north/formspec/commit/1f2b3e7eecc7638edb8e303bf127aea2af59efa7)]:
+  - @formspec/core@0.1.0-alpha.67
+  - @formspec/analysis@0.1.0-alpha.67
+  - @formspec/build@0.1.0-alpha.67
+  - @formspec/cli@0.1.0-alpha.67
+  - @formspec/dsl@0.1.0-alpha.67
+  - @formspec/eslint-plugin@0.1.0-alpha.67
+  - @formspec/language-server@0.1.0-alpha.67
+  - @formspec/ts-plugin@0.1.0-alpha.67
+
 ## 0.1.0-alpha.66
 
 ### Patch Changes
