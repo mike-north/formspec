@@ -1,5 +1,6 @@
 import {
   BUILTIN_CONSTRAINT_DEFINITIONS,
+  UnreachableError,
   normalizeConstraintTagName,
   type AnnotationInheritancePolicy,
   type BuiltinConstraintName,
@@ -1027,15 +1028,6 @@ function doesInheritFromBase(policy: AnnotationInheritancePolicy | undefined): b
         effectivePolicy,
         `Unsupported annotation inheritance policy: ${String(effectivePolicy)}`
       );
-  }
-}
-
-/** Error for runtime paths that are statically unreachable in exhaustive switches. */
-class UnreachableError extends Error {
-  constructor(value: never, message: string) {
-    super(message);
-    this.name = "UnreachableError";
-    void value;
   }
 }
 
