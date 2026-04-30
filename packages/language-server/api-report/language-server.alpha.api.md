@@ -80,6 +80,7 @@ export interface FormSpecConfig {
     readonly extensions?: readonly ExtensionDefinition_2[];
     readonly metadata?: MetadataPolicyInput;
     readonly packages?: Readonly<Record<string, FormSpecPackageOverride>>;
+    readonly serialization?: FormSpecSerializationConfig;
     readonly vendorPrefix?: string;
 }
 
@@ -88,6 +89,13 @@ export interface FormSpecPackageOverride {
     readonly constraints?: DSLPolicy;
     readonly enumSerialization?: "enum" | "oneOf" | "smart-size";
     readonly metadata?: MetadataPolicyInput;
+}
+
+// @public
+export interface FormSpecSerializationConfig {
+    readonly dialectUrl?: string;
+    readonly vocabularyBaseUrl?: string;
+    readonly vocabularyUrls?: Readonly<Record<string, string>>;
 }
 
 // @public

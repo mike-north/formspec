@@ -186,9 +186,9 @@ Owning bounded context: `RuntimeContext`.
 
 The conceptual external system or in-process value store from which a Dynamic Field's options or schema are pulled (e.g., a remote API, an in-memory list). Distinct from **Resolver**, which is the _function_ the consumer supplies; the data source is what the resolver fetches _from_.
 
-### Dynamic Source / `x-formspec-source`
+### Dynamic Source / `x-<vendor>-option-source`
 
-The IR-level marker that names a runtime data source. The field carries an `x-formspec-source` JSON Schema vendor extension keyword identifying which resolver should populate it.
+The IR-level marker that names a runtime data source. Dynamic enum fields carry an `x-<vendor>-option-source` JSON Schema vendor extension keyword identifying which resolver should populate the options, and may carry `x-<vendor>-option-source-params` for dependent field names. Dynamic schema fields carry `x-<vendor>-schema-source`.
 
 When in doubt, prefer **Resolver** for the function and **data source** for the underlying system.
 

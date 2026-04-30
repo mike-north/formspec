@@ -223,6 +223,34 @@ describe("runtime loading", () => {
     expect(module["InstallmentPlan"]).toBeDefined();
   });
 
+  it("threads vendorPrefix into runtime-loaded FormSpec schemas", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-runtime-prefix-"));
+    const filePath = path.join(dir, "dynamic-form.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      import { formspec, field } from "@formspec/dsl";
+
+      export const DynamicForm = formspec(field.dynamicEnum("country", "countries"));
+    `
+    );
+
+    try {
+      const { formSpecs } = await loadFormSpecs(ensureCompiledFixture(filePath), {
+        vendorPrefix: "x-acme",
+      });
+      const schema = formSpecs.get("DynamicForm")?.jsonSchema;
+
+      expect(schema?.properties?.["country"]).toEqual({
+        type: "string",
+        "x-acme-option-source": "countries",
+      });
+      expect(schema?.properties?.["country"]).not.toHaveProperty("x-formspec-source");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("generates method schemas with FormSpec params", async () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");

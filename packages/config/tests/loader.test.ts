@@ -122,6 +122,46 @@ export default defineFormSpecConfig({
       expect(result.config.constraints?.fieldTypes?.dynamicEnum).toBe("error");
     });
 
+    it("loads the serialization config block without consuming it", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(
+        filePath,
+        `export default {
+  serialization: {
+    vocabularyBaseUrl: "https://example.com/schema/v1",
+    vocabularyUrls: { metadata: "https://example.com/schema/v1/vocab/metadata.json" },
+    dialectUrl: "https://example.com/schema/v1/dialect.json",
+  },
+};`,
+        "utf-8"
+      );
+
+      const result = await loadFormSpecConfig({ configPath: filePath });
+
+      expect(result.found).toBe(true);
+      if (!result.found) throw new Error("Expected found");
+      expect(result.config.serialization).toEqual({
+        vocabularyBaseUrl: "https://example.com/schema/v1",
+        vocabularyUrls: { metadata: "https://example.com/schema/v1/vocab/metadata.json" },
+        dialectUrl: "https://example.com/schema/v1/dialect.json",
+      });
+    });
+
+    it("rejects malformed serialization config", async () => {
+      await expectConfigRejection(
+        `export default { serialization: { vocabularyUrls: { metadata: 42 } } };`,
+        /serialization\.vocabularyUrls/
+      );
+    });
+
+    it("rejects vendor prefixes that cannot produce well-formed extension keys", async () => {
+      await expectConfigRejection(
+        `export default { vendorPrefix: "x-Acme" };`,
+        /vendorPrefix.*\^x-\[a-z0-9\]\+/
+      );
+    });
+
     it("loads a config file with a plain object default export", async () => {
       const dir = await createTempDir();
       const filePath = join(dir, "formspec.config.ts");

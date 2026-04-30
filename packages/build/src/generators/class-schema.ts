@@ -9,7 +9,7 @@
 import * as ts from "typescript";
 import type { UISchema } from "../ui-schema/types.js";
 import type { MetadataPolicyInput } from "@formspec/core";
-import type { FormSpecConfig } from "@formspec/config";
+import type { FormSpecConfig, FormSpecSerializationConfig } from "@formspec/config";
 import {
   analyzeNamedTypeToIRFromProgramContextDetailed,
   createProgramContext,
@@ -328,6 +328,7 @@ export function generateSchemasFromClass(
   const additionalFiles = options.configPath !== undefined ? [options.configPath] : undefined;
   const ctx = createProgramContext(options.filePath, additionalFiles);
   const classDecl = findClassByName(ctx.sourceFile, options.className);
+  const resolved = resolveStaticOptions(options);
 
   if (!classDecl) {
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
@@ -337,26 +338,11 @@ export function generateSchemasFromClass(
     classDecl,
     ctx.checker,
     options.filePath,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    options.extensionRegistry,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-    options.metadata,
+    resolved.extensionRegistry,
+    resolved.metadata,
     options.discriminator
   );
-  return generateClassSchemas(
-    analysis,
-    { file: options.filePath },
-    {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      extensionRegistry: options.extensionRegistry,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      metadata: options.metadata,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      enumSerialization: options.enumSerialization,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
-      vendorPrefix: options.vendorPrefix,
-    }
-  );
+  return generateClassSchemas(analysis, { file: options.filePath }, resolved);
 }
 
 /**
@@ -734,6 +720,7 @@ export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
   vendorPrefix: string | undefined;
   enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   metadata: MetadataPolicyInput | undefined;
+  serialization: FormSpecSerializationConfig | undefined;
 } {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
   const legacyRegistry = options.extensionRegistry;
@@ -758,6 +745,7 @@ export function resolveStaticOptions(options: StaticSchemaGenerationOptions): {
     enumSerialization: options.enumSerialization ?? options.config?.enumSerialization,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     metadata: options.metadata ?? options.config?.metadata,
+    serialization: options.config?.serialization,
   };
 }
 
@@ -766,6 +754,7 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
   vendorPrefix: string | undefined;
   enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
   metadata: MetadataPolicyInput | undefined;
+  serialization: FormSpecSerializationConfig | undefined;
 } {
   // Treat `extensions: []` as "no registry" — see `resolveStaticOptions`
   // above for the motivation (avoids building an empty registry when the
@@ -791,6 +780,7 @@ function resolveOptions(options: StaticSchemaGenerationOptions): {
     enumSerialization: options.enumSerialization ?? options.config?.enumSerialization,
     // eslint-disable-next-line @typescript-eslint/no-deprecated -- migration bridge reads deprecated fields
     metadata: options.metadata ?? options.config?.metadata,
+    serialization: options.config?.serialization,
   };
 }
 
@@ -843,6 +833,7 @@ function generateSchemasFromResolvedOptions(
     vendorPrefix: string | undefined;
     enumSerialization: "enum" | "oneOf" | "smart-size" | undefined;
     metadata: MetadataPolicyInput | undefined;
+    serialization: FormSpecSerializationConfig | undefined;
   },
   discriminator: DiscriminatorResolutionOptions | undefined
 ): DetailedClassSchemasResult {
@@ -870,6 +861,7 @@ function generateSchemasFromResolvedOptions(
       metadata: resolved.metadata,
       enumSerialization: resolved.enumSerialization,
       vendorPrefix: resolved.vendorPrefix,
+      serialization: resolved.serialization,
     }
   );
 }

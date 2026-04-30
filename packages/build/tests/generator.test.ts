@@ -132,19 +132,21 @@ describe("generateJsonSchema", () => {
     expect(schema.required?.filter((r) => r === "type")).toHaveLength(1);
   });
 
-  it("should include x-formspec-source for dynamic enum fields", () => {
+  it("should include x-formspec-option-source for dynamic enum fields", () => {
     const form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
     const schema = generateJsonSchema(form);
 
-    expect(schema.properties?.["country"]).toMatchObject({
+    const country = schema.properties?.["country"];
+    expect(country).toMatchObject({
       type: "string",
       title: "Country",
-      "x-formspec-source": "countries",
+      "x-formspec-option-source": "countries",
     });
+    expect(country).not.toHaveProperty("x-formspec-source");
   });
 
-  it("should include x-formspec-params for dynamic enum with dependencies", () => {
+  it("should include x-formspec-option-source-params for dynamic enum with dependencies", () => {
     const form = formspec(
       field.dynamicEnum("city", "cities", {
         label: "City",
@@ -154,14 +156,17 @@ describe("generateJsonSchema", () => {
 
     const schema = generateJsonSchema(form);
 
-    expect(schema.properties?.["city"]).toMatchObject({
+    const city = schema.properties?.["city"];
+    expect(city).toMatchObject({
       type: "string",
-      "x-formspec-source": "cities",
-      "x-formspec-params": ["country", "state"],
+      "x-formspec-option-source": "cities",
+      "x-formspec-option-source-params": ["country", "state"],
     });
+    expect(city).not.toHaveProperty("x-formspec-source");
+    expect(city).not.toHaveProperty("x-formspec-params");
   });
 
-  it("should include x-formspec-schemaSource for dynamic schema fields", () => {
+  it("should include x-formspec-schema-source for dynamic schema fields", () => {
     const form = formspec(
       field.dynamicSchema("paymentDetails", "stripe-payment-form", {
         label: "Payment Details",
@@ -170,12 +175,14 @@ describe("generateJsonSchema", () => {
 
     const schema = generateJsonSchema(form);
 
-    expect(schema.properties?.["paymentDetails"]).toMatchObject({
+    const paymentDetails = schema.properties?.["paymentDetails"];
+    expect(paymentDetails).toMatchObject({
       type: "object",
       title: "Payment Details",
       additionalProperties: true,
-      "x-formspec-schemaSource": "stripe-payment-form",
+      "x-formspec-schema-source": "stripe-payment-form",
     });
+    expect(paymentDetails).not.toHaveProperty("x-formspec-schemaSource");
   });
 
   it("throws when two fields resolve to the same serialized name", () => {

@@ -119,7 +119,7 @@ The JSON Schema generator maps field types directly:
 - `field.text()` → `{ type: "string" }`
 - `field.number()` with `min`/`max` → `{ type: "number", minimum, maximum }`
 - `field.enum()` → `{ type: "string", enum: [...] }`
-- `field.dynamicEnum()` → `{ type: "string", "x-formspec-source": key }`
+- `field.dynamicEnum()` → `{ type: "string", "x-formspec-option-source": key }`
 - `group()` → Transparent in JSON Schema; becomes `GroupLayout` in UI Schema
 - `when()` → Fields included unconditionally in JSON Schema; UI Schema gets `rule: { effect: "SHOW", condition: ... }`
 

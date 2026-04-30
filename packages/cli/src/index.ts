@@ -128,11 +128,7 @@ function parseArgs(args: string[]): CliOptions {
         console.error('Error: --enum-serialization requires "enum", "oneOf", or "smart-size"');
         process.exit(1);
       }
-      if (
-        nextArg !== "enum" &&
-        nextArg !== "oneOf" &&
-        nextArg !== "smart-size"
-      ) {
+      if (nextArg !== "enum" && nextArg !== "oneOf" && nextArg !== "smart-size") {
         console.error('Error: --enum-serialization must be "enum", "oneOf", or "smart-size"');
         process.exit(1);
       }
@@ -432,6 +428,12 @@ async function main(): Promise<void> {
     try {
       const { formSpecs, module } = await loadFormSpecs(compiledPath, {
         enumSerialization,
+        ...(effectiveConfig?.vendorPrefix !== undefined && {
+          vendorPrefix: effectiveConfig.vendorPrefix,
+        }),
+        ...(effectiveConfig?.serialization !== undefined && {
+          serialization: effectiveConfig.serialization,
+        }),
       });
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
@@ -537,6 +539,12 @@ async function main(): Promise<void> {
             try {
               const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing, {
                 enumSerialization,
+                ...(effectiveConfig?.vendorPrefix !== undefined && {
+                  vendorPrefix: effectiveConfig.vendorPrefix,
+                }),
+                ...(effectiveConfig?.serialization !== undefined && {
+                  serialization: effectiveConfig.serialization,
+                }),
               });
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);

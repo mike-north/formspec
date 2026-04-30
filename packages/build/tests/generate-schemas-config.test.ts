@@ -4,7 +4,11 @@ import * as os from "node:os";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FormSpecConfig } from "@formspec/config";
 import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core/internals";
-import { type ClassSchemas, generateSchemas } from "../src/generators/class-schema.js";
+import {
+  type ClassSchemas,
+  generateSchemas,
+  generateSchemasFromClass,
+} from "../src/generators/class-schema.js";
 import type { JsonSchema2020 } from "../src/json-schema/ir-generator.js";
 import { numericExtension } from "./fixtures/example-numeric-extension.js";
 import {
@@ -83,6 +87,30 @@ describe("generateSchemas with FormSpecConfig", () => {
       });
 
       expect(result.jsonSchema.properties?.["name"]).toEqual({ type: "string" });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
+  it("resolves vendorPrefix from config in generateSchemasFromClass", () => {
+    const filePath = writeTempSource(`
+      export class SimpleClass {
+        /** @remarks Configured vendor prefix should be honored. */
+        name!: string;
+      }
+    `);
+
+    try {
+      const result = generateSchemasFromClass({
+        filePath,
+        className: "SimpleClass",
+        config: { vendorPrefix: "x-custom" },
+      });
+
+      expect(result.jsonSchema.properties?.["name"]).toEqual({
+        type: "string",
+        "x-custom-remarks": "Configured vendor prefix should be honored.",
+      });
     } finally {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
     }

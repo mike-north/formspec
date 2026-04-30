@@ -8,8 +8,16 @@
  * Uses the @formspec/build package to generate schemas from FormSpec objects.
  */
 
-import { generateJsonSchema, generateUiSchema } from "@formspec/build";
-import type { JsonSchema2020, UISchema } from "@formspec/build";
+import {
+  generateJsonSchema,
+  generateUiSchema,
+  type GenerateJsonSchemaOptions,
+  type JsonSchema2020,
+  type UISchema,
+} from "@formspec/build";
+import { canonicalizeChainDSL, generateJsonSchemaFromIR } from "@formspec/build/internals";
+import type { GenerateJsonSchemaFromIROptions } from "@formspec/build/internals";
+import type { FormSpecSerializationConfig } from "@formspec/config";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -21,8 +29,12 @@ interface FormSpecLike {
 }
 
 interface LoadFormSpecsOptions {
+  /** Vendor prefix for emitted extension keywords. */
+  readonly vendorPrefix?: string | undefined;
   /** JSON Schema representation to use for static enums. */
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
+  /** Forward-looking serialization settings for vocabulary and dialect transport. */
+  readonly serialization?: FormSpecSerializationConfig | undefined;
 }
 
 /**
@@ -45,6 +57,39 @@ interface ModuleFormSpecs {
   formSpecs: Map<string, FormSpecSchemas>;
   /** The raw module for accessing other exports */
   module: Record<string, unknown>;
+}
+
+function toPublicJsonSchemaOptions(
+  options: LoadFormSpecsOptions | undefined
+): GenerateJsonSchemaOptions | undefined {
+  if (options?.vendorPrefix === undefined && options?.enumSerialization === undefined) {
+    return undefined;
+  }
+
+  return {
+    ...(options.vendorPrefix !== undefined && { vendorPrefix: options.vendorPrefix }),
+    ...(options.enumSerialization !== undefined && {
+      enumSerialization: options.enumSerialization,
+    }),
+  };
+}
+
+function generateRuntimeJsonSchema(
+  formSpec: FormSpecLike,
+  options: LoadFormSpecsOptions | undefined
+): JsonSchema2020 {
+  const publicOptions = toPublicJsonSchemaOptions(options);
+
+  if (options?.serialization === undefined) {
+    return generateJsonSchema(formSpec as never, publicOptions);
+  }
+
+  const internalOptions: GenerateJsonSchemaFromIROptions = {
+    ...publicOptions,
+    serialization: options.serialization,
+  };
+  const ir = canonicalizeChainDSL(formSpec as never);
+  return generateJsonSchemaFromIR(ir, internalOptions);
 }
 
 /**
@@ -104,12 +149,7 @@ export async function loadFormSpecs(
         // Use @formspec/build generators
         // The types expect FormSpec<readonly FormElement[]>
         // but we're duck-typing at runtime
-        const jsonSchema = generateJsonSchema(
-          value as never,
-          options?.enumSerialization === undefined
-            ? undefined
-            : { enumSerialization: options.enumSerialization }
-        );
+        const jsonSchema = generateRuntimeJsonSchema(value, options);
         const uiSchema = generateUiSchema(value as never);
 
         formSpecs.set(name, {
@@ -159,12 +199,7 @@ export async function loadNamedFormSpecs(
     const value = module[name];
     if (value && isFormSpec(value)) {
       try {
-        const jsonSchema = generateJsonSchema(
-          value as never,
-          options?.enumSerialization === undefined
-            ? undefined
-            : { enumSerialization: options.enumSerialization }
-        );
+        const jsonSchema = generateRuntimeJsonSchema(value, options);
         const uiSchema = generateUiSchema(value as never);
         result.set(name, { name, jsonSchema, uiSchema });
       } catch (error) {
