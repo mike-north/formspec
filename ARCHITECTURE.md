@@ -170,6 +170,13 @@ FormSpec separates project configuration from DSL-policy enforcement:
 - `@formspec/dsl-policy` is a private internal package that owns `DSLPolicy`, `DEFAULT_DSL_POLICY`, `defineDSLPolicy()`, `mergeWithDefaults()`, and the validators for field-type, layout, UI-schema, field-option, and control-option policy.
 - `@formspec/config` exposes the public DSL-policy compatibility surface. New public consumers should import policy APIs from `@formspec/config`; internal packages may use `@formspec/dsl-policy` and must bundle it rather than expose it as a published dependency.
 
+`@formspec/config` is internally split into two responsibility areas:
+**loading** (`src/loading/` — `FileSystem` adapter, `loadFormSpecConfig`, path
+resolution) and **application** (`src/application/` — config types,
+`defineFormSpecConfig`, default values, DSL-policy interop). The public API
+surface is unchanged; the split is internal-only and codifies which concerns
+live where for future contributors.
+
 See [`docs/007-configuration.md`](./docs/007-configuration.md) for the full configuration spec.
 
 ```typescript

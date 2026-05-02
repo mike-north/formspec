@@ -62,6 +62,14 @@ Each row below maps a CML `BoundedContext` to its npm package and primary respon
 | `TsPluginContext`       | `@formspec/ts-plugin`       | `DeveloperToolingDomain` | TypeScript language-service plugin and reusable composable semantic service for IDE integrations.                                            |
 | `LanguageServerContext` | `@formspec/language-server` | `DeveloperToolingDomain` | LSP reference implementation; thin presentation layer over composable analysis, configuration, and TS-plugin helpers.                        |
 
+`@formspec/config` remains one published-package bounded context. Internally,
+it is split into two responsibility areas: **loading** (`src/loading/` —
+`FileSystem` adapter, `loadFormSpecConfig`, path resolution) and
+**application** (`src/application/` — config types, `defineFormSpecConfig`,
+default values, DSL-policy interop) so contributors can keep loading-side
+concerns separate from config-shape and policy concerns without changing the
+public API surface.
+
 ### Packages excluded from the formal model
 
 Three packages do not appear in `formspec.cml` because they are not bounded contexts in their own right:

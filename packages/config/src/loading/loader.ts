@@ -6,8 +6,8 @@ async function getJiti() {
 }
 import type { LoggerLike } from "@formspec/core";
 import { noopLogger } from "@formspec/core";
-import type { FormSpecConfig, DSLPolicy, ResolvedDSLPolicy } from "./types.js";
-import { defineDSLPolicy, mergeWithDefaults } from "./defaults.js";
+import type { DSLPolicy, FormSpecConfig, ResolvedDSLPolicy } from "../application/types.js";
+import { defineDSLPolicy, mergeWithDefaults } from "../application/defaults.js";
 import { nodeFileSystem, type FileSystem } from "./file-system.js";
 export type { FileSystem } from "./file-system.js";
 

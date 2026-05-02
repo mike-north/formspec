@@ -82,6 +82,13 @@ formspec (umbrella — re-exports everything)
 @formspec/e2e             (workspace for end-to-end tests and benchmarks)
 ```
 
+`@formspec/config` is internally split into two responsibility areas:
+**loading** (`src/loading/` — `FileSystem` adapter, `loadFormSpecConfig`,
+path resolution) and **application** (`src/application/` — config types,
+`defineFormSpecConfig`, default values, DSL-policy interop). The public API
+surface is unchanged; the split is internal-only and codifies which concerns
+live where for future contributors.
+
 ### Key Concepts
 
 1. **Chain DSL**: Builder functions (`field.*`, `group`, `when`, `formspec`) with full type inference

@@ -556,18 +556,19 @@ DSL-policy exports (`DSLPolicy`, `ResolvedDSLPolicy`, `ValidationIssue`, `Valida
 
 ### 7.2 New Exports
 
+`@formspec/config` exposes these APIs through the package root only. The
+internal source files are split into `src/application/` and `src/loading/`, but
+no public subpath exports are published.
+
 ```typescript
-// Types (FormSpecConfig expanded with extensions, metadata, vendorPrefix, enumSerialization)
-export type { FormSpecConfig } from "./types.js";
-
-// Factory
-export { defineFormSpecConfig } from "./define.js";
-
-// TypeScript config file loader and filesystem adapter
-export { loadFormSpecConfig, type FileSystem, type LoadConfigOptions } from "./loader.js";
-
-// Per-file config resolution
-export { resolveConfigForFile } from "./resolve.js";
+export type { FormSpecConfig } from "@formspec/config";
+export {
+  defineFormSpecConfig,
+  loadFormSpecConfig,
+  resolveConfigForFile,
+  type FileSystem,
+  type LoadConfigOptions,
+} from "@formspec/config";
 ```
 
 ### 7.3 Internal DSL-policy package
