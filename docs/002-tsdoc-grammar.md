@@ -511,9 +511,11 @@ Unknown format values are accepted (with an info diagnostic D4) for extensibilit
 
 ##### Inheritance through `extends` heritage
 
-Type-level annotations that opt in to inheritance flow from a base declaration to a derived class or interface along `extends` clauses. This lets authors declare a semantic format or extension annotation once on a domain base and have every derived narrowing type carry it through without repetition.
+Type-level annotations that opt in to inheritance flow from a base declaration to a derived class or interface along `extends` clauses. This lets authors declare semantic metadata such as a JSON Schema format, deprecation guidance, or extension annotation once on a domain base and have every derived narrowing type carry it through without repetition.
 
-**Allow-list:** Only annotations whose registration opts in to type-level heritage inheritance participate. The only inheriting built-in annotation is `@format`. Extension-defined custom annotations may opt in by setting `inheritFromBase: "local-wins"` on their `defineAnnotation()` registration. Other built-in type-level annotations — `@remarks`, `@deprecated`, `@displayName`, `@placeholder`, `@defaultValue`, `@description` (via summary text) — do **not** inherit through `extends`.
+**Allow-list:** Only annotations whose registration opts in to type-level heritage inheritance participate. The inheriting built-in annotations are `@format` and `@deprecated`. Extension-defined custom annotations may opt in by setting `inheritFromBase: "local-wins"` on their `defineAnnotation()` registration. Other built-in type-level annotations — `@remarks`, `@displayName`, `@placeholder`, `@defaultValue`, `@description` (via summary text) — do **not** inherit through `extends`.
+
+`@deprecated` uses the same local-wins policy as `@format`: a derived type inherits the nearest base declaration's deprecation message unless the derived type declares its own non-empty message. A presence-only tag such as `/** @deprecated */`, or a whitespace-only payload, confirms that the derived type is deprecated but does not suppress the base's specific migration guidance.
 
 **Scope — `extends` only:**
 
@@ -550,7 +552,7 @@ interface D extends B, C {}
 
 **Known limitations:**
 
-- Among built-ins, only `@format` currently participates. Extension custom annotations participate only when their registration sets `inheritFromBase: "local-wins"`. This is semantic inheritance, not schema serialization; output behavior remains controlled separately.
+- Among built-ins, only `@format` and `@deprecated` currently participate. Extension custom annotations participate only when their registration sets `inheritFromBase: "local-wins"`. This is semantic inheritance, not schema serialization; output behavior remains controlled separately.
 - Property-level annotation inheritance and metadata-slot inheritance are out of scope for this type-level heritage rule.
 
 #### `@defaultValue`

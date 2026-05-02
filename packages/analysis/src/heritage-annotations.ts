@@ -34,6 +34,7 @@ export interface HeritageAnnotationOptions {
  */
 function getInheritableAnnotationStringValue(annotation: AnnotationNode): string | undefined {
   if (annotation.annotationKind === "format") return annotation.value;
+  if (annotation.annotationKind === "deprecated") return annotation.message ?? "";
   if ("value" in annotation && typeof annotation.value === "string") return annotation.value;
   return undefined;
 }
@@ -48,6 +49,14 @@ function isOverridingInheritableAnnotation(annotation: AnnotationNode): boolean 
   const value = getInheritableAnnotationStringValue(annotation);
   if (value === undefined) return true;
   return value.trim().length > 0;
+}
+
+function canFillInheritedAnnotationSlot(annotation: AnnotationNode): boolean {
+  // `@deprecated` is meaningful by presence: a base declaration with
+  // `/** @deprecated */` still marks derived types as deprecated, even though
+  // an empty local tag must not override a base message.
+  if (annotation.annotationKind === "deprecated") return true;
+  return isOverridingInheritableAnnotation(annotation);
 }
 
 /**
@@ -230,9 +239,10 @@ export function collectInheritedTypeAnnotations(
     for (const annotation of baseAnnotations) {
       const annotationKey = getAnnotationInheritanceKey(annotation);
       if (!needed.has(annotationKey)) continue;
-      // Skip empty-payload annotations on the base as well — they cannot
-      // meaningfully fill an inherited slot.
-      if (!isOverridingInheritableAnnotation(annotation)) continue;
+      // Most base annotations need a non-empty payload to fill an inherited
+      // slot. Presence-only `@deprecated` is the exception because the marker
+      // itself carries user-visible schema meaning.
+      if (!canFillInheritedAnnotationSlot(annotation)) continue;
       inherited.push(annotation);
       needed.delete(annotationKey);
     }
@@ -281,8 +291,8 @@ export function extractNamedTypeAnnotations(
 
 /**
  * Returns `true` when `namedDecl` carries an inheritable type-level
- * annotation identity, either locally with a meaningful payload or reachable
- * through the alias / heritage chain. Used by build to decide whether a
+ * annotation identity, either locally with inherited schema meaning or
+ * reachable through the alias / heritage chain. Used by build to decide whether a
  * pass-through alias warrants its own `$defs` entry
  * (issue #374) or should collapse to the base (issue #364 sibling-keyword
  * composition).
@@ -301,7 +311,7 @@ export function hasInheritableTypeAnnotation(
   const all = extractNamedTypeAnnotations(namedDecl, checker, file, extractAnnotations, options);
   for (const annotation of all) {
     if (!inheritableAnnotationKeys.has(getAnnotationInheritanceKey(annotation))) continue;
-    if (!isOverridingInheritableAnnotation(annotation)) continue;
+    if (!canFillInheritedAnnotationSlot(annotation)) continue;
     return true;
   }
   return false;

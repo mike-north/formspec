@@ -10,6 +10,14 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 
 # 2026-04-28
 
+## 002-tsdoc-grammar.md
+
+- Added `@deprecated` to the type-level heritage inheritance allow-list.
+  - Derived classes and interfaces inherit the nearest base deprecation message through `extends` heritage.
+  - Named type aliases inherit through `type Derived = Base` RHS derivation chains.
+  - Local non-empty `@deprecated` messages override inherited messages.
+  - Presence-only and whitespace-only local `@deprecated` tags do not override the inherited message.
+
 ## 000-principles.md
 
 - Extended the PP15 cross-reference for the DSL-policy package split.
