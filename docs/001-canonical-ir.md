@@ -53,6 +53,7 @@ type TypeNode =
   | EnumTypeNode
   | ArrayTypeNode
   | ObjectTypeNode
+  | RecordTypeNode
   | UnionTypeNode
   | ReferenceTypeNode
   | DynamicTypeNode
@@ -114,26 +115,29 @@ interface ObjectTypeNode {
   readonly kind: "object";
   /**
    * Named properties of this object. Order is preserved from the source
-   * declaration (for deterministic D3 output).
+   * declaration for deterministic output.
    */
   readonly properties: readonly ObjectProperty[];
   /**
-   * Value type for unconstrained additional properties when the source type
-   * includes an unrestricted string/number index signature
-   * (e.g. `{ [k: string]: T }` or `Record<string, T>`).
+   * Additional-property policy carried by this object node.
    *
-   * When absent, openness is determined later by JSON Schema emission policy
-   * and project configuration rather than by the IR node alone.
+   * - `undefined` — authoring was silent; emission policy decides whether to
+   *   add `additionalProperties`.
+   * - `true` — the author explicitly declared the object open.
+   * - `false` — the author explicitly declared the object closed.
+   * - `TypeNode` — the author explicitly declared the object open with a type
+   *   constraint for additional values. Reserved for future authoring support.
    */
-  readonly additionalProperties?: TypeNode;
+  readonly additionalProperties?: boolean | TypeNode | undefined;
   /**
-   * Constrained key families inferred from TypeScript key types that describe
-   * pattern-shaped object keys (for example `Record<\`env_${string}\`, T>`).
+   * Build-time policy marker for intentionally permissive objects.
    *
-   * Finite key sets such as `Record<'a' | 'b', T>` do not appear here; they
-   * are normalized to ordinary named properties.
+   * This composes with `additionalProperties`: an object with both
+   * `additionalProperties: true` and `passthrough: true` means the author
+   * explicitly declared the object open and wants the `passthroughObject`
+   * policy keyword emitted. Keyword emission is tracked by issue #416.
    */
-  readonly patternProperties?: readonly PatternProperty[];
+  readonly passthrough?: boolean;
 }
 
 interface ObjectProperty {
@@ -152,19 +156,30 @@ interface ObjectProperty {
   readonly annotations: readonly AnnotationNode[];
   readonly provenance: Provenance;
 }
+```
 
-interface PatternProperty {
-  /**
-   * ECMA-262 regular expression, without delimiters, suitable for JSON Schema
-   * `patternProperties`.
-   */
-  readonly keyPattern: string;
+`additionalProperties` carries four states: `undefined` means the authoring surface was silent and emission policy decides the output; `true` means the author explicitly declared the object open; `false` means the author explicitly declared the object closed; a `TypeNode` means the object is open with a value-type constraint for extra properties. The `TypeNode` arm is reserved for future authoring support and has no authoring surface today.
+
+`passthrough` is a build-time policy marker that composes orthogonally with `additionalProperties`. It records intent for the FormSpec `passthroughObject` policy keyword; keyword emission is tracked in [#416](https://github.com/mike-north/formspec/issues/416).
+
+> `patternProperties` for template-literal record types (for example, ``Record<`prefix-${string}`, T>``) is **deferred** — no implementation today. Tracked in [#490](https://github.com/mike-north/formspec/issues/490).
+
+### 2.6 Record Types
+
+`RecordTypeNode` represents dictionary-like object types with no fixed property set. The analyzer produces it for TypeScript `Record<K, V>` and indexed-object types when the key family is the currently implemented unrestricted string case, such as `Record<string, T>` and `{ [k: string]: T }`.
+
+```typescript
+interface RecordTypeNode {
+  readonly kind: "record";
   readonly valueType: TypeNode;
-  readonly provenance: Provenance;
 }
 ```
 
-### 2.6 Union Types
+Unlike `ObjectTypeNode` (§2.5), `RecordTypeNode` does not carry named properties. Its keys are pattern-typed by the TypeScript source shape, and the currently implemented key family is the unrestricted string key family emitted as JSON Schema `additionalProperties`.
+
+Pattern-shaped key families such as template-literal records remain deferred rather than being represented as `RecordTypeNode` today. See the §2.5 `patternProperties` deferral.
+
+### 2.7 Union Types
 
 Union types that are not all-string-literal or all-number-literal enums (those are `EnumTypeNode`) become `UnionTypeNode`.
 
@@ -177,7 +192,7 @@ interface UnionTypeNode {
 
 Nullable types (`T | null`) are represented as `UnionTypeNode` with a `PrimitiveTypeNode` (`null`) member — there is no special nullable wrapper. This keeps the model uniform and mirrors JSON Schema's `oneOf` representation (PP6).
 
-### 2.7 Reference Types
+### 2.8 Reference Types
 
 Named types that appear as references in the source are preserved as references in the IR (PP7). Inlining them would erase the distinction between a reusable named type and an inline structural type.
 
@@ -204,24 +219,22 @@ The IR registry (section 10.3) maintains a `TypeDefinition` map from reference n
 
 Anonymous recursive shapes are not part of this supported path because they have no stable registry identity to reference. The analyzer emits `ANONYMOUS_RECURSIVE_TYPE` rather than silently collapsing to an empty fallback object, advising authors to extract the recursive shape to a named class, interface, or type alias.
 
-### 2.8 Dynamic Types
+### 2.9 Dynamic Types
 
-Dynamic types are reserved for fields whose schema is discovered at runtime.
+Dynamic types are runtime-resolved types whose enum options or schema are supplied by a named data source.
 
 ```typescript
 interface DynamicTypeNode {
   readonly kind: "dynamic";
-  readonly dynamicKind: "schema";
-  /**
-   * Key identifying the runtime schema provider.
-   */
+  readonly dynamicKind: "enum" | "schema";
   readonly sourceKey: string;
+  readonly parameterFields: readonly string[];
 }
 ```
 
-Dynamic option retrieval does **not** use `DynamicTypeNode`. The field's stored value type remains statically known (for example `string`), and runtime option-provider metadata is layered onto that static field definition by the chain DSL or mixed-authoring composition.
+Dynamic enum and schema nodes carry a `sourceKey` identifying the runtime data source or schema provider. For dynamic enums, `parameterFields` lists field names whose current values are passed as parameters to the data-source resolver.
 
-### 2.9 Custom Types
+### 2.10 Custom Types
 
 Custom types registered by extensions (E1, E5) that do not map to any built-in kind.
 
@@ -265,12 +278,13 @@ type ConstraintNode =
   | PatternConstraintNode
   | ArrayCardinalityConstraintNode
   | EnumMemberConstraintNode
+  | ConstConstraintNode
   | CustomConstraintNode;
 ```
 
 ### 3.2 Numeric Constraints
 
-Apply to `number`, `integer`, and `bigint` fields. `minimum` and `maximum` are inclusive; `exclusiveMinimum` and `exclusiveMaximum` are exclusive bounds (matching JSON Schema 2020-12 semantics, PP6).
+Numeric constraints represent bounds and `multipleOf`. `minimum` and `maximum` are inclusive; `exclusiveMinimum` and `exclusiveMaximum` are exclusive bounds (matching JSON Schema 2020-12 semantics, PP6).
 
 ```typescript
 interface NumericConstraintNode {
@@ -281,12 +295,11 @@ interface NumericConstraintNode {
     | "exclusiveMinimum"
     | "exclusiveMaximum"
     | "multipleOf";
-  readonly value: number | string;
+  readonly value: number;
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
-
-**Value representation:** `number` and `integer` constraints use numeric values. `bigint`-origin constraints may preserve the parsed decimal text as a string to avoid precision loss.
 
 **Type applicability (S4):** `NumericConstraintNode` may only attach to fields with `PrimitiveTypeNode("number" | "integer" | "bigint")` or a `ReferenceTypeNode` that resolves to one. Attaching to any other type is a static error.
 
@@ -299,6 +312,7 @@ interface LengthConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "minLength" | "maxLength" | "minItems" | "maxItems";
   readonly value: number;
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
@@ -315,21 +329,23 @@ interface PatternConstraintNode {
   readonly constraintKind: "pattern";
   /** ECMA-262 regular expression, without delimiters. */
   readonly pattern: string;
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
 
-`PatternConstraintNode` is for string values, not object keys. Object-key patterns are represented structurally on `ObjectTypeNode.patternProperties`.
+`PatternConstraintNode` is for string values, not object keys. Object-key `patternProperties` support is deferred separately from string-value pattern constraints (see §2.5 and [#490](https://github.com/mike-north/formspec/issues/490)).
 
 ### 3.5 Array Cardinality Constraints
 
-These are split from `LengthConstraintNode` above only if array cardinality needs different semantics (e.g., `uniqueItems`). The current model folds them into `LengthConstraintNode` for uniformity.
+Array cardinality constraints cover array validation rules that do not share the numeric bound semantics of `LengthConstraintNode`.
 
 ```typescript
 interface ArrayCardinalityConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "uniqueItems";
   readonly value: true;
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
@@ -343,11 +359,28 @@ interface EnumMemberConstraintNode {
   readonly kind: "constraint";
   readonly constraintKind: "allowedMembers";
   readonly members: readonly (string | number)[];
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
 
-### 3.7 Custom Constraints
+### 3.7 Const Constraints
+
+`ConstConstraintNode` is a literal equality constraint: the constrained value must equal the JSON-serializable literal carried in `value`. It is produced by the `@const` TSDoc tag; see 002 §2.1 and §3.2 for tag inventory and argument grammar.
+
+```typescript
+interface ConstConstraintNode {
+  readonly kind: "constraint";
+  readonly constraintKind: "const";
+  readonly value: JsonValue;
+  readonly path?: PathTarget;
+  readonly provenance: Provenance;
+}
+```
+
+Because `value` is `JsonValue`, constants may be `null`, booleans, numbers, strings, arrays, or JSON objects. Type compatibility is checked during validation, not by changing the IR node shape.
+
+### 3.8 Custom Constraints
 
 Extensions register custom constraints that carry an opaque payload. The `compositionRule` declaration fulfills E2 — the system cannot guess the composition rule.
 
@@ -374,11 +407,12 @@ interface CustomConstraintNode {
    *   Suitable for constraints that produce a single value (like a format hint).
    */
   readonly compositionRule: "intersect" | "override";
+  readonly path?: PathTarget;
   readonly provenance: Provenance;
 }
 ```
 
-### 3.8 Constraint Composition Rules
+### 3.9 Constraint Composition Rules
 
 Per C1, constraints are set-influencing and compose via intersection. The practical meaning for each built-in kind:
 
@@ -395,6 +429,7 @@ Per C1, constraints are set-influencing and compose via intersection. The practi
 | `maxItems`         | Take the min                                         |                                                               |
 | `pattern`          | All patterns must match (implicit `allOf`)           |                                                               |
 | `allowedMembers`   | Set intersection                                     |                                                               |
+| `const`            | Literal equality                                     | `@const "USD"` means the value must equal `"USD"`             |
 
 **Intersection never broadens (S1):** Adding a constraint can only make the valid set smaller or equal. The merge algorithm (section 7) enforces this invariant.
 
@@ -408,7 +443,10 @@ Annotations are value-influencing metadata (C1): they carry a single scalar that
 
 ```typescript
 type AnnotationNode =
+  | DisplayNameAnnotationNode
   | DescriptionAnnotationNode
+  | RemarksAnnotationNode
+  | FormatAnnotationNode
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
   | DeprecatedAnnotationNode
@@ -418,10 +456,33 @@ type AnnotationNode =
 
 ### 4.2 Built-in Annotations
 
+Built-in annotation interfaces use the same `kind: "annotation"` discriminator and compose by override unless a later section specifies a more specialized metadata-policy path.
+
 ```typescript
+interface DisplayNameAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "displayName";
+  readonly value: string;
+  readonly provenance: Provenance;
+}
+
 interface DescriptionAnnotationNode {
   readonly kind: "annotation";
   readonly annotationKind: "description";
+  readonly value: string;
+  readonly provenance: Provenance;
+}
+
+interface RemarksAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "remarks";
+  readonly value: string;
+  readonly provenance: Provenance;
+}
+
+interface FormatAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "format";
   readonly value: string;
   readonly provenance: Provenance;
 }
@@ -469,7 +530,13 @@ interface FormatHintAnnotationNode {
 }
 ```
 
-**Ecosystem tag alignment (S6):** `description` derives from TSDoc summary text (bare text before the first block tag), `remarks` derives from `@remarks`, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName` is FormSpec-specific rather than a standard TSDoc tag.
+Newly documented variants:
+
+- `DisplayNameAnnotationNode` carries a human-readable display label. `@displayName` primarily feeds resolved identity metadata (§4.5; see 002 §2.2, §3.2, and §5), so this node documents the IR annotation shape without making ordinary `AnnotationNode` canonicalization override `ResolvedMetadata`.
+- `RemarksAnnotationNode` carries long-form programmatic-persona documentation from `@remarks`; see 002 §2.3 and §3.2. JSON Schema emission uses the `x-<vendor>-remarks` extension keyword described in 003 §3.2.
+- `FormatAnnotationNode` carries a JSON Schema `format` keyword value from `@format`; see 002 §2.2 and §3.2. This is distinct from `FormatHintAnnotationNode`, which carries renderer-specific hints and never emits JSON Schema `format`.
+
+**Ecosystem tag alignment (S6):** `description` derives from TSDoc summary text (bare text before the first block tag), `remarks` derives from `@remarks`, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName`, `format`, and `placeholder` are FormSpec-specific metadata or annotation tags.
 
 ### 4.3 Custom Annotations
 
@@ -770,7 +837,7 @@ Sources, in ascending specificity order:
 
 ### 7.2 Constraint Merge (Intersection)
 
-All constraints at every specificity level are accumulated and composed via intersection (C1, S1). The effective value for each `constraintKind` is computed according to the table in section 3.8.
+All constraints at every specificity level are accumulated and composed via intersection (C1, S1). The effective value for each `constraintKind` is computed according to the table in section 3.9.
 
 ```
 effective(minimum) = max(base.minimum, alias.minimum, field.minimum)
@@ -1152,7 +1219,7 @@ interface FormIR {
    * Keys are fully-qualified type names matching `ReferenceTypeNode.name`.
    * Generators use this to emit `$defs` in JSON Schema (PP7).
    */
-  readonly typeRegistry: Record<string, TypeDefinition>;
+  readonly typeRegistry: Readonly<Record<string, TypeDefinition>>;
   /** Additional top-level annotations emitted alongside the form root. */
   readonly annotations?: readonly AnnotationNode[];
   /**

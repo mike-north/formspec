@@ -42,18 +42,18 @@ FormSpec targets **JSON Schema 2020-12** (`https://json-schema.org/draft/2020-12
 
 ### 2.1 Primitive Types
 
-| IR type                                           | JSON Schema output                                                                                                                                                                        |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `string`                                          | `{ "type": "string" }`                                                                                                                                                                    |
-| `number`                                          | `{ "type": "number" }`                                                                                                                                                                    |
-| `integer`                                         | `{ "type": "integer" }`                                                                                                                                                                   |
-| `bigint`                                          | `{ "type": "integer" }` (schema-level integer semantics; runtime transport/serialization is outside the JSON Schema contract)                                                             |
-| `number` with `MultipleOfConstraint { value: 1 }` | `{ "type": "integer" }` (the canonicalization pipeline recognizes this common TypeScript authoring pattern and emits integer semantics; the redundant `multipleOf: 1` keyword is omitted) |
-| `boolean`                                         | `{ "type": "boolean" }`                                                                                                                                                                   |
-| `null`                                            | `{ "type": "null" }`                                                                                                                                                                      |
-| `undefined`                                       | Not emitted (optionality is expressed via `required`, per S8)                                                                                                                             |
-| `unknown` / `any`                                 | `{}` (accepts any value)                                                                                                                                                                  |
-| `never`                                           | `{ "not": {} }`                                                                                                                                                                           |
+| IR type                                                                          | JSON Schema output                                                                                                                                                                        |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`                                                                         | `{ "type": "string" }`                                                                                                                                                                    |
+| `number`                                                                         | `{ "type": "number" }`                                                                                                                                                                    |
+| `integer`                                                                        | `{ "type": "integer" }`                                                                                                                                                                   |
+| `bigint`                                                                         | `{ "type": "integer" }` (schema-level integer semantics; runtime transport/serialization is outside the JSON Schema contract)                                                             |
+| `number` with `NumericConstraintNode { constraintKind: "multipleOf", value: 1 }` | `{ "type": "integer" }` (the canonicalization pipeline recognizes this common TypeScript authoring pattern and emits integer semantics; the redundant `multipleOf: 1` keyword is omitted) |
+| `boolean`                                                                        | `{ "type": "boolean" }`                                                                                                                                                                   |
+| `null`                                                                           | `{ "type": "null" }`                                                                                                                                                                      |
+| `undefined`                                                                      | Not emitted (optionality is expressed via `required`, per S8)                                                                                                                             |
+| `unknown` / `any`                                                                | `{}` (accepts any value)                                                                                                                                                                  |
+| `never`                                                                          | `{ "not": {} }`                                                                                                                                                                           |
 
 ### 2.2 String Literal, Number Literal, Boolean Literal
 
@@ -102,17 +102,16 @@ If any member has a resolved display name, the extension contains a complete set
 
 ### 2.5 Object Types
 
-| IR node                                                                                      | JSON Schema output                                                     |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Object with known properties                                                                 | `{ "type": "object", "properties": {...}, "required": [...] }`         |
-| Required property                                                                            | Listed in `"required"` array                                           |
-| Optional property                                                                            | Absent from `"required"` array                                         |
-| Index signature `{ [k: string]: T }`                                                         | `{ "type": "object", "additionalProperties": <T schema> }`             |
-| `Record<string, T>` / unconstrained string key type                                          | `{ "type": "object", "additionalProperties": <T schema> }`             |
-| Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries           |
-| Pattern-shaped constrained key type (e.g. `Record<\`env\_${string}\`, T>`)                   | `{ "type": "object", "patternProperties": { "<regex>": <T schema> } }` |
-| Mixed (known + index signature)                                                              | `"properties"` + `"additionalProperties"` combined                     |
-| Mixed (known + constrained key family)                                                       | `"properties"` + `"patternProperties"` combined                        |
+| IR node or source shape                                                                      | JSON Schema output                                             |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `ObjectTypeNode` with known properties                                                       | `{ "type": "object", "properties": {...}, "required": [...] }` |
+| Required `ObjectProperty`                                                                    | Listed in `"required"` array                                   |
+| Optional `ObjectProperty`                                                                    | Absent from `"required"` array                                 |
+| `RecordTypeNode` (from `Record<string, T>` or `{ [k: string]: T }`)                          | `{ "type": "object", "additionalProperties": <T schema> }`     |
+| Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries   |
+| Pattern-shaped constrained key type (e.g. ``Record<`env_${string}`, T>``)                    | Deferred — no implementation today                             |
+| Mixed (known + string index signature)                                                       | `"properties"` + `"additionalProperties"` combined             |
+| Mixed (known + constrained key family)                                                       | Deferred — no implementation today                             |
 
 **`additionalProperties` policy:** When a TypeScript type has only known properties and no index signature, `additionalProperties` is **not** set to `false` by default. Setting it to `false` would cause validation failures when form renderers add extra fields (e.g., `_id`, `_timestamp`). This is intentional and matches B4 (the JSON Schema represents the data contract, not the full TypeScript structural check).
 
@@ -120,44 +119,41 @@ If any member has a resolved display name, the extension contains a complete set
 
 **Constrained key-type rule:** FormSpec derives object-key behavior from what TypeScript can actually express:
 
-- Unconstrained string/number index signatures become `additionalProperties`
+- Unconstrained string index signatures become `additionalProperties`
 - Finite key sets become explicit named `properties`
-- Pattern-shaped key families become `patternProperties`
+- Pattern-shaped key families are deferred
 
-FormSpec does **not** promise arbitrary regex-to-TypeScript or TypeScript-to-regex equivalence. `patternProperties` is limited to the subset of key constraints that can be expressed clearly and canonically in TypeScript, primarily template-literal key families and similarly unambiguous constrained key types.
+> `patternProperties` for template-literal record types (for example, ``Record<`prefix-${string}`, T>``) is **deferred** — no implementation today. Tracked in [#490](https://github.com/mike-north/formspec/issues/490).
 
 ### 2.6 Numeric Constraints
 
-| IR constraint                                           | JSON Schema validation keyword                                                                                                                                                                            |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NumericBoundConstraint { bound: "minimum" }`           | `"minimum"`                                                                                                                                                                                               |
-| `NumericBoundConstraint { bound: "maximum" }`           | `"maximum"`                                                                                                                                                                                               |
-| `NumericBoundConstraint { bound: "exclusive-minimum" }` | `"exclusiveMinimum"`                                                                                                                                                                                      |
-| `NumericBoundConstraint { bound: "exclusive-maximum" }` | `"exclusiveMaximum"`                                                                                                                                                                                      |
-| `MultipleOfConstraint`                                  | `"multipleOf"` (when the resolved type is integer and the only source of that integer semantic is `value = 1` on a `number`-derived alias, the redundant `"multipleOf": 1` keyword is omitted — see §2.1) |
+| IR constraint                                                  | JSON Schema validation keyword                                                                                                                                                                            |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NumericConstraintNode { constraintKind: "minimum" }`          | `"minimum"`                                                                                                                                                                                               |
+| `NumericConstraintNode { constraintKind: "maximum" }`          | `"maximum"`                                                                                                                                                                                               |
+| `NumericConstraintNode { constraintKind: "exclusiveMinimum" }` | `"exclusiveMinimum"`                                                                                                                                                                                      |
+| `NumericConstraintNode { constraintKind: "exclusiveMaximum" }` | `"exclusiveMaximum"`                                                                                                                                                                                      |
+| `NumericConstraintNode { constraintKind: "multipleOf" }`       | `"multipleOf"` (when the resolved type is integer and the only source of that integer semantic is `value = 1` on a `number`-derived alias, the redundant `"multipleOf": 1` keyword is omitted — see §2.1) |
 
 ### 2.7 String Constraints
 
-| IR constraint                                   | JSON Schema validation keyword |
-| ----------------------------------------------- | ------------------------------ |
-| `StringLengthConstraint { bound: "minLength" }` | `"minLength"`                  |
-| `StringLengthConstraint { bound: "maxLength" }` | `"maxLength"`                  |
-| `PatternConstraint`                             | `"pattern"`                    |
-| `FormatAnnotation`                              | `"format"`                     |
+| IR constraint or annotation                            | JSON Schema validation keyword |
+| ------------------------------------------------------ | ------------------------------ |
+| `LengthConstraintNode { constraintKind: "minLength" }` | `"minLength"`                  |
+| `LengthConstraintNode { constraintKind: "maxLength" }` | `"maxLength"`                  |
+| `PatternConstraintNode { constraintKind: "pattern" }`  | `"pattern"`                    |
+| `FormatAnnotationNode { annotationKind: "format" }`    | `"format"`                     |
 
 ### 2.8 Metadata and Annotation → JSON Schema Annotation Keywords
 
-| IR metadata or annotation      | JSON Schema annotation key                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------ |
-| `ResolvedMetadata.displayName` | `"title"`                                                                                  |
-| `DescriptionAnnotation`        | `"description"` — populated from TSDoc summary text (bare text before first block tag)     |
-| `RemarksAnnotation`            | `"x-<vendor>-remarks"` — programmatic-persona documentation from `@remarks`                |
-| `DefaultValueAnnotation`       | `"default"`                                                                                |
-| `ExampleAnnotation[]`          | `"examples"` (array)                                                                       |
-| `DeprecatedAnnotation`         | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
-| `ReadOnlyAnnotation`           | `"readOnly"`                                                                               |
-| `WriteOnlyAnnotation`          | `"writeOnly"`                                                                              |
-| `ConstConstraint`              | `"const"`                                                                                  |
+| IR metadata, annotation, or constraint                          | JSON Schema annotation key                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `ResolvedMetadata.displayName`                                  | `"title"`                                                                                  |
+| `DescriptionAnnotationNode { annotationKind: "description" }`   | `"description"` — populated from TSDoc summary text (bare text before first block tag)     |
+| `RemarksAnnotationNode { annotationKind: "remarks" }`           | `"x-<vendor>-remarks"` — programmatic-persona documentation from `@remarks`                |
+| `DefaultValueAnnotationNode { annotationKind: "defaultValue" }` | `"default"`                                                                                |
+| `DeprecatedAnnotationNode { annotationKind: "deprecated" }`     | `"deprecated": true` plus `"x-<vendor>-deprecation-description"` when a message is present |
+| `ConstConstraintNode { constraintKind: "const" }`               | `"const"`                                                                                  |
 
 ### 2.9 Declaration-Level Discriminator Specialization
 

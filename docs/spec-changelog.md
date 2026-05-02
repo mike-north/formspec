@@ -8,6 +8,25 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 - Group entries by the spec document being changed.
 - Link each entry back to the corresponding item in `scratch/spec-risk-log.md` when applicable.
 
+# 2026-04-30
+
+## docs/001-canonical-ir.md
+
+- §2.3: kept `EnumMember.label` as the documented per-member label field to match implementation.
+- §2.5: lifted `ObjectTypeNode.additionalProperties` to `?: boolean | TypeNode | undefined`; added `passthrough?: boolean`; marked `patternProperties` deferred ([#490](https://github.com/mike-north/formspec/issues/490)).
+- §2.6 (new): documented `RecordTypeNode` and its distinction from `ObjectTypeNode`.
+- §2.9: updated `DynamicTypeNode` to include `"enum"` and `parameterFields`.
+- §3.1: added `ConstConstraintNode` to the constraint union and aligned built-in constraint interfaces with path-target fields.
+- §3.7 (new): documented `ConstConstraintNode`.
+- §4.1: added `DisplayNameAnnotationNode`, `RemarksAnnotationNode`, and `FormatAnnotationNode` to the annotation union.
+- §4.2: defined the missing annotation variants and clarified `FormatAnnotationNode` versus `FormatHintAnnotationNode`.
+- §10.4: aligned `FormIR.typeRegistry` with the implementation's `Readonly<Record<string, TypeDefinition>>` shape.
+
+## docs/003-json-schema-vocabulary.md
+
+- §2.5: marked `patternProperties` deferred ([#490](https://github.com/mike-north/formspec/issues/490)).
+- §2.1 and §2.6-§2.8: refreshed stale IR node names in vocabulary mapping tables.
+
 # 2026-04-28
 
 ## 000-principles.md
@@ -77,7 +96,7 @@ This file tracks agreed changes and clarifications to the spec documents in `scr
 
 ## 001-canonical-ir
 
-- Updated §2.7 to match the 2026-03-26 circular-reference supersession.
+- Updated §2.8 to match the 2026-03-26 circular-reference supersession.
   - Named recursive class/interface/type-alias graphs are supported through registry-backed `ReferenceTypeNode` back-edges.
   - Anonymous recursive shapes now produce the `ANONYMOUS_RECURSIVE_TYPE` diagnostic rather than silently collapsing.
 
