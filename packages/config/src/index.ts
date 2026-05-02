@@ -43,8 +43,8 @@
  * @packageDocumentation
  */
 
-// DSL-policy facade, defaults, validators, and types.
-export * from "./policy.js";
+// DSL-policy facade, defaults, validators, config factory, and types.
+export * from "./application/index.js";
 
 export type {
   AnyField,
@@ -77,8 +77,8 @@ export {
   type LoadConfigResult,
   type LoadConfigFoundResult,
   type LoadConfigNotFoundResult,
-} from "./loader.js";
+} from "./loading/index.js";
 
-// Config factory + resolution.
-export { defineFormSpecConfig } from "./define.js";
-export { resolveConfigForFile, type ResolvedFormSpecConfig } from "./resolve.js";
+// Config resolution is implemented in the loading-side context but remains
+// part of the package-root public surface for compatibility.
+export { resolveConfigForFile, type ResolvedFormSpecConfig } from "./loading/index.js";
