@@ -1,5 +1,16 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.68
+
+### Minor Changes
+
+- [#494](https://github.com/mike-north/formspec/pull/494) [`c43396a`](https://github.com/mike-north/formspec/commit/c43396a969c95a046eb1ab04ce16653586a8b798) Thanks [@mike-north](https://github.com/mike-north)! - Enroll the built-in `@deprecated` tag in type-level heritage inheritance so derived declarations inherit base deprecation messages unless they provide a non-empty local message.
+
+### Patch Changes
+
+- Updated dependencies [[`c43396a`](https://github.com/mike-north/formspec/commit/c43396a969c95a046eb1ab04ce16653586a8b798)]:
+  - @formspec/analysis@0.1.0-alpha.68
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes
