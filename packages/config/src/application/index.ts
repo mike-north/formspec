@@ -11,44 +11,5 @@
  *
  * Internal barrel for application-side exports.
  */
-export {
-  DEFAULT_CONFIG,
-  DEFAULT_DSL_POLICY,
-  defineDSLPolicy,
-  mergeWithDefaults,
-} from "./defaults.js";
-
-// Deprecated names are re-exported intentionally for compatibility.
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export { DEFAULT_CONSTRAINTS, defineConstraints } from "./defaults.js";
 export { defineFormSpecConfig } from "./define.js";
 export * from "./policy.js";
-export type {
-  ControlOptionConstraints,
-  DSLPolicy,
-  FieldOption,
-  FieldOptionConstraints,
-  FieldOptionsContext,
-  FieldTypeConstraints,
-  FieldTypeContext,
-  FormSpecConfig,
-  FormSpecPackageOverride,
-  FormSpecSerializationConfig,
-  FormSpecValidationOptions,
-  LayoutConstraints,
-  LayoutContext,
-  LayoutTypeConstraints,
-  ResolvedDSLPolicy,
-  ResolvedRuleConstraints,
-  ResolvedUISchemaConstraints,
-  RuleConstraints,
-  RuleEffectConstraints,
-  Severity,
-  UISchemaConstraints,
-  ValidationIssue,
-  ValidationResult,
-} from "./types.js";
-
-// Deprecated names are re-exported intentionally for compatibility.
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export type { ConstraintConfig, ResolvedConstraintConfig } from "./types.js";
