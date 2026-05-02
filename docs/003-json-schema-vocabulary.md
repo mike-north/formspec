@@ -109,7 +109,7 @@ If any member has a resolved display name, the extension contains a complete set
 | Optional `ObjectProperty`                                                                    | Absent from `"required"` array                                 |
 | `RecordTypeNode` (from `Record<string, T>` or `{ [k: string]: T }`)                          | `{ "type": "object", "additionalProperties": <T schema> }`     |
 | Finite constrained key set (e.g. `Record<'a' \| 'b', T>`, `Record<keyof SomeFiniteType, T>`) | Expanded to ordinary `"properties"` and `"required"` entries   |
-| Pattern-shaped constrained key type (e.g. `Record<\`env\_${string}\`, T>`)                   | Deferred — no implementation today                             |
+| Pattern-shaped constrained key type (e.g. ``Record<`env_${string}`, T>``)                    | Deferred — no implementation today                             |
 | Mixed (known + string index signature)                                                       | `"properties"` + `"additionalProperties"` combined             |
 | Mixed (known + constrained key family)                                                       | Deferred — no implementation today                             |
 
