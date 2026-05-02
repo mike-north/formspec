@@ -744,6 +744,7 @@ const EXTRA_TAG_SPECS = {
     allowDuplicates: false,
     category: "ecosystem",
     placements: ALL_PLACEMENTS,
+    inheritFromBase: "local-wins",
     completionDetail: "Marks a declaration as deprecated.",
     hoverSummary: "Marks the declaration as deprecated.",
   },

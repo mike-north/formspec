@@ -17,11 +17,13 @@ import * as ts from "typescript";
 import type {
   AnnotationNode,
   CustomAnnotationNode,
+  DeprecatedAnnotationNode,
   FormatAnnotationNode,
 } from "@formspec/core/internals";
 import {
   collectInheritedTypeAnnotations,
   extractNamedTypeAnnotations,
+  hasInheritableTypeAnnotation,
   type HeritageAnnotationExtractor,
 } from "../src/internal.js";
 import { createProgram } from "./helpers.js";
@@ -55,6 +57,18 @@ function makeFormatAnnotation(value: string, file = "/virtual/formspec.ts"): For
     kind: "annotation",
     annotationKind: "format",
     value,
+    provenance: { surface: "tsdoc", file, line: 1, column: 0 },
+  };
+}
+
+function makeDeprecatedAnnotation(
+  message: string | undefined,
+  file = "/virtual/formspec.ts"
+): DeprecatedAnnotationNode {
+  return {
+    kind: "annotation",
+    annotationKind: "deprecated",
+    ...(message !== undefined && { message }),
     provenance: { surface: "tsdoc", file, line: 1, column: 0 },
   };
 }
@@ -117,6 +131,83 @@ function makeStubExtractor(): HeritageAnnotationExtractor {
 }
 
 describe("collectInheritedTypeAnnotations", () => {
+  it("treats presence-only local @deprecated as a non-override", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseCustomer { id: string; }
+      export interface DerivedCustomer extends BaseCustomer { email?: string; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedCustomer");
+    const localDeprecated = makeDeprecatedAnnotation(undefined);
+    const baseDeprecated = makeDeprecatedAnnotation("Use BaseCustomerV2 instead");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [localDeprecated],
+      checker,
+      makeNamedAnnotationExtractor({ BaseCustomer: [baseDeprecated] }),
+      inheritanceKeys(["deprecated"])
+    );
+
+    expect(inherited).toEqual([baseDeprecated]);
+  });
+
+  it("treats whitespace-only local @deprecated as a non-override", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseCustomer { id: string; }
+      export interface DerivedCustomer extends BaseCustomer { email?: string; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedCustomer");
+    const localDeprecated = makeDeprecatedAnnotation("   ");
+    const baseDeprecated = makeDeprecatedAnnotation("Use BaseCustomerV2 instead");
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [localDeprecated],
+      checker,
+      makeNamedAnnotationExtractor({ BaseCustomer: [baseDeprecated] }),
+      inheritanceKeys(["deprecated"])
+    );
+
+    expect(inherited).toEqual([baseDeprecated]);
+  });
+
+  it("inherits presence-only base @deprecated as a deprecation marker", () => {
+    const { sourceFile, checker } = createProgram(`
+      interface BaseCustomer { id: string; }
+      export interface DerivedCustomer extends BaseCustomer { email?: string; }
+    `);
+    const derived = findInterface(sourceFile, "DerivedCustomer");
+    const baseDeprecated = makeDeprecatedAnnotation(undefined);
+
+    const inherited = collectInheritedTypeAnnotations(
+      derived,
+      [],
+      checker,
+      makeNamedAnnotationExtractor({ BaseCustomer: [baseDeprecated] }),
+      inheritanceKeys(["deprecated"])
+    );
+
+    expect(inherited).toEqual([baseDeprecated]);
+  });
+
+  it("counts presence-only local @deprecated as an inheritable type annotation", () => {
+    const { sourceFile, checker } = createProgram(`
+      export type OldCustomer = { id: string };
+    `);
+    const oldCustomer = findTypeAlias(sourceFile, "OldCustomer");
+    const localDeprecated = makeDeprecatedAnnotation(undefined);
+
+    const hasInheritable = hasInheritableTypeAnnotation(
+      oldCustomer,
+      checker,
+      "/virtual/formspec.ts",
+      makeNamedAnnotationExtractor({ OldCustomer: [localDeprecated] }),
+      inheritanceKeys(["deprecated"])
+    );
+
+    expect(hasInheritable).toBe(true);
+  });
+
   it("returns the base @format when the derived interface omits one", () => {
     const { sourceFile, checker } = createProgram(`
       /** @format monetary-amount */
@@ -256,7 +347,13 @@ describe("collectInheritedTypeAnnotations", () => {
       return makeStubExtractor()(decl, file);
     };
 
-    const inherited = collectInheritedTypeAnnotations(leaf, [localFormat], checker, counting);
+    const inherited = collectInheritedTypeAnnotations(
+      leaf,
+      [localFormat],
+      checker,
+      counting,
+      inheritanceKeys(["format"])
+    );
 
     expect(inherited).toEqual([]);
     expect(calls).toBe(0);

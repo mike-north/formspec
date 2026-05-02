@@ -142,8 +142,8 @@ describe("tag-registry", () => {
       .map((definition) => definition.canonicalName)
       .sort();
 
-    expect(inheritableBuiltins).toEqual(["format"]);
-    expect([...getInheritableAnnotationKeys()]).toEqual(["format"]);
+    expect(inheritableBuiltins).toEqual(["deprecated", "format"]);
+    expect([...getInheritableAnnotationKeys()]).toEqual(["format", "deprecated"]);
     expect(getInheritableAnnotationKeys()).toBe(getInheritableAnnotationKeys());
   });
 
@@ -215,6 +215,7 @@ describe("tag-registry", () => {
     );
     expect([...getInheritableAnnotationKeys(extensions)].sort()).toEqual([
       "custom:x-example/currency/DisplayCurrency",
+      "deprecated",
       "format",
     ]);
     expect(getInheritableAnnotationKeys(extensions)).toBe(getInheritableAnnotationKeys(extensions));
