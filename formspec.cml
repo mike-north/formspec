@@ -168,7 +168,7 @@ BoundedContext CompilationContext implements CompilationDomain {
 BoundedContext ConfigurationContext implements ConfigurationDomain {
 	type = APPLICATION
 	domainVisionStatement
-		= "Load formspec.config.ts (or .mts/.js/.mjs) configuration; let consumers register extensions and custom constraints via defineFormSpecConfig; carry project DSL policy in FormSpecConfig.constraints; re-export DSL-policy APIs for compatibility."
+		= "Load formspec.config.ts (or .mts/.js/.mjs) configuration; let consumers register extensions and custom constraints via defineFormSpecConfig; carry project DSL policy in FormSpecConfig.constraints; re-export DSL-policy APIs for compatibility. Internally, src/loading and src/application are responsibility areas within this context: loading owns config discovery, module loading, path resolution, and package override resolution, while application owns config types, defaults, defineFormSpecConfig, and DSL-policy interop. This remains one published-package bounded context."
 	implementationTechnology = "TypeScript + jiti — npm package @formspec/config"
 	responsibilities
 		= "loadFormSpecConfig() — discover and parse formspec.config.{ts,mts,js,mjs}",

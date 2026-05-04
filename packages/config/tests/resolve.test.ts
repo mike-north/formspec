@@ -1,7 +1,7 @@
 /**
  * Tests for per-file config resolution and package override merging.
  *
- * @see ../resolve.ts
+ * @see ../src/loading/resolve.ts
  */
 import { describe, it, expect } from "vitest";
 import { resolveConfigForFile } from "../src/index.js";

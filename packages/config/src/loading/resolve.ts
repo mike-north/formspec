@@ -1,10 +1,17 @@
+/**
+ * Loading-side package override resolution.
+ *
+ * This module lives with loading concerns because its inputs are file paths
+ * and package override globs. The result is application-shaped config data,
+ * but the work is path manipulation against loader-owned override rules.
+ */
 import type {
   FormSpecConfig,
   FormSpecPackageOverride,
   DSLPolicy,
   ResolvedDSLPolicy,
-} from "./types.js";
-import { mergeWithDefaults } from "./defaults.js";
+} from "../application/types.js";
+import { mergeWithDefaults } from "../application/defaults.js";
 
 /**
  * Resolved configuration for a specific file, with all defaults applied
