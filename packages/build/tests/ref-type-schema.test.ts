@@ -61,6 +61,21 @@ interface Invoice {
   customer: Ref<Customer>;
 }
 
+interface Product {
+  readonly object: 'product';
+  type: 'good' | 'service';
+  name: string;
+}
+
+type RelatedObject =
+  | { readonly object: 'customer'; id: string; type: 'individual' | 'business' }
+  | { readonly object: 'product'; id: string; type: 'good' | 'service' };
+
+interface V2Event {
+  readonly object: 'v2.core.event';
+  related_object: RelatedObject | null;
+}
+
 /** @apiName custom_loyalty */
 interface LoyaltyProgram {
   readonly object: string;
@@ -96,6 +111,14 @@ export interface OptionalRefForm {
 export interface NestedRefForm {
   /** Invoice whose customer field is itself a Ref<Customer>. */
   invoice: Ref<Invoice>;
+}
+
+export interface ProductRefForm {
+  product: Ref<Product>;
+}
+
+export interface EventRefForm {
+  event: Ref<V2Event>;
 }
 `.trimStart();
 
@@ -141,10 +164,7 @@ function expectRecord(value: unknown, message: string): Record<string, unknown> 
   return value as Record<string, unknown>;
 }
 
-function resolveRef(
-  schema: unknown,
-  root: Record<string, unknown>
-): Record<string, unknown> {
+function resolveRef(schema: unknown, root: Record<string, unknown>): Record<string, unknown> {
   // Fail fast if `schema` isn't an object — silently casting `undefined` here
   // produces confusing downstream errors (e.g. "cannot read properties of
   // undefined") that mask missing fields in the test setup.
@@ -273,19 +293,21 @@ describe("Ref<T> JSON Schema serialization", () => {
       // May be wrapped in a nullable schema — find the Ref properties
       const customerSchema = props["customer"] as Record<string, unknown>;
       // Try direct resolution first, then check oneOf/anyOf for nullable
-      const refSchema = customerSchema["$ref"] !== undefined
-        ? resolveRef(customerSchema, root)
-        : (() => {
-            const oneOf = customerSchema["oneOf"] as unknown[] | undefined;
-            const anyOf = customerSchema["anyOf"] as unknown[] | undefined;
-            const members = oneOf ?? anyOf ?? [customerSchema];
-            const nonNull = members.find(
-              (m) => typeof m === "object" && m !== null && (m as Record<string, unknown>)["type"] !== "null"
-            );
-            return nonNull !== undefined
-              ? resolveRef(nonNull, root)
-              : customerSchema;
-          })();
+      const refSchema =
+        customerSchema["$ref"] !== undefined
+          ? resolveRef(customerSchema, root)
+          : (() => {
+              const oneOf = customerSchema["oneOf"] as unknown[] | undefined;
+              const anyOf = customerSchema["anyOf"] as unknown[] | undefined;
+              const members = oneOf ?? anyOf ?? [customerSchema];
+              const nonNull = members.find(
+                (m) =>
+                  typeof m === "object" &&
+                  m !== null &&
+                  (m as Record<string, unknown>)["type"] !== "null"
+              );
+              return nonNull !== undefined ? resolveRef(nonNull, root) : customerSchema;
+            })();
 
       // Assert properties are emitted unconditionally — a regression that drops
       // the Ref body on optional fields must fail this test, not silently pass.
@@ -328,6 +350,41 @@ describe("Ref<T> JSON Schema serialization", () => {
       const invoiceRefProps = expectRecord(invoiceRef["properties"], "Missing Ref<Invoice> props");
       const typeSchema = expectRecord(invoiceRefProps["type"], "Missing type property");
       expect(typeSchema["enum"]).toEqual(["invoice"]);
+    });
+  });
+
+  describe("Ref<T> targets with non-Ref discriminator-like fields", () => {
+    it("uses the target object's literal object value when the target also has a union-valued type field", () => {
+      const result = generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "ProductRefForm",
+      });
+
+      const props = result.jsonSchema.properties as Record<string, unknown>;
+      const root = result.jsonSchema as Record<string, unknown>;
+      const productRef = resolveRef(props["product"], root);
+      const productRefProps = expectRecord(productRef["properties"], "Missing Ref<Product> props");
+      const typeSchema = expectRecord(productRefProps["type"], "Missing type property");
+
+      expect(Object.keys(productRefProps).sort()).toEqual(["id", "type"]);
+      expect(typeSchema["enum"]).toEqual(["product"]);
+    });
+
+    it("keeps Ref<T> compact when the target has unrelated nested union fields", () => {
+      const result = generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "EventRefForm",
+      });
+
+      const props = result.jsonSchema.properties as Record<string, unknown>;
+      const root = result.jsonSchema as Record<string, unknown>;
+      const eventRef = resolveRef(props["event"], root);
+      const eventRefProps = expectRecord(eventRef["properties"], "Missing Ref<V2Event> props");
+      const typeSchema = expectRecord(eventRefProps["type"], "Missing type property");
+
+      expect(Object.keys(eventRefProps).sort()).toEqual(["id", "type"]);
+      expect(eventRefProps).not.toHaveProperty("related_object");
+      expect(typeSchema["enum"]).toEqual(["v2.core.event"]);
     });
   });
 

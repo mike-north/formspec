@@ -132,6 +132,18 @@ describe("@discriminator schema generation", () => {
         "  id: string;",
         "}",
         "",
+        "export interface UnionKindWithObjectCarrier {",
+        '  readonly object: "union_kind_with_object";',
+        '  kind: "customer" | "organization";',
+        "  id: string;",
+        "}",
+        "",
+        "export interface UnionTypeWithObjectCarrier {",
+        '  readonly object: "union_type_with_object";',
+        '  type: "customer" | "organization";',
+        "  id: string;",
+        "}",
+        "",
         "export interface GenericCarrier<T> {",
         "  id: T;",
         "}",
@@ -219,7 +231,7 @@ describe("@discriminator schema generation", () => {
     fs.writeFileSync(
       fixturePath,
       [
-        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, GenericCarrier, MissingCarrier, LargeObjectCarrier, ExtractObjectTag } from "./names.js";',
+        'import type { Customer, Organization, ApiNamedAccount, InferredAccountCarrier, CustomerObjectCarrier, ObjectAliasCarrier, IntersectionAliasCarrier, UnionIdentityCarrier, UnionKindWithObjectCarrier, UnionTypeWithObjectCarrier, GenericCarrier, MissingCarrier, LargeObjectCarrier, ExtractObjectTag } from "./names.js";',
         'import { Bar, InferredObjectCarrier } from "./names.js";',
         'import type { ReExportedCustomer, ReExportedOrganization } from "./aliases.js";',
         'import type { Ref as ImportedRef } from "./refs.js";',
@@ -227,6 +239,12 @@ describe("@discriminator schema generation", () => {
         "/** @discriminator :kind T */",
         "export interface TaggedValue<T> {",
         "  kind: string;",
+        "  id: string;",
+        "}",
+        "",
+        "/** @discriminator :type T */",
+        "export interface TypeTaggedValue<T> {",
+        "  type: string;",
         "  id: string;",
         "}",
         "",
@@ -382,6 +400,14 @@ describe("@discriminator schema generation", () => {
         "",
         "export interface UnionIdentityWrapper {",
         "  bad: TaggedValue<UnionIdentityCarrier>;",
+        "}",
+        "",
+        "export interface UnionKindWithObjectWrapper {",
+        "  bad: TaggedValue<UnionKindWithObjectCarrier>;",
+        "}",
+        "",
+        "export interface UnionTypeWithObjectWrapper {",
+        "  bad: TypeTaggedValue<UnionTypeWithObjectCarrier>;",
         "}",
         "",
         "/** @discriminator :kind T */",
@@ -783,6 +809,24 @@ describe("@discriminator schema generation", () => {
       generateSchemasOrThrow({
         filePath: fixturePath,
         typeName: "UnionIdentityWrapper",
+      })
+    ).toThrow(/INVALID_TAG_ARGUMENT/);
+  });
+
+  it("does not fall back to object when the requested identity field is union-valued", () => {
+    expect(() =>
+      generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "UnionKindWithObjectWrapper",
+      })
+    ).toThrow(/INVALID_TAG_ARGUMENT/);
+  });
+
+  it("does not allow object fallback for a :type field that is not derived from object identity", () => {
+    expect(() =>
+      generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "UnionTypeWithObjectWrapper",
       })
     ).toThrow(/INVALID_TAG_ARGUMENT/);
   });
