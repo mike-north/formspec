@@ -1,5 +1,21 @@
 # @formspec/build
 
+## 0.1.0-alpha.68
+
+### Minor Changes
+
+- [#494](https://github.com/mike-north/formspec/pull/494) [`c43396a`](https://github.com/mike-north/formspec/commit/c43396a969c95a046eb1ab04ce16653586a8b798) Thanks [@mike-north](https://github.com/mike-north)! - Enroll the built-in `@deprecated` tag in type-level heritage inheritance so derived declarations inherit base deprecation messages unless they provide a non-empty local message.
+
+### Patch Changes
+
+- [#493](https://github.com/mike-north/formspec/pull/493) [`c76112e`](https://github.com/mike-north/formspec/commit/c76112ef5286aa238dab83da9ecb170b642255ce) Thanks [@mike-north](https://github.com/mike-north)! - Internally split config loading files from application/type files without changing the public API.
+
+- [#497](https://github.com/mike-north/formspec/pull/497) [`0e19805`](https://github.com/mike-north/formspec/commit/0e198055ea075c26409cb8638af9b6c82f02bfc9) Thanks [@mike-north](https://github.com/mike-north)! - Allow `Ref<T>` targets with unrelated union-valued `type` fields to resolve their literal `object` discriminator value.
+
+- Updated dependencies [[`c76112e`](https://github.com/mike-north/formspec/commit/c76112ef5286aa238dab83da9ecb170b642255ce), [`c43396a`](https://github.com/mike-north/formspec/commit/c43396a969c95a046eb1ab04ce16653586a8b798)]:
+  - @formspec/config@0.1.0-alpha.68
+  - @formspec/analysis@0.1.0-alpha.68
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes
