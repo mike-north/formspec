@@ -813,6 +813,15 @@ interface ResolvedDiscriminatorProperty {
   readonly optional: boolean;
 }
 
+const UNION_VALUED_DISCRIMINATOR_PROPERTY: unique symbol = Symbol(
+  "union-valued discriminator property"
+);
+
+type LiteralDiscriminatorPropertyValue =
+  | string
+  | typeof UNION_VALUED_DISCRIMINATOR_PROPERTY
+  | undefined;
+
 function makeAnalysisDiagnostic(
   code: string,
   message: string,
@@ -1160,10 +1169,8 @@ function getConcreteTypeArgumentForDiscriminator(
 function resolveLiteralDiscriminatorPropertyValue(
   boundType: ts.Type,
   propertyName: string,
-  checker: ts.TypeChecker,
-  provenance: Provenance,
-  diagnostics: ConstraintSemanticDiagnostic[]
-): string | null | undefined {
+  checker: ts.TypeChecker
+): LiteralDiscriminatorPropertyValue {
   const propertySymbol = boundType.getProperty(propertyName);
   if (propertySymbol === undefined) {
     return undefined;
@@ -1186,14 +1193,7 @@ function resolveLiteralDiscriminatorPropertyValue(
       (member) => !(member.flags & (ts.TypeFlags.Null | ts.TypeFlags.Undefined))
     );
     if (nonNullMembers.length > 0 && nonNullMembers.every((member) => member.isStringLiteral())) {
-      diagnostics.push(
-        makeAnalysisDiagnostic(
-          "INVALID_TAG_ARGUMENT",
-          "Discriminator resolution for union-valued identity properties is out of scope for v1.",
-          provenance
-        )
-      );
-      return null;
+      return UNION_VALUED_DISCRIMINATOR_PROPERTY;
     }
   }
 
@@ -1285,7 +1285,8 @@ function resolveDiscriminatorValue(
   checker: ts.TypeChecker,
   provenance: Provenance,
   diagnostics: ConstraintSemanticDiagnostic[],
-  metadataPolicy: AnalyzerMetadataPolicy
+  metadataPolicy: AnalyzerMetadataPolicy,
+  allowObjectFallbackForUnionTypeIdentity: boolean
 ): string | null {
   if (boundType === null) {
     diagnostics.push(
@@ -1318,20 +1319,45 @@ function resolveDiscriminatorValue(
     }
   }
 
+  let sawUnionValuedIdentityProperty = false;
   for (const identityPropertyName of getDiscriminatorIdentityPropertyNames(fieldName)) {
     const literalIdentityValue = resolveLiteralDiscriminatorPropertyValue(
       boundType,
       identityPropertyName,
-      checker,
-      provenance,
-      diagnostics
+      checker
     );
-    if (literalIdentityValue === null) {
-      return null;
+    if (literalIdentityValue === UNION_VALUED_DISCRIMINATOR_PROPERTY) {
+      // `@discriminator :type T` prefers T.type when it is a singleton literal,
+      // but Ref<T>-style wrappers may bind Stripe-like targets whose unrelated
+      // `type` field is a union. Defer the v1 union diagnostic until the fallback
+      // `object` identity property has had a chance to resolve.
+      if (!allowObjectFallbackForUnionTypeIdentity || identityPropertyName !== "type") {
+        diagnostics.push(
+          makeAnalysisDiagnostic(
+            "INVALID_TAG_ARGUMENT",
+            "Discriminator resolution for union-valued identity properties is out of scope for v1.",
+            provenance
+          )
+        );
+        return null;
+      }
+      sawUnionValuedIdentityProperty = true;
+      continue;
     }
     if (literalIdentityValue !== undefined) {
       return literalIdentityValue;
     }
+  }
+
+  if (sawUnionValuedIdentityProperty) {
+    diagnostics.push(
+      makeAnalysisDiagnostic(
+        "INVALID_TAG_ARGUMENT",
+        "Discriminator resolution for union-valued identity properties is out of scope for v1.",
+        provenance
+      )
+    );
+    return null;
   }
 
   const apiName = resolveDiscriminatorApiName(boundType, checker, metadataPolicy);
@@ -1350,6 +1376,178 @@ function resolveDiscriminatorValue(
     )
   );
   return null;
+}
+
+function discriminatorFieldAllowsObjectFallback(
+  node: DiscriminatorDeclarationNode,
+  checker: ts.TypeChecker,
+  directive: DiscriminatorDirective
+): boolean {
+  if (directive.fieldName !== "type") {
+    return false;
+  }
+
+  const property = resolveDiscriminatorProperty(node, checker, directive.fieldName);
+  const propertyTypeNode = getDeclarationTypeNode(property?.declaration);
+  return (
+    propertyTypeNode !== undefined &&
+    isObjectIdentityExtractorTypeNode(propertyTypeNode, checker, directive.typeParameterName)
+  );
+}
+
+function getDeclarationTypeNode(declaration: ts.Declaration | undefined): ts.TypeNode | undefined {
+  if (declaration === undefined) {
+    return undefined;
+  }
+
+  if (
+    (ts.isPropertySignature(declaration) ||
+      ts.isPropertyDeclaration(declaration) ||
+      ts.isParameter(declaration)) &&
+    declaration.type !== undefined
+  ) {
+    return declaration.type;
+  }
+
+  return undefined;
+}
+
+function isObjectIdentityExtractorTypeNode(
+  typeNode: ts.TypeNode,
+  checker: ts.TypeChecker,
+  typeParameterName: string,
+  seenAliases: Set<ts.TypeAliasDeclaration> = new Set<ts.TypeAliasDeclaration>()
+): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return isObjectIdentityExtractorTypeNode(
+      typeNode.type,
+      checker,
+      typeParameterName,
+      seenAliases
+    );
+  }
+
+  if (isObjectIndexedAccessTypeNode(typeNode, typeParameterName)) {
+    return true;
+  }
+
+  if (isObjectConditionalExtractorTypeNode(typeNode, typeParameterName)) {
+    return true;
+  }
+
+  if (!ts.isTypeReferenceNode(typeNode)) {
+    return false;
+  }
+
+  const aliasDecl = getTypeAliasDeclarationFromTypeReference(typeNode, checker);
+  if (aliasDecl === undefined || seenAliases.has(aliasDecl)) {
+    return false;
+  }
+
+  const [aliasTypeParameter] = aliasDecl.typeParameters ?? [];
+  const [aliasArgument] = typeNode.typeArguments ?? [];
+  if (
+    aliasTypeParameter === undefined ||
+    aliasArgument === undefined ||
+    !typeNodeReferencesTypeParameter(aliasArgument, typeParameterName)
+  ) {
+    return false;
+  }
+
+  seenAliases.add(aliasDecl);
+  return isObjectIdentityExtractorTypeNode(
+    aliasDecl.type,
+    checker,
+    aliasTypeParameter.name.text,
+    seenAliases
+  );
+}
+
+function isObjectIndexedAccessTypeNode(typeNode: ts.TypeNode, typeParameterName: string): boolean {
+  if (!ts.isIndexedAccessTypeNode(typeNode)) {
+    return false;
+  }
+
+  return (
+    typeNodeReferencesTypeParameter(typeNode.objectType, typeParameterName) &&
+    isObjectStringLiteralTypeNode(typeNode.indexType)
+  );
+}
+
+function isObjectConditionalExtractorTypeNode(
+  typeNode: ts.TypeNode,
+  typeParameterName: string
+): boolean {
+  if (!ts.isConditionalTypeNode(typeNode)) {
+    return false;
+  }
+
+  return (
+    typeNodeReferencesTypeParameter(typeNode.checkType, typeParameterName) &&
+    typeNodeHasObjectProperty(typeNode.extendsType) &&
+    typeNodeContainsInferTypeNode(typeNode.extendsType)
+  );
+}
+
+function typeNodeReferencesTypeParameter(
+  typeNode: ts.TypeNode,
+  typeParameterName: string
+): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return typeNodeReferencesTypeParameter(typeNode.type, typeParameterName);
+  }
+
+  return ts.isTypeReferenceNode(typeNode)
+    ? ts.isIdentifier(typeNode.typeName) && typeNode.typeName.text === typeParameterName
+    : false;
+}
+
+function isObjectStringLiteralTypeNode(typeNode: ts.TypeNode): boolean {
+  return (
+    ts.isLiteralTypeNode(typeNode) &&
+    ts.isStringLiteral(typeNode.literal) &&
+    typeNode.literal.text === "object"
+  );
+}
+
+function typeNodeHasObjectProperty(typeNode: ts.TypeNode): boolean {
+  if (ts.isParenthesizedTypeNode(typeNode)) {
+    return typeNodeHasObjectProperty(typeNode.type);
+  }
+
+  if (ts.isIntersectionTypeNode(typeNode)) {
+    return typeNode.types.some(typeNodeHasObjectProperty);
+  }
+
+  if (!ts.isTypeLiteralNode(typeNode)) {
+    return false;
+  }
+
+  return typeNode.members.some(
+    (member) =>
+      ts.isPropertySignature(member) &&
+      getAnalyzableObjectLikePropertyName(member.name) === "object"
+  );
+}
+
+function typeNodeContainsInferTypeNode(typeNode: ts.TypeNode): boolean {
+  if (ts.isInferTypeNode(typeNode)) {
+    return true;
+  }
+
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) {
+      return;
+    }
+    if (ts.isInferTypeNode(node)) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(typeNode);
+  return found;
 }
 
 function getDeclarationName(node: ts.Declaration): string {
@@ -1410,7 +1608,8 @@ function applyDeclarationDiscriminatorToFields(
     checker,
     directive.provenance,
     diagnostics,
-    metadataPolicy
+    metadataPolicy,
+    discriminatorFieldAllowsObjectFallback(node, checker, directive)
   );
   if (discriminatorValue === null) {
     return [...fields];
@@ -1550,7 +1749,8 @@ function applyDiscriminatorToObjectProperties(
     checker,
     directive.provenance,
     diagnostics,
-    metadataPolicy
+    metadataPolicy,
+    discriminatorFieldAllowsObjectFallback(node, checker, directive)
   );
   if (discriminatorValue === null) {
     return properties;
