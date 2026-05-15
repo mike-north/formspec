@@ -1,5 +1,11 @@
 # @formspec/constraints
 
+## 0.1.0-alpha.68
+
+### Patch Changes
+
+- [#493](https://github.com/mike-north/formspec/pull/493) [`c76112e`](https://github.com/mike-north/formspec/commit/c76112ef5286aa238dab83da9ecb170b642255ce) Thanks [@mike-north](https://github.com/mike-north)! - Internally split config loading files from application/type files without changing the public API.
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes
