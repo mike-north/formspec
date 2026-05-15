@@ -1331,11 +1331,7 @@ function resolveDiscriminatorValue(
       // but Ref<T>-style wrappers may bind Stripe-like targets whose unrelated
       // `type` field is a union. Defer the v1 union diagnostic until the fallback
       // `object` identity property has had a chance to resolve.
-      if (
-        fieldName !== "type" ||
-        identityPropertyName !== "type" ||
-        !allowObjectFallbackForUnionTypeIdentity
-      ) {
+      if (!allowObjectFallbackForUnionTypeIdentity || identityPropertyName !== "type") {
         diagnostics.push(
           makeAnalysisDiagnostic(
             "INVALID_TAG_ARGUMENT",
