@@ -8,7 +8,7 @@ FormSpec's official TypeScript peer range is `>=5.7.3 <7` for packages that expo
 
 The TS 7 job deliberately uses two TypeScript surfaces:
 
-- `@typescript/native-preview@beta` supplies the `tsgo` binary.
+- `@typescript/native-preview@latest` supplies the `tsgo` binary. (`@typescript/native-preview` publishes only `beta`/`latest` dist-tags, both `7.0.0-dev.*` nightlies; `latest` is the newest.)
 - `@typescript/typescript6` supplies the JavaScript compiler API currently used by FormSpec packages and tooling.
 
 Keep this distinction intact. `pnpm run build`, `pnpm run test`, `tsup`, lint, and API Extractor still run through the TS 6 JavaScript API in that job. The direct native-preview checks are the package-scoped `pnpm exec tsgo --noEmit` check and the e2e `pnpm exec tsgo --noEmit -p e2e/tsconfig.tsgo.json` check, both wrapped by `scripts/tsgo-ci.mts`.
@@ -60,7 +60,7 @@ If a change reaches for a new part of the compiler API, ask whether the behavior
 
 Map failures to the step that owns them:
 
-- `Pin TypeScript via the typescript6 alias and native-preview`: package mutation failed, or the `@typescript/native-preview` beta tag changed unexpectedly.
+- `Pin TypeScript via the typescript6 alias and native-preview`: package mutation failed, or the `@typescript/native-preview` latest tag changed unexpectedly.
 - `Install dependencies`: pnpm override interaction failed. Inspect `package.json`, `pnpm-lock.yaml`, and `pnpm why typescript`.
 - `Expose TypeScript 6 compatibility bins and server subpaths`: the `@typescript/typescript6` package layout changed, `tsc6` is missing, or tsserver subpaths moved.
 - `Assert TypeScript API alias resolution`: a workspace with a direct `typescript` dependency did not resolve to `@typescript/typescript6`. This often means a new package was added outside the discovery rules, or an override no longer applies to that package.
@@ -72,7 +72,7 @@ When reproducing locally, use a temporary copy so `npm pkg set` and `pnpm instal
 ## What Not To Do
 
 - Do not make TS 7 blocking until the project explicitly promotes it to official support.
-- Do not test TS 7 through `typescript` dist-tag drift. Use `@typescript/native-preview@beta` for the native-preview row.
+- Do not test TS 7 through `typescript` dist-tag drift. Use `@typescript/native-preview@latest` for the native-preview row.
 - Do not add lint, `tsup`, or API Extractor to the direct `tsgo` path unless the project has adopted a stable TS 7 programmatic API.
 - Do not remove the `assert-alias` step to get a green build. Fix workspace discovery, package dependencies, or pnpm overrides instead.
 - Do not broaden public peer ranges for TS 7 until the public compiler API exposure and facade plan are resolved.
