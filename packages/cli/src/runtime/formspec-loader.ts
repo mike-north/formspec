@@ -115,6 +115,21 @@ function generateRuntimeJsonSchema(
 }
 
 /**
+ * Logs a schema-generation failure for a FormSpec export and returns a
+ * concise cause string for tracking in a `failures` map.
+ *
+ * The raw error is passed to `console.warn` as a separate argument (rather
+ * than interpolated into the message string via `String(error)`) so Node's
+ * console formatting can render non-`Error` throwables — e.g. a plain object
+ * — usefully, instead of collapsing them to `"[object Object]"`.
+ */
+function warnGenerationFailure(name: string, error: unknown): string {
+  const cause = error instanceof Error ? error.message : String(error);
+  console.warn(`Warning: Failed to generate schemas for export "${name}":`, error);
+  return cause;
+}
+
+/**
  * Checks if a value is a FormSpec object.
  *
  * Uses duck typing since the actual FormSpec type may come from
@@ -181,9 +196,7 @@ export async function loadFormSpecs(
           uiSchema,
         });
       } catch (error) {
-        const cause = error instanceof Error ? error.message : String(error);
-        console.warn(`Warning: Failed to generate schemas for export "${name}": ${cause}`);
-        failures.set(name, cause);
+        failures.set(name, warnGenerationFailure(name, error));
       }
     }
   }
@@ -231,9 +244,7 @@ export async function loadNamedFormSpecs(
         const uiSchema = generateUiSchema(value as never);
         result.set(name, { name, jsonSchema, uiSchema });
       } catch (error) {
-        const cause = error instanceof Error ? error.message : String(error);
-        console.warn(`Warning: Failed to generate schemas for "${name}": ${cause}`);
-        failures.set(name, cause);
+        failures.set(name, warnGenerationFailure(name, error));
       }
     } else if (value) {
       console.warn(`Warning: Export "${name}" exists but is not a valid FormSpec object`);
