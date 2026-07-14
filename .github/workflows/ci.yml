@@ -57,8 +57,7 @@ jobs:
         # rather than silently testing it via dist-tag drift. Every
         # dist-tag-driven entry below is therefore clamped to <7: dist-tags
         # are resolved to concrete versions at run time and dropped if
-        # they've crossed into 7.x; the nightly entry uses an explicit <7
-        # semver range.
+        # they've crossed into 7.x.
         #
         # NAMING CONTRACT: the pinned-major row is always present and always
         # labeled "<defaultMajor>.x" (e.g. "6.x"), which renders as the
@@ -164,12 +163,6 @@ jobs:
             // Pre-release is always experimental.
             include.push({ label: "beta", typescript: beta, experimental: true });
           }
-          // Nightly is always experimental.
-          include.push({
-            label: "6.x nightly",
-            typescript: ">=6.0.0-dev <7.0.0-0",
-            experimental: true,
-          });
           console.log(`include=${JSON.stringify(include)}`);
           EOF
 
@@ -223,8 +216,11 @@ jobs:
     # As of 2026-07-14, `typescript@latest` (7.0.2) IS the native Go rewrite —
     # its own "typescript" dependency graph pulls in platform-specific native
     # binaries and its "tsc" bin is the Go compiler. @typescript/native-preview
-    # is now a stale pre-release-only channel (still on 7.0.0-dev.* builds).
-    # We keep installing @typescript/native-preview@beta here rather than
+    # is a separate, pre-release-only channel that publishes just two dist-tags
+    # (`beta` and `latest`), both `7.0.0-dev.*` nightly builds; `latest` is the
+    # newest and auto-advances as new nightlies publish. We install
+    # @typescript/native-preview@latest here — tracking the freshest
+    # native-preview nightly rather than a pinned beta snapshot — instead of
     # switching to stable typescript@7 because the workspace's global
     # `pnpm.overrides.typescript` alias (needed so packages that use the JS
     # compiler API keep working under the TS6-compatible shim) would collide
@@ -263,7 +259,7 @@ jobs:
         # dynamically from the shim's manifest rather than assuming it.
         run: |
           npm pkg set "pnpm.overrides.typescript=npm:@typescript/typescript6@^6.0.0"
-          npm pkg set "devDependencies.@typescript/native-preview=beta"
+          npm pkg set "devDependencies.@typescript/native-preview=latest"
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
