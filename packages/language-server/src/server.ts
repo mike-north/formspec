@@ -35,6 +35,20 @@ import { createLogger } from "./logger.js";
 
 const PLUGIN_QUERY_TIMEOUT_ENV_VAR = "FORMSPEC_PLUGIN_QUERY_TIMEOUT_MS";
 
+/**
+ * Default debounce window, in milliseconds, applied to diagnostics republishing
+ * triggered by document content changes. Collapses bursts of keystrokes into a
+ * single plugin query.
+ */
+const DEFAULT_DIAGNOSTICS_DEBOUNCE_MS = 250;
+
+/**
+ * Default interval, in milliseconds, at which the server re-queries diagnostics
+ * for open documents whose plugin snapshot was stale/unavailable, so results
+ * are published once the snapshot transitions to fresh (without an edit).
+ */
+const DEFAULT_DIAGNOSTICS_FRESHNESS_POLL_MS = 500;
+
 function dedupeWorkspaceRoots(workspaceRoots: readonly string[]): string[] {
   return [...new Set(workspaceRoots)];
 }
@@ -98,6 +112,18 @@ export interface CreateServerOptions {
   readonly diagnosticsMode?: "off" | "plugin";
   /** Source label to use when publishing plugin-derived diagnostics. */
   readonly diagnosticSource?: string;
+  /**
+   * Debounce window, in milliseconds, for republishing diagnostics after
+   * document content changes. Rapid successive edits collapse into a single
+   * plugin query. Defaults to 250ms.
+   */
+  readonly diagnosticsDebounceMs?: number;
+  /**
+   * Interval, in milliseconds, at which diagnostics are re-queried for open
+   * documents whose plugin snapshot was stale/unavailable, so they publish once
+   * the snapshot becomes fresh without requiring an edit. Defaults to 500ms.
+   */
+  readonly diagnosticsFreshnessPollMs?: number;
 }
 
 /**
@@ -117,6 +143,19 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
   const diagnosticsMode = options.diagnosticsMode ?? "off";
   const diagnosticSource = options.diagnosticSource ?? "formspec";
+  const diagnosticsDebounceMs = options.diagnosticsDebounceMs ?? DEFAULT_DIAGNOSTICS_DEBOUNCE_MS;
+  const diagnosticsFreshnessPollMs =
+    options.diagnosticsFreshnessPollMs ?? DEFAULT_DIAGNOSTICS_FRESHNESS_POLL_MS;
+
+  // Highest document version already published for each URI. Guards against
+  // out-of-order/slow plugin responses clobbering a newer publish.
+  const lastPublishedVersionByUri = new Map<string, number>();
+  // URIs whose most recent query found the plugin snapshot stale/unavailable.
+  // Re-queried on the freshness poll until the snapshot transitions to fresh.
+  const staleDocumentUris = new Set<string>();
+  // Pending content-change debounce timers, keyed by URI.
+  const debounceTimersByUri = new Map<string, ReturnType<typeof setTimeout>>();
+  let freshnessPollTimer: ReturnType<typeof setTimeout> | undefined;
   // config.extensions takes precedence over extensions when config is provided
   const effectiveExtensions: readonly ExtensionDefinition[] =
     options.config?.extensions ?? options.extensions ?? [];
@@ -134,21 +173,90 @@ export function createServer(options: CreateServerOptions = {}): Connection {
       return;
     }
 
-    const diagnostics =
-      (await getPluginDiagnosticsForDocument(
-        workspaceRoots,
-        filePath,
-        document.getText(),
-        pluginQueryTimeoutMs
-      )) ?? [];
+    // Capture the version at call time so a slow/out-of-order response can be
+    // dropped once a newer version has already been published for this URI.
+    const documentUri = document.uri;
+    const requestedVersion = document.version;
 
-    log.debug(`Publishing ${String(diagnostics.length)} diagnostic(s) for ${document.uri}`);
+    const diagnostics = await getPluginDiagnosticsForDocument(
+      workspaceRoots,
+      filePath,
+      document.getText(),
+      pluginQueryTimeoutMs
+    );
+
+    // Per-URI monotonic publishing: ignore any result older than what we have
+    // already published, whether it is empty, stale, or a full set.
+    const lastPublishedVersion = lastPublishedVersionByUri.get(documentUri);
+    if (lastPublishedVersion !== undefined && requestedVersion < lastPublishedVersion) {
+      return;
+    }
+
+    if (diagnostics === null) {
+      // The plugin snapshot is stale/unavailable for this revision (missing
+      // transport, source-hash mismatch, or query timeout). Do not clobber
+      // previously-published diagnostics with an empty set; instead re-poll and
+      // publish once the snapshot becomes fresh.
+      staleDocumentUris.add(documentUri);
+      scheduleFreshnessPoll();
+      return;
+    }
+
+    staleDocumentUris.delete(documentUri);
+    lastPublishedVersionByUri.set(documentUri, requestedVersion);
+
+    log.debug(`Publishing ${String(diagnostics.length)} diagnostic(s) for ${documentUri}`);
     void connection.sendDiagnostics({
-      uri: document.uri,
+      uri: documentUri,
       diagnostics: toLspDiagnostics(document, diagnostics, {
         source: diagnosticSource,
       }),
     });
+  }
+
+  function publishDiagnosticsForDocumentSafely(document: TextDocument): void {
+    void publishDiagnosticsForDocument(document).catch((error: unknown) => {
+      connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
+    });
+  }
+
+  function scheduleDebouncedPublish(document: TextDocument): void {
+    const existingTimer = debounceTimersByUri.get(document.uri);
+    if (existingTimer !== undefined) {
+      clearTimeout(existingTimer);
+    }
+    const timer = setTimeout(() => {
+      debounceTimersByUri.delete(document.uri);
+      publishDiagnosticsForDocumentSafely(document);
+    }, diagnosticsDebounceMs);
+    debounceTimersByUri.set(document.uri, timer);
+  }
+
+  function scheduleFreshnessPoll(): void {
+    if (freshnessPollTimer !== undefined) {
+      return;
+    }
+    freshnessPollTimer = setTimeout(() => {
+      freshnessPollTimer = undefined;
+      void repollStaleDocuments();
+    }, diagnosticsFreshnessPollMs);
+  }
+
+  async function repollStaleDocuments(): Promise<void> {
+    const staleUris = [...staleDocumentUris];
+    // Cleared up front; documents still stale after re-query re-add themselves
+    // (via the null branch of publishDiagnosticsForDocument), which re-arms the
+    // poll. Closed documents simply drop out.
+    staleDocumentUris.clear();
+    for (const uri of staleUris) {
+      const document = documents.get(uri);
+      if (document === undefined) {
+        continue;
+      }
+      await publishDiagnosticsForDocument(document).catch((error: unknown) => {
+        connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
+      });
+    }
   }
 
   connection.onInitialize((params): InitializeResult => {
@@ -228,19 +336,25 @@ export function createServer(options: CreateServerOptions = {}): Connection {
 
   documents.onDidOpen(({ document }) => {
     log.debug(`Document opened: ${document.uri}`);
-    void publishDiagnosticsForDocument(document).catch((error: unknown) => {
-      connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
-    });
+    // Publish immediately on open so freshly-opened documents surface
+    // diagnostics without waiting for a debounce interval.
+    publishDiagnosticsForDocumentSafely(document);
   });
 
   documents.onDidChangeContent(({ document }) => {
     log.debug(`Document changed: ${document.uri}`);
-    void publishDiagnosticsForDocument(document).catch((error: unknown) => {
-      connection.console.error(`[FormSpec] Failed to publish diagnostics: ${String(error)}`);
-    });
+    // Debounced: a burst of keystrokes collapses into a single plugin query.
+    scheduleDebouncedPublish(document);
   });
 
   documents.onDidClose(({ document }) => {
+    const existingTimer = debounceTimersByUri.get(document.uri);
+    if (existingTimer !== undefined) {
+      clearTimeout(existingTimer);
+      debounceTimersByUri.delete(document.uri);
+    }
+    staleDocumentUris.delete(document.uri);
+    lastPublishedVersionByUri.delete(document.uri);
     if (diagnosticsMode === "plugin") {
       void connection.sendDiagnostics({
         uri: document.uri,

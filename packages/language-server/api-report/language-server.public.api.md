@@ -27,6 +27,8 @@ export function createServer(options?: CreateServerOptions): Connection;
 // @public
 export interface CreateServerOptions {
     readonly config?: FormSpecConfig;
+    readonly diagnosticsDebounceMs?: number;
+    readonly diagnosticsFreshnessPollMs?: number;
     readonly diagnosticsMode?: "off" | "plugin";
     readonly diagnosticSource?: string;
     readonly extensions?: readonly ExtensionDefinition[];

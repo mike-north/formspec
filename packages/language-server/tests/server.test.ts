@@ -1,6 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineConstraintTag, defineExtension } from "@formspec/core/internals";
 
+interface Deferred<T> {
+  readonly promise: Promise<T>;
+  resolve(value: T): void;
+}
+
+/** Creates an externally-resolvable promise for driving overlapping async publishes. */
+function createDeferred<T>(): Deferred<T> {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
+/** Flushes pending microtasks so awaited publish continuations run to completion. */
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 const mocks = vi.hoisted(() => {
   const connection = {
     onInitialize: vi.fn(),
@@ -345,39 +365,236 @@ describe("createServer", () => {
   });
 
   it("refreshes diagnostics on content changes and clears them on close", async () => {
-    mocks.getPluginDiagnosticsForDocument.mockResolvedValue([] as never);
-    mocks.toLspDiagnostics.mockReturnValue([] as never);
+    vi.useFakeTimers();
+    try {
+      mocks.getPluginDiagnosticsForDocument.mockResolvedValue([] as never);
+      mocks.toLspDiagnostics.mockReturnValue([] as never);
 
-    const { createServer } = await import("../src/server.js");
-    createServer({
-      diagnosticsMode: "plugin",
-    });
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
 
-    const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
-      | ((event: { document: { uri: string; getText(): string } }) => void)
-      | undefined;
-    const closeHandler = mocks.documents.onDidClose.mock.calls[0]?.[0] as
-      | ((event: { document: { uri: string } }) => void)
-      | undefined;
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+      const closeHandler = mocks.documents.onDidClose.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string } }) => void)
+        | undefined;
 
-    const document = {
-      uri: "file:///workspace/project/example.ts",
-      getText: () => "/** @minimum 0 */",
-    };
+      const document = {
+        uri: "file:///workspace/project/example.ts",
+        version: 1,
+        getText: () => "/** @minimum 0 */",
+      };
 
-    changeHandler?.({ document });
-    await Promise.resolve();
-    closeHandler?.({ document });
+      changeHandler?.({ document });
+      // Debounced: the plugin is not queried until the debounce window elapses.
+      expect(mocks.getPluginDiagnosticsForDocument).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(100);
+      closeHandler?.({ document });
 
-    expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
-      [],
-      "/workspace/project/example.ts",
-      "/** @minimum 0 */",
-      undefined
-    );
-    expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
-      uri: "file:///workspace/project/example.ts",
-      diagnostics: [],
-    });
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
+        [],
+        "/workspace/project/example.ts",
+        "/** @minimum 0 */",
+        undefined
+      );
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri: "file:///workspace/project/example.ts",
+        diagnostics: [],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("debounces onDidChangeContent so a burst of edits triggers a single plugin query", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.getPluginDiagnosticsForDocument.mockResolvedValue([] as never);
+      mocks.toLspDiagnostics.mockReturnValue([] as never);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
+
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+
+      const uri = "file:///workspace/project/example.ts";
+      // Three rapid edits within the debounce window.
+      changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
+      await vi.advanceTimersByTimeAsync(40);
+      changeHandler?.({ document: { uri, version: 2, getText: () => "v2" } });
+      await vi.advanceTimersByTimeAsync(40);
+      changeHandler?.({ document: { uri, version: 3, getText: () => "v3" } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // Exactly one query fires, and it reflects the latest edit's text.
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledWith(
+        [],
+        "/workspace/project/example.ts",
+        "v3",
+        undefined
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not let an older query resolving last with null clobber the newer non-empty publish", async () => {
+    vi.useFakeTimers();
+    try {
+      const deferredV1 = createDeferred<readonly unknown[] | null>();
+      const deferredV2 = createDeferred<readonly unknown[] | null>();
+      mocks.getPluginDiagnosticsForDocument
+        .mockReturnValueOnce(deferredV1.promise as never)
+        .mockReturnValueOnce(deferredV2.promise as never);
+      mocks.toLspDiagnostics.mockImplementation(((
+        _document: unknown,
+        canonical: readonly unknown[]
+      ) => (canonical.length > 0 ? [{ message: "violation" }] : [])) as never);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
+
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+
+      const uri = "file:///workspace/project/example.ts";
+      // Edit E1 (introduces a violation), then E2. Both publishes start and hang
+      // on their respective plugin queries.
+      changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
+      await vi.advanceTimersByTimeAsync(100);
+      changeHandler?.({ document: { uri, version: 2, getText: () => "v2" } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // The newer query (v2) resolves first with a real violation and publishes.
+      deferredV2.resolve([{ code: "VIOLATION" }]);
+      await flushMicrotasks();
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "violation" }],
+      });
+
+      // The older query (v1) resolves last with null — it must NOT clobber the
+      // fresh v2 diagnostics with an empty set.
+      deferredV1.resolve(null);
+      await flushMicrotasks();
+
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "violation" }],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops an older non-null result via the per-URI monotonic version guard", async () => {
+    vi.useFakeTimers();
+    try {
+      const deferredV1 = createDeferred<readonly unknown[] | null>();
+      const deferredV2 = createDeferred<readonly unknown[] | null>();
+      mocks.getPluginDiagnosticsForDocument
+        .mockReturnValueOnce(deferredV1.promise as never)
+        .mockReturnValueOnce(deferredV2.promise as never);
+      mocks.toLspDiagnostics.mockImplementation(((
+        _document: unknown,
+        canonical: readonly unknown[]
+      ) => (canonical.length > 0 ? [{ message: "violation" }] : [])) as never);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
+
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+
+      const uri = "file:///workspace/project/example.ts";
+      changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
+      await vi.advanceTimersByTimeAsync(100);
+      changeHandler?.({ document: { uri, version: 2, getText: () => "v2" } });
+      await vi.advanceTimersByTimeAsync(100);
+
+      // v2 resolves first with a violation and publishes.
+      deferredV2.resolve([{ code: "VIOLATION" }]);
+      await flushMicrotasks();
+
+      // v1 resolves last with a *non-null* empty set (a fresh-but-older result).
+      // The monotonic guard must drop it rather than publish an empty payload.
+      deferredV1.resolve([]);
+      await flushMicrotasks();
+
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "violation" }],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("re-publishes diagnostics for an open document when the plugin transitions stale to fresh", async () => {
+    vi.useFakeTimers();
+    try {
+      // First query: plugin snapshot stale/unavailable (null). Second query
+      // (via the freshness poll): fresh with a real diagnostic.
+      mocks.getPluginDiagnosticsForDocument
+        .mockResolvedValueOnce(null as never)
+        .mockResolvedValueOnce([{ code: "READY" }] as never);
+      mocks.toLspDiagnostics.mockReturnValue([{ message: "ready" }] as never);
+
+      const uri = "file:///workspace/project/example.ts";
+      const document = { uri, version: 1, getText: () => "v1" };
+      mocks.documents.get.mockReturnValue(document);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsFreshnessPollMs: 200,
+      });
+
+      const openHandler = mocks.documents.onDidOpen.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+
+      openHandler?.({ document });
+      await flushMicrotasks();
+
+      // Stale first pass: nothing published, no empty clobber.
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).not.toHaveBeenCalled();
+
+      // Freshness poll fires; the plugin is now ready and diagnostics publish
+      // without any intervening edit.
+      await vi.advanceTimersByTimeAsync(200);
+      await flushMicrotasks();
+
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(2);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "ready" }],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
