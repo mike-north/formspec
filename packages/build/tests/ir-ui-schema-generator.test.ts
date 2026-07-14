@@ -645,4 +645,95 @@ describe("generateUiSchemaFromIR", () => {
       expect(expectControl(result.elements, 1).rule).toBeDefined();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 11. RFC 6901 escaping of property tokens in scopes and rules
+  //
+  // Scopes are JSON Pointers, so a property name is a reference token that must
+  // be escaped per RFC 6901 §3 (`~` → `~0`, `/` → `~1`). The reverse path that
+  // rebuilds a `properties` object from a rule scope must decode, not string-
+  // replace.
+  //
+  // @see https://datatracker.ietf.org/doc/html/rfc6901
+  // ---------------------------------------------------------------------------
+
+  describe("RFC 6901 property-token escaping", () => {
+    /** Build a FieldNode whose serialized name is set via apiName metadata. */
+    function apiNamedFieldNode(logicalName: string, apiName: string): FieldNode {
+      return {
+        ...simpleFieldNode(logicalName),
+        metadata: { apiName: { value: apiName, source: "explicit" } },
+      };
+    }
+
+    it("escapes a slash in a logical field name (a/b → #/properties/a~1b)", () => {
+      const ir = formIRFromElements([simpleFieldNode("a/b")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0).scope).toBe("#/properties/a~1b");
+    });
+
+    it("escapes a tilde in a logical field name (a~b → #/properties/a~0b)", () => {
+      const ir = formIRFromElements([simpleFieldNode("a~b")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0).scope).toBe("#/properties/a~0b");
+    });
+
+    it("escapes both tilde and slash together (a/b~c → #/properties/a~1b~0c)", () => {
+      const ir = formIRFromElements([simpleFieldNode("a/b~c")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0).scope).toBe("#/properties/a~1b~0c");
+    });
+
+    it("escapes special characters in a metadata-derived apiName", () => {
+      const ir = formIRFromElements([apiNamedFieldNode("status", "a/b~c")]);
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0).scope).toBe("#/properties/a~1b~0c");
+    });
+
+    it("passes spaces, Unicode, and URI-sensitive characters through verbatim", () => {
+      // RFC 6901 only escapes `~` and `/`; nothing else is transformed.
+      const cases: readonly (readonly [string, string])[] = [
+        ["first name", "#/properties/first name"],
+        ["café", "#/properties/café"],
+        ["路径", "#/properties/路径"],
+        ["a?b=1&c", "#/properties/a?b=1&c"],
+        ["a%2Fb", "#/properties/a%2Fb"],
+      ];
+
+      for (const [name, expectedScope] of cases) {
+        const result = generateUiSchemaFromIR(formIRFromElements([simpleFieldNode(name)]));
+        expect(expectControl(result.elements, 0).scope).toBe(expectedScope);
+      }
+    });
+
+    it("escapes the condition scope of a conditional rule", () => {
+      const ir = formIRFromElements([conditionalNode("a/b", "draft", [simpleFieldNode("notes")])]);
+      const result = generateUiSchemaFromIR(ir);
+
+      expect(expectControl(result.elements, 0).rule?.condition.scope).toBe("#/properties/a~1b");
+    });
+
+    it("decodes the escaped token back to the literal property name in a combined allOf rule", () => {
+      // Nested conditionals collapse into an allOf whose members key a
+      // `properties` object. The keys must be the decoded logical names
+      // (`a/b`, `c~d`), never the escaped tokens.
+      const ir = formIRFromElements([
+        conditionalNode("a/b", "x", [conditionalNode("c~d", "y", [simpleFieldNode("secret")])]),
+      ]);
+      const result = generateUiSchemaFromIR(ir);
+
+      const control = expectControl(result.elements, 0);
+      expect(control.rule?.condition.scope).toBe("#");
+      expect(control.rule?.condition.schema).toEqual({
+        allOf: [
+          { properties: { "a/b": { const: "x" } } },
+          { properties: { "c~d": { const: "y" } } },
+        ],
+      });
+    });
+  });
 });

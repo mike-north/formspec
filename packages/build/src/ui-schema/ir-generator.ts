@@ -18,11 +18,19 @@ import type {
   RuleConditionSchema,
 } from "./types.js";
 import { uiSchema as uiSchemaValidator } from "./schema.js";
+import { encodeJsonPointerToken, decodeJsonPointerToken } from "./json-pointer.js";
 import { z } from "zod";
 
 // =============================================================================
 // HELPERS
 // =============================================================================
+
+/**
+ * The JSON Pointer prefix under which every top-level property scope is rooted.
+ * A control or rule scope is this prefix followed by a single RFC 6901-escaped
+ * property token.
+ */
+const PROPERTIES_SCOPE_PREFIX = "#/properties/";
 
 /**
  * Parses a value through a Zod schema, converting validation errors to a
@@ -42,10 +50,30 @@ function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, label: string): T
 }
 
 /**
- * Converts a field name to a JSON Pointer scope string.
+ * Converts a logical property name to a JSON Pointer scope string.
+ *
+ * The name is a single RFC 6901 reference token, so it is escaped before being
+ * embedded in the pointer. A field named `a/b` produces `#/properties/a~1b`
+ * (not `#/properties/a/b`, which a pointer consumer would read as two
+ * segments).
  */
 function fieldToScope(fieldName: string): string {
-  return `#/properties/${fieldName}`;
+  return `${PROPERTIES_SCOPE_PREFIX}${encodeJsonPointerToken(fieldName)}`;
+}
+
+/**
+ * Extracts the single RFC 6901-escaped property token from a property scope,
+ * i.e. the inverse of the `#/properties/<token>` construction in
+ * {@link fieldToScope}. Throws if the scope is not a top-level property scope,
+ * since only such scopes reach the reverse path.
+ */
+function stripPropertiesScopePrefix(scope: string): string {
+  if (!scope.startsWith(PROPERTIES_SCOPE_PREFIX)) {
+    throw new Error(
+      `Expected a property scope beginning with "${PROPERTIES_SCOPE_PREFIX}", got "${scope}"`
+    );
+  }
+  return scope.slice(PROPERTIES_SCOPE_PREFIX.length);
 }
 
 /**
@@ -75,7 +103,11 @@ function flattenConditionSchema(scope: string, schema: RuleConditionSchema): Rul
       return [schema];
     }
 
-    const fieldName = scope.replace("#/properties/", "");
+    // The scope holds an RFC 6901-escaped property token; decode it back to the
+    // logical property name so it keys a `properties` object correctly. JSON
+    // Schema `properties` keys are literal (unescaped) property names, so a
+    // scope of `#/properties/a~1b` must become the key `a/b`, not `a~1b`.
+    const fieldName = decodeJsonPointerToken(stripPropertiesScopePrefix(scope));
     return [
       {
         properties: {

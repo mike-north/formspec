@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@formspec/dsl": "workspace:*",
+    "@jsonforms/core": "^3.8.0",
     "pino": "^9.0.0",
     "pino-pretty": "^11.0.0",
     "vitest": "^4.1.5"
