@@ -21,7 +21,7 @@
  * @see https://github.com/mike-north/formspec/issues/543
  */
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -31,9 +31,23 @@ const packageDir = path.resolve(__dirname, "..");
 const cliPath = path.join(packageDir, "dist", "index.js");
 const tempRoot = path.join(os.tmpdir(), "formspec-cli-argument-parsing-test");
 
+// The CLI's default -o/--output value is the relative path "./generated",
+// resolved against cwd (packageDir here, since runCli spawns with
+// `cwd: packageDir`). Before the #543 fix, a trailing -o/-c with no value
+// silently fell through to this default instead of erroring, so the CLI
+// actually wrote files here. The missing-value tests below assert against
+// this exact path so they fail if that regression reappears.
+const defaultGeneratedDir = path.join(packageDir, "generated");
+
 function createTempDir(prefix: string): string {
   fs.mkdirSync(tempRoot, { recursive: true });
   return fs.mkdtempSync(path.join(tempRoot, prefix));
+}
+
+function removeDefaultGeneratedDir(): void {
+  if (fs.existsSync(defaultGeneratedDir)) {
+    fs.rmSync(defaultGeneratedDir, { recursive: true, force: true });
+  }
 }
 
 // The CLI binary (dist/index.js) is built once by tests/global-setup.ts
@@ -90,45 +104,66 @@ describe("argument parsing subprocess", () => {
     }
   });
 
+  // Belt-and-suspenders for the missing-value tests below: guarantees the
+  // default output dir doesn't leak into a later test's assertion, even if
+  // a prior run crashed before its own cleanup ran.
+  afterEach(() => {
+    removeDefaultGeneratedDir();
+  });
+
   it("exits non-zero with a clear missing-value message when -o/--output is given without a value", () => {
     const fixtureDir = createTempDir("missing-value-o-");
     const { tsPath } = createCleanFixture(fixtureDir);
+    removeDefaultGeneratedDir();
 
     const result = runCli(["generate", tsPath, "CleanExample", "-o"]);
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("missing value for -o/--output");
     expect(fs.existsSync(path.join(fixtureDir, "generated"))).toBe(false);
+    // Regression guard for #543: pre-fix, a trailing -o silently fell back
+    // to the default "./generated" and the CLI wrote files there instead of
+    // erroring, so this assertion would have failed against the old code.
+    expect(fs.existsSync(defaultGeneratedDir)).toBe(false);
   });
 
   it("exits non-zero with a clear missing-value message when the long form --output is given without a value", () => {
     const fixtureDir = createTempDir("missing-value-output-");
     const { tsPath } = createCleanFixture(fixtureDir);
+    removeDefaultGeneratedDir();
 
     const result = runCli(["generate", tsPath, "CleanExample", "--output"]);
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("missing value for -o/--output");
+    expect(fs.existsSync(defaultGeneratedDir)).toBe(false);
   });
 
   it("exits non-zero with a clear missing-value message when -c/--compiled is given without a value", () => {
     const fixtureDir = createTempDir("missing-value-c-");
     const { tsPath } = createCleanFixture(fixtureDir);
+    removeDefaultGeneratedDir();
 
     const result = runCli(["generate", tsPath, "CleanExample", "-c"]);
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("missing value for -c/--compiled");
+    // Regression guard for #543: pre-fix, a trailing -c silently left
+    // compiledPath undefined and the run proceeded, writing to the default
+    // "./generated" instead of erroring.
+    expect(fs.existsSync(defaultGeneratedDir)).toBe(false);
   });
 
   it("exits non-zero with a clear missing-value message when the long form --compiled is given without a value", () => {
     const fixtureDir = createTempDir("missing-value-compiled-");
     const { tsPath } = createCleanFixture(fixtureDir);
+    removeDefaultGeneratedDir();
 
     const result = runCli(["generate", tsPath, "CleanExample", "--compiled"]);
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("missing value for -c/--compiled");
+    expect(fs.existsSync(defaultGeneratedDir)).toBe(false);
   });
 
   it("still accepts -o followed by a real output directory (unchanged behavior)", () => {
