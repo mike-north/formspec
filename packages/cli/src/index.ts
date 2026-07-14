@@ -413,6 +413,11 @@ async function main(): Promise<void> {
     let loadedFormSpecs = new Map<string, FormSpecSchemas>();
     let rawModuleFromLoad: Record<string, unknown> | undefined;
     let loadError: string | undefined;
+    // Export names that duck-typed as a FormSpec but whose schema generation
+    // threw. Accumulated across Step 3 (whole-module scan) and Step 4
+    // (method-parameter-referenced exports) so a partial failure can never
+    // silently produce a green exit — see issue #520.
+    const failedExports = new Map<string, string>();
     let reportedRuntimeLoadFailure = false;
     const warnRuntimeLoadFailureOnce = (): void => {
       if (loadError === undefined || reportedRuntimeLoadFailure) {
@@ -426,7 +431,7 @@ async function main(): Promise<void> {
       reportedRuntimeLoadFailure = true;
     };
     try {
-      const { formSpecs, module } = await loadFormSpecs(compiledPath, {
+      const { formSpecs, module, failures } = await loadFormSpecs(compiledPath, {
         enumSerialization,
         ...(effectiveConfig?.vendorPrefix !== undefined && {
           vendorPrefix: effectiveConfig.vendorPrefix,
@@ -437,6 +442,9 @@ async function main(): Promise<void> {
       });
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
+      for (const [name, cause] of failures) {
+        failedExports.set(name, cause);
+      }
       console.log(`✓ Loaded ${String(formSpecs.size)} FormSpec export(s) from module`);
     } catch (error) {
       // Track load errors for better messaging later. Runtime loading is only
@@ -447,6 +455,17 @@ async function main(): Promise<void> {
 
     // Step 4: If className specified, analyze the class
     if (!options.className && loadedFormSpecs.size === 0) {
+      // Distinguish "nothing FormSpec-shaped was exported" from "FormSpec
+      // exports were found but every one of them failed schema generation" —
+      // the latter is a failure, not an empty-project no-op, and must not be
+      // reported with the same message as the former (issue #520).
+      if (failedExports.size > 0) {
+        console.error(
+          `Error: ${String(failedExports.size)} FormSpec export(s) were found in ${options.filePath} but all failed schema generation; see warnings above for details.`
+        );
+        process.exit(1);
+      }
+
       // No class name and no FormSpec exports - provide context-aware error
       console.warn("⚠️  No class name specified and no FormSpec exports found.");
       console.warn();
@@ -537,17 +556,21 @@ async function main(): Promise<void> {
           if (missing.length > 0) {
             warnRuntimeLoadFailureOnce();
             try {
-              const namedFormSpecs = await loadNamedFormSpecs(compiledPath, missing, {
-                enumSerialization,
-                ...(effectiveConfig?.vendorPrefix !== undefined && {
-                  vendorPrefix: effectiveConfig.vendorPrefix,
-                }),
-                ...(effectiveConfig?.serialization !== undefined && {
-                  serialization: effectiveConfig.serialization,
-                }),
-              });
+              const { formSpecs: namedFormSpecs, failures: namedFailures } =
+                await loadNamedFormSpecs(compiledPath, missing, {
+                  enumSerialization,
+                  ...(effectiveConfig?.vendorPrefix !== undefined && {
+                    vendorPrefix: effectiveConfig.vendorPrefix,
+                  }),
+                  ...(effectiveConfig?.serialization !== undefined && {
+                    serialization: effectiveConfig.serialization,
+                  }),
+                });
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);
+              }
+              for (const [name, cause] of namedFailures) {
+                failedExports.set(name, cause);
               }
             } catch {
               // Already warned about module loading
@@ -680,6 +703,30 @@ async function main(): Promise<void> {
         console.log("Validation passed: no constraint violations.");
       }
     }
+
+    // Any export that failed schema generation is a failure regardless of
+    // mode — a partially-successful run must not report success (issue
+    // #520). This is intentionally unconditional: it also gates
+    // --validate-only runs, since a throwing export means that export's
+    // constraints were never validated at all.
+    if (failedExports.size > 0) {
+      console.error(
+        `Error: ${String(failedExports.size)} FormSpec export(s) failed schema generation; see warnings above for details.`
+      );
+      process.exit(1);
+    }
+
+    // IR validation errors must fail the run even without --validate-only —
+    // previously this was only consulted inside the --validate-only branch
+    // above, so `--emit-ir` alone could print [ERROR] diagnostics and still
+    // exit 0 (issue #520).
+    if (hasValidationErrors) {
+      console.error(
+        "Error: IR validation found error-severity diagnostic(s); see [ERROR] lines above for details."
+      );
+      process.exit(1);
+    }
+
     if (options.dryRun) {
       console.log("Dry run complete: no files written.");
     } else if (!options.validateOnly) {
