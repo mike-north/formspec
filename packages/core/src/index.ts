@@ -106,6 +106,7 @@ export type {
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
   DeprecatedAnnotationNode,
+  ExampleAnnotationNode,
   FormatHintAnnotationNode,
   CustomAnnotationNode,
   FieldNode,

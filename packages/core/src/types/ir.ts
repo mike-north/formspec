@@ -501,6 +501,7 @@ export type AnnotationNode =
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
   | DeprecatedAnnotationNode
+  | ExampleAnnotationNode
   | FormatHintAnnotationNode
   | CustomAnnotationNode;
 
@@ -617,6 +618,35 @@ export interface DeprecatedAnnotationNode {
   readonly annotationKind: "deprecated";
   /** Optional deprecation message. */
   readonly message?: string;
+  /** Source location that produced this annotation. */
+  readonly provenance: Provenance;
+}
+
+/**
+ * Example annotation — a single documentation example value for a field.
+ *
+ * Populated from a `@example` TSDoc tag (spec 002 §2.3, §3.2). `@example` is
+ * an ecosystem tag reused as-is (principle S6); FormSpec does not invent a
+ * bespoke equivalent.
+ *
+ * Unlike most annotations, `@example` is multi-valued: repeated `@example`
+ * tags on the same field each produce a distinct `ExampleAnnotationNode`
+ * rather than overriding one another. Downstream generation accumulates their
+ * `value`s, in source order, into the JSON Schema `examples` array
+ * (spec 003 §4.2).
+ *
+ * The `value` is the tag text parsed as JSON; when JSON parsing fails the raw
+ * text is carried as a string (spec 002 §3.2).
+ *
+ * @beta
+ */
+export interface ExampleAnnotationNode {
+  /** Discriminator identifying this node as an annotation. */
+  readonly kind: "annotation";
+  /** Specific annotation kind represented by this node. */
+  readonly annotationKind: "example";
+  /** Parsed JSON example value, or the raw text when it is not valid JSON. */
+  readonly value: JsonValue;
   /** Source location that produced this annotation. */
   readonly provenance: Provenance;
 }

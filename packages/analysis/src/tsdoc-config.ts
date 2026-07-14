@@ -28,8 +28,14 @@ import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
  * - `@pattern`: regex patterns commonly contain `@` (e.g. email validation)
  * - `@enumOptions`: JSON arrays may contain object literals with `{}`
  * - `@defaultValue`: JSON defaults may contain objects, arrays, or quoted strings
+ * - `@example`: example payloads may be JSON objects/arrays containing `{}`
  */
-export const TAGS_REQUIRING_RAW_TEXT = new Set(["pattern", "enumOptions", "defaultValue"]);
+export const TAGS_REQUIRING_RAW_TEXT = new Set([
+  "pattern",
+  "enumOptions",
+  "defaultValue",
+  "example",
+]);
 
 // =============================================================================
 // CONFIGURATION

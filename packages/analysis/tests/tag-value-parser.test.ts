@@ -1,6 +1,6 @@
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
-import { parseConstraintTagValue } from "../src/internal.js";
+import { parseConstraintTagValue, parseExampleTagValue } from "../src/internal.js";
 
 const PROVENANCE = {
   surface: "tsdoc" as const,
@@ -90,6 +90,60 @@ describe("tag-value-parser", () => {
       constraintKind: "uniqueItems",
       value: true,
       provenance: PROVENANCE,
+    });
+  });
+
+  // @example value parsing — spec 002 §3.2: "The value of each entry is parsed
+  // as JSON; if JSON parsing fails, the text is stored as a string."
+  describe("parseExampleTagValue (@example, spec 002 §3.2)", () => {
+    const EX_PROV = { ...PROVENANCE, tagName: "@example" };
+
+    it("parses a JSON object payload to its value", () => {
+      const parsed = parseExampleTagValue('{"host": "localhost", "port": 5432}', EX_PROV);
+      expect(parsed).toEqual({
+        kind: "annotation",
+        annotationKind: "example",
+        value: { host: "localhost", port: 5432 },
+        provenance: EX_PROV,
+      });
+    });
+
+    it("parses a JSON array payload to its value", () => {
+      const parsed = parseExampleTagValue("[1, 2, 3]", EX_PROV);
+      expect(parsed.annotationKind).toBe("example");
+      expect(parsed).toMatchObject({ value: [1, 2, 3] });
+    });
+
+    it("parses a bare number payload to a number", () => {
+      expect(parseExampleTagValue("42", EX_PROV)).toMatchObject({ value: 42 });
+    });
+
+    it("parses a bare boolean payload to a boolean", () => {
+      expect(parseExampleTagValue("true", EX_PROV)).toMatchObject({ value: true });
+    });
+
+    it("preserves a literal JSON null as null (not a parse failure)", () => {
+      // JSON.parse("null") succeeds and yields null; it must not be conflated
+      // with a parse failure that would otherwise stringify the text.
+      const parsed = parseExampleTagValue("null", EX_PROV);
+      expect(parsed).toMatchObject({ annotationKind: "example", value: null });
+    });
+
+    it("unwraps a quoted JSON string to the string value", () => {
+      expect(parseExampleTagValue('"already a string"', EX_PROV)).toMatchObject({
+        value: "already a string",
+      });
+    });
+
+    it("carries a non-JSON payload through as a raw string", () => {
+      // "user@example.com" is not valid JSON, so it is stored verbatim.
+      expect(parseExampleTagValue("user@example.com", EX_PROV)).toMatchObject({
+        value: "user@example.com",
+      });
+    });
+
+    it("trims surrounding whitespace before parsing", () => {
+      expect(parseExampleTagValue("   7   ", EX_PROV)).toMatchObject({ value: 7 });
     });
   });
 

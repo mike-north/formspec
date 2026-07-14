@@ -38,6 +38,7 @@ export type {
 export {
   parseConstraintTagValue,
   parseDefaultValueTagValue,
+  parseExampleTagValue,
   getBroadenedCustomTypeId,
 } from "./tag-value-parser.js";
 export { extractPathTarget, formatPathTarget, type ParsedPathTarget } from "./path-target.js";

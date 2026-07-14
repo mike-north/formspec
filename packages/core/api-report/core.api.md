@@ -11,7 +11,7 @@ export const __integerBrand: unique symbol;
 export type AnnotationInheritancePolicy = "local-wins" | "never";
 
 // @beta
-export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
+export type AnnotationNode = DisplayNameAnnotationNode | DescriptionAnnotationNode | RemarksAnnotationNode | FormatAnnotationNode | PlaceholderAnnotationNode | DefaultValueAnnotationNode | DeprecatedAnnotationNode | ExampleAnnotationNode | FormatHintAnnotationNode | CustomAnnotationNode;
 
 // @public
 export type AnyField = TextField<string> | NumberField<string> | BooleanField<string> | StaticEnumField<string, readonly EnumOptionValue[]> | DynamicEnumField<string, string> | DynamicSchemaField<string> | ArrayField<string, readonly FormElement[]> | ObjectField<string, readonly FormElement[]>;
@@ -356,6 +356,14 @@ export interface EqualsPredicate<K extends string, V> {
     readonly field: K;
     readonly _predicate: "equals";
     readonly value: V;
+}
+
+// @beta
+export interface ExampleAnnotationNode {
+    readonly annotationKind: "example";
+    readonly kind: "annotation";
+    readonly provenance: Provenance;
+    readonly value: JsonValue;
 }
 
 // @public

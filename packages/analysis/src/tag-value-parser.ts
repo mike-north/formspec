@@ -228,6 +228,32 @@ export function parseConstraintTagValue(
   };
 }
 
+/**
+ * Parses a single `@example` tag payload into an {@link ExampleAnnotationNode}.
+ *
+ * Per spec 002 §3.2, the tag text is parsed as JSON; when JSON parsing fails,
+ * the raw (trimmed) text is carried through as a string. Unlike
+ * {@link parseDefaultValueTagValue}, this uses a direct `JSON.parse` so that a
+ * literal `null` payload is preserved as JSON `null` (rather than being
+ * indistinguishable from a parse failure).
+ */
+export function parseExampleTagValue(text: string, provenance: Provenance): AnnotationNode {
+  const trimmed = text.trim();
+  let value: JsonValue;
+  try {
+    value = JSON.parse(trimmed) as JsonValue;
+  } catch {
+    value = trimmed;
+  }
+
+  return {
+    kind: "annotation",
+    annotationKind: "example",
+    value,
+    provenance,
+  };
+}
+
 export function parseDefaultValueTagValue(text: string, provenance: Provenance): AnnotationNode {
   const trimmed = text.trim();
   let value: JsonValue;

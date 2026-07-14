@@ -393,6 +393,7 @@ export interface JsonSchema2020 {
     deprecated?: boolean;
     description?: string;
     enum?: readonly (string | number)[];
+    examples?: unknown[];
     exclusiveMaximum?: number;
     exclusiveMinimum?: number;
     format?: string;

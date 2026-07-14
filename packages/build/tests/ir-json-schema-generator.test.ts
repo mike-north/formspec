@@ -2875,4 +2875,68 @@ describe("generateJsonSchemaFromIR", () => {
       });
     });
   });
+
+  // @example emission — spec 003 §4.2 lists `examples` as a standard annotation
+  // keyword. Repeated example annotations accumulate into `examples` in source
+  // order (spec 002 §3.2).
+  describe("example annotations → examples keyword", () => {
+    function exampleAnnotation(value: unknown): AnnotationNode {
+      return {
+        kind: "annotation",
+        annotationKind: "example",
+        value: value as never,
+        provenance: PROVENANCE,
+      };
+    }
+
+    it("emits a single example as a one-element examples array", () => {
+      const ir = makeIR([
+        makeField("email", { kind: "primitive", primitiveKind: "string" }, true, [], [
+          exampleAnnotation("user@example.com"),
+        ]),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect((schema.properties as Record<string, { examples?: unknown[] }>)["email"]).toMatchObject(
+        { examples: ["user@example.com"] }
+      );
+    });
+
+    it("accumulates repeated example annotations into examples in source order", () => {
+      const ir = makeIR([
+        makeField("name", { kind: "primitive", primitiveKind: "string" }, true, [], [
+          exampleAnnotation("first"),
+          exampleAnnotation("second"),
+        ]),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(
+        (schema.properties as Record<string, { examples?: unknown[] }>)["name"]?.examples
+      ).toEqual(["first", "second"]);
+    });
+
+    it("preserves structured JSON example values verbatim", () => {
+      const ir = makeIR([
+        makeField("config", { kind: "primitive", primitiveKind: "string" }, true, [], [
+          exampleAnnotation({ port: 5432 }),
+          exampleAnnotation(null),
+        ]),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(
+        (schema.properties as Record<string, { examples?: unknown[] }>)["config"]?.examples
+      ).toEqual([{ port: 5432 }, null]);
+    });
+
+    it("omits examples entirely when no example annotation is present", () => {
+      const ir = makeIR([
+        makeField("plain", { kind: "primitive", primitiveKind: "string" }, true),
+      ]);
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect((schema.properties as Record<string, object>)["plain"]).not.toHaveProperty("examples");
+    });
+  });
 });
