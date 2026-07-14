@@ -57,6 +57,28 @@ interface ModuleFormSpecs {
   formSpecs: Map<string, FormSpecSchemas>;
   /** The raw module for accessing other exports */
   module: Record<string, unknown>;
+  /**
+   * Export names that duck-typed as a FormSpec (per {@link isFormSpec}) but
+   * whose schema generation threw, mapped to a human-readable failure cause.
+   * Callers use this to decide whether a "generate" run should report
+   * failure instead of silently omitting the export from its output.
+   */
+  failures: Map<string, string>;
+}
+
+/**
+ * Result of loading specific FormSpec exports by name.
+ */
+interface NamedFormSpecs {
+  /** Found exports, keyed by name. */
+  formSpecs: Map<string, FormSpecSchemas>;
+  /**
+   * Export names that were detected but whose schema generation threw,
+   * mapped to a human-readable failure cause. Does not include exports that
+   * were missing or not FormSpec-shaped — those remain warn-only, since they
+   * indicate a stale static reference rather than a generation failure.
+   */
+  failures: Map<string, string>;
 }
 
 function toPublicJsonSchemaOptions(
@@ -141,6 +163,7 @@ export async function loadFormSpecs(
   const module = (await import(fileUrl)) as Record<string, unknown>;
 
   const formSpecs = new Map<string, FormSpecSchemas>();
+  const failures = new Map<string, string>();
 
   // Find all FormSpec exports
   for (const [name, value] of Object.entries(module)) {
@@ -158,15 +181,14 @@ export async function loadFormSpecs(
           uiSchema,
         });
       } catch (error) {
-        console.warn(
-          `Warning: Failed to generate schemas for export "${name}":`,
-          error instanceof Error ? error.message : error
-        );
+        const cause = error instanceof Error ? error.message : String(error);
+        console.warn(`Warning: Failed to generate schemas for export "${name}": ${cause}`);
+        failures.set(name, cause);
       }
     }
   }
 
-  return { formSpecs, module };
+  return { formSpecs, module, failures };
 }
 
 /**
@@ -177,21 +199,27 @@ export async function loadFormSpecs(
  *
  * @param filePath - Path to the compiled JavaScript file
  * @param exportNames - Names of exports to load
- * @returns Map of found FormSpecs with their schemas
+ * @returns Found FormSpecs with their schemas, plus any generation failures
  */
 export async function loadNamedFormSpecs(
   filePath: string,
   exportNames: string[],
   options?: LoadFormSpecsOptions
-): Promise<Map<string, FormSpecSchemas>> {
-  const { formSpecs, module } = await loadFormSpecs(filePath, options);
+): Promise<NamedFormSpecs> {
+  const { formSpecs, module, failures: scanFailures } = await loadFormSpecs(filePath, options);
   const result = new Map<string, FormSpecSchemas>();
+  const failures = new Map<string, string>(scanFailures);
 
   for (const name of exportNames) {
     // Check if we already have it from the full scan
     const existing = formSpecs.get(name);
     if (existing) {
       result.set(name, existing);
+      continue;
+    }
+
+    // Already recorded as a failure by the full-module scan above.
+    if (failures.has(name)) {
       continue;
     }
 
@@ -203,10 +231,9 @@ export async function loadNamedFormSpecs(
         const uiSchema = generateUiSchema(value as never);
         result.set(name, { name, jsonSchema, uiSchema });
       } catch (error) {
-        console.warn(
-          `Warning: Failed to generate schemas for "${name}":`,
-          error instanceof Error ? error.message : error
-        );
+        const cause = error instanceof Error ? error.message : String(error);
+        console.warn(`Warning: Failed to generate schemas for "${name}": ${cause}`);
+        failures.set(name, cause);
       }
     } else if (value) {
       console.warn(`Warning: Export "${name}" exists but is not a valid FormSpec object`);
@@ -215,7 +242,7 @@ export async function loadNamedFormSpecs(
     }
   }
 
-  return result;
+  return { formSpecs: result, failures };
 }
 
 /**
