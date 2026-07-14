@@ -6,7 +6,7 @@
 
 Validates a form specification for common issues.
 
-Checks for: - Duplicate field names at the root level (warning) - References to non-existent fields in conditionals (error)
+Checks for: - Duplicate field names within the same schema scope (error). The root elements form one scope; each `field.object()`<!-- -->'s properties and each `field.array()`<!-- -->'s items form their own nested scope, so a name reused across a scope boundary (e.g. a top-level `id` and a nested `user.id`<!-- -->) is not reported. Groups and conditionals do not open a new scope, so duplicates inside them still collide with the enclosing scope. - References to non-existent fields in conditionals (error)
 
 **Signature:**
 
