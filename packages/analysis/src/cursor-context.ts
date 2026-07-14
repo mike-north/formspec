@@ -3,7 +3,7 @@ import {
   type ParsedCommentBlock,
   type ParsedCommentTag,
 } from "./comment-syntax.js";
-import type * as ts from "typescript";
+import * as ts from "typescript";
 import { collectCompatiblePathTargets, getEnumMemberCompletions } from "./ts-binding.js";
 import { getDeclarationTypeParameterNames, getDirectPropertyTargets } from "./source-bindings.js";
 import {
@@ -438,29 +438,81 @@ function buildArgumentHoverMarkdown(semantic: CommentTagSemanticContext): string
   ].join("\n");
 }
 
+/**
+ * Collects every genuine multi-line comment range in `documentText` by
+ * walking the parsed AST and reading leading trivia via
+ * `ts.getLeadingCommentRanges`, the same primitive used by
+ * `source-bindings.ts` (`getLastLeadingDocCommentRange`) and
+ * `metadata-analysis.ts`.
+ *
+ * Unlike a textual regex scan, this only ever visits real token boundaries,
+ * so comment-like text inside string literals and template literals — which
+ * the scanner consumes as part of those literal tokens, never as trivia —
+ * is never misidentified as a comment.
+ */
+function collectMultiLineCommentRanges(documentText: string): readonly ts.CommentRange[] {
+  const sourceFile = ts.createSourceFile(
+    "cursor-context.ts",
+    documentText,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ false,
+    ts.ScriptKind.TS
+  );
+
+  const ranges: ts.CommentRange[] = [];
+  const seenStarts = new Set<number>();
+
+  const collectAt = (pos: number): void => {
+    for (const range of ts.getLeadingCommentRanges(documentText, pos) ?? []) {
+      if (range.kind !== ts.SyntaxKind.MultiLineCommentTrivia) {
+        continue;
+      }
+      if (seenStarts.has(range.pos)) {
+        continue;
+      }
+      seenStarts.add(range.pos);
+      ranges.push(range);
+    }
+  };
+
+  const visit = (node: ts.Node): void => {
+    collectAt(node.getFullStart());
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  // `ts.forEachChild` on a SourceFile does not visit `endOfFileToken`, so a
+  // comment with no following declaration (including a document that is
+  // nothing but a comment) would otherwise be missed.
+  collectAt(sourceFile.endOfFileToken.getFullStart());
+
+  return ranges;
+}
+
 export function findEnclosingDocComment(
   documentText: string,
   offset: number,
   options?: { readonly extensions?: readonly ExtensionTagSource[] }
 ): EnclosingDocComment | null {
-  const commentPattern = /\/\*\*[\s\S]*?\*\//gu;
-
-  for (const match of documentText.matchAll(commentPattern)) {
-    const fullMatch = match[0];
-    const index = match.index;
-    const start = index;
-    const end = start + fullMatch.length;
-    if (offset >= start && offset <= end) {
-      return {
-        text: fullMatch,
-        start,
-        end,
-        parsed: parseCommentBlock(fullMatch, {
-          offset: start,
-          ...(options?.extensions !== undefined ? { extensions: options.extensions } : {}),
-        }),
-      };
+  for (const range of collectMultiLineCommentRanges(documentText)) {
+    if (offset < range.pos || offset > range.end) {
+      continue;
     }
+
+    const fullMatch = documentText.slice(range.pos, range.end);
+    if (!fullMatch.startsWith("/**")) {
+      continue;
+    }
+
+    return {
+      text: fullMatch,
+      start: range.pos,
+      end: range.end,
+      parsed: parseCommentBlock(fullMatch, {
+        offset: range.pos,
+        ...(options?.extensions !== undefined ? { extensions: options.extensions } : {}),
+      }),
+    };
   }
 
   return null;
