@@ -199,7 +199,7 @@ export type ExtractConditionalFields<E> = E extends AnyField ? never : E extends
 export type ExtractConditionalFieldsFromArray<Elements> = Elements extends readonly [infer First, ...infer Rest] ? ExtractConditionalFields<First> | ExtractConditionalFieldsFromArray<Rest> : never;
 
 // @public
-export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
+export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends ArrayField<string, infer Items> ? ExtractDynamicSourcesFromArray<Items> : E extends ObjectField<string, infer Properties> ? ExtractDynamicSourcesFromArray<Properties> : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
 
 // @public
 export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [

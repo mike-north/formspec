@@ -12,6 +12,8 @@ import type {
   FormElement,
   FormSpec,
   DynamicEnumField,
+  ArrayField,
+  ObjectField,
   Group,
   Conditional,
   LoggerLike,
@@ -38,11 +40,15 @@ export type Resolver<Source extends keyof DataSourceRegistry, T = DataSourceRegi
 export type ExtractDynamicSources<E> =
   E extends DynamicEnumField<string, infer S>
     ? S
-    : E extends Group<infer Elements>
-      ? ExtractDynamicSourcesFromArray<Elements>
-      : E extends Conditional<string, unknown, infer Elements>
-        ? ExtractDynamicSourcesFromArray<Elements>
-        : never;
+    : E extends ArrayField<string, infer Items>
+      ? ExtractDynamicSourcesFromArray<Items>
+      : E extends ObjectField<string, infer Properties>
+        ? ExtractDynamicSourcesFromArray<Properties>
+        : E extends Group<infer Elements>
+          ? ExtractDynamicSourcesFromArray<Elements>
+          : E extends Conditional<string, unknown, infer Elements>
+            ? ExtractDynamicSourcesFromArray<Elements>
+            : never;
 
 /**
  * Extracts dynamic data-source names referenced anywhere in an element array.
@@ -112,6 +118,12 @@ function extractSources(elements: readonly FormElement[]): Set<string> {
       // After checking _field, we know this is a DynamicEnumField
       const dynamicField: DynamicEnumField<string, string> = el;
       sources.add(dynamicField.source);
+    } else if (el._type === "field" && el._field === "array") {
+      // Recurse into array items (mirrors validateForm's walker)
+      (el as ArrayField<string, readonly FormElement[]>).items.forEach(visit);
+    } else if (el._type === "field" && el._field === "object") {
+      // Recurse into object properties (mirrors validateForm's walker)
+      (el as ObjectField<string, readonly FormElement[]>).properties.forEach(visit);
     } else if (el._type === "group") {
       (el as Group<readonly FormElement[]>).elements.forEach(visit);
     } else if (el._type === "conditional") {
@@ -180,7 +192,11 @@ export function defineResolvers<
   Sources extends string = ResolverSourcesForForm<E>,
 >(
   form: FormSpec<E>,
-  resolvers: ResolverMap<Sources>,
+  // `NoInfer` keeps `Sources` pinned to the form-derived default
+  // (`ResolverSourcesForForm<E>`). Without it, TypeScript infers `Sources` from
+  // the resolver map, so `defineResolvers(form, {})` collapses `Sources` to
+  // `never` and silently accepts a form whose dynamic enums have no resolver.
+  resolvers: ResolverMap<NoInfer<Sources>>,
   options?: DefineResolversOptions
 ): ResolverRegistry<Sources> {
   const logger = (options?.logger ?? noopLogger).child({ stage: "runtime" });
