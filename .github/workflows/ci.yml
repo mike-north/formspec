@@ -54,26 +54,47 @@ jobs:
         id: compute
         # TypeScript 7.x is the Go rewrite with a substantively different API
         # surface — we'll handle that as a separate, deliberate migration
-        # rather than silently testing it via dist-tag drift. Every matrix
-        # entry below is therefore clamped to <7: dist-tags are resolved to
-        # concrete versions at run time and dropped if they've crossed into
-        # 7.x; the nightly entry uses an explicit <7 semver range.
+        # rather than silently testing it via dist-tag drift. Every
+        # dist-tag-driven entry below is therefore clamped to <7: dist-tags
+        # are resolved to concrete versions at run time and dropped if
+        # they've crossed into 7.x; the nightly entry uses an explicit <7
+        # semver range.
         #
-        # Keep matrix labels stable. README badges target these check-run
-        # names, while the install override and `tsc --version` step expose
-        # the concrete resolved compiler version for each dist-tag row.
+        # NAMING CONTRACT: the pinned-major row is always present and always
+        # labeled "<defaultMajor>.x" (e.g. "6.x"), which renders as the
+        # required job "Test (TypeScript <defaultMajor>.x)". Branch
+        # protection pins its required status check to that exact name.
+        # defaultMajor is read from package.json — never hardcode it — so a
+        # deliberate pinned-major bump renames this row automatically; when
+        # that happens, update the repo ruleset's required context to match
+        # in the same change. This row's version is resolved independently
+        # of any dist-tag (`npm view typescript@^<major> version`), so it
+        # stays correct even if `latest`/`beta` point elsewhere or skip the
+        # pinned major entirely. If no stable release of the pinned major
+        # exists on npm, this step throws and the job fails loudly rather
+        # than silently dropping the required row.
+        #
+        # Keep matrix labels stable otherwise, too. README badges target
+        # these check-run names, while the install override and
+        # `tsc --version` step expose the concrete resolved compiler version
+        # for each row.
         #
         # `experimental` (which drives `continue-on-error`) is derived from
         # whether the resolved major matches the workspace's declared
-        # TypeScript major (the root devDependency). Mismatches are
-        # informational — they surface incompatibilities without blocking
-        # merges. Once the workspace bumps its default to 6.x, 6.x rows
-        # stop being experimental automatically.
+        # TypeScript major (the root devDependency), except the pinned-major
+        # row itself, which is always non-experimental by definition.
+        # Mismatches elsewhere are informational — they surface
+        # incompatibilities without blocking merges.
         #
         # The "5.x" entry is skipped when the workspace's default TypeScript
         # is already on 5.x — the main build-and-test job covers it. When
         # the default moves on, the 5.x entry auto-enables to keep
         # backwards-compatibility coverage.
+        #
+        # The dist-tag "latest" row is only kept when it resolves below 7
+        # AND its major differs from the pinned major — once `latest`
+        # returns to the pinned major, that row would just duplicate the
+        # pinned-major row's coverage.
         run: |
           node --input-type=module <<'EOF' >> "$GITHUB_OUTPUT"
           import { readFileSync } from "node:fs";
@@ -90,12 +111,48 @@ jobs:
             return v && majorOf(v) < 7 ? v : null;
           };
           const isExperimental = (major) => major !== defaultMajor;
+          // Resolve the latest stable (non-prerelease) release of a given
+          // major directly from the registry, independent of any dist-tag.
+          const resolveLatestStableMajor = (major) => {
+            let raw;
+            try {
+              raw = execSync(`npm view typescript@'^${major}' version --json`, {
+                encoding: "utf8",
+              });
+            } catch {
+              return null;
+            }
+            const parsed = JSON.parse(raw);
+            const versions = Array.isArray(parsed) ? parsed : [parsed];
+            if (versions.length === 0) return null;
+            return versions
+              .sort((a, b) => {
+                const pa = a.split(".").map(Number);
+                const pb = b.split(".").map(Number);
+                for (let i = 0; i < 3; i++) {
+                  if (pa[i] !== pb[i]) return pa[i] - pb[i];
+                }
+                return 0;
+              })
+              .at(-1);
+          };
           const include = [];
+          const pinnedVersion = resolveLatestStableMajor(defaultMajor);
+          if (!pinnedVersion) {
+            throw new Error(
+              `No stable typescript ${defaultMajor}.x release found on npm; cannot compute the required pinned-major CI row.`
+            );
+          }
+          include.push({
+            label: `${defaultMajor}.x`,
+            typescript: pinnedVersion,
+            experimental: false,
+          });
           if (defaultMajor !== 5) {
             include.push({ label: "5.x", typescript: "5", experimental: isExperimental(5) });
           }
           const latest = resolveBelow7("latest");
-          if (latest) {
+          if (latest && majorOf(latest) !== defaultMajor) {
             include.push({
               label: "latest",
               typescript: latest,
