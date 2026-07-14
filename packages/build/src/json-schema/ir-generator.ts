@@ -325,30 +325,44 @@ export function generateJsonSchemaFromIR(
  *
  * Groups and conditionals are transparent to the schema — their children are
  * lifted to the enclosing level (per the JSON Schema vocabulary spec §1.2).
+ *
+ * @param insideConditional - Whether these elements are lifted out of a `when()`
+ *   conditional branch. Per principle C3, a field inside a conditional is always
+ *   present in the schema but is never listed in the root `required` array — the
+ *   condition may be false, so the field may legitimately be absent. This mirrors
+ *   the inferred TypeScript type, where conditional fields become optional, and
+ *   the nested-object path (`buildObjectProperties`), which forces `optional` for
+ *   the same reason. A field's authored `required` flag is preserved on its IR
+ *   node (it means "required when the condition is met"); this function applies
+ *   the C3 rule at the JSON Schema boundary rather than mutating the IR, keeping
+ *   a future `if`/`then` conditional-required design possible.
  */
 function collectFields(
   elements: readonly FormIRElement[],
   properties: Record<string, JsonSchema2020>,
   required: string[],
-  ctx: GeneratorContext
+  ctx: GeneratorContext,
+  insideConditional = false
 ): void {
   for (const element of elements) {
     switch (element.kind) {
       case "field":
         properties[getSerializedFieldName(element)] = generateFieldSchema(element, ctx);
-        if (element.required) {
+        if (element.required && !insideConditional) {
           required.push(getSerializedFieldName(element));
         }
         break;
 
       case "group":
         // Groups are UI-only; flatten children into the enclosing schema.
-        collectFields(element.elements, properties, required, ctx);
+        // Optionality state passes through — a group does not create a conditional.
+        collectFields(element.elements, properties, required, ctx, insideConditional);
         break;
 
       case "conditional":
-        // Conditional visibility is UI-only; all fields remain in the schema.
-        collectFields(element.elements, properties, required, ctx);
+        // Conditional visibility is UI-only; all fields remain in the schema, but
+        // fields lifted out of a conditional branch are never root-required (C3).
+        collectFields(element.elements, properties, required, ctx, true);
         break;
 
       default: {

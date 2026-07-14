@@ -245,7 +245,16 @@ export type FlattenIntersection<T> = {
  * This is the main inference type that converts a form structure
  * into its corresponding TypeScript schema type.
  *
- * Non-conditional fields are required, conditional fields are optional.
+ * Optionality in the inferred type is driven by conditional membership, not by
+ * a field's `required` option: non-conditional fields are required (present) and
+ * conditional fields (inside `when()`) are optional. A field's explicit
+ * `required: false` on a **non-conditional** field does NOT make the inferred key
+ * optional — `required` affects only the JSON Schema `required` array (validation),
+ * per principle B4. Concretely, `field.text("x", { required: false })` at top level
+ * yields `{ x: string }` in the inferred type while omitting `"x"` from the schema's
+ * `required` array. This split is intentional and pinned by a `tsd` test; the two
+ * surfaces agree for every conditional field (optional in the type ⟺ absent from
+ * the schema `required` array), which is the divergence this rule governs.
  *
  * @example
  * ```typescript

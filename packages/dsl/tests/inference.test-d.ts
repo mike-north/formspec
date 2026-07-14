@@ -150,6 +150,39 @@ expectType<{ showAddress: boolean; street?: string; city?: string }>(
   {} as GroupInConditionalSchema
 );
 
+// Regression: #512 — a `required: true` field inside a top-level conditional is
+// OPTIONAL in the inferred type (`Partial<…>`), and the JSON Schema generator
+// must keep it out of the root `required` array to agree. This pins the type
+// side of the round-trip: `aField?` here ⟺ `"aField"` absent from schema
+// `required` (asserted at runtime in @formspec/build's integration test).
+const _conditionalRequiredForm = formspec(
+  field.enum("type", ["a", "b"] as const, { required: true }),
+  when(is("type", "a"), field.text("aField", { required: true }))
+);
+type ConditionalRequiredSchema = InferSchema<typeof _conditionalRequiredForm.elements>;
+expectType<{ type: "a" | "b"; aField?: string }>({} as ConditionalRequiredSchema);
+
+// =============================================================================
+// InferSchema tests - `required: false` on non-conditional fields (#512)
+// =============================================================================
+//
+// Decision (issue #512, acceptance criterion 4): `required` affects only JSON
+// Schema validation. Inferred-type optionality is driven by conditional
+// membership, NOT by the `required` flag. A non-conditional field with
+// `{ required: false }` therefore stays PRESENT (non-optional) in the inferred
+// type, even though it is omitted from the schema's `required` array. We pin the
+// current behavior here rather than changing `InferSchema` semantics, which
+// would be a wider behavior change (see the `InferSchema` doc comment).
+const _explicitOptionalForm = formspec(
+  field.text("name", { required: true }),
+  field.text("nickname", { required: false })
+);
+type ExplicitOptionalSchema = InferSchema<typeof _explicitOptionalForm.elements>;
+// `nickname` is NOT optional in the inferred type despite `required: false`.
+expectType<{ name: string; nickname: string }>({} as ExplicitOptionalSchema);
+// Guard the pin: the key must not become optional.
+expectNotType<{ name: string; nickname?: string }>({} as ExplicitOptionalSchema);
+
 // =============================================================================
 // InferSchema tests - Array fields
 // =============================================================================
