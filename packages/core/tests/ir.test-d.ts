@@ -39,6 +39,7 @@ import type {
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
   DeprecatedAnnotationNode,
+  ExampleAnnotationNode,
   FormatHintAnnotationNode,
   CustomAnnotationNode,
   FieldNode,
@@ -475,6 +476,23 @@ const deprecatedWithMessage: DeprecatedAnnotationNode = {
   provenance: provNode,
 };
 expectAssignable<AnnotationNode>(deprecatedWithMessage);
+
+const exampleAnnotation: ExampleAnnotationNode = {
+  kind: "annotation",
+  annotationKind: "example",
+  value: "user@example.com",
+  provenance: provNode,
+};
+expectAssignable<AnnotationNode>(exampleAnnotation);
+
+// example accepts any JsonValue (structured examples, null, etc.)
+const exampleObjectAnnotation: ExampleAnnotationNode = {
+  kind: "annotation",
+  annotationKind: "example",
+  value: { port: 5432 },
+  provenance: provNode,
+};
+expectAssignable<AnnotationNode>(exampleObjectAnnotation);
 
 const formatHintAnnotation: FormatHintAnnotationNode = {
   kind: "annotation",

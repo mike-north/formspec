@@ -629,6 +629,74 @@ describe("extractJSDocAnnotationNodes", () => {
     expect(remarks).toHaveLength(0);
   });
 
+  // @example extraction — spec 002 §2.3 (@example → ExampleAnnotation) and
+  // §3.2 (multiple tags accumulate; JSON-or-string value parsing).
+  it("extracts a single @example as an example annotation (spec 002 §2.3)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @example user@example.com */
+        email: string;
+      }
+    `);
+
+    const examples = extractJSDocAnnotationNodes(prop).filter(
+      (n) => n.annotationKind === "example"
+    );
+    expect(examples).toHaveLength(1);
+    expect(examples[0]).toMatchObject({
+      annotationKind: "example",
+      value: "user@example.com",
+    });
+  });
+
+  it("accumulates repeated @example tags as separate nodes in source order (spec 002 §3.2)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /**
+         * @example first
+         * @example second
+         */
+        name: string;
+      }
+    `);
+
+    const examples = extractJSDocAnnotationNodes(prop).filter(
+      (n) => n.annotationKind === "example"
+    );
+    expect(examples).toHaveLength(2);
+    expect(examples.map((n) => (n as { value: unknown }).value)).toEqual(["first", "second"]);
+  });
+
+  it("parses a JSON-parseable @example payload to its JSON value (spec 002 §3.2)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @example {"port": 5432} */
+        config: unknown;
+      }
+    `);
+
+    const examples = extractJSDocAnnotationNodes(prop).filter(
+      (n) => n.annotationKind === "example"
+    );
+    expect(examples).toHaveLength(1);
+    expect(examples[0]).toMatchObject({ value: { port: 5432 } });
+  });
+
+  it("carries a non-JSON @example payload through as a string (spec 002 §3.2)", () => {
+    const prop = getInterfacePropertyFromSource(`
+      interface Foo {
+        /** @example not-json-at-all */
+        name: string;
+      }
+    `);
+
+    const examples = extractJSDocAnnotationNodes(prop).filter(
+      (n) => n.annotationKind === "example"
+    );
+    expect(examples).toHaveLength(1);
+    expect(examples[0]).toMatchObject({ value: "not-json-at-all" });
+  });
+
   it("produces both displayName and description from summary", () => {
     const prop = getInterfacePropertyFromSource(`
       interface Foo {

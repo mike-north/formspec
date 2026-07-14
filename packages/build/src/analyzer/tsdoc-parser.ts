@@ -51,6 +51,7 @@ import {
   stripNullishUnion,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
+  parseExampleTagValue,
   parseTagSyntax,
   parseUnifiedComment,
   resolveDeclarationPlacement,
@@ -970,6 +971,13 @@ export function parseTSDocTags(
             annotations.push(parseDefaultValueTagValue(text, provenance));
             continue;
           }
+          if (tagName === "example") {
+            // Each @example accumulates a distinct annotation node; emission
+            // collects them into JSON Schema `examples` in source order
+            // (spec 002 §3.2, 003 §4.2).
+            annotations.push(parseExampleTagValue(text, provenance));
+            continue;
+          }
 
           processConstraintTag(
             tagName,
@@ -1066,6 +1074,10 @@ export function parseTSDocTags(
       const provenance = fallback.provenance;
       if (tagName === "defaultValue") {
         annotations.push(parseDefaultValueTagValue(text, provenance));
+        continue;
+      }
+      if (tagName === "example") {
+        annotations.push(parseExampleTagValue(text, provenance));
         continue;
       }
 

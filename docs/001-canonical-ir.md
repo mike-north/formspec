@@ -450,6 +450,7 @@ type AnnotationNode =
   | PlaceholderAnnotationNode
   | DefaultValueAnnotationNode
   | DeprecatedAnnotationNode
+  | ExampleAnnotationNode
   | FormatHintAnnotationNode
   | CustomAnnotationNode;
 ```
@@ -514,6 +515,19 @@ interface DeprecatedAnnotationNode {
   readonly provenance: Provenance;
 }
 
+interface ExampleAnnotationNode {
+  readonly kind: "annotation";
+  readonly annotationKind: "example";
+  /**
+   * A single documentation example. Sourced from one `@example` tag; the tag
+   * text is parsed as JSON, or carried as a string when it is not valid JSON
+   * (002 §3.2). Multiple `@example` tags on the same field each produce a
+   * distinct node (they accumulate rather than override — see §4.4).
+   */
+  readonly value: JsonValue;
+  readonly provenance: Provenance;
+}
+
 /**
  * A hint to the UI renderer about how to display this field.
  * This does not affect schema validation (B5).
@@ -536,7 +550,9 @@ Newly documented variants:
 - `RemarksAnnotationNode` carries long-form programmatic-persona documentation from `@remarks`; see 002 §2.3 and §3.2. JSON Schema emission uses the `x-<vendor>-remarks` extension keyword described in 003 §3.2.
 - `FormatAnnotationNode` carries a JSON Schema `format` keyword value from `@format`; see 002 §2.2 and §3.2. This is distinct from `FormatHintAnnotationNode`, which carries renderer-specific hints and never emits JSON Schema `format`.
 
-**Ecosystem tag alignment (S6):** `description` derives from TSDoc summary text (bare text before the first block tag), `remarks` derives from `@remarks`, `defaultValue` from `@defaultValue`, and `deprecated` from `@deprecated`. `displayName`, `format`, and `placeholder` are FormSpec-specific metadata or annotation tags.
+- `ExampleAnnotationNode` carries a single documentation example from `@example`; see 002 §2.3 and §3.2. JSON Schema emission accumulates one or more of these into the standard `examples` array (003 §4.2).
+
+**Ecosystem tag alignment (S6):** `description` derives from TSDoc summary text (bare text before the first block tag), `remarks` derives from `@remarks`, `defaultValue` from `@defaultValue`, `deprecated` from `@deprecated`, and `example` from `@example`. `displayName`, `format`, and `placeholder` are FormSpec-specific metadata or annotation tags.
 
 ### 4.3 Custom Annotations
 
@@ -565,6 +581,8 @@ Annotations compose via override: the annotation closest to the point of use win
 This matches TypeScript developers' intuition: a field's own label overrides whatever the type definition suggests (PP3).
 
 The merge algorithm (section 7) implements this by tracking the `specificity` level in `Provenance` and selecting the highest-specificity annotation when multiple annotations of the same `annotationKind` are present.
+
+**Multi-valued exception — `example`:** `ExampleAnnotationNode` is the one built-in annotation kind that accumulates rather than overrides. Repeated `@example` tags on the same field each contribute a distinct node, and all of them are emitted, in source order, to the JSON Schema `examples` array (002 §3.2, 003 §4.2). Multiple `example` nodes of the same specificity therefore do not collapse to one.
 
 ### 4.5 Resolved Identity Metadata
 

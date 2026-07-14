@@ -44,6 +44,7 @@ import type {
   PlaceholderAnnotationNode,
   DefaultValueAnnotationNode,
   DeprecatedAnnotationNode,
+  ExampleAnnotationNode,
   FormatHintAnnotationNode,
   CustomAnnotationNode,
   JsonValue,
@@ -163,6 +164,7 @@ export type ProvenanceFreeDefaultValueAnnotationNode = Omit<
   "provenance"
 >;
 export type ProvenanceFreeDeprecatedAnnotationNode = Omit<DeprecatedAnnotationNode, "provenance">;
+export type ProvenanceFreeExampleAnnotationNode = Omit<ExampleAnnotationNode, "provenance">;
 export type ProvenanceFreeFormatHintAnnotationNode = Omit<FormatHintAnnotationNode, "provenance">;
 export type ProvenanceFreeRemarksAnnotationNode = Omit<RemarksAnnotationNode, "provenance">;
 export type ProvenanceFreeCustomAnnotationNode = Omit<CustomAnnotationNode, "provenance">;
@@ -175,6 +177,7 @@ export type ProvenanceFreeAnnotationNode =
   | ProvenanceFreePlaceholderAnnotationNode
   | ProvenanceFreeDefaultValueAnnotationNode
   | ProvenanceFreeDeprecatedAnnotationNode
+  | ProvenanceFreeExampleAnnotationNode
   | ProvenanceFreeFormatHintAnnotationNode
   | ProvenanceFreeCustomAnnotationNode;
 
@@ -398,6 +401,7 @@ function stripProvenanceFromAnnotation(annotation: AnnotationNode): ProvenanceFr
     case "placeholder":
     case "defaultValue":
     case "deprecated":
+    case "example":
     case "formatHint":
     case "custom": {
       const { provenance: _p, ...rest } = annotation;

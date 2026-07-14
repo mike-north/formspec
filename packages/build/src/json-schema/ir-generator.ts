@@ -108,6 +108,8 @@ export interface JsonSchema2020 {
   description?: string;
   /** Default value suggested for the schema node. */
   default?: unknown;
+  /** Documentation example values (from one or more `@example` tags). */
+  examples?: unknown[];
   /** Whether the schema node is deprecated. */
   deprecated?: boolean;
   // Extensions (open for vendor-prefixed keywords, e.g., x-formspec-*, x-stripe-*)
@@ -1325,6 +1327,7 @@ function applyConstraints(
  * - `description`   → `description` (from summary text, spec 002 §2.3)
  * - `remarks`       → `x-<vendor>-remarks` (from @remarks, spec 003 §3.2)
  * - `defaultValue`  → `default`
+ * - `example`       → appends to `examples` (accumulates in source order, spec 002 §3.2)
  * - `deprecated`    → `deprecated: true` (2020-12 standard annotation)
  * - `format`        → `format`
  *
@@ -1353,6 +1356,12 @@ function applyAnnotations(
 
       case "defaultValue":
         schema.default = coerceDefaultValue(annotation.value, typeNode, schema, ctx);
+        break;
+
+      case "example":
+        // Multi-valued: repeated @example tags accumulate into `examples`
+        // in source order (spec 002 §3.2, 003 §4.2).
+        (schema.examples ??= []).push(annotation.value);
         break;
 
       case "format":
