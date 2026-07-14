@@ -3,7 +3,7 @@ import type { LoggerLike } from "@formspec/core";
 /**
  * A single record captured by {@link makeCapturingLogger}.
  */
-export interface LogRecord {
+interface LogRecord {
   readonly level: "trace" | "debug" | "info" | "warn" | "error";
   readonly msg: string;
   readonly bindings: Record<string, unknown>;
