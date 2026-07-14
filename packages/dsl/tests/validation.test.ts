@@ -291,6 +291,29 @@ describe("validation with complex structures", () => {
     }
   });
 
+  it("should allow an object field's inner field name to match an outer field name (issue #511)", () => {
+    // Regression test for https://github.com/mike-north/formspec/issues/511
+    // Object fields create a nested schema scope (docs/000-principles.md C4), so
+    // reusing a name across the object boundary is not a real duplicate.
+    const elements = [field.text("id"), field.object("user", field.text("id"))] as const;
+
+    const result = validateForm(elements);
+
+    expect(result.valid).toBe(true);
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it("should allow an array field's item field name to match an outer field name (issue #511)", () => {
+    // Regression test for https://github.com/mike-north/formspec/issues/511
+    // Array items create a nested schema scope, same as object properties.
+    const elements = [field.text("id"), field.array("items", field.text("id"))] as const;
+
+    const result = validateForm(elements);
+
+    expect(result.valid).toBe(true);
+    expect(result.issues).toHaveLength(0);
+  });
+
   it("should validate deeply nested structures", () => {
     const elements = [
       group(
