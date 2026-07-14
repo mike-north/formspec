@@ -42,14 +42,66 @@ export interface ValidationResult {
 }
 
 /**
- * Collects all field names from a list of form elements.
- * Returns a Map of field name to count (for duplicate detection).
+ * Collects the flat set of all field names reachable from a list of form
+ * elements, regardless of scope. Used only for conditional-reference
+ * existence checks (`collectConditionalReferences`), which are intentionally
+ * scope-agnostic (see issue #511 non-goals).
  */
-function collectFieldNames(
+function collectAllFieldNames(elements: readonly FormElement[]): Set<string> {
+  const fieldNames = new Set<string>();
+
+  function visit(elements: readonly FormElement[]): void {
+    for (const element of elements) {
+      switch (element._type) {
+        case "field": {
+          // After type narrowing, element is known to be AnyField
+          const field = element;
+          fieldNames.add(field.name);
+
+          // Recurse into array items and object properties
+          if (field._field === "array") {
+            const arrayField = field as ArrayField<string, readonly FormElement[]>;
+            visit(arrayField.items);
+          } else if (field._field === "object") {
+            const objectField = field as ObjectField<string, readonly FormElement[]>;
+            visit(objectField.properties);
+          }
+          break;
+        }
+
+        case "group": {
+          const group = element as Group<readonly FormElement[]>;
+          visit(group.elements);
+          break;
+        }
+
+        case "conditional": {
+          const conditional = element as Conditional<string, unknown, readonly FormElement[]>;
+          visit(conditional.elements);
+          break;
+        }
+      }
+    }
+  }
+
+  visit(elements);
+  return fieldNames;
+}
+
+/**
+ * Finds duplicate field names, scoped per docs/000-principles.md C4 and
+ * GLOSSARY.md: `field.object()` properties and `field.array()` items each
+ * open a new schema scope, so a name reused across that boundary (e.g. a
+ * top-level `id` plus `user.id`) is not a duplicate. Groups and conditionals
+ * are UI-only and stay flat within the enclosing scope, so names reused
+ * inside them still collide with the enclosing scope.
+ */
+function findDuplicateFieldIssues(
   elements: readonly FormElement[],
-  path = ""
-): Map<string, { count: number; paths: string[] }> {
-  const fieldNames = new Map<string, { count: number; paths: string[] }>();
+  scopePath: string
+): ValidationIssue[] {
+  const scopeNames = new Map<string, { count: number; paths: string[] }>();
+  const nestedScopeIssues: ValidationIssue[] = [];
 
   function visit(elements: readonly FormElement[], currentPath: string): void {
     for (const element of elements) {
@@ -58,21 +110,22 @@ function collectFieldNames(
           // After type narrowing, element is known to be AnyField
           const field = element;
           const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
-          const existing = fieldNames.get(field.name);
+          const existing = scopeNames.get(field.name);
           if (existing !== undefined) {
             existing.count++;
             existing.paths.push(fieldPath);
           } else {
-            fieldNames.set(field.name, { count: 1, paths: [fieldPath] });
+            scopeNames.set(field.name, { count: 1, paths: [fieldPath] });
           }
 
-          // Recurse into array items and object properties
+          // Array items and object properties are separate schema scopes -
+          // their duplicate names are evaluated independently of this scope.
           if (field._field === "array") {
             const arrayField = field as ArrayField<string, readonly FormElement[]>;
-            visit(arrayField.items, `${fieldPath}[]`);
+            nestedScopeIssues.push(...findDuplicateFieldIssues(arrayField.items, `${fieldPath}[]`));
           } else if (field._field === "object") {
             const objectField = field as ObjectField<string, readonly FormElement[]>;
-            visit(objectField.properties, fieldPath);
+            nestedScopeIssues.push(...findDuplicateFieldIssues(objectField.properties, fieldPath));
           }
           break;
         }
@@ -96,8 +149,20 @@ function collectFieldNames(
     }
   }
 
-  visit(elements, path);
-  return fieldNames;
+  visit(elements, scopePath);
+
+  const scopeIssues: ValidationIssue[] = [];
+  for (const [name, info] of scopeNames) {
+    if (info.count > 1 && info.paths[0] !== undefined) {
+      scopeIssues.push({
+        severity: "error",
+        message: `Duplicate field name "${name}" found ${String(info.count)} times at: ${info.paths.join(", ")}`,
+        path: info.paths[0],
+      });
+    }
+  }
+
+  return [...scopeIssues, ...nestedScopeIssues];
 }
 
 /**
@@ -164,7 +229,12 @@ function collectConditionalReferences(
  * Validates a form specification for common issues.
  *
  * Checks for:
- * - Duplicate field names at the root level (warning)
+ * - Duplicate field names within the same schema scope (error). The root
+ *   elements form one scope; each `field.object()`'s properties and each
+ *   `field.array()`'s items form their own nested scope, so a name reused
+ *   across a scope boundary (e.g. a top-level `id` and a nested `user.id`)
+ *   is not reported. Groups and conditionals do not open a new scope, so
+ *   duplicates inside them still collide with the enclosing scope.
  * - References to non-existent fields in conditionals (error)
  *
  * @example
@@ -190,19 +260,14 @@ function collectConditionalReferences(
 export function validateForm(elements: readonly FormElement[]): ValidationResult {
   const issues: ValidationIssue[] = [];
 
-  // Collect all field names
-  const fieldNames = collectFieldNames(elements);
+  // Check for duplicate field names within each schema scope - duplicates are
+  // errors because they cause data loss. Object/array boundaries open a new
+  // scope; groups/conditionals stay flat within the enclosing scope.
+  issues.push(...findDuplicateFieldIssues(elements, ""));
 
-  // Check for duplicates at root level - duplicates are errors because they cause data loss
-  for (const [name, info] of fieldNames) {
-    if (info.count > 1 && info.paths[0] !== undefined) {
-      issues.push({
-        severity: "error",
-        message: `Duplicate field name "${name}" found ${String(info.count)} times at: ${info.paths.join(", ")}`,
-        path: info.paths[0],
-      });
-    }
-  }
+  // Collect all field names (flat, across every scope) for conditional
+  // reference existence checks
+  const fieldNames = collectAllFieldNames(elements);
 
   // Collect conditional references
   const references = collectConditionalReferences(elements);
