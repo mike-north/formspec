@@ -6,6 +6,7 @@ import {
   type ConstraintNode,
   type ConstraintTagRegistration,
   type CustomConstraintRegistration,
+  type ExampleAnnotationNode,
   type ExtensionDefinition,
   type JsonValue,
   type LengthConstraintNode,
@@ -237,7 +238,7 @@ export function parseConstraintTagValue(
  * literal `null` payload is preserved as JSON `null` (rather than being
  * indistinguishable from a parse failure).
  */
-export function parseExampleTagValue(text: string, provenance: Provenance): AnnotationNode {
+export function parseExampleTagValue(text: string, provenance: Provenance): ExampleAnnotationNode {
   const trimmed = text.trim();
   let value: JsonValue;
   try {
