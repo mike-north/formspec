@@ -102,7 +102,15 @@ export interface ResolverRegistry<Sources extends string> {
   has(source: string): boolean;
 
   /**
-   * Gets all registered data source names.
+   * Gets the form's required data source names.
+   *
+   * @remarks
+   * This reflects the dynamic-enum sources declared by the form (the
+   * `Sources` type parameter), not the keys present in the resolver map
+   * passed to `defineResolvers`. A source appears here even if no resolver
+   * was registered for it (see the construction-time "Missing resolver"
+   * warning); conversely, a resolver registered for a source the form
+   * doesn't require is omitted.
    */
   sources(): Sources[];
 }
@@ -208,7 +216,7 @@ export function defineResolvers<
   // Validate that all sources have resolvers
   for (const source of sourceSet) {
     if (!resolverMap.has(source)) {
-      console.warn(`Missing resolver for data source: ${source}`);
+      logger.warn(`Missing resolver for data source: ${source}`);
     }
   }
 
@@ -231,7 +239,7 @@ export function defineResolvers<
     },
 
     sources(): Sources[] {
-      return Array.from(resolverMap.keys()) as Sources[];
+      return Array.from(sourceSet) as Sources[];
     },
   };
 }
