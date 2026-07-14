@@ -28,6 +28,52 @@ describe("cursor-context", () => {
     expect(comment?.parsed.tags[0]?.normalizedTagName).toBe("minimum");
   });
 
+  // Regression tests for #527: the cursor-context resolver used to regex-scan
+  // raw document text for `/** ... */`, so comment-like syntax inside string
+  // literals, template literals, and regular `/* */` comments was wrongly
+  // treated as a FormSpec doc comment.
+  it("does not treat doc-comment syntax inside a string literal as a doc comment (#527)", () => {
+    const source = 'const help = "write /** @minimum 5 */ before the field";';
+    const offset = source.indexOf("@minimum") + 2;
+
+    expect(findEnclosingDocComment(source, offset)).toBeNull();
+  });
+
+  it("does not treat doc-comment syntax inside a template literal as a doc comment (#527)", () => {
+    const source = "const help = `write /** @minimum 5 */ before the field`;";
+    const offset = source.indexOf("@minimum") + 2;
+
+    expect(findEnclosingDocComment(source, offset)).toBeNull();
+  });
+
+  it("does not treat a regular /* */ comment as a FormSpec doc comment (#527)", () => {
+    const source = `
+      class Foo {
+        /* not a doc comment @minimum 0 */
+        value!: number;
+      }
+    `;
+    const offset = source.indexOf("@minimum") + 2;
+
+    expect(findEnclosingDocComment(source, offset)).toBeNull();
+  });
+
+  it("still resolves a genuine doc comment following a string literal containing comment-like text (#527)", () => {
+    const source = `
+      const help = "write /** @minimum 5 */ before the field";
+      class Foo {
+        /** @minimum 0 */
+        value!: number;
+      }
+    `;
+    const offset = source.lastIndexOf("@minimum") + 2;
+    const comment = findEnclosingDocComment(source, offset);
+
+    expect(comment).not.toBeNull();
+    expect(comment?.parsed.tags).toHaveLength(1);
+    expect(comment?.parsed.tags[0]?.normalizedTagName).toBe("minimum");
+  });
+
   it("finds the tag under the cursor when hovering the tag name", () => {
     const source = "/** @maximum 100 */";
     const offset = source.indexOf("@maximum") + 3;
