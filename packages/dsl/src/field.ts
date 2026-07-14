@@ -436,7 +436,20 @@ export function createFieldBuilders<
         }
 
         if (firstIsObject) {
-          for (const opt of options) {
+          // Options are declared as `EnumOptionValue` (`string | {id, label}`), which has no
+          // room for `null` or arrays — but this loop is a runtime boundary guard against
+          // untyped/JS callers, so treat each entry as `unknown` rather than trusting that type.
+          for (const opt of options as readonly unknown[]) {
+            // `typeof null === "object"` and `typeof [] === "object"`, so both slip past the
+            // firstIsObject/optIsObject typeof checks above without actually being {id, label}
+            // option objects. Reject them here with the same friendly message instead of letting
+            // `opt.id` throw a raw TypeError on null.
+            if (opt === null || Array.isArray(opt)) {
+              throw new Error(
+                `field.enum("${name}"): object options must have string "id" and "label" properties. ` +
+                  `Received: ${JSON.stringify(opt)}`
+              );
+            }
             const obj = opt as { id?: unknown; label?: unknown };
             if (typeof obj.id !== "string" || typeof obj.label !== "string") {
               throw new Error(

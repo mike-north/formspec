@@ -155,6 +155,27 @@ describe("field builders", () => {
         field.enum("invalid", [{ id: "valid", label: 456 }]);
       }).toThrow(/object options must have string "id" and "label"/);
     });
+
+    // Regression tests for #530: `typeof null === "object"`, so a null entry in an
+    // object-style options array previously reached `null.id` and crashed with a raw
+    // TypeError instead of the friendly field.enum(...) validation error.
+    it("should throw the friendly error (not a raw TypeError) for a null option (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [null] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
+
+    it("should throw the friendly error for a null option mixed with valid object options (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [{ id: "a", label: "A" }, null] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
+
+    it("should throw the friendly error (not a raw TypeError) for an array option (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [["nested", "array"]] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
   });
 
   describe("field.dynamicEnum", () => {
