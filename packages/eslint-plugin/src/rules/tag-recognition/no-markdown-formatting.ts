@@ -19,8 +19,20 @@ export type Options = [{ tags?: string[] }];
  *
  * @public
  */
-export type MessageIds = "markdownFormattingForbidden";
-function stripMarkdownFormatting(value: string): string {
+export type MessageIds = "markdownFormattingForbidden" | "removeAmbiguousMarkdownFormatting";
+
+/**
+ * Strips Markdown constructs whose interpretation is unambiguous — stripping
+ * them can't plausibly destroy the author's intended meaning. These are
+ * eligible for an auto-applied `--fix`.
+ *
+ * Single-asterisk italics and block-level markers (headings, blockquotes,
+ * list markers) are deliberately excluded: they collide with common
+ * non-Markdown prose (multiplication like `5 * 3`, leading `- `/`N. ` used
+ * as plain punctuation) and are handled by {@link stripAmbiguousMarkdown}
+ * as suggestions instead.
+ */
+function stripDefiniteMarkdown(value: string): string {
   let result = value;
 
   for (;;) {
@@ -31,11 +43,42 @@ function stripMarkdownFormatting(value: string): string {
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/__([^_]+)__/g, "$1")
       .replace(/~~([^~]+)~~/g, "$1")
-      .replace(/(^|[^\w\\])\*([^*\n]+)\*(?!\*)/g, "$1$2")
-      .replace(/(^|[^\w\\])_([^_\n]+)_(?!_)/g, "$1$2")
-      .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-      .replace(/^\s{0,3}>\s?/gm, "")
-      .replace(/^\s{0,3}(?:[-+*]|\d+\.)\s+/gm, "");
+      .replace(/(^|[^\w\\])_([^_\n]+)_(?!_)/g, "$1$2");
+
+    if (next === result) {
+      return next;
+    }
+    result = next;
+  }
+}
+
+/**
+ * Strips Markdown constructs whose interpretation is ambiguous — stripping
+ * them risks losing meaning, so callers must offer these only as ESLint
+ * *suggestions*, never as an auto-applied fix.
+ *
+ * - Single-asterisk italics (`*text*`) collide with multiplication notation.
+ *   The flanking check (no whitespace touching the delimiters) additionally
+ *   ensures whitespace-padded `*` (e.g. `5 * 3 * 2`) never matches at all,
+ *   per CommonMark's emphasis flanking rules.
+ * - Block-level markers (headings, blockquotes, list markers) only apply
+ *   when the value spans multiple lines — a single-line value that merely
+ *   starts with `#`, `>`, `- `, or `N. ` is far more likely to be prose
+ *   (e.g. `"- 5 to 5"`, `"1. reason"`) than an actual Markdown block.
+ */
+function stripAmbiguousMarkdown(value: string): string {
+  let result = value;
+  const isMultiline = value.includes("\n");
+
+  for (;;) {
+    let next = result.replace(/(^|[^\w\\])\*(?!\s)([^*\n]+)(?<!\s)\*(?!\*)/g, "$1$2");
+
+    if (isMultiline) {
+      next = next
+        .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+        .replace(/^\s{0,3}>\s?/gm, "")
+        .replace(/^\s{0,3}(?:[-+*]|\d+\.)\s+/gm, "");
+    }
 
     if (next === result) {
       return next;
@@ -57,6 +100,7 @@ export const noMarkdownFormatting = createRule<Options, MessageIds>({
       description: "Forbids Markdown formatting in configured FormSpec tag values",
     },
     fixable: "code",
+    hasSuggestions: true,
     schema: [
       {
         type: "object",
@@ -72,6 +116,8 @@ export const noMarkdownFormatting = createRule<Options, MessageIds>({
     messages: {
       markdownFormattingForbidden:
         'Tag "@{{tag}}" contains Markdown formatting, which is forbidden for this tag.',
+      removeAmbiguousMarkdownFormatting:
+        'Remove Markdown-like formatting from tag "@{{tag}}" (this transform is ambiguous and may change the meaning of the text).',
     },
   },
   defaultOptions: [{}],
@@ -91,10 +137,28 @@ export const noMarkdownFormatting = createRule<Options, MessageIds>({
           continue;
         }
 
-        const strippedValue = stripMarkdownFormatting(tag.valueText);
-        if (strippedValue === tag.valueText) {
+        const definiteValue = stripDefiniteMarkdown(tag.valueText);
+        const fullValue = stripAmbiguousMarkdown(definiteValue);
+
+        const hasDefiniteChange = definiteValue !== tag.valueText;
+        const hasAmbiguousChange = fullValue !== definiteValue;
+
+        if (!hasDefiniteChange && !hasAmbiguousChange) {
           continue;
         }
+
+        const buildReplacement = (strippedValue: string): string | null => {
+          const range = tag.rawArgumentRange;
+          if (range === null) {
+            return null;
+          }
+          const targetPrefix = tag.target === null ? null : `:${tag.target.raw}`;
+          return targetPrefix === null
+            ? strippedValue
+            : strippedValue === ""
+              ? targetPrefix
+              : `${targetPrefix} ${strippedValue}`;
+        };
 
         context.report({
           loc: (() => {
@@ -109,23 +173,35 @@ export const noMarkdownFormatting = createRule<Options, MessageIds>({
           })(),
           messageId: "markdownFormattingForbidden",
           data: { tag: tag.rawName },
-          fix:
-            tag.rawArgumentRange === null
-              ? null
-              : (fixer) => {
-                  const range = tag.rawArgumentRange;
-                  if (range === null) {
-                    return null;
-                  }
-                  const targetPrefix = tag.target === null ? null : `:${tag.target.raw}`;
-                  const replacement =
-                    targetPrefix === null
-                      ? strippedValue
-                      : strippedValue === ""
-                        ? targetPrefix
-                        : `${targetPrefix} ${strippedValue}`;
-                  return fixer.replaceTextRange(range, replacement);
+          // Only the unambiguous transform is auto-applied. Ambiguous
+          // constructs (single-asterisk italics, block-level markers) are
+          // never auto-fixed — they're offered as a suggestion below.
+          fix: hasDefiniteChange
+            ? (fixer) => {
+                const range = tag.rawArgumentRange;
+                const replacement = buildReplacement(definiteValue);
+                if (range === null || replacement === null) {
+                  return null;
+                }
+                return fixer.replaceTextRange(range, replacement);
+              }
+            : null,
+          suggest: hasAmbiguousChange
+            ? [
+                {
+                  messageId: "removeAmbiguousMarkdownFormatting",
+                  data: { tag: tag.rawName },
+                  fix: (fixer) => {
+                    const range = tag.rawArgumentRange;
+                    const replacement = buildReplacement(fullValue);
+                    if (range === null || replacement === null) {
+                      return null;
+                    }
+                    return fixer.replaceTextRange(range, replacement);
+                  },
                 },
+              ]
+            : [],
         });
       }
     });

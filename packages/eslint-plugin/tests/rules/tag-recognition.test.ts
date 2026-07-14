@@ -7,6 +7,15 @@
  * recognized by `no-unknown-tags` and were incorrectly flagged as unknown.
  *
  * @see https://github.com/mike-north/formspec/issues/350
+ *
+ * Regression tests for issue #524: `no-markdown-formatting` treated
+ * whitespace-padded `*` (e.g. `5 * 3 * 2`) and leading `- `/`N. ` in
+ * single-line prose as Markdown, and its destructive `--fix` silently
+ * corrupted values like `"- item one"` into `"item one"`. Ambiguous
+ * transforms (single-asterisk italics, block-level markers) are now
+ * offered only as ESLint suggestions, never auto-applied.
+ *
+ * @see https://github.com/mike-north/formspec/issues/524
  */
 import { RuleTester } from "@typescript-eslint/rule-tester";
 import * as vitest from "vitest";
@@ -496,6 +505,39 @@ ruleTester.run("no-markdown-formatting", noMarkdownFormatting, {
       `,
       options: [{ tags: ["displayName"] }],
     },
+    // Regression for #524: whitespace-padded `*` reads as multiplication,
+    // not italic emphasis — must not be reported or fixed.
+    {
+      code: `
+        class Form {
+          /** @remarks Area is 5 * 3 * 2 square units */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+    },
+    // Regression for #524: a leading "- " on a single-line prose value is
+    // not a Markdown list marker — must not be reported or fixed.
+    {
+      code: `
+        class Form {
+          /** @remarks - 5 to 5 */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+    },
+    // Regression for #524: a leading "N. " on a single-line prose value is
+    // not a Markdown ordered-list marker — must not be reported or fixed.
+    {
+      code: `
+        class Form {
+          /** @remarks 1. reason */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+    },
   ],
   invalid: [
     {
@@ -549,6 +591,54 @@ ruleTester.run("no-markdown-formatting", noMarkdownFormatting, {
           name!: string;
         }
       `,
+    },
+    // Regression for #524: underscore-wrapped emphasis is unambiguous
+    // (unlike single-asterisk emphasis, it doesn't collide with common
+    // non-Markdown prose) — it must still be reported and auto-fixed.
+    {
+      code: `
+        class Form {
+          /** @remarks Use _customer.email_ instead. */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+      errors: [{ messageId: "markdownFormattingForbidden" }],
+      output: `
+        class Form {
+          /** @remarks Use customer.email instead. */
+          name!: string;
+        }
+      `,
+    },
+    // Regression for #524: single-asterisk italics are ambiguous (they
+    // collide with multiplication notation), so stripping them must be
+    // offered only as a suggestion, never auto-applied by `--fix`.
+    {
+      code: `
+        class Form {
+          /** @remarks Value is *emphasized* here */
+          name!: string;
+        }
+      `,
+      options: [{ tags: ["remarks"] }],
+      errors: [
+        {
+          messageId: "markdownFormattingForbidden",
+          suggestions: [
+            {
+              messageId: "removeAmbiguousMarkdownFormatting",
+              output: `
+        class Form {
+          /** @remarks Value is emphasized here */
+          name!: string;
+        }
+      `,
+            },
+          ],
+        },
+      ],
+      output: null,
     },
   ],
 });
