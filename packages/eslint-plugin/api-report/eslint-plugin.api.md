@@ -243,7 +243,7 @@ export const noDuplicateTags: ESLintUtils.RuleModule<"duplicateTag" | "duplicate
 export const noMarkdownFormatting: NamedRuleModule<NoMarkdownFormattingMessageIds, NoMarkdownFormattingOptions>;
 
 // @public
-export type NoMarkdownFormattingMessageIds = "markdownFormattingForbidden";
+export type NoMarkdownFormattingMessageIds = "markdownFormattingForbidden" | "removeAmbiguousMarkdownFormatting";
 
 // @public
 export type NoMarkdownFormattingOptions = [{
@@ -282,7 +282,7 @@ const plugin: {
             name: string;
         };
         readonly "tag-recognition/no-disabled-tags": NamedRuleModule<"disabledTag", NoDisabledTagsOptions>;
-        readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<"markdownFormattingForbidden", NoMarkdownFormattingOptions>;
+        readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<NoMarkdownFormattingMessageIds, NoMarkdownFormattingOptions>;
         readonly "tag-recognition/tsdoc-comment-syntax": NamedRuleModule<"tsdocSyntax", []>;
         readonly "value-parsing/valid-numeric-value": TSESLint.RuleModule<"invalidNumericValue", [], unknown, TSESLint.RuleListener> & {
             name: string;
@@ -375,7 +375,7 @@ export const rules: {
         name: string;
     };
     readonly "tag-recognition/no-disabled-tags": NamedRuleModule<"disabledTag", NoDisabledTagsOptions>;
-    readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<"markdownFormattingForbidden", NoMarkdownFormattingOptions>;
+    readonly "tag-recognition/no-markdown-formatting": NamedRuleModule<NoMarkdownFormattingMessageIds, NoMarkdownFormattingOptions>;
     readonly "tag-recognition/tsdoc-comment-syntax": NamedRuleModule<"tsdocSyntax", []>;
     readonly "value-parsing/valid-numeric-value": TSESLint.RuleModule<"invalidNumericValue", [], unknown, TSESLint.RuleListener> & {
         name: string;
