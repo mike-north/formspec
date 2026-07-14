@@ -444,7 +444,15 @@ When a consumer auto-discovers (CLI, language server, TS plugin):
 1. Start from the search directory (cwd for CLI, workspace root for LS/TS plugin)
 2. Look for config file names in priority order
 3. If not found, traverse to parent directory
-4. Stop at filesystem root or `package.json` with `"workspaces"`
+4. Stop at the filesystem root or a monorepo/workspace-root boundary. A directory is a boundary if it contains any of:
+   - `package.json` with a `"workspaces"` field (npm/yarn)
+   - `pnpm-workspace.yaml` (pnpm)
+   - `lerna.json` (Lerna)
+   - `rush.json` (Rush)
+   - `.git` (repository root — a directory in a normal checkout, or a file pointing at the real git dir in a worktree/submodule)
+
+   The boundary directory itself is still searched for a config file before discovery stops; only its ancestors are excluded.
+
 5. If no config file found, use FormSpec defaults
 
 ### 5.4 Loading
