@@ -21,11 +21,17 @@ describe("Chain DSL Cross-Axis Conditionals", () => {
       expect(properties).toHaveProperty("routingNumber");
     });
 
-    it("keeps all conditional fields in the required array", () => {
+    // country/paymentMethod/accountType are the unconditional discriminator axes
+    // (each declared required: true at the top level), so they remain in the
+    // required array. The only conditional field, routingNumber, is optional per
+    // C3 and is absent from required (asserted implicitly — it is not listed here).
+    it("keeps the unconditional axis fields in the required array", () => {
       const required = schema["required"] as string[];
       expect(required).toContain("country");
       expect(required).toContain("paymentMethod");
       expect(required).toContain("accountType");
+      // The conditional field is optional and must not be required.
+      expect(required).not.toContain("routingNumber");
     });
   });
 
