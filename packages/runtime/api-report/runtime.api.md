@@ -4,6 +4,7 @@
 
 ```ts
 
+import type { ArrayField } from '@formspec/core';
 import type { Conditional } from '@formspec/core';
 import type { DataSourceRegistry } from '@formspec/core';
 import type { DynamicEnumField } from '@formspec/core';
@@ -12,9 +13,10 @@ import type { FormElement } from '@formspec/core';
 import type { FormSpec } from '@formspec/core';
 import type { Group } from '@formspec/core';
 import type { LoggerLike } from '@formspec/core';
+import type { ObjectField } from '@formspec/core';
 
 // @public
-export function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<Sources>, options?: DefineResolversOptions): ResolverRegistry<Sources>;
+export function defineResolvers<E extends readonly FormElement[], Sources extends string = ResolverSourcesForForm<E>>(form: FormSpec<E>, resolvers: ResolverMap<NoInfer<Sources>>, options?: DefineResolversOptions): ResolverRegistry<Sources>;
 
 // @public
 export interface DefineResolversOptions {
@@ -22,7 +24,7 @@ export interface DefineResolversOptions {
 }
 
 // @public
-export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
+export type ExtractDynamicSources<E> = E extends DynamicEnumField<string, infer S> ? S : E extends ArrayField<string, infer Items> ? ExtractDynamicSourcesFromArray<Items> : E extends ObjectField<string, infer Properties> ? ExtractDynamicSourcesFromArray<Properties> : E extends Group<infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : E extends Conditional<string, unknown, infer Elements> ? ExtractDynamicSourcesFromArray<Elements> : never;
 
 // @public
 export type ExtractDynamicSourcesFromArray<Elements> = Elements extends readonly [

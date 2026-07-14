@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { defineResolvers } from "../src/index.js";
 import { formspec, field, group, when, is } from "@formspec/dsl";
 
@@ -6,6 +6,10 @@ import { formspec, field, group, when, is } from "@formspec/dsl";
 // For tests, we work with the generic types.
 
 describe("defineResolvers", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("should create a resolver registry", () => {
     const form = formspec(field.dynamicEnum("country", "countries", { label: "Country" }));
 
@@ -98,6 +102,79 @@ describe("defineResolvers", () => {
     expect(() => resolvers.get("unknown" as "countries")).toThrow(
       "No resolver found for data source: unknown"
     );
+  });
+
+  // Regression tests for issue #516: source extraction must recurse into
+  // field.array() items and field.object() properties, not only groups and
+  // conditionals. A dynamic enum nested in an array or object was previously
+  // invisible to `extractSources`, so `defineResolvers` neither required a
+  // resolver at the type level nor emitted the construction-time
+  // "Missing resolver" warning. The warning is the observable signal that a
+  // source was extracted (`has`/`sources` only reflect the passed-in resolver
+  // map), so these tests assert on it directly.
+  it("should warn for a dynamic enum nested inside an array (#516)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const form = formspec(field.array("lineItems", field.dynamicEnum("product", "products")));
+
+    // @ts-expect-error resolver for the nested "products" source is intentionally omitted
+    defineResolvers(form, {});
+
+    expect(warn).toHaveBeenCalledWith("Missing resolver for data source: products");
+  });
+
+  it("should warn for a dynamic enum nested inside an object (#516)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const form = formspec(field.object("shipping", field.dynamicEnum("country", "countries")));
+
+    // @ts-expect-error resolver for the nested "countries" source is intentionally omitted
+    defineResolvers(form, {});
+
+    expect(warn).toHaveBeenCalledWith("Missing resolver for data source: countries");
+  });
+
+  it("should warn for a dynamic enum nested inside an object-inside-array (#516)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const form = formspec(
+      field.array("lineItems", field.object("detail", field.dynamicEnum("product", "products")))
+    );
+
+    // @ts-expect-error resolver for the deeply-nested "products" source is intentionally omitted
+    defineResolvers(form, {});
+
+    expect(warn).toHaveBeenCalledWith("Missing resolver for data source: products");
+  });
+
+  it("should warn for a dynamic enum nested through arrays, objects, groups, and conditionals combined (#516)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const form = formspec(
+      field.enum("type", ["a", "b"] as const),
+      group(
+        "Order",
+        when(
+          is("type", "a"),
+          field.array("lineItems", field.object("detail", field.dynamicEnum("product", "products")))
+        )
+      )
+    );
+
+    // @ts-expect-error resolver for the deeply-nested "products" source is intentionally omitted
+    defineResolvers(form, {});
+
+    expect(warn).toHaveBeenCalledWith("Missing resolver for data source: products");
+  });
+
+  it("should not warn when a nested source's resolver is provided (#516)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const form = formspec(field.array("lineItems", field.dynamicEnum("product", "products")));
+
+    defineResolvers(form, {
+      products: async () => {
+        await Promise.resolve(); // Needed for async interface compliance
+        return { options: [], validity: "valid" as const };
+      },
+    });
+
+    expect(warn).not.toHaveBeenCalled();
   });
 
   it("should pass params to resolver", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "@formspec/runtime",
-  "version": "0.1.0-alpha.67",
+  "version": "0.1.0-alpha.64",
   "description": "Runtime helpers for FormSpec - resolvers and data fetching",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -22,7 +22,8 @@
     "build": "tsup && tsc --emitDeclarationOnly -p tsconfig.build.json && pnpm run api-extractor:local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && tsd",
+    "test:types": "tsd",
     "api-extractor": "api-extractor run && node ../../scripts/normalize-generated-markdown.mjs api-report",
     "api-extractor:local": "api-extractor run --local && node ../../scripts/normalize-generated-markdown.mjs api-report",
     "api-documenter": "api-documenter markdown -i temp -o docs && node ../../scripts/normalize-generated-markdown.mjs docs"
@@ -32,7 +33,11 @@
   },
   "devDependencies": {
     "@formspec/dsl": "workspace:*",
+    "tsd": "^0.31.0",
     "vitest": "^4.1.5"
+  },
+  "tsd": {
+    "directory": "tests"
   },
   "publishConfig": {
     "access": "public"

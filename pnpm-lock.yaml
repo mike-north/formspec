@@ -346,6 +346,9 @@ importers:
       '@formspec/dsl':
         specifier: workspace:*
         version: link:../dsl
+      tsd:
+        specifier: ^0.31.0
+        version: 0.31.2
       vitest:
         specifier: ^4.1.5
         version: 4.1.5(@types/node@22.19.7)(vite@7.3.1(@types/node@22.19.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.2))
