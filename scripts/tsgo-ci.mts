@@ -3,10 +3,12 @@ import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import {
   chmodSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -150,20 +152,82 @@ export function prepareTypeScript6Compatibility({
   bridgeTypeScriptServerSubpaths(repoRoot);
 }
 
+const REAL_TYPESCRIPT_ALIAS_TARGET_PREFIX = "npm:typescript@";
+
+// @typescript/typescript6 declares its real-TypeScript dependency under an
+// alias key (e.g. "@typescript/old": "npm:typescript@^6") rather than a
+// literal "typescript" key, and that key has already changed once upstream
+// (was "typescript" through 6.0.0, became "@typescript/old" as of 6.0.1 —
+// see #576). Discover the current key from the shim's own manifest instead
+// of hardcoding it, so a future rename doesn't silently produce a dangling
+// symlink here.
+function resolveRealTypeScriptDependencyName(aliasPackageJsonPath: string): string {
+  const aliasPackageJson = readJsonRecord(aliasPackageJsonPath);
+  const dependencies = aliasPackageJson["dependencies"];
+  if (!isStringKeyedRecord(dependencies)) {
+    throw new Error(`${aliasPackageJsonPath} has no "dependencies" field`);
+  }
+
+  // Pre-6.0.1 releases of @typescript/typescript6 depended on the real
+  // package under its own name; keep resolving that shape too in case it
+  // ever reverts.
+  if (typeof dependencies["typescript"] === "string") {
+    return "typescript";
+  }
+
+  const aliasedEntry = Object.entries(dependencies).find(
+    (entry): entry is [string, string] =>
+      typeof entry[1] === "string" && entry[1].startsWith(REAL_TYPESCRIPT_ALIAS_TARGET_PREFIX)
+  );
+
+  if (aliasedEntry === undefined) {
+    throw new Error(
+      `${aliasPackageJsonPath} does not declare a dependency aliased to the real "typescript" ` +
+        `package (expected an "npm:typescript@..." value). The TS 6 compatibility shim's internal ` +
+        "dependency name may have changed upstream again — see #576."
+    );
+  }
+
+  return aliasedEntry[0];
+}
+
 function bridgeTypeScriptServerSubpaths(repoRoot: string): void {
   const requireFromRepo = createRequireFromRepoRoot(repoRoot);
   const aliasPackageJson = requireFromRepo.resolve("typescript/package.json");
   const requireFromAlias = createRequire(aliasPackageJson);
   const aliasLib = path.join(path.dirname(aliasPackageJson), "lib");
-  const realTypescriptLib = path.dirname(requireFromAlias.resolve("typescript/lib/typescript.js"));
+  const realTypeScriptDependencyName = resolveRealTypeScriptDependencyName(aliasPackageJson);
+  const realTypescriptLib = path.dirname(
+    requireFromAlias.resolve(`${realTypeScriptDependencyName}/lib/typescript.js`)
+  );
 
   mkdirSync(aliasLib, { recursive: true });
 
   for (const fileName of TYPE_SCRIPT_SERVER_SUBPATHS) {
     const target = path.join(aliasLib, fileName);
-    if (!existsSync(target)) {
-      symlinkSync(path.join(realTypescriptLib, fileName), target);
+    // Use lstatSync rather than existsSync: existsSync follows symlinks and
+    // reports a broken symlink as "does not exist", which would leave a
+    // stale/dangling link in place (as happened when the alias's dependency
+    // name changed upstream — see #576) instead of repairing it.
+    const existingEntry = lstatOrUndefined(target);
+    if (existingEntry !== undefined) {
+      if (!existingEntry.isSymbolicLink()) {
+        // A real file/directory already occupies this path (e.g. the shim
+        // started shipping the subpath directly). Leave it alone — the
+        // bridge is only needed when the entry is missing or a stale link.
+        continue;
+      }
+      unlinkSync(target);
     }
+    symlinkSync(path.join(realTypescriptLib, fileName), target);
+  }
+}
+
+function lstatOrUndefined(candidatePath: string): ReturnType<typeof lstatSync> | undefined {
+  try {
+    return lstatSync(candidatePath);
+  } catch {
+    return undefined;
   }
 }
 

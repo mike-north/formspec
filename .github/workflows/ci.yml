@@ -219,6 +219,22 @@ jobs:
     name: Test (TypeScript 7.0 native preview)
     runs-on: ubuntu-latest
     continue-on-error: true # experimental: TS 7 is the Go rewrite with a separate API surface
+    # Native-preview vs. stable typescript@7 (evaluated for #576, also see #449):
+    # As of 2026-07-14, `typescript@latest` (7.0.2) IS the native Go rewrite —
+    # its own "typescript" dependency graph pulls in platform-specific native
+    # binaries and its "tsc" bin is the Go compiler. @typescript/native-preview
+    # is now a stale pre-release-only channel (still on 7.0.0-dev.* builds).
+    # We keep installing @typescript/native-preview@beta here rather than
+    # switching to stable typescript@7 because the workspace's global
+    # `pnpm.overrides.typescript` alias (needed so packages that use the JS
+    # compiler API keep working under the TS6-compatible shim) would collide
+    # with a plain "typescript@^7" devDependency; picking that up would need
+    # a second alias plus rerouting the tsgo binary path around the existing
+    # "tsc" launcher this job already writes for the TS6 shim. That's real
+    # complexity for a lane that FormSpec deliberately treats as
+    # native-preview-only, non-blocking coverage (see CLAUDE.md "Supported
+    # TypeScript versions"), not an officially supported TS 7 target. Revisit
+    # if/when FormSpec does a deliberate TS 7 migration.
 
     steps:
       - name: Checkout
@@ -237,9 +253,16 @@ jobs:
         # Keep tools that import from "typescript" on the TS 6 JS API shim,
         # while the native-preview package supplies the tsgo compiler binary.
         # This follows Microsoft's TS 7 beta side-by-side guidance.
+        #
+        # We do not pin a nested override for the shim's own real-TypeScript
+        # dependency: @typescript/typescript6 has already renamed that
+        # internal dependency once (from "typescript" to "@typescript/old"
+        # as of 6.0.1, see #576), which silently turned a prior nested
+        # override here into dead config. Its own "^6" range is sufficient,
+        # and scripts/tsgo-ci.mts now discovers the current dependency name
+        # dynamically from the shim's manifest rather than assuming it.
         run: |
           npm pkg set "pnpm.overrides.typescript=npm:@typescript/typescript6@^6.0.0"
-          npm pkg set "pnpm.overrides.@typescript/typescript6>typescript=^6.0.0"
           npm pkg set "devDependencies.@typescript/native-preview=beta"
 
       - name: Install dependencies
