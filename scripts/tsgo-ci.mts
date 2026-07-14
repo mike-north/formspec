@@ -184,7 +184,7 @@ function resolveRealTypeScriptDependencyName(aliasPackageJsonPath: string): stri
     throw new Error(
       `${aliasPackageJsonPath} does not declare a dependency aliased to the real "typescript" ` +
         `package (expected an "npm:typescript@..." value). The TS 6 compatibility shim's internal ` +
-        "dependency name may have changed upstream again — see #449."
+        "dependency name may have changed upstream again — see #576."
     );
   }
 
@@ -209,19 +209,25 @@ function bridgeTypeScriptServerSubpaths(repoRoot: string): void {
     // reports a broken symlink as "does not exist", which would leave a
     // stale/dangling link in place (as happened when the alias's dependency
     // name changed upstream — see #576) instead of repairing it.
-    if (pathEntryExists(target)) {
+    const existingEntry = lstatOrUndefined(target);
+    if (existingEntry !== undefined) {
+      if (!existingEntry.isSymbolicLink()) {
+        // A real file/directory already occupies this path (e.g. the shim
+        // started shipping the subpath directly). Leave it alone — the
+        // bridge is only needed when the entry is missing or a stale link.
+        continue;
+      }
       unlinkSync(target);
     }
     symlinkSync(path.join(realTypescriptLib, fileName), target);
   }
 }
 
-function pathEntryExists(candidatePath: string): boolean {
+function lstatOrUndefined(candidatePath: string): ReturnType<typeof lstatSync> | undefined {
   try {
-    lstatSync(candidatePath);
-    return true;
+    return lstatSync(candidatePath);
   } catch {
-    return false;
+    return undefined;
   }
 }
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -149,6 +149,86 @@ void describe("prepareTypeScript6Compatibility", () => {
         assert.throws(() => {
           prepareTypeScript6Compatibility({ repoRoot: root, packageRoots: [] });
         }, /does not declare a dependency aliased to the real "typescript" package/);
+      }
+    );
+  });
+
+  void it("replaces a stale/broken symlink left over from a previous run", async () => {
+    await withFixture(
+      {
+        "node_modules/.bin/tsc6": "#!/usr/bin/env sh\n",
+        "node_modules/typescript/package.json": packageJson({
+          name: "@typescript/typescript6",
+          version: "6.0.3",
+          dependencies: { "@typescript/old": "npm:typescript@^6" },
+        }),
+        "node_modules/typescript/node_modules/@typescript/old/package.json": packageJson({
+          name: "typescript",
+          version: "6.0.3",
+        }),
+        "node_modules/typescript/node_modules/@typescript/old/lib/typescript.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserver.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.d.ts": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.js": "",
+      },
+      async (root) => {
+        await mkdir(path.join(root, "node_modules/.bin"), { recursive: true });
+
+        // Model the #576 regression directly: a dangling symlink already
+        // sitting at the bridge target, pointing nowhere.
+        const target = path.join(root, "node_modules/typescript/lib/tsserver.js");
+        await mkdir(path.dirname(target), { recursive: true });
+        await symlink(path.join(root, "node_modules/typescript/lib/does-not-exist.js"), target);
+
+        prepareTypeScript6Compatibility({ repoRoot: root, packageRoots: [] });
+
+        const stat = await lstat(target);
+        assert.equal(stat.isSymbolicLink(), true);
+        // Must now resolve to real content instead of dangling.
+        await readFile(target, "utf8");
+      }
+    );
+  });
+
+  void it("leaves a real file in place instead of clobbering it", async () => {
+    const realFileContents = "// shipped directly by the shim, not a bridge target\n";
+
+    await withFixture(
+      {
+        "node_modules/.bin/tsc6": "#!/usr/bin/env sh\n",
+        "node_modules/typescript/package.json": packageJson({
+          name: "@typescript/typescript6",
+          version: "6.0.3",
+          dependencies: { "@typescript/old": "npm:typescript@^6" },
+        }),
+        "node_modules/typescript/node_modules/@typescript/old/package.json": packageJson({
+          name: "typescript",
+          version: "6.0.3",
+        }),
+        "node_modules/typescript/node_modules/@typescript/old/lib/typescript.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserver.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.d.ts": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.js": "",
+        // The alias package already ships tsserver.js itself, as a real file.
+        "node_modules/typescript/lib/tsserver.js": realFileContents,
+      },
+      async (root) => {
+        await mkdir(path.join(root, "node_modules/.bin"), { recursive: true });
+
+        prepareTypeScript6Compatibility({ repoRoot: root, packageRoots: [] });
+
+        const target = path.join(root, "node_modules/typescript/lib/tsserver.js");
+        const stat = await lstat(target);
+        assert.equal(stat.isSymbolicLink(), false);
+        assert.equal(await readFile(target, "utf8"), realFileContents);
+
+        // The other subpaths, which had no pre-existing real file, are still
+        // bridged normally.
+        for (const fileName of ["tsserverlibrary.d.ts", "tsserverlibrary.js"]) {
+          const otherTarget = path.join(root, "node_modules/typescript/lib", fileName);
+          const otherStat = await lstat(otherTarget);
+          assert.equal(otherStat.isSymbolicLink(), true);
+        }
       }
     );
   });
