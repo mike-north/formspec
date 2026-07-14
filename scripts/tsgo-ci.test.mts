@@ -46,21 +46,25 @@ function parseJsonRecord(contents: string): Record<string, unknown> {
 
 void describe("prepareTypeScript6Compatibility", () => {
   void it("adds tsc launchers and tsserver subpath bridges for the TS 6 alias package", async () => {
+    // @typescript/typescript6 depends on the real "typescript" package under
+    // the aliased name "@typescript/old" (npm:typescript@^6) as of 6.0.1 —
+    // see #576. This fixture models that current shape.
     await withFixture(
       {
         "node_modules/.bin/tsc6": "#!/usr/bin/env sh\n",
         "node_modules/typescript/package.json": packageJson({
           name: "@typescript/typescript6",
           version: "6.0.3",
+          dependencies: { "@typescript/old": "npm:typescript@^6" },
         }),
-        "node_modules/typescript/node_modules/typescript/package.json": packageJson({
+        "node_modules/typescript/node_modules/@typescript/old/package.json": packageJson({
           name: "typescript",
           version: "6.0.3",
         }),
-        "node_modules/typescript/node_modules/typescript/lib/typescript.js": "",
-        "node_modules/typescript/node_modules/typescript/lib/tsserver.js": "",
-        "node_modules/typescript/node_modules/typescript/lib/tsserverlibrary.d.ts": "",
-        "node_modules/typescript/node_modules/typescript/lib/tsserverlibrary.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/typescript.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserver.js": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.d.ts": "",
+        "node_modules/typescript/node_modules/@typescript/old/lib/tsserverlibrary.js": "",
       },
       async (root) => {
         await mkdir(path.join(root, "node_modules/.bin"), { recursive: true });
@@ -84,9 +88,67 @@ void describe("prepareTypeScript6Compatibility", () => {
         assert.equal(e2eLauncher, rootLauncher);
 
         for (const fileName of ["tsserver.js", "tsserverlibrary.d.ts", "tsserverlibrary.js"]) {
-          const stat = await lstat(path.join(root, "node_modules/typescript/lib", fileName));
+          const target = path.join(root, "node_modules/typescript/lib", fileName);
+          const stat = await lstat(target);
           assert.equal(stat.isSymbolicLink(), true);
+          // The symlink must resolve to a real file, not dangle (the #576
+          // regression: it pointed at a nonexistent path in the alias
+          // package's own lib directory).
+          await readFile(target, "utf8");
         }
+      }
+    );
+  });
+
+  void it('also bridges the legacy pre-6.0.1 shape where the alias depends on a literal "typescript" key', async () => {
+    await withFixture(
+      {
+        "node_modules/.bin/tsc6": "#!/usr/bin/env sh\n",
+        "node_modules/typescript/package.json": packageJson({
+          name: "@typescript/typescript6",
+          version: "6.0.0",
+          dependencies: { typescript: "^6.0.0" },
+        }),
+        "node_modules/typescript/node_modules/typescript/package.json": packageJson({
+          name: "typescript",
+          version: "6.0.0",
+        }),
+        "node_modules/typescript/node_modules/typescript/lib/typescript.js": "",
+        "node_modules/typescript/node_modules/typescript/lib/tsserver.js": "",
+        "node_modules/typescript/node_modules/typescript/lib/tsserverlibrary.d.ts": "",
+        "node_modules/typescript/node_modules/typescript/lib/tsserverlibrary.js": "",
+      },
+      async (root) => {
+        await mkdir(path.join(root, "node_modules/.bin"), { recursive: true });
+
+        prepareTypeScript6Compatibility({ repoRoot: root, packageRoots: [] });
+
+        for (const fileName of ["tsserver.js", "tsserverlibrary.d.ts", "tsserverlibrary.js"]) {
+          const target = path.join(root, "node_modules/typescript/lib", fileName);
+          const stat = await lstat(target);
+          assert.equal(stat.isSymbolicLink(), true);
+          await readFile(target, "utf8");
+        }
+      }
+    );
+  });
+
+  void it("throws a clear error when the alias package has no dependency aliased to real typescript", async () => {
+    await withFixture(
+      {
+        "node_modules/.bin/tsc6": "#!/usr/bin/env sh\n",
+        "node_modules/typescript/package.json": packageJson({
+          name: "@typescript/typescript6",
+          version: "6.0.4",
+          dependencies: { "@typescript/somethingelse": "npm:not-typescript@^1" },
+        }),
+      },
+      async (root) => {
+        await mkdir(path.join(root, "node_modules/.bin"), { recursive: true });
+
+        assert.throws(() => {
+          prepareTypeScript6Compatibility({ repoRoot: root, packageRoots: [] });
+        }, /does not declare a dependency aliased to the real "typescript" package/);
       }
     );
   });
