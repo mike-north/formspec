@@ -439,8 +439,25 @@ export default defineFormSpecConfig({
       expect(result.found).toBe(false);
     });
 
+    /**
+     * These boundary tests plant a config file in an ancestor directory
+     * *above* the boundary and assert it is NOT adopted. A bare
+     * `expect(result.found).toBe(false)` with no ancestor config would pass
+     * vacuously even if boundary detection silently regressed to a no-op —
+     * there would simply be nothing upstream to find either way. Planting
+     * the ancestor config makes the assertion meaningful: it only holds if
+     * the boundary genuinely stops the upward walk.
+     */
     it("stops at a lerna workspace root boundary (lerna.json)", async () => {
-      const workspaceRoot = await createTempDir();
+      const ancestorDir = await createTempDir();
+      await writeFile(
+        join(ancestorDir, "formspec.config.ts"),
+        `export default { vendorPrefix: "x-ancestor" };`,
+        "utf-8"
+      );
+
+      const workspaceRoot = join(ancestorDir, "monorepo");
+      await mkdir(workspaceRoot, { recursive: true });
       await writeFile(
         join(workspaceRoot, "lerna.json"),
         JSON.stringify({ packages: ["packages/*"], version: "independent" }),
@@ -452,11 +469,20 @@ export default defineFormSpecConfig({
 
       const result = await loadFormSpecConfig({ searchFrom: pkgDir });
 
+      // Must NOT bleed the ancestor's config across the lerna workspace boundary
       expect(result.found).toBe(false);
     });
 
     it("stops at a rush workspace root boundary (rush.json)", async () => {
-      const workspaceRoot = await createTempDir();
+      const ancestorDir = await createTempDir();
+      await writeFile(
+        join(ancestorDir, "formspec.config.ts"),
+        `export default { vendorPrefix: "x-ancestor" };`,
+        "utf-8"
+      );
+
+      const workspaceRoot = join(ancestorDir, "monorepo");
+      await mkdir(workspaceRoot, { recursive: true });
       await writeFile(join(workspaceRoot, "rush.json"), JSON.stringify({ projects: [] }), "utf-8");
 
       const pkgDir = join(workspaceRoot, "packages", "my-pkg");
@@ -464,23 +490,47 @@ export default defineFormSpecConfig({
 
       const result = await loadFormSpecConfig({ searchFrom: pkgDir });
 
+      // Must NOT bleed the ancestor's config across the rush workspace boundary
       expect(result.found).toBe(false);
     });
 
     it("stops at a repository root boundary (.git directory)", async () => {
-      const repoRoot = await createTempDir();
+      const ancestorDir = await createTempDir();
+      await writeFile(
+        join(ancestorDir, "formspec.config.ts"),
+        `export default { vendorPrefix: "x-ancestor" };`,
+        "utf-8"
+      );
+
+      const repoRoot = join(ancestorDir, "repo");
+      await mkdir(repoRoot, { recursive: true });
+      // A normal checkout: `.git` is a directory. `FileSystem.exists()` only
+      // detects files (`stat().isFile()`), so `isMonorepoRoot` probes
+      // `.git/HEAD` rather than `.git` itself — a bare, empty `.git/`
+      // directory would NOT be detected. Plant `HEAD` so this fixture
+      // actually exercises that detection path.
       await mkdir(join(repoRoot, ".git"), { recursive: true });
+      await writeFile(join(repoRoot, ".git", "HEAD"), "ref: refs/heads/main\n", "utf-8");
 
       const pkgDir = join(repoRoot, "packages", "my-pkg");
       await mkdir(pkgDir, { recursive: true });
 
       const result = await loadFormSpecConfig({ searchFrom: pkgDir });
 
+      // Must NOT bleed the ancestor's config across the repository root boundary
       expect(result.found).toBe(false);
     });
 
     it("stops at a repository root boundary (.git file, as in a worktree or submodule)", async () => {
-      const repoRoot = await createTempDir();
+      const ancestorDir = await createTempDir();
+      await writeFile(
+        join(ancestorDir, "formspec.config.ts"),
+        `export default { vendorPrefix: "x-ancestor" };`,
+        "utf-8"
+      );
+
+      const repoRoot = join(ancestorDir, "repo");
+      await mkdir(repoRoot, { recursive: true });
       // `git worktree add` and submodules leave `.git` as a file containing
       // `gitdir: <path>` rather than a directory.
       await writeFile(
@@ -494,6 +544,7 @@ export default defineFormSpecConfig({
 
       const result = await loadFormSpecConfig({ searchFrom: pkgDir });
 
+      // Must NOT bleed the ancestor's config across the repository root boundary
       expect(result.found).toBe(false);
     });
 
