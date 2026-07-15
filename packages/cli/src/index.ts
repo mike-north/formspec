@@ -114,7 +114,11 @@ function parseArgs(args: string[]): CliOptions {
 
     if (arg === "-o" || arg === "--output") {
       const nextArg = rest[++i];
-      if (nextArg) outDir = nextArg;
+      if (!nextArg) {
+        console.error("Error: missing value for -o/--output");
+        process.exit(1);
+      }
+      outDir = nextArg;
     } else if (arg === "--config") {
       const nextArg = rest[++i];
       if (!nextArg) {
@@ -135,7 +139,11 @@ function parseArgs(args: string[]): CliOptions {
       enumSerialization = nextArg;
     } else if (arg === "--compiled" || arg === "-c") {
       const nextArg = rest[++i];
-      if (nextArg) compiledPath = nextArg;
+      if (!nextArg) {
+        console.error("Error: missing value for -c/--compiled");
+        process.exit(1);
+      }
+      compiledPath = nextArg;
     } else if (arg === "--emit-ir") {
       emitIr = true;
     } else if (arg === "--validate-only") {
@@ -147,8 +155,13 @@ function parseArgs(args: string[]): CliOptions {
       process.exit(1);
     } else if (!filePath) {
       filePath = arg;
+    } else if (className === undefined) {
+      className = arg;
     } else {
-      className ??= arg;
+      console.error(
+        `Error: unexpected argument "${arg}" (only <file> and [className] positional arguments are supported)`
+      );
+      process.exit(1);
     }
   }
 
@@ -697,7 +710,7 @@ async function main(): Promise<void> {
 
     if (options.validateOnly) {
       if (hasValidationErrors) {
-        console.log("Validation failed: constraint violations found.");
+        console.error("Validation failed: constraint violations found.");
         process.exit(1);
       } else {
         console.log("Validation passed: no constraint violations.");
