@@ -1741,6 +1741,93 @@ describe("generateJsonSchemaFromIR", () => {
 
       expect(schema.required).toEqual(["x"]);
     });
+
+    // Regression: #512 — a `required: true` field inside a top-level `when()`
+    // conditional must NOT appear in the root `required` array. Per principle
+    // C3, conditional fields are always present in the schema but optional (the
+    // condition may be false), matching the inferred TypeScript type. Before the
+    // fix, `collectFields` pushed such fields into `required`, contradicting the
+    // inferred type wrapped in `Partial<…>`.
+    it("excludes a required field inside a top-level conditional from root required (#512)", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField("type", { kind: "primitive", primitiveKind: "string" }, true),
+          {
+            kind: "conditional",
+            fieldName: "type",
+            value: "a",
+            elements: [makeField("aField", { kind: "primitive", primitiveKind: "string" }, true)],
+            provenance: PROVENANCE,
+          },
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+
+      // "aField" is present as a property (C3: conditional fields stay in the schema)…
+      expect(schema.properties).toHaveProperty("aField");
+      // …but is optional, so only the unconditional "type" is required.
+      expect(schema.required).toEqual(["type"]);
+    });
+
+    // Regression: #512 — the conditional-optional rule must propagate through a
+    // group nested inside a conditional (a group does not create a scope, C2).
+    it("excludes a required field inside a group inside a conditional (#512)", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField("type", { kind: "primitive", primitiveKind: "string" }, true),
+          {
+            kind: "conditional",
+            fieldName: "type",
+            value: "a",
+            elements: [
+              {
+                kind: "group",
+                label: "Details",
+                elements: [
+                  makeField("nested", { kind: "primitive", primitiveKind: "string" }, true),
+                ],
+                provenance: PROVENANCE,
+              },
+            ],
+            provenance: PROVENANCE,
+          },
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.properties).toHaveProperty("nested");
+      expect(schema.required).toEqual(["type"]);
+    });
+
+    // Guards against an over-broad fix: a group at the top level is UI-only and
+    // does NOT make its required fields optional (only conditionals do, C3).
+    it("keeps a required field inside a top-level group in root required (#512)", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          {
+            kind: "group",
+            label: "Contact",
+            elements: [makeField("name", { kind: "primitive", primitiveKind: "string" }, true)],
+            provenance: PROVENANCE,
+          },
+        ],
+        typeRegistry: {},
+        provenance: PROVENANCE,
+      };
+      const schema = generateJsonSchemaFromIR(ir);
+
+      expect(schema.required).toEqual(["name"]);
+    });
   });
 
   // =============================================================================
@@ -2891,23 +2978,30 @@ describe("generateJsonSchemaFromIR", () => {
 
     it("emits a single example as a one-element examples array", () => {
       const ir = makeIR([
-        makeField("email", { kind: "primitive", primitiveKind: "string" }, true, [], [
-          exampleAnnotation("user@example.com"),
-        ]),
+        makeField(
+          "email",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [exampleAnnotation("user@example.com")]
+        ),
       ]);
       const schema = generateJsonSchemaFromIR(ir);
 
-      expect((schema.properties as Record<string, { examples?: unknown[] }>)["email"]).toMatchObject(
-        { examples: ["user@example.com"] }
-      );
+      expect(
+        (schema.properties as Record<string, { examples?: unknown[] }>)["email"]
+      ).toMatchObject({ examples: ["user@example.com"] });
     });
 
     it("accumulates repeated example annotations into examples in source order", () => {
       const ir = makeIR([
-        makeField("name", { kind: "primitive", primitiveKind: "string" }, true, [], [
-          exampleAnnotation("first"),
-          exampleAnnotation("second"),
-        ]),
+        makeField(
+          "name",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [exampleAnnotation("first"), exampleAnnotation("second")]
+        ),
       ]);
       const schema = generateJsonSchemaFromIR(ir);
 
@@ -2918,10 +3012,13 @@ describe("generateJsonSchemaFromIR", () => {
 
     it("preserves structured JSON example values verbatim", () => {
       const ir = makeIR([
-        makeField("config", { kind: "primitive", primitiveKind: "string" }, true, [], [
-          exampleAnnotation({ port: 5432 }),
-          exampleAnnotation(null),
-        ]),
+        makeField(
+          "config",
+          { kind: "primitive", primitiveKind: "string" },
+          true,
+          [],
+          [exampleAnnotation({ port: 5432 }), exampleAnnotation(null)]
+        ),
       ]);
       const schema = generateJsonSchemaFromIR(ir);
 
@@ -2931,9 +3028,7 @@ describe("generateJsonSchemaFromIR", () => {
     });
 
     it("omits examples entirely when no example annotation is present", () => {
-      const ir = makeIR([
-        makeField("plain", { kind: "primitive", primitiveKind: "string" }, true),
-      ]);
+      const ir = makeIR([makeField("plain", { kind: "primitive", primitiveKind: "string" }, true)]);
       const schema = generateJsonSchemaFromIR(ir);
 
       expect((schema.properties as Record<string, object>)["plain"]).not.toHaveProperty("examples");

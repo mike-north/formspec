@@ -43,14 +43,23 @@ describe("Chain DSL Conditionals", () => {
       expect(properties["paymentMethod"]["enum"]).toEqual(["card", "bank_transfer", "crypto"]);
     });
 
-    // V2 pipeline: fields marked required: true inside when() blocks are included
-    // in the top-level required array. The UI SHOW rules handle conditional visibility.
-    it("conditional required fields are included in top-level required (cardNumber)", () => {
-      expect(required).toContain("cardNumber");
+    // C3 / #512: a field marked required: true inside a when() block is present in
+    // the schema (asserted above) but is NOT in the top-level required array — the
+    // condition may be false, so the field may be absent. This matches the inferred
+    // TypeScript type, where conditional fields are optional. The UI SHOW rules
+    // handle conditional visibility.
+    it("C3: conditional required field is excluded from top-level required (cardNumber)", () => {
+      expect(required).not.toContain("cardNumber");
     });
 
-    it("conditional required fields are included in top-level required (accountNumber)", () => {
-      expect(required).toContain("accountNumber");
+    it("C3: conditional required field is excluded from top-level required (accountNumber)", () => {
+      expect(required).not.toContain("accountNumber");
+    });
+
+    // The only unconditional required field is paymentMethod, so it is the sole
+    // entry in the root required array.
+    it("C3: root required contains only the unconditional required field", () => {
+      expect(required).toEqual(["paymentMethod"]);
     });
 
     it("unconditional optional fields are absent from required", () => {

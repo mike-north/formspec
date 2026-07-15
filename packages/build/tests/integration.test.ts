@@ -242,4 +242,35 @@ describe("Integration: Complete form workflow", () => {
       },
     });
   });
+
+  // Regression: #512 — the exact reproduction from the issue, exercised through
+  // the full chain-DSL → canonicalize → JSON Schema pipeline (`buildFormSchemas`).
+  // A `required: true` field inside a top-level `when()` must be present in the
+  // schema (C3) but absent from the root `required` array, so it agrees with the
+  // inferred type, where `aField` is optional (`Partial<…>`). Before the fix the
+  // schema listed `["aField", "type"]`, so `{ type: "b" }` — valid per the type —
+  // failed schema validation.
+  it("should not mark a required field inside a top-level conditional as required (#512)", () => {
+    const ReproForm = formspec(
+      field.enum("type", ["a", "b"] as const, { required: true }),
+      when(is("type", "a"), field.text("aField", { required: true }))
+    );
+
+    const { jsonSchema } = buildFormSchemas(ReproForm);
+
+    // C3: the conditional field is still present in the schema…
+    expect(Object.keys(jsonSchema.properties ?? {})).toContain("aField");
+    // …but is optional, so only the unconditional discriminator is required.
+    expect(jsonSchema.required ?? []).not.toContain("aField");
+    expect(jsonSchema.required).toEqual(["type"]);
+
+    // Round-trip (criterion 3): the inferred type and the schema `required` array
+    // must agree. `aField` is optional in the type below; `type` is required, so
+    // `{ type: "b" }` type-checks and is valid against the emitted schema.
+    type ReproSchema = InferFormSchema<typeof ReproForm>;
+    const conditionFalse: ReproSchema = { type: "b" };
+    const conditionTrue: ReproSchema = { type: "a", aField: "hello" };
+    expect(conditionFalse).toBeDefined();
+    expect(conditionTrue).toBeDefined();
+  });
 });
