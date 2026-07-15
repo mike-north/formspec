@@ -155,6 +155,39 @@ describe("field builders", () => {
         field.enum("invalid", [{ id: "valid", label: 456 }]);
       }).toThrow(/object options must have string "id" and "label"/);
     });
+
+    // Regression tests for #530: `typeof null === "object"`, so a null entry in an
+    // object-style options array previously reached `null.id` and crashed with a raw
+    // TypeError instead of the friendly field.enum(...) validation error.
+    it("should throw the friendly error (not a raw TypeError) for a null option (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [null] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
+
+    it("should throw the friendly error for a null option mixed with valid object options (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [{ id: "a", label: "A" }, null] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
+
+    it("should throw the friendly error (not a raw TypeError) for an array option (#530)", () => {
+      expect(() => {
+        field.enum("invalid", [["nested", "array"]] as never);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
+
+    // Regression test for #530 (review follow-up): the friendly error message interpolates
+    // JSON.stringify(opt), but JSON.stringify itself throws on values like bigints or circular
+    // structures — which would reintroduce a raw TypeError from inside the very guard meant to
+    // prevent one. A bigint "id" fails the string check and forces stringification of a value
+    // JSON.stringify cannot serialize.
+    it("should throw the friendly error (not a TypeError from JSON.stringify) for an option value JSON.stringify can't serialize (#530)", () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing invalid object (bigint id also makes JSON.stringify throw)
+        field.enum("invalid", [{ id: 1n, label: "Big" }]);
+      }).toThrow(/field\.enum\("invalid"\): object options must have string "id" and "label"/);
+    });
   });
 
   describe("field.dynamicEnum", () => {

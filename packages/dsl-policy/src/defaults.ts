@@ -76,42 +76,45 @@ export const DEFAULT_CONSTRAINTS: ResolvedDSLPolicy = getDefaultDSLPolicyAlias()
  * @beta
  */
 export function mergeWithDefaults(config: DSLPolicy | undefined): ResolvedDSLPolicy {
-  if (!config) {
-    return DEFAULT_DSL_POLICY;
-  }
+  // Always build a fresh nested object graph, even when `config` is absent. Returning
+  // `DEFAULT_DSL_POLICY` by reference here would let a caller that mutates its "resolved"
+  // policy corrupt the shared module-level default (and `DEFAULT_CONSTRAINTS`, which aliases
+  // the same object) for every subsequent caller.
+  const resolvedConfig = config ?? {};
 
   return {
     fieldTypes: {
       ...DEFAULT_DSL_POLICY.fieldTypes,
-      ...config.fieldTypes,
+      ...resolvedConfig.fieldTypes,
     },
     layout: {
       ...DEFAULT_DSL_POLICY.layout,
-      ...config.layout,
+      ...resolvedConfig.layout,
     },
     uiSchema: {
       layouts: {
         ...DEFAULT_DSL_POLICY.uiSchema.layouts,
-        ...config.uiSchema?.layouts,
+        ...resolvedConfig.uiSchema?.layouts,
       },
       rules: {
-        enabled: config.uiSchema?.rules?.enabled ?? DEFAULT_DSL_POLICY.uiSchema.rules.enabled,
+        enabled:
+          resolvedConfig.uiSchema?.rules?.enabled ?? DEFAULT_DSL_POLICY.uiSchema.rules.enabled,
         effects: {
           ...DEFAULT_DSL_POLICY.uiSchema.rules.effects,
-          ...config.uiSchema?.rules?.effects,
+          ...resolvedConfig.uiSchema?.rules?.effects,
         },
       },
     },
     fieldOptions: {
       ...DEFAULT_DSL_POLICY.fieldOptions,
-      ...config.fieldOptions,
+      ...resolvedConfig.fieldOptions,
     },
     controlOptions: {
       ...DEFAULT_DSL_POLICY.controlOptions,
-      ...config.controlOptions,
+      ...resolvedConfig.controlOptions,
       custom: {
         ...DEFAULT_DSL_POLICY.controlOptions.custom,
-        ...config.controlOptions?.custom,
+        ...resolvedConfig.controlOptions?.custom,
       },
     },
   };
