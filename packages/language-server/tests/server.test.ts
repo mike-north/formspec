@@ -346,6 +346,7 @@ describe("createServer", () => {
       uri: "file:///workspace/project/example.ts",
       getText: () => "/** @discriminator :kind T */ interface TaggedValue<T> { kind?: string; }",
     };
+    mocks.documents.get.mockReturnValue(document);
     openHandler?.({ document });
     await Promise.resolve();
 
@@ -388,6 +389,7 @@ describe("createServer", () => {
         version: 1,
         getText: () => "/** @minimum 0 */",
       };
+      mocks.documents.get.mockReturnValue(document);
 
       changeHandler?.({ document });
       // Debounced: the plugin is not queried until the debounce window elapses.
@@ -427,6 +429,7 @@ describe("createServer", () => {
         | undefined;
 
       const uri = "file:///workspace/project/example.ts";
+      mocks.documents.get.mockReturnValue({ uri, version: 3, getText: () => "v3" });
       // Three rapid edits within the debounce window.
       changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
       await vi.advanceTimersByTimeAsync(40);
@@ -472,6 +475,7 @@ describe("createServer", () => {
         | undefined;
 
       const uri = "file:///workspace/project/example.ts";
+      mocks.documents.get.mockReturnValue({ uri, version: 2, getText: () => "v2" });
       // Edit E1 (introduces a violation), then E2. Both publishes start and hang
       // on their respective plugin queries.
       changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
@@ -527,6 +531,7 @@ describe("createServer", () => {
         | undefined;
 
       const uri = "file:///workspace/project/example.ts";
+      mocks.documents.get.mockReturnValue({ uri, version: 2, getText: () => "v2" });
       changeHandler?.({ document: { uri, version: 1, getText: () => "v1" } });
       await vi.advanceTimersByTimeAsync(100);
       changeHandler?.({ document: { uri, version: 2, getText: () => "v2" } });
@@ -593,6 +598,111 @@ describe("createServer", () => {
         uri,
         diagnostics: [{ message: "ready" }],
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to the default freshness-poll interval when given a NaN or negative value", async () => {
+    vi.useFakeTimers();
+    try {
+      // A stale (null) first pass, then a fresh result on the poll. With an
+      // invalid (negative) poll interval, a naive setTimeout would fire at ~0ms
+      // and spin; the clamp forces the 500ms default instead.
+      mocks.getPluginDiagnosticsForDocument
+        .mockResolvedValueOnce(null as never)
+        .mockResolvedValueOnce([{ code: "READY" }] as never);
+      mocks.toLspDiagnostics.mockReturnValue([{ message: "ready" }] as never);
+
+      const uri = "file:///workspace/project/example.ts";
+      const document = { uri, version: 1, getText: () => "v1" };
+      mocks.documents.get.mockReturnValue(document);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: Number.NaN,
+        diagnosticsFreshnessPollMs: -1000,
+      });
+
+      const openHandler = mocks.documents.onDidOpen.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+
+      openHandler?.({ document });
+      await flushMicrotasks();
+
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+
+      // Advancing short of the clamped 500ms default must NOT trigger the poll.
+      await vi.advanceTimersByTimeAsync(200);
+      await flushMicrotasks();
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+
+      // Crossing 500ms triggers the re-poll and the fresh publish.
+      await vi.advanceTimersByTimeAsync(300);
+      await flushMicrotasks();
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(2);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "ready" }],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops an in-flight query result for a document closed mid-query", async () => {
+    vi.useFakeTimers();
+    try {
+      const deferred = createDeferred<readonly unknown[] | null>();
+      mocks.getPluginDiagnosticsForDocument.mockReturnValueOnce(deferred.promise as never);
+      mocks.toLspDiagnostics.mockReturnValue([{ message: "late" }] as never);
+
+      const uri = "file:///workspace/project/example.ts";
+      const document = { uri, version: 1, getText: () => "v1" };
+      mocks.documents.get.mockReturnValue(document);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
+
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+      const closeHandler = mocks.documents.onDidClose.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string } }) => void)
+        | undefined;
+
+      changeHandler?.({ document });
+      // The debounced publish starts and hangs on the in-flight query.
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+
+      // Close the document while the query is in flight. The close clears
+      // diagnostics; the document is no longer open.
+      closeHandler?.({ document });
+      mocks.documents.get.mockReturnValue(undefined);
+
+      // Only the close handler's empty clear so far.
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({ uri, diagnostics: [] });
+
+      // The in-flight query settles with a real (non-empty) result — it must be
+      // dropped rather than resurrecting diagnostics for the closed document.
+      deferred.resolve([{ code: "LATE" }]);
+      await flushMicrotasks();
+
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({ uri, diagnostics: [] });
+
+      // The dropped result did not re-arm the stale poll: advancing well past any
+      // poll interval triggers no further plugin queries.
+      await vi.advanceTimersByTimeAsync(1000);
+      await flushMicrotasks();
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
     }

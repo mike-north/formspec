@@ -67,6 +67,21 @@ function resolvePluginQueryTimeoutMs(explicitTimeoutMs: number | undefined): num
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+/**
+ * Resolves a timer-interval option to a finite, non-negative millisecond value.
+ *
+ * A `NaN`, negative, or non-finite (e.g. `Infinity`) value would make
+ * `setTimeout` behave as `0`, which for the freshness poll causes it to spin
+ * aggressively while the plugin is stale. Such values fall back to the default.
+ */
+function resolveIntervalMs(explicitValue: number | undefined, defaultValue: number): number {
+  if (explicitValue === undefined) {
+    return defaultValue;
+  }
+
+  return Number.isFinite(explicitValue) && explicitValue >= 0 ? explicitValue : defaultValue;
+}
+
 function getWorkspaceRootsFromInitializeParams(params: {
   readonly workspaceFolders?: readonly { readonly uri: string }[] | null;
   readonly rootUri?: string | null;
@@ -143,9 +158,14 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   const pluginQueryTimeoutMs = resolvePluginQueryTimeoutMs(options.pluginQueryTimeoutMs);
   const diagnosticsMode = options.diagnosticsMode ?? "off";
   const diagnosticSource = options.diagnosticSource ?? "formspec";
-  const diagnosticsDebounceMs = options.diagnosticsDebounceMs ?? DEFAULT_DIAGNOSTICS_DEBOUNCE_MS;
-  const diagnosticsFreshnessPollMs =
-    options.diagnosticsFreshnessPollMs ?? DEFAULT_DIAGNOSTICS_FRESHNESS_POLL_MS;
+  const diagnosticsDebounceMs = resolveIntervalMs(
+    options.diagnosticsDebounceMs,
+    DEFAULT_DIAGNOSTICS_DEBOUNCE_MS
+  );
+  const diagnosticsFreshnessPollMs = resolveIntervalMs(
+    options.diagnosticsFreshnessPollMs,
+    DEFAULT_DIAGNOSTICS_FRESHNESS_POLL_MS
+  );
 
   // Highest document version already published for each URI. Guards against
   // out-of-order/slow plugin responses clobbering a newer publish.
@@ -184,6 +204,13 @@ export function createServer(options: CreateServerOptions = {}): Connection {
       document.getText(),
       pluginQueryTimeoutMs
     );
+
+    // The document may have been closed while the query was in flight. onDidClose
+    // has already cleared its diagnostics, so drop the result entirely: do not
+    // republish for a no-longer-open URI, and do not re-arm the stale poll for it.
+    if (documents.get(documentUri) === undefined) {
+      return;
+    }
 
     // Per-URI monotonic publishing: ignore any result older than what we have
     // already published, whether it is empty, stale, or a full set.
