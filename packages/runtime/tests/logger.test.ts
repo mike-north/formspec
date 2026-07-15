@@ -1,43 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import type { LoggerLike } from "@formspec/core";
 import { formspec, field } from "@formspec/dsl";
 import { defineResolvers } from "../src/index.js";
-
-// ---------------------------------------------------------------------------
-// Shared capturing logger helper
-// ---------------------------------------------------------------------------
-
-interface LogRecord {
-  readonly level: "trace" | "debug" | "info" | "warn" | "error";
-  readonly msg: string;
-  readonly bindings: Record<string, unknown>;
-}
-
-function makeCapturingLogger(
-  bindings: Record<string, unknown> = {}
-): { logger: LoggerLike; records: LogRecord[] } {
-  const records: LogRecord[] = [];
-
-  function build(currentBindings: Record<string, unknown>): LoggerLike {
-    const push =
-      (level: LogRecord["level"]) =>
-      (msg: string, ..._args: unknown[]) => {
-        records.push({ level, msg, bindings: { ...currentBindings } });
-      };
-    return {
-      trace: push("trace"),
-      debug: push("debug"),
-      info: push("info"),
-      warn: push("warn"),
-      error: push("error"),
-      child(childBindings) {
-        return build({ ...currentBindings, ...childBindings });
-      },
-    };
-  }
-
-  return { logger: build(bindings), records };
-}
+import { makeCapturingLogger } from "./helpers.js";
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -55,7 +19,10 @@ describe("@formspec/runtime logger integration", () => {
         {
           countries: async () => {
             await Promise.resolve();
-            return { options: [{ value: "us", label: "United States" }], validity: "valid" as const };
+            return {
+              options: [{ value: "us", label: "United States" }],
+              validity: "valid" as const,
+            };
           },
         },
         { logger }
@@ -96,9 +63,62 @@ describe("@formspec/runtime logger integration", () => {
       expect(errorRecord).toBeDefined(); // error log emitted for missing resolver
     });
 
+    // Regression test for issue #540: the construction-time missing-resolver
+    // check wrote directly to `console.warn`, bypassing the injected logger
+    // entirely (unlike `.get()`, which already routed through it). This
+    // defeated the documented contract that an injected logger receives all
+    // diagnostic output.
+    it("routes the construction-time missing-resolver warning through the injected logger, not console.warn (#540)", () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        /* silence */
+      });
+      const { logger, records } = makeCapturingLogger();
+
+      const form = formspec(field.dynamicEnum("country", "countries"));
+
+      try {
+        // @ts-expect-error resolver for "countries" is intentionally omitted
+        defineResolvers(form, {}, { logger });
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+
+      expect(records).toContainEqual(
+        expect.objectContaining({
+          level: "warn",
+          msg: "Missing resolver for data source: countries",
+        })
+      );
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    // Regression test for issue #540: with no logger injected at all (the
+    // default `noopLogger` path), the missing-resolver warning must not leak
+    // to `console.warn` either.
+    it("produces no console.warn output for a missing resolver when no logger is injected (#540)", () => {
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {
+        /* silence */
+      });
+
+      const form = formspec(field.dynamicEnum("country", "countries"));
+
+      try {
+        // @ts-expect-error resolver for "countries" is intentionally omitted
+        defineResolvers(form, {});
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
     it("produces no console output when logger is omitted", () => {
-      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => { /* silence */ });
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => { /* silence */ });
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {
+        /* silence */
+      });
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        /* silence */
+      });
 
       const form = formspec(field.dynamicEnum("country", "countries"));
 
