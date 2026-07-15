@@ -118,6 +118,120 @@ describe("TypeFlags magic-number guard", () => {
     }
   });
 
+  it("rejects magic numbers masked against a getFlags() call receiver", () => {
+    const fixtureRoot = writeFixture(
+      "packages/example/src/get-flags.ts",
+      `
+        export function isNullable(type: { getFlags(): number }): boolean {
+          return (type.getFlags() & 8) !== 0;
+        }
+      `
+    );
+
+    try {
+      const result = runGuard(fixtureRoot);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(parseReportedLiterals(result.stderr)).toEqual(["8"]);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows getFlags() masked against a named enum member", () => {
+    const fixtureRoot = writeFixture(
+      "packages/example/src/get-flags-valid.ts",
+      `
+        import * as ts from "typescript";
+
+        export function isNullable(type: ts.Type): boolean {
+          return (type.getFlags() & ts.TypeFlags.Null) !== 0;
+        }
+      `
+    );
+
+    try {
+      const result = runGuard(fixtureRoot);
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("");
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects magic numbers reached through same-file const indirection", () => {
+    const fixtureRoot = writeFixture(
+      "packages/example/src/const-indirection.ts",
+      `
+        export function isNullable(type: { flags: number }): boolean {
+          const NULL_FLAG = 8;
+          return (type.flags & NULL_FLAG) !== 0;
+        }
+      `
+    );
+
+    try {
+      const result = runGuard(fixtureRoot);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(parseReportedLiterals(result.stderr)).toEqual(["8"]);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows const indirection bound to a named enum member", () => {
+    const fixtureRoot = writeFixture(
+      "packages/example/src/const-indirection-valid.ts",
+      `
+        import * as ts from "typescript";
+
+        export function isNullable(type: ts.Type): boolean {
+          const NULL_FLAG = ts.TypeFlags.Null;
+          return (type.flags & NULL_FLAG) !== 0;
+        }
+      `
+    );
+
+    try {
+      const result = runGuard(fixtureRoot);
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("");
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("flags SymbolFlags masks without recommending TypeFlags in the message", () => {
+    const fixtureRoot = writeFixture(
+      "packages/example/src/symbol-flags.ts",
+      `
+        export function isClassSymbol(symbol: { flags: number }): boolean {
+          return (symbol.flags & 4) !== 0;
+        }
+      `
+    );
+
+    try {
+      const result = runGuard(fixtureRoot);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(parseReportedLiterals(result.stderr)).toEqual(["4"]);
+      // The guard cannot tell TypeFlags and SymbolFlags receivers apart, so the
+      // fix suggestion must not steer a SymbolFlags hit toward ts.TypeFlags.*.
+      expect(result.stderr).toContain("ts.SymbolFlags");
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
   it("reports missing scan targets without a stack trace", () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), "formspec-typeflags-guard-"));
     const missingTarget = join(fixtureRoot, "does-not-exist");
