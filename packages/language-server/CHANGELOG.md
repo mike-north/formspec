@@ -1,5 +1,46 @@
 # @formspec/language-server
 
+## 0.1.0-alpha.69
+
+### Patch Changes
+
+- [#574](https://github.com/mike-north/formspec/pull/574) [`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c) Thanks [@mike-north](https://github.com/mike-north)! - Emit `@example` TSDoc tags to JSON Schema `examples`
+
+  `@example` tags on type-authored fields now flow through to generated schemas
+  instead of being silently dropped.
+  - **@formspec/core:** adds a new `example` annotation kind
+    (`ExampleAnnotationNode`) to the canonical IR annotation union. Unlike other
+    annotations, `example` is multi-valued: repeated `@example` tags on the same
+    field each contribute a distinct node.
+  - **@formspec/build:** the extractor produces one `example` annotation per
+    `@example` tag (JSON-parseable text becomes its JSON value, non-JSON text is
+    carried as a string), and JSON Schema generation accumulates them, in source
+    order, into the standard `examples` array.
+  - **@formspec/analysis:** adds a `parseExampleTagValue` helper (JSON-or-string
+    parsing per spec 002 §3.2) to the internal API surface.
+
+  Downstream packages receive a patch bump for the propagated dependency update.
+
+  `@example` remains a TSDoc-surface-only annotation; the chain DSL has no
+  `examples` option (documented as a parity exception in spec 006).
+
+- [#582](https://github.com/mike-north/formspec/pull/582) [`118d247`](https://github.com/mike-north/formspec/commit/118d24794312604fbbf5d4ef713c94041c04f7e8) Thanks [@mike-north](https://github.com/mike-north)! - Fix config discovery escaping pnpm/lerna/rush monorepos. Discovery now stops at a directory containing `pnpm-workspace.yaml`, `lerna.json`, `rush.json`, or `.git`, in addition to the existing `package.json#workspaces` (npm/yarn) boundary — preventing a stray `formspec.config.ts` in an ancestor directory from being silently adopted.
+
+- [#586](https://github.com/mike-north/formspec/pull/586) [`8fbdf0a`](https://github.com/mike-north/formspec/commit/8fbdf0adc758496b90772d0055a119c5d2cd42e3) Thanks [@mike-north](https://github.com/mike-north)! - Fix a diagnostics publishing race in the reference language server. Diagnostics
+  now publish per-URI monotonically — a slow or stale plugin query that resolves
+  out of order can no longer clobber fresher diagnostics with an empty set.
+  Content-change publishing is debounced, and diagnostics for open documents are
+  re-published automatically once a stale plugin snapshot becomes fresh, without
+  requiring an edit. New `diagnosticsDebounceMs` and `diagnosticsFreshnessPollMs`
+  options on `createServer` tune these intervals.
+
+- [#583](https://github.com/mike-north/formspec/pull/583) [`39c0308`](https://github.com/mike-north/formspec/commit/39c0308302fed121bf649ce650f88f985f459e8f) Thanks [@mike-north](https://github.com/mike-north)! - Fix the completion/hover cursor-context resolver so it no longer treats doc-comment syntax (`/** ... */`) inside string literals or template literals as a genuine FormSpec doc comment. Detection is now AST-gated (via `ts.getLeadingCommentRanges` over the parsed source), matching the precedent already used for the snapshot/diagnostics path, so comment-like text embedded in string content is correctly ignored while real doc comments continue to resolve.
+
+- Updated dependencies [[`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c), [`118d247`](https://github.com/mike-north/formspec/commit/118d24794312604fbbf5d4ef713c94041c04f7e8), [`39c0308`](https://github.com/mike-north/formspec/commit/39c0308302fed121bf649ce650f88f985f459e8f)]:
+  - @formspec/core@0.1.0-alpha.69
+  - @formspec/analysis@0.1.0-alpha.69
+  - @formspec/config@0.1.0-alpha.69
+
 ## 0.1.0-alpha.68
 
 ### Minor Changes

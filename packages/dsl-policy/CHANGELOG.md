@@ -1,5 +1,14 @@
 # @formspec/dsl-policy
 
+## 0.1.0-alpha.69
+
+### Patch Changes
+
+- [#584](https://github.com/mike-north/formspec/pull/584) [`384f6d5`](https://github.com/mike-north/formspec/commit/384f6d5bb6ab6a686133c2d012985bd8fd56a014) Thanks [@mike-north](https://github.com/mike-north)! - Harden two input trust boundaries. `field.enum` now rejects `null` and array entries in object-style options arrays with the same friendly `field.enum(...): object options must have string "id" and "label"` error instead of crashing with a raw `TypeError`. `mergeWithDefaults(undefined)` now returns an independent, freshly-built policy object on every call instead of the shared module-level `DEFAULT_DSL_POLICY` reference, so mutating one caller's resolved policy can no longer corrupt the default for subsequent callers.
+
+- Updated dependencies [[`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c)]:
+  - @formspec/core@0.1.0-alpha.69
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes

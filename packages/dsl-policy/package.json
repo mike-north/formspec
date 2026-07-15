@@ -1,6 +1,6 @@
 {
   "name": "@formspec/dsl-policy",
-  "version": "0.1.0-alpha.67",
+  "version": "0.1.0-alpha.69",
   "private": true,
   "description": "Private internal DSL-policy types, defaults, and validators",
   "type": "module",

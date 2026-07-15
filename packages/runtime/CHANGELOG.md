@@ -1,5 +1,51 @@
 # @formspec/runtime
 
+## 0.1.0-alpha.69
+
+### Patch Changes
+
+- [#574](https://github.com/mike-north/formspec/pull/574) [`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c) Thanks [@mike-north](https://github.com/mike-north)! - Emit `@example` TSDoc tags to JSON Schema `examples`
+
+  `@example` tags on type-authored fields now flow through to generated schemas
+  instead of being silently dropped.
+  - **@formspec/core:** adds a new `example` annotation kind
+    (`ExampleAnnotationNode`) to the canonical IR annotation union. Unlike other
+    annotations, `example` is multi-valued: repeated `@example` tags on the same
+    field each contribute a distinct node.
+  - **@formspec/build:** the extractor produces one `example` annotation per
+    `@example` tag (JSON-parseable text becomes its JSON value, non-JSON text is
+    carried as a string), and JSON Schema generation accumulates them, in source
+    order, into the standard `examples` array.
+  - **@formspec/analysis:** adds a `parseExampleTagValue` helper (JSON-or-string
+    parsing per spec 002 §3.2) to the internal API surface.
+
+  Downstream packages receive a patch bump for the propagated dependency update.
+
+  `@example` remains a TSDoc-surface-only annotation; the chain DSL has no
+  `examples` option (documented as a parity exception in spec 006).
+
+- [#570](https://github.com/mike-north/formspec/pull/570) [`b5c9a1e`](https://github.com/mike-north/formspec/commit/b5c9a1ef60bfd7c7626e4efa9e55fb8ae88324ba) Thanks [@mike-north](https://github.com/mike-north)! - Fix resolver source extraction to recurse into array items and object properties
+
+  `defineResolvers` now detects `field.dynamicEnum()` sources nested inside
+  `field.array()` items and `field.object()` properties, at any depth. Previously
+  both the type-level `ExtractDynamicSources` and the runtime `extractSources`
+  walker only descended into groups and conditionals, so a dynamic enum nested in
+  an array or object was invisible: no resolver was required at the type level, no
+  construction-time "Missing resolver" warning fired, and the failure surfaced
+  only as a runtime throw when the resolver was requested.
+
+  The resolver map argument to `defineResolvers` is now pinned to the
+  form-derived source union, so omitting a required resolver (e.g.
+  `defineResolvers(form, {})` for a form with an unresolved dynamic enum) is a
+  type error rather than silently accepted.
+
+- [#587](https://github.com/mike-north/formspec/pull/587) [`d4cad7a`](https://github.com/mike-north/formspec/commit/d4cad7a4ef2f489fb6ea1aea16d1c88b9dba084f) Thanks [@mike-north](https://github.com/mike-north)! - Fix two contract inconsistencies in the resolver registry returned by `defineResolvers`:
+  - The construction-time "Missing resolver" warning now routes through the injected `logger` option (via `logger.warn`) instead of writing directly to `console.warn`, honoring the documented "existing callers produce no output" contract for embedding hosts that supply their own logger.
+  - `ResolverRegistry.sources()` now returns the form's required data-source names (matching its `Sources[]` type and updated doc comment), rather than the resolver map's registered keys. A source appears even if unresolved; a resolver registered beyond what the form requires is omitted.
+
+- Updated dependencies [[`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c)]:
+  - @formspec/core@0.1.0-alpha.69
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes
