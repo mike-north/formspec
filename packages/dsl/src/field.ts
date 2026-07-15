@@ -353,6 +353,19 @@ function compactConfig<T extends Record<string, unknown> | undefined>(
 }
 
 /**
+ * Renders a value for inclusion in a validation error message. Falls back to `String(value)`
+ * if `JSON.stringify` itself throws (e.g. bigint values, or circular structures), so a
+ * boundary-hardening guard reporting an invalid option can never crash while doing so.
+ */
+function safeStringifyOption(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/**
  * Field builder namespace containing functions to create each field type.
  *
  * @example
@@ -447,14 +460,14 @@ export function createFieldBuilders<
             if (opt === null || Array.isArray(opt)) {
               throw new Error(
                 `field.enum("${name}"): object options must have string "id" and "label" properties. ` +
-                  `Received: ${JSON.stringify(opt)}`
+                  `Received: ${safeStringifyOption(opt)}`
               );
             }
             const obj = opt as { id?: unknown; label?: unknown };
             if (typeof obj.id !== "string" || typeof obj.label !== "string") {
               throw new Error(
                 `field.enum("${name}"): object options must have string "id" and "label" properties. ` +
-                  `Received: ${JSON.stringify(opt)}`
+                  `Received: ${safeStringifyOption(opt)}`
               );
             }
           }
