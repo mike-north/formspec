@@ -87,10 +87,19 @@ export interface LoadConfigNotFoundResult {
 export type LoadConfigResult = LoadConfigFoundResult | LoadConfigNotFoundResult;
 
 /**
- * Checks if a directory is a workspace root by looking for a package.json
- * with a "workspaces" field.
+ * Filenames whose presence in a directory marks it as a monorepo
+ * workspace-root boundary, beyond the npm/yarn `package.json#workspaces`
+ * field handled separately by {@link hasWorkspacesField}.
+ *
+ * See docs/007-configuration.md §5.3 for the documented discovery algorithm.
  */
-async function isWorkspaceRoot(fileSystem: FileSystem, dir: string): Promise<boolean> {
+const WORKSPACE_BOUNDARY_FILES = ["pnpm-workspace.yaml", "lerna.json", "rush.json"];
+
+/**
+ * Checks if a directory has a package.json with a "workspaces" field
+ * (npm/yarn workspace root).
+ */
+async function hasWorkspacesField(fileSystem: FileSystem, dir: string): Promise<boolean> {
   const pkgPath = fileSystem.resolve(dir, "package.json");
   try {
     const content = await fileSystem.readFile(pkgPath);
@@ -102,8 +111,44 @@ async function isWorkspaceRoot(fileSystem: FileSystem, dir: string): Promise<boo
 }
 
 /**
+ * Checks if a directory is a monorepo/workspace-root boundary that config
+ * discovery must not climb past. A directory qualifies if it contains any
+ * of:
+ * - `package.json` with a `"workspaces"` field (npm/yarn)
+ * - `pnpm-workspace.yaml` (pnpm)
+ * - `lerna.json` (Lerna)
+ * - `rush.json` (Rush)
+ * - `.git` (repository root) — a directory in a normal checkout, or a file
+ *   pointing at the real git dir in a worktree/submodule. `FileSystem` only
+ *   exposes a file-existence check, so both shapes are probed: `.git` as a
+ *   file directly (worktree/submodule), or `.git/HEAD` as a file (normal
+ *   checkout, where `.git` itself is a directory).
+ */
+async function isMonorepoRoot(fileSystem: FileSystem, dir: string): Promise<boolean> {
+  if (await hasWorkspacesField(fileSystem, dir)) {
+    return true;
+  }
+
+  for (const fileName of WORKSPACE_BOUNDARY_FILES) {
+    if (await fileSystem.exists(fileSystem.resolve(dir, fileName))) {
+      return true;
+    }
+  }
+
+  if (await fileSystem.exists(fileSystem.resolve(dir, ".git"))) {
+    return true;
+  }
+  if (await fileSystem.exists(fileSystem.resolve(dir, ".git", "HEAD"))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Walks up the directory tree from startDir, searching for a config file.
- * Stops at the filesystem root or a directory containing a workspace root package.json.
+ * Stops at the filesystem root or a monorepo/workspace-root boundary (see
+ * {@link isMonorepoRoot}).
  */
 async function findConfigFile(fileSystem: FileSystem, startDir: string): Promise<string | null> {
   let currentDir = fileSystem.resolve(startDir);
@@ -117,8 +162,8 @@ async function findConfigFile(fileSystem: FileSystem, startDir: string): Promise
       }
     }
 
-    // Stop at workspace root — don't cross workspace boundaries
-    if (await isWorkspaceRoot(fileSystem, currentDir)) {
+    // Stop at a monorepo/workspace root — don't cross workspace boundaries
+    if (await isMonorepoRoot(fileSystem, currentDir)) {
       break;
     }
 
@@ -268,8 +313,9 @@ function validateEnumSerializationValue(value: unknown, label: string, filePath:
  *
  * Searches for `formspec.config.ts` (and `.mts`, `.js`, `.mjs` variants)
  * starting from `searchFrom` and walking up the directory tree. Stops at
- * the filesystem root or a workspace root (a directory with a package.json
- * containing a "workspaces" field).
+ * the filesystem root or a monorepo/workspace-root boundary — a directory
+ * containing a `package.json` with a `"workspaces"` field (npm/yarn),
+ * `pnpm-workspace.yaml`, `lerna.json`, `rush.json`, or `.git`.
  *
  * @param options - Options for loading configuration
  * @returns The loaded configuration, or `{ found: false }` if no config file exists
