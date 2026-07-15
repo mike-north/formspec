@@ -1,5 +1,38 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.69
+
+### Patch Changes
+
+- [#574](https://github.com/mike-north/formspec/pull/574) [`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c) Thanks [@mike-north](https://github.com/mike-north)! - Emit `@example` TSDoc tags to JSON Schema `examples`
+
+  `@example` tags on type-authored fields now flow through to generated schemas
+  instead of being silently dropped.
+  - **@formspec/core:** adds a new `example` annotation kind
+    (`ExampleAnnotationNode`) to the canonical IR annotation union. Unlike other
+    annotations, `example` is multi-valued: repeated `@example` tags on the same
+    field each contribute a distinct node.
+  - **@formspec/build:** the extractor produces one `example` annotation per
+    `@example` tag (JSON-parseable text becomes its JSON value, non-JSON text is
+    carried as a string), and JSON Schema generation accumulates them, in source
+    order, into the standard `examples` array.
+  - **@formspec/analysis:** adds a `parseExampleTagValue` helper (JSON-or-string
+    parsing per spec 002 §3.2) to the internal API surface.
+
+  Downstream packages receive a patch bump for the propagated dependency update.
+
+  `@example` remains a TSDoc-surface-only annotation; the chain DSL has no
+  `examples` option (documented as a parity exception in spec 006).
+
+- [#588](https://github.com/mike-north/formspec/pull/588) [`6ffaffe`](https://github.com/mike-north/formspec/commit/6ffaffe498567153157d14cc2de39f5ef918cddd) Thanks [@mike-north](https://github.com/mike-north)! - Fix required fields inside a top-level `when()` conditional being added to the JSON Schema root `required` array. Conditional fields are always present in the schema but are now correctly optional, matching the inferred TypeScript type (where conditional fields are optional). Data valid against the inferred type is now valid against the generated schema when a condition is not met. Also clarifies that a field's `required` option affects only JSON Schema validation, not inferred-type optionality, which is driven by conditional membership.
+
+- [#584](https://github.com/mike-north/formspec/pull/584) [`384f6d5`](https://github.com/mike-north/formspec/commit/384f6d5bb6ab6a686133c2d012985bd8fd56a014) Thanks [@mike-north](https://github.com/mike-north)! - Harden two input trust boundaries. `field.enum` now rejects `null` and array entries in object-style options arrays with the same friendly `field.enum(...): object options must have string "id" and "label"` error instead of crashing with a raw `TypeError`. `mergeWithDefaults(undefined)` now returns an independent, freshly-built policy object on every call instead of the shared module-level `DEFAULT_DSL_POLICY` reference, so mutating one caller's resolved policy can no longer corrupt the default for subsequent callers.
+
+- [#569](https://github.com/mike-north/formspec/pull/569) [`0ee7b99`](https://github.com/mike-north/formspec/commit/0ee7b996bd4170016675fdb2b7b47d41afd65e07) Thanks [@mike-north](https://github.com/mike-north)! - Fix `validateForm` false positive: field names reused across an object/array scope boundary (e.g. a top-level `id` alongside a nested `user.id`) are no longer reported as duplicates. `field.object()` properties and `field.array()` items each form their own schema scope; duplicate detection is now scoped accordingly, while duplicates within the same scope (including inside groups and conditionals, which stay flat) still report as errors.
+
+- Updated dependencies [[`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c)]:
+  - @formspec/core@0.1.0-alpha.69
+
 ## 0.1.0-alpha.67
 
 ### Patch Changes

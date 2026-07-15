@@ -1,5 +1,57 @@
 # @formspec/cli
 
+## 0.1.0-alpha.69
+
+### Patch Changes
+
+- [#589](https://github.com/mike-north/formspec/pull/589) [`068435e`](https://github.com/mike-north/formspec/commit/068435e231a4e8b5561d15a61c7d9e0a280c5111) Thanks [@mike-north](https://github.com/mike-north)! - Fixed argument-parsing gaps: `-o/--output` and `-c/--compiled` now error with a clear "missing value" message instead of silently falling back to defaults when given without a value; an unexpected extra positional argument now errors naming the ignored argument instead of being silently dropped; the `--validate-only` failure summary is now written to stderr (matching per-diagnostic output) instead of stdout.
+
+- [#574](https://github.com/mike-north/formspec/pull/574) [`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c) Thanks [@mike-north](https://github.com/mike-north)! - Emit `@example` TSDoc tags to JSON Schema `examples`
+
+  `@example` tags on type-authored fields now flow through to generated schemas
+  instead of being silently dropped.
+  - **@formspec/core:** adds a new `example` annotation kind
+    (`ExampleAnnotationNode`) to the canonical IR annotation union. Unlike other
+    annotations, `example` is multi-valued: repeated `@example` tags on the same
+    field each contribute a distinct node.
+  - **@formspec/build:** the extractor produces one `example` annotation per
+    `@example` tag (JSON-parseable text becomes its JSON value, non-JSON text is
+    carried as a string), and JSON Schema generation accumulates them, in source
+    order, into the standard `examples` array.
+  - **@formspec/analysis:** adds a `parseExampleTagValue` helper (JSON-or-string
+    parsing per spec 002 §3.2) to the internal API surface.
+
+  Downstream packages receive a patch bump for the propagated dependency update.
+
+  `@example` remains a TSDoc-surface-only annotation; the chain DSL has no
+  `examples` option (documented as a parity exception in spec 006).
+
+- [#588](https://github.com/mike-north/formspec/pull/588) [`6ffaffe`](https://github.com/mike-north/formspec/commit/6ffaffe498567153157d14cc2de39f5ef918cddd) Thanks [@mike-north](https://github.com/mike-north)! - Fix required fields inside a top-level `when()` conditional being added to the JSON Schema root `required` array. Conditional fields are always present in the schema but are now correctly optional, matching the inferred TypeScript type (where conditional fields are optional). Data valid against the inferred type is now valid against the generated schema when a condition is not met. Also clarifies that a field's `required` option affects only JSON Schema validation, not inferred-type optionality, which is driven by conditional membership.
+
+- [#582](https://github.com/mike-north/formspec/pull/582) [`118d247`](https://github.com/mike-north/formspec/commit/118d24794312604fbbf5d4ef713c94041c04f7e8) Thanks [@mike-north](https://github.com/mike-north)! - Fix config discovery escaping pnpm/lerna/rush monorepos. Discovery now stops at a directory containing `pnpm-workspace.yaml`, `lerna.json`, `rush.json`, or `.git`, in addition to the existing `package.json#workspaces` (npm/yarn) boundary — preventing a stray `formspec.config.ts` in an ancestor directory from being silently adopted.
+
+- [#572](https://github.com/mike-north/formspec/pull/572) [`507fc13`](https://github.com/mike-north/formspec/commit/507fc130b5d4fb22a7981cb92fcf1c0ed2717484) Thanks [@mike-north](https://github.com/mike-north)! - Fix `formspec generate` reporting success (exit 0) when it should have failed:
+  - `--emit-ir` now exits non-zero when IR validation produces error-severity diagnostics, even without `--validate-only`. Previously the exit code was only consulted inside the `--validate-only` branch.
+  - A chain-DSL export whose schema generation throws is still reported to stderr with its export name and cause (as before), but the run now exits non-zero instead of silently succeeding. Exports that generated successfully are still written — there is no `--allow-partial` opt-in in this release; any failed export fails the run.
+  - "No FormSpec exports found" and "FormSpec exports were found but all failed schema generation" are now distinguishable failure messages instead of being reported identically.
+  - `--validate-only` semantics for constraint-violation reporting are unchanged; a throwing export now also fails a `--validate-only` run, since that export's constraints were never actually validated.
+
+- [#571](https://github.com/mike-north/formspec/pull/571) [`faa261d`](https://github.com/mike-north/formspec/commit/faa261d0402006d9cd0481cec05eb31b5faf7404) Thanks [@mike-north](https://github.com/mike-north)! - Escape UI Schema control and rule scopes per RFC 6901
+
+  UI Schema scopes are JSON Pointers, but property tokens were interpolated
+  without RFC 6901 escaping. A field named or serialized as `a/b~c` now emits
+  `#/properties/a~1b~0c` instead of `#/properties/a/b~c`, so controls and
+  conditions resolve the intended schema node for property names containing
+  `/`, `~`, spaces, Unicode, or URI-sensitive characters. Conditional-rule
+  combination now decodes the escaped token when rebuilding `properties`
+  objects rather than reverse-parsing the pointer with string replacement.
+
+- [#583](https://github.com/mike-north/formspec/pull/583) [`39c0308`](https://github.com/mike-north/formspec/commit/39c0308302fed121bf649ce650f88f985f459e8f) Thanks [@mike-north](https://github.com/mike-north)! - Fix the completion/hover cursor-context resolver so it no longer treats doc-comment syntax (`/** ... */`) inside string literals or template literals as a genuine FormSpec doc comment. Detection is now AST-gated (via `ts.getLeadingCommentRanges` over the parsed source), matching the precedent already used for the snapshot/diagnostics path, so comment-like text embedded in string content is correctly ignored while real doc comments continue to resolve.
+
+- Updated dependencies [[`0af5fb5`](https://github.com/mike-north/formspec/commit/0af5fb59d29d369701b1a3601b69536eb616ad1c), [`6ffaffe`](https://github.com/mike-north/formspec/commit/6ffaffe498567153157d14cc2de39f5ef918cddd), [`118d247`](https://github.com/mike-north/formspec/commit/118d24794312604fbbf5d4ef713c94041c04f7e8), [`faa261d`](https://github.com/mike-north/formspec/commit/faa261d0402006d9cd0481cec05eb31b5faf7404), [`39c0308`](https://github.com/mike-north/formspec/commit/39c0308302fed121bf649ce650f88f985f459e8f)]:
+  - @formspec/build@0.1.0-alpha.69
+  - @formspec/config@0.1.0-alpha.69
+
 ## 0.1.0-alpha.68
 
 ### Minor Changes
