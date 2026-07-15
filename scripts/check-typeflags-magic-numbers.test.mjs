@@ -100,6 +100,28 @@ void describe("checkTypeFlagsMagicNumbers", () => {
       );
     });
 
+    void it("does not flag a numeric const shadowed elsewhere by a non-numeric const of the same name", async () => {
+      await withFixtureFile(
+        `
+          import * as ts from "typescript";
+          declare const type: { flags: number };
+          const NULL_FLAG = 8;
+          export function check(): boolean {
+            const NULL_FLAG = ts.TypeFlags.Null;
+            return (type.flags & NULL_FLAG) !== 0;
+          }
+        `,
+        (_root, target) => {
+          // Name-based resolution can't tell the two NULL_FLAG declarations
+          // apart, so the redeclared name is disqualified rather than resolved
+          // to the stale "8" (which would be a false positive).
+          const result = checkTypeFlagsMagicNumbers({ targets: [target] });
+          assert.equal(result.ok, true);
+          assert.equal(result.findings.length, 0);
+        }
+      );
+    });
+
     void it("does not chase indirection through a non-const binding", async () => {
       await withFixtureFile(
         `

@@ -113,12 +113,23 @@ function isFlagsAccessExpression(expression) {
  * `const A = 4; const B = A;` are not resolved), matching the checker's
  * stated non-goals.
  *
+ * Because this is name-based (not scope-aware) resolution, a name is only
+ * resolved when it is declared **exactly once** and with a numeric literal.
+ * Any name declared more than once, or ever declared with a non-numeric
+ * initializer, is disqualified — otherwise a later shadowing redeclaration
+ * (`const NULL = 8; … const NULL = ts.TypeFlags.Null; type.flags & NULL`)
+ * would still resolve to the stale numeric literal and be reported as a
+ * false positive. Disqualifying is the conservative choice: it can miss a
+ * genuine magic number, but never invents one.
+ *
  * @param {ts.SourceFile} sourceFile
  * @returns {Map<string, string>}
  */
 function collectConstNumericBindings(sourceFile) {
   /** @type {Map<string, string>} */
   const bindings = new Map();
+  /** Names disqualified from resolution (redeclared, or ever non-numeric). */
+  const disqualified = new Set();
 
   /**
    * @param {ts.Node} node
@@ -131,9 +142,27 @@ function collectConstNumericBindings(sourceFile) {
           continue;
         }
 
+        const name = declaration.name.text;
+        if (disqualified.has(name)) {
+          continue;
+        }
+
+        // A second declaration of a name we have already seen disqualifies it,
+        // regardless of this initializer — name-based resolution can't tell the
+        // shadowed occurrences apart.
+        if (bindings.has(name)) {
+          bindings.delete(name);
+          disqualified.add(name);
+          continue;
+        }
+
         const initializer = stripExpressionWrappers(declaration.initializer);
         if (ts.isNumericLiteral(initializer)) {
-          bindings.set(declaration.name.text, initializer.getText(sourceFile));
+          bindings.set(name, initializer.getText(sourceFile));
+        } else {
+          // Declared with a non-numeric initializer: never resolve this name,
+          // and remember so a later numeric declaration can't revive it.
+          disqualified.add(name);
         }
       }
     }
