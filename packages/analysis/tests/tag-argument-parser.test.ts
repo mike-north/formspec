@@ -181,12 +181,18 @@ describe("parseTagArgument", () => {
         }
       });
 
-      it("accepts .5 (leading-decimal shorthand for 0.5)", () => {
-        expectNumericValue("minimum", ".5", 0.5);
+      it("rejects .5 — 002 §3.2 makes integer-part mandatory", () => {
+        // number-literal ::= [ "-" ] ( integer-part [ "." fraction-part ] [ exponent ] )
+        // with integer-part ::= [0-9]+ — a bare leading dot has no integer-part.
+        // The tag grammar is a deliberate strict subset of JS numeric syntax
+        // (it likewise rejects 1_000_000), so the JS shorthand is not evidence.
+        expectInvalidNumericValue("minimum", ".5");
       });
 
-      it("accepts 5. (trailing-decimal shorthand for 5)", () => {
-        expectNumericValue("minimum", "5.", 5);
+      it("rejects 5. — 002 §3.2 requires fraction-part when '.' is present", () => {
+        // fraction-part ::= [0-9]+ — the "." fraction-part group, if present,
+        // requires at least one digit after the dot.
+        expectInvalidNumericValue("minimum", "5.");
       });
 
       it("accepts valid small scientific notation (1e-10)", () => {

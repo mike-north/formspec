@@ -200,7 +200,10 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
  * Used as a pre-check in {@link parseNumericArgument} to prevent `Number()`
  * from silently accepting non-TSDoc-idiomatic forms like `0x10` → `16`.
  */
-const DECIMAL_PATTERN = /^-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;
+// 002 §3.2: number-literal ::= [ "-" ] ( integer-part [ "." fraction-part ] [ exponent ] )
+// integer-part is mandatory and fraction-part requires at least one digit, so
+// JS-style shorthands ".5" and "5." are NOT valid number-literals.
+const DECIMAL_PATTERN = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
 
 /**
  * Matches a non-negative integer per 002 §3.2: `"0" | [1-9][0-9]*`. Rejects
