@@ -375,6 +375,15 @@ describe("parseTagArgument", () => {
         expectInvalidNonNegativeInteger("minLength", "NaN");
       });
 
+      it("rejects a digit string that overflows to Infinity (grammar-valid but non-finite)", () => {
+        // A 400-digit integer matches the non-negative-integer grammar but
+        // Number() converts it to Infinity. Accepting it would reintroduce the
+        // non-finite length keyword this issue kills, so it must be rejected.
+        const overflowInteger = "1".padEnd(400, "0");
+        expect(Number.isFinite(Number(overflowInteger))).toBe(false); // precondition
+        expectInvalidNonNegativeInteger("minLength", overflowInteger);
+      });
+
       it("returns MISSING_TAG_ARGUMENT for empty string", () => {
         expectMissingArgument("minLength", "");
       });

@@ -102,6 +102,10 @@ describe("tag-value-parser", () => {
   // per-tag grammar (§3.2), not from current program output.
   // ---------------------------------------------------------------------------
   describe("rejects invalid constraint values → no constraint node (issue #513)", () => {
+    // A 400-digit integer matches the length grammar but Number() overflows it to
+    // Infinity; it must still produce no node (guards the length-family overflow gap).
+    const lengthOverflow = "1".padEnd(400, "0");
+
     it.each([
       // family, tag, bad input — 002 §3.2 rejects each of these
       ["numeric non-finite", "minimum", "Infinity"],
@@ -110,6 +114,7 @@ describe("tag-value-parser", () => {
       ["numeric NaN", "minimum", "NaN"],
       ["length negative", "minLength", "-5"],
       ["length fractional", "maxItems", "2.5"],
+      ["length overflow to Infinity", "maxLength", lengthOverflow],
       ["pattern uncompilable", "pattern", "("],
     ])("%s: @%s %s produces no constraint node", (_family, tag, badInput) => {
       expect(parseConstraintTagValue(tag, badInput, PROVENANCE)).toBeNull();

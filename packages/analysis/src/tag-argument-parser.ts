@@ -261,7 +261,20 @@ function parseNumericArgument(
         },
       };
     }
-    return { ok: true, value: { kind: "number", value: Number(text) } };
+    const value = Number(text);
+    // A digit string long enough to exceed Number.MAX_VALUE matches the integer
+    // grammar but converts to Infinity. Accepting it would reintroduce exactly the
+    // non-finite keyword this issue kills, so reject non-finite results here too.
+    if (!isFinite(value)) {
+      return {
+        ok: false,
+        diagnostic: {
+          code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_NON_NEGATIVE_INTEGER,
+          message: `"@${tagName}" expects a non-negative integer, but received "${text}".`,
+        },
+      };
+    }
+    return { ok: true, value: { kind: "number", value } };
   }
 
   // numeric family: finite decimal only. Reject non-decimal forms (hex/binary/
