@@ -329,11 +329,12 @@ export function generateSchemasFromClass(
   const ctx = createProgramContext(options.filePath, additionalFiles);
   const classDecl = findClassByName(ctx.sourceFile, options.className);
   const resolved = resolveStaticOptions(options);
-  seedSymbolMapFromConfig(ctx, options.configPath, resolved.extensionRegistry);
 
   if (!classDecl) {
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
   }
+
+  seedSymbolMapFromConfig(ctx, options.configPath, resolved.extensionRegistry);
 
   const analysis = analyzeClassToIR(
     classDecl,
