@@ -7,6 +7,7 @@ import { defineConstraint, defineCustomType, defineExtension } from "@formspec/c
 import {
   type ClassSchemas,
   generateSchemas,
+  generateSchemasBatch,
   generateSchemasFromClass,
 } from "../src/generators/class-schema.js";
 import type { JsonSchema2020 } from "../src/json-schema/ir-generator.js";
@@ -928,5 +929,138 @@ describe("generateSchemas with FormSpecConfig", () => {
     } finally {
       fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Symbol map seeding parity (issue #519)
+  //
+  // `generateSchemasFromClass` previously never seeded the symbol map that
+  // `generateSchemasBatch` / `generateSchemas` build via `buildSymbolMapFromConfig`,
+  // so symbol-only custom-type detection silently degraded to the underlying
+  // primitive type through that entry point. This fixture registers a custom
+  // type under a `typeName` that does NOT match the source's import alias, so
+  // only symbol-based resolution — not name-based lookup — can succeed.
+  // ---------------------------------------------------------------------------
+  describe("symbol map seeding parity across entry points (issue #519)", () => {
+    let tmpDir: string;
+    let modelPath: string;
+    let configPath: string;
+
+    beforeAll(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-issue-519-"));
+
+      fs.writeFileSync(
+        path.join(tmpDir, "tsconfig.json"),
+        JSON.stringify(
+          {
+            compilerOptions: {
+              target: "ES2022",
+              module: "NodeNext",
+              moduleResolution: "nodenext",
+              strict: true,
+              skipLibCheck: true,
+            },
+          },
+          null,
+          2
+        )
+      );
+
+      fs.writeFileSync(
+        path.join(tmpDir, "decimal.ts"),
+        [
+          "declare const __sym_decimal_519: unique symbol;",
+          "export type SymDecimal519 = string & { readonly [__sym_decimal_519]: true };",
+        ].join("\n")
+      );
+
+      configPath = path.join(tmpDir, "formspec.config.ts");
+      fs.writeFileSync(
+        configPath,
+        [
+          'import type { SymDecimal519 } from "./decimal.js";',
+          'import { defineCustomType, defineExtension } from "@formspec/core";',
+          "",
+          "export const extension = defineExtension({",
+          '  extensionId: "x-issue519",',
+          "  types: [",
+          "    defineCustomType<SymDecimal519>({",
+          // typeName intentionally does NOT match the imported alias below
+          // ("AliasedDecimal519") — this forces resolution through the symbol
+          // map rather than the name map.
+          '      typeName: "OpaqueDecimal519",',
+          '      toJsonSchema: () => ({ type: "string", format: "decimal519" }),',
+          "    }),",
+          "  ],",
+          "});",
+        ].join("\n")
+      );
+
+      modelPath = path.join(tmpDir, "model.ts");
+      fs.writeFileSync(
+        modelPath,
+        [
+          'import type { SymDecimal519 as AliasedDecimal519 } from "./decimal.js";',
+          "",
+          "export class PaymentClass519 {",
+          "  amount!: AliasedDecimal519;",
+          "}",
+        ].join("\n")
+      );
+    });
+
+    afterAll(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    function buildRuntimeConfig(): FormSpecConfig {
+      // Mirrors the on-disk config file's registration — the config file is
+      // only walked for its AST (via `configPath`), never imported at runtime.
+      const opaqueDecimal519 = defineCustomType({
+        typeName: "OpaqueDecimal519",
+        toJsonSchema: () => ({ type: "string", format: "decimal519" }),
+      });
+      return {
+        extensions: [defineExtension({ extensionId: "x-issue519", types: [opaqueDecimal519] })],
+        vendorPrefix: "x-issue519",
+      };
+    }
+
+    it("generateSchemasFromClass resolves a symbol-only custom type via configPath", () => {
+      const result = generateSchemasFromClass({
+        filePath: modelPath,
+        className: "PaymentClass519",
+        config: buildRuntimeConfig(),
+        configPath,
+      });
+
+      // Without symbol-map seeding, `amount` degrades to the underlying
+      // branded-string primitive with no `format` — this is the bug in #519.
+      expect(result.jsonSchema.properties?.["amount"]).toEqual({
+        type: "string",
+        format: "decimal519",
+      });
+    });
+
+    it("generateSchemasFromClass and generateSchemasBatch produce identical schemas for the same symbol-resolved target", () => {
+      const config = buildRuntimeConfig();
+
+      const fromClassResult = generateSchemasFromClass({
+        filePath: modelPath,
+        className: "PaymentClass519",
+        config,
+        configPath,
+      });
+
+      const [batchResult] = generateSchemasBatch({
+        targets: [{ filePath: modelPath, typeName: "PaymentClass519" }],
+        config,
+        configPath,
+      });
+
+      expect(batchResult?.ok, "expected generateSchemasBatch to succeed").toBe(true);
+      expect(batchResult?.jsonSchema).toEqual(fromClassResult.jsonSchema);
+      expect(batchResult?.uiSchema).toEqual(fromClassResult.uiSchema);
+    });
   });
 });
