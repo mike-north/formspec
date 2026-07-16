@@ -71,22 +71,24 @@ ruleTester.run("valid-path-target", validPathTarget, {
         }
       `,
     },
+  ],
+  invalid: [
     {
-      // Regression test for a review finding on #528: a strip that only
-      // collapses a union down to exactly one non-nullish member leaves a
-      // *wider* optional union (more than one non-nullish member) with
-      // `undefined` still attached, so `getProperty` still fails to resolve
-      // the shared member. Here the tagged field's non-undefined part is a
-      // union of two object shapes that both declare `zip`.
+      // A *wider* optional union (more than one non-nullish member) is
+      // reported, not resolved: the build-side resolver
+      // (`resolvePathTargetType` in @formspec/analysis's ts-binding.ts)
+      // treats a multi-member union as unresolvable, so the lint rule must
+      // flag the path target rather than accept something schema generation
+      // rejects. `stripNullishUnion` deliberately collapses only
+      // single-non-nullish-member unions to preserve that parity.
       code: `
         class Form {
           /** @minimum :zip 0 */
           address?: { zip: number } | { zip: string };
         }
       `,
+      errors: [{ messageId: "unknownPathTarget" }],
     },
-  ],
-  invalid: [
     {
       code: `
         class Form {

@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
+import { stripNullishUnion } from "@formspec/analysis/internal";
 import type ts from "typescript";
 import { getStringLiteralUnionValues, getTypeChecker, typeToString } from "./type-utils.js";
 import type { ScannedTag } from "./tag-scanner.js";
@@ -100,29 +101,25 @@ export function resolveTagTarget(
     for (const segment of tag.target.value.split(".")) {
       // Strip `undefined`/`null` before resolving the next hop so that an
       // optional intermediate (`address?: { zip: number }`) still resolves
-      // its members instead of reporting unknownPath. `getNonNullableType`
-      // removes only the nullish members regardless of how many non-nullish
-      // members remain, unlike a strip that only collapses a single-member
-      // union. Mirrors the build-side resolution in `@formspec/analysis`
-      // (`resolvePathTargetType` in ts-binding.ts).
-      const strippedType = checker.getNonNullableType(currentType);
+      // its members instead of reporting unknownPath. `stripNullishUnion`
+      // collapses the union only when exactly one non-nullish member
+      // remains; a wider optional union (`{ zip: number } | { zip: string }`)
+      // deliberately stays a union so the property lookup below fails. That
+      // matches the build-side resolver (`resolvePathTargetType` in
+      // `@formspec/analysis`'s ts-binding.ts), which reports wider unions as
+      // unresolvable — the lint rule must not accept a path target that
+      // schema generation would reject.
+      const strippedType = stripNullishUnion(currentType);
       const property = strippedType.getProperty(segment);
-      if (!property) {
+      if (!property?.valueDeclaration) {
         return { valid: false, reason: "unknownPath", type: null };
       }
-      // Use the symbol-only overload rather than `getTypeOfSymbolAtLocation`:
-      // when the stripped type is still a union of multiple object shapes
-      // (e.g. `{ zip: number } | { zip: string }`), `getProperty` returns a
-      // synthetic transient symbol for `zip` that has no `valueDeclaration`
-      // (its `declarations` array holds one entry per union member instead).
-      // `getTypeOfSymbol` resolves the symbol's type without needing a
-      // location, so it works for both real and synthetic union properties.
-      currentType = checker.getTypeOfSymbol(property);
+      currentType = checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration);
     }
     return {
       valid: true,
       reason: "none",
-      type: checker.getNonNullableType(currentType),
+      type: stripNullishUnion(currentType),
     };
   }
 
