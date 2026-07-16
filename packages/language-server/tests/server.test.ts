@@ -702,6 +702,96 @@ describe("createServer", () => {
     }
   });
 
+  it("drops a stale in-flight query result across a close-then-reopen (regression: #591)", async () => {
+    // Reproduces the gap in the #586 monotonic guard: a query in flight at
+    // close time survives the close (only `documents.get` returning
+    // `undefined` drops it), but a *reopen* before it settles makes
+    // `documents.get` resolve again -- to the reopened document -- and the
+    // LSP version resets on reopen (e.g. VS Code restarts at 1), so the
+    // stale query's higher `requestedVersion` (8) is not "older" than the
+    // reopened document's fresh version (1). Neither the closed-doc guard
+    // nor the monotonic-version guard alone catches this; only the
+    // open-generation guard does.
+    vi.useFakeTimers();
+    try {
+      const deferredStale = createDeferred<readonly unknown[] | null>();
+      mocks.getPluginDiagnosticsForDocument
+        .mockResolvedValueOnce(null as never) // initial open (v1): stale/no-op
+        .mockReturnValueOnce(deferredStale.promise as never) // edit to v8: hangs across close/reopen
+        .mockResolvedValueOnce([{ code: "FRESH" }] as never); // reopen (v1): resolves fast
+      mocks.toLspDiagnostics.mockImplementation(((
+        _document: unknown,
+        canonical: readonly unknown[]
+      ) => (canonical.length > 0 ? [{ message: "fresh" }] : [])) as never);
+
+      const { createServer } = await import("../src/server.js");
+      createServer({
+        diagnosticsMode: "plugin",
+        diagnosticsDebounceMs: 100,
+      });
+
+      const openHandler = mocks.documents.onDidOpen.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+      const changeHandler = mocks.documents.onDidChangeContent.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string; version: number; getText(): string } }) => void)
+        | undefined;
+      const closeHandler = mocks.documents.onDidClose.mock.calls[0]?.[0] as
+        | ((event: { document: { uri: string } }) => void)
+        | undefined;
+
+      const uri = "file:///workspace/project/example.ts";
+
+      // 1. Open at version 1. Publishes immediately; the plugin snapshot is
+      // stale/unavailable (null), so nothing is sent yet.
+      const openedDocument = { uri, version: 1, getText: () => "v1" };
+      mocks.documents.get.mockReturnValue(openedDocument);
+      openHandler?.({ document: openedDocument });
+      await flushMicrotasks();
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(1);
+      expect(mocks.connection.sendDiagnostics).not.toHaveBeenCalled();
+
+      // 2. Edit to version 8. The debounced query starts and hangs in
+      // flight, captured against version 8 of the pre-close open generation.
+      const editedDocument = { uri, version: 8, getText: () => "v8" };
+      mocks.documents.get.mockReturnValue(editedDocument);
+      changeHandler?.({ document: editedDocument });
+      await vi.advanceTimersByTimeAsync(100);
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(2);
+
+      // 3. Close the document while the version-8 query is still in flight.
+      closeHandler?.({ document: editedDocument });
+      mocks.documents.get.mockReturnValue(undefined);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({ uri, diagnostics: [] });
+
+      // 4. Reopen. VS Code restarts the document version at 1. onDidOpen
+      // publishes immediately and this query resolves fast, well ahead of
+      // the still-pending version-8 query.
+      const reopenedDocument = { uri, version: 1, getText: () => "v1-reopened" };
+      mocks.documents.get.mockReturnValue(reopenedDocument);
+      openHandler?.({ document: reopenedDocument });
+      await flushMicrotasks();
+      expect(mocks.getPluginDiagnosticsForDocument).toHaveBeenCalledTimes(3);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "fresh" }],
+      });
+
+      // 5. The superseded version-8 query settles last. It must be dropped,
+      // not republished over the reopened document's fresh diagnostics.
+      deferredStale.resolve([{ code: "STALE" }]);
+      await flushMicrotasks();
+
+      expect(mocks.connection.sendDiagnostics).toHaveBeenCalledTimes(2);
+      expect(mocks.connection.sendDiagnostics).toHaveBeenLastCalledWith({
+        uri,
+        diagnostics: [{ message: "fresh" }],
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   describe("capability honesty", () => {
     /**
      * Regression test for #535: the server previously advertised
