@@ -601,7 +601,7 @@ The extension rule only needs to express logic that is genuinely specific to its
 
 ## 5. Language Server Responsibilities
 
-Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, semantic tokens, and signature help. The packaged server is a reference implementation over the same public helpers that downstream consumers can call directly. Diagnostics are off by default in the packaged server, but it may optionally publish plugin-derived diagnostics using those same helpers.
+Per A7, the language server owns the authoring experience: completions, hover, semantic tokens, and signature help. Go-to-definition for `{@link}` references is delivered by the TypeScript language service itself, so the packaged server does not advertise it (§5.4). The packaged server is a reference implementation over the same public helpers that downstream consumers can call directly. Diagnostics are off by default in the packaged server, but it may optionally publish plugin-derived diagnostics using those same helpers.
 
 FormSpec uses a hybrid architecture:
 
