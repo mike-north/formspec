@@ -284,6 +284,22 @@ diagnostics result with an empty `sourceHash` plus a `MISSING_SOURCE_FILE`
 infrastructure diagnostic, while file-snapshot queries return an empty snapshot
 with that diagnostic.
 
+**Exception containment.** `getCompletionContext`, `getDiagnostics`,
+`getFileSnapshot`, and `getHover` never let an analysis exception escape to the
+caller. Checker calls against incomplete or malformed nodes are routine while a
+file is being typed, so each method catches exceptions raised while building a
+file snapshot or resolving comment/completion/hover context and degrades to
+the same fallback shape used for missing source: completion and hover return
+`null`; diagnostics and file-snapshot queries return their missing-source-style
+result, but with an `ANALYSIS_EXCEPTION` infrastructure diagnostic (`severity:
+"warning"`) instead of `MISSING_SOURCE_FILE`. A failed snapshot build is never
+written to the snapshot cache, so the next query retries analysis from
+scratch rather than pinning the host to a stale failure. When `logger` is
+configured, each contained exception is reported via `logger.info` before the
+fallback is returned. This mirrors the containment the IPC transport already
+provides via `FormSpecPluginService.respondToSocket`'s try/catch — the two
+supported embedding modes (§2.4.2) now share the same crash-safety guarantee.
+
 `getStats()` returns `FormSpecSemanticServiceStats`. Hosts can use it for
 capacity planning and performance monitoring: `queryTotals` counts completion,
 hover, diagnostics, and file-snapshot calls; `queryPathTotals` splits
