@@ -32,7 +32,7 @@
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { buildFormSpecAnalysisFileSnapshot } from "../src/internal.js";
-import { defineCustomType, defineExtension } from "@formspec/core";
+import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core";
 import { createProgram } from "./helpers.js";
 
 // =============================================================================
@@ -303,6 +303,19 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
           toJsonSchema: (_payload, _prefix) => ({ type: "string" }),
         }),
       ],
+      // Issue #396: the snapshot consumer now applies broadening when building
+      // the declaration summary, so the broadened constraint node is actually
+      // constructed (not just detected for the Role-C bypass below). The
+      // constraint referenced by `builtinConstraintBroadenings` must be
+      // registered or `makeCustomConstraintNode` throws.
+      constraints: [
+        defineConstraint({
+          constraintName: "DecimalMinimum",
+          compositionRule: "intersect",
+          applicableTypes: ["custom"],
+          toJsonSchema: (payload) => ({ decimalMinimum: payload }),
+        }),
+      ],
     });
 
     const source = [
@@ -355,6 +368,17 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
             },
           ],
           toJsonSchema: (_payload, _prefix) => ({ type: "string" }),
+        }),
+      ],
+      // Issue #396: broadening is now applied when building the declaration
+      // summary, so the constraint referenced by `builtinConstraintBroadenings`
+      // must be registered or `makeCustomConstraintNode` throws.
+      constraints: [
+        defineConstraint({
+          constraintName: "LongIntersectionMinimum",
+          compositionRule: "intersect",
+          applicableTypes: ["custom"],
+          toJsonSchema: (payload) => ({ longIntersectionMinimum: payload }),
         }),
       ],
     });
@@ -461,6 +485,17 @@ describe("extension-broadening bypass — typed parser must not fire for broaden
             },
           ],
           toJsonSchema: (_payload, _prefix) => ({ type: "object" }),
+        }),
+      ],
+      // Issue #396: broadening is now applied when building the declaration
+      // summary, so the constraint referenced by `builtinConstraintBroadenings`
+      // must be registered or `makeCustomConstraintNode` throws.
+      constraints: [
+        defineConstraint({
+          constraintName: "AnonymousIntersectionMinimum",
+          compositionRule: "intersect",
+          applicableTypes: ["custom"],
+          toJsonSchema: (payload) => ({ anonymousIntersectionMinimum: payload }),
         }),
       ],
     });

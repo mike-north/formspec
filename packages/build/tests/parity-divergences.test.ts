@@ -28,8 +28,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { ExtensionDefinition } from "@formspec/core";
 import { generateSchemas } from "../src/generators/class-schema.js";
 import { buildFormSpecAnalysisFileSnapshot } from "@formspec/analysis/internal";
+import { vocabDecimalByNameExtension } from "./fixtures/example-vocabulary-decimal-extension.js";
 import { type BuildFixtureDir, createBuildFixtureDir } from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
@@ -136,9 +138,15 @@ function createInMemoryProgram(sourceText: string, fileName = "/virtual/parity-d
   return { checker: program.getTypeChecker(), sourceFile };
 }
 
-function runSnapshotConsumer(source: string) {
+function runSnapshotConsumer(
+  source: string,
+  extensionDefinitions?: readonly ExtensionDefinition[]
+) {
   const { checker, sourceFile } = createInMemoryProgram(source, "/virtual/parity-divergence.ts");
-  return buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+  return buildFormSpecAnalysisFileSnapshot(sourceFile, {
+    checker,
+    ...(extensionDefinitions === undefined ? {} : { extensionDefinitions }),
+  });
 }
 
 // =============================================================================
@@ -284,5 +292,73 @@ describe("parity: @minimum NaN (both consumers reject, issue #513)", () => {
     `;
     const snapshot = runSnapshotConsumer(source);
     expect(snapshot.diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
+  });
+});
+
+// =============================================================================
+// Parity case 4: custom-type constraint broadening (issue #396)
+//
+// Issue #395 / PR #398 gave the BUILD consumer direct-field AND path-targeted
+// broadening of builtin constraint tags into their custom-type constraint
+// (e.g. `@minimum` on a `Decimal` field -> `decimalMinimum`). Issue #396 is
+// the follow-up that gives the SNAPSHOT consumer (LSP / ts-plugin) the same
+// broadening — previously it always produced a generic, un-broadened
+// `NumericConstraintNode`/`LengthConstraintNode`, out of parity with the
+// build consumer's generated JSON Schema.
+//
+// This test runs the SAME source and the SAME extension registration
+// (the shared `vocabDecimalByNameExtension` fixture) through both consumers
+// and asserts they agree that `amount` broadened into `decimalMinimum`
+// rather than the raw `minimum` keyword.
+//
+// NOTE — test placement: like the rest of this file, this lives in
+// `packages/build` because `@formspec/analysis` has no dependency on
+// `@formspec/build`; only this package can run both consumer paths.
+//
+// @see https://github.com/mike-north/formspec/issues/396
+// @see https://github.com/mike-north/formspec/issues/395
+// =============================================================================
+
+describe("parity: custom-type constraint broadening (issue #396)", () => {
+  const source = [
+    "export type Decimal = string & { readonly __brand: 'Decimal' };",
+    "export interface Root {",
+    "  /** @minimum 10 */",
+    "  amount: Decimal;",
+    "}",
+  ].join("\n");
+
+  it("BUILD consumer: broadens @minimum into decimalMinimum on the generated schema", () => {
+    const filePath = path.join(tmpDir, "broadening-parity-build.ts");
+    fs.writeFileSync(filePath, source);
+
+    const result = generateSchemas({
+      filePath,
+      typeName: "Root",
+      config: { extensions: [vocabDecimalByNameExtension], vendorPrefix: "x-test" },
+      errorReporting: "throw",
+    });
+
+    const amountSchema = result.jsonSchema.properties?.["amount"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(amountSchema?.["decimalMinimum"]).toBe("10");
+    expect(amountSchema?.["minimum"]).toBeUndefined();
+  });
+
+  it("SNAPSHOT consumer: broadens @minimum into a DecimalMinimum custom-constraint fact", () => {
+    const snapshot = runSnapshotConsumer(source, [vocabDecimalByNameExtension]);
+    const [comment] = snapshot.comments;
+    const facts = comment?.declarationSummary.facts ?? [];
+
+    expect(facts.some((fact) => fact.kind === "numeric-constraints")).toBe(false);
+    const customFact = facts.find((fact) => fact.kind === "custom-constraint");
+    expect(customFact).toBeDefined();
+    expect(customFact).toMatchObject({
+      kind: "custom-constraint",
+      targetPath: null,
+      constraintId: "x-test/vocabulary-decimal/DecimalMinimum",
+      payload: "10",
+    });
   });
 });

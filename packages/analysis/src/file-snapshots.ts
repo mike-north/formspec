@@ -61,7 +61,7 @@ import {
   stripNullishUnion,
 } from "./ts-binding.js";
 import { noopLogger } from "@formspec/core";
-import { isBuiltinConstraintName } from "@formspec/core/internals";
+import { isBuiltinConstraintName, type CustomTypeNode } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
   getTypedParserLogger,
@@ -289,6 +289,73 @@ function hasExtensionBroadening(
   }
 
   return false;
+}
+
+/**
+ * Resolves a TypeScript type to the extension-registered custom type ID
+ * (`type.typeName`) consulted by `parseConstraintTagValue`'s builtin-tag
+ * broadening lookup — see `createConstraintTagRegistry.findBuiltinConstraintBroadening`
+ * above, which matches directly against `type.typeName`.
+ *
+ * Uses the same name-based detection as `hasExtensionBroadening` (matching
+ * the printed TS type name against `tsTypeNames ?? [type.typeName]`) — the
+ * snapshot consumer's TypeScript-type -> registration bridge until symbol-
+ * based detection replaces it (see the Phase 4/5 TODO above
+ * `hasExtensionBroadening`).
+ *
+ * Issue #396: this is the piece that was previously never computed for the
+ * snapshot/LSP consumer, so builtin constraint tags on registered custom
+ * types (direct-field or path-targeted) never broadened into their
+ * type-specific `CustomConstraintNode`.
+ */
+function resolveExtensionCustomTypeId(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): string | undefined {
+  if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
+    return undefined;
+  }
+
+  const effectiveType = stripNullishUnion(subjectType);
+  const typeName = typeToString(effectiveType, checker);
+  if (typeName === null) {
+    return undefined;
+  }
+
+  for (const extension of extensionDefinitions) {
+    for (const type of extension.types ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
+      const registeredNames = type.tsTypeNames ?? [type.typeName];
+      if (registeredNames.includes(typeName)) {
+        return type.typeName;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * For a path-targeted builtin constraint tag, resolves the path's terminal
+ * TypeScript type and looks up whether it matches a registered custom type.
+ * Mirrors the build consumer's `resolvePathTargetCustomTypeId` in
+ * `tsdoc-parser.ts` (PR #398 / issue #395), adapted to this file's
+ * `ExtensionDefinition[]`-based, name-matching registry bridge instead of a
+ * build-only `ExtensionRegistry`.
+ */
+function resolvePathTargetCustomTypeId(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  pathSegments: readonly string[],
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): string | undefined {
+  const resolution = resolvePathTargetType(subjectType, checker, pathSegments);
+  if (resolution.kind !== "resolved") {
+    return undefined;
+  }
+
+  return resolveExtensionCustomTypeId(resolution.type, checker, extensionDefinitions);
 }
 
 function renderTargetLabel(targetPath: string | null): string {
@@ -644,6 +711,20 @@ function buildDeclarationSummary(
   const resolvedMetadata = toSerializedResolvedMetadata(metadataAnalysis?.resolvedMetadata);
   const metadataEntries = toSerializedMetadataEntries(metadataAnalysis?.entries ?? []);
   const constraintRegistry = createConstraintTagRegistry(extensionDefinitions);
+  // Issue #396: resolve the declaration's own type once, so direct-field
+  // builtin constraint tags can broaden into their custom-type constraint
+  // (e.g. `@minimum` on a `Decimal` field -> `DecimalMinimum`). Path-targeted
+  // tags resolve their own terminal type per-tag below, since the path
+  // varies per tag.
+  const declarationSubjectType = getSubjectType(node, checker);
+  const directFieldTypeId =
+    declarationSubjectType === undefined
+      ? undefined
+      : resolveExtensionCustomTypeId(declarationSubjectType, checker, extensionDefinitions);
+  const directFieldType: CustomTypeNode | undefined =
+    directFieldTypeId === undefined
+      ? undefined
+      : { kind: "custom", typeId: directFieldTypeId, payload: null };
   const numericConstraints = new Map<string | null, NumericConstraintAccumulator>();
   const stringConstraints = new Map<string | null, StringConstraintAccumulator>();
   const arrayConstraints = new Map<string | null, ArrayConstraintAccumulator>();
@@ -676,17 +757,39 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
-    // Intentionally omits `fieldType` and `pathResolvedCustomTypeId`: the
-    // snapshot consumer does not currently apply custom-type broadening for
-    // direct OR path-targeted constraints. Downstream LSP/natural-language
-    // summarizers therefore receive un-broadened `NumericConstraintNode`/
-    // `LengthConstraintNode` IR. Parity with the build consumer (PR #398,
-    // issue #395) is tracked in issue #396.
+    // Issue #396: thread both broadening inputs through to
+    // `parseConstraintTagValue`, achieving parity with the build consumer
+    // (PR #398, issue #395) — direct-field tags broaden via `fieldType`
+    // (the declaration's own type); path-targeted tags broaden via
+    // `pathResolvedCustomTypeId` (the path's terminal type, resolved fresh
+    // per tag since the path varies tag-to-tag).
+    const pathTarget =
+      tag.target?.kind === "path" && tag.target.valid ? (tag.target.path ?? null) : null;
+    const pathResolvedCustomTypeId =
+      pathTarget !== null && declarationSubjectType !== undefined
+        ? resolvePathTargetCustomTypeId(
+            declarationSubjectType,
+            checker,
+            pathTarget.segments,
+            extensionDefinitions
+          )
+        : undefined;
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
       provenanceForTag(sourceFile, tag),
-      constraintRegistry === undefined ? undefined : { registry: constraintRegistry }
+      constraintRegistry === undefined
+        ? undefined
+        : {
+            registry: constraintRegistry,
+            ...(pathTarget !== null
+              ? pathResolvedCustomTypeId === undefined
+                ? {}
+                : { pathResolvedCustomTypeId }
+              : directFieldType === undefined
+                ? {}
+                : { fieldType: directFieldType }),
+          }
     );
     if (constraint !== null) {
       const targetPath = getConstraintTargetPath(constraint.path);
