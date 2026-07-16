@@ -1,3 +1,12 @@
+/**
+ * Tests for the shared constraint tag-argument validator.
+ *
+ * Expected grammars and diagnostic codes are hand-derived from the spec, not
+ * from program output.
+ *
+ * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
+ * @see https://tc39.es/ecma262/#sec-patterns — `@pattern` values must compile as ECMAScript regular expressions
+ */
 import { describe, expect, it } from "vitest";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
@@ -47,17 +56,32 @@ function expectMissingArgument(tag: string, text: string): void {
 }
 
 /**
- * Asserts that parseTagArgument returns `{ ok: false, code: "INVALID_TAG_ARGUMENT" }`
- * with a message that starts with "Expected " (required bridge convention for Phase 2/3
- * consumer classifier per §1.7 of the retirement plan).
+ * Asserts that a numeric-family argument is rejected with the spec-normative
+ * `INVALID_NUMERIC_VALUE` code (002 §3.2 / §6). The message names the tag and
+ * echoes the offending value.
  */
-function expectInvalidArgument(tag: string, text: string): void {
+function expectInvalidNumericValue(tag: string, text: string): void {
   const result = parseTagArgument(tag, text, "build");
   expect(result.ok, `Expected ok:false for @${tag} "${text}"`).toBe(false);
   if (!result.ok) {
-    expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
-    expect(result.diagnostic.message).toMatch(/^Expected /);
-    expect(result.diagnostic.message).toContain("numeric literal");
+    expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
+    expect(result.diagnostic.message).toContain(`@${tag}`);
+    expect(result.diagnostic.message).toContain(`"${text.trim()}"`);
+  }
+}
+
+/**
+ * Asserts that a length-family argument is rejected with the spec-normative
+ * `INVALID_NON_NEGATIVE_INTEGER` code (002 §3.2 / §6). The message names the tag
+ * and echoes the offending value.
+ */
+function expectInvalidNonNegativeInteger(tag: string, text: string): void {
+  const result = parseTagArgument(tag, text, "build");
+  expect(result.ok, `Expected ok:false for @${tag} "${text}"`).toBe(false);
+  if (!result.ok) {
+    expect(result.diagnostic.code).toBe("INVALID_NON_NEGATIVE_INTEGER");
+    expect(result.diagnostic.message).toContain(`@${tag}`);
+    expect(result.diagnostic.message).toContain(`"${text.trim()}"`);
   }
 }
 
@@ -89,50 +113,27 @@ describe("parseTagArgument", () => {
       }
     });
 
-    it("all diagnostics from implemented families start with 'Expected '", () => {
-      // TODO(Phase 3): delete this test after file-snapshots.ts:~1480 classifier is
-      // migrated to test `code` directly instead of message-prefix matching.
-      //
-      // Enforces the "Expected " prefix convention documented in TagArgumentDiagnostic.
-      // The classifier in file-snapshots.ts (~line 1480) relies on this prefix to
-      // remain valid until Phase 2/3 wiring shifts it to test `code` directly.
-      //
-      // Slices A/B/C are now all implemented, so this list covers all 6 families.
-      // Each entry uses an invalid argument that produces a diagnostic-producing failure.
+    it("each family rejects a bad argument with its spec-normative diagnostic code", () => {
+      // Consumers surface `code` directly (via mapTypedParserDiagnosticCode), so the
+      // per-family diagnostic code — not a message prefix — is the contract. Codes
+      // trace to 002 §6: numeric → INVALID_NUMERIC_VALUE, length →
+      // INVALID_NON_NEGATIVE_INTEGER, pattern → INVALID_REGEX_PATTERN; families with
+      // no dedicated spec code keep the generic INVALID_TAG_ARGUMENT / MISSING codes.
       const cases = [
-        // numeric family (@minimum) — INVALID_TAG_ARGUMENT
-        { tag: "minimum", raw: "hello", description: "@minimum with non-numeric text" },
-        // length family (@minLength) — INVALID_TAG_ARGUMENT
-        { tag: "minLength", raw: "hello", description: "@minLength with non-numeric text" },
-        // boolean-marker family (@uniqueItems) — INVALID_TAG_ARGUMENT
-        { tag: "uniqueItems", raw: "false", description: "@uniqueItems with 'false'" },
-        // string family (@pattern) — MISSING_TAG_ARGUMENT (empty is the only invalid case)
-        { tag: "pattern", raw: "", description: "@pattern with empty string" },
-        // json-array family (@enumOptions) — INVALID_TAG_ARGUMENT (scalar not array)
-        { tag: "enumOptions", raw: "5", description: "@enumOptions with scalar 5" },
-        // json-value-with-fallback family (@const) — MISSING_TAG_ARGUMENT (empty)
-        { tag: "const", raw: "", description: "@const with empty string" },
-      ] satisfies { tag: keyof typeof TAG_ARGUMENT_FAMILIES; raw: string; description: string }[];
+        { tag: "minimum", raw: "hello", code: "INVALID_NUMERIC_VALUE" },
+        { tag: "minLength", raw: "hello", code: "INVALID_NON_NEGATIVE_INTEGER" },
+        { tag: "pattern", raw: "(", code: "INVALID_REGEX_PATTERN" },
+        { tag: "uniqueItems", raw: "false", code: "INVALID_TAG_ARGUMENT" },
+        { tag: "enumOptions", raw: "5", code: "INVALID_TAG_ARGUMENT" },
+        { tag: "const", raw: "", code: "MISSING_TAG_ARGUMENT" },
+      ] satisfies { tag: keyof typeof TAG_ARGUMENT_FAMILIES; raw: string; code: string }[];
 
-      for (const { tag, raw, description } of cases) {
+      for (const { tag, raw, code } of cases) {
         const result = parseTagArgument(tag, raw, "build");
-        expect(result.ok, `expected failure for ${description}`).toBe(false);
+        expect(result.ok, `expected failure for @${tag} "${raw}"`).toBe(false);
         if (!result.ok) {
-          expect(
-            result.diagnostic.message,
-            `message for ${description} must start with "Expected "`
-          ).toMatch(/^Expected /);
+          expect(result.diagnostic.code, `code for @${tag} "${raw}"`).toBe(code);
         }
-      }
-
-      // Negative assertion: UNKNOWN_TAG messages must NOT start with "Expected " —
-      // the file-snapshots.ts:~1480 classifier relies on the prefix for INVALID/MISSING
-      // but NOT for UNKNOWN_TAG. If this starts matching too, the classifier over-matches.
-      const unknownResult = parseTagArgument("notARealTag", "42", "build");
-      expect(unknownResult.ok).toBe(false);
-      if (!unknownResult.ok) {
-        expect(unknownResult.diagnostic.code).toBe("UNKNOWN_TAG");
-        expect(unknownResult.diagnostic.message).not.toMatch(/^Expected /);
       }
     });
   });
@@ -162,18 +163,19 @@ describe("parseTagArgument", () => {
         expectNumericValue("minimum", "0", 0);
       });
 
-      it("accepts Infinity (pins §3 divergence behavior — snapshot path passes through)", () => {
-        expectNumericValue("minimum", "Infinity", Infinity);
+      it("rejects Infinity (002 §3.2 — non-finite is INVALID_NUMERIC_VALUE)", () => {
+        // Regression for #513: `@minimum Infinity` used to pass through, producing
+        // `minimum: Infinity` → JSON.stringify → `null` → schema invalid against the
+        // meta-schema, with no diagnostic.
+        expectInvalidNumericValue("minimum", "Infinity");
       });
 
-      it("accepts -Infinity", () => {
-        expectNumericValue("minimum", "-Infinity", -Infinity);
+      it("rejects -Infinity (002 §3.2)", () => {
+        expectInvalidNumericValue("minimum", "-Infinity");
       });
 
-      it("accepts NaN (pins §3 divergence behavior — snapshot path passes through)", () => {
-        // NaN !== NaN, so we cannot use expectNumericValue's toEqual branch here.
-        // The helper uses Number.isNaN internally for this case.
-        expectNumericValue("minimum", "NaN", NaN);
+      it("rejects NaN (002 §3.2 — non-finite is INVALID_NUMERIC_VALUE)", () => {
+        expectInvalidNumericValue("minimum", "NaN");
       });
 
       it("accepts -0 (pins current behavior — Object.is distinguishes -0 from +0)", () => {
@@ -188,12 +190,18 @@ describe("parseTagArgument", () => {
         }
       });
 
-      it("accepts .5 (leading-decimal shorthand for 0.5)", () => {
-        expectNumericValue("minimum", ".5", 0.5);
+      it("rejects .5 — 002 §3.2 makes integer-part mandatory", () => {
+        // number-literal ::= [ "-" ] ( integer-part [ "." fraction-part ] [ exponent ] )
+        // with integer-part ::= [0-9]+ — a bare leading dot has no integer-part.
+        // The tag grammar is a deliberate strict subset of JS numeric syntax
+        // (it likewise rejects 1_000_000), so the JS shorthand is not evidence.
+        expectInvalidNumericValue("minimum", ".5");
       });
 
-      it("accepts 5. (trailing-decimal shorthand for 5)", () => {
-        expectNumericValue("minimum", "5.", 5);
+      it("rejects 5. — 002 §3.2 requires fraction-part when '.' is present", () => {
+        // fraction-part ::= [0-9]+ — the "." fraction-part group, if present,
+        // requires at least one digit after the dot.
+        expectInvalidNumericValue("minimum", "5.");
       });
 
       it("accepts valid small scientific notation (1e-10)", () => {
@@ -208,48 +216,43 @@ describe("parseTagArgument", () => {
         expectMissingArgument("minimum", "   ");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for alphabetic text", () => {
-        expectInvalidArgument("minimum", "hello");
+      it("rejects alphabetic text", () => {
+        expectInvalidNumericValue("minimum", "hello");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for numeric text with invalid suffix", () => {
-        expectInvalidArgument("minimum", "10x");
+      it("rejects numeric text with invalid suffix", () => {
+        expectInvalidNumericValue("minimum", "10x");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for hex literal (0x10 must not silently become 16)", () => {
-        // Regression: Number("0x10") === 16, but @minimum 0x10 is not TSDoc-idiomatic.
-        expectInvalidArgument("minimum", "0x10");
+      it("rejects hex literal (0x10 must not silently become 16)", () => {
+        // Regression for #513: Number("0x10") === 16, but @minimum 0x10 is not
+        // TSDoc-idiomatic. The IR path used to accept it (hover/schema said 16) while
+        // the diagnostic path rejected it — the divergence this consolidation removes.
+        expectInvalidNumericValue("minimum", "0x10");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for binary literal (0b10 must not silently become 2)", () => {
-        expectInvalidArgument("minimum", "0b10");
+      it("rejects binary literal (0b10 must not silently become 2)", () => {
+        expectInvalidNumericValue("minimum", "0b10");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for octal literal (0o10 must not silently become 8)", () => {
-        expectInvalidArgument("minimum", "0o10");
+      it("rejects octal literal (0o10 must not silently become 8)", () => {
+        expectInvalidNumericValue("minimum", "0o10");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for lowercase 'infinity' (case-sensitive; only 'Infinity' is accepted)", () => {
-        // Pins case-sensitivity: only the exact identifier "Infinity" is accepted.
-        expectInvalidArgument("minimum", "infinity");
+      it("rejects lowercase 'infinity' (not a valid decimal literal)", () => {
+        expectInvalidNumericValue("minimum", "infinity");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for lowercase 'nan' (case-sensitive; only 'NaN' is accepted)", () => {
-        expectInvalidArgument("minimum", "nan");
+      it("rejects lowercase 'nan' (not a valid decimal literal)", () => {
+        expectInvalidNumericValue("minimum", "nan");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for scientific overflow (1e400 overflows to Infinity)", () => {
-        // Only the explicit "Infinity" identifier is accepted; decimal overflow is rejected.
-        const result = parseTagArgument("minimum", "1e400", "build");
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
-          expect(result.diagnostic.message).toMatch(/^Expected /);
-          expect(result.diagnostic.message).toContain("overflows to Infinity");
-        }
+      it("rejects scientific overflow (1e400 overflows to Infinity)", () => {
+        // A decimal literal that overflows to Infinity is not finite → INVALID_NUMERIC_VALUE.
+        expectInvalidNumericValue("minimum", "1e400");
       });
 
-      it("includes tag name in INVALID_TAG_ARGUMENT message", () => {
+      it("includes tag name in the rejection message", () => {
         const result = parseTagArgument("minimum", "hello", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
@@ -257,7 +260,7 @@ describe("parseTagArgument", () => {
         }
       });
 
-      it("includes the bad text in INVALID_TAG_ARGUMENT message", () => {
+      it("includes the bad text in the rejection message", () => {
         const result = parseTagArgument("minimum", "hello", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
@@ -275,7 +278,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("maximum", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
           expect(result.diagnostic.message).toContain("@maximum");
         }
       });
@@ -290,7 +293,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("exclusiveMinimum", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
           expect(result.diagnostic.message).toContain("@exclusiveMinimum");
         }
       });
@@ -305,7 +308,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("exclusiveMaximum", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
           expect(result.diagnostic.message).toContain("@exclusiveMaximum");
         }
       });
@@ -320,7 +323,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("multipleOf", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
           expect(result.diagnostic.message).toContain("@multipleOf");
         }
       });
@@ -356,23 +359,44 @@ describe("parseTagArgument", () => {
         expectNumericValue("minLength", "0", 0);
       });
 
-      it("parses a float — integer erasure, NOT rejected (Role D concern, not Role C)", () => {
-        // Key invariant from §1.6: integer erasure means @minLength 1.5 must
-        // return ok:true with value 1.5. The consumer may later cast to integer,
-        // but the parser must not reject it.
-        expectNumericValue("minLength", "1.5", 1.5);
+      it("rejects a fractional value (002 §3.2 — length is a non-negative integer)", () => {
+        // Regression for #513: `@minLength 1.5` / `@maxItems 2.5` used to pass
+        // through verbatim, emitting a fractional length keyword. The length grammar
+        // is `"0" | [1-9][0-9]*`, so a fraction is INVALID_NON_NEGATIVE_INTEGER.
+        expectInvalidNonNegativeInteger("minLength", "1.5");
       });
 
-      it("accepts Infinity", () => {
-        expectNumericValue("minLength", "Infinity", Infinity);
+      it("rejects a negative value (002 §3.2)", () => {
+        expectInvalidNonNegativeInteger("minLength", "-5");
       });
 
-      it("accepts -Infinity", () => {
-        expectNumericValue("minLength", "-Infinity", -Infinity);
+      it("rejects an integer-valued float form like 1.0 (not a bare integer)", () => {
+        expectInvalidNonNegativeInteger("minLength", "1.0");
       });
 
-      it("accepts NaN", () => {
-        expectNumericValue("minLength", "NaN", NaN);
+      it("rejects a leading-zero form like 01 (grammar is 0 | [1-9][0-9]*)", () => {
+        expectInvalidNonNegativeInteger("minLength", "01");
+      });
+
+      it("rejects Infinity", () => {
+        expectInvalidNonNegativeInteger("minLength", "Infinity");
+      });
+
+      it("rejects -Infinity", () => {
+        expectInvalidNonNegativeInteger("minLength", "-Infinity");
+      });
+
+      it("rejects NaN", () => {
+        expectInvalidNonNegativeInteger("minLength", "NaN");
+      });
+
+      it("rejects a digit string that overflows to Infinity (grammar-valid but non-finite)", () => {
+        // A 400-digit integer matches the non-negative-integer grammar but
+        // Number() converts it to Infinity. Accepting it would reintroduce the
+        // non-finite length keyword this issue kills, so it must be rejected.
+        const overflowInteger = "1".padEnd(400, "0");
+        expect(Number.isFinite(Number(overflowInteger))).toBe(false); // precondition
+        expectInvalidNonNegativeInteger("minLength", overflowInteger);
       });
 
       it("returns MISSING_TAG_ARGUMENT for empty string", () => {
@@ -383,15 +407,15 @@ describe("parseTagArgument", () => {
         expectMissingArgument("minLength", "   ");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for alphabetic text", () => {
-        expectInvalidArgument("minLength", "hello");
+      it("rejects alphabetic text", () => {
+        expectInvalidNonNegativeInteger("minLength", "hello");
       });
 
-      it("returns INVALID_TAG_ARGUMENT for numeric text with invalid suffix", () => {
-        expectInvalidArgument("minLength", "10x");
+      it("rejects numeric text with invalid suffix", () => {
+        expectInvalidNonNegativeInteger("minLength", "10x");
       });
 
-      it("includes tag name in INVALID_TAG_ARGUMENT message", () => {
+      it("includes tag name in the rejection message", () => {
         const result = parseTagArgument("minLength", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
@@ -409,7 +433,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("maxLength", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NON_NEGATIVE_INTEGER");
           expect(result.diagnostic.message).toContain("@maxLength");
         }
       });
@@ -424,7 +448,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("minItems", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NON_NEGATIVE_INTEGER");
           expect(result.diagnostic.message).toContain("@minItems");
         }
       });
@@ -439,7 +463,7 @@ describe("parseTagArgument", () => {
         const result = parseTagArgument("maxItems", "bad", "build");
         expect(result.ok).toBe(false);
         if (!result.ok) {
-          expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+          expect(result.diagnostic.code).toBe("INVALID_NON_NEGATIVE_INTEGER");
           expect(result.diagnostic.message).toContain("@maxItems");
         }
       });
@@ -565,8 +589,16 @@ describe("parseTagArgument", () => {
       expectPatternString('"quoted"', '"quoted"');
     });
 
-    it("unclosed bracket — no regex compile, returned opaque", () => {
-      expectPatternString("[unclosed", "[unclosed");
+    it("unclosed character class → INVALID_REGEX_PATTERN (002 §3.2)", () => {
+      // Regression for #513: `[unclosed` used to pass through as an opaque string,
+      // reaching the schema's `pattern` keyword and crashing any validator at
+      // schema-compile time. The extractor now compiles via `new RegExp` and rejects.
+      const result = parseTagArgument("pattern", "[unclosed", "build");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.diagnostic.code).toBe("INVALID_REGEX_PATTERN");
+        expect(result.diagnostic.message).toContain("[unclosed");
+      }
     });
 
     it("pattern with surrounding whitespace → trimmed", () => {
@@ -790,11 +822,11 @@ describe("parseTagArgument", () => {
     // inputs, exactly these tests will fail, making the regression obvious.
     // -----------------------------------------------------------------------
 
-    it('@minimum "hello" → INVALID_TAG_ARGUMENT (Slice A canary)', () => {
+    it('@minimum "hello" → INVALID_NUMERIC_VALUE (numeric-family canary)', () => {
       const result = parseTagArgument("minimum", "hello", "build");
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+        expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
       }
     });
 
@@ -834,22 +866,22 @@ describe("parseTagArgument", () => {
       }
     });
 
-    it('@minimum "0x10" → INVALID_TAG_ARGUMENT (decimal-only guard from Slice A)', () => {
+    it('@minimum "0x10" → INVALID_NUMERIC_VALUE (decimal-only guard)', () => {
       const result = parseTagArgument("minimum", "0x10", "build");
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+        expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
       }
     });
 
     it("does NOT handle path-target prefixes (stripping is parseTagSyntax's job)", () => {
       // The parser expects "effectiveText" (post-strip). If a caller erroneously
       // passes "some/path: 10" directly, the parser treats the whole string as
-      // the numeric argument and rejects it.
+      // the numeric argument and rejects it as a non-finite numeric value.
       const result = parseTagArgument("minimum", "some/path: 10", "build");
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.diagnostic.code).toBe("INVALID_TAG_ARGUMENT");
+        expect(result.diagnostic.code).toBe("INVALID_NUMERIC_VALUE");
       }
     });
   });
@@ -954,7 +986,9 @@ describe("parseTagArgument", () => {
             expect(
               result.diagnostic.code,
               `Expected a recognized diagnostic code for @${tag}`
-            ).toMatch(/^(INVALID_TAG_ARGUMENT|MISSING_TAG_ARGUMENT|UNKNOWN_TAG)$/);
+            ).toMatch(
+              /^(INVALID_TAG_ARGUMENT|MISSING_TAG_ARGUMENT|UNKNOWN_TAG|INVALID_NUMERIC_VALUE|INVALID_NON_NEGATIVE_INTEGER|INVALID_REGEX_PATTERN)$/
+            );
           }
         }
       }
@@ -1047,7 +1081,14 @@ describe("parseTagArgument", () => {
             } else {
               // Verify the diagnostic has a recognized code
               expect(
-                ["INVALID_TAG_ARGUMENT", "MISSING_TAG_ARGUMENT", "UNKNOWN_TAG"],
+                [
+                  "INVALID_TAG_ARGUMENT",
+                  "MISSING_TAG_ARGUMENT",
+                  "UNKNOWN_TAG",
+                  "INVALID_NUMERIC_VALUE",
+                  "INVALID_NON_NEGATIVE_INTEGER",
+                  "INVALID_REGEX_PATTERN",
+                ],
                 `result.diagnostic.code for @${tag} ${JSON.stringify(input)} must be a recognized code`
               ).toContain(result.diagnostic.code);
             }

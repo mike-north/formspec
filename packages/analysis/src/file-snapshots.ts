@@ -967,6 +967,9 @@ function diagnosticSeverity(code: string): FormSpecAnalysisDiagnostic["severity"
   switch (code) {
     case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
+    case "INVALID_NUMERIC_VALUE":
+    case "INVALID_NON_NEGATIVE_INTEGER":
+    case "INVALID_REGEX_PATTERN":
     case "INVALID_TAG_PLACEMENT":
     case "SYNTHETIC_SETUP_FAILURE":
     case "UNSUPPORTED_CUSTOM_TYPE_OVERRIDE":
@@ -991,6 +994,9 @@ function diagnosticCategory(code: string): FormSpecAnalysisDiagnostic["category"
   switch (code) {
     case "MISSING_TAG_ARGUMENT":
     case "INVALID_TAG_ARGUMENT":
+    case "INVALID_NUMERIC_VALUE":
+    case "INVALID_NON_NEGATIVE_INTEGER":
+    case "INVALID_REGEX_PATTERN":
       return "value-parsing";
     case "INVALID_TAG_PLACEMENT":
     case "SYNTHETIC_SETUP_FAILURE":

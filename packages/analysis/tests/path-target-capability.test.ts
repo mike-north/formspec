@@ -89,10 +89,10 @@ describe("path-target Role-B capability (snapshot consumer)", () => {
     `;
     const diagnostics = collectDiagnostics(source);
     // Role B passes (number satisfies numeric-comparable). Role C rejects
-    // because `"hello"` is not a valid numeric argument.
+    // because `"hello"` is not a valid finite numeric argument (002 §3.2).
     const relevant = diagnostics.filter((d) => d.data["tagName"] === "minimum");
     expect(relevant).toHaveLength(1);
-    expect(relevant[0]?.code).toBe("INVALID_TAG_ARGUMENT");
+    expect(relevant[0]?.code).toBe("INVALID_NUMERIC_VALUE");
   });
 
   // Panel Fix #6: UNKNOWN_PATH_TARGET — path references a property that does not

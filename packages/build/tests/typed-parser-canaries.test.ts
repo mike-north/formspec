@@ -85,16 +85,16 @@ function buildDiagnosticsFor(
 // =============================================================================
 
 describe("@minimum typed-parser Role-C canaries (build consumer)", () => {
-  it("emits INVALID_TAG_ARGUMENT for non-decimal argument (hex literal 0x10)", () => {
-    // parseTagArgument("minimum", "0x10", "build") → INVALID_TAG_ARGUMENT
-    // (DECIMAL_PATTERN rejects hex forms). Before Phase 2, this input was not
-    // rejected here; the synthetic lowering likely accepted 0x10 silently by
-    // passing it through as a numeric literal. Phase 2 now rejects at Role C.
+  it("emits INVALID_NUMERIC_VALUE for non-decimal argument (hex literal 0x10)", () => {
+    // parseTagArgument("minimum", "0x10", "build") → INVALID_NUMERIC_VALUE
+    // (DECIMAL_PATTERN rejects hex forms, 002 §3.2). The IR path and diagnostic
+    // path now agree — 0x10 produces no constraint node (issue #513), so hover /
+    // schema no longer silently report 16.
     const diagnostics = buildDiagnosticsFor("minimum", "0x10", "number", "hex-arg");
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_NUMERIC_VALUE");
     expect(
       diagnostic,
-      "Expected INVALID_TAG_ARGUMENT for hex literal from typed parser"
+      "Expected INVALID_NUMERIC_VALUE for hex literal from typed parser"
     ).toBeDefined();
   });
 });
@@ -237,18 +237,17 @@ describe("@const typed-parser Role-C canaries (build consumer)", () => {
 // Infinity/NaN normalization (§3, Phase 2)
 // =============================================================================
 
-describe("@minimum Infinity/NaN normalization (Phase 2 — §3 divergence resolved)", () => {
-  it("accepts @minimum Infinity on a number field (no TYPE_MISMATCH in build path)", () => {
-    // Before Phase 2: build emitted TYPE_MISMATCH (Infinity stringified to '"Infinity"').
-    // After Phase 2: typed parser accepts Infinity; renderSyntheticArgumentExpression
-    // passes it through as an identifier → synthetic sees tag_minimum(ctx, Infinity) → ok.
+describe("@minimum Infinity/NaN rejection (issue #513 — non-finite is a parse error)", () => {
+  it("rejects @minimum Infinity on a number field with INVALID_NUMERIC_VALUE", () => {
+    // Regression: `@minimum Infinity` used to pass through, producing
+    // `minimum: Infinity` → JSON.stringify → `null` → schema invalid against the
+    // meta-schema, with no diagnostic. It is now a parse error (002 §3.2).
     const diagnostics = buildDiagnosticsFor("minimum", "Infinity", "number", "infinity");
-    expect(diagnostics).toEqual([]);
+    expect(diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 
-  it("accepts @minimum NaN on a number field (no TYPE_MISMATCH in build path)", () => {
-    // Same mechanism as Infinity above.
+  it("rejects @minimum NaN on a number field with INVALID_NUMERIC_VALUE", () => {
     const diagnostics = buildDiagnosticsFor("minimum", "NaN", "number", "nan");
-    expect(diagnostics).toEqual([]);
+    expect(diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 });

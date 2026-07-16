@@ -96,6 +96,20 @@ const NON_APPLICABLE_SURFACES: readonly SurfaceException[] = [
     reason: "tag-type-check defers malformed numeric payloads before type compatibility.",
   },
   {
+    fixtureLabel: "@minimum Infinity on number",
+    consumer: "eslint",
+    expectedCodes: [],
+    reason:
+      "value-parsing (INVALID_NUMERIC_VALUE, issue #513) is owned by the valid-numeric-value rule, not tag-type-check; Infinity is type-compatible with number so tag-type-check reports nothing.",
+  },
+  {
+    fixtureLabel: "@minimum NaN on number",
+    consumer: "eslint",
+    expectedCodes: [],
+    reason:
+      "value-parsing (INVALID_NUMERIC_VALUE, issue #513) is owned by the valid-numeric-value rule, not tag-type-check; NaN is type-compatible with number so tag-type-check reports nothing.",
+  },
+  {
     fixtureLabel: "@minimum 0 on type alias string",
     consumer: "build",
     expectedCodes: ["UNSUPPORTED_ROOT_TYPE"],

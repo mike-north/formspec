@@ -1,3 +1,8 @@
+/**
+ * Tests for constraint tag value parsing into IR constraint nodes.
+ *
+ * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
+ */
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
 import { parseConstraintTagValue, parseExampleTagValue } from "../src/internal.js";
@@ -90,6 +95,63 @@ describe("tag-value-parser", () => {
       constraintKind: "uniqueItems",
       value: true,
       provenance: PROVENANCE,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Constraint-value validation (issue #513, spec 002 §3.2)
+  //
+  // The IR-producing path now shares the typed-argument validator, so a value the
+  // extractor rejects produces NO constraint node — the invalid keyword never
+  // reaches the generated schema. Each expected value is derived from the spec's
+  // per-tag grammar (§3.2), not from current program output.
+  // ---------------------------------------------------------------------------
+  describe("rejects invalid constraint values → no constraint node (issue #513)", () => {
+    // A 400-digit integer matches the length grammar but Number() overflows it to
+    // Infinity; it must still produce no node (guards the length-family overflow gap).
+    const lengthOverflow = "1".padEnd(400, "0");
+
+    it.each([
+      // family, tag, bad input — 002 §3.2 rejects each of these
+      ["numeric non-finite", "minimum", "Infinity"],
+      ["numeric overflow", "maximum", "1e999"],
+      ["numeric non-decimal", "minimum", "0x10"],
+      ["numeric NaN", "minimum", "NaN"],
+      ["length negative", "minLength", "-5"],
+      ["length fractional", "maxItems", "2.5"],
+      ["length overflow to Infinity", "maxLength", lengthOverflow],
+      ["pattern uncompilable", "pattern", "("],
+    ])("%s: @%s %s produces no constraint node", (_family, tag, badInput) => {
+      expect(parseConstraintTagValue(tag, badInput, PROVENANCE)).toBeNull();
+    });
+  });
+
+  describe("accepts valid constraint values → constraint node (issue #513 positive cases)", () => {
+    it("numeric: @minimum -3.14 → finite numeric bound", () => {
+      expect(parseConstraintTagValue("minimum", "-3.14", PROVENANCE)).toEqual({
+        kind: "constraint",
+        constraintKind: "minimum",
+        value: -3.14,
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("length: @minLength 0 → non-negative integer bound", () => {
+      expect(parseConstraintTagValue("minLength", "0", PROVENANCE)).toEqual({
+        kind: "constraint",
+        constraintKind: "minLength",
+        value: 0,
+        provenance: PROVENANCE,
+      });
+    });
+
+    it("pattern: @pattern ^[A-Z]{3}$ → compilable pattern constraint", () => {
+      expect(parseConstraintTagValue("pattern", "^[A-Z]{3}$", PROVENANCE)).toEqual({
+        kind: "constraint",
+        constraintKind: "pattern",
+        pattern: "^[A-Z]{3}$",
+        provenance: PROVENANCE,
+      });
     });
   });
 

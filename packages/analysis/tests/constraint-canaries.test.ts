@@ -99,10 +99,9 @@ function diagnosticsFor(source: string, label: string) {
 
 describe("@minimum silent-acceptance canaries", () => {
   // @minimum "hello" -- a quoted string is not a valid numeric argument.
-  // Phase 3: typed parser (Role C) catches the string argument and emits
-  // INVALID_TAG_ARGUMENT before the synthetic checker runs.
-  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
-  it('emits INVALID_TAG_ARGUMENT for @minimum "hello" (string-literal argument on a number field)', () => {
+  // The typed parser (Role C) catches the string argument and emits
+  // INVALID_NUMERIC_VALUE (002 §3.2) before the synthetic checker runs.
+  it('emits INVALID_NUMERIC_VALUE for @minimum "hello" (string-literal argument on a number field)', () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -113,8 +112,8 @@ describe("@minimum silent-acceptance canaries", () => {
       "minimum-string-arg"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_NUMERIC_VALUE");
+    expect(diagnostic, "Expected an INVALID_NUMERIC_VALUE diagnostic").toBeDefined();
     // range is always present; verify it points somewhere in the source
     expect(diagnostic?.range).toBeDefined();
     expect(diagnostic?.range.start).toBeGreaterThanOrEqual(0);
@@ -122,9 +121,8 @@ describe("@minimum silent-acceptance canaries", () => {
   });
 
   // @minimum true -- boolean is not a valid numeric argument.
-  // Phase 3: typed parser (Role C) catches the boolean and emits INVALID_TAG_ARGUMENT.
-  // (Previously: the synthetic checker emitted TYPE_MISMATCH.)
-  it("emits INVALID_TAG_ARGUMENT for @minimum true (boolean argument on a number field)", () => {
+  // The typed parser (Role C) catches the boolean and emits INVALID_NUMERIC_VALUE.
+  it("emits INVALID_NUMERIC_VALUE for @minimum true (boolean argument on a number field)", () => {
     const diagnostics = diagnosticsFor(
       `
       class F {
@@ -135,8 +133,8 @@ describe("@minimum silent-acceptance canaries", () => {
       "minimum-true-arg"
     );
 
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
-    expect(diagnostic, "Expected an INVALID_TAG_ARGUMENT diagnostic").toBeDefined();
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_NUMERIC_VALUE");
+    expect(diagnostic, "Expected an INVALID_NUMERIC_VALUE diagnostic").toBeDefined();
     expect(diagnostic?.range).toBeDefined();
   });
 

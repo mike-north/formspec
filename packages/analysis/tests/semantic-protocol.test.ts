@@ -336,6 +336,93 @@ describe("semantic protocol", () => {
     ).toBe(false);
   });
 
+  it("survives a JSON round-trip when a file contains @minimum Infinity (issue #513)", () => {
+    // Regression for #513: before the fix, `@minimum Infinity` produced a
+    // numeric-constraints fact carrying `minimum: Infinity`. JSON.stringify turns
+    // Infinity into `null`, so isFiniteNumber(null) failed after the transport
+    // round-trip and the language server discarded the ENTIRE file snapshot —
+    // the user silently lost all FormSpec hover/completion/diagnostics for the file.
+    //
+    // After the fix, the non-finite value is a parse error: it yields NO constraint
+    // fact (just an INVALID_NUMERIC_VALUE diagnostic), so the snapshot round-trips
+    // cleanly and the file's other facts are retained.
+    const source = `
+      class Order {
+        /** @minimum Infinity */
+        badBound!: number;
+
+        /** @maximum 100 */
+        goodBound!: number;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(source);
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    const response: FormSpecSemanticResponse = {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "file-snapshot",
+      snapshot,
+    };
+
+    // Simulate the LSP transport: serialize to JSON and parse back.
+    const roundTripped: unknown = JSON.parse(JSON.stringify(response));
+
+    // The core regression assertion: the round-tripped snapshot is still a valid
+    // semantic response (pre-fix this was `false` and the file snapshot was dropped).
+    // Assert against the post-transport object so the test actually exercises the
+    // round-trip — asserting against the pre-transport `snapshot` would be tautological.
+    expect(isFormSpecSemanticResponse(roundTripped)).toBe(true);
+    if (
+      !isFormSpecSemanticResponse(roundTripped) ||
+      roundTripped.kind !== "file-snapshot" ||
+      roundTripped.snapshot === null
+    ) {
+      throw new Error("expected a non-null file-snapshot semantic response after round-trip");
+    }
+    const roundTrippedSnapshot = roundTripped.snapshot;
+
+    // Every post-transport assertion targets the round-tripped snapshot, not the
+    // in-memory one, so it can detect transport-induced data loss.
+    // The invalid tag is reported rather than silently emitted.
+    expect(roundTrippedSnapshot.diagnostics.some((d) => d.code === "INVALID_NUMERIC_VALUE")).toBe(
+      true
+    );
+
+    // The file's other facts are not lost: the valid `@maximum 100` bound survives.
+    const facts = roundTrippedSnapshot.comments.flatMap(
+      (comment) => comment.declarationSummary.facts
+    );
+    const numericFact = facts.find((fact) => fact.kind === "numeric-constraints");
+    expect(numericFact).toMatchObject({ maximum: 100 });
+
+    // And no surviving numeric fact carries the non-finite bound.
+    expect(
+      facts.some((fact) => fact.kind === "numeric-constraints" && fact.minimum !== undefined)
+    ).toBe(false);
+
+    // Sanity-check that these assertions are meaningful: had the transport dropped
+    // the `@maximum 100` fact (or corrupted it to a non-finite value the way the
+    // pre-fix `@minimum Infinity` fact was), the guard would reject the response.
+    const corrupted = {
+      ...roundTripped,
+      snapshot: {
+        ...roundTrippedSnapshot,
+        comments: roundTrippedSnapshot.comments.map((comment) => ({
+          ...comment,
+          declarationSummary: {
+            ...comment.declarationSummary,
+            facts: comment.declarationSummary.facts.map((fact) =>
+              fact.kind === "numeric-constraints"
+                ? { ...fact, maximum: Number.POSITIVE_INFINITY }
+                : fact
+            ),
+          },
+        })),
+      },
+    };
+    expect(isFormSpecSemanticResponse(JSON.parse(JSON.stringify(corrupted)))).toBe(false);
+  });
+
   it("rejects non-finite allowed-members declaration facts", () => {
     expect(
       isFormSpecSemanticResponse({
