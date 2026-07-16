@@ -222,7 +222,7 @@ describe("extension runtime integration", () => {
         vendorPrefix: "stripe",
       })
     ).toThrow(
-      'Invalid vendorPrefix "stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.'
+      'Invalid vendorPrefix "stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+(-[a-z0-9]+)*$/.'
     );
     expect(() =>
       generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]), {
@@ -230,8 +230,22 @@ describe("extension runtime integration", () => {
         vendorPrefix: "x-Stripe",
       })
     ).toThrow(
-      'Invalid vendorPrefix "x-Stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.'
+      'Invalid vendorPrefix "x-Stripe". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+(-[a-z0-9]+)*$/.'
     );
+  });
+
+  it("accepts a multi-segment vendor prefix (#545 — x-stripe-billing style prefixes)", () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+
+    const schema = generateJsonSchemaFromIR(makeIR([makeField("amount", moneyTypeNode(2))]), {
+      extensionRegistry: registry,
+      vendorPrefix: "x-stripe-billing",
+    });
+
+    expect(schema.properties?.["amount"]).toEqual({
+      type: "string",
+      "x-stripe-billing-money-scale": 2,
+    });
   });
 
   it("keeps buildFormSchemas usable for ordinary forms when public options are present", () => {

@@ -14,8 +14,15 @@
  */
 export const FORMSPEC_EXTENSION_KEY_PATTERN = /^x-[a-z0-9]+-[a-z][a-z0-9-]*$/;
 
-/** Well-formed vendor prefix pattern for extension transport. */
-const FORMSPEC_VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+$/;
+/**
+ * Well-formed vendor prefix pattern for extension transport.
+ *
+ * Allows multi-segment prefixes conventional in the OpenAPI/JSON-Schema
+ * world (`x-acme-corp`, `x-stripe-billing`) — see
+ * docs/007-configuration.md §3.4 and docs/000-principles.md PP10. Must stay
+ * in sync with `@formspec/config`'s config-load-time vendorPrefix validation.
+ */
+const FORMSPEC_VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /** Returns whether a configured vendor prefix can produce well-formed keys. */
 export function isWellFormedVendorPrefix(vendorPrefix: string): boolean {

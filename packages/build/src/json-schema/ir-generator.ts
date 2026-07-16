@@ -195,7 +195,7 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
   const enumSerialization = parseEnumSerialization(options?.enumSerialization);
   if (!isWellFormedVendorPrefix(vendorPrefix)) {
     throw new Error(
-      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.`
+      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+(-[a-z0-9]+)*$/.`
     );
   }
 
