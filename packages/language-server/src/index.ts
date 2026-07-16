@@ -1,9 +1,11 @@
 /**
  * \@formspec/language-server
  *
- * Language server for FormSpec — provides completions, hover documentation,
- * and go-to-definition for FormSpec JSDoc constraint tags (`@Minimum`,
- * `@Maximum`, `@Pattern`, etc.) in TypeScript files.
+ * Language server for FormSpec — provides completions and hover documentation
+ * for FormSpec JSDoc constraint tags (`@Minimum`, `@Maximum`, `@Pattern`,
+ * etc.) in TypeScript files. Go-to-definition for `{@link}` references is
+ * handled by the TypeScript language service itself (004 §5.4); this server
+ * does not advertise `definitionProvider`.
  *
  * This package implements the Language Server Protocol (LSP) using the
  * `vscode-languageserver` library. Cheap syntax-local behaviors stay in the
@@ -48,5 +50,4 @@ export {
 } from "./diagnostics.js";
 export { getCompletionItems } from "./providers/completion.js";
 export { getHoverForTag } from "./providers/hover.js";
-export { getDefinition } from "./providers/definition.js";
 export { fileUriToPathOrNull } from "./plugin-client.js";

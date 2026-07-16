@@ -4,7 +4,10 @@
  * Sets up an LSP server connection and registers handlers for:
  * - `textDocument/completion` — FormSpec JSDoc constraint tag completions
  * - `textDocument/hover` — Documentation for recognized constraint tags
- * - `textDocument/definition` — Go-to-definition (stub, returns null)
+ *
+ * Go-to-definition for `{@link}` references (per 004 §5.4) is handled by the
+ * TypeScript language service itself, not this server — this server does not
+ * advertise `definitionProvider`.
  *
  * The packaged language server is a reference implementation built on the same
  * composable helpers that downstream consumers can call directly.
@@ -24,7 +27,6 @@ import type { FormSpecConfig } from "@formspec/config";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { getCompletionItemsAtOffset } from "./providers/completion.js";
 import { getHoverAtOffset } from "./providers/hover.js";
-import { getDefinition } from "./providers/definition.js";
 import { getPluginDiagnosticsForDocument, toLspDiagnostics } from "./diagnostics.js";
 import {
   fileUriToPathOrNull,
@@ -301,7 +303,6 @@ export function createServer(options: CreateServerOptions = {}): Connection {
           triggerCharacters: ["@", ":"],
         },
         hoverProvider: true,
-        definitionProvider: true,
       },
       serverInfo: {
         name: "formspec-language-server",
@@ -354,11 +355,6 @@ export function createServer(options: CreateServerOptions = {}): Connection {
           );
 
     return getHoverAtOffset(documentText, offset, effectiveExtensions, semanticHover);
-  });
-
-  connection.onDefinition((_params) => {
-    // Go-to-definition is not yet implemented.
-    return getDefinition();
   });
 
   documents.onDidOpen(({ document }) => {

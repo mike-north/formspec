@@ -26,7 +26,6 @@ const mocks = vi.hoisted(() => {
     onInitialize: vi.fn(),
     onCompletion: vi.fn(),
     onHover: vi.fn(),
-    onDefinition: vi.fn(),
     sendDiagnostics: vi.fn(),
     console: {
       error: vi.fn(),
@@ -49,7 +48,6 @@ const mocks = vi.hoisted(() => {
     textDocuments,
     getCompletionItemsAtOffset: vi.fn(() => []),
     getHoverAtOffset: vi.fn(() => null),
-    getDefinition: vi.fn(() => null),
     getPluginCompletionContextForDocument: vi.fn(() => Promise.resolve(null)),
     getPluginHoverForDocument: vi.fn(() => Promise.resolve(null)),
     getPluginDiagnosticsForDocument: vi.fn(() => Promise.resolve(null)),
@@ -74,10 +72,6 @@ vi.mock("../src/providers/completion.js", () => ({
 
 vi.mock("../src/providers/hover.js", () => ({
   getHoverAtOffset: mocks.getHoverAtOffset,
-}));
-
-vi.mock("../src/providers/definition.js", () => ({
-  getDefinition: mocks.getDefinition,
 }));
 
 vi.mock("../src/diagnostics.js", () => ({
@@ -706,5 +700,88 @@ describe("createServer", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe("capability honesty", () => {
+    /**
+     * Regression test for #535: the server previously advertised
+     * `definitionProvider: true` in its initialize capabilities while
+     * `onDefinition` was a hard-coded `return null` stub — a standalone-LSP
+     * editor with no co-resident TypeScript service would always get "No
+     * definition found" instead of falling through. Per 004 §5.4, `{@link}`
+     * navigation is handled by the TypeScript language service itself, so
+     * this server must not advertise a capability it does not implement.
+     *
+     * This test asserts every capability this server *does* advertise has a
+     * registered handler that can produce a non-null/non-empty result for at
+     * least one fixture input, and that no capability is advertised without
+     * a corresponding handler (the specific failure mode this bug was).
+     */
+    it("advertises only capabilities with a working, non-null-producing handler", async () => {
+      mocks.getCompletionItemsAtOffset.mockReturnValue([{ label: "@minimum", kind: 14 }] as never);
+      mocks.getHoverAtOffset.mockReturnValue({
+        contents: { kind: "markdown", value: "A finite number." },
+      } as never);
+
+      const { createServer } = await import("../src/server.js");
+      createServer();
+
+      const initializeHandler = mocks.connection.onInitialize.mock.calls[0]?.[0] as
+        | ((params: {
+            rootUri?: string | null;
+            rootPath?: string | null;
+            workspaceFolders?: readonly { uri: string }[] | null;
+          }) => {
+            capabilities: Record<string, unknown>;
+          })
+        | undefined;
+      expect(typeof initializeHandler).toBe("function");
+      const initializeResult = initializeHandler?.({ rootUri: null, rootPath: null });
+      const capabilities = initializeResult?.capabilities ?? {};
+
+      // definitionProvider must not be advertised — this server has no
+      // go-to-definition handler (see module doc comment in src/server.ts).
+      expect(capabilities).not.toHaveProperty("definitionProvider");
+      // The mocked connection has no onDefinition method at all — if server.ts
+      // ever registers one again, this destructure/call will throw, catching
+      // the regression just as loudly as an explicit "not called" assertion.
+      expect("onDefinition" in mocks.connection).toBe(false);
+
+      // Every remaining advertised capability that implies a request handler
+      // must have that handler registered and able to return a non-null
+      // result for at least one fixture input.
+      mocks.documents.get.mockReturnValue({
+        getText: () => "/** @minimum 0 */",
+        offsetAt: () => 7,
+      });
+
+      expect(capabilities["completionProvider"]).toBeTruthy();
+      const completionHandler = mocks.connection.onCompletion.mock.calls[0]?.[0] as
+        | ((params: {
+            textDocument: { uri: string };
+            position: { line: number; character: number };
+          }) => Promise<unknown>)
+        | undefined;
+      expect(typeof completionHandler).toBe("function");
+      const completionResult = await completionHandler?.({
+        textDocument: { uri: "file:///fixture.ts" },
+        position: { line: 0, character: 7 },
+      });
+      expect(Array.isArray(completionResult) ? completionResult.length : 0).toBeGreaterThan(0);
+
+      expect(capabilities["hoverProvider"]).toBeTruthy();
+      const hoverHandler = mocks.connection.onHover.mock.calls[0]?.[0] as
+        | ((params: {
+            textDocument: { uri: string };
+            position: { line: number; character: number };
+          }) => Promise<unknown>)
+        | undefined;
+      expect(typeof hoverHandler).toBe("function");
+      const hoverResult = await hoverHandler?.({
+        textDocument: { uri: "file:///fixture.ts" },
+        position: { line: 0, character: 7 },
+      });
+      expect(hoverResult).not.toBeNull();
+    });
   });
 });

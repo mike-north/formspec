@@ -9,7 +9,6 @@ import { Connection } from 'vscode-languageserver/node.js';
 import { Diagnostic } from 'vscode-languageserver/node.js';
 import { ExtensionDefinition } from '@formspec/core';
 import type { Hover } from 'vscode-languageserver/node.js';
-import type { Location } from 'vscode-languageserver/node.js';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
 
 // @public
@@ -109,9 +108,6 @@ export interface FormSpecSerializationConfig {
 
 // @public
 export function getCompletionItems(extensions?: readonly ExtensionDefinition[]): CompletionItem[];
-
-// @public
-export function getDefinition(): Location | null;
 
 // @public
 export function getHoverForTag(tagName: string, extensions?: readonly ExtensionDefinition[]): Hover | null;
