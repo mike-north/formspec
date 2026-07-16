@@ -105,7 +105,20 @@ async function startTargetCompletionServer(
     });
   });
   servers.push(server);
-  await new Promise<void>((resolve) => server.listen(socketPath, resolve));
+  // Remove any stale socket file left by a previous run so `listen` does not
+  // fail with EADDRINUSE, and reject (rather than hang until the Vitest
+  // timeout) if binding fails for any other reason.
+  await fs.rm(socketPath, { force: true });
+  await new Promise<void>((resolve, reject) => {
+    const handleError = (error: Error): void => {
+      reject(error);
+    };
+    server.once("error", handleError);
+    server.listen(socketPath, () => {
+      server.off("error", handleError);
+      resolve();
+    });
+  });
 }
 
 describe("plugin-client", () => {
@@ -321,6 +334,35 @@ describe("plugin-client", () => {
     );
 
     expect(completion).toBeNull();
+  });
+
+  it("walks up to a nested manifest when the workspace root is the filesystem root (issue #555)", async () => {
+    // Regression for the filesystem-root prefix bug: when the editor workspace
+    // root is `/`, `normalizeWorkspaceRoot` keeps its trailing separator, so a
+    // naive `${root}${sep}` ancestor prefix becomes `//` and rejects every
+    // descendant — skipping the upward walk entirely. The manifest lives at a
+    // mid-tree ancestor of the file (a temp directory), which discovery must
+    // reach by walking from the file up toward `/`.
+    const base = await createWorkspaceRoot(workspaces);
+    await fs.mkdir(path.join(base, "pkg"), { recursive: true });
+
+    const documentText = "/** @minimum :amount 0 */";
+    const socketPath = path.join(os.tmpdir(), `formspec-fsroot-${String(Date.now())}.sock`);
+    await startTargetCompletionServer(socketPath, documentText, servers, sockets);
+    await writeManifest(base, createManifest(base, socketPath));
+
+    const filePath = path.join(base, "pkg", "example.ts");
+    const completion = await getPluginCompletionContextForDocument(
+      [path.parse(base).root],
+      filePath,
+      documentText,
+      documentText.indexOf("amount") + 2
+    );
+
+    expect(completion?.kind).toBe("target");
+    if (completion?.kind === "target") {
+      expect(completion.semantic.targetCompletions).toEqual(["amount"]);
+    }
   });
 
   it("returns null when no manifest exists for the workspace yet", async () => {

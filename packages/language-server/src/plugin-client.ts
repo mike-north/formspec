@@ -34,6 +34,23 @@ function normalizeWorkspaceRoot(root: string): string {
   return normalized;
 }
 
+/**
+ * Returns true when `candidate` is `root` itself or a descendant of it.
+ *
+ * Handles the filesystem-root case (`/`, `C:\`): `normalizeWorkspaceRoot` keeps
+ * the trailing separator for a filesystem root, so appending another separator
+ * would produce `//` (or `C:\\`) and reject every real descendant. Both callers
+ * must treat containment identically, so this predicate is the single source of
+ * truth.
+ */
+function isPathAtOrWithinRoot(candidate: string, root: string): boolean {
+  if (candidate === root) {
+    return true;
+  }
+  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return candidate.startsWith(rootPrefix);
+}
+
 function getMatchingWorkspaceRoot(
   workspaceRoots: readonly string[],
   filePath: string
@@ -43,10 +60,8 @@ function getMatchingWorkspaceRoot(
     .map(normalizeWorkspaceRoot)
     .sort((left, right) => right.length - left.length);
   return (
-    normalizedRoots.find(
-      (workspaceRoot) =>
-        normalizedFilePath === workspaceRoot ||
-        normalizedFilePath.startsWith(`${workspaceRoot}${path.sep}`)
+    normalizedRoots.find((workspaceRoot) =>
+      isPathAtOrWithinRoot(normalizedFilePath, workspaceRoot)
     ) ?? null
   );
 }
@@ -71,9 +86,10 @@ function collectManifestSearchDirectories(filePath: string, workspaceRoot: strin
   let current = path.dirname(path.resolve(filePath));
 
   // `workspaceRoot` is guaranteed to be an ancestor of (or equal to) the file by
-  // the caller, so the walk terminates at `normalizedRoot`. The parent-equality
-  // and prefix guards are defense-in-depth against a malformed pairing.
-  while (current === normalizedRoot || current.startsWith(`${normalizedRoot}${path.sep}`)) {
+  // the caller, so the walk terminates at `normalizedRoot`. The containment check
+  // (which handles a filesystem-root workspace) and parent-equality guard are
+  // defense-in-depth against a malformed pairing.
+  while (isPathAtOrWithinRoot(current, normalizedRoot)) {
     directories.push(current);
     if (current === normalizedRoot) {
       break;
