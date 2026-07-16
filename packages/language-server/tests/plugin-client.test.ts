@@ -55,6 +55,72 @@ function createManifest(
   };
 }
 
+/**
+ * Starts a one-shot IPC server that answers `completion` queries with a target
+ * context whose only completion is `amount`, echoing the caller's source hash so
+ * the response is trusted. Used to prove that manifest discovery reached a live
+ * transport (or, when placed out of bounds, that it did not).
+ */
+async function startTargetCompletionServer(
+  socketPath: string,
+  documentText: string,
+  servers: net.Server[],
+  sockets: net.Socket[]
+): Promise<void> {
+  const server = net.createServer((socket) => {
+    sockets.push(socket);
+    socket.setEncoding("utf8");
+    let buffer = "";
+    socket.on("data", (chunk) => {
+      buffer += String(chunk);
+      const newlineIndex = buffer.indexOf("\n");
+      if (newlineIndex < 0) {
+        return;
+      }
+      const response: FormSpecSemanticResponse = {
+        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+        kind: "completion",
+        sourceHash: computeFormSpecTextHash(documentText),
+        context: {
+          kind: "target",
+          semantic: {
+            tagName: "minimum",
+            tagDefinition: null,
+            placement: "class-field",
+            contextualSignatures: [],
+            supportedTargets: ["none", "path"],
+            targetCompletions: ["amount"],
+            compatiblePathTargets: ["amount"],
+            valueLabels: ["<number>"],
+            argumentCompletions: [],
+            contextualTagHoverMarkdown: null,
+            signatures: [],
+            tagHoverMarkdown: null,
+            targetHoverMarkdown: null,
+            argumentHoverMarkdown: null,
+          },
+        },
+      };
+      socket.end(`${JSON.stringify(response)}\n`);
+    });
+  });
+  servers.push(server);
+  // Remove any stale socket file left by a previous run so `listen` does not
+  // fail with EADDRINUSE, and reject (rather than hang until the Vitest
+  // timeout) if binding fails for any other reason.
+  await fs.rm(socketPath, { force: true });
+  await new Promise<void>((resolve, reject) => {
+    const handleError = (error: Error): void => {
+      reject(error);
+    };
+    server.once("error", handleError);
+    server.listen(socketPath, () => {
+      server.off("error", handleError);
+      resolve();
+    });
+  });
+}
+
 describe("plugin-client", () => {
   const workspaces: string[] = [];
   const servers: net.Server[] = [];
@@ -211,6 +277,92 @@ describe("plugin-client", () => {
         }),
       ])
     );
+  });
+
+  it("discovers a nested-package manifest by walking up from the file to the workspace root (issue #555)", async () => {
+    // The editor opens the repo root as its only workspace folder, but the
+    // plugin advertises its manifest under a nested package directory (the
+    // tsconfig project root). Discovery must walk from the file up to the
+    // workspace root to find it.
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-lsp-monorepo-"));
+    workspaces.push(repoRoot);
+    const packageDir = path.join(repoRoot, "packages", "foo");
+    await fs.mkdir(path.join(packageDir, ".cache", "formspec", "tooling"), { recursive: true });
+    await fs.mkdir(path.join(packageDir, "src"), { recursive: true });
+
+    const documentText = "/** @minimum :amount 0 */";
+    const socketPath = path.join(os.tmpdir(), `formspec-monorepo-${String(Date.now())}.sock`);
+    await startTargetCompletionServer(socketPath, documentText, servers, sockets);
+    await writeManifest(packageDir, createManifest(packageDir, socketPath));
+
+    const filePath = path.join(packageDir, "src", "example.ts");
+    const completion = await getPluginCompletionContextForDocument(
+      [repoRoot],
+      filePath,
+      documentText,
+      documentText.indexOf("amount") + 2
+    );
+
+    expect(completion?.kind).toBe("target");
+    if (completion?.kind === "target") {
+      expect(completion.semantic.targetCompletions).toEqual(["amount"]);
+    }
+  });
+
+  it("does not discover a manifest located above the editor workspace root (issue #555)", async () => {
+    // Defense-in-depth: the upward walk is bounded by the workspace root, so a
+    // manifest belonging to an unrelated project outside the editor's workspace
+    // must never be read — even if it has a live transport that would answer.
+    const base = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-lsp-ceiling-"));
+    workspaces.push(base);
+    const workspaceRoot = path.join(base, "workspace");
+    await fs.mkdir(path.join(workspaceRoot, "pkg"), { recursive: true });
+    // Manifest lives in `base`, the parent of the workspace root (out of bounds).
+    await fs.mkdir(path.join(base, ".cache", "formspec", "tooling"), { recursive: true });
+
+    const documentText = "/** @minimum :amount 0 */";
+    const socketPath = path.join(os.tmpdir(), `formspec-ceiling-${String(Date.now())}.sock`);
+    await startTargetCompletionServer(socketPath, documentText, servers, sockets);
+    await writeManifest(base, createManifest(base, socketPath));
+
+    const filePath = path.join(workspaceRoot, "pkg", "example.ts");
+    const completion = await getPluginCompletionContextForDocument(
+      [workspaceRoot],
+      filePath,
+      documentText,
+      documentText.indexOf("amount") + 2
+    );
+
+    expect(completion).toBeNull();
+  });
+
+  it("walks up to a nested manifest when the workspace root is the filesystem root (issue #555)", async () => {
+    // Regression for the filesystem-root prefix bug: when the editor workspace
+    // root is `/`, `normalizeWorkspaceRoot` keeps its trailing separator, so a
+    // naive `${root}${sep}` ancestor prefix becomes `//` and rejects every
+    // descendant — skipping the upward walk entirely. The manifest lives at a
+    // mid-tree ancestor of the file (a temp directory), which discovery must
+    // reach by walking from the file up toward `/`.
+    const base = await createWorkspaceRoot(workspaces);
+    await fs.mkdir(path.join(base, "pkg"), { recursive: true });
+
+    const documentText = "/** @minimum :amount 0 */";
+    const socketPath = path.join(os.tmpdir(), `formspec-fsroot-${String(Date.now())}.sock`);
+    await startTargetCompletionServer(socketPath, documentText, servers, sockets);
+    await writeManifest(base, createManifest(base, socketPath));
+
+    const filePath = path.join(base, "pkg", "example.ts");
+    const completion = await getPluginCompletionContextForDocument(
+      [path.parse(base).root],
+      filePath,
+      documentText,
+      documentText.indexOf("amount") + 2
+    );
+
+    expect(completion?.kind).toBe("target");
+    if (completion?.kind === "target") {
+      expect(completion.semantic.targetCompletions).toEqual(["amount"]);
+    }
   });
 
   it("returns null when no manifest exists for the workspace yet", async () => {

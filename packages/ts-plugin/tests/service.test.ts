@@ -503,4 +503,50 @@ describe("createLanguageServiceProxy", () => {
     expect(proxy.getQuickInfoAtPosition(fileName, 19)).not.toBeNull();
     expect(scheduleSnapshotRefresh).toHaveBeenCalledWith(fileName);
   });
+
+  // Regression for #555: the completion wrapper previously forwarded only
+  // (fileName, position, options), silently dropping TypeScript's fourth
+  // `formattingSettings` argument (present in TS 6.x). The proxy must forward
+  // the full argument list verbatim so format-dependent insert text is correct.
+  it("forwards the fourth formattingSettings argument to getCompletionsAtPosition", () => {
+    const scheduleSnapshotRefresh = vi.fn();
+    const getCompletionsAtPosition = vi.fn(
+      (
+        _fileName: string,
+        _position: number,
+        _options?: ts.GetCompletionsAtPositionOptions,
+        _formattingSettings?: ts.FormatCodeSettings
+      ) => ({ entries: [] })
+    );
+
+    const proxy = createLanguageServiceProxy(
+      {
+        getCompletionsAtPosition,
+      } as unknown as ts.LanguageService,
+      {
+        scheduleSnapshotRefresh,
+      } as unknown as FormSpecSemanticService
+    );
+
+    const options: ts.GetCompletionsAtPositionOptions = {
+      includeCompletionsForModuleExports: true,
+    };
+    const formattingSettings: ts.FormatCodeSettings = {
+      indentSize: 2,
+      convertTabsToSpaces: true,
+    };
+
+    proxy.getCompletionsAtPosition("example.ts", 4, options, formattingSettings);
+
+    expect(getCompletionsAtPosition).toHaveBeenCalledTimes(1);
+    expect(getCompletionsAtPosition).toHaveBeenCalledWith(
+      "example.ts",
+      4,
+      options,
+      formattingSettings
+    );
+    // The fourth argument must reach the underlying service unchanged.
+    expect(getCompletionsAtPosition.mock.calls[0]?.[3]).toBe(formattingSettings);
+    expect(scheduleSnapshotRefresh).toHaveBeenCalledWith("example.ts");
+  });
 });

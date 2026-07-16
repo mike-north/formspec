@@ -34,6 +34,23 @@ function normalizeWorkspaceRoot(root: string): string {
   return normalized;
 }
 
+/**
+ * Returns true when `candidate` is `root` itself or a descendant of it.
+ *
+ * Handles the filesystem-root case (`/`, `C:\`): `normalizeWorkspaceRoot` keeps
+ * the trailing separator for a filesystem root, so appending another separator
+ * would produce `//` (or `C:\\`) and reject every real descendant. Both callers
+ * must treat containment identically, so this predicate is the single source of
+ * truth.
+ */
+function isPathAtOrWithinRoot(candidate: string, root: string): boolean {
+  if (candidate === root) {
+    return true;
+  }
+  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  return candidate.startsWith(rootPrefix);
+}
+
 function getMatchingWorkspaceRoot(
   workspaceRoots: readonly string[],
   filePath: string
@@ -43,12 +60,76 @@ function getMatchingWorkspaceRoot(
     .map(normalizeWorkspaceRoot)
     .sort((left, right) => right.length - left.length);
   return (
-    normalizedRoots.find(
-      (workspaceRoot) =>
-        normalizedFilePath === workspaceRoot ||
-        normalizedFilePath.startsWith(`${workspaceRoot}${path.sep}`)
+    normalizedRoots.find((workspaceRoot) =>
+      isPathAtOrWithinRoot(normalizedFilePath, workspaceRoot)
     ) ?? null
   );
+}
+
+/**
+ * Enumerates candidate manifest directories for `filePath`, walking from the
+ * file's containing directory upward to (and including) `workspaceRoot`.
+ *
+ * The tsserver plugin writes its manifest under `info.project.getCurrentDirectory()`
+ * — the enclosing tsconfig project directory — which, in a monorepo opened at
+ * the repo root, is nested below the editor's workspace root (e.g. the plugin
+ * writes under `<root>/packages/foo` while the LSP only knows `<root>`). Probing
+ * every directory between the file and the workspace root reconciles the two:
+ * whichever directory the plugin chose as its project root is discovered.
+ *
+ * The walk is bounded above by `workspaceRoot` so discovery never reads a
+ * manifest belonging to an unrelated project outside the editor's workspace.
+ */
+function collectManifestSearchDirectories(filePath: string, workspaceRoot: string): string[] {
+  const normalizedRoot = normalizeWorkspaceRoot(workspaceRoot);
+  const directories: string[] = [];
+  let current = path.dirname(path.resolve(filePath));
+
+  // `workspaceRoot` is guaranteed to be an ancestor of (or equal to) the file by
+  // the caller, so the walk terminates at `normalizedRoot`. The containment check
+  // (which handles a filesystem-root workspace) and parent-equality guard are
+  // defense-in-depth against a malformed pairing.
+  while (isPathAtOrWithinRoot(current, normalizedRoot)) {
+    directories.push(current);
+    if (current === normalizedRoot) {
+      break;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      break;
+    }
+    current = parent;
+  }
+
+  if (!directories.includes(normalizedRoot)) {
+    directories.push(normalizedRoot);
+  }
+
+  return directories;
+}
+
+/**
+ * Locates the FormSpec analysis manifest for `filePath` by matching it to an
+ * editor workspace root, then probing each directory from the file upward to
+ * that root. Returns the first valid manifest, or `null` when none is found.
+ */
+async function discoverManifestForFile(
+  workspaceRoots: readonly string[],
+  filePath: string
+): Promise<FormSpecAnalysisManifest | null> {
+  const workspaceRoot = getMatchingWorkspaceRoot(workspaceRoots, filePath);
+  if (workspaceRoot === null) {
+    return null;
+  }
+
+  for (const candidateDirectory of collectManifestSearchDirectories(filePath, workspaceRoot)) {
+    const manifest = await readManifest(candidateDirectory);
+    if (manifest !== null) {
+      return manifest;
+    }
+  }
+
+  return null;
 }
 
 async function readManifest(workspaceRoot: string): Promise<FormSpecAnalysisManifest | null> {
@@ -139,12 +220,7 @@ async function sendFileQuery(
   query: FormSpecSemanticQuery,
   timeoutMs = DEFAULT_PLUGIN_QUERY_TIMEOUT_MS
 ): Promise<FormSpecSemanticResponse | null> {
-  const workspaceRoot = getMatchingWorkspaceRoot(workspaceRoots, filePath);
-  if (workspaceRoot === null) {
-    return null;
-  }
-
-  const manifest = await readManifest(workspaceRoot);
+  const manifest = await discoverManifestForFile(workspaceRoots, filePath);
   if (manifest === null) {
     return null;
   }
