@@ -251,6 +251,46 @@ describe("runtime loading", () => {
     }
   });
 
+  it("threads metadata into runtime-loaded FormSpec schemas (issue #522)", async () => {
+    // Regression test for issue #522: `LoadFormSpecsOptions` previously had
+    // no `metadata` field at all, so a config's naming-inference policy was
+    // silently dropped for chain-DSL exports. Before the fix, this assertion
+    // fails because `widgetName` has no inferred title. See also
+    // metadata-forwarding-subprocess.test.ts, which covers the CLI's full
+    // wiring (including the equivalent gap this issue found on the
+    // class-based path).
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-runtime-metadata-"));
+    const filePath = path.join(dir, "widget-form.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      import { formspec, field } from "@formspec/dsl";
+
+      export const WidgetForm = formspec(field.text("widgetName", { required: true }));
+    `
+    );
+
+    try {
+      const { formSpecs } = await loadFormSpecs(ensureCompiledFixture(filePath), {
+        metadata: {
+          field: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Custom ${logicalName}`,
+            },
+          },
+        },
+      });
+      const schema = formSpecs.get("WidgetForm")?.jsonSchema;
+
+      expect(schema?.properties?.["widgetName"]).toMatchObject({
+        title: "Custom widgetName",
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("generates method schemas with FormSpec params", async () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");

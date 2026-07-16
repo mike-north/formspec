@@ -452,6 +452,9 @@ async function main(): Promise<void> {
         ...(effectiveConfig?.serialization !== undefined && {
           serialization: effectiveConfig.serialization,
         }),
+        ...(effectiveConfig?.metadata !== undefined && {
+          metadata: effectiveConfig.metadata,
+        }),
       });
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
@@ -578,6 +581,9 @@ async function main(): Promise<void> {
                   ...(effectiveConfig?.serialization !== undefined && {
                     serialization: effectiveConfig.serialization,
                   }),
+                  ...(effectiveConfig?.metadata !== undefined && {
+                    metadata: effectiveConfig.metadata,
+                  }),
                 });
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);
@@ -597,6 +603,14 @@ async function main(): Promise<void> {
         // Generate class schemas
         const schemaOptions = {
           ...(effectiveConfig !== undefined && { config: effectiveConfig }),
+          // `generateClassSchemas`/`generateMethodSchemas` (the lower-level
+          // IR-based generators used here) don't resolve `config.metadata`
+          // themselves the way `config`-aware entry points like
+          // `generateSchemas` do — see `resolveStaticOptions` in
+          // @formspec/build. Flatten it explicitly so class-based generation
+          // gets the same naming-inference policy as chain-DSL exports
+          // (issue #522).
+          ...(effectiveConfig?.metadata !== undefined && { metadata: effectiveConfig.metadata }),
           enumSerialization,
         };
         const classSchemas = generateClassSchemas(

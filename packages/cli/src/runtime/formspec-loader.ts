@@ -18,6 +18,7 @@ import {
 import { canonicalizeChainDSL, generateJsonSchemaFromIR } from "@formspec/build/internals";
 import type { GenerateJsonSchemaFromIROptions } from "@formspec/build/internals";
 import type { FormSpecSerializationConfig } from "@formspec/config";
+import type { MetadataPolicyInput } from "@formspec/core";
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -35,6 +36,19 @@ interface LoadFormSpecsOptions {
   readonly enumSerialization?: "enum" | "oneOf" | "smart-size" | undefined;
   /** Forward-looking serialization settings for vocabulary and dialect transport. */
   readonly serialization?: FormSpecSerializationConfig | undefined;
+  /**
+   * Naming inference policy (apiName/displayName/pluralization). Keeps
+   * chain-DSL exports on the same semantic model as class-based generation
+   * instead of silently falling back to built-in defaults. See issue #522
+   * (which also fixed the equivalent gap on the class-based path, in
+   * `src/index.ts`'s `schemaOptions`).
+   *
+   * Note: `config.extensions` still cannot flow to chain-DSL runtime
+   * generation — `GenerateJsonSchemaOptions` has no `extensions` field. That
+   * remains a documented `@formspec/build` API-surface gap, tracked in
+   * issue #614 (not fixed here).
+   */
+  readonly metadata?: MetadataPolicyInput | undefined;
 }
 
 /**
@@ -84,7 +98,11 @@ interface NamedFormSpecs {
 function toPublicJsonSchemaOptions(
   options: LoadFormSpecsOptions | undefined
 ): GenerateJsonSchemaOptions | undefined {
-  if (options?.vendorPrefix === undefined && options?.enumSerialization === undefined) {
+  if (
+    options?.vendorPrefix === undefined &&
+    options?.enumSerialization === undefined &&
+    options?.metadata === undefined
+  ) {
     return undefined;
   }
 
@@ -93,6 +111,7 @@ function toPublicJsonSchemaOptions(
     ...(options.enumSerialization !== undefined && {
       enumSerialization: options.enumSerialization,
     }),
+    ...(options.metadata !== undefined && { metadata: options.metadata }),
   };
 }
 
