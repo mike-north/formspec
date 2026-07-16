@@ -336,6 +336,55 @@ describe("semantic protocol", () => {
     ).toBe(false);
   });
 
+  it("survives a JSON round-trip when a file contains @minimum Infinity (issue #513)", () => {
+    // Regression for #513: before the fix, `@minimum Infinity` produced a
+    // numeric-constraints fact carrying `minimum: Infinity`. JSON.stringify turns
+    // Infinity into `null`, so isFiniteNumber(null) failed after the transport
+    // round-trip and the language server discarded the ENTIRE file snapshot —
+    // the user silently lost all FormSpec hover/completion/diagnostics for the file.
+    //
+    // After the fix, the non-finite value is a parse error: it yields NO constraint
+    // fact (just an INVALID_NUMERIC_VALUE diagnostic), so the snapshot round-trips
+    // cleanly and the file's other facts are retained.
+    const source = `
+      class Order {
+        /** @minimum Infinity */
+        badBound!: number;
+
+        /** @maximum 100 */
+        goodBound!: number;
+      }
+    `;
+    const { checker, sourceFile } = createProgram(source);
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+
+    const response: FormSpecSemanticResponse = {
+      protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+      kind: "file-snapshot",
+      snapshot,
+    };
+
+    // Simulate the LSP transport: serialize to JSON and parse back.
+    const roundTripped: unknown = JSON.parse(JSON.stringify(response));
+
+    // The core regression assertion: the round-tripped snapshot is still a valid
+    // semantic response (pre-fix this was `false` and the file snapshot was dropped).
+    expect(isFormSpecSemanticResponse(roundTripped)).toBe(true);
+
+    // The invalid tag is reported rather than silently emitted.
+    expect(snapshot.diagnostics.some((d) => d.code === "INVALID_NUMERIC_VALUE")).toBe(true);
+
+    // The file's other facts are not lost: the valid `@maximum 100` bound survives.
+    const facts = snapshot.comments.flatMap((comment) => comment.declarationSummary.facts);
+    const numericFact = facts.find((fact) => fact.kind === "numeric-constraints");
+    expect(numericFact).toMatchObject({ maximum: 100 });
+
+    // And no surviving numeric fact carries the non-finite bound.
+    expect(
+      facts.some((fact) => fact.kind === "numeric-constraints" && fact.minimum !== undefined)
+    ).toBe(false);
+  });
+
   it("rejects non-finite allowed-members declaration facts", () => {
     expect(
       isFormSpecSemanticResponse({

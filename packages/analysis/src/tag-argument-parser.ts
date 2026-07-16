@@ -36,11 +36,27 @@ export type TagArgumentValue =
   | { readonly kind: "json-value"; readonly value: JsonValue }
   | { readonly kind: "raw-string-fallback"; readonly value: string };
 
-/** Diagnostic codes emitted by {@link parseTagArgument}. */
+/**
+ * Diagnostic codes emitted by {@link parseTagArgument}.
+ *
+ * The value-parsing codes (`INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`,
+ * `INVALID_REGEX_PATTERN`) are the spec-normative codes from 002-tsdoc-grammar §6.
+ * They replace the generic `INVALID_TAG_ARGUMENT` for the failure classes the spec
+ * names explicitly, so a machine consumer can distinguish a non-finite numeric from
+ * a bad length from an uncompilable pattern (D6). `INVALID_TAG_ARGUMENT` remains for
+ * failure classes without a dedicated spec code (e.g. `@uniqueItems false`,
+ * `@enumOptions 5`).
+ */
 export const TAG_ARGUMENT_DIAGNOSTIC_CODES = {
   INVALID_TAG_ARGUMENT: "INVALID_TAG_ARGUMENT",
   MISSING_TAG_ARGUMENT: "MISSING_TAG_ARGUMENT",
   UNKNOWN_TAG: "UNKNOWN_TAG",
+  /** 002 §3.2 / §6 — numeric tag received NaN, Infinity, overflow, or non-decimal text. */
+  INVALID_NUMERIC_VALUE: "INVALID_NUMERIC_VALUE",
+  /** 002 §3.2 / §6 — length/count tag received a negative, fractional, or non-integer value. */
+  INVALID_NON_NEGATIVE_INTEGER: "INVALID_NON_NEGATIVE_INTEGER",
+  /** 002 §3.2 / §6 — `@pattern` value does not compile as an ECMAScript regex. */
+  INVALID_REGEX_PATTERN: "INVALID_REGEX_PATTERN",
 } as const;
 
 export type TagArgumentDiagnosticCode =
@@ -49,12 +65,13 @@ export type TagArgumentDiagnosticCode =
 export interface TagArgumentDiagnostic {
   readonly code: TagArgumentDiagnosticCode;
   /**
-   * Messages for INVALID_TAG_ARGUMENT must start with "Expected " so that the
-   * "Expected"-based classifier in `packages/analysis/src/file-snapshots.ts`
-   * (~line 1480) remains valid when consumer wiring lands in Phase 2/3.
+   * Human-readable diagnostic message.
    *
-   * @remarks Phase 2/3 should shift the classifier to test `code` directly;
-   * the "Expected " prefix is a bridge convention until that wiring lands.
+   * Both consumers surface `code` directly (via {@link mapTypedParserDiagnosticCode}),
+   * so message content is presentational, not load-bearing for classification. The
+   * value-parsing codes use the spec-normative message shapes from 002 §6
+   * (e.g. `"@minimum" expects a finite number, but received "Infinity".`). The
+   * remaining generic-argument messages retain the historical `Expected …` phrasing.
    */
   readonly message: string;
 }
@@ -142,11 +159,11 @@ function parseUniqueItemsArgument(rawArgumentText: string): TagArgumentParseResu
 /**
  * Parses the argument for `@pattern` (string family).
  *
- * Preserves current opaque-pass-through behavior per §3 of the retirement
- * plan: the raw text is trimmed and returned as-is. `new RegExp(text)` is
- * deliberately NOT called — regex validation is deferred to Phase 2/3 per
- * §6 risk 2. Quoted vs. unquoted strings produce different values (current
- * behavior; normalization is a Phase 2/3 concern).
+ * The trimmed text is the ECMAScript regex source (002 §3.2). The extractor
+ * validates that it compiles via `new RegExp(value)`; a value that does not
+ * compile is an `INVALID_REGEX_PATTERN` parse error (002 §6) rather than being
+ * passed through verbatim — an uncompilable pattern would otherwise reach the
+ * generated JSON Schema and crash any validator at schema-compile time.
  */
 function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
   const trimmed = rawArgumentText.trim();
@@ -156,6 +173,19 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
       diagnostic: {
         code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
         message: "Expected a pattern string for @pattern.",
+      },
+    };
+  }
+  try {
+    // Compile-only validation; the constructed instance is intentionally discarded.
+    void new RegExp(trimmed);
+  } catch (e) {
+    const regexError = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      diagnostic: {
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_REGEX_PATTERN,
+        message: `"@pattern" value "${trimmed}" is not a valid ECMAScript regex: ${regexError}.`,
       },
     };
   }
@@ -173,36 +203,37 @@ function parsePatternArgument(rawArgumentText: string): TagArgumentParseResult {
 const DECIMAL_PATTERN = /^-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/;
 
 /**
- * Parses a numeric argument for both the "numeric" and "length" families.
+ * Matches a non-negative integer per 002 §3.2: `"0" | [1-9][0-9]*`. Rejects
+ * negatives, fractions (`2.5`, `1.0`), scientific notation (`1e2`), leading
+ * zeros (`01`), and the `Infinity`/`NaN` identifiers.
+ */
+const NON_NEGATIVE_INTEGER_PATTERN = /^(0|[1-9]\d*)$/;
+
+/**
+ * Parses a numeric argument, dispatching on family to the spec's per-tag rule
+ * (002 §3.2). This is the single source of truth for numeric/length argument
+ * validity — {@link parseConstraintTagValue} routes its IR-producing path
+ * through {@link parseTagArgument} so the constraint node and the diagnostic
+ * can never disagree (issue #513).
  *
- * Phase 1 semantics (per §3 of the retirement plan):
- * - Empty/whitespace-only text → MISSING_TAG_ARGUMENT
- * - `Infinity`, `-Infinity`, `NaN` identifiers → accepted as-is (pins current
- *   snapshot-consumer behavior; build-consumer stringifies — divergence is
- *   handled by `lowering` in Phase 2/3)
- * - Non-decimal numeric forms (hex `0x`, binary `0b`, octal `0o`) → INVALID
- * - Scientific overflow (e.g. `1e400` → Infinity) → INVALID (only the explicit
- *   `Infinity` identifier, not overflow, is accepted)
- * - `Number(text) === NaN` (and text was not the literal "NaN") → INVALID_TAG_ARGUMENT
- * - Otherwise → `{ kind: "number", value }` with the parsed number
- *
- * Integer erasure is preserved: `@minLength 1.5` returns `ok: true` with
- * `value: 1.5`. Rejecting non-integer values is a Role D concern, not Role C.
- *
- * The `family` and `_lowering` parameters are unused in Phase 1 but are
- * accepted here for forward-compatibility with Phase 2/3 divergence wiring.
+ * - **numeric family** (`@minimum`, `@maximum`, `@exclusiveMinimum`,
+ *   `@exclusiveMaximum`, `@multipleOf`): the value must parse to a finite
+ *   decimal number. `NaN`, `Infinity`, `-Infinity`, scientific overflow
+ *   (`1e400`), and non-decimal forms (`0x10`, `0b10`, `0o10`) are all
+ *   `INVALID_NUMERIC_VALUE`. Negatives and fractions are accepted.
+ * - **length family** (`@minLength`, `@maxLength`, `@minItems`, `@maxItems`):
+ *   the value must be a non-negative integer. Negatives, fractions, and every
+ *   numeric-family reject are `INVALID_NON_NEGATIVE_INTEGER`.
  *
  * @param tagName - normalized tag name (no "@"), typed as a known registry key
  * @param rawArgumentText - argument text, already stripped of path-target prefix
- * @param _family - "numeric" or "length"; reserved for Phase 2/3 message divergence
- *   (rename to `family` when Phase 2/3 diverges error messages between families)
- * @param _lowering - build vs snapshot; reserved for Phase 2/3 consumer wiring
+ * @param family - "numeric" or "length"; selects the spec rule and error code
+ * @param _lowering - build vs snapshot; reserved for consumer-specific wiring
  */
-// TODO Phase 2/5: consolidate numeric parsing with tag-value-parser.ts
 function parseNumericArgument(
   tagName: keyof typeof TAG_ARGUMENT_FAMILIES,
   rawArgumentText: string,
-  _family: "numeric" | "length",
+  family: "numeric" | "length",
   _lowering: TagArgumentLowering
 ): TagArgumentParseResult {
   const text = rawArgumentText.trim();
@@ -212,48 +243,50 @@ function parseNumericArgument(
       ok: false,
       diagnostic: {
         code: TAG_ARGUMENT_DIAGNOSTIC_CODES.MISSING_TAG_ARGUMENT,
-        message: `Expected a numeric literal for @${tagName}.`,
+        message:
+          family === "length"
+            ? `Expected a non-negative integer for @${tagName}.`
+            : `Expected a numeric literal for @${tagName}.`,
       },
     };
   }
 
-  // Pin shared parser behavior: Infinity, -Infinity, and NaN are accepted as
-  // valid numeric arguments and represented as numeric sentinels. See §3
-  // "Tie-break Infinity/NaN" and §9.3 #16.
-  if (text === "Infinity") {
-    return { ok: true, value: { kind: "number", value: Infinity } };
-  }
-  if (text === "-Infinity") {
-    return { ok: true, value: { kind: "number", value: -Infinity } };
-  }
-  if (text === "NaN") {
-    return { ok: true, value: { kind: "number", value: NaN } };
+  if (family === "length") {
+    if (!NON_NEGATIVE_INTEGER_PATTERN.test(text)) {
+      return {
+        ok: false,
+        diagnostic: {
+          code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_NON_NEGATIVE_INTEGER,
+          message: `"@${tagName}" expects a non-negative integer, but received "${text}".`,
+        },
+      };
+    }
+    return { ok: true, value: { kind: "number", value: Number(text) } };
   }
 
-  // Reject non-decimal numeric literals (hex, binary, octal) and any other
-  // non-TSDoc-idiomatic form that `Number()` would silently accept.
-  // The explicit `Infinity`/`-Infinity`/`NaN` identifiers are handled above.
+  // numeric family: finite decimal only. Reject non-decimal forms (hex/binary/
+  // octal), the `Infinity`/`-Infinity`/`NaN` identifiers, and non-numeric text —
+  // all of these fail the decimal grammar.
   if (!DECIMAL_PATTERN.test(text)) {
     return {
       ok: false,
       diagnostic: {
-        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
-        message: `Expected a numeric literal for @${tagName}, got "${text}".`,
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_NUMERIC_VALUE,
+        message: `"@${tagName}" expects a finite number, but received "${text}".`,
       },
     };
   }
 
   const value = Number(text);
 
-  // A decimal literal that overflows to Infinity (e.g. `1e400`) is not a valid
-  // TSDoc constraint argument. Only the explicit `Infinity` identifier (handled
-  // above) is accepted.
+  // A decimal literal that overflows to Infinity (e.g. `1e400`) is not finite
+  // and is therefore also an invalid numeric value.
   if (!isFinite(value)) {
     return {
       ok: false,
       diagnostic: {
-        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_TAG_ARGUMENT,
-        message: `Expected a finite numeric literal for @${tagName}, got ${text} (overflows to Infinity).`,
+        code: TAG_ARGUMENT_DIAGNOSTIC_CODES.INVALID_NUMERIC_VALUE,
+        message: `"@${tagName}" expects a finite number, but received "${text}".`,
       },
     };
   }
@@ -517,7 +550,12 @@ export function parseTagArgument(
  * consumer that guards the {@link parseTagArgument} call with an
  * `isBuiltinConstraintName` or `getTagDefinition` check.
  */
-export type MappedTypedParserCode = "MISSING_TAG_ARGUMENT" | "INVALID_TAG_ARGUMENT";
+export type MappedTypedParserCode =
+  | "MISSING_TAG_ARGUMENT"
+  | "INVALID_TAG_ARGUMENT"
+  | "INVALID_NUMERIC_VALUE"
+  | "INVALID_NON_NEGATIVE_INTEGER"
+  | "INVALID_REGEX_PATTERN";
 
 /**
  * Maps a {@link TagArgumentDiagnosticCode} from {@link parseTagArgument} to the
@@ -541,6 +579,14 @@ export function mapTypedParserDiagnosticCode(
       return "MISSING_TAG_ARGUMENT";
     case "INVALID_TAG_ARGUMENT":
       return "INVALID_TAG_ARGUMENT";
+    // Value-parsing codes (002 §6) pass through unchanged so machine consumers
+    // see the specific failure class, not a generic INVALID_TAG_ARGUMENT.
+    case "INVALID_NUMERIC_VALUE":
+      return "INVALID_NUMERIC_VALUE";
+    case "INVALID_NON_NEGATIVE_INTEGER":
+      return "INVALID_NON_NEGATIVE_INTEGER";
+    case "INVALID_REGEX_PATTERN":
+      return "INVALID_REGEX_PATTERN";
     case "UNKNOWN_TAG":
       // Structurally unreachable: callers must guard with isBuiltinConstraintName /
       // getTagDefinition before invoking parseTagArgument. If this fires, it's a bug.

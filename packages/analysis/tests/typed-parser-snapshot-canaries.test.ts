@@ -62,20 +62,18 @@ function snapshotDiagnosticsFor(
 // =============================================================================
 
 describe("@minimum typed-parser Role-C canaries (snapshot consumer)", () => {
-  it('emits INVALID_TAG_ARGUMENT for a quoted-string argument (@minimum "hello" on number)', () => {
-    // parseTagArgument("minimum", '"hello"', "snapshot") → INVALID_TAG_ARGUMENT
-    // (typed parser rejects non-numeric argument for @minimum).
-    // Before Phase 3 this triggered TYPE_MISMATCH from the synthetic checker.
-    // After Phase 3 the typed parser intercepts it at Role C.
+  it('emits INVALID_NUMERIC_VALUE for a quoted-string argument (@minimum "hello" on number)', () => {
+    // parseTagArgument("minimum", '"hello"', "snapshot") → INVALID_NUMERIC_VALUE
+    // (typed parser rejects a non-finite-number argument for @minimum, 002 §3.2).
     //
-    // Severity/category canary: INVALID_TAG_ARGUMENT must be severity "error" and
-    // category "value-parsing". This guards against diagnosticSeverity /
-    // diagnosticCategory fall-through regressions (same fix covers MISSING_TAG_ARGUMENT).
+    // Severity/category canary: INVALID_NUMERIC_VALUE must be severity "error" and
+    // category "value-parsing" (002 §6). This guards against diagnosticSeverity /
+    // diagnosticCategory fall-through regressions.
     const diagnostics = snapshotDiagnosticsFor("minimum", '"hello"', "number", "string-arg");
-    const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const invalidArgDiags = diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE");
     expect(
       invalidArgDiags,
-      "Expected exactly one INVALID_TAG_ARGUMENT for string-literal argument from typed parser"
+      "Expected exactly one INVALID_NUMERIC_VALUE for string-literal argument from typed parser"
     ).toHaveLength(1);
     expect(invalidArgDiags[0]?.severity).toBe("error");
     expect(invalidArgDiags[0]?.category).toBe("value-parsing");
@@ -86,32 +84,29 @@ describe("@minimum typed-parser Role-C canaries (snapshot consumer)", () => {
     ).toBe(false);
   });
 
-  it("emits INVALID_TAG_ARGUMENT for non-decimal argument (hex literal 0x10)", () => {
-    // parseTagArgument("minimum", "0x10", "snapshot") → INVALID_TAG_ARGUMENT
-    // (DECIMAL_PATTERN rejects hex forms). Before Phase 3 the snapshot path
-    // accepted 0x10 silently or produced TYPE_MISMATCH. Phase 3 rejects at Role C.
+  it("emits INVALID_NUMERIC_VALUE for non-decimal argument (hex literal 0x10)", () => {
+    // parseTagArgument("minimum", "0x10", "snapshot") → INVALID_NUMERIC_VALUE
+    // (DECIMAL_PATTERN rejects hex forms). The IR path and diagnostic path now
+    // agree: 0x10 produces no constraint node and a diagnostic (issue #513).
     const diagnostics = snapshotDiagnosticsFor("minimum", "0x10", "number", "hex-arg");
-    const diagnostic = diagnostics.find((d) => d.code === "INVALID_TAG_ARGUMENT");
+    const diagnostic = diagnostics.find((d) => d.code === "INVALID_NUMERIC_VALUE");
     expect(
       diagnostic,
-      "Expected INVALID_TAG_ARGUMENT for hex literal from typed parser"
+      "Expected INVALID_NUMERIC_VALUE for hex literal from typed parser"
     ).toBeDefined();
   });
 
-  it("accepts @minimum Infinity on a number field — no diagnostic (convergence pin)", () => {
-    // parseTagArgument("minimum", "Infinity", "snapshot") → ok: true, number value
-    // The snapshot path passes Infinity as an identifier; the synthetic checker
-    // sees tag_minimum(ctx, Infinity) → number → no error.
-    // This pin guards the Phase 2 Infinity normalization for the snapshot path.
+  it("rejects @minimum Infinity on a number field — INVALID_NUMERIC_VALUE (issue #513)", () => {
+    // Regression: `@minimum Infinity` used to pass through with no diagnostic, so the
+    // snapshot carried a non-finite fact that failed isFiniteNumber after a JSON
+    // round-trip — discarding the whole file snapshot. It is now a parse error.
     const diagnostics = snapshotDiagnosticsFor("minimum", "Infinity", "number", "infinity");
-    expect(diagnostics).toEqual([]);
+    expect(diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 
-  it("accepts @minimum NaN on a number field — no diagnostic (convergence pin)", () => {
-    // parseTagArgument("minimum", "NaN", "snapshot") → ok: true, number value
-    // Same mechanism as Infinity above — NaN passes as an identifier.
+  it("rejects @minimum NaN on a number field — INVALID_NUMERIC_VALUE (issue #513)", () => {
     const diagnostics = snapshotDiagnosticsFor("minimum", "NaN", "number", "nan");
-    expect(diagnostics).toEqual([]);
+    expect(diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 });
 

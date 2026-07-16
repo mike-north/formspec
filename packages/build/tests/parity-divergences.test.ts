@@ -235,47 +235,22 @@ describe("normalized: @const not-json (Phase 5B — both consumers emit TYPE_MIS
 });
 
 // =============================================================================
-// Divergence case 2: @minimum Infinity
+// Parity case 2: @minimum Infinity — both consumers reject identically (issue #513)
 //
-// PHASE 2 UPDATE — divergence NORMALIZED:
-//
-// Before Phase 2 (build path, renderSyntheticArgumentExpression, valueKind="number"):
-//   Number.isFinite(Infinity) = false → JSON.stringify("Infinity") = '"Infinity"' (a string).
-//   checkSyntheticTagApplication sees tag_minimum(ctx, "Infinity").
-//   tag_minimum expects number; string is not assignable to number → TYPE_MISMATCH.
-//
-// After Phase 2 (build path):
-//   parseTagArgument("minimum", "Infinity", "build") → ok: true, { kind: "number", value: Infinity }
-//   renderSyntheticArgumentExpression now passes "Infinity" through as an identifier
-//   (not a quoted string), aligning with the snapshot path.
-//   checkSyntheticTagApplication sees tag_minimum(ctx, Infinity).
-//   Infinity is typed as number → no diagnostic.
-//
-// Snapshot path (getArgumentExpression, unchanged):
-//   number-label branch → returns "Infinity" unchanged (passed as identifier).
-//   Synthetic call: tag_minimum(ctx, Infinity). Infinity is typed as number → no diagnostic.
-//
-// NORMALIZED (refactor plan §3, Phase 2): both consumers now accept Infinity.
-// The §3 catalogue entry is resolved. The §4 Phase 2 work (typed-parser wiring +
-// renderSyntheticArgumentExpression fix) aligned the build path with snapshot.
+// `@minimum Infinity` used to pass through both consumers with NO diagnostic,
+// producing `minimum: Infinity` → JSON.stringify → `null` → a schema invalid
+// against the JSON Schema meta-schema. It is now an INVALID_NUMERIC_VALUE parse
+// error on both consumers (002 §3.2). Parity is preserved — the point of the
+// consolidation is that the IR path and diagnostic path agree everywhere.
 // =============================================================================
 
-describe("normalized: @minimum Infinity (both consumers accept, Phase 2)", () => {
-  it("BUILD consumer: no diagnostic (Infinity passed as identifier after Phase 2 fix)", () => {
-    // NORMALIZED (refactor plan §3): build now produces NO diagnostic here.
-    // Phase 2 changes:
-    //   1. parseTagArgument("minimum", "Infinity", "build") → ok: true (typed parser accepts)
-    //   2. renderSyntheticArgumentExpression now passes "Infinity" as-is (not quoted)
-    //   3. checkSyntheticTagApplication sees tag_minimum(ctx, Infinity) → number → no error
+describe("parity: @minimum Infinity (both consumers reject, issue #513)", () => {
+  it("BUILD consumer: rejects with INVALID_NUMERIC_VALUE", () => {
     const result = runBuildConsumer("minimum", "Infinity");
-    expect(result.diagnostics).toEqual([]);
+    expect(result.diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 
-  it("SNAPSHOT consumer: no diagnostic (Infinity passed as identifier, typed as number)", () => {
-    // UNCHANGED (refactor plan §3): snapshot produces NO diagnostic here.
-    // getArgumentExpression: number-label branch → returns "Infinity" unchanged.
-    // In the synthetic program, Infinity is a well-known global of type `number`,
-    // so tag_minimum(ctx, Infinity) type-checks correctly.
+  it("SNAPSHOT consumer: rejects with INVALID_NUMERIC_VALUE", () => {
     const source = `
       class Form {
         /** @minimum Infinity */
@@ -283,51 +258,24 @@ describe("normalized: @minimum Infinity (both consumers accept, Phase 2)", () =>
       }
     `;
     const snapshot = runSnapshotConsumer(source);
-    expect(snapshot.diagnostics).toEqual([]);
+    expect(snapshot.diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 });
 
 // =============================================================================
-// Divergence case 3: @minimum NaN
+// Parity case 3: @minimum NaN — both consumers reject identically (issue #513)
 //
-// PHASE 2 UPDATE — divergence NORMALIZED:
-//
-// Before Phase 2 (build path, renderSyntheticArgumentExpression, valueKind="number"):
-//   Number.isFinite(NaN) = false → JSON.stringify("NaN") = '"NaN"' (a string).
-//   checkSyntheticTagApplication sees tag_minimum(ctx, "NaN").
-//   tag_minimum expects number; string is not assignable to number → TYPE_MISMATCH.
-//
-// After Phase 2 (build path):
-//   parseTagArgument("minimum", "NaN", "build") → ok: true, { kind: "number", value: NaN }
-//   renderSyntheticArgumentExpression now passes "NaN" through as an identifier
-//   (not a quoted string), aligning with the snapshot path.
-//   checkSyntheticTagApplication sees tag_minimum(ctx, NaN).
-//   NaN is typed as number → no diagnostic.
-//
-// Snapshot path (getArgumentExpression, unchanged):
-//   number-label branch → returns "NaN" unchanged (passed as identifier).
-//   Synthetic call: tag_minimum(ctx, NaN). NaN is typed as number → no diagnostic.
-//
-// NORMALIZED (refactor plan §3, Phase 2): both consumers now accept NaN.
-// The §3 catalogue entry is resolved. Same mechanism as the Infinity case above.
+// Same mechanism as the Infinity case above: NaN is non-finite, so both
+// consumers now emit INVALID_NUMERIC_VALUE instead of silently accepting it.
 // =============================================================================
 
-describe("normalized: @minimum NaN (both consumers accept, Phase 2)", () => {
-  it("BUILD consumer: no diagnostic (NaN passed as identifier after Phase 2 fix)", () => {
-    // NORMALIZED (refactor plan §3): build now produces NO diagnostic here.
-    // Phase 2 changes:
-    //   1. parseTagArgument("minimum", "NaN", "build") → ok: true (typed parser accepts)
-    //   2. renderSyntheticArgumentExpression now passes "NaN" as-is (not quoted)
-    //   3. checkSyntheticTagApplication sees tag_minimum(ctx, NaN) → number → no error
+describe("parity: @minimum NaN (both consumers reject, issue #513)", () => {
+  it("BUILD consumer: rejects with INVALID_NUMERIC_VALUE", () => {
     const result = runBuildConsumer("minimum", "NaN");
-    expect(result.diagnostics).toEqual([]);
+    expect(result.diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 
-  it("SNAPSHOT consumer: no diagnostic (NaN passed as identifier, typed as number)", () => {
-    // UNCHANGED (refactor plan §3): snapshot produces NO diagnostic here.
-    // getArgumentExpression: number-label branch → returns "NaN" unchanged.
-    // In the synthetic program, NaN is a well-known global of type `number`,
-    // so tag_minimum(ctx, NaN) type-checks correctly.
+  it("SNAPSHOT consumer: rejects with INVALID_NUMERIC_VALUE", () => {
     const source = `
       class Form {
         /** @minimum NaN */
@@ -335,6 +283,6 @@ describe("normalized: @minimum NaN (both consumers accept, Phase 2)", () => {
       }
     `;
     const snapshot = runSnapshotConsumer(source);
-    expect(snapshot.diagnostics).toEqual([]);
+    expect(snapshot.diagnostics.filter((d) => d.code === "INVALID_NUMERIC_VALUE")).toHaveLength(1);
   });
 });

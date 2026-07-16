@@ -5,6 +5,8 @@
 
 **Non-goal (explicit):** this refactor preserves current diagnostic semantics bit-for-bit _for every input that both consumers currently handle identically_. Inputs where build and snapshot already diverge today (see §3 table) stay divergent through the refactor — they are addressed in a separate, named "normalization PR" that lands after the refactor completes. This is the only way to keep the non-goal honest.
 
+> **Follow-up landed — constraint-value validation (issue #513).** The deferred value-range/format validation this plan intentionally punted on (the `@pattern` "do not run `new RegExp`" note in the tag-coverage table, the `Infinity`/`NaN` tie-break in §6 risk 9, and the `@pattern` regex-tightening in §6 risk 2) is now implemented. `parseConstraintTagValue` and `parseTagArgument` share one validator, so the IR and diagnostic paths agree. Non-finite numerics (`Infinity`, `1e999`, `NaN`), non-decimal forms (`0x10`), negative/fractional lengths (`@minLength -5`, `@maxItems 2.5`), and uncompilable patterns (`@pattern (`) each produce **no constraint node** plus a spec-normative diagnostic (`INVALID_NUMERIC_VALUE` / `INVALID_NON_NEGATIVE_INTEGER` / `INVALID_REGEX_PATTERN`, per 002 §6). The `@minimum Infinity` / `@minimum NaN` divergence entries below are therefore obsolete: both consumers now **reject** these inputs identically rather than passing them through. `@const` raw-string fallback (#537) and `@defaultValue` type-directed parsing (#517) remain out of scope.
+
 ---
 
 ## 1. Current state (what we're replacing)

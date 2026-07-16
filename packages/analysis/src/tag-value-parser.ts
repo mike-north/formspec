@@ -17,6 +17,7 @@ import {
 } from "@formspec/core/internals";
 import { parseTagSyntax } from "./comment-syntax.js";
 import { getJsonLikeBalanceStatus } from "./json-like-balance.js";
+import { parseTagArgument } from "./tag-argument-parser.js";
 
 const NUMERIC_CONSTRAINT_MAP: Record<string, NumericConstraintNode["constraintKind"]> = {
   minimum: "minimum",
@@ -112,10 +113,17 @@ export function parseConstraintTagValue(
   }
 
   if (expectedType === "number") {
-    const value = Number(effectiveText);
-    if (Number.isNaN(value)) {
+    // Consolidation (issue #513): route the IR-producing path through the shared
+    // typed-argument validator so the constraint node and the surfaced diagnostic
+    // agree on every input. This rejects non-finite numerics (`Infinity`, `1e999`),
+    // non-decimal forms (`0x10` — previously silently became 16), and — for the
+    // length family — negative/fractional values. A rejected argument produces no
+    // node, so the invalid keyword never reaches the generated schema (002 §3.2, PP6).
+    const parsed = parseTagArgument(tagName, effectiveText, "build");
+    if (!parsed.ok || parsed.value.kind !== "number") {
       return null;
     }
+    const value = parsed.value.value;
 
     const numericKind = NUMERIC_CONSTRAINT_MAP[tagName as keyof typeof NUMERIC_CONSTRAINT_MAP];
     if (numericKind !== undefined) {
@@ -220,10 +228,18 @@ export function parseConstraintTagValue(
     };
   }
 
+  // Pattern (string family): route through the shared validator so an
+  // uncompilable regex (e.g. `(`) produces no constraint node — the invalid
+  // `pattern` keyword must never reach the schema, where it would crash any
+  // validator at schema-compile time (002 §3.2, issue #513).
+  const parsedPattern = parseTagArgument(tagName, effectiveText, "build");
+  if (!parsedPattern.ok || parsedPattern.value.kind !== "string") {
+    return null;
+  }
   return {
     kind: "constraint",
     constraintKind: "pattern",
-    pattern: effectiveText,
+    pattern: parsedPattern.value.value,
     ...(path !== undefined && { path }),
     provenance,
   };
