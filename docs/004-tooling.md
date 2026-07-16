@@ -622,7 +622,9 @@ This split avoids maintaining a second long-lived TypeScript project inside the 
 1. matching the file to the deepest editor workspace root that contains it, then
 2. probing each directory from the file's own directory upward to (and including) that workspace root, using the first valid `manifest.json` it finds.
 
-Because the plugin's project root is always at or below the editor workspace root that contains the file, this bounded upward walk finds the manifest whether the plugin advertised it at the repository root or at a nested package directory. The walk stops at the workspace root, so discovery never reads a manifest belonging to a project outside the editor's workspace. The manifest's `endpoint.address` is used verbatim to open the IPC channel, so a manifest found in a nested directory still connects to the correct socket. This contract is LSP-side only: the plugin's manifest location and the manifest schema are unchanged.
+This bounded upward walk finds the manifest whenever the plugin's project root is an ancestor of the file — the conventional layout, where each package's `tsconfig.json` sits at that package's root, as does a single-project repository's. The walk stops at the workspace root, so discovery never reads a manifest belonging to a project outside the editor's workspace. The manifest's `endpoint.address` is used verbatim to open the IPC channel, so a manifest found in a nested directory still connects to the correct socket. This contract is LSP-side only: the plugin's manifest location and the manifest schema are unchanged.
+
+**Known limitation.** `tsserver` reports the directory of the `tsconfig.json` that created the project, which is not necessarily an ancestor of every file the project includes. In a solution-style or centralized-config layout (e.g. `build-config/tsconfig.foo.json` including `../packages/foo/src/**/*`), the manifest is written under the config directory, which the file-to-workspace-root walk never visits — discovery finds no manifest and the language server degrades to plugin-free behavior for those files.
 
 ```json
 // tsconfig.json
