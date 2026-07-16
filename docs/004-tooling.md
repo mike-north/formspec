@@ -617,6 +617,13 @@ The two components communicate on the workspace host via:
 
 This split avoids maintaining a second long-lived TypeScript project inside the LSP, while still allowing full LSP capabilities in editors and remote/containerized environments.
 
+**Manifest discovery contract.** The plugin writes its manifest under the directory `tsserver` reports as the enclosing project root — `info.project.getCurrentDirectory()` (see §2.7.3). In a monorepo opened at the repository root, a file in `packages/foo` (which owns its own `tsconfig.json`) belongs to a project rooted at `packages/foo`, so the manifest is written to `packages/foo/.cache/formspec/tooling/manifest.json`, **not** the repository root. The editor, however, only advertises its `workspaceFolders`/`rootUri` — typically the repository root — to the language server. To reconcile the two, the language server locates the manifest for a file by:
+
+1. matching the file to the deepest editor workspace root that contains it, then
+2. probing each directory from the file's own directory upward to (and including) that workspace root, using the first valid `manifest.json` it finds.
+
+Because the plugin's project root is always at or below the editor workspace root that contains the file, this bounded upward walk finds the manifest whether the plugin advertised it at the repository root or at a nested package directory. The walk stops at the workspace root, so discovery never reads a manifest belonging to a project outside the editor's workspace. The manifest's `endpoint.address` is used verbatim to open the IPC channel, so a manifest found in a nested directory still connects to the correct socket. This contract is LSP-side only: the plugin's manifest location and the manifest schema are unchanged.
+
 ```json
 // tsconfig.json
 {

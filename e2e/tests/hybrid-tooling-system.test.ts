@@ -140,6 +140,85 @@ describe("hybrid tooling system", () => {
     expect(staleContext).toBeNull();
   });
 
+  it("discovers a nested-package manifest when the editor workspace root is the monorepo root (issue #555)", async () => {
+    // Simulate a monorepo opened at the repo root, containing a file in a
+    // nested package that owns its own tsconfig project. In a real editor,
+    // tsserver writes the plugin manifest under
+    // `info.project.getCurrentDirectory()` — the nested project directory —
+    // while the LSP only learns the repo root as a workspace folder. Discovery
+    // must reconcile the two by walking from the file up to the workspace root.
+    const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "formspec-hybrid-monorepo-"));
+    workspaces.push(repoRoot);
+
+    const packageDir = path.join(repoRoot, "packages", "foo");
+    const sourceDir = path.join(packageDir, "src");
+    await fs.mkdir(sourceDir, { recursive: true });
+
+    const source = `
+      class Cart {
+        /** @minimum :amount 0 */
+        discount!: {
+          amount: number;
+          label: string;
+        };
+      }
+    `;
+    const filePath = path.join(sourceDir, "example.ts");
+    await fs.writeFile(filePath, source, "utf8");
+
+    const program = ts.createProgram([filePath], {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+      strict: true,
+    });
+
+    // The plugin advertises under the nested project directory (packages/foo),
+    // mirroring tsserver's per-package project root — not the repo root.
+    const service = new FormSpecPluginService({
+      workspaceRoot: packageDir,
+      typescriptVersion: ts.version,
+      getProgram: () => program,
+    });
+    services.push(service);
+    await service.start();
+
+    const targetOffset = source.indexOf("amount") + 2;
+
+    // The editor only knows the repo root as a workspace folder. Discovery
+    // must walk from the nested file up to the repo root to find the manifest.
+    const semanticContext = await getPluginCompletionContextForDocument(
+      [repoRoot],
+      filePath,
+      source,
+      targetOffset
+    );
+    expect(semanticContext?.kind).toBe("target");
+    if (semanticContext?.kind !== "target") {
+      throw new Error(
+        "Expected the LSP to discover the nested-package manifest for a target position"
+      );
+    }
+    expect(semanticContext.semantic.targetCompletions).toContain("amount");
+    expect(semanticContext.semantic.targetCompletions).not.toContain("label");
+
+    const completionItems = getCompletionItemsAtOffset(
+      source,
+      targetOffset,
+      undefined,
+      semanticContext
+    );
+    expect(completionItems.map((item) => item.label)).toEqual(["amount"]);
+
+    const semanticHover = await getPluginHoverForDocument(
+      [repoRoot],
+      filePath,
+      source,
+      targetOffset
+    );
+    expect(semanticHover?.kind).toBe("target");
+    expect(semanticHover?.markdown).toContain("**Target for @minimum**");
+  });
+
   it("serves diagnostics over IPC for invalid path-targeted constraints", async () => {
     const source = `
       class Cart {

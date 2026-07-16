@@ -334,17 +334,24 @@ export function createLanguageServiceProxy(
     };
   };
 
-  const getSemanticDiagnostics = wrapWithSnapshotRefresh((fileName) =>
-    languageService.getSemanticDiagnostics(fileName)
+  // Each wrapper forwards the full argument list verbatim so no host-provided
+  // parameter is silently dropped. Notably, `getCompletionsAtPosition` has a
+  // fourth `formattingSettings` argument (TS 6.x) that governs insert-text
+  // formatting; forwarding `(...args)` keeps it — and any future parameters —
+  // intact rather than pinning a fixed arity.
+  const getSemanticDiagnostics = wrapWithSnapshotRefresh(
+    (...args: Parameters<ts.LanguageService["getSemanticDiagnostics"]>) =>
+      languageService.getSemanticDiagnostics(...args)
   );
 
   const getCompletionsAtPosition = wrapWithSnapshotRefresh(
-    (fileName: string, position: number, options: ts.GetCompletionsAtPositionOptions | undefined) =>
-      languageService.getCompletionsAtPosition(fileName, position, options)
+    (...args: Parameters<ts.LanguageService["getCompletionsAtPosition"]>) =>
+      languageService.getCompletionsAtPosition(...args)
   );
 
-  const getQuickInfoAtPosition = wrapWithSnapshotRefresh((fileName, position: number) =>
-    languageService.getQuickInfoAtPosition(fileName, position)
+  const getQuickInfoAtPosition = wrapWithSnapshotRefresh(
+    (...args: Parameters<ts.LanguageService["getQuickInfoAtPosition"]>) =>
+      languageService.getQuickInfoAtPosition(...args)
   );
 
   return new Proxy(languageService, {
