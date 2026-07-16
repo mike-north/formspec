@@ -221,7 +221,7 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
     (typeof config.vendorPrefix !== "string" || !VENDOR_PREFIX_PATTERN.test(config.vendorPrefix))
   ) {
     throw new Error(
-      `Invalid config at ${filePath}: "vendorPrefix" must match /^x-[a-z0-9]+(-[a-z0-9]+)*$/, got ${JSON.stringify(config.vendorPrefix)}`
+      `Invalid config at ${filePath}: "vendorPrefix" must match /${VENDOR_PREFIX_PATTERN.source}/, got ${JSON.stringify(config.vendorPrefix)}`
     );
   }
   validateEnumSerializationValue(config.enumSerialization, "enumSerialization", filePath);
