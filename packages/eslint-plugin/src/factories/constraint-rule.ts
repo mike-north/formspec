@@ -23,10 +23,12 @@
  */
 
 import { ESLintUtils, AST_NODE_TYPES } from "@typescript-eslint/utils";
+import type { TSESTree } from "@typescript-eslint/utils";
 import type { RuleModule } from "@typescript-eslint/utils/ts-eslint";
 import { getArbitraryJSDocTag } from "../utils/jsdoc-utils.js";
 import { getPropertyType, getFieldTypeCategory } from "../utils/type-utils.js";
 import type { FieldTypeCategory } from "../utils/type-utils.js";
+import { createDeclarationVisitor } from "../utils/rule-helpers.js";
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://formspec.dev/eslint-plugin/rules/${name}`
@@ -125,54 +127,69 @@ export function createConstraintRule(
       const services = ESLintUtils.getParserServices(context);
       const checker = services.program.getTypeChecker();
 
-      return {
-        PropertyDefinition(node) {
-          const matching = getArbitraryJSDocTag(tagName, node, context.sourceCode);
-          if (matching.length === 0) return;
+      function checkMember(node: TSESTree.PropertyDefinition | TSESTree.TSPropertySignature) {
+        const matching = getArbitraryJSDocTag(tagName, node, context.sourceCode);
+        if (matching.length === 0) return;
 
-          // Type check: only run when applicableTypes is non-empty
-          if (applicableTypes.length > 0) {
-            const type = getPropertyType(node, services);
-            if (type) {
-              const fieldTypeCategory = getFieldTypeCategory(type, checker);
+        // Type check: only run when applicableTypes is non-empty
+        if (applicableTypes.length > 0) {
+          const type = getPropertyType(node, services);
+          if (type) {
+            const fieldTypeCategory = getFieldTypeCategory(type, checker);
 
-              if (!applicableTypes.includes(fieldTypeCategory)) {
-                const actualType = checker.typeToString(type);
-                const fieldName =
-                  node.key.type === AST_NODE_TYPES.Identifier ? node.key.name : "<computed>";
+            if (!applicableTypes.includes(fieldTypeCategory)) {
+              const actualType = checker.typeToString(type);
+              const fieldName =
+                node.key.type === AST_NODE_TYPES.Identifier ? node.key.name : "<computed>";
 
-                for (const tag of matching) {
-                  context.report({
-                    loc: tag.comment.loc,
-                    messageId: "typeMismatch",
-                    data: {
-                      tagName,
-                      actualType,
-                      fieldName,
-                    },
-                  });
-                }
-                // Skip value validation when the type is already wrong
-                return;
-              }
-            }
-          }
-
-          // Value validation
-          if (validateValue) {
-            for (const tag of matching) {
-              const error = validateValue(tag.value);
-              if (error !== null) {
+              for (const tag of matching) {
                 context.report({
                   loc: tag.comment.loc,
-                  messageId: "invalidValue",
-                  data: { error },
+                  messageId: "typeMismatch",
+                  data: {
+                    tagName,
+                    actualType,
+                    fieldName,
+                  },
                 });
               }
+              // Skip value validation when the type is already wrong
+              return;
             }
           }
-        },
-      };
+        }
+
+        // Value validation
+        if (validateValue) {
+          for (const tag of matching) {
+            const error = validateValue(tag.value);
+            if (error !== null) {
+              context.report({
+                loc: tag.comment.loc,
+                messageId: "invalidValue",
+                data: { error },
+              });
+            }
+          }
+        }
+      }
+
+      // Reuse the shared declaration visitor so this factory tracks the same
+      // declaration coverage as built-in rules (see `createDeclarationVisitor`).
+      // Only class properties and property signatures are fields a constraint
+      // tag can attach to; container declarations (ClassDeclaration,
+      // TSInterfaceDeclaration, TSTypeAliasDeclaration) are visited by the
+      // shared helper but have no field type to check here, so they're
+      // skipped. Property signatures cover both interface members and
+      // type-alias object-literal members — both use the same AST node type.
+      return createDeclarationVisitor((node) => {
+        if (
+          node.type === AST_NODE_TYPES.PropertyDefinition ||
+          node.type === AST_NODE_TYPES.TSPropertySignature
+        ) {
+          checkMember(node);
+        }
+      });
     },
   });
 }
