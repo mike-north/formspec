@@ -17,8 +17,11 @@ pnpm add @formspec/language-server
 
 - completion items for FormSpec tags
 - hover documentation for recognized tags
-- go-to-definition support for known tags
 - optional plugin-backed diagnostics publishing
+
+Go-to-definition for `{@link}` references (per 004 §5.4) is handled by the
+TypeScript language service itself; this server does not advertise
+`definitionProvider`.
 
 Diagnostics are off by default. When enabled, the packaged server consumes
 canonical FormSpec diagnostics from `@formspec/ts-plugin` and converts them to
@@ -30,7 +33,6 @@ call directly.
 ```ts
 import {
   createServer,
-  getDefinition,
   getCompletionItems,
   getHoverForTag,
   getPluginDiagnosticsForDocument,
@@ -55,7 +57,6 @@ For full white-label control, bypass `createServer()` and use:
 
 - `getPluginDiagnosticsForDocument(...)`
 - `toLspDiagnostics(...)`
-- `getDefinition(...)`
 
 or map canonical FormSpec diagnostics to your own editor/UI model directly.
 

@@ -601,7 +601,7 @@ The extension rule only needs to express logic that is genuinely specific to its
 
 ## 5. Language Server Responsibilities
 
-Per A7, the language server owns the authoring experience: completions, hover, go-to-definition, semantic tokens, and signature help. The packaged server is a reference implementation over the same public helpers that downstream consumers can call directly. Diagnostics are off by default in the packaged server, but it may optionally publish plugin-derived diagnostics using those same helpers.
+Per A7, the language server owns the authoring experience: completions, hover, semantic tokens, and signature help. Go-to-definition for `{@link}` references is delivered by the TypeScript language service itself, so the packaged server does not advertise it (§5.4). The packaged server is a reference implementation over the same public helpers that downstream consumers can call directly. Diagnostics are off by default in the packaged server, but it may optionally publish plugin-derived diagnostics using those same helpers.
 
 FormSpec uses a hybrid architecture:
 
@@ -683,11 +683,13 @@ For `@discriminator`, hover should also explain the declaration-level contract: 
 
 ### 5.4 Go-to-Definition
 
-The language server provides go-to-definition for two FormSpec-specific constructs:
+`@formspec/language-server` does not implement `textDocument/definition` — it does not advertise `definitionProvider` and registers no handler for it (see Appendix B). This section documents why go-to-definition is out of scope for the two FormSpec-specific constructs it would otherwise apply to:
 
 **`{@link TypeRef}` in `@showWhen`/`@hideWhen`/`@enableWhen`/`@disableWhen`:**
 
 Per 002 §3.2, conditional tags use `{@link}` to reference a condition type. The TSDoc `{@link}` syntax already has IDE support for navigating to the referenced type — the language server ensures that FormSpec-specific condition types participate in this navigation correctly. No additional implementation is required for this case; it is handled by the TypeScript language service's existing `{@link}` support.
+
+A standalone-LSP host with no co-resident TypeScript service simply has no `{@link}` navigation for this case, the same as it would for any other TypeScript symbol.
 
 **Tag name references in configuration policy:**
 
@@ -981,19 +983,19 @@ See 002 §6 for the individual diagnostic code definitions.
 
 ## Appendix B: ESLint vs. Language Server Responsibility Matrix
 
-| Capability                                | ESLint        | Language Server           | Notes                                                 |
-| ----------------------------------------- | ------------- | ------------------------- | ----------------------------------------------------- |
-| Parse error detection                     | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Type applicability checking               | Yes           | No                        | ESLint rule `tag-type-check`                          |
-| Contradiction detection                   | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint     |
-| Auto-fix application                      | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both              |
-| Tag name completions                      | No            | Yes                       | LS-only authoring experience (A7)                     |
-| Path/member-target completions            | No            | Yes                       | LS-only authoring experience (A7)                     |
-| Direct-property discriminator completions | No            | Yes                       | LS-only authoring experience for `@discriminator`     |
-| Local type-parameter completions          | No            | Yes                       | LS-only argument help for declaration-level tags      |
-| Hover (tag docs, provenance)              | No            | Yes                       | Requires cursor position                              |
-| Go-to-definition (`{@link}`)              | No            | Yes                       | TypeScript LS handles; FormSpec ensures participation |
-| Signature help                            | No            | Yes                       | Requires cursor position and incremental state        |
-| Bulk fix (fix-all)                        | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                    |
+| Capability                                | ESLint        | Language Server           | Notes                                                                                                                             |
+| ----------------------------------------- | ------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Parse error detection                     | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint                                                                                 |
+| Type applicability checking               | Yes           | No                        | ESLint rule `tag-type-check`                                                                                                      |
+| Contradiction detection                   | Yes           | No                        | ESLint only; surfaced in editor via vscode-eslint                                                                                 |
+| Auto-fix application                      | Yes (`--fix`) | Yes (code action)         | Same `DiagnosticFix` payload drives both                                                                                          |
+| Tag name completions                      | No            | Yes                       | LS-only authoring experience (A7)                                                                                                 |
+| Path/member-target completions            | No            | Yes                       | LS-only authoring experience (A7)                                                                                                 |
+| Direct-property discriminator completions | No            | Yes                       | LS-only authoring experience for `@discriminator`                                                                                 |
+| Local type-parameter completions          | No            | Yes                       | LS-only argument help for declaration-level tags                                                                                  |
+| Hover (tag docs, provenance)              | No            | Yes                       | Requires cursor position                                                                                                          |
+| Go-to-definition (`{@link}`)              | No            | No                        | Handled by the TypeScript language service itself; `@formspec/language-server` does not advertise `definitionProvider` (004 §5.4) |
+| Signature help                            | No            | Yes                       | Requires cursor position and incremental state                                                                                    |
+| Bulk fix (fix-all)                        | Yes           | Yes (delegates to ESLint) | LS `source.fixAll.formspec` action                                                                                                |
 
 The asymmetry is intentional (A7): if a capability requires cursor position, incremental typing state, or live feedback during composition, it belongs in the language server. Everything else belongs in ESLint where it can run in CI without an editor.
