@@ -368,6 +368,35 @@ function makeDiagnostic(
   };
 }
 
+/**
+ * Diagnostic code emitted when `@defaultValue` has no valid interpretation
+ * under the resolved target type (spec 002 §3.2). Kept distinct from the
+ * placement/targeting diagnostic codes above since it's a value/type-fit
+ * problem, not a placement or path-targeting one.
+ */
+const DEFAULT_VALUE_TYPE_MISMATCH_CODE = "DEFAULT_VALUE_TYPE_MISMATCH";
+
+/**
+ * Parses a `@defaultValue` tag payload, type-directed against
+ * `options?.fieldType` (spec 002 §3.2, GitHub issue #517), and pushes
+ * either the resulting annotation or a diagnostic — never both, never a
+ * `default` that doesn't match the field's own type.
+ */
+function pushDefaultValueAnnotation(
+  text: string,
+  provenance: Provenance,
+  options: ParseTSDocOptions | undefined,
+  annotations: AnnotationNode[],
+  diagnostics: ConstraintSemanticDiagnostic[]
+): void {
+  const result = parseDefaultValueTagValue(text, provenance, options?.fieldType);
+  if (result.kind === "value") {
+    annotations.push(result.annotation);
+    return;
+  }
+  diagnostics.push(makeDiagnostic(DEFAULT_VALUE_TYPE_MISMATCH_CODE, result.message, provenance));
+}
+
 function placementLabel(
   placement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>>
 ): string {
@@ -968,7 +997,7 @@ export function parseTSDocTags(
 
           const provenance = provenanceForParsedTag(tag, sourceFile, file);
           if (tagName === "defaultValue") {
-            annotations.push(parseDefaultValueTagValue(text, provenance));
+            pushDefaultValueAnnotation(text, provenance, options, annotations, diagnostics);
             continue;
           }
           if (tagName === "example") {
@@ -1073,7 +1102,7 @@ export function parseTSDocTags(
 
       const provenance = fallback.provenance;
       if (tagName === "defaultValue") {
-        annotations.push(parseDefaultValueTagValue(text, provenance));
+        pushDefaultValueAnnotation(text, provenance, options, annotations, diagnostics);
         continue;
       }
       if (tagName === "example") {

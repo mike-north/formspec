@@ -110,6 +110,124 @@ describe("generateSchemas", () => {
     expect(result.jsonSchema.properties?.["nickname"]).toMatchObject({ default: null });
   });
 
+  // GitHub issue #517 — @defaultValue parsing must be type-directed against
+  // the field's resolved target type (spec 002 §3.2), not parsed independently
+  // of it. See also packages/analysis/tests/tag-value-parser.test.ts for the
+  // parser-layer (tag text x target type) table-driven coverage.
+  describe("@defaultValue is type-directed against the resolved target type (issue #517)", () => {
+    it("coerces unquoted numeric/boolean literals to the field's own type (AC1, AC3)", () => {
+      const result = generateSchemasOrThrow({
+        filePath: classSchemaRegressionsPath,
+        typeName: "TypeDirectedDefaultsForm",
+      });
+
+      // AC1: `@defaultValue 6` must match the emitted `type` keyword — a
+      // `string` field never gets a numeric `default`, and vice versa.
+      expect(result.jsonSchema.properties?.["code"]).toMatchObject({
+        type: "string",
+        default: "6",
+      });
+      expect(result.jsonSchema.properties?.["quantity"]).toMatchObject({
+        type: "number",
+        default: 6,
+      });
+
+      // AC3: same type-directed rule for boolean literals.
+      expect(result.jsonSchema.properties?.["flag"]).toMatchObject({
+        type: "boolean",
+        default: true,
+      });
+      expect(result.jsonSchema.properties?.["flagLabel"]).toMatchObject({
+        type: "string",
+        default: "true",
+      });
+    });
+
+    it("treats a quoted JSON string as an explicit string even when the target type also permits a number (AC2)", () => {
+      const result = generateSchemasOrThrow({
+        filePath: classSchemaRegressionsPath,
+        typeName: "TypeDirectedDefaultsForm",
+      });
+
+      // `@defaultValue "6"` on `string | number` — the quoting makes the
+      // string interpretation explicit, per spec 002 §3.2.
+      expect(result.jsonSchema.properties?.["codeOrQuantity"]).toMatchObject({
+        default: "6",
+      });
+
+      // Complement of AC2: the same `string | number` union, but unquoted —
+      // coerces to the permitted non-string member (number) first.
+      expect(result.jsonSchema.properties?.["numericCodeOrQuantity"]).toMatchObject({
+        default: 6,
+      });
+    });
+
+    it("emits a diagnostic instead of a silently mismatched default when no interpretation fits the target type (AC4)", () => {
+      const result = generateSchemas({
+        filePath: classSchemaRegressionsPath,
+        typeName: "MismatchedDefaultValueForm",
+        errorReporting: "diagnostics",
+      });
+
+      // "pending" has no numeric interpretation, and `number` does not
+      // accept a string fallback — this must surface as a diagnostic, not a
+      // schema with `type: "number", default: "pending"`.
+      expect(result.ok).toBe(false);
+      expect(result.jsonSchema).toBeUndefined();
+      const mismatch = result.diagnostics.find(
+        (diagnostic) => diagnostic.code === "DEFAULT_VALUE_TYPE_MISMATCH"
+      );
+      expect(mismatch).toBeDefined();
+      expect(mismatch?.message).toContain("pending");
+      expect(mismatch?.severity).toBe("error");
+    });
+
+    it("never emits a default whose JS runtime type mismatches its own declared `type` keyword (AC5, property-level assertion)", () => {
+      // Structural build-level integration assertion: for every property with
+      // an emitted `default`, the value's JS runtime type must match the
+      // property's own `type` keyword. See also
+      // e2e/tests/type-directed-default-value.test.ts, which validates the
+      // same generated schema+default pairs against `@formspec/validator`
+      // (full JSON Schema 2020-12 validation) via the real CLI pipeline.
+      const result = generateSchemasOrThrow({
+        filePath: classSchemaRegressionsPath,
+        typeName: "TypeDirectedDefaultsForm",
+      });
+
+      const properties = result.jsonSchema.properties ?? {};
+      expect(Object.keys(properties).length).toBeGreaterThan(0);
+
+      const jsonSchemaTypeToJsTypeof = (declaredType: unknown): string | undefined => {
+        if (declaredType === "integer") return "number";
+        return typeof declaredType === "string" ? declaredType : undefined;
+      };
+
+      for (const [name, subschema] of Object.entries(properties)) {
+        const propertySchema = subschema as Record<string, unknown>;
+        if (!("default" in propertySchema)) continue;
+
+        const defaultJsType = typeof propertySchema["default"];
+        const declaredType = propertySchema["type"];
+        const anyOf = propertySchema["anyOf"];
+
+        if (declaredType !== undefined) {
+          // Single-type schema: the default's JS type must match directly.
+          expect(defaultJsType, `property "${name}"`).toBe(jsonSchemaTypeToJsTypeof(declaredType));
+          continue;
+        }
+
+        // Union-typed schema (e.g. `string | number` → `anyOf`): the default
+        // must be valid against at least one branch (spec 002 §3.2 — the
+        // emitted default must validate against the field's own subschema).
+        expect(Array.isArray(anyOf), `property "${name}" has neither type nor anyOf`).toBe(true);
+        const branchTypes = (anyOf as Record<string, unknown>[]).map((branch) =>
+          jsonSchemaTypeToJsTypeof(branch["type"])
+        );
+        expect(branchTypes, `property "${name}"`).toContain(defaultJsType);
+      }
+    });
+  });
+
   it("emits format and placeholder annotations into schema outputs", () => {
     const schemaResult = generateSchemasOrThrow({
       filePath: classSchemaRegressionsPath,

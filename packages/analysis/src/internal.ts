@@ -33,6 +33,9 @@ export {
 } from "./cursor-context.js";
 export type {
   ConstraintTagParseRegistryLike,
+  DefaultValueParseMismatch,
+  DefaultValueParseResult,
+  DefaultValueParseValue,
   ParseConstraintTagValueOptions,
 } from "./tag-value-parser.js";
 export {

@@ -794,16 +794,21 @@ function buildDeclarationSummary(
         if (tag.argumentText.trim() === "") {
           break;
         }
-        const defaultValue = parseDefaultValueTagValue(
+        // No resolved field TypeNode is threaded through this snapshot path
+        // yet, so `parseDefaultValueTagValue` always takes its untyped
+        // (legacy) branch here and never returns a "mismatch" outcome — full
+        // type-directed parity for the LSP/snapshot consumer is deferred
+        // alongside the existing constraint-parity gap tracked in #396.
+        const defaultValueResult = parseDefaultValueTagValue(
           tag.argumentText,
           provenanceForTag(sourceFile, tag)
         );
-        if (defaultValue.annotationKind !== "defaultValue") {
+        if (defaultValueResult.kind !== "value") {
           break;
         }
         facts.push({
           kind: "default-value",
-          value: defaultValue.value as FormSpecSerializedJsonValue,
+          value: defaultValueResult.annotation.value as FormSpecSerializedJsonValue,
         });
         break;
       }

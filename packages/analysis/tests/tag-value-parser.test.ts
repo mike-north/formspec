@@ -3,9 +3,14 @@
  *
  * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
  */
+import type { TypeNode } from "@formspec/core/internals";
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
-import { parseConstraintTagValue, parseExampleTagValue } from "../src/internal.js";
+import {
+  parseConstraintTagValue,
+  parseDefaultValueTagValue,
+  parseExampleTagValue,
+} from "../src/internal.js";
 
 const PROVENANCE = {
   surface: "tsdoc" as const,
@@ -206,6 +211,165 @@ describe("tag-value-parser", () => {
 
     it("trims surrounding whitespace before parsing", () => {
       expect(parseExampleTagValue("   7   ", EX_PROV)).toMatchObject({ value: 7 });
+    });
+  });
+
+  // @defaultValue value parsing — spec 002 §3.2 (docs/002-tsdoc-grammar.md lines
+  // 561-588): parsing is type-directed against the resolved target type.
+  // Quoted JSON strings are always explicit strings; unquoted values first
+  // attempt a valid non-string interpretation permitted by the target type,
+  // falling back to a raw-text string only when the target type itself
+  // accepts strings, and to a diagnostic-worthy mismatch otherwise
+  // (GitHub issue #517).
+  describe("parseDefaultValueTagValue (@defaultValue, spec 002 §3.2, issue #517)", () => {
+    const DV_PROV = { ...PROVENANCE, tagName: "@defaultValue" };
+
+    const stringType: TypeNode = { kind: "primitive", primitiveKind: "string" };
+    const numberType: TypeNode = { kind: "primitive", primitiveKind: "number" };
+    const booleanType: TypeNode = { kind: "primitive", primitiveKind: "boolean" };
+    const nullType: TypeNode = { kind: "primitive", primitiveKind: "null" };
+    const stringOrNumberType: TypeNode = {
+      kind: "union",
+      members: [stringType, numberType],
+    };
+
+    describe("table-driven: (tag text x target type) pairs", () => {
+      const cases: readonly {
+        readonly description: string;
+        readonly text: string;
+        readonly targetType: TypeNode | undefined;
+        readonly expected: unknown;
+      }[] = [
+        // AC1: unquoted numeric text is type-directed by the target's kind —
+        // a string field must never receive a numeric `default`, and vice versa.
+        {
+          description: "unquoted 6 on a string field yields the string '6' (AC1)",
+          text: "6",
+          targetType: stringType,
+          expected: "6",
+        },
+        {
+          description: "unquoted 6 on a number field yields the number 6 (AC1)",
+          text: "6",
+          targetType: numberType,
+          expected: 6,
+        },
+        // AC2: an explicit quoted JSON string is always a string, even when
+        // the target type also permits a non-string interpretation.
+        {
+          description:
+            "quoted '6' on a string|number union yields the explicit string '6', not the number 6 (AC2)",
+          text: '"6"',
+          targetType: stringOrNumberType,
+          expected: "6",
+        },
+        // The complement of AC2: for the same union, an *unquoted* 6 coerces
+        // to the permitted non-string member first (spec's "coerce first" rule).
+        {
+          description: "unquoted 6 on a string|number union coerces to the number 6",
+          text: "6",
+          targetType: stringOrNumberType,
+          expected: 6,
+        },
+        // AC3: boolean literal is type-directed the same way as numbers.
+        {
+          description: "unquoted true on a boolean field yields the boolean true (AC3)",
+          text: "true",
+          targetType: booleanType,
+          expected: true,
+        },
+        {
+          description: "unquoted true on a string field yields the string 'true' (AC3)",
+          text: "true",
+          targetType: stringType,
+          expected: "true",
+        },
+        // Spec example (002 §3.2): text with no non-string interpretation on
+        // a string-permitting target falls back to the raw text as a string.
+        {
+          description:
+            "unquoted pending (not valid JSON) on a string field yields the string 'pending'",
+          text: "pending",
+          targetType: stringType,
+          expected: "pending",
+        },
+        // `null` is a distinct built-in primitive kind (PrimitiveTypeNode
+        // primitiveKind "null"), coerced the same way as number/boolean.
+        {
+          description: "unquoted null on a null-typed field yields JSON null",
+          text: "null",
+          targetType: nullType,
+          expected: null,
+        },
+        // No target type supplied (e.g. callers that don't thread a resolved
+        // TypeNode, such as the file-snapshots.ts LSP path): falls back to
+        // the pre-#517 untyped parse rather than guessing without type info.
+        {
+          description: "unquoted 6 with no target type falls back to the untyped legacy parse",
+          text: "6",
+          targetType: undefined,
+          expected: 6,
+        },
+      ];
+
+      for (const { description, text, targetType, expected } of cases) {
+        it(description, () => {
+          const result = parseDefaultValueTagValue(text, DV_PROV, targetType);
+          expect(result.kind).toBe("value");
+          if (result.kind !== "value") return;
+          expect(result.annotation).toEqual({
+            kind: "annotation",
+            annotationKind: "defaultValue",
+            value: expected,
+            provenance: DV_PROV,
+          });
+        });
+      }
+    });
+
+    describe("AC4: no valid interpretation for the target type yields a diagnostic-worthy mismatch, never a silently mismatched default", () => {
+      it("unquoted pending on a number field: the word has no numeric interpretation, and a number field does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("pending");
+        expect(result.message).toContain("number");
+      });
+
+      it("unquoted true on a number field: a boolean literal has no numeric interpretation and number does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("true", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+      });
+
+      it("quoted string on a strictly numeric field: an explicit string default against a type that never accepts strings", () => {
+        const result = parseDefaultValueTagValue('"6"', DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+      });
+    });
+
+    describe("AC5 support: the emitted default's JS runtime type always matches a kind the target type structurally permits", () => {
+      it("never returns a value whose typeof mismatches its target primitive kind", () => {
+        const pairs: readonly { readonly text: string; readonly targetType: TypeNode }[] = [
+          { text: "6", targetType: numberType },
+          { text: "true", targetType: booleanType },
+          { text: "6", targetType: stringType },
+        ];
+        const expectedJsKindByPrimitiveKind: Record<string, string> = {
+          number: "number",
+          boolean: "boolean",
+          string: "string",
+        };
+
+        for (const { text, targetType } of pairs) {
+          const result = parseDefaultValueTagValue(text, DV_PROV, targetType);
+          expect(result.kind).toBe("value");
+          if (result.kind !== "value") continue;
+          if (targetType.kind !== "primitive") continue;
+          expect(typeof result.annotation.value).toBe(
+            expectedJsKindByPrimitiveKind[targetType.primitiveKind]
+          );
+        }
+      });
     });
   });
 
