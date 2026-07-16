@@ -334,6 +334,8 @@ export function generateSchemasFromClass(
     throw new Error(`Class "${options.className}" not found in ${options.filePath}`);
   }
 
+  seedSymbolMapFromConfig(ctx, options.configPath, resolved.extensionRegistry);
+
   const analysis = analyzeClassToIR(
     classDecl,
     ctx.checker,
@@ -643,19 +645,8 @@ export function generateSchemasBatch(
     // Rebuild the symbol map whenever the program changes. ts.Symbol identity is
     // program-specific — a map seeded from one program cannot match symbols from
     // a different program, so we must re-walk the config AST for each new program.
-    if (
-      options.configPath !== undefined &&
-      resolved.extensionRegistry !== undefined &&
-      isMutableRegistry(resolved.extensionRegistry) &&
-      ctx.program !== symbolMapProgram
-    ) {
-      const symbolMap = buildSymbolMapFromConfig(
-        options.configPath,
-        ctx.program,
-        ctx.checker,
-        resolved.extensionRegistry
-      );
-      resolved.extensionRegistry.setSymbolMap(symbolMap);
+    if (ctx.program !== symbolMapProgram) {
+      seedSymbolMapFromConfig(ctx, options.configPath, resolved.extensionRegistry);
       symbolMapProgram = ctx.program;
     }
 
@@ -703,6 +694,37 @@ function isMutableRegistry(reg: ExtensionRegistry): reg is MutableExtensionRegis
   return (
     "setSymbolMap" in reg && typeof (reg as MutableExtensionRegistry).setSymbolMap === "function"
   );
+}
+
+/**
+ * Seeds a mutable extension registry's symbol map from the config file's AST,
+ * enabling symbol-based custom-type detection — the most precise, import-alias-immune
+ * resolution path (see `resolve-custom-type.ts`). A no-op when there is no config
+ * path or the registry doesn't support symbol maps.
+ *
+ * Shared by every entry point that produces its own `ProgramContext`
+ * (`generateSchemasFromClass`, `generateSchemasBatch`,
+ * `generateSchemasFromDetailedProgramContext`) so config-registered custom types
+ * resolve consistently regardless of which entry point is used.
+ */
+function seedSymbolMapFromConfig(
+  ctx: ProgramContext,
+  configPath: string | undefined,
+  extensionRegistry: ExtensionRegistry | undefined
+): void {
+  if (
+    configPath !== undefined &&
+    extensionRegistry !== undefined &&
+    isMutableRegistry(extensionRegistry)
+  ) {
+    const symbolMap = buildSymbolMapFromConfig(
+      configPath,
+      ctx.program,
+      ctx.checker,
+      extensionRegistry
+    );
+    extensionRegistry.setSymbolMap(symbolMap);
+  }
 }
 
 /**
@@ -792,22 +814,9 @@ function generateSchemasFromDetailedProgramContext(
 ): DetailedClassSchemasResult {
   const resolved = resolveOptions(options);
 
-  // If a configPath and extension registry are both available, build the
-  // symbol map from the config AST and register it on the registry. This
-  // enables the symbol-based detection path in the type resolver.
-  if (
-    options.configPath !== undefined &&
-    resolved.extensionRegistry !== undefined &&
-    isMutableRegistry(resolved.extensionRegistry)
-  ) {
-    const symbolMap = buildSymbolMapFromConfig(
-      options.configPath,
-      ctx.program,
-      ctx.checker,
-      resolved.extensionRegistry
-    );
-    resolved.extensionRegistry.setSymbolMap(symbolMap);
-  }
+  // Build the symbol map from the config AST and register it on the registry.
+  // This enables the symbol-based detection path in the type resolver.
+  seedSymbolMapFromConfig(ctx, options.configPath, resolved.extensionRegistry);
 
   return generateSchemasFromResolvedOptions(
     ctx,
