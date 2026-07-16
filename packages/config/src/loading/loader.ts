@@ -10,7 +10,10 @@ import type { DSLPolicy, FormSpecConfig, ResolvedDSLPolicy } from "../applicatio
 import { defineDSLPolicy, mergeWithDefaults } from "../application/defaults.js";
 import { nodeFileSystem, type FileSystem } from "./file-system.js";
 
-const VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+$/;
+// Allows multi-segment prefixes conventional in the OpenAPI/JSON-Schema
+// world (`x-acme-corp`, `x-stripe-billing`) — see docs/007-configuration.md
+// §3.4 and docs/000-principles.md PP10.
+const VENDOR_PREFIX_PATTERN = /^x-[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /**
  * Config file names to search for, in priority order.
@@ -218,7 +221,7 @@ function validateLoadedConfig(config: FormSpecConfig, filePath: string): void {
     (typeof config.vendorPrefix !== "string" || !VENDOR_PREFIX_PATTERN.test(config.vendorPrefix))
   ) {
     throw new Error(
-      `Invalid config at ${filePath}: "vendorPrefix" must match /^x-[a-z0-9]+$/, got ${JSON.stringify(config.vendorPrefix)}`
+      `Invalid config at ${filePath}: "vendorPrefix" must match /${VENDOR_PREFIX_PATTERN.source}/, got ${JSON.stringify(config.vendorPrefix)}`
     );
   }
   validateEnumSerializationValue(config.enumSerialization, "enumSerialization", filePath);

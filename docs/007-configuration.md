@@ -247,7 +247,9 @@ When omitted, FormSpec's built-in policy applies.
 
 ### 3.4 `vendorPrefix`
 
-**Optional.** String prefix for all extension-emitted JSON Schema keywords. Must start with `"x-"`. Flows into all `toJsonSchema` callbacks and built-in annotation keywords.
+**Optional.** String prefix for all extension-emitted JSON Schema keywords. Must match `/^x-[a-z0-9]+(-[a-z0-9]+)*$/` — it starts with `"x-"` followed by one or more lowercase-alphanumeric segments separated by single hyphens. Flows into all `toJsonSchema` callbacks and built-in annotation keywords.
+
+Multi-segment prefixes are supported (`"x-acme-corp"`, `"x-stripe-billing"`) — this is the conventional shape for adopting organizations under PP10 (white-labeling) and matches the OpenAPI/JSON-Schema `x-<vendor>-*` convention. Uppercase characters and empty segments (e.g. `"x-Acme"`, `"x-acme--corp"`) are rejected.
 
 Default: `"x-formspec"`.
 
@@ -267,6 +269,23 @@ Each key is a glob pattern matched against source file paths relative to the con
 
 When no `packages` field is present, the root config applies uniformly — single-package projects don't need this field.
 
+#### 3.6.1 Glob syntax
+
+Pattern matching supports `*` (matches within one path segment), `**` (matches across segments), and `?` (matches a single non-separator character). Brace expansion, negation, and character classes are not supported.
+
+A pattern-**leading** `**/` matches zero or more leading directories — standard glob semantics. `"**/forms.ts"` matches both a top-level `forms.ts` and a nested `src/forms.ts`; `"**/*.ts"` matches both `a.ts` and `src/a.ts`. This makes `**/` the idiomatic way to write an override that applies regardless of how deep a file lives, including at the config root:
+
+```typescript
+packages: {
+  // Applies to every forms.ts, whether at the project root or nested
+  "**/forms.ts": {
+    enumSerialization: "oneOf",
+  },
+},
+```
+
+Trailing and interior `**` (e.g. `"extensions/loyalty-discount/**"` or `"packages/**/forms.ts"`) match one or more path segments, not zero.
+
 **Example: Stripe generated monorepo**
 
 ```typescript
@@ -283,7 +302,7 @@ export default defineFormSpecConfig({
   // Shared across all packages
   extensions: [stripeStdlibExtension],
   metadata: stripeMetadataPolicy,
-  vendorPrefix: "x-stripe",
+  vendorPrefix: "x-stripe-billing",
   enumSerialization: "oneOf",
 
   // Per-package constraint surfaces
@@ -296,6 +315,10 @@ export default defineFormSpecConfig({
     },
     "custom-objects/**": {
       constraints: customObjectConstraints,
+    },
+    // Leading **/ applies regardless of nesting depth, including the config root
+    "**/forms.ts": {
+      enumSerialization: "smart-size",
     },
   },
 });

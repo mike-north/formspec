@@ -158,8 +158,48 @@ export default defineFormSpecConfig({
     it("rejects vendor prefixes that cannot produce well-formed extension keys", async () => {
       await expectConfigRejection(
         `export default { vendorPrefix: "x-Acme" };`,
-        /vendorPrefix.*\^x-\[a-z0-9\]\+/
+        /vendorPrefix.*\^x-\[a-z0-9\]\+\(-\[a-z0-9\]\+\)\*/
       );
+    });
+
+    it("rejects a vendor prefix with an empty segment", async () => {
+      // "x-acme--corp" has a doubled hyphen, producing an empty segment
+      // between them — still not a well-formed extension key.
+      await expectConfigRejection(
+        `export default { vendorPrefix: "x-acme--corp" };`,
+        /vendorPrefix.*\^x-\[a-z0-9\]\+\(-\[a-z0-9\]\+\)\*/
+      );
+    });
+
+    it('rejects a vendor prefix with no segment after "x-"', async () => {
+      await expectConfigRejection(
+        `export default { vendorPrefix: "x-" };`,
+        /vendorPrefix.*\^x-\[a-z0-9\]\+\(-\[a-z0-9\]\+\)\*/
+      );
+    });
+
+    it("accepts a multi-segment vendor prefix (#545 — x-stripe-billing style prefixes)", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { vendorPrefix: "x-acme-corp" };`, "utf-8");
+
+      const result = await loadFormSpecConfig({ configPath: filePath });
+
+      expect(result.found).toBe(true);
+      if (!result.found) throw new Error("Expected found");
+      expect(result.config.vendorPrefix).toBe("x-acme-corp");
+    });
+
+    it("accepts a three-segment vendor prefix", async () => {
+      const dir = await createTempDir();
+      const filePath = join(dir, "formspec.config.ts");
+      await writeFile(filePath, `export default { vendorPrefix: "x-stripe-billing-v2" };`, "utf-8");
+
+      const result = await loadFormSpecConfig({ configPath: filePath });
+
+      expect(result.found).toBe(true);
+      if (!result.found) throw new Error("Expected found");
+      expect(result.config.vendorPrefix).toBe("x-stripe-billing-v2");
     });
 
     it("loads a config file with a plain object default export", async () => {

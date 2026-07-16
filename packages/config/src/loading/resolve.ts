@@ -185,16 +185,30 @@ function relativePath(filePath: string, configDir: string): string {
  * Minimal glob matching supporting `*`, `**`, and `?` patterns.
  * Does not support brace expansion, character classes, or negation.
  *
+ * A pattern-leading `**\/` matches zero or more leading directories,
+ * following standard glob semantics: `**\/forms.ts` matches a top-level
+ * `forms.ts` as well as `src/forms.ts`. Trailing and interior `**`
+ * (e.g. `packages/api/**` or `packages/**\/forms.ts`) match one or more
+ * characters (including path separators), unchanged from prior behavior.
+ *
  * @internal
  */
 function matchGlob(pattern: string, path: string): boolean {
-  const regexStr = pattern
-    .replace(/\\/g, "/")
+  const normalizedPattern = pattern.replace(/\\/g, "/");
+
+  // Only a pattern-*leading* `**/` gets the zero-directory treatment; other
+  // `**` occurrences (trailing, interior) keep their prior `.*` semantics.
+  const hasLeadingGlobstar = normalizedPattern.startsWith("**/");
+  const rest = hasLeadingGlobstar ? normalizedPattern.slice(3) : normalizedPattern;
+
+  const regexBody = rest
     .replace(/[.+?^${}()|[\]]/g, "\\$&") // escape regex special chars (incl. ?)
     .replace(/\\\?/g, "[^/]") // glob ? = single non-separator char
-    .replace(/\*\*/g, "{{GLOBSTAR}}") // placeholder for **
+    .replace(/\*\*/g, "{{GLOBSTAR}}") // placeholder for remaining **
     .replace(/\*/g, "[^/]*") // * matches within a segment
     .replace(/{{GLOBSTAR}}/g, ".*"); // ** matches across segments
+
+  const regexStr = hasLeadingGlobstar ? `(?:.*/)?${regexBody}` : regexBody;
 
   return new RegExp(`^${regexStr}$`).test(path);
 }

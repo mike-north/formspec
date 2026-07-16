@@ -10,6 +10,7 @@ export { assertUniqueKebabNames, KEYWORD_REGISTRY, VOCABULARY_IDS } from "./keyw
 export { JsonSchema2020Writer } from "./json-schema-2020-writer.js";
 export {
   FORMSPEC_EXTENSION_KEY_PATTERN,
+  FORMSPEC_VENDOR_PREFIX_PATTERN,
   isWellFormedVendorPrefix,
   toKebabCase,
 } from "./vendor-key-format.js";

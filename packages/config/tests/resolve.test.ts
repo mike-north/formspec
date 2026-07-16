@@ -113,3 +113,118 @@ describe("resolveConfigForFile", () => {
     expect(resolved.enumSerialization).toBe("oneOf");
   });
 });
+
+/**
+ * Table-driven coverage of the internal `matchGlob` pattern-matching
+ * semantics, exercised indirectly through `resolveConfigForFile`'s
+ * `packages` glob matching (see ../src/loading/resolve.ts).
+ *
+ * Regression coverage for #545: a pattern-leading `**\/` must match zero
+ * directories (e.g. `**\/forms.ts` matches a top-level `forms.ts`), matching
+ * standard glob semantics where `**\/` is optional. Trailing and interior
+ * `**` behavior is pinned unchanged.
+ */
+describe("matchGlob semantics (via package override matching)", () => {
+  const ROOT_VALUE = "enum";
+  const OVERRIDE_VALUE = "oneOf";
+
+  function matches(pattern: string, filePath: string): boolean {
+    const config: FormSpecConfig = {
+      enumSerialization: ROOT_VALUE,
+      packages: { [pattern]: { enumSerialization: OVERRIDE_VALUE } },
+    };
+
+    const resolved = resolveConfigForFile(config, `${CONFIG_DIR}/${filePath}`, CONFIG_DIR);
+
+    return resolved.enumSerialization === OVERRIDE_VALUE;
+  }
+
+  const cases: { name: string; pattern: string; filePath: string; expected: boolean }[] = [
+    // Leading **/ — the zero-directory bug from #545.
+    {
+      name: "leading **/ matches a top-level file (zero directories)",
+      pattern: "**/forms.ts",
+      filePath: "forms.ts",
+      expected: true,
+    },
+    {
+      name: "leading **/ matches a file nested one directory deep",
+      pattern: "**/forms.ts",
+      filePath: "src/forms.ts",
+      expected: true,
+    },
+    {
+      name: "leading **/ matches a file nested several directories deep",
+      pattern: "**/forms.ts",
+      filePath: "src/nested/deep/forms.ts",
+      expected: true,
+    },
+    {
+      name: "leading **/ combined with * matches a top-level file (zero directories)",
+      pattern: "**/*.ts",
+      filePath: "a.ts",
+      expected: true,
+    },
+    {
+      name: "leading **/ combined with * matches a nested file",
+      pattern: "**/*.ts",
+      filePath: "src/a.ts",
+      expected: true,
+    },
+    {
+      name: "leading **/ does not match a different filename",
+      pattern: "**/forms.ts",
+      filePath: "other.ts",
+      expected: false,
+    },
+    // Trailing ** — existing behavior, pinned unchanged.
+    {
+      name: "trailing ** matches files nested under the prefix",
+      pattern: "packages/api/**",
+      filePath: "packages/api/src/forms.ts",
+      expected: true,
+    },
+    {
+      name: "trailing ** matches the prefix directory itself with no further nesting",
+      pattern: "packages/api/**",
+      filePath: "packages/api/forms.ts",
+      expected: true,
+    },
+    {
+      name: "trailing ** does not match files outside the prefix",
+      pattern: "packages/api/**",
+      filePath: "packages/web/src/forms.ts",
+      expected: false,
+    },
+    // Interior ** — existing behavior, pinned unchanged.
+    {
+      name: "interior ** matches across intermediate directories",
+      pattern: "packages/**/forms.ts",
+      filePath: "packages/api/src/forms.ts",
+      expected: true,
+    },
+    {
+      name: "interior ** does not match a different filename",
+      pattern: "packages/**/forms.ts",
+      filePath: "packages/api/src/other.ts",
+      expected: false,
+    },
+    // Single-segment * — existing behavior, pinned unchanged.
+    {
+      name: "single * matches within one path segment",
+      pattern: "packages/*/forms.ts",
+      filePath: "packages/api/forms.ts",
+      expected: true,
+    },
+    {
+      name: "single * does not cross a directory boundary",
+      pattern: "packages/*/forms.ts",
+      filePath: "packages/api/src/forms.ts",
+      expected: false,
+    },
+  ];
+
+  it.each(cases)("$name", ({ pattern, filePath, expected }) => {
+    expect(matches(pattern, filePath)).toBe(expected);
+  });
+});

@@ -33,6 +33,7 @@ import { getDisplayName, getSerializedName } from "../metadata/index.js";
 import { assertNoSerializedNameCollisions } from "../metadata/collision-guards.js";
 import {
   emitKey,
+  FORMSPEC_VENDOR_PREFIX_PATTERN,
   isWellFormedVendorPrefix,
   type SerializationContext,
 } from "../serialization/index.js";
@@ -195,7 +196,7 @@ function makeContext(options?: GenerateJsonSchemaFromIROptions): GeneratorContex
   const enumSerialization = parseEnumSerialization(options?.enumSerialization);
   if (!isWellFormedVendorPrefix(vendorPrefix)) {
     throw new Error(
-      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema vendor prefixes must match /^x-[a-z0-9]+$/.`
+      `Invalid vendorPrefix "${vendorPrefix}". Extension JSON Schema vendor prefixes must match /${FORMSPEC_VENDOR_PREFIX_PATTERN.source}/.`
     );
   }
 
