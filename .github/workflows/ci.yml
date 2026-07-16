@@ -41,8 +41,10 @@ jobs:
         # on-disk report to match. The actual signal is whether that rewrite
         # produced changes the author didn't commit, so fail the build if it
         # did: a widened, renamed, or removed public export gets caught here
-        # even when the PR never touched api-report itself.
-        run: git diff --exit-code -- 'packages/*/api-report/*'
+        # even when the PR never touched api-report itself. Scoped to
+        # *.api.md so unrelated files under api-report/ (e.g. .gitkeep) can't
+        # trigger a false failure.
+        run: git diff --exit-code -- 'packages/*/api-report/*.api.md'
 
       - name: Lint
         run: pnpm run lint
