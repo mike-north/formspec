@@ -394,11 +394,19 @@ export class FormSpecSemanticService {
   /** Returns the full serialized semantic snapshot for a file. */
   public getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot {
     this.stats.queryTotals.fileSnapshot += 1;
-    return this.runMeasured("semantic.getFileSnapshot", { filePath }, (performance) => {
-      const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
-      this.recordQueryPath("fileSnapshot", cacheState);
-      return snapshot;
-    });
+    try {
+      return this.runMeasured("semantic.getFileSnapshot", { filePath }, (performance) => {
+        const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
+        this.recordQueryPath("fileSnapshot", cacheState);
+        return snapshot;
+      });
+    } catch (error: unknown) {
+      this.logAnalysisException("getFileSnapshot", filePath, error);
+      return this.buildInfrastructureDiagnosticSnapshot(
+        filePath,
+        this.buildAnalysisExceptionDiagnostic(filePath, error)
+      );
+    }
   }
 
   /** Schedules a debounced background refresh for the file snapshot cache. */

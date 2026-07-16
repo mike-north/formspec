@@ -132,6 +132,36 @@ describe("FormSpecSemanticService crash safety (#553)", () => {
     expect(snapshot.diagnostics[0]?.code).toBe("ANALYSIS_EXCEPTION");
   });
 
+  it("contains a throwing getProgram host callback — outside the buildFormSpecAnalysisFileSnapshot guard — and returns an empty snapshot from getFileSnapshot", () => {
+    // Regression for the gap Copilot flagged on PR #610: getFileSnapshot()
+    // had no try/catch of its own, so an exception raised before
+    // getFileSnapshotWithCacheState's internal buildFormSpecAnalysisFileSnapshot
+    // guard (e.g. the host's getProgram() callback, or program.getTypeChecker())
+    // propagated straight out of the public method instead of degrading to the
+    // documented fallback snapshot.
+    const logger = { info: vi.fn() };
+    const service = new FormSpecSemanticService({
+      workspaceRoot: "/workspace/formspec",
+      typescriptVersion: ts.version,
+      getProgram: () => {
+        throw new Error("simulated host getProgram crash");
+      },
+      logger,
+    });
+    services.push(service);
+
+    const snapshot = service.getFileSnapshot("/workspace/formspec/example.ts");
+
+    expect(snapshot.sourceHash).toBe("");
+    expect(snapshot.comments).toEqual([]);
+    expect(snapshot.diagnostics[0]).toMatchObject({
+      code: "ANALYSIS_EXCEPTION",
+      category: "infrastructure",
+      severity: "warning",
+    });
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("getFileSnapshot"));
+  });
+
   it("does not poison the snapshot cache with a failed build (retries once the throw stops)", async () => {
     const context = await createProgramContext(SOURCE);
     workspaces.push(context.workspaceRoot);
