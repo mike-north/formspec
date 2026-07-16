@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
+import { stripNullishUnion } from "@formspec/analysis/internal";
 import type ts from "typescript";
 import { getStringLiteralUnionValues, getTypeChecker, typeToString } from "./type-utils.js";
 import type { ScannedTag } from "./tag-scanner.js";
@@ -98,7 +99,18 @@ export function resolveTagTarget(
   if (tag.target.kind === "path") {
     let currentType: ts.Type = declarationType;
     for (const segment of tag.target.value.split(".")) {
-      const property = currentType.getProperty(segment);
+      // Strip `undefined`/`null` before resolving the next hop so that an
+      // optional intermediate (`address?: { zip: number }`) still resolves
+      // its members instead of reporting unknownPath. `stripNullishUnion`
+      // collapses the union only when exactly one non-nullish member
+      // remains; a wider optional union (`{ zip: number } | { zip: string }`)
+      // deliberately stays a union so the property lookup below fails. That
+      // matches the build-side resolver (`resolvePathTargetType` in
+      // `@formspec/analysis`'s ts-binding.ts), which reports wider unions as
+      // unresolvable — the lint rule must not accept a path target that
+      // schema generation would reject.
+      const strippedType = stripNullishUnion(currentType);
+      const property = strippedType.getProperty(segment);
       if (!property?.valueDeclaration) {
         return { valid: false, reason: "unknownPath", type: null };
       }
@@ -107,7 +119,7 @@ export function resolveTagTarget(
     return {
       valid: true,
       reason: "none",
-      type: currentType,
+      type: stripNullishUnion(currentType),
     };
   }
 
