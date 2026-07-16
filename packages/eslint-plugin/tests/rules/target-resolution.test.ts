@@ -39,6 +39,38 @@ ruleTester.run("valid-path-target", validPathTarget, {
         }
       `,
     },
+    {
+      // Regression test for #528: the tagged field itself is optional, so
+      // its declared type is `{ zip: number } | undefined` under strict null
+      // checks. The path walk must strip the `undefined` before resolving
+      // `zip`, or a valid target is misreported as unknown.
+      code: `
+        class Form {
+          /** @minimum :zip 0 */
+          address?: { zip: number };
+        }
+      `,
+    },
+    {
+      // Same as above, but the path also crosses a second, nested optional
+      // property (`geo?`) one level deeper.
+      code: `
+        class Form {
+          /** @minimum :geo.lat 0 */
+          address?: { geo?: { lat: number; lng: number } };
+        }
+      `,
+    },
+    {
+      // A non-optional container field with an optional intermediate
+      // property reached via a multi-segment path.
+      code: `
+        class Form {
+          /** @minimum :address.zip 0 */
+          location!: { address?: { zip: number } };
+        }
+      `,
+    },
   ],
   invalid: [
     {
@@ -55,6 +87,17 @@ ruleTester.run("valid-path-target", validPathTarget, {
         class Form {
           /** @minimum :value.missing 0 */
           total!: { value: { amount: number; currency: string } };
+        }
+      `,
+      errors: [{ messageId: "unknownPathTarget" }],
+    },
+    {
+      // Regression test for #528: stripping nullish from an optional
+      // field must not mask a genuinely missing final segment.
+      code: `
+        class Form {
+          /** @minimum :missing 0 */
+          address?: { zip: number };
         }
       `,
       errors: [{ messageId: "unknownPathTarget" }],

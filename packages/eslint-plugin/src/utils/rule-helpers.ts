@@ -1,7 +1,12 @@
 import { AST_NODE_TYPES, type TSESTree } from "@typescript-eslint/utils";
 import type { ParserServicesWithTypeInformation } from "@typescript-eslint/utils";
 import type ts from "typescript";
-import { getStringLiteralUnionValues, getTypeChecker, typeToString } from "./type-utils.js";
+import {
+  getStringLiteralUnionValues,
+  getTypeChecker,
+  stripNullishFromUnion,
+  typeToString,
+} from "./type-utils.js";
 import type { ScannedTag } from "./tag-scanner.js";
 
 export type SupportedDeclaration =
@@ -98,7 +103,13 @@ export function resolveTagTarget(
   if (tag.target.kind === "path") {
     let currentType: ts.Type = declarationType;
     for (const segment of tag.target.value.split(".")) {
-      const property = currentType.getProperty(segment);
+      // Strip `undefined`/`null` before resolving the next hop so that an
+      // optional intermediate (`address?: { zip: number }`) still resolves
+      // its members instead of reporting unknownPath. Mirrors the build-side
+      // resolution in `@formspec/analysis` (`resolvePathTargetType` in
+      // ts-binding.ts), which strips nullish unions the same way.
+      const strippedType = stripNullishFromUnion(currentType);
+      const property = strippedType.getProperty(segment);
       if (!property?.valueDeclaration) {
         return { valid: false, reason: "unknownPath", type: null };
       }
@@ -107,7 +118,7 @@ export function resolveTagTarget(
     return {
       valid: true,
       reason: "none",
-      type: currentType,
+      type: stripNullishFromUnion(currentType),
     };
   }
 
