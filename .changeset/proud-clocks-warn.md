@@ -21,3 +21,7 @@ node plus a structured diagnostic carrying the spec's specific code
 `INVALID_REGEX_PATTERN`). The IR/hover path and the diagnostic path now share a
 single validator, so they always agree, and a file containing an invalid
 constraint value no longer loses its language-server snapshot after transport.
+
+The ESLint plugin's own value-parsing rules (`valid-numeric-value`,
+`valid-integer-value`) are unchanged in this release; consolidating them onto
+the same shared validator is tracked separately.

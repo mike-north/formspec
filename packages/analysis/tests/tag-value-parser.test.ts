@@ -1,3 +1,8 @@
+/**
+ * Tests for constraint tag value parsing into IR constraint nodes.
+ *
+ * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
+ */
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
 import { parseConstraintTagValue, parseExampleTagValue } from "../src/internal.js";

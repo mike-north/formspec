@@ -1,3 +1,12 @@
+/**
+ * Tests for the shared constraint tag-argument validator.
+ *
+ * Expected grammars and diagnostic codes are hand-derived from the spec, not
+ * from program output.
+ *
+ * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
+ * @see https://tc39.es/ecma262/#sec-patterns — `@pattern` values must compile as ECMAScript regular expressions
+ */
 import { describe, expect, it } from "vitest";
 import { BUILTIN_CONSTRAINT_DEFINITIONS } from "@formspec/core/internals";
 import {
