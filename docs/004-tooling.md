@@ -683,13 +683,13 @@ For `@discriminator`, hover should also explain the declaration-level contract: 
 
 ### 5.4 Go-to-Definition
 
-The language server provides go-to-definition for two FormSpec-specific constructs:
+`@formspec/language-server` does not implement `textDocument/definition` — it does not advertise `definitionProvider` and registers no handler for it (see Appendix B). This section documents why go-to-definition is out of scope for the two FormSpec-specific constructs it would otherwise apply to:
 
 **`{@link TypeRef}` in `@showWhen`/`@hideWhen`/`@enableWhen`/`@disableWhen`:**
 
 Per 002 §3.2, conditional tags use `{@link}` to reference a condition type. The TSDoc `{@link}` syntax already has IDE support for navigating to the referenced type — the language server ensures that FormSpec-specific condition types participate in this navigation correctly. No additional implementation is required for this case; it is handled by the TypeScript language service's existing `{@link}` support.
 
-Because this case is fully handled by the TypeScript language service, `@formspec/language-server` (the standalone LSP reference implementation) does not implement a go-to-definition handler of its own and does not advertise `definitionProvider` in its initialize capabilities. A standalone-LSP host with no co-resident TypeScript service simply has no `{@link}` navigation for this case, the same as it would for any other TypeScript symbol.
+A standalone-LSP host with no co-resident TypeScript service simply has no `{@link}` navigation for this case, the same as it would for any other TypeScript symbol.
 
 **Tag name references in configuration policy:**
 

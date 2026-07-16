@@ -2,7 +2,7 @@
  * FormSpec Language Server
  *
  * Sets up an LSP server connection and registers handlers for:
- * - `textDocument/completion` — FormSpec JSDoc constraint tag completions
+ * - `textDocument/completion` — FormSpec TSDoc constraint tag completions
  * - `textDocument/hover` — Documentation for recognized constraint tags
  *
  * Go-to-definition for `{@link}` references (per 004 §5.4) is handled by the

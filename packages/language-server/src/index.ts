@@ -2,7 +2,7 @@
  * \@formspec/language-server
  *
  * Language server for FormSpec — provides completions and hover documentation
- * for FormSpec JSDoc constraint tags (`@Minimum`, `@Maximum`, `@Pattern`,
+ * for FormSpec TSDoc constraint tags (`@minimum`, `@maximum`, `@pattern`,
  * etc.) in TypeScript files. Go-to-definition for `{@link}` references is
  * handled by the TypeScript language service itself (004 §5.4); this server
  * does not advertise `definitionProvider`.
