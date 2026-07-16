@@ -311,7 +311,7 @@ export function isArrayType(type: ts.Type, checker: ts.TypeChecker): boolean {
  * If the type is not a union or all constituents are nullish, returns the
  * original type unchanged.
  */
-export function stripNullishFromUnion(type: ts.Type): ts.Type {
+function stripNullishFromUnion(type: ts.Type): ts.Type {
   if (!type.isUnion()) return type;
 
   const nonNullish = type.types.filter(

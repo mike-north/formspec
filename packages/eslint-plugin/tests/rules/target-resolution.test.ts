@@ -71,6 +71,20 @@ ruleTester.run("valid-path-target", validPathTarget, {
         }
       `,
     },
+    {
+      // Regression test for a review finding on #528: a strip that only
+      // collapses a union down to exactly one non-nullish member leaves a
+      // *wider* optional union (more than one non-nullish member) with
+      // `undefined` still attached, so `getProperty` still fails to resolve
+      // the shared member. Here the tagged field's non-undefined part is a
+      // union of two object shapes that both declare `zip`.
+      code: `
+        class Form {
+          /** @minimum :zip 0 */
+          address?: { zip: number } | { zip: string };
+        }
+      `,
+    },
   ],
   invalid: [
     {
