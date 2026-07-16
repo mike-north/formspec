@@ -22,7 +22,7 @@
     "build": "tsup && tsc --emitDeclarationOnly -p tsconfig.build.json && pnpm run api-extractor:local",
     "clean": "rm -rf dist temp",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && tsd",
     "test:types": "tsd",
     "api-extractor": "api-extractor run && node ../../scripts/normalize-generated-markdown.mjs api-report",
     "api-extractor:local": "api-extractor run --local && node ../../scripts/normalize-generated-markdown.mjs api-report",

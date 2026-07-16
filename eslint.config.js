@@ -20,7 +20,12 @@ export default [
             "scripts/check-stale-doc-references.test.mjs",
             "scripts/compute-typescript-minor-smoke-matrix.mjs",
             "scripts/compute-typescript-minor-smoke-matrix.test.mjs",
+            "scripts/check-tsd-test-wiring.mjs",
+            "scripts/check-tsd-test-wiring.test.mjs",
           ],
+          // The list above now exceeds the default 8-file safety threshold;
+          // these are small, one-off root scripts, not a runaway glob.
+          maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 15,
         },
         tsconfigRootDir: import.meta.dirname,
       },
