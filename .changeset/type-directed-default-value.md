@@ -2,6 +2,10 @@
 "@formspec/analysis": patch
 "@formspec/build": patch
 "formspec": patch
+"@formspec/cli": patch
+"@formspec/eslint-plugin": patch
+"@formspec/language-server": patch
+"@formspec/ts-plugin": patch
 ---
 
 Fix `@defaultValue` parsing so it is type-directed against the field's resolved target type (spec 002 §3.2), instead of guessing a JSON literal independent of the field's type.
