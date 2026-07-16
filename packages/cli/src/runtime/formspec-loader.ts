@@ -259,16 +259,16 @@ export async function loadNamedFormSpecs(
 /**
  * Resolves the compiled JS path from a TS source path.
  *
- * This handles common TypeScript output patterns:
- * - ./src/*.ts → ./dist/*.js
- * - ./src/*.ts → ./build/*.js
- * - ./src/*.ts → ./src/*.js (in-place compilation)
+ * Assumes in-place (same-directory) compilation and maps extensions per
+ * TypeScript's NodeNext emit conventions:
+ * - .mts → .mjs
+ * - .cts → .cjs
+ * - .ts / .tsx → .js
  *
  * @param tsPath - Path to the TypeScript source file
- * @param outDir - Optional explicit output directory
  * @returns Path to the expected compiled JS file
  */
-export function resolveCompiledPath(tsPath: string, outDir?: string): string {
+export function resolveCompiledPath(tsPath: string): string {
   const absolutePath = path.resolve(tsPath);
   const ext = path.extname(absolutePath);
 
@@ -277,28 +277,17 @@ export function resolveCompiledPath(tsPath: string, outDir?: string): string {
     return absolutePath;
   }
 
-  // Replace .ts/.tsx/.mts extension with .js
-  const basePath = absolutePath.replace(/\.(ts|tsx|mts)$/, ".js");
-
-  if (outDir) {
-    // If outDir is specified, replace src dir with outDir
-    const fileName = path.basename(basePath);
-    const dirName = path.dirname(absolutePath);
-
-    // Try to find 'src' in the path and replace with outDir
-    const srcPattern = path.sep + "src";
-    const srcIndex = dirName.lastIndexOf(srcPattern);
-    if (srcIndex !== -1) {
-      const baseDir = dirName.substring(0, srcIndex);
-      const subPath = dirName.substring(srcIndex + srcPattern.length);
-      return path.join(baseDir, outDir, subPath, fileName);
-    }
-
-    // Fallback: just use outDir relative to file's directory
-    return path.join(path.dirname(absolutePath), outDir, fileName);
+  if (ext === ".mts") {
+    return absolutePath.slice(0, -ext.length) + ".mjs";
+  }
+  if (ext === ".cts") {
+    return absolutePath.slice(0, -ext.length) + ".cjs";
+  }
+  if (ext === ".ts" || ext === ".tsx") {
+    return absolutePath.slice(0, -ext.length) + ".js";
   }
 
-  // Return basePath (actual existence check happens at import time)
-  // Future enhancement: could check fs.existsSync for common patterns
-  return basePath;
+  // Unrecognized extension: return unchanged (actual existence check
+  // happens at import time).
+  return absolutePath;
 }
