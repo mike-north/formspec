@@ -371,17 +371,38 @@ function describePermittedPrimitiveKinds(kinds: ReadonlySet<BuiltinPrimitiveKind
   return [...kinds].sort().join(" | ");
 }
 
-function makeDefaultValueMismatch(
+/**
+ * Builds the {@link DefaultValueParseMismatch} emitted when no interpretation
+ * of a `@defaultValue` payload fits the target type (spec 002 §3.2).
+ *
+ * Exported (underscore-prefixed, per this package's convention for
+ * implementation-detail exports — see `_isIntegerBrandedType`) so its
+ * quote-hint behavior can be pinned directly: `parseDefaultValueTagValue`'s
+ * two call sites both only reach this function when `permittedKinds` lacks
+ * `"string"`, so the string-permitting branch below is not reachable through
+ * the public entry point today, but the message-formatting contract is
+ * still worth testing in isolation, and remains correct if that invariant
+ * ever changes.
+ */
+export function _makeDefaultValueMismatch(
   rawText: string,
   permittedKinds: ReadonlySet<BuiltinPrimitiveKind>
 ): DefaultValueParseMismatch {
+  // The quoting suggestion is only sound advice when the target type
+  // actually permits a string interpretation — otherwise it tells the
+  // author to do something that would still fail to parse. Build the
+  // example with JSON.stringify (not manual `"..."` wrapping) so already-
+  // quoted raw text (e.g. rawText === `"6"`) doesn't double-quote into
+  // `@defaultValue ""6""`.
+  const quoteHint = permittedKinds.has("string")
+    ? ` or quote it explicitly (e.g. @defaultValue ${JSON.stringify(rawText)}) if a string default is intended`
+    : "";
   return {
     kind: "mismatch",
     message:
       `@defaultValue value "${rawText}" has no valid interpretation for target type ` +
       `"${describePermittedPrimitiveKinds(permittedKinds)}" (spec 002 §3.2). Provide a value ` +
-      `compatible with the field's type, or quote it explicitly (e.g. @defaultValue "${rawText}") ` +
-      `if a string default is intended.`,
+      `compatible with the field's type${quoteHint}.`,
   };
 }
 
@@ -498,7 +519,7 @@ export function parseDefaultValueTagValue(
   // when the target type would otherwise permit a non-string interpretation.
   if (attempt.ok && typeof attempt.value === "string") {
     if (!permittedKinds.has("string")) {
-      return makeDefaultValueMismatch(trimmed, permittedKinds);
+      return _makeDefaultValueMismatch(trimmed, permittedKinds);
     }
     return makeDefaultValueAnnotation(attempt.value, provenance);
   }
@@ -514,7 +535,7 @@ export function parseDefaultValueTagValue(
     return makeDefaultValueAnnotation(trimmed, provenance);
   }
 
-  return makeDefaultValueMismatch(trimmed, permittedKinds);
+  return _makeDefaultValueMismatch(trimmed, permittedKinds);
 }
 
 function parseExtensionConstraintTagValue(

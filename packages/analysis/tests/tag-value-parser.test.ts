@@ -3,10 +3,11 @@
  *
  * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
  */
-import type { TypeNode } from "@formspec/core/internals";
+import type { PrimitiveTypeNode, TypeNode } from "@formspec/core/internals";
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
 import {
+  _makeDefaultValueMismatch,
   parseConstraintTagValue,
   parseDefaultValueTagValue,
   parseExampleTagValue,
@@ -223,6 +224,7 @@ describe("tag-value-parser", () => {
   // (GitHub issue #517).
   describe("parseDefaultValueTagValue (@defaultValue, spec 002 §3.2, issue #517)", () => {
     const DV_PROV = { ...PROVENANCE, tagName: "@defaultValue" };
+    type BuiltinPrimitiveKind = PrimitiveTypeNode["primitiveKind"];
 
     const stringType: TypeNode = { kind: "primitive", primitiveKind: "string" };
     const numberType: TypeNode = { kind: "primitive", primitiveKind: "number" };
@@ -344,6 +346,54 @@ describe("tag-value-parser", () => {
       it("quoted string on a strictly numeric field: an explicit string default against a type that never accepts strings", () => {
         const result = parseDefaultValueTagValue('"6"', DV_PROV, numberType);
         expect(result.kind).toBe("mismatch");
+      });
+
+      // Copilot review on PR #613 (issue #517): the mismatch message must not
+      // suggest quoting the value as a workaround when the target type does
+      // not accept a string at all — that advice would still fail to parse.
+      // Both `parseDefaultValueTagValue` call sites only reach the mismatch
+      // path when `string` is *not* among the permitted kinds, so pin that
+      // "no hint" behavior through the public entry point here...
+      it("mismatch message on a number-only field carries no quoting suggestion", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).not.toContain("quote it explicitly");
+      });
+
+      // ...and pin the hint's own formatting contract directly against
+      // `_makeDefaultValueMismatch`, since a target type that permits both a
+      // non-string kind and `string` can never actually reach the mismatch
+      // path (the string fallback always succeeds first) — so this branch is
+      // unreachable via `parseDefaultValueTagValue` today but must still stay
+      // correct if that invariant ever changes.
+      describe("_makeDefaultValueMismatch message-formatting contract", () => {
+        it("omits the quoting hint when the target type does not permit string", () => {
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["number"]);
+          const result = _makeDefaultValueMismatch("pending", permittedKinds);
+          expect(result.message).not.toContain("quote it explicitly");
+          expect(result.message).toContain('@defaultValue value "pending"');
+        });
+
+        it("includes a correctly-quoted hint when the target type permits string", () => {
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["number", "string"]);
+          const result = _makeDefaultValueMismatch("pending", permittedKinds);
+          expect(result.message).toContain(
+            'quote it explicitly (e.g. @defaultValue "pending") if a string default is intended'
+          );
+        });
+
+        it("does not double-quote already-quoted raw text in the hint's example", () => {
+          // rawText is the raw @defaultValue payload text, which already
+          // includes the JSON-string quotes when the author quoted it
+          // (e.g. `@defaultValue "6"` -> rawText === `"6"`). The example must
+          // use JSON.stringify(rawText), not `"${rawText}"`, or it renders as
+          // the doubled `@defaultValue ""6""`.
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["boolean", "string"]);
+          const result = _makeDefaultValueMismatch('"6"', permittedKinds);
+          expect(result.message).toContain('@defaultValue "\\"6\\""');
+          expect(result.message).not.toContain('@defaultValue ""6""');
+        });
       });
     });
 
