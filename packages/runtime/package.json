@@ -2,6 +2,11 @@
   "name": "@formspec/runtime",
   "version": "0.1.0-alpha.69",
   "description": "Runtime helpers for FormSpec - resolvers and data fetching",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/runtime"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

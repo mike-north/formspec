@@ -2,6 +2,11 @@
   "name": "@formspec/cli",
   "version": "0.1.0-alpha.69",
   "description": "CLI tool for generating JSON Schema and FormSpec from TypeScript classes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

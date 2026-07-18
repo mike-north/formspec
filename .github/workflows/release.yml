@@ -11,6 +11,7 @@ concurrency: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -26,6 +27,13 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
+      # OIDC trusted publishing currently depends on pnpm 10.x behavior:
+      # `pnpm publish` (via `changeset publish`) delegates to the Node-bundled
+      # npm CLI (>= 11.5.1 on Node 24), which performs the OIDC token
+      # exchange and tolerates the unresolved ${NODE_AUTH_TOKEN} placeholder
+      # setup-node writes to .npmrc. pnpm v11 publishes natively and has open
+      # OIDC regressions (pnpm/pnpm#11513) — verify trusted publishing still
+      # works before bumping the root packageManager field to pnpm 11+.
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
@@ -33,8 +41,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Show release toolchain
+        run: node --version && npm --version && pnpm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -49,5 +60,3 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

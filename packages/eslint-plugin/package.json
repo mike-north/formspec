@@ -2,6 +2,11 @@
   "name": "@formspec/eslint-plugin",
   "version": "0.1.0-alpha.69",
   "description": "ESLint rules for FormSpec decorator DSL type safety",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/eslint-plugin"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

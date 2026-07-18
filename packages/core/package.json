@@ -2,6 +2,11 @@
   "name": "@formspec/core",
   "version": "0.1.0-alpha.69",
   "description": "Core utilities for formspec",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

@@ -2,6 +2,11 @@
   "name": "@formspec/validator",
   "version": "0.1.0-alpha.64",
   "description": "JSON Schema validator for FormSpec — backed by @cfworker/json-schema, safe for secure runtimes",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/validator"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
