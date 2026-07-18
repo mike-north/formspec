@@ -86,34 +86,87 @@ function invokesTsd(testScript) {
 }
 
 /**
+ * Expands the workspace member patterns from pnpm-workspace.yaml into
+ * repo-relative package directories. Supports the two shapes the file uses:
+ * a literal directory ("e2e") and a single-level glob ("packages/*").
+ * Deriving members from the workspace file (instead of hardcoding
+ * "packages/") keeps the guard honest for every root that can contain a
+ * package with *.test-d.ts files — e2e and examples/* included.
+ *
+ * @param {string} root
+ * @returns {Promise<string[]>}
+ */
+async function listWorkspacePackageDirs(root) {
+  /** @type {string} */
+  let workspaceYaml;
+  try {
+    workspaceYaml = await readFile(path.join(root, "pnpm-workspace.yaml"), "utf8");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      // No workspace manifest (e.g. minimal fixtures): fall back to the
+      // conventional single root.
+      workspaceYaml = "packages:\n  - packages/*\n";
+    } else {
+      throw error;
+    }
+  }
+  const patterns = [];
+  let inPackages = false;
+  for (const line of workspaceYaml.split("\n")) {
+    if (/^packages:\s*$/.test(line)) {
+      inPackages = true;
+      continue;
+    }
+    if (inPackages) {
+      const item = /^\s+-\s+(\S+)\s*$/.exec(line);
+      if (item?.[1] !== undefined) {
+        patterns.push(item[1]);
+        continue;
+      }
+      if (line.trim() !== "") {
+        inPackages = false;
+      }
+    }
+  }
+
+  /** @type {string[]} */
+  const dirs = [];
+  for (const pattern of patterns) {
+    if (pattern.endsWith("/*")) {
+      const base = pattern.slice(0, -2);
+      /** @type {import("node:fs").Dirent[]} */
+      let entries;
+      try {
+        entries = await readdir(path.join(root, base), { withFileTypes: true });
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+          continue;
+        }
+        throw error;
+      }
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          dirs.push(path.join(base, entry.name));
+        }
+      }
+    } else {
+      dirs.push(pattern);
+    }
+  }
+  return dirs.sort((a, b) => a.localeCompare(b));
+}
+
+/**
  * @param {{ root?: string }} [options]
  * @returns {Promise<TsdTestWiringResult>}
  */
 export async function checkTsdTestWiring(options = {}) {
   const root = options.root ?? process.cwd();
-  const packagesDir = path.join(root, "packages");
-
-  /** @type {import("node:fs").Dirent[]} */
-  let packageEntries;
-  try {
-    packageEntries = await readdir(packagesDir, { withFileTypes: true });
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-      packageEntries = [];
-    } else {
-      throw error;
-    }
-  }
 
   /** @type {TsdTestWiringViolation[]} */
   const violations = [];
 
-  const packageDirEntries = packageEntries
-    .filter((entry) => entry.isDirectory())
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  for (const entry of packageDirEntries) {
-    const packageDir = path.join("packages", entry.name);
+  for (const packageDir of await listWorkspacePackageDirs(root)) {
     const testDFiles = await findTestDFiles(path.join(root, packageDir, "tests"));
     if (testDFiles.length === 0) {
       continue;

@@ -121,6 +121,29 @@ void describe("checkTsdTestWiring", () => {
     );
   });
 
+  void it("covers non-packages workspace roots declared in pnpm-workspace.yaml (e2e, examples/*)", async () => {
+    // Regression: the guard originally scanned only packages/*, so a
+    // *.test-d.ts under the e2e or examples/* workspace roots was invisible —
+    // exactly the silent gap #556 exists to prevent.
+    await withFixture(
+      {
+        "pnpm-workspace.yaml": "packages:\n  - packages/*\n  - examples/*\n  - e2e\n",
+        "e2e/package.json": JSON.stringify({ scripts: { test: "vitest run" } }),
+        "e2e/tests/sample.test-d.ts": "export {};",
+        "examples/demo/package.json": JSON.stringify({ scripts: { test: "vitest run && tsd" } }),
+        "examples/demo/tests/types.test-d.ts": "export {};",
+      },
+      async (root) => {
+        const result = await checkTsdTestWiring({ root });
+        assert.equal(result.ok, false);
+        assert.deepEqual(
+          result.violations.map((violation) => violation.packageDir),
+          ["e2e"]
+        );
+      }
+    );
+  });
+
   void it("finds *.test-d.ts files nested below the tests directory", async () => {
     await withFixture(
       {
