@@ -5,7 +5,7 @@
  * Run with: pnpm dlx tsd
  */
 
-import { expectType, expectNotType } from "tsd";
+import { expectType, expectNotType, expectError } from "tsd";
 import { field, group, when, is, formspec } from "../src/index.js";
 import type { InferSchema, InferFormSchema, InferFieldValue } from "../src/index.js";
 import type {
@@ -228,3 +228,79 @@ expectNotType<string>({} as InferFieldValue<NumberField<"age">>);
 
 // Enum should NOT allow invalid values
 expectNotType<{ status: string }>({} as InferSchema<typeof _enumForm.elements>);
+
+// =============================================================================
+// Negative tests - invalid field.* option objects (#556)
+// =============================================================================
+
+// text() config does not accept number-field-only options like `min`/`max`
+expectError(field.text("name", { min: 5 }));
+
+// number() config does not accept text-field-only options like `pattern`/`minLength`
+expectError(field.number("age", { pattern: "^\\d+$" }));
+expectError(field.number("age", { minLength: 1 }));
+
+// boolean() config does not accept unknown options
+expectError(field.boolean("active", { options: ["yes", "no"] }));
+
+// enum() requires an options array as the second argument
+expectError(field.enum("status"));
+
+// =============================================================================
+// Negative tests - malformed formspec(...) inputs (#556)
+// =============================================================================
+
+// formspec() only accepts FormElement values, not arbitrary strings/objects
+expectError(formspec("not-a-field"));
+expectError(formspec({ name: "name" }));
+
+// A field-shaped object missing the `_type`/`_field` discriminators is rejected
+expectError(formspec({ name: "name", label: "Name" } as const));
+
+// =============================================================================
+// Negative tests - InferFormSchema<> over non-form types (#556)
+// =============================================================================
+
+// InferFormSchema requires a FormSpec<readonly FormElement[]>; a bare string,
+// number, or plain object does not satisfy that constraint.
+// @ts-expect-error - string does not extend FormSpec<readonly FormElement[]>
+type _InvalidFormSchemaFromString = InferFormSchema<string>;
+// @ts-expect-error - a plain object does not extend FormSpec<readonly FormElement[]>
+type _InvalidFormSchemaFromObject = InferFormSchema<{ elements: string[] }>;
+
+// =============================================================================
+// Edge case - empty forms
+// =============================================================================
+
+// A form with no elements infers a schema with no keys at all (not `never` or
+// `unknown` on the schema type itself).
+const _emptyForm = formspec();
+type EmptyFormSchema = InferFormSchema<typeof _emptyForm>;
+expectType<never>({} as keyof EmptyFormSchema);
+
+// =============================================================================
+// Edge case - union option types
+// =============================================================================
+
+// A single-option enum's inferred value stays the literal, not `string`.
+const _singleOptionEnumForm = formspec(field.enum("mode", ["only"] as const));
+type SingleOptionEnumSchema = InferSchema<typeof _singleOptionEnumForm.elements>;
+expectType<{ mode: "only" }>({} as SingleOptionEnumSchema);
+expectNotType<{ mode: string }>({} as SingleOptionEnumSchema);
+
+// A single {id, label} enum option's inferred value stays the id literal.
+const _singleObjectOptionEnumForm = formspec(
+  field.enum("mode", [{ id: "only", label: "Only" }] as const)
+);
+type SingleObjectOptionEnumSchema = InferSchema<typeof _singleObjectOptionEnumForm.elements>;
+expectType<{ mode: "only" }>({} as SingleObjectOptionEnumSchema);
+
+// Note (#556): `field.enum()` options are typed as `EnumOptionValue` (`string |
+// {id, label}`), which permits constructing a *mixed* tuple at the type level —
+// e.g. `["low", { id: "high", label: "High Priority" }] as const`. The runtime
+// builder rejects mixed tuples with a thrown Error (see field.ts), but nothing
+// at the type level currently prevents authoring one, and `InferFieldValue`
+// resolves a mixed tuple to `never` rather than a compile error. This is a
+// static/runtime semantics gap, not covered here because it cannot be pinned
+// with a passing type-level assertion; tracked for follow-up rather than fixed
+// in this change (see PR description).

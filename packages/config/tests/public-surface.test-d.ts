@@ -58,3 +58,12 @@ expectType<ResolvedFormSpecConfig>(
   resolveConfigForFile(config, "/project/src/form.ts", "/project")
 );
 expectError(resolveConfigForFile(config, "/project/src/form.ts"));
+
+// Negative tests - malformed config shapes (#556)
+
+// `fieldTypes` severities are constrained to "error" | "warn" | "off"; an
+// arbitrary string is not a valid Severity.
+expectError<DSLPolicy>({ fieldTypes: { dynamicEnum: "not-a-severity" } });
+
+// `constraints` must be a DSLPolicy-shaped object, not an arbitrary string.
+expectError<FormSpecConfig>({ constraints: "invalid" });
