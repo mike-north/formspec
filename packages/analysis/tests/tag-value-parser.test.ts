@@ -230,6 +230,7 @@ describe("tag-value-parser", () => {
     const numberType: TypeNode = { kind: "primitive", primitiveKind: "number" };
     const booleanType: TypeNode = { kind: "primitive", primitiveKind: "boolean" };
     const nullType: TypeNode = { kind: "primitive", primitiveKind: "null" };
+    const bigintType: TypeNode = { kind: "primitive", primitiveKind: "bigint" };
     const stringOrNumberType: TypeNode = {
       kind: "union",
       members: [stringType, numberType],
@@ -303,6 +304,17 @@ describe("tag-value-parser", () => {
           targetType: nullType,
           expected: null,
         },
+        // `bigint` is also a first-class `PrimitiveTypeNode["primitiveKind"]`
+        // (bigint maps to JSON Schema `type: "integer"` in the build
+        // generator — see ir-json-schema-generator.test.ts), so it must be
+        // type-directed the same way `number`/`integer` are for an in-range
+        // literal. Copilot review on PR #613 (issue #517).
+        {
+          description: "unquoted 6 on a bigint field yields the number 6 (in-range literal)",
+          text: "6",
+          targetType: bigintType,
+          expected: 6,
+        },
         // No target type supplied (e.g. callers that don't thread a resolved
         // TypeNode, such as the file-snapshots.ts LSP path): falls back to
         // the pre-#517 untyped parse rather than guessing without type info.
@@ -346,6 +358,24 @@ describe("tag-value-parser", () => {
       it("quoted string on a strictly numeric field: an explicit string default against a type that never accepts strings", () => {
         const result = parseDefaultValueTagValue('"6"', DV_PROV, numberType);
         expect(result.kind).toBe("mismatch");
+      });
+
+      // bigint coverage (Copilot review on PR #613, issue #517): a bigint
+      // field behaves the same as a plain numeric field for the mismatch
+      // paths — it never accepts a string fallback either.
+      it("quoted string on a bigint field: an explicit string default against a type that never accepts strings", () => {
+        const result = parseDefaultValueTagValue('"6"', DV_PROV, bigintType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("bigint");
+      });
+
+      it("unquoted pending on a bigint field: no numeric interpretation, and bigint does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, bigintType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("pending");
+        expect(result.message).toContain("bigint");
       });
 
       // Copilot review on PR #613 (issue #517): the mismatch message must not
@@ -394,6 +424,41 @@ describe("tag-value-parser", () => {
           expect(result.message).toContain('@defaultValue "\\"6\\""');
           expect(result.message).not.toContain('@defaultValue ""6""');
         });
+      });
+    });
+
+    // Copilot review on PR #613 (issue #517): a >2^53 bigint default is a
+    // known limitation, not a new one introduced here. `coerceParsedJsonToNonString`
+    // reaches a `bigint`-permitting target the same way it reaches
+    // `number`/`integer` — via `JSON.parse` + `Number.isInteger` — and
+    // `JSON.parse` produces a JS `number`, which silently rounds any literal
+    // beyond `Number.MAX_SAFE_INTEGER` to the nearest representable double.
+    // This is the exact defect already tracked in issue #533 for
+    // `@minimum`/`@maximum` bigint bounds (`NumericConstraintNode.value` is
+    // typed `number`, and `Number(text)` is used with no precision-safe
+    // path) — this codebase has no bigint-literal-text-preservation path
+    // anywhere yet, for any tag. Fixing that (widening `JsonValue`-shaped
+    // default storage to a decimal-string escape hatch, per 005 §2.3) is
+    // #533's scope, not #517's surgical `@defaultValue` fix. This test
+    // documents *current* behavior for migration safety — it does not
+    // assert the value is spec-correct, only that it doesn't silently
+    // change without a test noticing.
+    describe("known limitation: bigint defaults beyond Number.MAX_SAFE_INTEGER lose precision (tracked in issue #533, not introduced by #517)", () => {
+      it("documents that a huge bigint literal default rounds to the nearest double instead of round-tripping exactly", () => {
+        const hugeLiteral = "9999999999999999999"; // > 2^53, spec 002 §3.2's own bigint example
+        const result = parseDefaultValueTagValue(hugeLiteral, DV_PROV, bigintType);
+        expect(result.kind).toBe("value");
+        if (result.kind !== "value") return;
+        // Number("9999999999999999999") rounds to 10000000000000000000 —
+        // the emitted value does NOT equal the literal text's exact integer
+        // value. This is the pre-existing, cross-cutting precision gap
+        // (issue #533), pinned here so a future fix must update this test.
+        const { value } = result.annotation;
+        expect(typeof value).toBe("number");
+        expect(value).toBe(Number(hugeLiteral));
+        if (typeof value === "number") {
+          expect(String(value)).not.toBe(hugeLiteral);
+        }
       });
     });
 

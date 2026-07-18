@@ -36,6 +36,13 @@ export class TypeDirectedDefaultsForm {
 
   /** @defaultValue true */
   flagLabel?: string;
+
+  // `bigint` is also a first-class `PrimitiveTypeNode["primitiveKind"]`
+  // (bigint -> JSON Schema `type: "integer"`) and must be type-directed the
+  // same way `number`/`integer` are for an in-range literal (Copilot review
+  // on PR #613, issue #517).
+  /** @defaultValue 6 */
+  countBigint?: bigint;
 }
 
 export class MismatchedDefaultValueForm {
@@ -44,6 +51,13 @@ export class MismatchedDefaultValueForm {
   // silently emitted `default: "pending"` on a `type: "number"` schema.
   /** @defaultValue pending */
   count?: number;
+
+  // Same AC4 requirement, but against a `bigint` field: a `bigint` field
+  // does not accept a string fallback either, so a non-numeric word must
+  // also produce DEFAULT_VALUE_TYPE_MISMATCH rather than a mismatched
+  // default (issue #517, Copilot review on PR #613).
+  /** @defaultValue pending */
+  countBigint?: bigint;
 }
 
 export class ContactForm {

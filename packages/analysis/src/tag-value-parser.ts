@@ -424,14 +424,25 @@ function attemptJsonParse(trimmed: string): JsonParseAttempt {
  * "attempts to coerce to a valid non-string type permitted by the
  * resolved target type").
  *
- * Numbers are additionally checked against the `integer` kind (a
- * value-compatible superset of `number` for JSON purposes: every JSON
- * integer literal is representable as both) so `@defaultValue 6` on an
- * integer-branded field resolves the same way it does for a plain `number`
- * field, without requiring a separate ambiguity check — both kinds accept
- * the identical parsed value, so there is no competing interpretation to
- * disambiguate (see the "ambiguous" note on {@link parseDefaultValueTagValue}
- * for why true ambiguity does not arise for pure built-in unions).
+ * Numbers are additionally checked against the `integer` and `bigint`
+ * kinds (both value-compatible supersets of `number` for JSON purposes:
+ * every JSON integer literal is representable as any of the three) so
+ * `@defaultValue 6` on an integer-branded or `bigint` field resolves the
+ * same way it does for a plain `number` field, without requiring a
+ * separate ambiguity check — all three kinds accept the identical parsed
+ * value, so there is no competing interpretation to disambiguate (see the
+ * "ambiguous" note on {@link parseDefaultValueTagValue} for why true
+ * ambiguity does not arise for pure built-in unions).
+ *
+ * `bigint` inherits the same `JSON.parse`/`Number()`-based precision
+ * ceiling as every other numeric-literal path in this codebase: a literal
+ * beyond `Number.MAX_SAFE_INTEGER` silently rounds to the nearest double.
+ * That is a pre-existing, cross-cutting gap in numeric-literal handling
+ * (tracked separately in issue #533 for `@minimum`/`@maximum`, since
+ * `NumericConstraintNode.value` is typed `number`) — not something this
+ * function introduces, and fixing it here (widening `JsonValue`-shaped
+ * default storage to preserve bigint-origin literal text) is out of
+ * scope for issue #517's surgical fix.
  */
 function coerceParsedJsonToNonString(
   parsed: unknown,
@@ -447,7 +458,10 @@ function coerceParsedJsonToNonString(
     if (permittedKinds.has("number")) {
       return { value: parsed };
     }
-    if (permittedKinds.has("integer") && Number.isInteger(parsed)) {
+    if (
+      (permittedKinds.has("integer") || permittedKinds.has("bigint")) &&
+      Number.isInteger(parsed)
+    ) {
       return { value: parsed };
     }
     return undefined;

@@ -141,6 +141,15 @@ describe("generateSchemas", () => {
         type: "string",
         default: "true",
       });
+
+      // `bigint` is also a first-class PrimitiveTypeNode["primitiveKind"]
+      // and maps to JSON Schema `type: "integer"`; an in-range unquoted
+      // literal must be type-directed the same way `number`/`integer` are
+      // (Copilot review on PR #613, issue #517).
+      expect(result.jsonSchema.properties?.["countBigint"]).toMatchObject({
+        type: "integer",
+        default: 6,
+      });
     });
 
     it("treats a quoted JSON string as an explicit string even when the target type also permits a number (AC2)", () => {
@@ -174,12 +183,22 @@ describe("generateSchemas", () => {
       // schema with `type: "number", default: "pending"`.
       expect(result.ok).toBe(false);
       expect(result.jsonSchema).toBeUndefined();
-      const mismatch = result.diagnostics.find(
+      const mismatches = result.diagnostics.filter(
         (diagnostic) => diagnostic.code === "DEFAULT_VALUE_TYPE_MISMATCH"
       );
-      expect(mismatch).toBeDefined();
-      expect(mismatch?.message).toContain("pending");
-      expect(mismatch?.severity).toBe("error");
+      expect(mismatches).toHaveLength(2);
+      const numberMismatch = mismatches.find((d) => d.message.includes('"number"'));
+      expect(numberMismatch).toBeDefined();
+      expect(numberMismatch?.message).toContain("pending");
+      expect(numberMismatch?.severity).toBe("error");
+
+      // Same AC4 requirement against a `bigint` field: "pending" has no
+      // interpretation for `bigint` either, and `bigint` does not accept a
+      // string fallback (Copilot review on PR #613, issue #517).
+      const bigintMismatch = mismatches.find((d) => d.message.includes('"bigint"'));
+      expect(bigintMismatch).toBeDefined();
+      expect(bigintMismatch?.message).toContain("pending");
+      expect(bigintMismatch?.severity).toBe("error");
     });
 
     it("never emits a default whose JS runtime type mismatches its own declared `type` keyword (AC5, property-level assertion)", () => {
