@@ -61,7 +61,7 @@ import {
   stripNullishUnion,
 } from "./ts-binding.js";
 import { noopLogger } from "@formspec/core";
-import { isBuiltinConstraintName } from "@formspec/core/internals";
+import { isBuiltinConstraintName, type CustomTypeNode } from "@formspec/core/internals";
 import {
   getSnapshotLogger,
   getTypedParserLogger,
@@ -76,7 +76,7 @@ import {
   mapTypedParserDiagnosticCode,
   parseTagArgument,
 } from "./tag-argument-parser.js";
-import { _isIntegerBrandedType } from "./integer-brand.js";
+import { _collectBrandIdentifiers, _isIntegerBrandedType } from "./integer-brand.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -247,6 +247,45 @@ function createConstraintTagRegistry(
 // broadening for this type?"); different data model (TypeScript type-name
 // strings here, IR FieldType + ExtensionRegistry there). Unify once symbol-
 // based detection replaces name-based detection.
+/**
+ * Collects every extension-registered custom type whose name-based
+ * registration (`tsTypeNames ?? [typeName]`) matches the printed name of
+ * `effectiveType`. Single implementation shared by `hasExtensionBroadening`
+ * (broadening *detection*) and `resolveExtensionCustomTypeId` (custom-type-id
+ * *resolution*) so name-matching semantics cannot drift between the two.
+ *
+ * Uses NoTruncation (via `typeToString`) so that complex types
+ * (intersections, deep generics) are rendered in full. Without it,
+ * checker.typeToString applies TypeScript's internal truncation threshold and
+ * can produce a structurally-different string than what was registered in
+ * tsTypeNames, causing detection to miss for anonymous intersection types or
+ * deeply nested generics.
+ */
+function findExtensionTypesByName(
+  effectiveType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[]
+): NonNullable<ExtensionDefinition["types"]>[number][] {
+  const typeName = typeToString(effectiveType, checker);
+  if (typeName === null) {
+    // typeToString returns null when its type argument is undefined. Callers
+    // always pass a ts.Type, so this branch is a defensive guard.
+    return [];
+  }
+
+  const matches: NonNullable<ExtensionDefinition["types"]>[number][] = [];
+  for (const extension of extensionDefinitions) {
+    for (const type of extension.types ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
+      const registeredNames = type.tsTypeNames ?? [type.typeName];
+      if (registeredNames.includes(typeName)) {
+        matches.push(type);
+      }
+    }
+  }
+  return matches;
+}
+
 function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
@@ -257,38 +296,119 @@ function hasExtensionBroadening(
     return false;
   }
 
-  // Strip nullish union members (| null | undefined) before name-matching,
+  // Strip nullish union members (| null | undefined) before matching,
   // consistent with how the build path strips before _isIntegerBrandedType.
+  // Uses the shared name-then-brand resolution: a name-only gate here paired
+  // with the name+brand resolver in resolveExtensionCustomTypeId let a
+  // brand-only registration produce a broadened fact AND a spurious
+  // TYPE_MISMATCH diagnostic for the same tag (issue #396 review finding).
   const effectiveType = stripNullishUnion(subjectType);
-  // Use NoTruncation so that complex types (intersections, deep generics) are
-  // rendered in full. Without it, checker.typeToString applies TypeScript's internal
-  // truncation threshold and can produce a structurally-different string than what
-  // was registered in tsTypeNames, causing broadening detection to miss for
-  // anonymous intersection types or deeply nested generics.
-  const typeName = typeToString(effectiveType, checker);
-  if (typeName === null) {
-    // typeToString returns null when its type argument is undefined. stripNullishUnion
-    // always returns a ts.Type, so this branch is a defensive guard for future callers
-    // that might pass an undefined type through a different code path.
-    return false;
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
+    (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
+  );
+}
+
+/**
+ * Resolves a TypeScript type to the extension-registered custom type ID
+ * (`type.typeName`) consulted by `parseConstraintTagValue`'s builtin-tag
+ * broadening lookup — see `createConstraintTagRegistry.findBuiltinConstraintBroadening`
+ * above, which matches directly against `type.typeName`.
+ *
+ * Tries two detection mechanisms, in the same precedence order as the build
+ * consumer's `resolveCustomTypeFromTsType` (`packages/build/src/extensions/resolve-custom-type.ts`):
+ *
+ * 1. **Name-based** — matches the printed TS type name against
+ *    `tsTypeNames ?? [type.typeName]`, the same detection `hasExtensionBroadening`
+ *    uses. `tsTypeNames` is `@deprecated` on `CustomTypeRegistration`, but this
+ *    bridge must keep reading it until symbol-based detection replaces name
+ *    matching entirely (see the Phase 4/5 TODO above `hasExtensionBroadening`).
+ * 2. **Brand-based** — structural fallback for types registered via `brand`
+ *    (the currently-recommended mechanism): matches computed-property brand
+ *    identifiers collected via `_collectBrandIdentifiers` against `type.brand`.
+ *    Attempted only when name-based detection found no match, mirroring the
+ *    build consumer's "name wins over brand" precedence.
+ *
+ * Symbol-based detection (the build consumer's third mechanism, via
+ * `defineCustomType<T>()` type-parameter extraction) has no snapshot-side
+ * equivalent — the snapshot consumer has no `ExtensionRegistry` to hold a
+ * symbol table, only `ExtensionDefinition[]`.
+ *
+ * Issue #396: this is the piece that was previously never computed for the
+ * snapshot/LSP consumer, so builtin constraint tags on registered custom
+ * types (direct-field or path-targeted) never broadened into their
+ * type-specific `CustomConstraintNode`.
+ */
+function resolveExtensionCustomTypeId(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): string | undefined {
+  if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
+    return undefined;
   }
 
+  const effectiveType = stripNullishUnion(subjectType);
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions)[0]?.typeName;
+}
+
+/**
+ * Collects extension-registered custom types matching `effectiveType`, in the
+ * same precedence order as the build consumer's `resolveCustomTypeFromTsType`:
+ * name-based matches win; the brand-based structural fallback is consulted
+ * only when no name matches. Shared by `hasExtensionBroadening` and
+ * `resolveExtensionCustomTypeId` so broadening *detection* and custom-type-id
+ * *resolution* can never disagree about which registrations apply — a
+ * name-only gate paired with a name+brand resolver produced a spurious
+ * TYPE_MISMATCH diagnostic alongside a correctly broadened fact for
+ * brand-only registrations.
+ */
+function findMatchingExtensionTypes(
+  effectiveType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[]
+): NonNullable<ExtensionDefinition["types"]>[number][] {
+  // 1. Name-based (deprecated `tsTypeNames`, defaulting to `[typeName]`).
+  const nameMatches = findExtensionTypesByName(effectiveType, checker, extensionDefinitions);
+  if (nameMatches.length > 0) {
+    return nameMatches;
+  }
+
+  // 2. Brand-based structural fallback.
+  const brands = _collectBrandIdentifiers(effectiveType);
+  if (brands.length === 0) {
+    return [];
+  }
+  const brandMatches: NonNullable<ExtensionDefinition["types"]>[number][] = [];
   for (const extension of extensionDefinitions) {
     for (const type of extension.types ?? []) {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
-      const registeredNames = type.tsTypeNames ?? [type.typeName];
-      if (!registeredNames.includes(typeName)) {
-        continue;
-      }
-      for (const broadening of type.builtinConstraintBroadenings ?? []) {
-        if (broadening.tagName === tagName) {
-          return true;
-        }
+      if (type.brand !== undefined && brands.includes(type.brand)) {
+        brandMatches.push(type);
       }
     }
   }
+  return brandMatches;
+}
 
-  return false;
+/**
+ * For a path-targeted builtin constraint tag, resolves the path's terminal
+ * TypeScript type and looks up whether it matches a registered custom type.
+ * Mirrors the build consumer's `resolvePathTargetCustomTypeId` in
+ * `tsdoc-parser.ts` (PR #398 / issue #395), adapted to this file's
+ * `ExtensionDefinition[]`-based, name-matching registry bridge instead of a
+ * build-only `ExtensionRegistry`.
+ */
+function resolvePathTargetCustomTypeId(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  pathSegments: readonly string[],
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+): string | undefined {
+  const resolution = resolvePathTargetType(subjectType, checker, pathSegments);
+  if (resolution.kind !== "resolved") {
+    return undefined;
+  }
+
+  return resolveExtensionCustomTypeId(resolution.type, checker, extensionDefinitions);
 }
 
 function renderTargetLabel(targetPath: string | null): string {
@@ -644,6 +764,20 @@ function buildDeclarationSummary(
   const resolvedMetadata = toSerializedResolvedMetadata(metadataAnalysis?.resolvedMetadata);
   const metadataEntries = toSerializedMetadataEntries(metadataAnalysis?.entries ?? []);
   const constraintRegistry = createConstraintTagRegistry(extensionDefinitions);
+  // Issue #396: resolve the declaration's own type once, so direct-field
+  // builtin constraint tags can broaden into their custom-type constraint
+  // (e.g. `@minimum` on a `Decimal` field -> `DecimalMinimum`). Path-targeted
+  // tags resolve their own terminal type per-tag below, since the path
+  // varies per tag.
+  const declarationSubjectType = getSubjectType(node, checker);
+  const directFieldTypeId =
+    declarationSubjectType === undefined
+      ? undefined
+      : resolveExtensionCustomTypeId(declarationSubjectType, checker, extensionDefinitions);
+  const directFieldType: CustomTypeNode | undefined =
+    directFieldTypeId === undefined
+      ? undefined
+      : { kind: "custom", typeId: directFieldTypeId, payload: null };
   const numericConstraints = new Map<string | null, NumericConstraintAccumulator>();
   const stringConstraints = new Map<string | null, StringConstraintAccumulator>();
   const arrayConstraints = new Map<string | null, ArrayConstraintAccumulator>();
@@ -676,17 +810,39 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
-    // Intentionally omits `fieldType` and `pathResolvedCustomTypeId`: the
-    // snapshot consumer does not currently apply custom-type broadening for
-    // direct OR path-targeted constraints. Downstream LSP/natural-language
-    // summarizers therefore receive un-broadened `NumericConstraintNode`/
-    // `LengthConstraintNode` IR. Parity with the build consumer (PR #398,
-    // issue #395) is tracked in issue #396.
+    // Issue #396: thread both broadening inputs through to
+    // `parseConstraintTagValue`, achieving parity with the build consumer
+    // (PR #398, issue #395) — direct-field tags broaden via `fieldType`
+    // (the declaration's own type); path-targeted tags broaden via
+    // `pathResolvedCustomTypeId` (the path's terminal type, resolved fresh
+    // per tag since the path varies tag-to-tag).
+    const pathTarget =
+      tag.target?.kind === "path" && tag.target.valid ? (tag.target.path ?? null) : null;
+    const pathResolvedCustomTypeId =
+      pathTarget !== null && declarationSubjectType !== undefined
+        ? resolvePathTargetCustomTypeId(
+            declarationSubjectType,
+            checker,
+            pathTarget.segments,
+            extensionDefinitions
+          )
+        : undefined;
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
       provenanceForTag(sourceFile, tag),
-      constraintRegistry === undefined ? undefined : { registry: constraintRegistry }
+      constraintRegistry === undefined
+        ? undefined
+        : {
+            registry: constraintRegistry,
+            ...(pathTarget !== null
+              ? pathResolvedCustomTypeId === undefined
+                ? {}
+                : { pathResolvedCustomTypeId }
+              : directFieldType === undefined
+                ? {}
+                : { fieldType: directFieldType }),
+          }
     );
     if (constraint !== null) {
       const targetPath = getConstraintTargetPath(constraint.path);
