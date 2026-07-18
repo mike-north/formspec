@@ -1,5 +1,77 @@
 # @formspec/ts-plugin
 
+## 0.1.0-alpha.70
+
+### Minor Changes
+
+- [#598](https://github.com/mike-north/formspec/pull/598) [`de81153`](https://github.com/mike-north/formspec/commit/de81153de38ffab418c2aea845444f3e0f259bd9) Thanks [@mike-north](https://github.com/mike-north)! - Validate constraint tag values in the build/analysis pipeline
+
+  Constraint value-range and format validation previously ran only in the ESLint
+  plugin, so a build-only consumer could emit invalid JSON Schema with no
+  diagnostic. Non-finite numerics (`@minimum Infinity`, `@maximum 1e999`, `NaN`),
+  non-decimal numeric forms (`@minimum 0x10`), negative or fractional lengths
+  (`@minLength -5`, `@maxItems 2.5`), and uncompilable regex patterns
+  (`@pattern (`) are now rejected during extraction: each produces no constraint
+  node plus a structured diagnostic carrying the spec's specific code
+  (`INVALID_NUMERIC_VALUE`, `INVALID_NON_NEGATIVE_INTEGER`, or
+  `INVALID_REGEX_PATTERN`). The IR/hover path and the diagnostic path now share a
+  single validator, so they always agree, and a file containing an invalid
+  constraint value no longer loses its language-server snapshot after transport.
+
+  The ESLint plugin's own value-parsing rules (`valid-numeric-value`,
+  `valid-integer-value`) are unchanged in this release; consolidating them onto
+  the same shared validator is tracked separately.
+
+### Patch Changes
+
+- [#597](https://github.com/mike-north/formspec/pull/597) [`32763e4`](https://github.com/mike-north/formspec/commit/32763e4f1cdcea688241c7f7265d486c5cafa893) Thanks [@mike-north](https://github.com/mike-north)! - Fix two integration-fidelity gaps between the FormSpec TypeScript plugin and its hosts.
+
+  **@formspec/ts-plugin:**
+  - The language-service proxy now forwards every argument to the wrapped
+    TypeScript methods verbatim. Previously the `getCompletionsAtPosition`
+    wrapper dropped TypeScript's fourth `formattingSettings` argument, discarding
+    format context that governs completion insert text.
+
+  **@formspec/language-server:**
+  - Manifest discovery now walks from a document's directory upward to the
+    matching editor workspace root, so the language server finds the plugin
+    manifest even when the plugin advertises it under a nested package's tsconfig
+    project directory (the common monorepo-opened-at-root case). The walk is
+    bounded by the workspace root, so manifests outside the editor's workspace are
+    never read.
+
+- [#615](https://github.com/mike-north/formspec/pull/615) [`da84976`](https://github.com/mike-north/formspec/commit/da84976356c2b9bcebb8735e49b8502651849c8f) Thanks [@mike-north](https://github.com/mike-north)! - Fix the snapshot consumer (used by `@formspec/language-server` and `@formspec/ts-plugin`) never applying constraint broadening for builtin constraint tags on registered custom types. `@minimum`, `@pattern`, and other builtin tags on a field whose type (or, for path-targeted tags, whose path terminal type) is a registered custom type now produce the broadened `CustomConstraintNode` instead of a generic numeric/length constraint, matching the build consumer's behavior (issue #395 / PR #398). This fixes natural-language summaries and hover text in downstream IDE tooling losing type-specific semantics (e.g. decimal formatting, unit hints, vocabulary-mode keywords).
+
+  For `@formspec/language-server` and `@formspec/ts-plugin`, this is a user-visible fix: hover text and diagnostics for fields of brand- or name-registered custom types now show the type-specific broadened constraint instead of the raw builtin keyword, and brand-only registrations no longer receive a spurious `TYPE_MISMATCH` error alongside the correctly broadened output.
+
+- [#619](https://github.com/mike-north/formspec/pull/619) [`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905) Thanks [@mike-north](https://github.com/mike-north)! - Add `repository` metadata (`url` + package `directory`) to every published
+  package's package.json, as required for npm trusted publishing (OIDC) and
+  provenance attestation. Releases now authenticate via GitHub's OIDC token
+  exchange instead of a long-lived `NPM_TOKEN` secret. No runtime behavior
+  changes.
+
+- [#610](https://github.com/mike-north/formspec/pull/610) [`8904b8b`](https://github.com/mike-north/formspec/commit/8904b8bbd4de998438c934c8bb527995df47ed81) Thanks [@mike-north](https://github.com/mike-north)! - Contain analysis exceptions in the in-process semantic service. `getCompletionContext`, `getDiagnostics`, `getFileSnapshot`, and `getHover` now catch exceptions raised while building a file snapshot or resolving comment/completion/hover context and degrade to the same fallback shapes already used for missing source (`null` for completion/hover, an `ANALYSIS_EXCEPTION` infrastructure diagnostic for diagnostics/file-snapshot), instead of letting the exception propagate into the embedding host. This brings the in-process path to parity with the IPC transport, which already contained exceptions via `FormSpecPluginService.respondToSocket`.
+
+- [#613](https://github.com/mike-north/formspec/pull/613) [`4946f85`](https://github.com/mike-north/formspec/commit/4946f85b9bbcde376ad72b583fa6ce26214c1366) Thanks [@mike-north](https://github.com/mike-north)! - Fix `@defaultValue` parsing so it is type-directed against the field's resolved target type (spec 002 §3.2), instead of guessing a JSON literal independent of the field's type.
+
+  Previously, `@defaultValue 6` on a `string` field emitted `{"type":"string","default":6}` — a `default` that fails validation against its own generated subschema. Now:
+  - Unquoted values are coerced to a non-string interpretation permitted by the field's type first (`@defaultValue 6` on a `number` field → `default: 6`), and fall back to the raw text as a string only when the field's type actually accepts a string (`@defaultValue 6` on a `string` field → `default: "6"`).
+  - A quoted JSON string (`@defaultValue "6"`) is always an explicit string, even when the field's type also permits a number.
+  - When no interpretation fits the field's type at all (e.g. `@defaultValue pending` on a `number` field), generation now reports a `DEFAULT_VALUE_TYPE_MISMATCH` diagnostic instead of silently emitting a mismatched `default`.
+
+  Scope notes: the type-directed parse applies to built-in primitive target types
+  (`string`/`number`/`boolean`/nullable unions of those); object, array,
+  reference, enum/literal-union, and custom target types fall back to the
+  previous untyped parsing (issues #360, #517 non-goals). The IDE/LSP snapshot
+  path does not yet thread field types into `@defaultValue` parsing, so editor
+  tooling may still display the untyped interpretation until the snapshot-side
+  type resolution (issue #396) lands. Custom-type `@defaultValue` coercion
+  (issue #360) is unaffected.
+
+- Updated dependencies [[`de81153`](https://github.com/mike-north/formspec/commit/de81153de38ffab418c2aea845444f3e0f259bd9), [`da84976`](https://github.com/mike-north/formspec/commit/da84976356c2b9bcebb8735e49b8502651849c8f), [`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905), [`4946f85`](https://github.com/mike-north/formspec/commit/4946f85b9bbcde376ad72b583fa6ce26214c1366)]:
+  - @formspec/analysis@0.1.0-alpha.70
+  - @formspec/core@0.1.0-alpha.70
+
 ## 0.1.0-alpha.69
 
 ### Patch Changes

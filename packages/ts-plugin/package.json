@@ -1,6 +1,6 @@
 {
   "name": "@formspec/ts-plugin",
-  "version": "0.1.0-alpha.69",
+  "version": "0.1.0-alpha.70",
   "description": "TypeScript language service plugin for FormSpec semantic comment analysis",
   "repository": {
     "type": "git",

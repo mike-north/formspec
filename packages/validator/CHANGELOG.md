@@ -1,5 +1,15 @@
 # @formspec/validator
 
+## 0.1.0-alpha.70
+
+### Patch Changes
+
+- [#619](https://github.com/mike-north/formspec/pull/619) [`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905) Thanks [@mike-north](https://github.com/mike-north)! - Add `repository` metadata (`url` + package `directory`) to every published
+  package's package.json, as required for npm trusted publishing (OIDC) and
+  provenance attestation. Releases now authenticate via GitHub's OIDC token
+  exchange instead of a long-lived `NPM_TOKEN` secret. No runtime behavior
+  changes.
+
 ## 0.1.0-alpha.64
 
 ### Patch Changes

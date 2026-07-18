@@ -1,5 +1,12 @@
 # @formspec/dsl-policy
 
+## 0.1.0-alpha.70
+
+### Patch Changes
+
+- Updated dependencies [[`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905)]:
+  - @formspec/core@0.1.0-alpha.70
+
 ## 0.1.0-alpha.69
 
 ### Patch Changes
