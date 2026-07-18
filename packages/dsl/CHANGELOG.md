@@ -1,5 +1,23 @@
 # @formspec/dsl
 
+## 0.1.0-alpha.70
+
+### Patch Changes
+
+- [#619](https://github.com/mike-north/formspec/pull/619) [`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905) Thanks [@mike-north](https://github.com/mike-north)! - Add `repository` metadata (`url` + package `directory`) to every published
+  package's package.json, as required for npm trusted publishing (OIDC) and
+  provenance attestation. Releases now authenticate via GitHub's OIDC token
+  exchange instead of a long-lived `NPM_TOKEN` secret. No runtime behavior
+  changes.
+
+- [#611](https://github.com/mike-north/formspec/pull/611) [`a220790`](https://github.com/mike-north/formspec/commit/a220790795fb0721f92a2d266dfd231592622dde) Thanks [@mike-north](https://github.com/mike-north)! - `@formspec/dsl` and `@formspec/config` now execute their tsd type tests as part
+  of `pnpm run test` (matching `@formspec/core`'s pattern), with new negative
+  (`expectError`) coverage for `InferFormSchema` and the config public surface. A
+  structural CI guard fails when any workspace package ships `*.test-d.ts` files
+  whose `test` script does not invoke tsd. No runtime behavior changes.
+- Updated dependencies [[`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905)]:
+  - @formspec/core@0.1.0-alpha.70
+
 ## 0.1.0-alpha.69
 
 ### Patch Changes

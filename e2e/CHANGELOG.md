@@ -1,5 +1,20 @@
 # @formspec/e2e
 
+## 0.1.0-alpha.70
+
+### Patch Changes
+
+- Updated dependencies [[`7e9fd9b`](https://github.com/mike-north/formspec/commit/7e9fd9b1a91f15b1839ff57ec73fa597e4585663), [`50baccc`](https://github.com/mike-north/formspec/commit/50bacccf56a26808c5d476c16159c3ed28de26cc), [`358e0f8`](https://github.com/mike-north/formspec/commit/358e0f83702d7ef7be929fe67cb083479d3b90ee), [`9cd0a9b`](https://github.com/mike-north/formspec/commit/9cd0a9bf1d7e9ecbd65d00d5445ef496b25bd09d), [`34b8bdc`](https://github.com/mike-north/formspec/commit/34b8bdc406b6415028ffb58a78dfab907036849f), [`32763e4`](https://github.com/mike-north/formspec/commit/32763e4f1cdcea688241c7f7265d486c5cafa893), [`0e32879`](https://github.com/mike-north/formspec/commit/0e32879d3ff3169f5b48c0ee309baf74dceb8b47), [`f15c01d`](https://github.com/mike-north/formspec/commit/f15c01dbf21dcf63035caa841db550d67a06e2e4), [`de81153`](https://github.com/mike-north/formspec/commit/de81153de38ffab418c2aea845444f3e0f259bd9), [`da84976`](https://github.com/mike-north/formspec/commit/da84976356c2b9bcebb8735e49b8502651849c8f), [`efab2d4`](https://github.com/mike-north/formspec/commit/efab2d4bda329ff99f37e0d4c0b40b7ca5b8cbce), [`f3ddfa6`](https://github.com/mike-north/formspec/commit/f3ddfa6d17a448c393f869d9ef019d4cd70a5905), [`8904b8b`](https://github.com/mike-north/formspec/commit/8904b8bbd4de998438c934c8bb527995df47ed81), [`a220790`](https://github.com/mike-north/formspec/commit/a220790795fb0721f92a2d266dfd231592622dde), [`4946f85`](https://github.com/mike-north/formspec/commit/4946f85b9bbcde376ad72b583fa6ce26214c1366)]:
+  - @formspec/cli@0.1.0-alpha.70
+  - @formspec/build@0.1.0-alpha.70
+  - @formspec/eslint-plugin@0.1.0-alpha.70
+  - @formspec/language-server@0.1.0-alpha.70
+  - @formspec/ts-plugin@0.1.0-alpha.70
+  - @formspec/analysis@0.1.0-alpha.70
+  - @formspec/core@0.1.0-alpha.70
+  - @formspec/dsl@0.1.0-alpha.70
+  - @formspec/validator@0.1.0-alpha.70
+
 ## 0.1.0-alpha.69
 
 ### Patch Changes
