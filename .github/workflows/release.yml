@@ -27,6 +27,13 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
+      # OIDC trusted publishing currently depends on pnpm 10.x behavior:
+      # `pnpm publish` (via `changeset publish`) delegates to the Node-bundled
+      # npm CLI (>= 11.5.1 on Node 24), which performs the OIDC token
+      # exchange and tolerates the unresolved ${NODE_AUTH_TOKEN} placeholder
+      # setup-node writes to .npmrc. pnpm v11 publishes natively and has open
+      # OIDC regressions (pnpm/pnpm#11513) — verify trusted publishing still
+      # works before bumping the root packageManager field to pnpm 11+.
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
 
