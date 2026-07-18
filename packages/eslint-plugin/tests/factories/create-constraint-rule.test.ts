@@ -304,3 +304,105 @@ vitest.describe("createConstraintRule — type error skips value validation", ()
     ],
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: #523 — createConstraintRule must visit interface property
+// signatures and type-alias members, not just class properties. Before the
+// fix, the factory's visitor only registered `PropertyDefinition`, so a
+// factory-built rule silently skipped interface fields and type-alias
+// members — inconsistent with built-in rules, which use
+// `createDeclarationVisitor` and cover the full declaration set.
+// ---------------------------------------------------------------------------
+const memberCoverageRule = createConstraintRule({
+  tagName: "MemberOnly",
+  applicableTypes: ["number"],
+  validateValue: (value) => {
+    const n = Number(value);
+    if (Number.isNaN(n)) return `Value must be numeric, got "${value}"`;
+    return null;
+  },
+});
+
+vitest.describe("createConstraintRule — #523 interface and type-alias member coverage", () => {
+  ruleTester.run("member-coverage-rule", memberCoverageRule, {
+    valid: [
+      // Class property — correct type and value (baseline, already covered pre-fix)
+      {
+        code: `
+          class Form {
+            /** @MemberOnly 5 */
+            count!: number;
+          }
+        `,
+      },
+      // Interface property signature — correct type and value
+      {
+        code: `
+          interface Form {
+            /** @MemberOnly 5 */
+            count: number;
+          }
+        `,
+      },
+      // Type-alias member (object literal) — correct type and value
+      {
+        code: `
+          type Form = {
+            /** @MemberOnly 5 */
+            count: number;
+          };
+        `,
+      },
+      // Tag absent on interface member — no error
+      {
+        code: `
+          interface Form {
+            count: number;
+          }
+        `,
+      },
+    ],
+    invalid: [
+      // Interface property signature — typeMismatch on string field
+      {
+        code: `
+          interface Form {
+            /** @MemberOnly 5 */
+            label: string;
+          }
+        `,
+        errors: [{ messageId: "typeMismatch" }],
+      },
+      // Interface property signature — invalidValue
+      {
+        code: `
+          interface Form {
+            /** @MemberOnly not-a-number */
+            count: number;
+          }
+        `,
+        errors: [{ messageId: "invalidValue" }],
+      },
+      // Type-alias member — typeMismatch on string field
+      {
+        code: `
+          type Form = {
+            /** @MemberOnly 5 */
+            label: string;
+          };
+        `,
+        errors: [{ messageId: "typeMismatch" }],
+      },
+      // Type-alias member — invalidValue
+      {
+        code: `
+          type Form = {
+            /** @MemberOnly not-a-number */
+            count: number;
+          };
+        `,
+        errors: [{ messageId: "invalidValue" }],
+      },
+    ],
+  });
+});
