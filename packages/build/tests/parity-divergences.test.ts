@@ -31,7 +31,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ExtensionDefinition } from "@formspec/core";
 import { generateSchemas } from "../src/generators/class-schema.js";
 import { buildFormSpecAnalysisFileSnapshot } from "@formspec/analysis/internal";
-import { vocabDecimalByNameExtension } from "./fixtures/example-vocabulary-decimal-extension.js";
+import {
+  vocabDecimalByBrandExtension,
+  vocabDecimalByNameExtension,
+} from "./fixtures/example-vocabulary-decimal-extension.js";
 import { type BuildFixtureDir, createBuildFixtureDir } from "./helpers/build-fixture-dir.js";
 
 // =============================================================================
@@ -360,5 +363,54 @@ describe("parity: custom-type constraint broadening (issue #396)", () => {
       constraintId: "x-test/vocabulary-decimal/DecimalMinimum",
       payload: "10",
     });
+  });
+
+  // Brand-based registration (the currently-recommended mechanism) must reach
+  // the same agreement — this is the resolution path issue #396's snapshot
+  // work newly added, so the parity suite must exercise it, not just the
+  // deprecated name-based path.
+  const brandSource = [
+    "declare const __vocabDecimalBrand: unique symbol;",
+    "export type Decimal = string & { readonly [__vocabDecimalBrand]: true };",
+    "export interface Root {",
+    "  /** @minimum 10 */",
+    "  amount: Decimal;",
+    "}",
+  ].join("\n");
+
+  it("BUILD consumer: broadens @minimum for a brand-only registration", () => {
+    const filePath = path.join(tmpDir, "broadening-parity-build-brand.ts");
+    fs.writeFileSync(filePath, brandSource);
+
+    const result = generateSchemas({
+      filePath,
+      typeName: "Root",
+      config: { extensions: [vocabDecimalByBrandExtension], vendorPrefix: "x-test" },
+      errorReporting: "throw",
+    });
+
+    const amountSchema = result.jsonSchema.properties?.["amount"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(amountSchema?.["decimalMinimum"]).toBe("10");
+    expect(amountSchema?.["minimum"]).toBeUndefined();
+  });
+
+  it("SNAPSHOT consumer: broadens @minimum for a brand-only registration, with no spurious diagnostic", () => {
+    const snapshot = runSnapshotConsumer(brandSource, [vocabDecimalByBrandExtension]);
+    const [comment] = snapshot.comments;
+    const facts = comment?.declarationSummary.facts ?? [];
+
+    expect(facts.some((fact) => fact.kind === "numeric-constraints")).toBe(false);
+    expect(facts.find((fact) => fact.kind === "custom-constraint")).toMatchObject({
+      kind: "custom-constraint",
+      targetPath: null,
+      constraintId: "x-test/vocabulary-decimal-brand/DecimalMinimum",
+      payload: "10",
+    });
+    // Regression for the #396 review finding: a name-only capability gate
+    // paired with name+brand resolution produced a TYPE_MISMATCH error
+    // alongside the correctly broadened fact for brand-only registrations.
+    expect(snapshot.diagnostics.filter((d) => d.code === "TYPE_MISMATCH")).toEqual([]);
   });
 });

@@ -247,6 +247,45 @@ function createConstraintTagRegistry(
 // broadening for this type?"); different data model (TypeScript type-name
 // strings here, IR FieldType + ExtensionRegistry there). Unify once symbol-
 // based detection replaces name-based detection.
+/**
+ * Collects every extension-registered custom type whose name-based
+ * registration (`tsTypeNames ?? [typeName]`) matches the printed name of
+ * `effectiveType`. Single implementation shared by `hasExtensionBroadening`
+ * (broadening *detection*) and `resolveExtensionCustomTypeId` (custom-type-id
+ * *resolution*) so name-matching semantics cannot drift between the two.
+ *
+ * Uses NoTruncation (via `typeToString`) so that complex types
+ * (intersections, deep generics) are rendered in full. Without it,
+ * checker.typeToString applies TypeScript's internal truncation threshold and
+ * can produce a structurally-different string than what was registered in
+ * tsTypeNames, causing detection to miss for anonymous intersection types or
+ * deeply nested generics.
+ */
+function findExtensionTypesByName(
+  effectiveType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[]
+): NonNullable<ExtensionDefinition["types"]>[number][] {
+  const typeName = typeToString(effectiveType, checker);
+  if (typeName === null) {
+    // typeToString returns null when its type argument is undefined. Callers
+    // always pass a ts.Type, so this branch is a defensive guard.
+    return [];
+  }
+
+  const matches: NonNullable<ExtensionDefinition["types"]>[number][] = [];
+  for (const extension of extensionDefinitions) {
+    for (const type of extension.types ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
+      const registeredNames = type.tsTypeNames ?? [type.typeName];
+      if (registeredNames.includes(typeName)) {
+        matches.push(type);
+      }
+    }
+  }
+  return matches;
+}
+
 function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
@@ -257,38 +296,16 @@ function hasExtensionBroadening(
     return false;
   }
 
-  // Strip nullish union members (| null | undefined) before name-matching,
+  // Strip nullish union members (| null | undefined) before matching,
   // consistent with how the build path strips before _isIntegerBrandedType.
+  // Uses the shared name-then-brand resolution: a name-only gate here paired
+  // with the name+brand resolver in resolveExtensionCustomTypeId let a
+  // brand-only registration produce a broadened fact AND a spurious
+  // TYPE_MISMATCH diagnostic for the same tag (issue #396 review finding).
   const effectiveType = stripNullishUnion(subjectType);
-  // Use NoTruncation so that complex types (intersections, deep generics) are
-  // rendered in full. Without it, checker.typeToString applies TypeScript's internal
-  // truncation threshold and can produce a structurally-different string than what
-  // was registered in tsTypeNames, causing broadening detection to miss for
-  // anonymous intersection types or deeply nested generics.
-  const typeName = typeToString(effectiveType, checker);
-  if (typeName === null) {
-    // typeToString returns null when its type argument is undefined. stripNullishUnion
-    // always returns a ts.Type, so this branch is a defensive guard for future callers
-    // that might pass an undefined type through a different code path.
-    return false;
-  }
-
-  for (const extension of extensionDefinitions) {
-    for (const type of extension.types ?? []) {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
-      const registeredNames = type.tsTypeNames ?? [type.typeName];
-      if (!registeredNames.includes(typeName)) {
-        continue;
-      }
-      for (const broadening of type.builtinConstraintBroadenings ?? []) {
-        if (broadening.tagName === tagName) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
+    (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
+  );
 }
 
 /**
@@ -331,34 +348,45 @@ function resolveExtensionCustomTypeId(
   }
 
   const effectiveType = stripNullishUnion(subjectType);
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions)[0]?.typeName;
+}
 
+/**
+ * Collects extension-registered custom types matching `effectiveType`, in the
+ * same precedence order as the build consumer's `resolveCustomTypeFromTsType`:
+ * name-based matches win; the brand-based structural fallback is consulted
+ * only when no name matches. Shared by `hasExtensionBroadening` and
+ * `resolveExtensionCustomTypeId` so broadening *detection* and custom-type-id
+ * *resolution* can never disagree about which registrations apply — a
+ * name-only gate paired with a name+brand resolver produced a spurious
+ * TYPE_MISMATCH diagnostic alongside a correctly broadened fact for
+ * brand-only registrations.
+ */
+function findMatchingExtensionTypes(
+  effectiveType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[]
+): NonNullable<ExtensionDefinition["types"]>[number][] {
   // 1. Name-based (deprecated `tsTypeNames`, defaulting to `[typeName]`).
-  const typeName = typeToString(effectiveType, checker);
-  if (typeName !== null) {
-    for (const extension of extensionDefinitions) {
-      for (const type of extension.types ?? []) {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
-        const registeredNames = type.tsTypeNames ?? [type.typeName];
-        if (registeredNames.includes(typeName)) {
-          return type.typeName;
-        }
-      }
-    }
+  const nameMatches = findExtensionTypesByName(effectiveType, checker, extensionDefinitions);
+  if (nameMatches.length > 0) {
+    return nameMatches;
   }
 
   // 2. Brand-based structural fallback.
   const brands = _collectBrandIdentifiers(effectiveType);
-  if (brands.length > 0) {
-    for (const extension of extensionDefinitions) {
-      for (const type of extension.types ?? []) {
-        if (type.brand !== undefined && brands.includes(type.brand)) {
-          return type.typeName;
-        }
+  if (brands.length === 0) {
+    return [];
+  }
+  const brandMatches: NonNullable<ExtensionDefinition["types"]>[number][] = [];
+  for (const extension of extensionDefinitions) {
+    for (const type of extension.types ?? []) {
+      if (type.brand !== undefined && brands.includes(type.brand)) {
+        brandMatches.push(type);
       }
     }
   }
-
-  return undefined;
+  return brandMatches;
 }
 
 /**

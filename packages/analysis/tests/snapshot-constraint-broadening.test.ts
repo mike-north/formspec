@@ -301,6 +301,34 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
     expect(customFact?.payload).toBe("10");
   });
 
+  it("emits no TYPE_MISMATCH diagnostic for a brand-only registration (#396 review finding)", () => {
+    // Regression: hasExtensionBroadening (the capability-check gate) matched
+    // by name only while resolveExtensionCustomTypeId matched name + brand,
+    // so a brand-only registration produced a correctly broadened fact AND a
+    // spurious TYPE_MISMATCH error on the same valid tag — a red squiggle on
+    // exactly the registration mechanism the docs recommend.
+    const source = [
+      "declare const __decimalBrandOnly: unique symbol;",
+      "type Decimal = string & { readonly [__decimalBrandOnly]: true };",
+      "class Foo {",
+      "  /** @minimum 10 */",
+      "  amount!: Decimal;",
+      "}",
+    ].join("\n");
+
+    const { checker, sourceFile } = createProgram(source, "/virtual/broadening-brand-diag.ts");
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, {
+      checker,
+      extensionDefinitions: [decimalBrandExtension],
+    });
+
+    expect(snapshot.diagnostics.filter((d) => d.code === "TYPE_MISMATCH")).toEqual([]);
+    const [comment] = snapshot.comments;
+    expect(
+      comment?.declarationSummary.facts.some((fact) => fact.kind === "custom-constraint")
+    ).toBe(true);
+  });
+
   it("does not broaden when the field type is not a registered custom type", () => {
     const source = [
       "class Foo {",
