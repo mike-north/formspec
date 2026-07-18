@@ -2,6 +2,11 @@
   "name": "@formspec/config",
   "version": "0.1.0-alpha.69",
   "description": "Unified configuration for FormSpec - extensions, constraints, metadata, pipeline settings, and DSL-policy validation",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/config"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

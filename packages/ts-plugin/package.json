@@ -2,6 +2,11 @@
   "name": "@formspec/ts-plugin",
   "version": "0.1.0-alpha.69",
   "description": "TypeScript language service plugin for FormSpec semantic comment analysis",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/ts-plugin"
+  },
   "type": "module",
   "main": "./index.cjs",
   "module": "./dist/index.js",

@@ -1,0 +1,13 @@
+package	repository	workflow	environment	action	package_manager	release_tool	current_version	trust_status	migration_pr	canary_version	attestation	status
+formspec	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.0.0	unknown			missing	pending
+@formspec/analysis	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/build	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/cli	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/config	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/core	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/dsl	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/eslint-plugin	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/language-server	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/runtime	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/ts-plugin	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending
+@formspec/validator	mike-north/formspec	release.yml	npm-publish	publish	pnpm	changesets	0.1.0-alpha.63	unknown			missing	pending

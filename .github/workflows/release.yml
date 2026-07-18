@@ -11,6 +11,7 @@ concurrency: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
 permissions:
   contents: write
   pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -33,8 +34,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "24"
-          cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Show release toolchain
+        run: node --version && npm --version && pnpm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -49,5 +53,3 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

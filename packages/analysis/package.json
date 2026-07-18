@@ -2,6 +2,11 @@
   "name": "@formspec/analysis",
   "version": "0.1.0-alpha.69",
   "description": "Shared comment-tag analysis utilities for FormSpec tooling",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/analysis"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

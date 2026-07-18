@@ -2,6 +2,11 @@
   "name": "@formspec/dsl",
   "version": "0.1.0-alpha.69",
   "description": "DSL functions for defining FormSpec forms",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/dsl"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

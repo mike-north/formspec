@@ -2,6 +2,11 @@
   "name": "@formspec/language-server",
   "version": "0.1.0-alpha.69",
   "description": "Language server for FormSpec — completions and hover for JSDoc constraint tags",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/language-server"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

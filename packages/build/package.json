@@ -2,6 +2,11 @@
   "name": "@formspec/build",
   "version": "0.1.0-alpha.69",
   "description": "Build tools to compile FormSpec forms to JSON Schema and UI Schema",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mike-north/formspec.git",
+    "directory": "packages/build"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
