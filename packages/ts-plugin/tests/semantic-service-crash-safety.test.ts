@@ -111,6 +111,38 @@ describe("FormSpecSemanticService crash safety (#553)", () => {
     );
   });
 
+  it("returns null from getHover when the snapshot build throws inside the declaration fallback", async () => {
+    // The snapshot fallback inside getHover calls
+    // getFileSnapshotWithCacheState, which contains build exceptions itself —
+    // so the throw never reaches getHover's own catch. The documented
+    // contract is still `null` on a contained analysis exception, not an
+    // empty hover result.
+    const context = await createProgramContext(SOURCE);
+    workspaces.push(context.workspaceRoot);
+    const logger = { info: vi.fn() };
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+      logger,
+    });
+    services.push(service);
+
+    // Hover comment lookup finds nothing (forces the snapshot fallback);
+    // the snapshot build itself throws.
+    analysisInternalMocks.getCommentHoverInfoAtOffsetImpl = () => null;
+    analysisInternalMocks.buildFormSpecAnalysisFileSnapshotImpl = () => {
+      throw new Error("simulated checker crash in hover fallback");
+    };
+
+    const result = service.getHover(context.filePath, 0);
+
+    expect(result).toBeNull();
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining("getFileSnapshotWithCacheState")
+    );
+  });
+
   it("still returns the fallback shape when the host-supplied logger itself throws", async () => {
     // Regression: the exception-logging helper runs inside the crash-safety
     // catch blocks. A host logger that throws (closed stream, serializer

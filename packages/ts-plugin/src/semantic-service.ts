@@ -347,7 +347,18 @@ export class FormSpecSemanticService {
           };
         }
 
-        const { snapshot } = this.getFileSnapshotWithCacheState(filePath, performance, environment);
+        const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(
+          filePath,
+          performance,
+          environment
+        );
+        // getFileSnapshotWithCacheState contains snapshot-build exceptions
+        // itself, so a throw inside this fallback never reaches the catch
+        // below. Honor the documented contract — hover returns null when an
+        // analysis exception occurred — instead of an empty hover result.
+        if (cacheState === "error") {
+          return null;
+        }
         const declarationSummary = findInnermostDeclarationSummary(snapshot, offset);
 
         return {
