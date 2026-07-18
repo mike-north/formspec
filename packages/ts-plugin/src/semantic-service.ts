@@ -674,10 +674,18 @@ export class FormSpecSemanticService {
    * embedding host's request loop; see #553.
    */
   private logAnalysisException(operation: string, filePath: string, error: unknown): void {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    this.options.logger?.info(
-      `[FormSpec] Semantic query "${operation}" threw while analyzing ${filePath}: ${errorMessage}`
-    );
+    // Runs inside the crash-safety catch blocks, so it must not throw itself:
+    // a host-supplied logger that fails (closed stream, serializer error)
+    // would otherwise escape the catch and crash the host request loop —
+    // the exact failure #553 contains.
+    try {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.options.logger?.info(
+        `[FormSpec] Semantic query "${operation}" threw while analyzing ${filePath}: ${errorMessage}`
+      );
+    } catch {
+      // Nothing safe left to do — the fallback result still returns.
+    }
   }
 
   private getSourceEnvironment(

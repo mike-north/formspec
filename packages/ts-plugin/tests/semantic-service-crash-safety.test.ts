@@ -111,6 +111,40 @@ describe("FormSpecSemanticService crash safety (#553)", () => {
     );
   });
 
+  it("still returns the fallback shape when the host-supplied logger itself throws", async () => {
+    // Regression: the exception-logging helper runs inside the crash-safety
+    // catch blocks. A host logger that throws (closed stream, serializer
+    // failure) must not escape the catch — that would crash the host request
+    // loop, the exact failure #553 contains.
+    const context = await createProgramContext(SOURCE);
+    workspaces.push(context.workspaceRoot);
+    const logger = {
+      info: vi.fn(() => {
+        throw new Error("logger stream closed");
+      }),
+    };
+    const service = new FormSpecSemanticService({
+      workspaceRoot: context.workspaceRoot,
+      typescriptVersion: ts.version,
+      getProgram: () => context.program,
+      logger,
+    });
+    services.push(service);
+
+    analysisInternalMocks.buildFormSpecAnalysisFileSnapshotImpl = () => {
+      throw new Error("simulated checker crash on malformed node");
+    };
+
+    const result = service.getDiagnostics(context.filePath);
+
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0]).toMatchObject({
+      code: "ANALYSIS_EXCEPTION",
+      category: "infrastructure",
+    });
+    expect(logger.info).toHaveBeenCalled();
+  });
+
   it("contains a throwing snapshot build and returns an empty snapshot from getFileSnapshot", async () => {
     const context = await createProgramContext(SOURCE);
     workspaces.push(context.workspaceRoot);
