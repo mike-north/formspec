@@ -252,6 +252,30 @@ HOW IT WORKS:
 /**
  * Converts FormSpecSchemas to LoadedFormSpecSchemas for the build package API.
  */
+/**
+ * Maps the file-resolved config onto runtime loader options. Single assembly
+ * point for both `loadFormSpecs` and `loadNamedFormSpecs` call sites — the
+ * duplicated hand-copied blocks this replaces are how `config.metadata`
+ * originally went missing on one path (issue #522).
+ */
+function toLoadFormSpecsOptions(
+  enumSerialization: "enum" | "oneOf" | "smart-size",
+  effectiveConfig: ResolvedFormSpecConfig | undefined
+) {
+  return {
+    enumSerialization,
+    ...(effectiveConfig?.vendorPrefix !== undefined && {
+      vendorPrefix: effectiveConfig.vendorPrefix,
+    }),
+    ...(effectiveConfig?.serialization !== undefined && {
+      serialization: effectiveConfig.serialization,
+    }),
+    ...(effectiveConfig?.metadata !== undefined && {
+      metadata: effectiveConfig.metadata,
+    }),
+  };
+}
+
 function toLoadedSchemas(
   formSpecs: Map<string, FormSpecSchemas>
 ): Map<string, LoadedFormSpecSchemas> {
@@ -444,15 +468,10 @@ async function main(): Promise<void> {
       reportedRuntimeLoadFailure = true;
     };
     try {
-      const { formSpecs, module, failures } = await loadFormSpecs(compiledPath, {
-        enumSerialization,
-        ...(effectiveConfig?.vendorPrefix !== undefined && {
-          vendorPrefix: effectiveConfig.vendorPrefix,
-        }),
-        ...(effectiveConfig?.serialization !== undefined && {
-          serialization: effectiveConfig.serialization,
-        }),
-      });
+      const { formSpecs, module, failures } = await loadFormSpecs(
+        compiledPath,
+        toLoadFormSpecsOptions(enumSerialization, effectiveConfig)
+      );
       loadedFormSpecs = formSpecs;
       rawModuleFromLoad = module;
       for (const [name, cause] of failures) {
@@ -570,15 +589,11 @@ async function main(): Promise<void> {
             warnRuntimeLoadFailureOnce();
             try {
               const { formSpecs: namedFormSpecs, failures: namedFailures } =
-                await loadNamedFormSpecs(compiledPath, missing, {
-                  enumSerialization,
-                  ...(effectiveConfig?.vendorPrefix !== undefined && {
-                    vendorPrefix: effectiveConfig.vendorPrefix,
-                  }),
-                  ...(effectiveConfig?.serialization !== undefined && {
-                    serialization: effectiveConfig.serialization,
-                  }),
-                });
+                await loadNamedFormSpecs(
+                  compiledPath,
+                  missing,
+                  toLoadFormSpecsOptions(enumSerialization, effectiveConfig)
+                );
               for (const [name, schemas] of namedFormSpecs) {
                 loadedFormSpecs.set(name, schemas);
               }
@@ -595,8 +610,23 @@ async function main(): Promise<void> {
         // generation succeeds and compute the exact file layout that a real run
         // would produce.
         // Generate class schemas
+        // `generateClassSchemas`/`generateMethodSchemas` (the lower-level
+        // IR-based generators used here) don't resolve a `config` object
+        // themselves the way `config`-aware entry points like
+        // `generateSchemas` do — see `resolveStaticOptions` in
+        // @formspec/build. Every config-derived option must be flattened
+        // explicitly; a whole-config pass-through is silently ignored (the
+        // root cause of issue #522). vendorPrefix and serialization are
+        // flattened alongside metadata so class-based generation matches
+        // chain-DSL exports for the same config.
         const schemaOptions = {
-          ...(effectiveConfig !== undefined && { config: effectiveConfig }),
+          ...(effectiveConfig?.metadata !== undefined && { metadata: effectiveConfig.metadata }),
+          ...(effectiveConfig?.vendorPrefix !== undefined && {
+            vendorPrefix: effectiveConfig.vendorPrefix,
+          }),
+          ...(effectiveConfig?.serialization !== undefined && {
+            serialization: effectiveConfig.serialization,
+          }),
           enumSerialization,
         };
         const classSchemas = generateClassSchemas(
