@@ -129,7 +129,13 @@ function generateRuntimeJsonSchema(
     ...publicOptions,
     serialization: options.serialization,
   };
-  const ir = canonicalizeChainDSL(formSpec as never);
+  // Metadata policy is applied at canonicalization time, not by
+  // generateJsonSchemaFromIR — thread it here or the serialization path
+  // silently drops config.metadata (the #522 bug, gated behind serialization).
+  const ir = canonicalizeChainDSL(
+    formSpec as never,
+    options.metadata !== undefined ? { metadata: options.metadata } : undefined
+  );
   return generateJsonSchemaFromIR(ir, internalOptions);
 }
 

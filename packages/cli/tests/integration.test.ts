@@ -330,6 +330,49 @@ describe("runtime loading", () => {
     }
   });
 
+  it("threads metadata into runtime schemas when serialization is also set (issue #522)", async () => {
+    // Regression test for a review finding on #616: the serialization branch
+    // of `generateRuntimeJsonSchema` bypasses `generateJsonSchema()` and
+    // canonicalizes directly — and metadata policy is applied at
+    // canonicalization time, so `canonicalizeChainDSL(formSpec)` without the
+    // metadata argument silently dropped `config.metadata` whenever
+    // `serialization` was set. Before the fix, this assertion fails because
+    // `widgetName` has no inferred title on the serialization path.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-runtime-metadata-serialization-"));
+    const filePath = path.join(dir, "widget-form.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      import { formspec, field } from "@formspec/dsl";
+
+      export const WidgetForm = formspec(field.text("widgetName", { required: true }));
+    `
+    );
+
+    try {
+      const { formSpecs } = await loadFormSpecs(ensureCompiledFixture(filePath), {
+        serialization: {
+          vocabularyBaseUrl: "https://example.com/vocab/",
+        },
+        metadata: {
+          field: {
+            displayName: {
+              mode: "infer-if-missing",
+              infer: ({ logicalName }) => `Custom ${logicalName}`,
+            },
+          },
+        },
+      });
+      const schema = formSpecs.get("WidgetForm")?.jsonSchema;
+
+      expect(schema?.properties?.["widgetName"]).toMatchObject({
+        title: "Custom widgetName",
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("generates method schemas with FormSpec params", async () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");

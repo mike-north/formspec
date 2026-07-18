@@ -145,9 +145,11 @@ describe("config.metadata forwarding (issue #522)", () => {
     const classSchema = readSchema(path.join(outDir, "WidgetProfile", "schema.json"));
 
     // Both authoring surfaces must produce identical inferred titles under
-    // the same metadata policy. Before the fix, `chainSchema` had no title
-    // at all (metadata was dropped for chain-DSL), while `classSchema`
-    // already had one — this assertion pins the fix in place.
+    // the same metadata policy. Before the fix, NEITHER surface applied the
+    // policy: chain-DSL dropped metadata in the loader options, and the
+    // class path passed a whole `config` object that the lower-level
+    // generators silently ignore (default displayName mode is "disabled",
+    // so no title was emitted at all). Both assertions pin the fix.
     expect(chainSchema.properties?.["widgetName"]?.title).toBe("Custom widgetName");
     expect(classSchema.properties?.["widgetName"]?.title).toBe("Custom widgetName");
   });
