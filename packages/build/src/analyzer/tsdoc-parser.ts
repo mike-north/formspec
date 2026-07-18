@@ -379,8 +379,16 @@ const DEFAULT_VALUE_TYPE_MISMATCH_CODE = "DEFAULT_VALUE_TYPE_MISMATCH";
 /**
  * Parses a `@defaultValue` tag payload, type-directed against
  * `options?.fieldType` (spec 002 §3.2, GitHub issue #517), and pushes
- * either the resulting annotation or a diagnostic — never both, never a
- * `default` that doesn't match the field's own type.
+ * either the resulting annotation or a diagnostic — never both.
+ *
+ * The type-directed fit-or-diagnostic guarantee only holds when
+ * `options?.fieldType` is a primitive type or a union composed entirely of
+ * primitives — the scope `parseDefaultValueTagValue` actually type-directs
+ * against (see its own doc comment in tag-value-parser.ts). For any other
+ * target kind (object, array, reference, enum, or custom types — #360
+ * territory), that function falls back to `legacyParseDefaultValue`: the
+ * pre-#517 untyped parse, which carries no such guarantee and can still
+ * push an annotation whose value doesn't match the field's own type.
  */
 function pushDefaultValueAnnotation(
   text: string,
