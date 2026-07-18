@@ -172,6 +172,14 @@ export function createServer(options: CreateServerOptions = {}): Connection {
   // Highest document version already published for each URI. Guards against
   // out-of-order/slow plugin responses clobbering a newer publish.
   const lastPublishedVersionByUri = new Map<string, number>();
+  // Monotonically increasing per-URI counter, bumped on both open and close.
+  // A close-then-reopen resets the LSP document version (e.g. VS Code
+  // restarts at 1), which defeats the version-based monotonic guard above --
+  // a query started before the close can carry a higher `requestedVersion`
+  // than the reopened document ever reaches. The generation counter detects
+  // that cross-generation staleness even though `documents.get(uri)` resolves
+  // again once the document is reopened.
+  const openGenerationByUri = new Map<string, number>();
   // URIs whose most recent query found the plugin snapshot stale/unavailable.
   // Re-queried on the freshness poll until the snapshot transitions to fresh.
   const staleDocumentUris = new Set<string>();
@@ -195,10 +203,12 @@ export function createServer(options: CreateServerOptions = {}): Connection {
       return;
     }
 
-    // Capture the version at call time so a slow/out-of-order response can be
-    // dropped once a newer version has already been published for this URI.
+    // Capture the version and open generation at call time so a slow/out-of-order
+    // response can be dropped once a newer version -- or a newer open/close
+    // generation -- has already superseded it for this URI.
     const documentUri = document.uri;
     const requestedVersion = document.version;
+    const requestedGeneration = openGenerationByUri.get(documentUri);
 
     const diagnostics = await getPluginDiagnosticsForDocument(
       workspaceRoots,
@@ -211,6 +221,17 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     // has already cleared its diagnostics, so drop the result entirely: do not
     // republish for a no-longer-open URI, and do not re-arm the stale poll for it.
     if (documents.get(documentUri) === undefined) {
+      return;
+    }
+
+    // The document may instead have been closed and reopened while the query
+    // was in flight: `documents.get` above resolves again (to the reopened
+    // document), but the reopened document's version may have reset below
+    // `requestedVersion`, so the monotonic check below can't be trusted to
+    // catch it. A generation mismatch means this result belongs to a
+    // superseded open/close cycle -- drop it so the reopened document's own
+    // fresh result isn't clobbered by stale pre-close diagnostics.
+    if (openGenerationByUri.get(documentUri) !== requestedGeneration) {
       return;
     }
 
@@ -359,6 +380,10 @@ export function createServer(options: CreateServerOptions = {}): Connection {
 
   documents.onDidOpen(({ document }) => {
     log.debug(`Document opened: ${document.uri}`);
+    // Bump the open generation before publishing so this open (and any query
+    // it triggers) is distinguishable from a prior open/close cycle for the
+    // same URI -- see the openGenerationByUri comment above.
+    openGenerationByUri.set(document.uri, (openGenerationByUri.get(document.uri) ?? 0) + 1);
     // Publish immediately on open so freshly-opened documents surface
     // diagnostics without waiting for a debounce interval.
     publishDiagnosticsForDocumentSafely(document);
@@ -378,6 +403,10 @@ export function createServer(options: CreateServerOptions = {}): Connection {
     }
     staleDocumentUris.delete(document.uri);
     lastPublishedVersionByUri.delete(document.uri);
+    // Bump (not delete) the open generation: a subsequent reopen must mint a
+    // generation that no in-flight query from this closed lifecycle already
+    // holds, so any such query is dropped as stale once it settles.
+    openGenerationByUri.set(document.uri, (openGenerationByUri.get(document.uri) ?? 0) + 1);
     if (diagnosticsMode === "plugin") {
       void connection.sendDiagnostics({
         uri: document.uri,
