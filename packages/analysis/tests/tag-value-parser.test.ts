@@ -3,9 +3,15 @@
  *
  * @see ../../../docs/002-tsdoc-grammar.md §3.2 (value grammars) and §6 (diagnostic codes)
  */
+import type { PrimitiveTypeNode, TypeNode } from "@formspec/core/internals";
 import type { ConstraintTagParseRegistryLike } from "../src/tag-value-parser.js";
 import { describe, expect, it } from "vitest";
-import { parseConstraintTagValue, parseExampleTagValue } from "../src/internal.js";
+import {
+  _makeDefaultValueMismatch,
+  parseConstraintTagValue,
+  parseDefaultValueTagValue,
+  parseExampleTagValue,
+} from "../src/internal.js";
 
 const PROVENANCE = {
   surface: "tsdoc" as const,
@@ -206,6 +212,279 @@ describe("tag-value-parser", () => {
 
     it("trims surrounding whitespace before parsing", () => {
       expect(parseExampleTagValue("   7   ", EX_PROV)).toMatchObject({ value: 7 });
+    });
+  });
+
+  // @defaultValue value parsing — spec 002 §3.2 (docs/002-tsdoc-grammar.md lines
+  // 561-588): parsing is type-directed against the resolved target type.
+  // Quoted JSON strings are always explicit strings; unquoted values first
+  // attempt a valid non-string interpretation permitted by the target type,
+  // falling back to a raw-text string only when the target type itself
+  // accepts strings, and to a diagnostic-worthy mismatch otherwise
+  // (GitHub issue #517).
+  describe("parseDefaultValueTagValue (@defaultValue, spec 002 §3.2, issue #517)", () => {
+    const DV_PROV = { ...PROVENANCE, tagName: "@defaultValue" };
+    type BuiltinPrimitiveKind = PrimitiveTypeNode["primitiveKind"];
+
+    const stringType: TypeNode = { kind: "primitive", primitiveKind: "string" };
+    const numberType: TypeNode = { kind: "primitive", primitiveKind: "number" };
+    const booleanType: TypeNode = { kind: "primitive", primitiveKind: "boolean" };
+    const nullType: TypeNode = { kind: "primitive", primitiveKind: "null" };
+    const bigintType: TypeNode = { kind: "primitive", primitiveKind: "bigint" };
+    const stringOrNumberType: TypeNode = {
+      kind: "union",
+      members: [stringType, numberType],
+    };
+
+    describe("table-driven: (tag text x target type) pairs", () => {
+      const cases: readonly {
+        readonly description: string;
+        readonly text: string;
+        readonly targetType: TypeNode | undefined;
+        readonly expected: unknown;
+      }[] = [
+        // AC1: unquoted numeric text is type-directed by the target's kind —
+        // a string field must never receive a numeric `default`, and vice versa.
+        {
+          description: "unquoted 6 on a string field yields the string '6' (AC1)",
+          text: "6",
+          targetType: stringType,
+          expected: "6",
+        },
+        {
+          description: "unquoted 6 on a number field yields the number 6 (AC1)",
+          text: "6",
+          targetType: numberType,
+          expected: 6,
+        },
+        // AC2: an explicit quoted JSON string is always a string, even when
+        // the target type also permits a non-string interpretation.
+        {
+          description:
+            "quoted '6' on a string|number union yields the explicit string '6', not the number 6 (AC2)",
+          text: '"6"',
+          targetType: stringOrNumberType,
+          expected: "6",
+        },
+        // The complement of AC2: for the same union, an *unquoted* 6 coerces
+        // to the permitted non-string member first (spec's "coerce first" rule).
+        {
+          description: "unquoted 6 on a string|number union coerces to the number 6",
+          text: "6",
+          targetType: stringOrNumberType,
+          expected: 6,
+        },
+        // AC3: boolean literal is type-directed the same way as numbers.
+        {
+          description: "unquoted true on a boolean field yields the boolean true (AC3)",
+          text: "true",
+          targetType: booleanType,
+          expected: true,
+        },
+        {
+          description: "unquoted true on a string field yields the string 'true' (AC3)",
+          text: "true",
+          targetType: stringType,
+          expected: "true",
+        },
+        // Spec example (002 §3.2): text with no non-string interpretation on
+        // a string-permitting target falls back to the raw text as a string.
+        {
+          description:
+            "unquoted pending (not valid JSON) on a string field yields the string 'pending'",
+          text: "pending",
+          targetType: stringType,
+          expected: "pending",
+        },
+        // `null` is a distinct built-in primitive kind (PrimitiveTypeNode
+        // primitiveKind "null"), coerced the same way as number/boolean.
+        {
+          description: "unquoted null on a null-typed field yields JSON null",
+          text: "null",
+          targetType: nullType,
+          expected: null,
+        },
+        // `bigint` is also a first-class `PrimitiveTypeNode["primitiveKind"]`
+        // (bigint maps to JSON Schema `type: "integer"` in the build
+        // generator — see ir-json-schema-generator.test.ts), so it must be
+        // type-directed the same way `number`/`integer` are for an in-range
+        // literal. Copilot review on PR #613 (issue #517).
+        {
+          description: "unquoted 6 on a bigint field yields the number 6 (in-range literal)",
+          text: "6",
+          targetType: bigintType,
+          expected: 6,
+        },
+        // No target type supplied (e.g. callers that don't thread a resolved
+        // TypeNode, such as the file-snapshots.ts LSP path): falls back to
+        // the pre-#517 untyped parse rather than guessing without type info.
+        {
+          description: "unquoted 6 with no target type falls back to the untyped legacy parse",
+          text: "6",
+          targetType: undefined,
+          expected: 6,
+        },
+      ];
+
+      for (const { description, text, targetType, expected } of cases) {
+        it(description, () => {
+          const result = parseDefaultValueTagValue(text, DV_PROV, targetType);
+          expect(result.kind).toBe("value");
+          if (result.kind !== "value") return;
+          expect(result.annotation).toEqual({
+            kind: "annotation",
+            annotationKind: "defaultValue",
+            value: expected,
+            provenance: DV_PROV,
+          });
+        });
+      }
+    });
+
+    describe("AC4: no valid interpretation for the target type yields a diagnostic-worthy mismatch, never a silently mismatched default", () => {
+      it("unquoted pending on a number field: the word has no numeric interpretation, and a number field does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("pending");
+        expect(result.message).toContain("number");
+      });
+
+      it("unquoted true on a number field: a boolean literal has no numeric interpretation and number does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("true", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+      });
+
+      it("quoted string on a strictly numeric field: an explicit string default against a type that never accepts strings", () => {
+        const result = parseDefaultValueTagValue('"6"', DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+      });
+
+      // bigint coverage (Copilot review on PR #613, issue #517): a bigint
+      // field behaves the same as a plain numeric field for the mismatch
+      // paths — it never accepts a string fallback either.
+      it("quoted string on a bigint field: an explicit string default against a type that never accepts strings", () => {
+        const result = parseDefaultValueTagValue('"6"', DV_PROV, bigintType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("bigint");
+      });
+
+      it("unquoted pending on a bigint field: no numeric interpretation, and bigint does not accept a string fallback", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, bigintType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).toContain("pending");
+        expect(result.message).toContain("bigint");
+      });
+
+      // Copilot review on PR #613 (issue #517): the mismatch message must not
+      // suggest quoting the value as a workaround when the target type does
+      // not accept a string at all — that advice would still fail to parse.
+      // Both `parseDefaultValueTagValue` call sites only reach the mismatch
+      // path when `string` is *not* among the permitted kinds, so pin that
+      // "no hint" behavior through the public entry point here...
+      it("mismatch message on a number-only field carries no quoting suggestion", () => {
+        const result = parseDefaultValueTagValue("pending", DV_PROV, numberType);
+        expect(result.kind).toBe("mismatch");
+        if (result.kind !== "mismatch") return;
+        expect(result.message).not.toContain("quote it explicitly");
+      });
+
+      // ...and pin the hint's own formatting contract directly against
+      // `_makeDefaultValueMismatch`, since a target type that permits both a
+      // non-string kind and `string` can never actually reach the mismatch
+      // path (the string fallback always succeeds first) — so this branch is
+      // unreachable via `parseDefaultValueTagValue` today but must still stay
+      // correct if that invariant ever changes.
+      describe("_makeDefaultValueMismatch message-formatting contract", () => {
+        it("omits the quoting hint when the target type does not permit string", () => {
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["number"]);
+          const result = _makeDefaultValueMismatch("pending", permittedKinds);
+          expect(result.message).not.toContain("quote it explicitly");
+          expect(result.message).toContain('@defaultValue value "pending"');
+        });
+
+        it("includes a correctly-quoted hint when the target type permits string", () => {
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["number", "string"]);
+          const result = _makeDefaultValueMismatch("pending", permittedKinds);
+          expect(result.message).toContain(
+            'quote it explicitly (e.g. @defaultValue "pending") if a string default is intended'
+          );
+        });
+
+        it("does not double-quote already-quoted raw text in the hint's example", () => {
+          // rawText is the raw @defaultValue payload text, which already
+          // includes the JSON-string quotes when the author quoted it
+          // (e.g. `@defaultValue "6"` -> rawText === `"6"`). The example must
+          // use JSON.stringify(rawText), not `"${rawText}"`, or it renders as
+          // the doubled `@defaultValue ""6""`.
+          const permittedKinds = new Set<BuiltinPrimitiveKind>(["boolean", "string"]);
+          const result = _makeDefaultValueMismatch('"6"', permittedKinds);
+          expect(result.message).toContain('@defaultValue "\\"6\\""');
+          expect(result.message).not.toContain('@defaultValue ""6""');
+        });
+      });
+    });
+
+    // Copilot review on PR #613 (issue #517): a >2^53 bigint default is a
+    // known limitation, not a new one introduced here. `coerceParsedJsonToNonString`
+    // reaches a `bigint`-permitting target the same way it reaches
+    // `number`/`integer` — via `JSON.parse` + `Number.isInteger` — and
+    // `JSON.parse` produces a JS `number`, which silently rounds any literal
+    // beyond `Number.MAX_SAFE_INTEGER` to the nearest representable double.
+    // This is the exact defect already tracked in issue #533 for
+    // `@minimum`/`@maximum` bigint bounds (`NumericConstraintNode.value` is
+    // typed `number`, and `Number(text)` is used with no precision-safe
+    // path) — this codebase has no bigint-literal-text-preservation path
+    // anywhere yet, for any tag. Fixing that (widening `JsonValue`-shaped
+    // default storage to a decimal-string escape hatch, per 005 §2.3) is
+    // #533's scope, not #517's surgical `@defaultValue` fix. This test
+    // documents *current* behavior for migration safety — it does not
+    // assert the value is spec-correct, only that it doesn't silently
+    // change without a test noticing.
+    describe("known limitation: bigint defaults beyond Number.MAX_SAFE_INTEGER lose precision (tracked in issue #533, not introduced by #517)", () => {
+      it("documents that a huge bigint literal default rounds to the nearest double instead of round-tripping exactly", () => {
+        const hugeLiteral = "9999999999999999999"; // > 2^53, spec 002 §3.2's own bigint example
+        const result = parseDefaultValueTagValue(hugeLiteral, DV_PROV, bigintType);
+        expect(result.kind).toBe("value");
+        if (result.kind !== "value") return;
+        // Number("9999999999999999999") rounds to 10000000000000000000 —
+        // the emitted value does NOT equal the literal text's exact integer
+        // value. This is the pre-existing, cross-cutting precision gap
+        // (issue #533), pinned here so a future fix must update this test.
+        const { value } = result.annotation;
+        expect(typeof value).toBe("number");
+        expect(value).toBe(Number(hugeLiteral));
+        if (typeof value === "number") {
+          expect(String(value)).not.toBe(hugeLiteral);
+        }
+      });
+    });
+
+    describe("AC5 support: the emitted default's JS runtime type always matches a kind the target type structurally permits", () => {
+      it("never returns a value whose typeof mismatches its target primitive kind", () => {
+        const pairs: readonly { readonly text: string; readonly targetType: TypeNode }[] = [
+          { text: "6", targetType: numberType },
+          { text: "true", targetType: booleanType },
+          { text: "6", targetType: stringType },
+        ];
+        const expectedJsKindByPrimitiveKind: Record<string, string> = {
+          number: "number",
+          boolean: "boolean",
+          string: "string",
+        };
+
+        for (const { text, targetType } of pairs) {
+          const result = parseDefaultValueTagValue(text, DV_PROV, targetType);
+          expect(result.kind).toBe("value");
+          if (result.kind !== "value") continue;
+          if (targetType.kind !== "primitive") continue;
+          expect(typeof result.annotation.value).toBe(
+            expectedJsKindByPrimitiveKind[targetType.primitiveKind]
+          );
+        }
+      });
     });
   });
 

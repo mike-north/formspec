@@ -1047,6 +1047,12 @@ The following categories group the symbolic codes conceptually:
 **Message:** `"@{tagName}" value is not valid JSON: {jsonError}. Received: "{value}".`
 **Auto-fix:** None.
 
+**`DEFAULT_VALUE_TYPE_MISMATCH`: Default value does not fit the field type**
+**Severity:** error
+**Condition:** No interpretation of a `@defaultValue` payload under §3.2's type-directed parse fits the field's resolved target type (and the target type does not accept the string fallback). The tag produces no `default` keyword.
+**Message:** `@defaultValue value "{value}" has no valid interpretation for target type "{targetType}" (spec 002 §3.2). Provide a value compatible with the field's type{quoteHint}.`
+**Auto-fix:** None.
+
 ---
 
 ### Type compatibility

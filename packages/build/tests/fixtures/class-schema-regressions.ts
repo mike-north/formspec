@@ -12,6 +12,54 @@ export class NotificationPreferences {
   nickname?: string | null;
 }
 
+// GitHub issue #517 — @defaultValue parsing must be type-directed against
+// the resolved target type (spec 002 §3.2), not parsed independently of it.
+export class TypeDirectedDefaultsForm {
+  /** @defaultValue 6 */
+  code?: string;
+
+  /** @defaultValue 6 */
+  quantity?: number;
+
+  // AC2: an explicit quoted JSON string is always a string, even though the
+  // target type also permits a number.
+  /** @defaultValue "6" */
+  codeOrQuantity?: string | number;
+
+  // Complement of AC2: the same union, but unquoted — coerces to the
+  // permitted non-string member (number) first.
+  /** @defaultValue 6 */
+  numericCodeOrQuantity?: string | number;
+
+  /** @defaultValue true */
+  flag?: boolean;
+
+  /** @defaultValue true */
+  flagLabel?: string;
+
+  // `bigint` is also a first-class `PrimitiveTypeNode["primitiveKind"]`
+  // (bigint -> JSON Schema `type: "integer"`) and must be type-directed the
+  // same way `number`/`integer` are for an in-range literal (Copilot review
+  // on PR #613, issue #517).
+  /** @defaultValue 6 */
+  countBigint?: bigint;
+}
+
+export class MismatchedDefaultValueForm {
+  // AC4: "pending" has no numeric interpretation, and a `number` field does
+  // not accept a string fallback — this must produce a diagnostic, not a
+  // silently emitted `default: "pending"` on a `type: "number"` schema.
+  /** @defaultValue pending */
+  count?: number;
+
+  // Same AC4 requirement, but against a `bigint` field: a `bigint` field
+  // does not accept a string fallback either, so a non-numeric word must
+  // also produce DEFAULT_VALUE_TYPE_MISMATCH rather than a mismatched
+  // default (issue #517, Copilot review on PR #613).
+  /** @defaultValue pending */
+  countBigint?: bigint;
+}
+
 export class ContactForm {
   /** @format email */
   emailAddress!: string;

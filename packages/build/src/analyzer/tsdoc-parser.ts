@@ -368,6 +368,43 @@ function makeDiagnostic(
   };
 }
 
+/**
+ * Diagnostic code emitted when `@defaultValue` has no valid interpretation
+ * under the resolved target type (spec 002 §3.2). Kept distinct from the
+ * placement/targeting diagnostic codes above since it's a value/type-fit
+ * problem, not a placement or path-targeting one.
+ */
+const DEFAULT_VALUE_TYPE_MISMATCH_CODE = "DEFAULT_VALUE_TYPE_MISMATCH";
+
+/**
+ * Parses a `@defaultValue` tag payload, type-directed against
+ * `options?.fieldType` (spec 002 §3.2, GitHub issue #517), and pushes
+ * either the resulting annotation or a diagnostic — never both.
+ *
+ * The type-directed fit-or-diagnostic guarantee only holds when
+ * `options?.fieldType` is a primitive type or a union composed entirely of
+ * primitives — the scope `parseDefaultValueTagValue` actually type-directs
+ * against (see its own doc comment in tag-value-parser.ts). For any other
+ * target kind (object, array, reference, enum, or custom types — #360
+ * territory), that function falls back to `legacyParseDefaultValue`: the
+ * pre-#517 untyped parse, which carries no such guarantee and can still
+ * push an annotation whose value doesn't match the field's own type.
+ */
+function pushDefaultValueAnnotation(
+  text: string,
+  provenance: Provenance,
+  options: ParseTSDocOptions | undefined,
+  annotations: AnnotationNode[],
+  diagnostics: ConstraintSemanticDiagnostic[]
+): void {
+  const result = parseDefaultValueTagValue(text, provenance, options?.fieldType);
+  if (result.kind === "value") {
+    annotations.push(result.annotation);
+    return;
+  }
+  diagnostics.push(makeDiagnostic(DEFAULT_VALUE_TYPE_MISMATCH_CODE, result.message, provenance));
+}
+
 function placementLabel(
   placement: NonNullable<ReturnType<typeof resolveDeclarationPlacement>>
 ): string {
@@ -968,7 +1005,7 @@ export function parseTSDocTags(
 
           const provenance = provenanceForParsedTag(tag, sourceFile, file);
           if (tagName === "defaultValue") {
-            annotations.push(parseDefaultValueTagValue(text, provenance));
+            pushDefaultValueAnnotation(text, provenance, options, annotations, diagnostics);
             continue;
           }
           if (tagName === "example") {
@@ -1073,7 +1110,7 @@ export function parseTSDocTags(
 
       const provenance = fallback.provenance;
       if (tagName === "defaultValue") {
-        annotations.push(parseDefaultValueTagValue(text, provenance));
+        pushDefaultValueAnnotation(text, provenance, options, annotations, diagnostics);
         continue;
       }
       if (tagName === "example") {
