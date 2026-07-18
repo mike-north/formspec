@@ -291,6 +291,45 @@ describe("runtime loading", () => {
     }
   });
 
+  it("generates schemas when a config sets only `serialization` (no vendorPrefix/enumSerialization/metadata)", async () => {
+    // Regression test for a Copilot review comment on PR #616
+    // (packages/cli/src/runtime/formspec-loader.ts:107): the claim was that
+    // `toPublicJsonSchemaOptions` can return `undefined`, and
+    // `generateRuntimeJsonSchema`'s `{ ...publicOptions, serialization: ... }`
+    // would "throw at runtime" when a caller passes only `serialization`.
+    //
+    // That's not how object-spread works — `{ ...undefined }` is a
+    // spec-legal no-op (unlike `Object.assign(undefined, ...)` or spreading
+    // `undefined` into an array/iterable position, which do throw). This
+    // test exercises the real path end to end: a `serialization`-only
+    // options object is exactly the case where `toPublicJsonSchemaOptions`
+    // returns `undefined` (vendorPrefix/enumSerialization/metadata are all
+    // absent), so if the claim were correct this would throw.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "formspec-runtime-serialization-only-"));
+    const filePath = path.join(dir, "serialized-form.ts");
+    fs.writeFileSync(
+      filePath,
+      `
+      import { formspec, field } from "@formspec/dsl";
+
+      export const SerializedForm = formspec(field.text("label", { required: true }));
+    `
+    );
+
+    try {
+      const { formSpecs } = await loadFormSpecs(ensureCompiledFixture(filePath), {
+        serialization: {
+          vocabularyBaseUrl: "https://example.com/vocab/",
+        },
+      });
+      const schema = formSpecs.get("SerializedForm")?.jsonSchema;
+
+      expect(schema?.properties?.["label"]).toMatchObject({ type: "string" });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("generates method schemas with FormSpec params", async () => {
     const ctx = createProgramContext(sampleFormsPath);
     const classDecl = findClassByName(ctx.sourceFile, "InstallmentPlan");
