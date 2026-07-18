@@ -32,6 +32,29 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Verify API report is up to date
+        # Each package's build script ends with `api-extractor:local`, which
+        # silently regenerates api-report/*.api.md to match the current
+        # public API instead of failing on drift. That means a plain
+        # `pnpm run api-extractor` (validate mode) run after this build step
+        # would always pass trivially — the build step already rewrote the
+        # on-disk report to match. The actual signal is whether that rewrite
+        # produced changes the author didn't commit, so fail the build if it
+        # did: a widened, renamed, or removed public export gets caught here
+        # even when the PR never touched api-report itself. Scoped to
+        # *.api.md so unrelated files under api-report/ (e.g. .gitkeep) can't
+        # trigger a false failure. `git status --porcelain` (not `git diff`)
+        # so brand-new, never-committed report files — a new package's first
+        # generation — fail the gate too instead of passing as untracked.
+        run: |
+          drift="$(git status --porcelain -- 'packages/*/api-report/*.api.md')"
+          if [ -n "$drift" ]; then
+            echo "::error::API report drift detected. Run the build locally and commit the updated api-report files:"
+            echo "$drift"
+            git diff -- 'packages/*/api-report/*.api.md'
+            exit 1
+          fi
+
       - name: Lint
         run: pnpm run lint
 

@@ -47,8 +47,8 @@ pnpm run format:check
 pnpm run format
 
 # API Extractor (validate public API surface)
-pnpm run api-extractor        # CI mode - fails on changes
-pnpm run api-extractor:local  # Dev mode - updates report files
+pnpm run api-extractor        # Validate mode - fails if api-report/ doesn't match the current build output (compares to what's on disk, not to git; see below for how CI checks the committed state)
+pnpm run api-extractor:local  # Dev mode - updates report files; also runs as the last step of every package's `build`
 
 # Generate markdown API docs
 pnpm run api-documenter
@@ -57,6 +57,8 @@ pnpm run api-documenter
 pnpm --filter @formspec/eslint-plugin run fix:eslint-docs
 pnpm --filter @formspec/eslint-plugin run check:eslint-docs
 ```
+
+CI enforces that committed `api-report/*.api.md` files match the public API: since `pnpm run build` already regenerates them in place via `api-extractor:local`, running plain `pnpm run api-extractor` afterward would trivially pass. Instead, `.github/workflows/ci.yml` runs `git diff --exit-code -- 'packages/*/api-report/*.api.md'` right after the build step, failing the job if that regeneration produced changes the PR didn't commit — i.e. public API drift shipped without an api-report update.
 
 ## Architecture Overview
 
