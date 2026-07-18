@@ -33,6 +33,7 @@ import { createProgram } from "./helpers.js";
 
 const DECIMAL_EXTENSION_ID = "x-test/broadening-396-decimal";
 const POSTAL_EXTENSION_ID = "x-test/broadening-396-postal";
+const DECIMAL_BRAND_EXTENSION_ID = "x-test/broadening-396-decimal-brand";
 
 /** Numeric, name-registered custom type broadening `@minimum`. */
 const decimalExtension: ExtensionDefinition = defineExtension({
@@ -80,6 +81,39 @@ const postalCodeExtension: ExtensionDefinition = defineExtension({
       compositionRule: "intersect",
       applicableTypes: ["custom"],
       toJsonSchema: (payload) => ({ postalCodePattern: payload }),
+    }),
+  ],
+});
+
+/**
+ * Numeric custom type registered ONLY via `brand` (no `tsTypeNames`) —
+ * `brand` is the currently-recommended, non-deprecated registration
+ * mechanism (`tsTypeNames` is `@deprecated` on `CustomTypeRegistration`).
+ * Mirrors the build consumer's brand-based resolution strategy in
+ * `resolveCustomTypeFromTsType` (`packages/build/src/extensions/resolve-custom-type.ts`).
+ */
+const decimalBrandExtension: ExtensionDefinition = defineExtension({
+  extensionId: DECIMAL_BRAND_EXTENSION_ID,
+  types: [
+    defineCustomType({
+      typeName: "DecimalBranded",
+      brand: "__decimalBrandOnly",
+      builtinConstraintBroadenings: [
+        {
+          tagName: "minimum",
+          constraintName: "DecimalBrandedMinimum",
+          parseValue: (raw) => raw.trim(),
+        },
+      ],
+      toJsonSchema: () => ({ type: "string", format: "decimal" }),
+    }),
+  ],
+  constraints: [
+    defineConstraint({
+      constraintName: "DecimalBrandedMinimum",
+      compositionRule: "intersect",
+      applicableTypes: ["custom"],
+      toJsonSchema: (payload) => ({ decimalBrandedMinimum: payload }),
     }),
   ],
 });
@@ -240,6 +274,31 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
     expect(customFact?.targetPath).toBeNull();
     expect(customFact?.constraintId).toBe(`${POSTAL_EXTENSION_ID}/PostalCodePattern`);
     expect(customFact?.payload).toBe("^[0-9]{5}$");
+  });
+
+  it("broadens a direct @minimum on a custom type registered ONLY via brand (no tsTypeNames)", () => {
+    // `brand` is the currently-recommended registration mechanism
+    // (`tsTypeNames` is `@deprecated`); this pins that the snapshot consumer
+    // does not silently fall back to un-broadened output for extensions
+    // that follow that recommendation.
+    const source = [
+      "declare const __decimalBrandOnly: unique symbol;",
+      "type Decimal = string & { readonly [__decimalBrandOnly]: true };",
+      "class Foo {",
+      "  /** @minimum 10 */",
+      "  amount!: Decimal;",
+      "}",
+    ].join("\n");
+
+    const facts = buildFacts(source, [decimalBrandExtension], "/virtual/broadening-brand.ts");
+
+    expect(facts.some((fact) => fact.kind === "numeric-constraints")).toBe(false);
+
+    const customFact = findCustomConstraintFact(facts);
+    expect(customFact).toBeDefined();
+    expect(customFact?.targetPath).toBeNull();
+    expect(customFact?.constraintId).toBe(`${DECIMAL_BRAND_EXTENSION_ID}/DecimalBrandedMinimum`);
+    expect(customFact?.payload).toBe("10");
   });
 
   it("does not broaden when the field type is not a registered custom type", () => {

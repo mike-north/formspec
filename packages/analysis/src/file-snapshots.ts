@@ -76,7 +76,7 @@ import {
   mapTypedParserDiagnosticCode,
   parseTagArgument,
 } from "./tag-argument-parser.js";
-import { _isIntegerBrandedType } from "./integer-brand.js";
+import { _collectBrandIdentifiers, _isIntegerBrandedType } from "./integer-brand.js";
 
 /**
  * Options used when building a serializable, editor-oriented snapshot for a
@@ -297,11 +297,24 @@ function hasExtensionBroadening(
  * broadening lookup — see `createConstraintTagRegistry.findBuiltinConstraintBroadening`
  * above, which matches directly against `type.typeName`.
  *
- * Uses the same name-based detection as `hasExtensionBroadening` (matching
- * the printed TS type name against `tsTypeNames ?? [type.typeName]`) — the
- * snapshot consumer's TypeScript-type -> registration bridge until symbol-
- * based detection replaces it (see the Phase 4/5 TODO above
- * `hasExtensionBroadening`).
+ * Tries two detection mechanisms, in the same precedence order as the build
+ * consumer's `resolveCustomTypeFromTsType` (`packages/build/src/extensions/resolve-custom-type.ts`):
+ *
+ * 1. **Name-based** — matches the printed TS type name against
+ *    `tsTypeNames ?? [type.typeName]`, the same detection `hasExtensionBroadening`
+ *    uses. `tsTypeNames` is `@deprecated` on `CustomTypeRegistration`, but this
+ *    bridge must keep reading it until symbol-based detection replaces name
+ *    matching entirely (see the Phase 4/5 TODO above `hasExtensionBroadening`).
+ * 2. **Brand-based** — structural fallback for types registered via `brand`
+ *    (the currently-recommended mechanism): matches computed-property brand
+ *    identifiers collected via `_collectBrandIdentifiers` against `type.brand`.
+ *    Attempted only when name-based detection found no match, mirroring the
+ *    build consumer's "name wins over brand" precedence.
+ *
+ * Symbol-based detection (the build consumer's third mechanism, via
+ * `defineCustomType<T>()` type-parameter extraction) has no snapshot-side
+ * equivalent — the snapshot consumer has no `ExtensionRegistry` to hold a
+ * symbol table, only `ExtensionDefinition[]`.
  *
  * Issue #396: this is the piece that was previously never computed for the
  * snapshot/LSP consumer, so builtin constraint tags on registered custom
@@ -318,17 +331,29 @@ function resolveExtensionCustomTypeId(
   }
 
   const effectiveType = stripNullishUnion(subjectType);
+
+  // 1. Name-based (deprecated `tsTypeNames`, defaulting to `[typeName]`).
   const typeName = typeToString(effectiveType, checker);
-  if (typeName === null) {
-    return undefined;
+  if (typeName !== null) {
+    for (const extension of extensionDefinitions) {
+      for (const type of extension.types ?? []) {
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
+        const registeredNames = type.tsTypeNames ?? [type.typeName];
+        if (registeredNames.includes(typeName)) {
+          return type.typeName;
+        }
+      }
+    }
   }
 
-  for (const extension of extensionDefinitions) {
-    for (const type of extension.types ?? []) {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- file-snapshots is the name-based detection bridge; it must read tsTypeNames until that mechanism is fully replaced by symbol-based detection
-      const registeredNames = type.tsTypeNames ?? [type.typeName];
-      if (registeredNames.includes(typeName)) {
-        return type.typeName;
+  // 2. Brand-based structural fallback.
+  const brands = _collectBrandIdentifiers(effectiveType);
+  if (brands.length > 0) {
+    for (const extension of extensionDefinitions) {
+      for (const type of extension.types ?? []) {
+        if (type.brand !== undefined && brands.includes(type.brand)) {
+          return type.typeName;
+        }
       }
     }
   }
