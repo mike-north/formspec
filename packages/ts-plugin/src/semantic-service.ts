@@ -188,7 +188,7 @@ function findInnermostDeclarationSummary(
   return bestMatch;
 }
 
-type SnapshotCacheState = "hit" | "miss" | "missing-source";
+type SnapshotCacheState = "hit" | "miss" | "missing-source" | "error";
 
 interface MutableSemanticServiceStats {
   queryTotals: {
@@ -274,107 +274,150 @@ export class FormSpecSemanticService {
     offset: number
   ): FormSpecSemanticCompletionResult | null {
     this.stats.queryTotals.completion += 1;
-    return this.runMeasured("semantic.getCompletionContext", { filePath, offset }, (performance) =>
-      this.withCommentQueryContext(filePath, offset, performance, (context) => ({
-        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-        sourceHash: context.sourceHash,
-        context: serializeCompletionContext(
-          getSemanticCommentCompletionContextAtOffset(context.sourceFile.text, offset, {
-            checker: context.checker,
-            ...(context.placement === null ? {} : { placement: context.placement }),
-            ...(context.subjectType === undefined ? {} : { subjectType: context.subjectType }),
-            ...(context.declaration === null ? {} : { declaration: context.declaration }),
-          })
-        ),
-      }))
-    );
+    try {
+      return this.runMeasured(
+        "semantic.getCompletionContext",
+        { filePath, offset },
+        (performance) =>
+          this.withCommentQueryContext(filePath, offset, performance, (context) => ({
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            sourceHash: context.sourceHash,
+            context: serializeCompletionContext(
+              getSemanticCommentCompletionContextAtOffset(context.sourceFile.text, offset, {
+                checker: context.checker,
+                ...(context.placement === null ? {} : { placement: context.placement }),
+                ...(context.subjectType === undefined
+                  ? {}
+                  : { subjectType: context.subjectType }),
+                ...(context.declaration === null ? {} : { declaration: context.declaration }),
+              })
+            ),
+          }))
+      );
+    } catch (error: unknown) {
+      this.logAnalysisException("getCompletionContext", filePath, error);
+      return null;
+    }
   }
 
   /** Resolves semantic hover payload for a comment cursor position. */
   public getHover(filePath: string, offset: number): FormSpecSemanticHoverResult | null {
     this.stats.queryTotals.hover += 1;
-    return this.runMeasured("semantic.getHover", { filePath, offset }, (performance) => {
-      const environment = this.getSourceEnvironment(filePath, performance);
-      if (environment === null) {
-        return null;
-      }
+    try {
+      return this.runMeasured("semantic.getHover", { filePath, offset }, (performance) => {
+        const environment = this.getSourceEnvironment(filePath, performance);
+        if (environment === null) {
+          return null;
+        }
 
-      const declaration = optionalMeasure(
-        performance,
-        "semantic.findDeclarationForCommentOffset",
-        {
+        const declaration = optionalMeasure(
+          performance,
+          "semantic.findDeclarationForCommentOffset",
+          {
+            filePath,
+            offset,
+          },
+          () => findDeclarationForCommentOffset(environment.sourceFile, offset)
+        );
+        const placement =
+          declaration === null
+            ? null
+            : optionalMeasure(performance, "semantic.resolveDeclarationPlacement", undefined, () =>
+                resolveDeclarationPlacement(declaration)
+              );
+        const subjectType =
+          declaration === null
+            ? undefined
+            : optionalMeasure(performance, "semantic.getSubjectType", undefined, () =>
+                getSubjectType(declaration, environment.checker)
+              );
+        const hover = serializeHoverInfo(
+          getCommentHoverInfoAtOffset(environment.sourceFile.text, offset, {
+            checker: environment.checker,
+            ...(placement === null ? {} : { placement }),
+            ...(subjectType === undefined ? {} : { subjectType }),
+            ...(declaration === null ? {} : { declaration }),
+          })
+        );
+        if (hover !== null) {
+          return {
+            protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+            sourceHash: environment.sourceHash,
+            hover,
+          };
+        }
+
+        const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(
           filePath,
-          offset,
-        },
-        () => findDeclarationForCommentOffset(environment.sourceFile, offset)
-      );
-      const placement =
-        declaration === null
-          ? null
-          : optionalMeasure(performance, "semantic.resolveDeclarationPlacement", undefined, () =>
-              resolveDeclarationPlacement(declaration)
-            );
-      const subjectType =
-        declaration === null
-          ? undefined
-          : optionalMeasure(performance, "semantic.getSubjectType", undefined, () =>
-              getSubjectType(declaration, environment.checker)
-            );
-      const hover = serializeHoverInfo(
-        getCommentHoverInfoAtOffset(environment.sourceFile.text, offset, {
-          checker: environment.checker,
-          ...(placement === null ? {} : { placement }),
-          ...(subjectType === undefined ? {} : { subjectType }),
-          ...(declaration === null ? {} : { declaration }),
-        })
-      );
-      if (hover !== null) {
+          performance,
+          environment
+        );
+        // getFileSnapshotWithCacheState contains snapshot-build exceptions
+        // itself, so a throw inside this fallback never reaches the catch
+        // below. Honor the documented contract — hover returns null when an
+        // analysis exception occurred — instead of an empty hover result.
+        if (cacheState === "error") {
+          return null;
+        }
+        const declarationSummary = findInnermostDeclarationSummary(snapshot, offset);
+
         return {
           protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-          sourceHash: environment.sourceHash,
-          hover,
+          sourceHash: snapshot.sourceHash,
+          hover:
+            declarationSummary === undefined
+              ? null
+              : {
+                  kind: "declaration",
+                  markdown: declarationSummary.hoverMarkdown,
+                },
         };
-      }
-
-      const { snapshot } = this.getFileSnapshotWithCacheState(filePath, performance, environment);
-      const declarationSummary = findInnermostDeclarationSummary(snapshot, offset);
-
-      return {
-        protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-        sourceHash: snapshot.sourceHash,
-        hover:
-          declarationSummary === undefined
-            ? null
-            : {
-                kind: "declaration",
-                markdown: declarationSummary.hoverMarkdown,
-              },
-      };
-    });
+      });
+    } catch (error: unknown) {
+      this.logAnalysisException("getHover", filePath, error);
+      return null;
+    }
   }
 
   /** Returns canonical FormSpec diagnostics for a file in the current host program. */
   public getDiagnostics(filePath: string): FormSpecSemanticDiagnosticsResult {
     this.stats.queryTotals.diagnostics += 1;
-    return this.runMeasured("semantic.getDiagnostics", { filePath }, (performance) => {
-      const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
-      this.recordQueryPath("diagnostics", cacheState);
+    try {
+      return this.runMeasured("semantic.getDiagnostics", { filePath }, (performance) => {
+        const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
+        this.recordQueryPath("diagnostics", cacheState);
+        return {
+          protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
+          sourceHash: snapshot.sourceHash,
+          diagnostics: snapshot.diagnostics,
+        };
+      });
+    } catch (error: unknown) {
+      this.logAnalysisException("getDiagnostics", filePath, error);
       return {
         protocolVersion: FORMSPEC_ANALYSIS_PROTOCOL_VERSION,
-        sourceHash: snapshot.sourceHash,
-        diagnostics: snapshot.diagnostics,
+        sourceHash: "",
+        diagnostics: [this.buildAnalysisExceptionDiagnostic(filePath, error)],
       };
-    });
+    }
   }
 
   /** Returns the full serialized semantic snapshot for a file. */
   public getFileSnapshot(filePath: string): FormSpecAnalysisFileSnapshot {
     this.stats.queryTotals.fileSnapshot += 1;
-    return this.runMeasured("semantic.getFileSnapshot", { filePath }, (performance) => {
-      const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
-      this.recordQueryPath("fileSnapshot", cacheState);
-      return snapshot;
-    });
+    try {
+      return this.runMeasured("semantic.getFileSnapshot", { filePath }, (performance) => {
+        const { snapshot, cacheState } = this.getFileSnapshotWithCacheState(filePath, performance);
+        this.recordQueryPath("fileSnapshot", cacheState);
+        return snapshot;
+      });
+    } catch (error: unknown) {
+      this.logAnalysisException("getFileSnapshot", filePath, error);
+      return this.buildInfrastructureDiagnosticSnapshot(
+        filePath,
+        this.buildAnalysisExceptionDiagnostic(filePath, error)
+      );
+    }
   }
 
   /** Schedules a debounced background refresh for the file snapshot cache. */
@@ -502,25 +545,15 @@ export class FormSpecSemanticService {
       environment === undefined ? this.getSourceEnvironment(filePath, performance) : environment;
     if (sourceEnvironment === null) {
       this.stats.fileSnapshotCacheMisses += 1;
-      const snapshot: FormSpecAnalysisFileSnapshot = {
-        filePath,
-        sourceHash: "",
-        generatedAt: this.getNow().toISOString(),
-        comments: [],
-        diagnostics: [
-          {
-            code: "MISSING_SOURCE_FILE",
-            category: "infrastructure",
-            message: `Unable to resolve TypeScript source file for ${filePath}`,
-            range: { start: 0, end: 0 },
-            severity: "warning",
-            relatedLocations: [],
-            data: {
-              filePath,
-            },
-          },
-        ],
-      };
+      const snapshot = this.buildInfrastructureDiagnosticSnapshot(filePath, {
+        code: "MISSING_SOURCE_FILE",
+        category: "infrastructure",
+        message: `Unable to resolve TypeScript source file for ${filePath}`,
+        range: { start: 0, end: 0 },
+        severity: "warning",
+        relatedLocations: [],
+        data: { filePath },
+      });
       performance.record({
         name: "semantic.getFileSnapshot.result",
         durationMs: getFormSpecPerformanceNow() - startedAt,
@@ -553,11 +586,35 @@ export class FormSpecSemanticService {
     }
 
     this.stats.fileSnapshotCacheMisses += 1;
-    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceEnvironment.sourceFile, {
-      checker: sourceEnvironment.checker,
-      now: () => this.getNow(),
-      performance,
-    } satisfies BuildFormSpecAnalysisFileSnapshotOptions);
+    let snapshot: FormSpecAnalysisFileSnapshot;
+    try {
+      snapshot = buildFormSpecAnalysisFileSnapshot(sourceEnvironment.sourceFile, {
+        checker: sourceEnvironment.checker,
+        now: () => this.getNow(),
+        performance,
+      } satisfies BuildFormSpecAnalysisFileSnapshotOptions);
+    } catch (error: unknown) {
+      this.logAnalysisException("getFileSnapshotWithCacheState", filePath, error);
+      const errorSnapshot = this.buildInfrastructureDiagnosticSnapshot(
+        filePath,
+        this.buildAnalysisExceptionDiagnostic(filePath, error)
+      );
+      performance.record({
+        name: "semantic.getFileSnapshot.result",
+        durationMs: getFormSpecPerformanceNow() - startedAt,
+        detail: {
+          filePath,
+          cache: "error",
+        },
+      });
+      // Deliberately not cached — the underlying source may still change on
+      // the next edit, and caching a failure would pin the host to a bad
+      // result until a full snapshot cache invalidation.
+      return {
+        snapshot: errorSnapshot,
+        cacheState: "error",
+      };
+    }
     this.snapshotCache.set(filePath, {
       sourceHash: sourceEnvironment.sourceHash,
       snapshot,
@@ -578,6 +635,68 @@ export class FormSpecSemanticService {
 
   private getNow(): Date {
     return this.options.now?.() ?? new Date();
+  }
+
+  /**
+   * Builds an empty snapshot carrying a single infrastructure diagnostic.
+   *
+   * Shared by the missing-source-file path and the analysis-exception path
+   * so both degrade to the same contract shape: an empty `sourceHash`, no
+   * comments, and one `infrastructure`-category diagnostic explaining why
+   * analysis could not run.
+   */
+  private buildInfrastructureDiagnosticSnapshot(
+    filePath: string,
+    diagnostic: FormSpecAnalysisDiagnostic
+  ): FormSpecAnalysisFileSnapshot {
+    return {
+      filePath,
+      sourceHash: "",
+      generatedAt: this.getNow().toISOString(),
+      comments: [],
+      diagnostics: [diagnostic],
+    };
+  }
+
+  /** Builds the infrastructure diagnostic reported when analysis throws. */
+  private buildAnalysisExceptionDiagnostic(
+    filePath: string,
+    error: unknown
+  ): FormSpecAnalysisDiagnostic {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      code: "ANALYSIS_EXCEPTION",
+      category: "infrastructure",
+      message: `FormSpec semantic analysis threw while analyzing ${filePath}: ${errorMessage}`,
+      range: { start: 0, end: 0 },
+      severity: "warning",
+      relatedLocations: [],
+      data: { filePath, error: errorMessage },
+    };
+  }
+
+  /**
+   * Logs a contained analysis exception via the configured logger.
+   *
+   * The IPC transport (`FormSpecPluginService.respondToSocket`) already
+   * contains exceptions by construction — the whole handler is wrapped in
+   * try/catch. This mirrors that containment for the in-process path so a
+   * malformed file or an unexpected checker exception cannot escape into the
+   * embedding host's request loop; see #553.
+   */
+  private logAnalysisException(operation: string, filePath: string, error: unknown): void {
+    // Runs inside the crash-safety catch blocks, so it must not throw itself:
+    // a host-supplied logger that fails (closed stream, serializer error)
+    // would otherwise escape the catch and crash the host request loop —
+    // the exact failure #553 contains.
+    try {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.options.logger?.info(
+        `[FormSpec] Semantic query "${operation}" threw while analyzing ${filePath}: ${errorMessage}`
+      );
+    } catch {
+      // Nothing safe left to do — the fallback result still returns.
+    }
   }
 
   private getSourceEnvironment(
