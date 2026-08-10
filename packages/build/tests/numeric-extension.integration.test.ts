@@ -195,10 +195,10 @@ describe("numeric extension integration", () => {
 
     expect(jsonSchema.properties?.["amounts"]).toEqual({
       type: "array",
-      "x-formspec-max-decimal-places": 4,
       items: {
         type: "string",
         "x-formspec-decimal": true,
+        "x-formspec-max-decimal-places": 4,
       },
     });
 
