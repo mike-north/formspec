@@ -68,6 +68,59 @@ describe("generateSchemas with FormSpecConfig", () => {
     }
   });
 
+  it("broadens constraints onto direct and path-targeted Decimal array items", () => {
+    const filePath = writeTempSource(`
+      export type Decimal = string & { __brand: "Decimal" };
+
+      export interface Ledger {
+        amounts: Decimal[];
+      }
+
+      export interface PaymentForm {
+        /** @minimum 0 */
+        amounts: Decimal[];
+
+        /** @minimum :amounts 0 */
+        ledger: Ledger;
+      }
+    `);
+
+    try {
+      const config: FormSpecConfig = {
+        extensions: [numericExtension],
+        vendorPrefix: "x-formspec",
+      };
+
+      const result = generateSchemas({
+        filePath,
+        typeName: "PaymentForm",
+        config,
+        errorReporting: "throw",
+      });
+
+      const expectedItems = {
+        type: "string",
+        "x-formspec-decimal": true,
+        "x-formspec-decimal-minimum": "0.0",
+      };
+      expect(result.jsonSchema.properties?.["amounts"]).toMatchObject({
+        type: "array",
+        items: expectedItems,
+      });
+      expect(result.jsonSchema.properties?.["ledger"]).toMatchObject({
+        properties: {
+          amounts: {
+            items: {
+              "x-formspec-decimal-minimum": "0.0",
+            },
+          },
+        },
+      });
+    } finally {
+      fs.rmSync(path.dirname(filePath), { recursive: true, force: true });
+    }
+  });
+
   it("resolves vendorPrefix from config", () => {
     const filePath = writeTempSource(`
       export interface SimpleForm {

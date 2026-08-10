@@ -87,6 +87,20 @@ describe("Array Constraints — comprehensive", () => {
     });
   });
 
+  it("nonNegativeItems: @minimum 0 on number[] → applies to items", () => {
+    expect(properties["nonNegativeItems"]).toEqual({
+      type: "array",
+      items: { type: "number", minimum: 0 },
+    });
+  });
+
+  it('constantItems: @const "USD" on string[] → applies to items', () => {
+    expect(properties["constantItems"]).toEqual({
+      type: "array",
+      items: { type: "string", const: "USD" },
+    });
+  });
+
   it("unconstrained: number[] → array of numbers", () => {
     expect(properties["unconstrained"]).toEqual({
       type: "array",
@@ -109,7 +123,7 @@ describe("Array Constraints — comprehensive", () => {
 
   it("all fields are required (all have ! not ?)", () => {
     const required = schema["required"] as string[];
-    expect(required).toHaveLength(8);
+    expect(required).toHaveLength(10);
     expect(required).toEqual(
       expect.arrayContaining([
         "nonEmpty",
@@ -120,6 +134,8 @@ describe("Array Constraints — comprehensive", () => {
         "allConstraints",
         "itemConstrained",
         "unconstrained",
+        "nonNegativeItems",
+        "constantItems",
       ])
     );
   });

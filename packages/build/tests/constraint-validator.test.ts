@@ -68,6 +68,11 @@ const ARRAY_TYPE: ArrayTypeNode = {
   items: { kind: "primitive", primitiveKind: "string" },
 };
 
+const NUMBER_ARRAY_TYPE: ArrayTypeNode = {
+  kind: "array",
+  items: NUMBER_TYPE,
+};
+
 /** Simple enum type node. */
 function enumType(values: readonly string[]): EnumTypeNode {
   return { kind: "enum", members: values.map((v) => ({ value: v })) };
@@ -711,6 +716,15 @@ describe("validateIR", () => {
       expect(validateIR(ir).valid).toBe(false);
       expect(validateIR(ir).diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
+
+    it("validates numeric constraints against array item types", () => {
+      expect(
+        validateIR(makeIR([makeField("amounts", NUMBER_ARRAY_TYPE, [minConstraint(0)])])).valid
+      ).toBe(true);
+      const invalid = validateIR(makeIR([makeField("labels", ARRAY_TYPE, [minConstraint(0)])]));
+      expect(invalid.valid).toBe(false);
+      expect(invalid.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -801,9 +815,17 @@ describe("validateIR", () => {
       expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");
     });
 
-    it("emits TYPE_MISMATCH when an array field has a primitive const value", () => {
-      const ir = makeIR([makeField("tags", ARRAY_TYPE, [constConstraint("USD", 1)])]);
-      const result = validateIR(ir);
+    it("accepts a matching primitive const value as an array item constraint", () => {
+      const result = validateIR(
+        makeIR([makeField("tags", ARRAY_TYPE, [constConstraint("USD", 1)])])
+      );
+
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
+    it("emits TYPE_MISMATCH for a const value incompatible with the array item type", () => {
+      const result = validateIR(makeIR([makeField("tags", ARRAY_TYPE, [constConstraint(42, 1)])]));
 
       expect(result.valid).toBe(false);
       expect(result.diagnostics[0]?.code).toBe("TYPE_MISMATCH");

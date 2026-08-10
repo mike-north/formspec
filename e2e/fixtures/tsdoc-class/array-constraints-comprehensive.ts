@@ -20,5 +20,11 @@ export class ArrayConstraintsForm {
   /** @maxLength 50 */
   itemConstrained!: string[];
 
+  /** @minimum 0 */
+  nonNegativeItems!: number[];
+
+  /** @const "USD" */
+  constantItems!: string[];
+
   unconstrained!: number[];
 }

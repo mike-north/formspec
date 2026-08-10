@@ -101,6 +101,36 @@ describe("_supportsConstraintCapability", () => {
     expect(_supportsConstraintCapability("string-like", type, checker)).toBe(false);
   });
 
+  it("returns true for number[] with numeric-comparable capability", () => {
+    const { type, checker } = makeProgram("number[]");
+    expect(_supportsConstraintCapability("numeric-comparable", type, checker)).toBe(true);
+  });
+
+  it("returns false for string[] with numeric-comparable capability", () => {
+    const { type, checker } = makeProgram("string[]");
+    expect(_supportsConstraintCapability("numeric-comparable", type, checker)).toBe(false);
+  });
+
+  it("normalizes nullable array items before checking their capability", () => {
+    const { type, checker } = makeProgram("(number | null)[]");
+    expect(_supportsConstraintCapability("numeric-comparable", type, checker)).toBe(true);
+  });
+
+  it("returns true for enum[] with enum-member-addressable capability", () => {
+    const { type, checker } = makeProgram('(\"a\" | \"b\")[]');
+    expect(_supportsConstraintCapability("enum-member-addressable", type, checker)).toBe(true);
+  });
+
+  it("returns true for object[] with object-like capability", () => {
+    const { type, checker } = makeProgram("{ code: string }[]");
+    expect(_supportsConstraintCapability("object-like", type, checker)).toBe(true);
+  });
+
+  it("does not recursively unwrap nested arrays", () => {
+    const { type, checker } = makeProgram("number[][]");
+    expect(_supportsConstraintCapability("numeric-comparable", type, checker)).toBe(false);
+  });
+
   // Regression: nullable string array (string[] | null) must satisfy string-like.
   // Before the fix, getArrayElementType called checker.isArrayType on the raw
   // union, which returned false, silently failing the Role-B capability check.
@@ -213,6 +243,21 @@ describe("snapshot consumer Role-B integration", () => {
     }
   });
 
+  it("validates numeric constraints against array item types", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @minimum 0 */
+        valid!: number[];
+        /** @minimum 0 */
+        invalid!: string[];
+      }
+      `,
+      "numeric-array-items"
+    );
+
+    expect(diagnostics.filter((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toHaveLength(1);
+  });
   // Note: argument-type tests (e.g. @minimum "hello" → INVALID_TAG_ARGUMENT) are
   // covered by constraint-canaries.test.ts and tag-argument-parser.test.ts.
   // Those exercise Role C (typed parser), not Role B (capability check).
@@ -350,10 +395,28 @@ describe("_checkConstValueAgainstType", () => {
     );
   });
 
-  it("emits TYPE_MISMATCH with placement message for @const on an array field (string[])", () => {
+  it("returns null for a matching string value on a string[] field", () => {
     const { type, checker } = makeProgram("string[]");
+    expect(_checkConstValueAgainstType("USD", type, checker)).toBeNull();
+  });
+
+  it("emits TYPE_MISMATCH for an incompatible value on a string[] field", () => {
+    const { type, checker } = makeProgram("string[]");
+    const result = _checkConstValueAgainstType(42, type, checker);
+    expect(result?.code).toBe("TYPE_MISMATCH");
+    expect(result?.message).toBe(
+      '@const value type "number" is incompatible with field type "string"'
+    );
+  });
+
+  it("returns null for a matching enum member value on an enum[] field", () => {
+    const { type, checker } = makeProgram('(\"draft\" | \"sent\")[]');
+    expect(_checkConstValueAgainstType("sent", type, checker)).toBeNull();
+  });
+
+  it("does not recursively unwrap nested array items", () => {
+    const { type, checker } = makeProgram("string[][]");
     const result = _checkConstValueAgainstType("USD", type, checker);
-    expect(result).not.toBeNull();
     expect(result?.code).toBe("TYPE_MISMATCH");
     expect(result?.message).toContain("is only valid on primitive or enum fields");
   });
@@ -784,4 +847,3 @@ describe("@const IR-check parity (analyzeConstraintTargets vs _checkConstValueAg
     });
   }
 });
-

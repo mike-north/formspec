@@ -159,6 +159,26 @@ describe("extension runtime integration", () => {
     });
   });
 
+  it("emits custom constraints on array item schemas", () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("currencyCodes", { kind: "array", items: STRING_TYPE }, [
+          currencyConstraintNode("USD"),
+        ]),
+      ]),
+      {
+        extensionRegistry: registry,
+        vendorPrefix: "x-stripe",
+      }
+    );
+
+    expect(schema.properties?.["currencyCodes"]).toEqual({
+      type: "array",
+      items: { type: "string", "x-stripe-currency": "USD" },
+    });
+  });
+
   it("ignores custom annotations that do not define a JSON Schema representation", () => {
     const registry = createExtensionRegistry([moneyExtension]);
     const schema = generateJsonSchemaFromIR(

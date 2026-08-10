@@ -199,6 +199,7 @@ export {
 export { _isIntegerBrandedType, _collectBrandIdentifiers } from "./integer-brand.js";
 export {
   _capabilityLabel,
+  _getConstraintTargetType,
   _supportsConstraintCapability,
   _checkConstValueAgainstType,
 } from "./constraint-applicability.js";

@@ -81,10 +81,10 @@ export function _capabilityLabel(capability: SemanticCapability | undefined): st
  * Behaviour:
  * - When `capability` is `undefined` (no constraint on target type), returns
  *   `true` unconditionally.
- * - For `string-like` capability, also accepts `string[]` (and nullable
- *   variants like `string[] | null`) by unwrapping the array element type.
- *   This mirrors the build path's treatment of `@pattern` on string-array
- *   fields.
+ * - `array-like` capabilities are checked against the field/container type.
+ * - Every other capability is checked against the immediate array item when
+ *   the field resolves to an array, or against the field type otherwise.
+ *   Exactly one array layer is unwrapped.
  * - Integer-brand bypass is the caller's responsibility. Callers must check
  *   for integer-branded types and skip this function when appropriate (see
  *   ordering invariants in the module-level JSDoc). There is no options
@@ -96,6 +96,16 @@ export function _capabilityLabel(capability: SemanticCapability | undefined): st
  *
  * @internal
  */
+export function _getConstraintTargetType(
+  capability: SemanticCapability | undefined,
+  fieldType: ts.Type,
+  checker: ts.TypeChecker
+): ts.Type {
+  return capability === "array-like"
+    ? fieldType
+    : (getArrayElementType(fieldType, checker) ?? fieldType);
+}
+
 export function _supportsConstraintCapability(
   capability: SemanticCapability | undefined,
   fieldType: ts.Type,
@@ -105,19 +115,11 @@ export function _supportsConstraintCapability(
     return true;
   }
 
-  if (hasTypeSemanticCapability(fieldType, checker, capability)) {
-    return true;
-  }
-
-  // Array-element unwrap for "string-like": `string[]` satisfies `string-like`
-  // because the element type (`string`) does. This mirrors the build path's
-  // `supportsConstraintCapability` in `tsdoc-parser.ts` (~line 464–468).
-  if (capability === "string-like") {
-    const itemType = getArrayElementType(fieldType, checker);
-    return itemType !== null && hasTypeSemanticCapability(itemType, checker, capability);
-  }
-
-  return false;
+  return hasTypeSemanticCapability(
+    _getConstraintTargetType(capability, fieldType, checker),
+    checker,
+    capability
+  );
 }
 
 /**
@@ -324,13 +326,13 @@ function renderFieldTypeLabel(type: ts.Type, checker: ts.TypeChecker): string {
 }
 
 /**
- * Validates an `@const` tag's value against the field type.
+ * Validates an `@const` tag's value against the field type, or against the
+ * immediate item type when the field resolves to an array.
  *
  * Ports the three sub-checks from `semantic-targets.ts` `case "const":`
  * (~lines 1255-1301) to the snapshot consumer path. The build path validates
  * `@const` at IR validation time (on `effectiveType`); the snapshot consumer
  * does not build an IR, so this helper performs the equivalent checks
- * directly against a `ts.Type`.
  *
  * Returns a TYPE_MISMATCH descriptor when any check fails, or `null` when the
  * value is compatible with the field type. The returned object is shaped so
@@ -338,9 +340,9 @@ function renderFieldTypeLabel(type: ts.Type, checker: ts.TypeChecker): string {
  * code/message pair.
  *
  * Checks (in order):
- *   1. **Placement.** Field type must be a primitive (`string`, `number`,
- *      `integer`, `bigint`, `boolean`, `null`) or a string-literal enum.
- *      Otherwise: `constraint "const" is only valid on primitive or enum
+ *   1. **Placement.** Effective target type must be a primitive (`string`,
+ *      `number`, `integer`, `bigint`, `boolean`, `null`) or a string-literal
+ *      enum. Otherwise: `constraint "const" is only valid on primitive or enum
  *      fields, but field type is "<label>"`.
  *   2. **Primitive value-type match.** For a primitive field, the value's
  *      runtime `typeof` (with `null`/`Array` carve-outs) must match the
@@ -369,12 +371,13 @@ export function _checkConstValueAgainstType(
   fieldType: ts.Type,
   checker: ts.TypeChecker
 ): { readonly code: "TYPE_MISMATCH"; readonly message: string } | null {
-  const classification = classifyConstTargetType(fieldType);
+  const targetType = _getConstraintTargetType(undefined, fieldType, checker);
+  const classification = classifyConstTargetType(targetType);
 
   if (classification.kind === "other") {
     return {
       code: "TYPE_MISMATCH",
-      message: `constraint "const" is only valid on primitive or enum fields, but field type is "${renderFieldTypeLabel(fieldType, checker)}"`,
+      message: `constraint "const" is only valid on primitive or enum fields, but field type is "${renderFieldTypeLabel(targetType, checker)}"`,
     };
   }
 

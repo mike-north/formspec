@@ -608,6 +608,25 @@ describe("tag-value-parser", () => {
     });
   });
 
+  it("uses builtin broadening registrations for custom array item types", () => {
+    const parsed = parseConstraintTagValue("minimum", "1.25", PROVENANCE, {
+      registry: createRegistry(),
+      fieldType: {
+        kind: "array",
+        items: { kind: "custom", typeId: "Decimal", payload: null },
+      },
+    });
+
+    expect(parsed).toEqual({
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/decimal/MinScaled",
+      payload: 125,
+      compositionRule: "override",
+      provenance: PROVENANCE,
+    });
+  });
+
   describe("path-targeted broadening (issue #395)", () => {
     // Regression tests for the contract between the build consumer and the
     // analysis layer: when a constraint tag carries a path target

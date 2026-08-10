@@ -408,4 +408,145 @@ describe("semantic-targets", () => {
 
     expect(result.diagnostics).toEqual([]);
   });
+  it("validates numeric constraints against immediate array items", () => {
+    const valid = analyzeConstraintTargets(
+      "amounts",
+      { kind: "array", items: NUMBER_TYPE },
+      [minimum(0, 1)],
+      {}
+    );
+    const invalid = analyzeConstraintTargets(
+      "labels",
+      { kind: "array", items: { kind: "primitive", primitiveKind: "string" } },
+      [minimum(0, 1)],
+      {}
+    );
+
+    expect(valid.diagnostics).toEqual([]);
+    expect(invalid.diagnostics).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates enum constraints against immediate array items", () => {
+    const allowedMembers: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "allowedMembers",
+      members: ["draft"],
+      provenance: provenance(1, "allowedMembers"),
+    };
+    const enumType: TypeNode = {
+      kind: "enum",
+      members: [{ value: "draft" }, { value: "sent" }],
+    };
+
+    expect(
+      analyzeConstraintTargets("statuses", { kind: "array", items: enumType }, [allowedMembers], {})
+        .diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "labels",
+        { kind: "array", items: { kind: "primitive", primitiveKind: "string" } },
+        [allowedMembers],
+        {}
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates const constraints against immediate array items", () => {
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "array", items: NUMBER_TYPE },
+        [constValue(5, 1)],
+        {}
+      ).diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "array", items: NUMBER_TYPE },
+        [constValue("five", 1)],
+        {}
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates custom constraints against immediate array items", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/items/PrimitiveOnly",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "primitiveOnly"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "PrimitiveOnly",
+        applicableTypes: ["primitive"] as const,
+      }),
+      findConstraintTag: () => undefined,
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: { kind: "object", properties: [], additionalProperties: false } },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("keeps array container constraints on the resolved array", () => {
+    const minItems: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "minItems",
+      value: 1,
+      provenance: provenance(1, "minItems"),
+    };
+    const registry: AnalysisTypeRegistry = {
+      Amounts: {
+        name: "Amounts",
+        type: {
+          kind: "union",
+          members: [
+            { kind: "array", items: NUMBER_TYPE },
+            { kind: "primitive", primitiveKind: "null" },
+          ],
+        },
+        provenance: provenance(1),
+      },
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "reference", name: "Amounts", typeArguments: [] },
+        [minItems, minimum(0, 2)],
+        registry
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("does not recursively unwrap nested arrays", () => {
+    const nestedArray: TypeNode = {
+      kind: "array",
+      items: { kind: "array", items: NUMBER_TYPE },
+    };
+
+    expect(
+      analyzeConstraintTargets("matrix", nestedArray, [minimum(0, 1)], {}).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
 });

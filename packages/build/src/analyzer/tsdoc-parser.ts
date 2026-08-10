@@ -41,6 +41,7 @@
 import * as ts from "typescript";
 import {
   _capabilityLabel,
+  _getConstraintTargetType,
   _supportsConstraintCapability,
   choosePreferredPayloadText,
   extractPathTarget as extractSharedPathTarget,
@@ -112,10 +113,15 @@ function sharedTagValueOptions(options?: ParseTSDocOptions, pathResolvedCustomTy
 function customTypeIdForResolvedType(
   resolvedType: ts.Type,
   checker: ts.TypeChecker,
-  registry: ExtensionRegistry | undefined
+  registry: ExtensionRegistry | undefined,
+  capability: SemanticCapability | undefined
 ): string | undefined {
   if (registry === undefined) return undefined;
-  const lookup = resolveCustomTypeFromTsType(resolvedType, checker, registry);
+  const nonNullType = stripNullishUnion(resolvedType);
+  const targetType = stripNullishUnion(
+    _getConstraintTargetType(capability, nonNullType, checker)
+  );
+  const lookup = resolveCustomTypeFromTsType(targetType, checker, registry);
   return lookup === null ? undefined : customTypeIdFromLookup(lookup);
 }
 
@@ -132,6 +138,7 @@ function customTypeIdForResolvedType(
  * `parseConstraintTagValue` via its `pathResolvedCustomTypeId` option.
  */
 function resolvePathTargetCustomTypeId(
+  tagName: string,
   parsedTag: ParsedCommentTag | null,
   subjectType: ts.Type | undefined,
   checker: ts.TypeChecker | undefined,
@@ -151,7 +158,12 @@ function resolvePathTargetCustomTypeId(
     return undefined;
   }
 
-  return customTypeIdForResolvedType(resolution.type, checker, registry);
+  return customTypeIdForResolvedType(
+    resolution.type,
+    checker,
+    registry,
+    getTagDefinition(tagName)?.capabilities[0]
+  );
 }
 
 const TYPE_FORMAT_FLAGS =
@@ -198,6 +210,7 @@ function processConstraintTag(
   // where path-targeted built-in constraints (e.g. `@exclusiveMinimum :amount 0`
   // on a `MonetaryAmount` field) previously emitted raw numeric constraints.
   const pathResolvedCustomTypeId = resolvePathTargetCustomTypeId(
+    tagName,
     parsedTag,
     options?.subjectType,
     options?.checker,
@@ -439,7 +452,7 @@ function placementLabel(
 }
 
 function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
-  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType, tagName);
   return (
     broadenedTypeId !== undefined &&
     options?.extensionRegistry?.findBuiltinConstraintBroadening(broadenedTypeId, tagName) !==
@@ -604,7 +617,12 @@ function buildCompilerBackedConstraintDiagnostics(
     }
     const registry = options?.extensionRegistry;
     if (registry === undefined) return false;
-    const typeId = customTypeIdForResolvedType(evaluatedType, checker, registry);
+    const typeId = customTypeIdForResolvedType(
+      evaluatedType,
+      checker,
+      registry,
+      definition.capabilities[0]
+    );
     return (
       typeId !== undefined &&
       registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined

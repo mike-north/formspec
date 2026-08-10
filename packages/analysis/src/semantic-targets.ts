@@ -764,10 +764,6 @@ function collectCustomConstraintCandidateTypes(
   const effectiveType = dereferenceAnalysisType(type, typeRegistry);
   const candidates: TypeNode[] = [effectiveType];
 
-  if (effectiveType.kind === "array") {
-    candidates.push(...collectCustomConstraintCandidateTypes(effectiveType.items, typeRegistry));
-  }
-
   if (effectiveType.kind === "union") {
     const memberTypes = effectiveType.members.map((member) =>
       dereferenceAnalysisType(member, typeRegistry)
@@ -1131,6 +1127,29 @@ function checkCustomConstraint(
   }
 }
 
+function isArrayContainerConstraint(constraint: ConstraintNode): boolean {
+  switch (constraint.constraintKind) {
+    case "minItems":
+    case "maxItems":
+    case "uniqueItems":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function resolveConstraintTargetType(
+  type: TypeNode,
+  constraint: ConstraintNode,
+  typeRegistry: AnalysisTypeRegistry
+): TypeNode {
+  const containerType = resolveTraversable(type, typeRegistry);
+  if (containerType.kind !== "array" || isArrayContainerConstraint(constraint)) {
+    return containerType;
+  }
+  return resolveTraversable(containerType.items, typeRegistry);
+}
+
 function checkConstraintOnType(
   diagnostics: ConstraintSemanticDiagnostic[],
   fieldName: string,
@@ -1139,35 +1158,18 @@ function checkConstraintOnType(
   typeRegistry: AnalysisTypeRegistry,
   extensionRegistry: ConstraintRegistryLike | undefined
 ): void {
-  const effectiveType = dereferenceAnalysisType(type, typeRegistry);
-  // For nullable unions (e.g. Integer | null), unwrap to the non-null member
-  // so that constraint compatibility checks work the same as for the non-null
-  // variant. This mirrors the stripNullishUnion pattern used in ts-binding.ts.
-  const unwrapped =
-    effectiveType.kind === "union"
-      ? (() => {
-          const nonNull = effectiveType.members
-            .map((m) => dereferenceAnalysisType(m, typeRegistry))
-            .filter((m) => !isNullType(m));
-          return nonNull.length === 1 && nonNull[0] !== undefined ? nonNull[0] : effectiveType;
-        })()
-      : effectiveType;
+  const effectiveType = resolveConstraintTargetType(type, constraint, typeRegistry);
   const isNumber =
-    unwrapped.kind === "primitive" &&
-    ["number", "integer", "bigint"].includes(unwrapped.primitiveKind);
-  const isString = unwrapped.kind === "primitive" && unwrapped.primitiveKind === "string";
-  const isArray = unwrapped.kind === "array";
-  const isEnum = unwrapped.kind === "enum";
-  const arrayItemType =
-    unwrapped.kind === "array" ? dereferenceAnalysisType(unwrapped.items, typeRegistry) : undefined;
-  const isStringArray =
-    arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
-
+    effectiveType.kind === "primitive" &&
+    ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
+  const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
+  const isArray = effectiveType.kind === "array";
+  const isEnum = effectiveType.kind === "enum";
   const label = typeLabel(effectiveType);
 
   // Check if a custom type has a builtin constraint broadening registered,
   // which allows built-in constraints (e.g., @minimum) on non-numeric types.
-  // Also handles nullable unions (e.g., Decimal | null) by checking non-null members.
+  // Nullable wrappers have already been normalized in `effectiveType`.
   const hasBroadening = (tagName: string): boolean => {
     if (extensionRegistry?.findBuiltinConstraintBroadening === undefined) {
       return false;
@@ -1218,10 +1220,10 @@ function checkConstraintOnType(
     case "minLength":
     case "maxLength":
     case "pattern":
-      if (!isString && !isStringArray) {
+      if (!isString) {
         addTypeMismatch(
           diagnostics,
-          `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on string fields or string array items, but field type is "${label}"`,
+          `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on string fields, but field type is "${label}"`,
           constraint.provenance
         );
       }

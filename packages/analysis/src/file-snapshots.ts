@@ -4,6 +4,7 @@ import { _mapSetupDiagnosticCode, _validateExtensionSetup } from "./extension-se
 import { getMatchingTagSignatures } from "./tag-signature-matching.js";
 import {
   _capabilityLabel,
+  _getConstraintTargetType,
   _checkConstValueAgainstType,
   _supportsConstraintCapability,
 } from "./constraint-applicability.js";
@@ -290,7 +291,8 @@ function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
   checker: ts.TypeChecker,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  capability: Parameters<typeof _getConstraintTargetType>[0]
 ): boolean {
   if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
     return false;
@@ -302,7 +304,9 @@ function hasExtensionBroadening(
   // with the name+brand resolver in resolveExtensionCustomTypeId let a
   // brand-only registration produce a broadened fact AND a spurious
   // TYPE_MISMATCH diagnostic for the same tag (issue #396 review finding).
-  const effectiveType = stripNullishUnion(subjectType);
+  const effectiveType = stripNullishUnion(
+    _getConstraintTargetType(capability, stripNullishUnion(subjectType), checker)
+  );
   return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
     (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
   );
@@ -341,14 +345,21 @@ function hasExtensionBroadening(
 function resolveExtensionCustomTypeId(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  constraintName: string
 ): string | undefined {
   if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
     return undefined;
   }
 
-  const effectiveType = stripNullishUnion(subjectType);
-  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions)[0]?.typeName;
+  const capability = ["minItems", "maxItems", "uniqueItems"].includes(constraintName)
+    ? "array-like"
+    : undefined;
+  const effectiveType = stripNullishUnion(
+    _getConstraintTargetType(capability, stripNullishUnion(subjectType), checker)
+  );
+  const matches = findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions);
+  return matches.length === 1 ? matches[0]?.typeName : undefined;
 }
 
 /**
@@ -401,14 +412,20 @@ function resolvePathTargetCustomTypeId(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   pathSegments: readonly string[],
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  constraintName: string
 ): string | undefined {
   const resolution = resolvePathTargetType(subjectType, checker, pathSegments);
   if (resolution.kind !== "resolved") {
     return undefined;
   }
 
-  return resolveExtensionCustomTypeId(resolution.type, checker, extensionDefinitions);
+  return resolveExtensionCustomTypeId(
+    resolution.type,
+    checker,
+    extensionDefinitions,
+    constraintName
+  );
 }
 
 function renderTargetLabel(targetPath: string | null): string {
@@ -764,20 +781,7 @@ function buildDeclarationSummary(
   const resolvedMetadata = toSerializedResolvedMetadata(metadataAnalysis?.resolvedMetadata);
   const metadataEntries = toSerializedMetadataEntries(metadataAnalysis?.entries ?? []);
   const constraintRegistry = createConstraintTagRegistry(extensionDefinitions);
-  // Issue #396: resolve the declaration's own type once, so direct-field
-  // builtin constraint tags can broaden into their custom-type constraint
-  // (e.g. `@minimum` on a `Decimal` field -> `DecimalMinimum`). Path-targeted
-  // tags resolve their own terminal type per-tag below, since the path
-  // varies per tag.
   const declarationSubjectType = getSubjectType(node, checker);
-  const directFieldTypeId =
-    declarationSubjectType === undefined
-      ? undefined
-      : resolveExtensionCustomTypeId(declarationSubjectType, checker, extensionDefinitions);
-  const directFieldType: CustomTypeNode | undefined =
-    directFieldTypeId === undefined
-      ? undefined
-      : { kind: "custom", typeId: directFieldTypeId, payload: null };
   const numericConstraints = new Map<string | null, NumericConstraintAccumulator>();
   const stringConstraints = new Map<string | null, StringConstraintAccumulator>();
   const arrayConstraints = new Map<string | null, ArrayConstraintAccumulator>();
@@ -824,9 +828,23 @@ function buildDeclarationSummary(
             declarationSubjectType,
             checker,
             pathTarget.segments,
-            extensionDefinitions
+            extensionDefinitions,
+            tag.normalizedTagName
           )
         : undefined;
+    const directFieldTypeId =
+      pathTarget === null && declarationSubjectType !== undefined
+        ? resolveExtensionCustomTypeId(
+            declarationSubjectType,
+            checker,
+            extensionDefinitions,
+            tag.normalizedTagName
+          )
+        : undefined;
+    const directFieldType: CustomTypeNode | undefined =
+      directFieldTypeId === undefined
+        ? undefined
+        : { kind: "custom", typeId: directFieldTypeId, payload: null };
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
@@ -1593,7 +1611,8 @@ function buildTagDiagnostics(
         tag.normalizedTagName,
         subjectType,
         checker,
-        extensionDefinitions
+        extensionDefinitions,
+        semantic.tagDefinition.capabilities[0]
       );
 
       if (!hasExtBroadening) {

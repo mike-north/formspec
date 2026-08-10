@@ -169,6 +169,43 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
     expect(customFact?.payload).toBe("10");
   });
 
+  it("broadens @minimum on direct and path-targeted Decimal array items", () => {
+    const directFacts = buildFacts(
+      [
+        "type Decimal = string & { readonly __decimalBrand: true };",
+        "class Foo {",
+        "  /** @minimum 10 */",
+        "  amounts!: Decimal[];",
+        "}",
+      ].join("\n"),
+      [decimalExtension],
+      "/virtual/broadening-direct-array.ts"
+    );
+    const directCustomFact = findCustomConstraintFact(directFacts);
+    expect(directFacts.some((fact) => fact.kind === "numeric-constraints")).toBe(false);
+    expect(directCustomFact?.targetPath).toBeNull();
+    expect(directCustomFact?.constraintId).toBe(`${DECIMAL_EXTENSION_ID}/DecimalMinimum`);
+    expect(directCustomFact?.payload).toBe("10");
+
+    const pathFacts = buildFacts(
+      [
+        "type Decimal = string & { readonly __decimalBrand: true };",
+        "type Ledger = { amounts: Decimal[] };",
+        "class Foo {",
+        "  /** @minimum :amounts 10 */",
+        "  ledger!: Ledger;",
+        "}",
+      ].join("\n"),
+      [decimalExtension],
+      "/virtual/broadening-path-array.ts"
+    );
+    const pathCustomFact = findCustomConstraintFact(pathFacts);
+    expect(pathFacts.some((fact) => fact.kind === "numeric-constraints")).toBe(false);
+    expect(pathCustomFact?.targetPath).toBe("amounts");
+    expect(pathCustomFact?.constraintId).toBe(`${DECIMAL_EXTENSION_ID}/DecimalMinimum`);
+    expect(pathCustomFact?.payload).toBe("10");
+  });
+
   it("broadens a path-targeted @minimum on a MonetaryAmount field into DecimalMinimum with the path preserved", () => {
     const source = [
       "type Decimal = string & { readonly __decimalBrand: true };",
@@ -330,12 +367,7 @@ describe("snapshot consumer constraint broadening (issue #396)", () => {
   });
 
   it("does not broaden when the field type is not a registered custom type", () => {
-    const source = [
-      "class Foo {",
-      "  /** @minimum 10 */",
-      "  amount!: number;",
-      "}",
-    ].join("\n");
+    const source = ["class Foo {", "  /** @minimum 10 */", "  amount!: number;", "}"].join("\n");
 
     const facts = buildFacts(source, [decimalExtension], "/virtual/broadening-unregistered.ts");
 
