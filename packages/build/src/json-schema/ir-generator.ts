@@ -906,16 +906,6 @@ function resolveReferencedType(
   return ctx.typeRegistry[type.name]?.type;
 }
 
-function dereferenceTypeNode(
-  typeNode: TypeNode | undefined,
-  ctx: GeneratorContext
-): TypeNode | undefined {
-  if (typeNode?.kind !== "reference") {
-    return typeNode;
-  }
-
-  return resolveReferencedType(typeNode, ctx);
-}
 
 function unwrapNullableTypeNode(typeNode: TypeNode | undefined): TypeNode | undefined {
   if (typeNode?.kind !== "union" || !isNullableUnion(typeNode)) {

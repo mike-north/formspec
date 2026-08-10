@@ -117,7 +117,7 @@ describe("_supportsConstraintCapability", () => {
   });
 
   it("returns true for enum[] with enum-member-addressable capability", () => {
-    const { type, checker } = makeProgram('(\"a\" | \"b\")[]');
+    const { type, checker } = makeProgram('("a" | "b")[]');
     expect(_supportsConstraintCapability("enum-member-addressable", type, checker)).toBe(true);
   });
 
@@ -410,7 +410,7 @@ describe("_checkConstValueAgainstType", () => {
   });
 
   it("returns null for a matching enum member value on an enum[] field", () => {
-    const { type, checker } = makeProgram('(\"draft\" | \"sent\")[]');
+    const { type, checker } = makeProgram('("draft" | "sent")[]');
     expect(_checkConstValueAgainstType("sent", type, checker)).toBeNull();
   });
 
