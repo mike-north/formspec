@@ -138,32 +138,6 @@ const KNOWN_DIVERGENCES: readonly KnownDivergence[] = [
     followUp:
       "Remove this divergence and add an array-length case to MESSAGE_EQUIVALENCE_FIXTURES once shared analysis owns the intended behavior.",
   },
-  {
-    fixtureLabel: '@const "USD" on nullable string literal union',
-    expectedCodesByConsumer: {
-      build: ["TYPE_MISMATCH"],
-      snapshot: [],
-      eslint: [],
-      "language-server": [],
-    },
-    reason:
-      "generateSchemas reports nullable const compatibility through IR validation while snapshot-backed consumers do not.",
-    followUp:
-      "Remove this divergence after nullable const compatibility is normalized across build and snapshot-backed consumers.",
-  },
-  {
-    fixtureLabel: "@const true on nullable boolean",
-    expectedCodesByConsumer: {
-      build: ["TYPE_MISMATCH"],
-      snapshot: [],
-      eslint: [],
-      "language-server": [],
-    },
-    reason:
-      "generateSchemas reports nullable const compatibility through IR validation while snapshot-backed consumers do not.",
-    followUp:
-      "Remove this divergence after nullable const compatibility is normalized across build and snapshot-backed consumers.",
-  },
 ];
 
 const DIAGNOSTIC_CODE_FIXTURES: readonly ParityFixture[] = [
