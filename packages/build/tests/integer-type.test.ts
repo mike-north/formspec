@@ -93,6 +93,18 @@ const FIXTURE_SOURCE = [
   "  /** @minimum 2000 @maximum 2026 */",
   "  year: MultiBrandedInteger;",
   "}",
+  "",
+  // 8. Integer array item constraint with nullable immediate items
+  "export interface NullableIntegerArrayConfig {",
+  "  /** @minimum 0 */",
+  "  values: (Integer | null)[];",
+  "}",
+  "",
+  // 9. Integer array item constraint (hex literal exercises typed parser bypass)
+  "export interface IntegerArrayConfig {",
+  "  /** @minimum 0x10 */",
+  "  values: Integer[];",
+  "}",
 ].join("\n");
 
 /**
@@ -636,6 +648,27 @@ describe("builtin Integer type", () => {
         type: "string",
         minLength: 1,
       });
+    });
+    it("bypasses @minimum 0x10 on Integer[] without diagnostics", () => {
+      const result = generateSchemas({
+        filePath: fixturePath,
+        typeName: "IntegerArrayConfig",
+        errorReporting: "diagnostics",
+      });
+      expect(result.diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(
+        false
+      );
+      expect(
+        result.diagnostics.some((diagnostic) => diagnostic.code === "INVALID_NUMERIC_VALUE")
+      ).toBe(false);
+    });
+    it("bypasses @minimum on nullable Integer[] immediate items without diagnostics", () => {
+      const result = generateSchemasOrThrow({
+        filePath: fixturePath,
+        typeName: "NullableIntegerArrayConfig",
+      });
+      const values = (result.jsonSchema.properties as Record<string, unknown>)["values"];
+      expect(JSON.stringify(values)).toContain('"minimum":0');
     });
   });
 });

@@ -919,6 +919,35 @@ describe("generateJsonSchemaFromIR", () => {
       expect(prop["required"]).toEqual(["city", "street"]);
       expect(prop["required"]).not.toContain("zip");
     });
+    it("routes inline array property constraints to container and immediate item schemas", () => {
+      const properties: ObjectProperty[] = [
+        {
+          name: "amounts",
+          type: { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+          optional: false,
+          constraints: [
+            { kind: "constraint", constraintKind: "minimum", value: 0, provenance: PROVENANCE },
+            { kind: "constraint", constraintKind: "minItems", value: 1, provenance: PROVENANCE },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ];
+
+      const schema = generateJsonSchemaFromIR(
+        makeIR([makeField("invoice", { kind: "object", properties, additionalProperties: false })])
+      );
+      const invoice = schemaProperty(schema, "invoice");
+
+      expect(invoice).toEqual({
+        type: "object",
+        properties: {
+          amounts: { type: "array", minItems: 1, items: { type: "number", minimum: 0 } },
+        },
+        required: ["amounts"],
+        additionalProperties: false,
+      });
+    });
 
     it("emits additionalProperties:false when IR explicitly closes the object", () => {
       const ir = makeIR([

@@ -36,7 +36,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import type { FormSpecConfig } from "@formspec/config";
-import { type ClassSchemas, generateSchemas } from "../src/generators/class-schema.js";
+import { defineConstraint, defineCustomType, defineExtension } from "@formspec/core";
+import { generateSchemas, type ClassSchemas } from "../src/generators/class-schema.js";
 import type { JsonSchema2020 } from "../src/json-schema/ir-generator.js";
 import {
   vocabDecimalByNameExtension,
@@ -67,6 +68,32 @@ const postalCodeConfig: FormSpecConfig = {
   extensions: [vocabStringExtension],
   vendorPrefix: "x-formspec",
 };
+const vectorExtension = defineExtension({
+  extensionId: "x-test/decimal-vector",
+  types: [
+    defineCustomType({
+      typeName: "DecimalVector",
+      tsTypeNames: ["DecimalVector"],
+      builtinConstraintBroadenings: [
+        {
+          tagName: "minimum",
+          constraintName: "DecimalVectorMinimum",
+          parseValue: (raw) => raw.trim(),
+        },
+      ],
+      toJsonSchema: () => ({ type: "array", items: { type: "string" } }),
+    }),
+  ],
+  constraints: [
+    defineConstraint({
+      constraintName: "DecimalVectorMinimum",
+      compositionRule: "intersect",
+      applicableTypes: ["custom"],
+      emitsVocabularyKeywords: true,
+      toJsonSchema: (payload) => ({ decimalVectorMinimum: payload }),
+    }),
+  ],
+});
 
 // =============================================================================
 // SOURCE DECLARATIONS
@@ -762,5 +789,55 @@ describe("direct constraint + path-targeted constraints on the same field", () =
       countTerminal?.["decimalMaximum"],
       "decimalMaximum must not appear on count"
     ).toBeUndefined();
+  });
+});
+describe("registered array alias path broadening", () => {
+  it("uses DecimalVector container broadening on a path terminal without TYPE_MISMATCH", () => {
+    const source = [
+      "type DecimalVector = string[];",
+      "type Ledger = { amounts: DecimalVector };",
+      "export interface Root {",
+      "  /** @minimum :amounts 10 */",
+      "  ledger: Ledger;",
+      "}",
+    ].join("\n");
+    const filePath = writeTempSource(source);
+    const result = generateSchemas({
+      filePath,
+      typeName: "Root",
+      config: { extensions: [vectorExtension], vendorPrefix: "x-test" },
+      errorReporting: "diagnostics",
+    });
+    expect(result.diagnostics.filter((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toEqual(
+      []
+    );
+    if (result.jsonSchema === undefined) {
+      throw new Error("Expected DecimalVector path broadening to produce a JSON Schema");
+    }
+    const terminal = result.jsonSchema.properties?.["ledger"] as Record<string, unknown>;
+    const properties = terminal["properties"] as Record<string, unknown>;
+    const amounts = properties["amounts"] as Record<string, unknown>;
+    expect(amounts["decimalVectorMinimum"]).toBe("10");
+  });
+});
+describe("invalid paths on broadened hosts", () => {
+  it("reports TYPE_MISMATCH instead of broadening the host type", () => {
+    const source = [
+      NAME_DECIMAL_DECL,
+      "class Root {",
+      "  /** @minimum :missing 10 */",
+      "  amount!: Decimal;",
+      "}",
+    ].join("\n");
+    const result = generateSchemas({
+      filePath: writeTempSource(source),
+      typeName: "Root",
+      config: nameBasedConfig,
+      errorReporting: "diagnostics",
+    });
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(true);
+    expect(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "CONSTRAINT_BROADENING")
+    ).toBe(false);
   });
 });

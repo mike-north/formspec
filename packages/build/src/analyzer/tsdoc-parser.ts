@@ -118,9 +118,7 @@ function customTypeIdForResolvedType(
 ): string | undefined {
   if (registry === undefined) return undefined;
   const nonNullType = stripNullishUnion(resolvedType);
-  const targetType = stripNullishUnion(
-    _getConstraintTargetType(capability, nonNullType, checker)
-  );
+  const targetType = stripNullishUnion(_getConstraintTargetType(capability, nonNullType, checker));
   const lookup = resolveCustomTypeFromTsType(targetType, checker, registry);
   return lookup === null ? undefined : customTypeIdFromLookup(lookup);
 }
@@ -158,12 +156,20 @@ function resolvePathTargetCustomTypeId(
     return undefined;
   }
 
-  return customTypeIdForResolvedType(
-    resolution.type,
-    checker,
-    registry,
-    getTagDefinition(tagName)?.capabilities[0]
-  );
+  const terminalType = stripNullishUnion(resolution.type);
+  const capability = getTagDefinition(tagName)?.capabilities[0];
+  // A registered array alias may broaden the builtin on the container itself.
+  // Prefer that registration; otherwise select exactly one immediate item layer.
+  if (registry !== undefined) {
+    const containerLookup = resolveCustomTypeFromTsType(terminalType, checker, registry);
+    if (containerLookup !== null) {
+      const containerId = customTypeIdFromLookup(containerLookup);
+      if (registry.findBuiltinConstraintBroadening(containerId, tagName) !== undefined) {
+        return containerId;
+      }
+    }
+  }
+  return customTypeIdForResolvedType(resolution.type, checker, registry, capability);
 }
 
 const TYPE_FORMAT_FLAGS =
@@ -607,9 +613,16 @@ function buildCompilerBackedConstraintDiagnostics(
   // extension-defined constraint semantics.
   const hasBroadening = ((): boolean => {
     if (target === null) {
+      const effectiveType = stripNullishUnion(
+        _getConstraintTargetType(
+          definition.capabilities[0],
+          stripNullishUnion(subjectType),
+          checker
+        )
+      );
       if (
-        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        definition.capabilities[0] === "numeric-comparable"
+        definition.capabilities[0] === "numeric-comparable" &&
+        _isIntegerBrandedType(effectiveType)
       ) {
         return true;
       }
@@ -617,12 +630,15 @@ function buildCompilerBackedConstraintDiagnostics(
     }
     const registry = options?.extensionRegistry;
     if (registry === undefined) return false;
-    const typeId = customTypeIdForResolvedType(
-      evaluatedType,
-      checker,
-      registry,
-      definition.capabilities[0]
-    );
+    const terminalType = stripNullishUnion(evaluatedType);
+    const containerLookup = resolveCustomTypeFromTsType(terminalType, checker, registry);
+    const containerId =
+      containerLookup === null ? undefined : customTypeIdFromLookup(containerLookup);
+    const typeId =
+      containerId !== undefined &&
+      registry.findBuiltinConstraintBroadening(containerId, tagName) !== undefined
+        ? containerId
+        : customTypeIdForResolvedType(evaluatedType, checker, registry, definition.capabilities[0]);
     return (
       typeId !== undefined &&
       registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined
@@ -637,9 +653,6 @@ function buildCompilerBackedConstraintDiagnostics(
     ) {
       const actualType = checker.typeToString(evaluatedType, node, TYPE_FORMAT_FLAGS);
       const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
-      // Path-target hints only apply to direct-field mismatches — the hint
-      // suggests "did you mean a sub-path?" which is nonsensical when the
-      // user is already path-targeting.
       const hint =
         target === null
           ? buildPathTargetHint(

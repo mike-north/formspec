@@ -185,10 +185,23 @@ export function collectReferencedTypeConstraints(
   typeRegistry: AnalysisTypeRegistry
 ): readonly ConstraintNode[] {
   const collected: ConstraintNode[] = [];
-  let current = type;
+  let current: TypeNode | undefined = type;
   const seen = new Set<string>();
 
-  while (current.kind === "reference") {
+  while (current !== undefined) {
+    if (current.kind === "union") {
+      const nonNullMembers: readonly TypeNode[] = current.members.filter(
+        (member) => !isNullType(member)
+      );
+      if (nonNullMembers.length !== 1 || nonNullMembers.length === current.members.length) {
+        break;
+      }
+      current = nonNullMembers[0];
+      continue;
+    }
+    if (current.kind !== "reference") {
+      break;
+    }
     if (seen.has(current.name)) {
       break;
     }
@@ -207,6 +220,21 @@ export function collectReferencedTypeConstraints(
   }
 
   return collected;
+}
+
+function collectImmediateArrayItemConstraints(
+  type: TypeNode,
+  typeRegistry: AnalysisTypeRegistry
+): readonly ConstraintNode[] {
+  const resolved = resolveTraversable(type, typeRegistry);
+  if (resolved.kind !== "array") {
+    return [];
+  }
+  // Array-container constraints belong to the item array's own depth. They
+  // must not be flattened into the outer target's contradiction set.
+  return collectReferencedTypeConstraints(resolved.items, typeRegistry).filter(
+    (constraint) => !isArrayContainerConstraint(constraint)
+  );
 }
 
 export function collectReferencedTypeAnnotations(
@@ -300,7 +328,10 @@ export function resolveConstraintTargetState(
   typeRegistry: AnalysisTypeRegistry
 ): ResolvedTargetState {
   if (path === null) {
-    const inheritedConstraints = collectReferencedTypeConstraints(fieldType, typeRegistry);
+    const inheritedConstraints = [
+      ...collectReferencedTypeConstraints(fieldType, typeRegistry),
+      ...collectImmediateArrayItemConstraints(fieldType, typeRegistry),
+    ];
     const inheritedAnnotations = collectReferencedTypeAnnotations(fieldType, typeRegistry);
     const type = dereferenceAnalysisType(fieldType, typeRegistry);
 
@@ -345,8 +376,16 @@ export function resolveConstraintTargetState(
   const propertyConstraints = resolution.property?.constraints ?? [];
   const propertyAnnotations = resolution.property?.annotations ?? [];
   const referencedConstraints = collectReferencedTypeConstraints(resolution.rawType, typeRegistry);
+  const referencedItemConstraints = collectImmediateArrayItemConstraints(
+    resolution.rawType,
+    typeRegistry
+  );
   const referencedAnnotations = collectReferencedTypeAnnotations(resolution.rawType, typeRegistry);
-  const inheritedConstraints = [...propertyConstraints, ...referencedConstraints];
+  const inheritedConstraints = [
+    ...propertyConstraints,
+    ...referencedConstraints,
+    ...referencedItemConstraints,
+  ];
   const inheritedAnnotations = [...propertyAnnotations, ...referencedAnnotations];
 
   return {
@@ -1141,12 +1180,35 @@ function isArrayContainerConstraint(constraint: ConstraintNode): boolean {
 function resolveConstraintTargetType(
   type: TypeNode,
   constraint: ConstraintNode,
-  typeRegistry: AnalysisTypeRegistry
+  typeRegistry: AnalysisTypeRegistry,
+  extensionRegistry: ConstraintRegistryLike | undefined
 ): TypeNode {
   const containerType = resolveTraversable(type, typeRegistry);
   if (containerType.kind !== "array" || isArrayContainerConstraint(constraint)) {
     return containerType;
   }
+
+  if (constraint.constraintKind === "custom") {
+    const registration = extensionRegistry?.findConstraint(constraint.constraintId);
+    const tagName = constraint.provenance.tagName?.replace(/^@/, "");
+    const tagRegistration =
+      tagName === undefined ? undefined : extensionRegistry?.findConstraintTag(tagName);
+    const matchesTag =
+      tagRegistration !== undefined &&
+      tagRegistration.registration.constraintName === registration?.constraintName;
+    const registrationAcceptsContainer =
+      registration !== undefined &&
+      (registration.applicableTypes === null || registration.applicableTypes.includes("array")) &&
+      registration.isApplicableToType?.(containerType) !== false;
+    const tagAcceptsContainer =
+      tagRegistration === undefined
+        ? true
+        : matchesTag && tagRegistration.registration.isApplicableToType?.(containerType) !== false;
+    if (registrationAcceptsContainer && tagAcceptsContainer) {
+      return containerType;
+    }
+  }
+
   return resolveTraversable(containerType.items, typeRegistry);
 }
 
@@ -1158,7 +1220,12 @@ function checkConstraintOnType(
   typeRegistry: AnalysisTypeRegistry,
   extensionRegistry: ConstraintRegistryLike | undefined
 ): void {
-  const effectiveType = resolveConstraintTargetType(type, constraint, typeRegistry);
+  const effectiveType = resolveConstraintTargetType(
+    type,
+    constraint,
+    typeRegistry,
+    extensionRegistry
+  );
   const isNumber =
     effectiveType.kind === "primitive" &&
     ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
@@ -1167,37 +1234,22 @@ function checkConstraintOnType(
   const isEnum = effectiveType.kind === "enum";
   const label = typeLabel(effectiveType);
 
-  // Check if a custom type has a builtin constraint broadening registered,
-  // which allows built-in constraints (e.g., @minimum) on non-numeric types.
-  // Nullable wrappers have already been normalized in `effectiveType`.
+  // Check if a custom type has a builtin constraint broadening registered.
   const hasBroadening = (tagName: string): boolean => {
-    if (extensionRegistry?.findBuiltinConstraintBroadening === undefined) {
+    const registry = extensionRegistry;
+    if (registry?.findBuiltinConstraintBroadening === undefined) {
       return false;
     }
+    const isBroadened = (typeId: string): boolean =>
+      registry.findBuiltinConstraintBroadening?.(typeId, tagName) !== undefined;
     if (effectiveType.kind === "custom") {
-      return (
-        extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !==
-        undefined
-      );
+      return isBroadened(effectiveType.typeId);
     }
     if (effectiveType.kind === "union") {
       return effectiveType.members.some((member) => {
-        // Skip null members — they don't affect constraint applicability
-        if (member.kind === "primitive" && member.primitiveKind === "null") {
-          return false;
-        }
+        if (member.kind === "primitive" && member.primitiveKind === "null") return false;
         const resolvedMember = dereferenceAnalysisType(member, typeRegistry);
-        if (resolvedMember.kind !== "custom") {
-          return false;
-        }
-        // extensionRegistry and findBuiltinConstraintBroadening are both defined
-        // (narrowed by the outer guard), but TypeScript can't narrow optional
-        // methods across closure boundaries — this is a safe call.
-        return (
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded above
-          extensionRegistry.findBuiltinConstraintBroadening!(resolvedMember.typeId, tagName) !==
-          undefined
-        );
+        return resolvedMember.kind === "custom" && isBroadened(resolvedMember.typeId);
       });
     }
     return false;

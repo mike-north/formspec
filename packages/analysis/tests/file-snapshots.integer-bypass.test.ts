@@ -456,6 +456,22 @@ describe("integer-brand bypass: snapshot path mirrors build path (regression for
       expect(["minLength", "maxLength"]).toContain(name);
     }
   });
+  it("scenario 6a: nullable Integer immediate array items — no TYPE_MISMATCH", () => {
+    const source = [
+      "declare const __integerBrand: unique symbol;",
+      "type Integer = number & { readonly [__integerBrand]: true };",
+      "interface Config {",
+      "  /** @minimum 0 */",
+      "  values: (Integer | null)[];",
+      "}",
+    ].join("\n");
+
+    const snapshot = snapshotFromSource(source);
+    expect(snapshot.diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(
+      false
+    );
+    expect(declarationNumericConstraints(snapshot)).toContainEqual({ minimum: 0 });
+  });
 
   // -------------------------------------------------------------------------
   // Scenario 7: cross-file integer + sibling plain-string field (type alias)
@@ -499,5 +515,21 @@ describe("integer-brand bypass: snapshot path mirrors build path (regression for
     for (const name of tagNames) {
       expect(["minLength", "maxLength"]).toContain(name);
     }
+  });
+  it("bypasses @minimum 0x10 on Integer[] without diagnostics", () => {
+    const source = [
+      "declare const __integerBrand: unique symbol;",
+      "type Integer = number & { readonly [__integerBrand]: true };",
+      "interface Config {",
+      "  /** @minimum 0x10 */",
+      "  values: Integer[];",
+      "}",
+    ].join("\n");
+    const { checker, sourceFile } = createProgram(source, "/virtual/integer-array.ts");
+    const snapshot = buildFormSpecAnalysisFileSnapshot(sourceFile, { checker });
+    expect(typeMismatchTagNames(snapshot)).not.toContain("minimum");
+    expect(
+      snapshot.diagnostics.some((diagnostic) => diagnostic.code === "INVALID_NUMERIC_VALUE")
+    ).toBe(false);
   });
 });

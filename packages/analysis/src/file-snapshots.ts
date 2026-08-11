@@ -298,14 +298,27 @@ function hasExtensionBroadening(
     return false;
   }
 
-  // Strip nullish union members (| null | undefined) before matching,
-  // consistent with how the build path strips before _isIntegerBrandedType.
-  // Uses the shared name-then-brand resolution: a name-only gate here paired
-  // with the name+brand resolver in resolveExtensionCustomTypeId let a
-  // brand-only registration produce a broadened fact AND a spurious
-  // TYPE_MISMATCH diagnostic for the same tag (issue #396 review finding).
+  const normalizedSubjectType = stripNullishUnion(subjectType);
+  // Container broadenings on registered array aliases take precedence for
+  // non-container tags; otherwise inspect exactly one immediate item.
+  if (capability !== "array-like") {
+    const containerMatches = findMatchingExtensionTypes(
+      normalizedSubjectType,
+      checker,
+      extensionDefinitions
+    );
+    if (
+      containerMatches.some((type) =>
+        (type.builtinConstraintBroadenings ?? []).some(
+          (broadening) => broadening.tagName === tagName
+        )
+      )
+    ) {
+      return true;
+    }
+  }
   const effectiveType = stripNullishUnion(
-    _getConstraintTargetType(capability, stripNullishUnion(subjectType), checker)
+    _getConstraintTargetType(capability, normalizedSubjectType, checker)
   );
   return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
     (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
@@ -352,11 +365,28 @@ function resolveExtensionCustomTypeId(
     return undefined;
   }
 
+  const normalizedSubjectType = stripNullishUnion(subjectType);
+  if (!["minItems", "maxItems", "uniqueItems"].includes(constraintName)) {
+    const containerMatches = findMatchingExtensionTypes(
+      normalizedSubjectType,
+      checker,
+      extensionDefinitions
+    );
+    const containerBroadening = containerMatches.find((type) =>
+      (type.builtinConstraintBroadenings ?? []).some(
+        (broadening) => broadening.tagName === constraintName
+      )
+    );
+    if (containerBroadening !== undefined) {
+      return containerBroadening.typeName;
+    }
+  }
+
   const capability = ["minItems", "maxItems", "uniqueItems"].includes(constraintName)
     ? "array-like"
     : undefined;
   const effectiveType = stripNullishUnion(
-    _getConstraintTargetType(capability, stripNullishUnion(subjectType), checker)
+    _getConstraintTargetType(capability, normalizedSubjectType, checker)
   );
   const matches = findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions);
   return matches.length === 1 ? matches[0]?.typeName : undefined;
@@ -1557,10 +1587,6 @@ function buildTagDiagnostics(
     // in tsdoc-parser.ts.
     //
     // IMPORTANT: the broadening check MUST run BEFORE the typed-parser call.
-    // Broadened fields (D1/D2) bypass Role C entirely. Without this guard a
-    // broadened field whose argument the typed parser would reject (e.g. a
-    // custom type with a registered @minimum broadening) would spuriously emit
-    // INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
     //
     // Guard: only call parseTagArgument for builtin constraint tags. Extension tags
     // are not in the typed parser's registry (they would return UNKNOWN_TAG), and
@@ -1578,8 +1604,8 @@ function buildTagDiagnostics(
       //   - target === null: direct-field check only. Path-targeted fields use
       //     the path-resolved type, not the declared subject type, so the brand
       //     check does not apply to them.
-      //   - _isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
-      //     integer brand after stripping | null / | undefined wrappers.
+      //   - _isIntegerBrandedType(stripNullishUnion(effective target)): detect
+      //     the integer brand after stripping array and nullish wrappers.
       //   - capabilities.includes("numeric-comparable"): only bypass numeric
       //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
       //
@@ -1587,8 +1613,16 @@ function buildTagDiagnostics(
       // emit "bypass" on the structured log — identical to the build consumer.
       const isIntegerBypass =
         target === null &&
-        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        semantic.tagDefinition.capabilities[0] === "numeric-comparable";
+        semantic.tagDefinition.capabilities[0] === "numeric-comparable" &&
+        _isIntegerBrandedType(
+          stripNullishUnion(
+            _getConstraintTargetType(
+              semantic.tagDefinition.capabilities[0],
+              stripNullishUnion(subjectType),
+              checker
+            )
+          )
+        );
 
       if (isIntegerBypass) {
         // §8.3b — log "bypass" roleOutcome on the snapshot consumer channel,
@@ -1607,13 +1641,31 @@ function buildTagDiagnostics(
         continue;
       }
 
-      const hasExtBroadening = hasExtensionBroadening(
-        tag.normalizedTagName,
-        subjectType,
-        checker,
-        extensionDefinitions,
-        semantic.tagDefinition.capabilities[0]
-      );
+      const broadeningSubjectType = (() => {
+        if (target === null) {
+          return subjectType;
+        }
+        const parsedTarget = tag.target;
+        if (target.kind !== "path" || parsedTarget?.kind !== "path" || parsedTarget.path === null) {
+          return undefined;
+        }
+        const resolution = resolvePathTargetType(
+          declaredSubjectType,
+          checker,
+          parsedTarget.path.segments
+        );
+        return resolution.kind === "resolved" ? resolution.type : undefined;
+      })();
+      const hasExtBroadening =
+        broadeningSubjectType === undefined
+          ? false
+          : hasExtensionBroadening(
+              tag.normalizedTagName,
+              broadeningSubjectType,
+              checker,
+              extensionDefinitions,
+              semantic.tagDefinition.capabilities[0]
+            );
 
       if (!hasExtBroadening) {
         // §5 Phase 5A — Role B capability guard (snapshot consumer).
