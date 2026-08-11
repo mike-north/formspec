@@ -207,7 +207,7 @@ export function collectReferencedTypeConstraints(
     }
     seen.add(current.name);
 
-    const definition = typeRegistry[current.name];
+    const definition: AnalysisTypeDefinition | undefined = typeRegistry[current.name];
     if (definition === undefined) {
       break;
     }
