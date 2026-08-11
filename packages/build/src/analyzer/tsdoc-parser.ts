@@ -105,22 +105,37 @@ function sharedTagValueOptions(options?: ParseTSDocOptions, pathResolvedCustomTy
 }
 
 /**
- * For a `ts.Type` already resolved (e.g. by walking a path through the host),
- * returns the fully-qualified custom type ID if the type is a registered
- * custom type, else `undefined`. Single shared step used both for direct-type
- * lookups and for path-resolved terminals.
+ * Resolves the registered custom type that broadens a built-in tag at a
+ * path-resolved terminal. A registered terminal is opaque: when its own
+ * registration does not broaden the tag, do not inspect its TypeScript
+ * representation for a registered array item fallback.
  */
-function customTypeIdForResolvedType(
+function builtinBroadeningTypeIdForResolvedType(
+  tagName: string,
   resolvedType: ts.Type,
   checker: ts.TypeChecker,
   registry: ExtensionRegistry | undefined,
   capability: SemanticCapability | undefined
 ): string | undefined {
   if (registry === undefined) return undefined;
+
   const nonNullType = stripNullishUnion(resolvedType);
+  const terminalLookup = resolveCustomTypeFromTsType(nonNullType, checker, registry);
+  if (terminalLookup !== null) {
+    const terminalId = customTypeIdFromLookup(terminalLookup);
+    return registry.findBuiltinConstraintBroadening(terminalId, tagName) === undefined
+      ? undefined
+      : terminalId;
+  }
+
   const targetType = stripNullishUnion(_getConstraintTargetType(capability, nonNullType, checker));
-  const lookup = resolveCustomTypeFromTsType(targetType, checker, registry);
-  return lookup === null ? undefined : customTypeIdFromLookup(lookup);
+  const targetLookup = resolveCustomTypeFromTsType(targetType, checker, registry);
+  if (targetLookup === null) return undefined;
+
+  const targetId = customTypeIdFromLookup(targetLookup);
+  return registry.findBuiltinConstraintBroadening(targetId, tagName) === undefined
+    ? undefined
+    : targetId;
 }
 
 /**
@@ -156,20 +171,14 @@ function resolvePathTargetCustomTypeId(
     return undefined;
   }
 
-  const terminalType = stripNullishUnion(resolution.type);
   const capability = getTagDefinition(tagName)?.capabilities[0];
-  // A registered array alias may broaden the builtin on the container itself.
-  // Prefer that registration; otherwise select exactly one immediate item layer.
-  if (registry !== undefined) {
-    const containerLookup = resolveCustomTypeFromTsType(terminalType, checker, registry);
-    if (containerLookup !== null) {
-      const containerId = customTypeIdFromLookup(containerLookup);
-      if (registry.findBuiltinConstraintBroadening(containerId, tagName) !== undefined) {
-        return containerId;
-      }
-    }
-  }
-  return customTypeIdForResolvedType(resolution.type, checker, registry, capability);
+  return builtinBroadeningTypeIdForResolvedType(
+    tagName,
+    resolution.type,
+    checker,
+    registry,
+    capability
+  );
 }
 
 const TYPE_FORMAT_FLAGS =
@@ -628,20 +637,14 @@ function buildCompilerBackedConstraintDiagnostics(
       }
       return hasBuiltinConstraintBroadening(tagName, options);
     }
-    const registry = options?.extensionRegistry;
-    if (registry === undefined) return false;
-    const terminalType = stripNullishUnion(evaluatedType);
-    const containerLookup = resolveCustomTypeFromTsType(terminalType, checker, registry);
-    const containerId =
-      containerLookup === null ? undefined : customTypeIdFromLookup(containerLookup);
-    const typeId =
-      containerId !== undefined &&
-      registry.findBuiltinConstraintBroadening(containerId, tagName) !== undefined
-        ? containerId
-        : customTypeIdForResolvedType(evaluatedType, checker, registry, definition.capabilities[0]);
     return (
-      typeId !== undefined &&
-      registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined
+      builtinBroadeningTypeIdForResolvedType(
+        tagName,
+        evaluatedType,
+        checker,
+        options?.extensionRegistry,
+        definition.capabilities[0]
+      ) !== undefined
     );
   })();
 

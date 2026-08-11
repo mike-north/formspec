@@ -94,6 +94,16 @@ const vectorExtension = defineExtension({
     }),
   ],
 });
+const opaqueVectorExtension = defineExtension({
+  extensionId: "x-test/opaque-decimal-vector",
+  types: [
+    defineCustomType({
+      typeName: "DecimalVector",
+      tsTypeNames: ["DecimalVector"],
+      toJsonSchema: () => ({ type: "array", items: { type: "string" } }),
+    }),
+  ],
+});
 
 // =============================================================================
 // SOURCE DECLARATIONS
@@ -818,6 +828,27 @@ describe("registered array alias path broadening", () => {
     const properties = terminal["properties"] as Record<string, unknown>;
     const amounts = properties["amounts"] as Record<string, unknown>;
     expect(amounts["decimalVectorMinimum"]).toBe("10");
+  });
+  it("does not fall back to item broadening through a registered array container", () => {
+    const source = [
+      NAME_DECIMAL_DECL,
+      "type DecimalVector = Decimal[];",
+      "type Ledger = { amounts: DecimalVector };",
+      "export interface Root {",
+      "  /** @minimum :amounts 10 */",
+      "  ledger: Ledger;",
+      "}",
+    ].join("\n");
+    const result = generateSchemas({
+      filePath: writeTempSource(source),
+      typeName: "Root",
+      config: {
+        extensions: [vocabDecimalByNameExtension, opaqueVectorExtension],
+        vendorPrefix: "x-test",
+      },
+      errorReporting: "diagnostics",
+    });
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(true);
   });
 });
 describe("invalid paths on broadened hosts", () => {

@@ -230,11 +230,15 @@ function collectImmediateArrayItemConstraints(
   if (resolved.kind !== "array") {
     return [];
   }
-  // Array-container constraints belong to the item array's own depth. They
-  // must not be flattened into the outer target's contradiction set.
-  return collectReferencedTypeConstraints(resolved.items, typeRegistry).filter(
-    (constraint) => !isArrayContainerConstraint(constraint)
-  );
+
+  // A referenced item that resolves to another array owns all of its
+  // constraints at that inner depth. Flattening any of them into the outer
+  // target state would validate or compare them against the wrong array layer.
+  if (resolveTraversable(resolved.items, typeRegistry).kind === "array") {
+    return [];
+  }
+
+  return collectReferencedTypeConstraints(resolved.items, typeRegistry);
 }
 
 export function collectReferencedTypeAnnotations(

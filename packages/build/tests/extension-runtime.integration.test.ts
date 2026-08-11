@@ -7,6 +7,8 @@ import {
   defineConstraintTag,
   defineCustomType,
   defineExtension,
+} from "@formspec/core";
+import {
   IR_VERSION,
   type CustomAnnotationNode,
   type CustomConstraintNode,
@@ -454,6 +456,77 @@ describe("extension runtime integration", () => {
     );
     expect(nullableSchema.properties?.["values"]?.oneOf?.[0]).toMatchObject({
       items: { properties: { value: { "x-test-array-marker": "yes" } } },
+    });
+  });
+
+  it("builds referenced array item refinements without regenerating custom item schemas", () => {
+    let customTypeHookCalls = 0;
+    const countedMoneyExtension = defineExtension({
+      extensionId: "x-test/counted-money",
+      types: [
+        defineCustomType({
+          typeName: "CountedMoney",
+          toJsonSchema: (_payload, vendorPrefix) => {
+            customTypeHookCalls += 1;
+            return { type: "string", [`${vendorPrefix}-counted-money`]: true };
+          },
+        }),
+      ],
+      constraints: [currencyConstraint],
+    });
+    const countedMoneyType: CustomTypeNode = {
+      kind: "custom",
+      typeId: "x-test/counted-money/CountedMoney",
+      payload: null,
+    };
+    const referencedArray: TypeNode = {
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          {
+            name: "amount",
+            type: countedMoneyType,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+      },
+    };
+    const typeRegistry: FormIR["typeRegistry"] = {
+      Values: { name: "Values", type: referencedArray, provenance: PROVENANCE },
+    };
+    const constraint: CustomConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/counted-money/Currency",
+      payload: "USD",
+      compositionRule: "override",
+      path: { segments: ["amount"] },
+      provenance: PROVENANCE,
+    };
+    const schema = generateJsonSchemaFromIR(
+      makeIR(
+        [
+          makeField("values", { kind: "reference", name: "Values", typeArguments: [] }, [
+            constraint,
+          ]),
+        ],
+        typeRegistry
+      ),
+      {
+        extensionRegistry: createExtensionRegistry([countedMoneyExtension]),
+        vendorPrefix: "x-test",
+      }
+    );
+
+    expect(customTypeHookCalls).toBe(1);
+    // Per design 003 §5.4, the `$ref` sibling contains only the use-site refinement.
+    expect(schema.properties?.["values"]).toEqual({
+      $ref: "#/$defs/Values",
+      items: { properties: { amount: { "x-test-currency": "USD" } } },
     });
   });
 });

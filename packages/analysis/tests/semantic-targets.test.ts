@@ -725,4 +725,28 @@ describe("semantic-targets", () => {
     );
     expect(result.diagnostics).toEqual([]);
   });
+
+  it("does not flatten scalar constraints inherited from a referenced inner array", () => {
+    const inner: ReferenceTypeNode = { kind: "reference", name: "InnerStrings", typeArguments: [] };
+    const result = analyzeConstraintTargets("values", { kind: "array", items: inner }, [], {
+      InnerStrings: {
+        name: "InnerStrings",
+        provenance: provenance(0),
+        type: {
+          kind: "array",
+          items: { kind: "primitive", primitiveKind: "string" },
+        },
+        constraints: [
+          {
+            kind: "constraint",
+            constraintKind: "minLength",
+            value: 1,
+            provenance: provenance(1, "minLength"),
+          },
+        ],
+      },
+    });
+    // Per design 002 §4.3, the inner item constraint remains one array layer below this target.
+    expect(result.diagnostics).toEqual([]);
+  });
 });

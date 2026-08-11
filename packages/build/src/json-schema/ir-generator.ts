@@ -545,12 +545,17 @@ function applyPathTargetedConstraints(
   }
 
   // Array transparency also applies when the array is represented by a
-  // reference (including a reference inside a nullable union). JSON Schema
-  // 2020-12 permits an `items` sibling next to `$ref`.
+  // reference (including a reference inside a nullable union). A referenced
+  // array has no local `items` schema, so build only the sibling refinement;
+  // regenerating the base item would invoke extension hooks again and could
+  // mutate extension-owned schema objects.
   if (effectiveType?.kind === "array") {
-    const itemSchema = schema.items ?? generateTypeNode(effectiveType.items, ctx);
+    if (schema.items === undefined) {
+      schema.items = buildPathOverrideSchema(pathConstraints, effectiveType.items, ctx);
+      return schema;
+    }
     schema.items = applyPathTargetedConstraints(
-      itemSchema,
+      schema.items,
       pathConstraints,
       ctx,
       effectiveType.items
