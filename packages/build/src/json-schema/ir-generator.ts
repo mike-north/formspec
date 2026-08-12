@@ -8,6 +8,7 @@
  * @see https://json-schema.org/draft/2020-12/schema
  */
 
+import { normalizeConstraintTagName } from "@formspec/core/internals";
 import type {
   FormIR,
   FormIRElement,
@@ -434,13 +435,21 @@ function isArrayContainerConstraint(constraint: ConstraintNode): boolean {
   }
 }
 
+function getExtensionIdFromConstraintId(constraintId: string): string | null {
+  const separator = constraintId.lastIndexOf("/");
+  return separator <= 0 ? null : constraintId.slice(0, separator);
+}
+
 function customConstraintTargetsArray(
   constraint: ConstraintNode,
   arrayType: TypeNode,
-  ctx: GeneratorContext
+  extensionRegistry: ExtensionRegistry | undefined
 ): boolean {
-  if (constraint.constraintKind !== "custom" || arrayType.kind !== "array") return false;
-  const registration = ctx.extensionRegistry?.findConstraint(constraint.constraintId);
+  if (constraint.constraintKind !== "custom" || arrayType.kind !== "array") {
+    return false;
+  }
+
+  const registration = extensionRegistry?.findConstraint(constraint.constraintId);
   if (
     registration === undefined ||
     (registration.applicableTypes !== null && !registration.applicableTypes.includes("array")) ||
@@ -448,13 +457,24 @@ function customConstraintTargetsArray(
   ) {
     return false;
   }
-  const tagName = constraint.provenance.tagName?.replace(/^@/, "");
-  const tag = tagName === undefined ? undefined : ctx.extensionRegistry?.findConstraintTag(tagName);
-  if (tag === undefined) return true;
-  return (
-    tag.registration.constraintName === registration.constraintName &&
-    tag.registration.isApplicableToType?.(arrayType) !== false
-  );
+
+  const rawTagName = constraint.provenance.tagName;
+  if (rawTagName === undefined) {
+    return true;
+  }
+
+  const tagName = normalizeConstraintTagName(rawTagName.replace(/^@/, ""));
+  const tagRegistration = extensionRegistry?.findConstraintTag(tagName);
+  const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
+  if (
+    extensionId === null ||
+    tagRegistration?.extensionId !== extensionId ||
+    tagRegistration.registration.constraintName !== registration.constraintName
+  ) {
+    return true;
+  }
+
+  return tagRegistration.registration.isApplicableToType?.(arrayType) !== false;
 }
 
 /** Applies direct constraints to their resolved target, preserving one array layer. */
@@ -471,7 +491,7 @@ function applyDirectConstraintsWithArrayItems(
     if (
       effectiveType?.kind === "array" &&
       !isArrayContainerConstraint(constraint) &&
-      !customConstraintTargetsArray(constraint, effectiveType, ctx)
+      !customConstraintTargetsArray(constraint, effectiveType, ctx.extensionRegistry)
     ) {
       itemConstraints.push(constraint);
     } else {
@@ -1092,7 +1112,7 @@ function buildPathOverrideSchema(
     } else if (
       effectiveType?.kind === "array" &&
       !isArrayContainerConstraint(constraint) &&
-      !customConstraintTargetsArray(constraint, effectiveType, ctx)
+      !customConstraintTargetsArray(constraint, effectiveType, ctx.extensionRegistry)
     ) {
       itemConstraints.push(constraint);
     } else {

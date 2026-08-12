@@ -116,6 +116,32 @@ const arrayMarkerExtension = defineExtension({
   constraintTags: [arrayMarkerTag],
 });
 
+const universalMarkerConstraint = defineConstraint({
+  constraintName: "UniversalMarker",
+  compositionRule: "override",
+  applicableTypes: null,
+  toJsonSchema: (payload, vendorPrefix) => ({ [`${vendorPrefix}-universal-marker`]: payload }),
+});
+
+const universalMarkerTag = defineConstraintTag({
+  tagName: "universalMarker",
+  constraintName: "UniversalMarker",
+  parseValue: (raw) => raw,
+});
+
+const universalItemMarkerTag = defineConstraintTag({
+  tagName: "universalItemMarker",
+  constraintName: "UniversalMarker",
+  parseValue: (raw) => raw,
+  isApplicableToType: (type) => type.kind === "primitive",
+});
+
+const universalMarkerExtension = defineExtension({
+  extensionId: "x-test/universal-marker",
+  constraints: [universalMarkerConstraint],
+  constraintTags: [universalMarkerTag, universalItemMarkerTag],
+});
+
 function moneyTypeNode(payload: number): CustomTypeNode {
   return {
     kind: "custom",
@@ -157,6 +183,20 @@ function arrayMarkerConstraintNode(
     compositionRule: "override",
     provenance: { ...PROVENANCE, tagName: "@arrayMarker" },
     ...(path === undefined ? {} : { path: { segments: path } }),
+  };
+}
+
+function universalMarkerConstraintNode(
+  payload: string,
+  tagName = "@universalMarker"
+): CustomConstraintNode {
+  return {
+    kind: "constraint",
+    constraintKind: "custom",
+    constraintId: "x-test/universal-marker/UniversalMarker",
+    payload,
+    compositionRule: "override",
+    provenance: { ...PROVENANCE, tagName },
   };
 }
 
@@ -386,6 +426,41 @@ describe("extension runtime integration", () => {
       type: "array",
       items: { type: "string" },
       "x-test-array-marker": "yes",
+    });
+  });
+
+  it("places a universally applicable custom constraint on the array container", () => {
+    const registry = createExtensionRegistry([universalMarkerExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("values", { kind: "array", items: STRING_TYPE }, [
+          universalMarkerConstraintNode("yes"),
+        ]),
+      ]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+
+    expect(schema.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      "x-test-universal-marker": "yes",
+    });
+  });
+
+  it("normalizes the governing tag before placing an array constraint", () => {
+    const registry = createExtensionRegistry([universalMarkerExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("values", { kind: "array", items: STRING_TYPE }, [
+          universalMarkerConstraintNode("yes", "@UniversalItemMarker"),
+        ]),
+      ]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+
+    expect(schema.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string", "x-test-universal-marker": "yes" },
     });
   });
 

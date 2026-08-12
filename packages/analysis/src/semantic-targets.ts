@@ -518,6 +518,62 @@ function getExtensionIdFromConstraintId(constraintId: string): string | null {
   return constraintId.slice(0, separator);
 }
 
+function findGoverningConstraintTagRegistration(
+  constraint: CustomConstraintNode,
+  registration: ConstraintRegistrationLike,
+  extensionRegistry: ConstraintRegistryLike | undefined
+): ConstraintTagRegistrationLike | undefined {
+  const rawTagName = constraint.provenance.tagName;
+  if (rawTagName === undefined) {
+    return undefined;
+  }
+
+  const tagName = normalizeConstraintTagName(rawTagName.replace(/^@/, ""));
+  const tagRegistration = extensionRegistry?.findConstraintTag(tagName);
+  const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
+  if (
+    extensionId === null ||
+    tagRegistration?.extensionId !== extensionId ||
+    tagRegistration.registration.constraintName !== registration.constraintName
+  ) {
+    return undefined;
+  }
+
+  return tagRegistration.registration;
+}
+
+/**
+ * Returns whether a custom constraint targets an array container rather than
+ * its immediate item type.
+ *
+ * @internal
+ */
+export function _customConstraintTargetsArrayContainer(
+  constraint: ConstraintNode,
+  arrayType: TypeNode,
+  extensionRegistry: ConstraintRegistryLike | undefined
+): boolean {
+  if (constraint.constraintKind !== "custom" || arrayType.kind !== "array") {
+    return false;
+  }
+
+  const registration = extensionRegistry?.findConstraint(constraint.constraintId);
+  if (
+    registration === undefined ||
+    (registration.applicableTypes !== null && !registration.applicableTypes.includes("array")) ||
+    registration.isApplicableToType?.(arrayType) === false
+  ) {
+    return false;
+  }
+
+  const tagRegistration = findGoverningConstraintTagRegistration(
+    constraint,
+    registration,
+    extensionRegistry
+  );
+  return tagRegistration?.isApplicableToType?.(arrayType) !== false;
+}
+
 function typeLabel(type: TypeNode): string {
   switch (type.kind) {
     case "primitive":
@@ -1113,30 +1169,24 @@ function checkCustomConstraint(
   }
 
   const candidateTypes = collectCustomConstraintCandidateTypes(type, typeRegistry);
-  const normalizedTagName =
-    constraint.provenance.tagName === undefined
-      ? undefined
-      : normalizeConstraintTagName(constraint.provenance.tagName.replace(/^@/, ""));
+  const tagRegistration = findGoverningConstraintTagRegistration(
+    constraint,
+    registration,
+    extensionRegistry
+  );
 
-  if (normalizedTagName !== undefined) {
-    const tagRegistration = extensionRegistry.findConstraintTag(normalizedTagName);
-    const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
-    if (
-      extensionId !== null &&
-      tagRegistration?.extensionId === extensionId &&
-      tagRegistration.registration.constraintName === registration.constraintName &&
-      !candidateTypes.some(
-        (candidateType) =>
-          tagRegistration.registration.isApplicableToType?.(candidateType) !== false
-      )
-    ) {
-      addTypeMismatch(
-        diagnostics,
-        `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
-        constraint.provenance
-      );
-      return;
-    }
+  if (
+    tagRegistration !== undefined &&
+    !candidateTypes.some(
+      (candidateType) => tagRegistration.isApplicableToType?.(candidateType) !== false
+    )
+  ) {
+    addTypeMismatch(
+      diagnostics,
+      `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
+      constraint.provenance
+    );
+    return;
   }
 
   if (registration.applicableTypes === null) {
@@ -1192,25 +1242,11 @@ function resolveConstraintTargetType(
     return containerType;
   }
 
-  if (constraint.constraintKind === "custom") {
-    const registration = extensionRegistry?.findConstraint(constraint.constraintId);
-    const tagName = constraint.provenance.tagName?.replace(/^@/, "");
-    const tagRegistration =
-      tagName === undefined ? undefined : extensionRegistry?.findConstraintTag(tagName);
-    const matchesTag =
-      tagRegistration !== undefined &&
-      tagRegistration.registration.constraintName === registration?.constraintName;
-    const registrationAcceptsContainer =
-      registration !== undefined &&
-      (registration.applicableTypes === null || registration.applicableTypes.includes("array")) &&
-      registration.isApplicableToType?.(containerType) !== false;
-    const tagAcceptsContainer =
-      tagRegistration === undefined
-        ? true
-        : matchesTag && tagRegistration.registration.isApplicableToType?.(containerType) !== false;
-    if (registrationAcceptsContainer && tagAcceptsContainer) {
-      return containerType;
-    }
+  if (
+    constraint.constraintKind === "custom" &&
+    _customConstraintTargetsArrayContainer(constraint, containerType, extensionRegistry)
+  ) {
+    return containerType;
   }
 
   return resolveTraversable(containerType.items, typeRegistry);
@@ -1251,7 +1287,9 @@ function checkConstraintOnType(
     }
     if (effectiveType.kind === "union") {
       return effectiveType.members.some((member) => {
-        if (member.kind === "primitive" && member.primitiveKind === "null") return false;
+        if (member.kind === "primitive" && member.primitiveKind === "null") {
+          return false;
+        }
         const resolvedMember = dereferenceAnalysisType(member, typeRegistry);
         return resolvedMember.kind === "custom" && isBroadened(resolvedMember.typeId);
       });

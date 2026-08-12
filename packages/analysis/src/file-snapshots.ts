@@ -51,12 +51,15 @@ import {
   type ConstraintTagParseRegistryLike,
 } from "./tag-value-parser.js";
 import {
+  getTagDefinition,
   normalizeFormSpecTagName,
   type ExtensionTagSource,
   type FormSpecPlacement,
+  type SemanticCapability,
 } from "./tag-registry.js";
 import {
   hasTypeSemanticCapability,
+  type ResolvedPathTargetType,
   resolveDeclarationPlacement,
   resolvePathTargetType,
   stripNullishUnion,
@@ -296,7 +299,7 @@ function findBroadeningTargetTypes(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   extensionDefinitions: readonly ExtensionDefinition[],
-  capability: Parameters<typeof _getConstraintTargetType>[0]
+  capability: SemanticCapability | undefined
 ): NonNullable<ExtensionDefinition["types"]> {
   const normalizedSubjectType = stripNullishUnion(subjectType);
   const terminalMatches = findMatchingExtensionTypes(
@@ -319,7 +322,7 @@ function hasExtensionBroadening(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   extensionDefinitions: readonly ExtensionDefinition[] | undefined,
-  capability: Parameters<typeof _getConstraintTargetType>[0]
+  capability: SemanticCapability | undefined
 ): boolean {
   if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
     return false;
@@ -329,6 +332,17 @@ function hasExtensionBroadening(
     (type) =>
       (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
   );
+}
+
+function findBroadeningTypeId(
+  types: NonNullable<ExtensionDefinition["types"]>,
+  constraintName: string
+): string | undefined {
+  return types.find((type) =>
+    (type.builtinConstraintBroadenings ?? []).some(
+      (broadening) => broadening.tagName === constraintName
+    )
+  )?.typeName;
 }
 
 /**
@@ -371,20 +385,14 @@ function resolveExtensionCustomTypeId(
     return undefined;
   }
 
-  const capability = ["minItems", "maxItems", "uniqueItems"].includes(constraintName)
-    ? "array-like"
-    : undefined;
-  const match = findBroadeningTargetTypes(
-    subjectType,
-    checker,
-    extensionDefinitions,
-    capability
-  ).find((type) =>
-    (type.builtinConstraintBroadenings ?? []).some(
-      (broadening) => broadening.tagName === constraintName
-    )
+  const capability = getTagDefinition(constraintName)?.capabilities[0];
+  if (capability === undefined) {
+    return undefined;
+  }
+  return findBroadeningTypeId(
+    findBroadeningTargetTypes(subjectType, checker, extensionDefinitions, capability),
+    constraintName
   );
-  return match?.typeName;
 }
 
 /**
@@ -818,6 +826,38 @@ function buildDeclarationSummary(
   );
   const blockTagIndexes = new Map<string, number>();
   const facts: FormSpecSerializedDeclarationFact[] = [];
+  let directContainerBroadeningTargets: NonNullable<ExtensionDefinition["types"]> | undefined;
+  let directItemBroadeningTargets: NonNullable<ExtensionDefinition["types"]> | undefined;
+  const resolveDirectFieldTypeId = (constraintName: string): string | undefined => {
+    if (
+      declarationSubjectType === undefined ||
+      extensionDefinitions === undefined ||
+      extensionDefinitions.length === 0
+    ) {
+      return undefined;
+    }
+
+    const capability = getTagDefinition(constraintName)?.capabilities[0];
+    if (capability === undefined) {
+      return undefined;
+    }
+
+    const targets =
+      capability === "array-like"
+        ? (directContainerBroadeningTargets ??= findBroadeningTargetTypes(
+            declarationSubjectType,
+            checker,
+            extensionDefinitions,
+            capability
+          ))
+        : (directItemBroadeningTargets ??= findBroadeningTargetTypes(
+            declarationSubjectType,
+            checker,
+            extensionDefinitions,
+            capability
+          ));
+    return findBroadeningTypeId(targets, constraintName);
+  };
 
   const takeBlockTagText = (tagName: string): string | null => {
     const values = blockTagTexts.get(tagName);
@@ -839,16 +879,16 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
+    const isBuiltinConstraintTag = isBuiltinConstraintName(tag.normalizedTagName);
     // Issue #396: thread both broadening inputs through to
     // `parseConstraintTagValue`, achieving parity with the build consumer
-    // (PR #398, issue #395) — direct-field tags broaden via `fieldType`
-    // (the declaration's own type); path-targeted tags broaden via
-    // `pathResolvedCustomTypeId` (the path's terminal type, resolved fresh
-    // per tag since the path varies tag-to-tag).
+    // (PR #398, issue #395). Direct-field target matching is cached once for
+    // container tags and once for item tags; path-targeted tags use
+    // `pathResolvedCustomTypeId`, resolved per tag because paths vary.
     const pathTarget =
       tag.target?.kind === "path" && tag.target.valid ? (tag.target.path ?? null) : null;
     const pathResolvedCustomTypeId =
-      pathTarget !== null && declarationSubjectType !== undefined
+      isBuiltinConstraintTag && pathTarget !== null && declarationSubjectType !== undefined
         ? resolvePathTargetCustomTypeId(
             declarationSubjectType,
             checker,
@@ -858,13 +898,8 @@ function buildDeclarationSummary(
           )
         : undefined;
     const directFieldTypeId =
-      pathTarget === null && declarationSubjectType !== undefined
-        ? resolveExtensionCustomTypeId(
-            declarationSubjectType,
-            checker,
-            extensionDefinitions,
-            tag.normalizedTagName
-          )
+      isBuiltinConstraintTag && pathTarget === null
+        ? resolveDirectFieldTypeId(tag.normalizedTagName)
         : undefined;
     const directFieldType: CustomTypeNode | undefined =
       directFieldTypeId === undefined
@@ -1582,6 +1617,10 @@ function buildTagDiagnostics(
     // in tsdoc-parser.ts.
     //
     // IMPORTANT: the broadening check MUST run BEFORE the typed-parser call.
+    // Broadened fields (D1/D2) bypass Role C entirely. Without this guard a
+    // broadened field whose argument the typed parser would reject (e.g. a
+    // custom type with a registered @minimum broadening) would spuriously emit
+    // INVALID_TAG_ARGUMENT instead of being routed to D1/D2.
     //
     // Guard: only call parseTagArgument for builtin constraint tags. Extension tags
     // are not in the typed parser's registry (they would return UNKNOWN_TAG), and
@@ -1636,21 +1675,20 @@ function buildTagDiagnostics(
         continue;
       }
 
-      const broadeningSubjectType = (() => {
-        if (target === null) {
-          return subjectType;
-        }
-        const parsedTarget = tag.target;
-        if (target.kind !== "path" || parsedTarget?.kind !== "path" || parsedTarget.path === null) {
-          return undefined;
-        }
-        const resolution = resolvePathTargetType(
-          declaredSubjectType,
-          checker,
-          parsedTarget.path.segments
-        );
-        return resolution.kind === "resolved" ? resolution.type : undefined;
-      })();
+      // Resolve a valid path target once, after Role A and the builtin-tag guard,
+      // then share the result between broadening detection and Role B below.
+      const pathTargetResolution: ResolvedPathTargetType | null =
+        target?.kind === "path" &&
+        (tag.target?.kind === "path" || tag.target?.kind === "ambiguous") &&
+        tag.target.path !== null
+          ? resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
+          : null;
+      const broadeningSubjectType =
+        target === null
+          ? subjectType
+          : tag.target?.kind === "path" && pathTargetResolution?.kind === "resolved"
+            ? pathTargetResolution.type
+            : undefined;
       const hasExtBroadening =
         broadeningSubjectType === undefined
           ? false
@@ -1702,27 +1740,16 @@ function buildTagDiagnostics(
             let evaluatedType: ts.Type | null = null;
             let evaluatedTypeLabel = "";
             let pathRejection: { code: string; message: string } | null = null;
-            // `pathTargetResolution` is resolved lazily below only when
-            // `target.kind === "path"` — computing it earlier would pay the
-            // `resolvePathTargetType` cost for misplaced tags (rejected at
-            // Role A above) and non-constraint tags (which don't enter this
-            // block). Hoisted here (not inside the branch) because the later
-            // `pathRejection` diagnostic at line ~1512 reads its `kind` /
-            // `segment` to attach `missingPathSegment` data.
-            let pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null = null;
+            // `pathTargetResolution` was computed once above after Role A and
+            // the builtin-tag guard. Broadening detection consumes a resolved
+            // terminal type; Role B also retains failures so diagnostics can
+            // attach `missingPathSegment` data.
 
             if (target === null) {
               evaluatedType = subjectType;
               evaluatedTypeLabel =
                 standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
             } else if (target.kind === "path") {
-              pathTargetResolution =
-                tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
-                  ? tag.target.path === null
-                    ? null
-                    : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
-                  : null;
-
               if (pathTargetResolution === null) {
                 // tag.target.path is null — the path target text failed to
                 // parse (e.g. `@minimum :invalid-syntax 0` where the segment

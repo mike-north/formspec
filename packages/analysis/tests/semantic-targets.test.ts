@@ -569,6 +569,117 @@ describe("semantic-targets", () => {
     ).toEqual([]);
   });
 
+  it("targets universally applicable custom constraints at the array container", () => {
+    const arrayType: TypeNode = { kind: "array", items: NUMBER_TYPE };
+    const observedTypes: TypeNode[] = [];
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/universal/Universal",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "universal"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "Universal",
+        applicableTypes: null,
+        isApplicableToType: (type: TypeNode) => {
+          observedTypes.push(type);
+          return true;
+        },
+      }),
+      findConstraintTag: () => undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "values",
+      arrayType,
+      [customConstraint],
+      {},
+      {
+        extensionRegistry: registry,
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(observedTypes.length).toBeGreaterThan(0);
+    expect(observedTypes.every((type) => type.kind === "array")).toBe(true);
+  });
+
+  it("normalizes the governing tag before selecting the array target", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/universal/Universal",
+      payload: true,
+      compositionRule: "override",
+      provenance: { ...provenance(1), tagName: "@ItemOnly" },
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "Universal",
+        applicableTypes: null,
+      }),
+      findConstraintTag: (tagName: string) =>
+        tagName === "itemOnly"
+          ? {
+              extensionId: "x-test/universal",
+              registration: {
+                tagName,
+                constraintName: "Universal",
+                isApplicableToType: (type: TypeNode) => type.kind === "primitive",
+              },
+            }
+          : undefined,
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("ignores a same-name tag registration owned by another extension", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/arrays/ContainerOnly",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "containerOnly"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "ContainerOnly",
+        applicableTypes: ["array"] as const,
+      }),
+      findConstraintTag: () => ({
+        extensionId: "x-other/arrays",
+        registration: {
+          tagName: "containerOnly",
+          constraintName: "ContainerOnly",
+          isApplicableToType: (type: TypeNode) => type.kind === "primitive",
+        },
+      }),
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+  });
+
   it("includes referenced immediate item constraints in contradiction analysis", () => {
     const result = analyzeConstraintTargets(
       "values",

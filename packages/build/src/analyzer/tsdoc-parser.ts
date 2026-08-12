@@ -656,6 +656,9 @@ function buildCompilerBackedConstraintDiagnostics(
     ) {
       const actualType = checker.typeToString(evaluatedType, node, TYPE_FORMAT_FLAGS);
       const baseMessage = `Target "${targetLabel}": constraint "${tagName}" is only valid on ${_capabilityLabel(requiredCapability)} targets, but field type is "${actualType}"`;
+      // Path-target hints only apply to direct-field mismatches — the hint
+      // suggests "did you mean a sub-path?" which is nonsensical when the
+      // user is already path-targeting.
       const hint =
         target === null
           ? buildPathTargetHint(

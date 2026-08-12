@@ -70,29 +70,13 @@ export function _capabilityLabel(capability: SemanticCapability | undefined): st
 }
 
 /**
- * Returns `true` when `type` satisfies the constraint `capability`.
+ * Selects the type against which a constraint capability is evaluated.
  *
- * Ported from `supportsConstraintCapability` in `tsdoc-parser.ts` (build
- * package). Both the build consumer (`tsdoc-parser.ts`) and the snapshot
- * consumer (`file-snapshots.ts`) call this function, so the capability
- * logic is shared and the TYPE_MISMATCH decisions are consistent across
- * both paths.
- *
- * Behaviour:
- * - When `capability` is `undefined` (no constraint on target type), returns
- *   `true` unconditionally.
- * - `array-like` capabilities are checked against the field/container type.
- * - Every other capability is checked against the immediate array item when
- *   the field resolves to an array, or against the field type otherwise.
- *   Exactly one array layer is unwrapped.
- * - Integer-brand bypass is the caller's responsibility. Callers must check
- *   for integer-branded types and skip this function when appropriate (see
- *   ordering invariants in the module-level JSDoc). There is no options
- *   parameter — the bypass happens at the call site, not here.
- *
- * @param capability - The semantic capability required by the constraint tag.
- * @param fieldType  - The TypeScript type of the field being annotated.
- * @param checker    - The TypeScript type checker for the host program.
+ * `array-like` capabilities target the field/container type. Every other
+ * value, including `undefined`, targets exactly one immediate array item when
+ * the field resolves to an array, or the field type otherwise. Callers that
+ * know the tag capability should pass it rather than relying on the
+ * `undefined` fallback.
  *
  * @internal
  */
@@ -106,6 +90,14 @@ export function _getConstraintTargetType(
     : (getArrayElementType(fieldType, checker) ?? fieldType);
 }
 
+/**
+ * Returns whether `fieldType` satisfies `capability`.
+ *
+ * `undefined` means the tag has no type requirement and is accepted
+ * unconditionally. Integer-brand bypass remains the caller's responsibility.
+ *
+ * @internal
+ */
 export function _supportsConstraintCapability(
   capability: SemanticCapability | undefined,
   fieldType: ts.Type,
@@ -371,7 +363,7 @@ export function _checkConstValueAgainstType(
   fieldType: ts.Type,
   checker: ts.TypeChecker
 ): { readonly code: "TYPE_MISMATCH"; readonly message: string } | null {
-  const targetType = _getConstraintTargetType(undefined, fieldType, checker);
+  const targetType = _getConstraintTargetType("json-like", fieldType, checker);
   const classification = classifyConstTargetType(targetType);
 
   if (classification.kind === "other") {
