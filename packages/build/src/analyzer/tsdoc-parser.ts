@@ -176,6 +176,18 @@ function processConstraintTag(
   constraints: ConstraintNode[],
   diagnostics: ConstraintSemanticDiagnostic[]
 ): void {
+  // Implicit sub-field routing: a bare built-in constraint on an object with a
+  // single routable sub-field is treated as if it targeted that sub-field, so
+  // `@minimum 0` on a MonetaryAmount means `@minimum :amount 0`. Rewrite the
+  // tag text and re-parse so both the diagnostics pass (which reads
+  // `parsedTag.target`) and the emitted node (which re-parses `text`) see the
+  // synthesized path target.
+  const routedSubfield = findSoleRoutableSubfield(tagName, parsedTag, options);
+  if (routedSubfield !== null) {
+    text = `:${routedSubfield} ${text}`;
+    parsedTag = parseTagSyntax(tagName, text);
+  }
+
   const compilerDiagnostics = buildCompilerBackedConstraintDiagnostics(
     node,
     sourceFile,
@@ -352,6 +364,97 @@ function buildPathTargetHint(
   const shown = candidates.slice(0, MAX_HINT_CANDIDATES);
   const overflow = candidates.length > MAX_HINT_CANDIDATES ? ", …" : "";
   return `Hint: use a path target to constrain a subfield (candidates: ${shown.join(", ")}${overflow}), e.g. ${renderExample(primary)}`;
+}
+
+/**
+ * When a built-in constraint tag is written WITHOUT a path target on an
+ * object-typed field, and exactly one direct sub-field could accept that
+ * constraint, return that sub-field's name so the caller can route the
+ * constraint to it. A sub-field is routable when it either satisfies the
+ * tag's semantic capability (e.g. a `number` sub-field for `@minimum`) or a
+ * registered custom type on it broadens the tag (e.g. `Decimal`).
+ *
+ * This lets `@minimum 0` on a `MonetaryAmount { amount: Decimal; currency }`
+ * field behave like `@minimum :amount 0`, reusing the single-candidate case
+ * that `buildPathTargetHint` already detects for the same shape. Returns null
+ * when routing is ambiguous (zero or multiple candidates), when the field
+ * itself already accepts the constraint, or when type info is unavailable.
+ */
+function findSoleRoutableSubfield(
+  tagName: string,
+  parsedTag: ParsedCommentTag | null,
+  options: ParseTSDocOptions | undefined
+): string | null {
+  if (!isBuiltinConstraintName(tagName)) {
+    return null;
+  }
+  // Only infer a path when the author did not write one.
+  if (parsedTag?.target != null) {
+    return null;
+  }
+
+  const checker = options?.checker;
+  const subjectType = options?.subjectType;
+  if (checker === undefined || subjectType === undefined) {
+    return null;
+  }
+
+  const definition = getTagDefinition(tagName, options?.extensionRegistry?.extensions);
+  const capability = definition?.capabilities[0];
+  if (capability === undefined) {
+    return null;
+  }
+  // Scope this to numeric bounds only. The motivating case is `@minimum` on a
+  // money-like object, where the single numeric sub-field is unambiguous.
+  // String/array constraints keep their existing "did you mean a sub-path?"
+  // hint rather than routing implicitly.
+  if (capability !== "numeric-comparable") {
+    return null;
+  }
+
+  const stripped = stripHintNullishUnion(subjectType);
+  // Only object fields have a sub-field to route into, and only when the field
+  // itself does not already accept the constraint — never re-route a constraint
+  // that was validly placed on the field directly.
+  if (!hasTypeSemanticCapability(stripped, checker, "object-like")) {
+    return null;
+  }
+  if (supportsConstraintCapability(stripped, checker, capability)) {
+    return null;
+  }
+  if (hasBuiltinConstraintBroadening(tagName, options)) {
+    return null;
+  }
+
+  const registry = options?.extensionRegistry;
+  const routable: string[] = [];
+  for (const property of stripped.getProperties()) {
+    const declaration = property.valueDeclaration ?? property.declarations?.[0];
+    if (declaration === undefined || !isUserEmittableHintProperty(property, declaration)) {
+      continue;
+    }
+    const propertyType = stripHintNullishUnion(
+      checker.getTypeOfSymbolAtLocation(property, declaration)
+    );
+    const satisfiesCapability = supportsConstraintCapability(propertyType, checker, capability);
+    const broadensTag =
+      registry !== undefined &&
+      (() => {
+        const typeId = customTypeIdForResolvedType(propertyType, checker, registry);
+        return (
+          typeId !== undefined &&
+          registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined
+        );
+      })();
+    if (satisfiesCapability || broadensTag) {
+      routable.push(property.name);
+      // Ambiguous: more than one sub-field could accept the constraint.
+      if (routable.length > 1) {
+        return null;
+      }
+    }
+  }
+  return routable[0] ?? null;
 }
 
 function makeDiagnostic(

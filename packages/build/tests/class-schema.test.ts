@@ -338,15 +338,18 @@ describe("generateSchemas", () => {
     expect(getGenerationFailureMessage("BoxForm")).toContain("TYPE_MISMATCH");
   });
 
-  it("appends a path-target hint when an object field has exactly one matching subfield", () => {
-    const message = getGenerationFailureMessage("HintedSingleCandidateForm");
-
-    expect(message).toContain("TYPE_MISMATCH");
-    expect(message).toContain("Hint:");
-    // Single-candidate form: full corrected example with the user's value preserved.
-    expect(message).toContain("@exclusiveMinimum :value 0");
-    // Should NOT use the multi-candidate "(candidates: …)" listing form.
-    expect(message).not.toContain("candidates:");
+  it("routes a bare numeric constraint to the sole matching subfield instead of hinting", () => {
+    // Previously a TYPE_MISMATCH + "did you mean :value?" hint. A single
+    // unambiguous numeric subfield is now auto-routed to (implicit :value).
+    const { jsonSchema } = generateSchemasOrThrow({
+      filePath: classSchemaRegressionsPath,
+      typeName: "HintedSingleCandidateForm",
+    });
+    const field = jsonSchema.properties?.["totalPrice"] as Record<string, unknown> | undefined;
+    const value = (field?.["properties"] as Record<string, unknown> | undefined)?.["value"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(value?.["exclusiveMinimum"]).toBe(0);
   });
 
   it("lists candidates when an object field has multiple matching subfields", () => {
@@ -380,12 +383,22 @@ describe("generateSchemas", () => {
     expect(message).not.toContain("Hint:");
   });
 
-  it("surfaces subfield candidates through nullish unions (regression: Copilot review on #283)", () => {
-    const message = getGenerationFailureMessage("HintedNullablePriceForm");
-
-    expect(message).toContain("TYPE_MISMATCH");
-    expect(message).toContain("Hint:");
-    expect(message).toContain("@exclusiveMinimum :value 0");
+  it("routes a bare numeric constraint through a nullish union to the sole subfield (regression: Copilot review on #283)", () => {
+    // The non-null member (PriceAmount) has a single numeric subfield, so the
+    // bare constraint routes through the nullable union to it.
+    const { jsonSchema } = generateSchemasOrThrow({
+      filePath: classSchemaRegressionsPath,
+      typeName: "HintedNullablePriceForm",
+    });
+    // Nullable field: the override lands on the non-null oneOf branch.
+    const field = jsonSchema.properties?.["totalPrice"] as Record<string, unknown> | undefined;
+    const nonNullBranch = (field?.["oneOf"] as Record<string, unknown>[] | undefined)?.find(
+      (branch) => branch["type"] !== "null"
+    );
+    const value = (nonNullBranch?.["properties"] as Record<string, unknown> | undefined)?.[
+      "value"
+    ] as Record<string, unknown> | undefined;
+    expect(value?.["exclusiveMinimum"]).toBe(0);
   });
 
   it("suggests `string[]` subfields for string-like constraints (regression: Copilot review on #283)", () => {
@@ -399,16 +412,19 @@ describe("generateSchemas", () => {
     expect(message).not.toMatch(/:count\b/);
   });
 
-  it("ignores intrinsic Function members when recursing into method types (regression: Copilot review on #283)", () => {
-    const message = getGenerationFailureMessage("HintedFiltersCallableMembersForm");
-
-    expect(message).toContain("TYPE_MISMATCH");
-    expect(message).toContain("Hint:");
-    expect(message).toContain("value");
-    // Function.prototype members must not leak into the suggestion list.
-    expect(message).not.toMatch(/:helper\./);
-    expect(message).not.toContain("apply");
-    expect(message).not.toContain("__brand");
+  it("routes to the sole real subfield and ignores intrinsic Function members (regression: Copilot review on #283)", () => {
+    // `value` is the only routable numeric subfield; the method member and its
+    // intrinsic Function.prototype members are not candidates, so routing stays
+    // unambiguous and lands on `value`.
+    const { jsonSchema } = generateSchemasOrThrow({
+      filePath: classSchemaRegressionsPath,
+      typeName: "HintedFiltersCallableMembersForm",
+    });
+    const field = jsonSchema.properties?.["widget"] as Record<string, unknown> | undefined;
+    const value = (field?.["properties"] as Record<string, unknown> | undefined)?.["value"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(value?.["minimum"]).toBe(0);
   });
 
   it("throws with INVALID_TAG_PLACEMENT for builtin constraints on class declarations", () => {
