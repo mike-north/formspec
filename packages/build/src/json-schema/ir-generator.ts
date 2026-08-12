@@ -8,6 +8,7 @@
  * @see https://json-schema.org/draft/2020-12/schema
  */
 
+import { normalizeConstraintTagName } from "@formspec/core/internals";
 import type {
   FormIR,
   FormIRElement,
@@ -386,28 +387,18 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   const itemStringSchema =
     schema.type === "array" && schema.items?.type === "string" ? schema.items : undefined;
 
-  // Partition constraints into direct (no path) and path-targeted.
+  // Partition constraints into direct container/item constraints and path-targeted constraints.
   const directConstraints: ConstraintNode[] = [];
-  const itemConstraints: ConstraintNode[] = [];
   const pathConstraints: ConstraintNode[] = [];
-  for (const c of field.constraints) {
-    if (c.path) {
-      pathConstraints.push(c);
-    } else if (itemStringSchema !== undefined && isStringItemConstraint(c)) {
-      itemConstraints.push(c);
+  for (const constraint of field.constraints) {
+    if (constraint.path) {
+      pathConstraints.push(constraint);
     } else {
-      directConstraints.push(c);
+      directConstraints.push(constraint);
     }
   }
 
-  // Apply direct constraints. multipleOf:1 on a number type is a special case:
-  // it promotes the type to "integer" and removes the multipleOf keyword.
-  applyConstraints(schema, directConstraints, ctx);
-
-  if (itemStringSchema !== undefined) {
-    applyConstraints(itemStringSchema, itemConstraints, ctx);
-  }
-
+  applyDirectConstraintsWithArrayItems(schema, directConstraints, field.type, ctx);
   // Apply annotations (title, description, default, deprecated, etc.).
   const rootAnnotations: AnnotationNode[] = [];
   const itemAnnotations: AnnotationNode[] = [];
@@ -425,7 +416,6 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
     applyAnnotations(itemStringSchema, itemAnnotations, ctx);
   }
 
-  // If no path-targeted constraints, return as-is.
   if (pathConstraints.length === 0) {
     return schema;
   }
@@ -433,23 +423,95 @@ function generateFieldSchema(field: FieldNode, ctx: GeneratorContext): JsonSchem
   return applyPathTargetedConstraints(schema, pathConstraints, ctx, field.type);
 }
 
-/**
- * Returns true if a constraint should be applied to the `items` schema of a
- * primitive `string[]` rather than the array itself.
- *
- * `@const` is intentionally excluded: arrays cannot carry primitive const
- * constraints in FormSpec, so `@const` on `string[]` remains a validation
- * error instead of targeting the item schema.
- */
-function isStringItemConstraint(constraint: ConstraintNode): boolean {
+/** Returns true for constraints that target the resolved array container. */
+function isArrayContainerConstraint(constraint: ConstraintNode): boolean {
   switch (constraint.constraintKind) {
-    case "minLength":
-    case "maxLength":
-    case "pattern":
+    case "minItems":
+    case "maxItems":
+    case "uniqueItems":
       return true;
     default:
       return false;
   }
+}
+
+function getExtensionIdFromConstraintId(constraintId: string): string | null {
+  const separator = constraintId.lastIndexOf("/");
+  return separator <= 0 ? null : constraintId.slice(0, separator);
+}
+
+function customConstraintTargetsArray(
+  constraint: ConstraintNode,
+  arrayType: TypeNode,
+  extensionRegistry: ExtensionRegistry | undefined
+): boolean {
+  if (constraint.constraintKind !== "custom" || arrayType.kind !== "array") {
+    return false;
+  }
+
+  const registration = extensionRegistry?.findConstraint(constraint.constraintId);
+  if (
+    registration === undefined ||
+    (registration.applicableTypes !== null && !registration.applicableTypes.includes("array")) ||
+    registration.isApplicableToType?.(arrayType) === false
+  ) {
+    return false;
+  }
+
+  const rawTagName = constraint.provenance.tagName;
+  if (rawTagName === undefined) {
+    return true;
+  }
+
+  const tagName = normalizeConstraintTagName(rawTagName.replace(/^@/, ""));
+  const tagRegistration = extensionRegistry?.findConstraintTag(tagName);
+  const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
+  if (
+    extensionId === null ||
+    tagRegistration?.extensionId !== extensionId ||
+    tagRegistration.registration.constraintName !== registration.constraintName
+  ) {
+    return true;
+  }
+
+  return tagRegistration.registration.isApplicableToType?.(arrayType) !== false;
+}
+
+/** Applies direct constraints to their resolved target, preserving one array layer. */
+function applyDirectConstraintsWithArrayItems(
+  schema: JsonSchema2020,
+  constraints: readonly ConstraintNode[],
+  typeNode: TypeNode,
+  ctx: GeneratorContext
+): void {
+  const directConstraints: ConstraintNode[] = [];
+  const itemConstraints: ConstraintNode[] = [];
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
+  for (const constraint of constraints) {
+    if (
+      effectiveType?.kind === "array" &&
+      !isArrayContainerConstraint(constraint) &&
+      !customConstraintTargetsArray(constraint, effectiveType, ctx.extensionRegistry)
+    ) {
+      itemConstraints.push(constraint);
+    } else {
+      directConstraints.push(constraint);
+    }
+  }
+
+  applyConstraints(schema, directConstraints, ctx);
+  if (itemConstraints.length > 0) {
+    applyConstraints(getArrayItemConstraintSchema(schema), itemConstraints, ctx);
+  }
+}
+
+/** Finds or creates the immediate `items` schema without replacing existing item keywords. */
+function getArrayItemConstraintSchema(schema: JsonSchema2020): JsonSchema2020 {
+  const nullableValueBranch = getNullableUnionValueSchema(schema);
+  if (nullableValueBranch !== undefined) {
+    return getArrayItemConstraintSchema(nullableValueBranch);
+  }
+  return (schema.items ??= {});
 }
 
 /**
@@ -484,21 +546,7 @@ function applyPathTargetedConstraints(
   ctx: GeneratorContext,
   typeNode?: TypeNode
 ): JsonSchema2020 {
-  // Array transparency: path-targeted constraints target the item type.
-  if (schema.type === "array" && schema.items) {
-    const referencedType =
-      typeNode?.kind === "reference" ? resolveReferencedType(typeNode, ctx) : undefined;
-    const nestedType =
-      typeNode?.kind === "array"
-        ? typeNode.items
-        : referencedType?.kind === "array"
-          ? referencedType.items
-          : undefined;
-    schema.items = applyPathTargetedConstraints(schema.items, pathConstraints, ctx, nestedType);
-    return schema;
-  }
-
-  const propertyOverrides = buildPropertyOverrides(pathConstraints, typeNode, ctx);
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
   const nullableValueBranch = getNullableUnionValueSchema(schema);
 
   if (nullableValueBranch !== undefined) {
@@ -506,7 +554,7 @@ function applyPathTargetedConstraints(
       nullableValueBranch,
       pathConstraints,
       ctx,
-      resolveTraversableTypeNode(typeNode, ctx)
+      effectiveType
     );
     if (schema.oneOf !== undefined) {
       schema.oneOf = schema.oneOf.map((branch) =>
@@ -515,6 +563,27 @@ function applyPathTargetedConstraints(
     }
     return schema;
   }
+
+  // Array transparency also applies when the array is represented by a
+  // reference (including a reference inside a nullable union). A referenced
+  // array has no local `items` schema, so build only the sibling refinement;
+  // regenerating the base item would invoke extension hooks again and could
+  // mutate extension-owned schema objects.
+  if (effectiveType?.kind === "array") {
+    if (schema.items === undefined) {
+      schema.items = buildPathOverrideSchema(pathConstraints, effectiveType.items, ctx);
+      return schema;
+    }
+    schema.items = applyPathTargetedConstraints(
+      schema.items,
+      pathConstraints,
+      ctx,
+      effectiveType.items
+    );
+    return schema;
+  }
+
+  const propertyOverrides = buildPropertyOverrides(pathConstraints, typeNode, ctx);
 
   // $ref schema: add property overrides as sibling keywords alongside $ref.
   // JSON Schema 2020-12 §10.2.1 explicitly permits sibling keywords next to
@@ -797,10 +866,21 @@ function generateRecordType(type: RecordTypeNode, ctx: GeneratorContext): JsonSc
  */
 function generatePropertySchema(prop: ObjectProperty, ctx: GeneratorContext): JsonSchema2020 {
   const schema = generateTypeNode(prop.type, ctx);
-  applyConstraints(schema, prop.constraints, ctx);
+  const directConstraints: ConstraintNode[] = [];
+  const pathConstraints: ConstraintNode[] = [];
+  for (const constraint of prop.constraints) {
+    if (constraint.path) {
+      pathConstraints.push(constraint);
+    } else {
+      directConstraints.push(constraint);
+    }
+  }
+  applyDirectConstraintsWithArrayItems(schema, directConstraints, prop.type, ctx);
   applyResolvedMetadata(schema, prop.metadata);
   applyAnnotations(schema, prop.annotations, ctx, prop.type);
-  return schema;
+  return pathConstraints.length === 0
+    ? schema
+    : applyPathTargetedConstraints(schema, pathConstraints, ctx, prop.type);
 }
 
 /**
@@ -905,17 +985,6 @@ function resolveReferencedType(
   return ctx.typeRegistry[type.name]?.type;
 }
 
-function dereferenceTypeNode(
-  typeNode: TypeNode | undefined,
-  ctx: GeneratorContext
-): TypeNode | undefined {
-  if (typeNode?.kind !== "reference") {
-    return typeNode;
-  }
-
-  return resolveReferencedType(typeNode, ctx);
-}
-
 function unwrapNullableTypeNode(typeNode: TypeNode | undefined): TypeNode | undefined {
   if (typeNode?.kind !== "union" || !isNullableUnion(typeNode)) {
     return typeNode;
@@ -928,16 +997,24 @@ function unwrapNullableTypeNode(typeNode: TypeNode | undefined): TypeNode | unde
 
 function resolveTraversableTypeNode(
   typeNode: TypeNode | undefined,
-  ctx: GeneratorContext
+  ctx: GeneratorContext,
+  seenReferences: ReadonlySet<string> = new Set()
 ): TypeNode | undefined {
-  const dereferenced = dereferenceTypeNode(typeNode, ctx);
-  const unwrapped = unwrapNullableTypeNode(dereferenced);
-
-  if (unwrapped !== dereferenced) {
-    return resolveTraversableTypeNode(unwrapped, ctx);
+  if (typeNode?.kind === "reference") {
+    if (seenReferences.has(typeNode.name)) {
+      return typeNode;
+    }
+    const referenced = resolveReferencedType(typeNode, ctx);
+    if (referenced === undefined) {
+      return typeNode;
+    }
+    return resolveTraversableTypeNode(referenced, ctx, new Set([...seenReferences, typeNode.name]));
   }
 
-  return dereferenced;
+  const unwrapped = unwrapNullableTypeNode(typeNode);
+  return unwrapped === typeNode
+    ? typeNode
+    : resolveTraversableTypeNode(unwrapped, ctx, seenReferences);
 }
 
 function resolveSerializedPropertyName(
@@ -1025,25 +1102,40 @@ function buildPathOverrideSchema(
 ): JsonSchema2020 {
   const schema: JsonSchema2020 = {};
   const directConstraints: ConstraintNode[] = [];
+  const itemConstraints: ConstraintNode[] = [];
   const nestedConstraints: ConstraintNode[] = [];
+  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
 
   for (const constraint of constraints) {
-    if (constraint.path === undefined || constraint.path.segments.length === 0) {
-      directConstraints.push(constraint);
-    } else {
+    if (constraint.path !== undefined && constraint.path.segments.length > 0) {
       nestedConstraints.push(constraint);
+    } else if (
+      effectiveType?.kind === "array" &&
+      !isArrayContainerConstraint(constraint) &&
+      !customConstraintTargetsArray(constraint, effectiveType, ctx.extensionRegistry)
+    ) {
+      itemConstraints.push(constraint);
+    } else {
+      directConstraints.push(constraint);
     }
   }
 
   applyConstraints(schema, directConstraints, ctx);
+  if (itemConstraints.length > 0) {
+    applyConstraints(getArrayItemConstraintSchema(schema), itemConstraints, ctx);
+  }
 
   if (nestedConstraints.length === 0) {
     return schema;
   }
 
-  const effectiveType = resolveTraversableTypeNode(typeNode, ctx);
   if (effectiveType?.kind === "array") {
-    schema.items = buildPathOverrideSchema(nestedConstraints, effectiveType.items, ctx);
+    const nestedItemSchema = buildPathOverrideSchema(nestedConstraints, effectiveType.items, ctx);
+    if (schema.items === undefined) {
+      schema.items = nestedItemSchema;
+    } else {
+      mergeSchemaOverride(schema.items, nestedItemSchema);
+    }
     return schema;
   }
 

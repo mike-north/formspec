@@ -47,13 +47,10 @@
 //   separate IR-validation pass for the snapshot consumer is needed.
 //
 // Category 3 — Intentional (not a gap): cases where the canary asserts an error
-//   but the retirement plan intentionally accepts the input. Tracked here as
-//   `.fails` purely as a regression guard — if a future change starts rejecting
-//   one of these, this test will flip and force a review of the design decision.
+// but the retirement plan intentionally accepts the input. Tracked here as
+// `.fails` purely as a regression guard — if a future change starts rejecting
+// one of these, this test will flip and force a review of the design decision.
 //   - @pattern with non-string argument (e.g., 42): plan §3 — opaque pass-through.
-//   - @pattern on string[]: both paths treat string[] as string-like for @pattern
-//     (supportsConstraintCapability's "string-like" branch performs array-element
-//     unwrap — returns true when the array element type is itself string-like).
 //
 // Phase 3 flips (previously .fails, now passing regular assertions):
 // - @enumOptions 5 (scalar not array) — typed parser catches at Role C
@@ -403,39 +400,18 @@ describe("@pattern silent-acceptance canaries", () => {
     expect(diagnostics[0]?.range.end).toBeGreaterThanOrEqual(0);
   });
 
-  // @pattern on a string[] (array) field -- arrays are not string-like...or are they?
-  //
-  // [intentional: string[] is string-like for @pattern]
-  //
-  // Phase 4D audit: this canary asserts TYPE_MISMATCH, but NEITHER consumer emits one.
-  // Root cause: supportsConstraintCapability()'s "string-like" branch (array-element unwrap)
-  // in the build path treats string[] as satisfying "string-like" when the array element
-  // type is itself string-like — so string[] passes the Role-B capability check in the
-  // build path. The snapshot path's synthetic prelude has no capability constraint either,
-  // so it also accepts without error. Both consumers agree: @pattern on string[] is valid.
-  // The TYPE_MISMATCH assertion in this test is a bug in the original canary spec.
-  // Phase 5 will NOT flip this canary; this test is kept as a regression guard only —
-  // if a future change causes either path to start rejecting @pattern on string[],
-  // this test will flip and force a review of the design decision.
-  //
-  // Contrast with the number[] canary below: unlike string[] (which satisfies string-like
-  // via element unwrap), number[] is NOT string-like — both paths should reject @pattern
-  // on number[], but currently don't (genuine Phase 5 gap).
-  it.fails(
-    "emits TYPE_MISMATCH for @pattern on a string[] (array) field [intentional: string[] is string-like for @pattern; supportsConstraintCapability's string-like branch (array-element unwrap)]",
-    () => {
-      const diagnostics = diagnosticsFor(
-        `
-        class F {
-          /** @pattern ^yes$ */
-          value!: string[];
-        }
-        `,
-        "pattern-on-array"
-      );
-      expect(diagnostics.some((d) => d.code === "TYPE_MISMATCH")).toBe(true);
-    }
-  );
+  it("accepts @pattern on a string[] field as an item constraint", () => {
+    const diagnostics = diagnosticsFor(
+      `
+      class F {
+        /** @pattern ^yes$ */
+        value!: string[];
+      }
+      `,
+      "pattern-on-array"
+    );
+    expect(diagnostics.some((diagnostic) => diagnostic.code === "TYPE_MISMATCH")).toBe(false);
+  });
 
   // @pattern ^yes$ on a number[] (array) field -- number[] is NOT string-like.
   //

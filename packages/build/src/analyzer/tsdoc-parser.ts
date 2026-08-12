@@ -41,6 +41,7 @@
 import * as ts from "typescript";
 import {
   _capabilityLabel,
+  _getConstraintTargetType,
   _supportsConstraintCapability,
   choosePreferredPayloadText,
   extractPathTarget as extractSharedPathTarget,
@@ -104,19 +105,37 @@ function sharedTagValueOptions(options?: ParseTSDocOptions, pathResolvedCustomTy
 }
 
 /**
- * For a `ts.Type` already resolved (e.g. by walking a path through the host),
- * returns the fully-qualified custom type ID if the type is a registered
- * custom type, else `undefined`. Single shared step used both for direct-type
- * lookups and for path-resolved terminals.
+ * Resolves the registered custom type that broadens a built-in tag at a
+ * path-resolved terminal. A registered terminal is opaque: when its own
+ * registration does not broaden the tag, do not inspect its TypeScript
+ * representation for a registered array item fallback.
  */
-function customTypeIdForResolvedType(
+function builtinBroadeningTypeIdForResolvedType(
+  tagName: string,
   resolvedType: ts.Type,
   checker: ts.TypeChecker,
-  registry: ExtensionRegistry | undefined
+  registry: ExtensionRegistry | undefined,
+  capability: SemanticCapability | undefined
 ): string | undefined {
   if (registry === undefined) return undefined;
-  const lookup = resolveCustomTypeFromTsType(resolvedType, checker, registry);
-  return lookup === null ? undefined : customTypeIdFromLookup(lookup);
+
+  const nonNullType = stripNullishUnion(resolvedType);
+  const terminalLookup = resolveCustomTypeFromTsType(nonNullType, checker, registry);
+  if (terminalLookup !== null) {
+    const terminalId = customTypeIdFromLookup(terminalLookup);
+    return registry.findBuiltinConstraintBroadening(terminalId, tagName) === undefined
+      ? undefined
+      : terminalId;
+  }
+
+  const targetType = stripNullishUnion(_getConstraintTargetType(capability, nonNullType, checker));
+  const targetLookup = resolveCustomTypeFromTsType(targetType, checker, registry);
+  if (targetLookup === null) return undefined;
+
+  const targetId = customTypeIdFromLookup(targetLookup);
+  return registry.findBuiltinConstraintBroadening(targetId, tagName) === undefined
+    ? undefined
+    : targetId;
 }
 
 /**
@@ -132,6 +151,7 @@ function customTypeIdForResolvedType(
  * `parseConstraintTagValue` via its `pathResolvedCustomTypeId` option.
  */
 function resolvePathTargetCustomTypeId(
+  tagName: string,
   parsedTag: ParsedCommentTag | null,
   subjectType: ts.Type | undefined,
   checker: ts.TypeChecker | undefined,
@@ -151,7 +171,14 @@ function resolvePathTargetCustomTypeId(
     return undefined;
   }
 
-  return customTypeIdForResolvedType(resolution.type, checker, registry);
+  const capability = getTagDefinition(tagName)?.capabilities[0];
+  return builtinBroadeningTypeIdForResolvedType(
+    tagName,
+    resolution.type,
+    checker,
+    registry,
+    capability
+  );
 }
 
 const TYPE_FORMAT_FLAGS =
@@ -198,6 +225,7 @@ function processConstraintTag(
   // where path-targeted built-in constraints (e.g. `@exclusiveMinimum :amount 0`
   // on a `MonetaryAmount` field) previously emitted raw numeric constraints.
   const pathResolvedCustomTypeId = resolvePathTargetCustomTypeId(
+    tagName,
     parsedTag,
     options?.subjectType,
     options?.checker,
@@ -439,7 +467,7 @@ function placementLabel(
 }
 
 function hasBuiltinConstraintBroadening(tagName: string, options?: ParseTSDocOptions): boolean {
-  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType);
+  const broadenedTypeId = getBroadenedCustomTypeId(options?.fieldType, tagName);
   return (
     broadenedTypeId !== undefined &&
     options?.extensionRegistry?.findBuiltinConstraintBroadening(broadenedTypeId, tagName) !==
@@ -594,20 +622,29 @@ function buildCompilerBackedConstraintDiagnostics(
   // extension-defined constraint semantics.
   const hasBroadening = ((): boolean => {
     if (target === null) {
+      const effectiveType = stripNullishUnion(
+        _getConstraintTargetType(
+          definition.capabilities[0],
+          stripNullishUnion(subjectType),
+          checker
+        )
+      );
       if (
-        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        definition.capabilities[0] === "numeric-comparable"
+        definition.capabilities[0] === "numeric-comparable" &&
+        _isIntegerBrandedType(effectiveType)
       ) {
         return true;
       }
       return hasBuiltinConstraintBroadening(tagName, options);
     }
-    const registry = options?.extensionRegistry;
-    if (registry === undefined) return false;
-    const typeId = customTypeIdForResolvedType(evaluatedType, checker, registry);
     return (
-      typeId !== undefined &&
-      registry.findBuiltinConstraintBroadening(typeId, tagName) !== undefined
+      builtinBroadeningTypeIdForResolvedType(
+        tagName,
+        evaluatedType,
+        checker,
+        options?.extensionRegistry,
+        definition.capabilities[0]
+      ) !== undefined
     );
   })();
 

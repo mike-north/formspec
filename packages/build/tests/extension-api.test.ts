@@ -714,6 +714,24 @@ describe("Extension API", () => {
       expect(result.diagnostics).toHaveLength(0);
     });
 
+    it("validates custom constraints against array item types", () => {
+      const registry = createExtensionRegistry([monetaryExtension]);
+      const customCon: CustomConstraintNode = {
+        kind: "constraint",
+        constraintKind: "custom",
+        constraintId: "x-stripe/monetary/Currency",
+        payload: "USD",
+        compositionRule: "override",
+        provenance: prov(1, "Currency"),
+      };
+
+      const ir = makeIR([makeField("amounts", { kind: "array", items: NUMBER_TYPE }, [customCon])]);
+      const result = validateIR(ir, { extensionRegistry: registry });
+
+      expect(result.valid).toBe(true);
+      expect(result.diagnostics).toHaveLength(0);
+    });
+
     it("emits TYPE_MISMATCH when custom constraint is not applicable to the field type", () => {
       // Create a constraint that only applies to array types
       const arrayOnlyConstraint = defineConstraint({

@@ -185,16 +185,29 @@ export function collectReferencedTypeConstraints(
   typeRegistry: AnalysisTypeRegistry
 ): readonly ConstraintNode[] {
   const collected: ConstraintNode[] = [];
-  let current = type;
+  let current: TypeNode | undefined = type;
   const seen = new Set<string>();
 
-  while (current.kind === "reference") {
+  while (current !== undefined) {
+    if (current.kind === "union") {
+      const nonNullMembers: readonly TypeNode[] = current.members.filter(
+        (member) => !isNullType(member)
+      );
+      if (nonNullMembers.length !== 1 || nonNullMembers.length === current.members.length) {
+        break;
+      }
+      current = nonNullMembers[0];
+      continue;
+    }
+    if (current.kind !== "reference") {
+      break;
+    }
     if (seen.has(current.name)) {
       break;
     }
     seen.add(current.name);
 
-    const definition = typeRegistry[current.name];
+    const definition: AnalysisTypeDefinition | undefined = typeRegistry[current.name];
     if (definition === undefined) {
       break;
     }
@@ -207,6 +220,25 @@ export function collectReferencedTypeConstraints(
   }
 
   return collected;
+}
+
+function collectImmediateArrayItemConstraints(
+  type: TypeNode,
+  typeRegistry: AnalysisTypeRegistry
+): readonly ConstraintNode[] {
+  const resolved = resolveTraversable(type, typeRegistry);
+  if (resolved.kind !== "array") {
+    return [];
+  }
+
+  // A referenced item that resolves to another array owns all of its
+  // constraints at that inner depth. Flattening any of them into the outer
+  // target state would validate or compare them against the wrong array layer.
+  if (resolveTraversable(resolved.items, typeRegistry).kind === "array") {
+    return [];
+  }
+
+  return collectReferencedTypeConstraints(resolved.items, typeRegistry);
 }
 
 export function collectReferencedTypeAnnotations(
@@ -300,7 +332,10 @@ export function resolveConstraintTargetState(
   typeRegistry: AnalysisTypeRegistry
 ): ResolvedTargetState {
   if (path === null) {
-    const inheritedConstraints = collectReferencedTypeConstraints(fieldType, typeRegistry);
+    const inheritedConstraints = [
+      ...collectReferencedTypeConstraints(fieldType, typeRegistry),
+      ...collectImmediateArrayItemConstraints(fieldType, typeRegistry),
+    ];
     const inheritedAnnotations = collectReferencedTypeAnnotations(fieldType, typeRegistry);
     const type = dereferenceAnalysisType(fieldType, typeRegistry);
 
@@ -345,8 +380,16 @@ export function resolveConstraintTargetState(
   const propertyConstraints = resolution.property?.constraints ?? [];
   const propertyAnnotations = resolution.property?.annotations ?? [];
   const referencedConstraints = collectReferencedTypeConstraints(resolution.rawType, typeRegistry);
+  const referencedItemConstraints = collectImmediateArrayItemConstraints(
+    resolution.rawType,
+    typeRegistry
+  );
   const referencedAnnotations = collectReferencedTypeAnnotations(resolution.rawType, typeRegistry);
-  const inheritedConstraints = [...propertyConstraints, ...referencedConstraints];
+  const inheritedConstraints = [
+    ...propertyConstraints,
+    ...referencedConstraints,
+    ...referencedItemConstraints,
+  ];
   const inheritedAnnotations = [...propertyAnnotations, ...referencedAnnotations];
 
   return {
@@ -473,6 +516,57 @@ function getExtensionIdFromConstraintId(constraintId: string): string | null {
     return null;
   }
   return constraintId.slice(0, separator);
+}
+
+function findGoverningConstraintTagRegistration(
+  constraint: CustomConstraintNode,
+  registration: ConstraintRegistrationLike,
+  extensionRegistry: ConstraintRegistryLike | undefined
+): ConstraintTagRegistrationLike | undefined {
+  const rawTagName = constraint.provenance.tagName;
+  if (rawTagName === undefined) {
+    return undefined;
+  }
+
+  const tagName = normalizeConstraintTagName(rawTagName.replace(/^@/, ""));
+  const tagRegistration = extensionRegistry?.findConstraintTag(tagName);
+  const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
+  if (
+    extensionId === null ||
+    tagRegistration?.extensionId !== extensionId ||
+    tagRegistration.registration.constraintName !== registration.constraintName
+  ) {
+    return undefined;
+  }
+
+  return tagRegistration.registration;
+}
+
+/** Returns whether a custom constraint targets an array container rather than its items. */
+function customConstraintTargetsArrayContainer(
+  constraint: ConstraintNode,
+  arrayType: TypeNode,
+  extensionRegistry: ConstraintRegistryLike | undefined
+): boolean {
+  if (constraint.constraintKind !== "custom" || arrayType.kind !== "array") {
+    return false;
+  }
+
+  const registration = extensionRegistry?.findConstraint(constraint.constraintId);
+  if (
+    registration === undefined ||
+    (registration.applicableTypes !== null && !registration.applicableTypes.includes("array")) ||
+    registration.isApplicableToType?.(arrayType) === false
+  ) {
+    return false;
+  }
+
+  const tagRegistration = findGoverningConstraintTagRegistration(
+    constraint,
+    registration,
+    extensionRegistry
+  );
+  return tagRegistration?.isApplicableToType?.(arrayType) !== false;
 }
 
 function typeLabel(type: TypeNode): string {
@@ -763,10 +857,6 @@ function collectCustomConstraintCandidateTypes(
 ): readonly TypeNode[] {
   const effectiveType = dereferenceAnalysisType(type, typeRegistry);
   const candidates: TypeNode[] = [effectiveType];
-
-  if (effectiveType.kind === "array") {
-    candidates.push(...collectCustomConstraintCandidateTypes(effectiveType.items, typeRegistry));
-  }
 
   if (effectiveType.kind === "union") {
     const memberTypes = effectiveType.members.map((member) =>
@@ -1074,30 +1164,24 @@ function checkCustomConstraint(
   }
 
   const candidateTypes = collectCustomConstraintCandidateTypes(type, typeRegistry);
-  const normalizedTagName =
-    constraint.provenance.tagName === undefined
-      ? undefined
-      : normalizeConstraintTagName(constraint.provenance.tagName.replace(/^@/, ""));
+  const tagRegistration = findGoverningConstraintTagRegistration(
+    constraint,
+    registration,
+    extensionRegistry
+  );
 
-  if (normalizedTagName !== undefined) {
-    const tagRegistration = extensionRegistry.findConstraintTag(normalizedTagName);
-    const extensionId = getExtensionIdFromConstraintId(constraint.constraintId);
-    if (
-      extensionId !== null &&
-      tagRegistration?.extensionId === extensionId &&
-      tagRegistration.registration.constraintName === registration.constraintName &&
-      !candidateTypes.some(
-        (candidateType) =>
-          tagRegistration.registration.isApplicableToType?.(candidateType) !== false
-      )
-    ) {
-      addTypeMismatch(
-        diagnostics,
-        `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
-        constraint.provenance
-      );
-      return;
-    }
+  if (
+    tagRegistration !== undefined &&
+    !candidateTypes.some(
+      (candidateType) => tagRegistration.isApplicableToType?.(candidateType) !== false
+    )
+  ) {
+    addTypeMismatch(
+      diagnostics,
+      `Field "${fieldName}": custom constraint "${constraint.constraintId}" is not applicable to type "${typeLabel(type)}"`,
+      constraint.provenance
+    );
+    return;
   }
 
   if (registration.applicableTypes === null) {
@@ -1131,6 +1215,38 @@ function checkCustomConstraint(
   }
 }
 
+function isArrayContainerConstraint(constraint: ConstraintNode): boolean {
+  switch (constraint.constraintKind) {
+    case "minItems":
+    case "maxItems":
+    case "uniqueItems":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function resolveConstraintTargetType(
+  type: TypeNode,
+  constraint: ConstraintNode,
+  typeRegistry: AnalysisTypeRegistry,
+  extensionRegistry: ConstraintRegistryLike | undefined
+): TypeNode {
+  const containerType = resolveTraversable(type, typeRegistry);
+  if (containerType.kind !== "array" || isArrayContainerConstraint(constraint)) {
+    return containerType;
+  }
+
+  if (
+    constraint.constraintKind === "custom" &&
+    customConstraintTargetsArrayContainer(constraint, containerType, extensionRegistry)
+  ) {
+    return containerType;
+  }
+
+  return resolveTraversable(containerType.items, typeRegistry);
+}
+
 function checkConstraintOnType(
   diagnostics: ConstraintSemanticDiagnostic[],
   fieldName: string,
@@ -1139,63 +1255,38 @@ function checkConstraintOnType(
   typeRegistry: AnalysisTypeRegistry,
   extensionRegistry: ConstraintRegistryLike | undefined
 ): void {
-  const effectiveType = dereferenceAnalysisType(type, typeRegistry);
-  // For nullable unions (e.g. Integer | null), unwrap to the non-null member
-  // so that constraint compatibility checks work the same as for the non-null
-  // variant. This mirrors the stripNullishUnion pattern used in ts-binding.ts.
-  const unwrapped =
-    effectiveType.kind === "union"
-      ? (() => {
-          const nonNull = effectiveType.members
-            .map((m) => dereferenceAnalysisType(m, typeRegistry))
-            .filter((m) => !isNullType(m));
-          return nonNull.length === 1 && nonNull[0] !== undefined ? nonNull[0] : effectiveType;
-        })()
-      : effectiveType;
+  const effectiveType = resolveConstraintTargetType(
+    type,
+    constraint,
+    typeRegistry,
+    extensionRegistry
+  );
   const isNumber =
-    unwrapped.kind === "primitive" &&
-    ["number", "integer", "bigint"].includes(unwrapped.primitiveKind);
-  const isString = unwrapped.kind === "primitive" && unwrapped.primitiveKind === "string";
-  const isArray = unwrapped.kind === "array";
-  const isEnum = unwrapped.kind === "enum";
-  const arrayItemType =
-    unwrapped.kind === "array" ? dereferenceAnalysisType(unwrapped.items, typeRegistry) : undefined;
-  const isStringArray =
-    arrayItemType?.kind === "primitive" && arrayItemType.primitiveKind === "string";
-
+    effectiveType.kind === "primitive" &&
+    ["number", "integer", "bigint"].includes(effectiveType.primitiveKind);
+  const isString = effectiveType.kind === "primitive" && effectiveType.primitiveKind === "string";
+  const isArray = effectiveType.kind === "array";
+  const isEnum = effectiveType.kind === "enum";
   const label = typeLabel(effectiveType);
 
-  // Check if a custom type has a builtin constraint broadening registered,
-  // which allows built-in constraints (e.g., @minimum) on non-numeric types.
-  // Also handles nullable unions (e.g., Decimal | null) by checking non-null members.
+  // Check if a custom type has a builtin constraint broadening registered.
   const hasBroadening = (tagName: string): boolean => {
-    if (extensionRegistry?.findBuiltinConstraintBroadening === undefined) {
+    const registry = extensionRegistry;
+    if (registry?.findBuiltinConstraintBroadening === undefined) {
       return false;
     }
+    const isBroadened = (typeId: string): boolean =>
+      registry.findBuiltinConstraintBroadening?.(typeId, tagName) !== undefined;
     if (effectiveType.kind === "custom") {
-      return (
-        extensionRegistry.findBuiltinConstraintBroadening(effectiveType.typeId, tagName) !==
-        undefined
-      );
+      return isBroadened(effectiveType.typeId);
     }
     if (effectiveType.kind === "union") {
       return effectiveType.members.some((member) => {
-        // Skip null members — they don't affect constraint applicability
         if (member.kind === "primitive" && member.primitiveKind === "null") {
           return false;
         }
         const resolvedMember = dereferenceAnalysisType(member, typeRegistry);
-        if (resolvedMember.kind !== "custom") {
-          return false;
-        }
-        // extensionRegistry and findBuiltinConstraintBroadening are both defined
-        // (narrowed by the outer guard), but TypeScript can't narrow optional
-        // methods across closure boundaries — this is a safe call.
-        return (
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded above
-          extensionRegistry.findBuiltinConstraintBroadening!(resolvedMember.typeId, tagName) !==
-          undefined
-        );
+        return resolvedMember.kind === "custom" && isBroadened(resolvedMember.typeId);
       });
     }
     return false;
@@ -1218,10 +1309,10 @@ function checkConstraintOnType(
     case "minLength":
     case "maxLength":
     case "pattern":
-      if (!isString && !isStringArray) {
+      if (!isString) {
         addTypeMismatch(
           diagnostics,
-          `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on string fields or string array items, but field type is "${label}"`,
+          `Field "${fieldName}": constraint "${constraint.constraintKind}" is only valid on string fields, but field type is "${label}"`,
           constraint.provenance
         );
       }

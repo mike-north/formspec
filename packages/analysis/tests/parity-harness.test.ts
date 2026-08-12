@@ -158,13 +158,13 @@ interface ParityFixture {
  * Full parametric fixture suite.
  *
  * Coverage per the §9.1 #1 requirement:
- *   - @minimum 0   × number, string, Integer, number | null, number?
+ *   - @minimum 0   × number, string, Integer, number | null, number?, number[], string[]
  *   - @maximum 100 × number, string
  *   - @minLength 1 × string, number, string[]
  *   - @maxLength 50 × string
  *   - @pattern "^\\d+$" × string, number
  *   - @enumOptions ["a","b"] × string, number
- *   - @const "USD" × string, number, object
+ *   - @const "USD" × string, string[], number, object
  *   - @uniqueItems × string[], string
  *   - Alias-chain propagation: constraint on base alias propagates through derived alias
  *
@@ -205,6 +205,18 @@ const FIXTURES: readonly ParityFixture[] = [
     label: "@minimum 0 on optional number",
     tagName: "minimum",
     subjectType: "number | undefined",
+    tagArgument: "0",
+  },
+  {
+    label: "@minimum 0 on number[]",
+    tagName: "minimum",
+    subjectType: "number[]",
+    tagArgument: "0",
+  },
+  {
+    label: "@minimum 0 on string[]",
+    tagName: "minimum",
+    subjectType: "string[]",
     tagArgument: "0",
   },
 
@@ -311,6 +323,12 @@ const FIXTURES: readonly ParityFixture[] = [
     label: '@const "USD" on string',
     tagName: "const",
     subjectType: "string",
+    tagArgument: '"USD"',
+  },
+  {
+    label: '@const "USD" on string[]',
+    tagName: "const",
+    subjectType: "string[]",
     tagArgument: '"USD"',
   },
 
@@ -436,8 +454,7 @@ const FIXTURES: readonly ParityFixture[] = [
   // diagnostic-code divergence that this fixture pins to never recur.
   // -------------------------------------------------------------------------
   {
-    label:
-      "@minimum 0 on type-alias string (Role-A/B order pin: misplaced + type-incompatible)",
+    label: "@minimum 0 on type-alias string (Role-A/B order pin: misplaced + type-incompatible)",
     tagName: "minimum",
     subjectType: "string",
     tagArgument: "0",
@@ -530,7 +547,11 @@ function runBuildConsumer(fixture: ParityFixture): BuildConsumerResult {
   if (fixture.targetDeclaration === "type-alias") {
     // Locate the 'MyType' type alias declaration for type-alias placement fixtures.
     const visit = (node: ts.Node): void => {
-      if (ts.isTypeAliasDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "MyType") {
+      if (
+        ts.isTypeAliasDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "MyType"
+      ) {
         targetNode = node;
       }
       ts.forEachChild(node, visit);

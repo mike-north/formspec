@@ -600,7 +600,7 @@ function parseExtensionConstraintTagValue(
   const broadenedTypeId =
     path !== undefined
       ? options?.pathResolvedCustomTypeId
-      : getBroadenedCustomTypeId(options?.fieldType);
+      : getBroadenedCustomTypeId(options?.fieldType, tagName);
   if (broadenedTypeId === undefined) {
     return null;
   }
@@ -621,39 +621,36 @@ function parseExtensionConstraintTagValue(
 }
 
 /**
- * Resolves the broadening-eligible custom type ID for a field's IR type.
+ * Resolves the broadening-eligible custom type ID for a constraint target.
+ * Array-container constraints inspect the container; all other constraints
+ * inspect exactly one immediate array item layer. Nullable wrappers are
+ * removed before and after that selection.
  *
- * Returns the `CustomTypeNode.typeId` when the field type is directly custom,
- * OR when it's a nullable-single-custom union (`T | null`). Returns `undefined`
- * for any other shape — the caller's broadening lookup then falls through.
- *
- * Exported from `@formspec/analysis/internal` so the build consumer can reuse
- * exactly the same "what counts as a broadenable custom field type" rule
- * without maintaining a drift-prone duplicate. See PR #398 / issue #395.
+ * @internal
  */
-export function getBroadenedCustomTypeId(fieldType: TypeNode | undefined): string | undefined {
-  if (fieldType?.kind === "custom") {
-    return fieldType.typeId;
+export function getBroadenedCustomTypeId(
+  fieldType: TypeNode | undefined,
+  constraintName: string
+): string | undefined {
+  const unwrapNullable = (type: TypeNode | undefined): TypeNode | undefined => {
+    if (type?.kind !== "union") {
+      return type;
+    }
+    const nonNullMembers = type.members.filter(
+      (member) => !(member.kind === "primitive" && member.primitiveKind === "null")
+    );
+    return nonNullMembers.length === 1 ? nonNullMembers[0] : type;
+  };
+
+  let targetType = unwrapNullable(fieldType);
+  if (
+    targetType?.kind === "array" &&
+    !["minItems", "maxItems", "uniqueItems"].includes(constraintName)
+  ) {
+    targetType = unwrapNullable(targetType.items);
   }
 
-  if (fieldType?.kind !== "union") {
-    return undefined;
-  }
-
-  const customMembers = fieldType.members.filter(
-    (member): member is Extract<TypeNode, { kind: "custom" }> => member.kind === "custom"
-  );
-  if (customMembers.length !== 1) {
-    return undefined;
-  }
-
-  const nonCustomMembers = fieldType.members.filter((member) => member.kind !== "custom");
-  const allOtherMembersAreNull = nonCustomMembers.every(
-    (member) => member.kind === "primitive" && member.primitiveKind === "null"
-  );
-
-  const customMember = customMembers[0];
-  return allOtherMembersAreNull && customMember !== undefined ? customMember.typeId : undefined;
+  return targetType?.kind === "custom" ? targetType.typeId : undefined;
 }
 
 function makeCustomConstraintNode(

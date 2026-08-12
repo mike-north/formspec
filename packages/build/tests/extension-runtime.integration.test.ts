@@ -4,15 +4,19 @@ import { createExtensionRegistry, generateJsonSchemaFromIR } from "../src/intern
 import {
   defineAnnotation,
   defineConstraint,
+  defineConstraintTag,
   defineCustomType,
   defineExtension,
+} from "@formspec/core";
+import {
   IR_VERSION,
   type CustomAnnotationNode,
   type CustomConstraintNode,
+  type FormIR,
   type CustomTypeNode,
   type FieldNode,
-  type FormIR,
   type PrimitiveTypeNode,
+  type TypeNode,
   type Provenance,
 } from "@formspec/core/internals";
 import { field, formspec } from "@formspec/dsl";
@@ -48,13 +52,12 @@ function makeField(
     provenance: PROVENANCE,
   };
 }
-
-function makeIR(fields: readonly FieldNode[]): FormIR {
+function makeIR(fields: readonly FieldNode[], typeRegistry: FormIR["typeRegistry"] = {}): FormIR {
   return {
     kind: "form-ir",
     irVersion: IR_VERSION,
     elements: fields,
-    typeRegistry: {},
+    typeRegistry,
     provenance: PROVENANCE,
   };
 }
@@ -94,6 +97,51 @@ const moneyExtension = defineExtension({
   annotations: [displayCurrencyAnnotation, uiOnlyAnnotation],
 });
 
+const arrayMarkerConstraint = defineConstraint({
+  constraintName: "ArrayMarker",
+  compositionRule: "override",
+  applicableTypes: ["array"],
+  toJsonSchema: (payload, vendorPrefix) => ({ [`${vendorPrefix}-array-marker`]: payload }),
+});
+
+const arrayMarkerTag = defineConstraintTag({
+  tagName: "arrayMarker",
+  constraintName: "ArrayMarker",
+  parseValue: (raw) => raw,
+});
+
+const arrayMarkerExtension = defineExtension({
+  extensionId: "x-test/array-marker",
+  constraints: [arrayMarkerConstraint],
+  constraintTags: [arrayMarkerTag],
+});
+
+const universalMarkerConstraint = defineConstraint({
+  constraintName: "UniversalMarker",
+  compositionRule: "override",
+  applicableTypes: null,
+  toJsonSchema: (payload, vendorPrefix) => ({ [`${vendorPrefix}-universal-marker`]: payload }),
+});
+
+const universalMarkerTag = defineConstraintTag({
+  tagName: "universalMarker",
+  constraintName: "UniversalMarker",
+  parseValue: (raw) => raw,
+});
+
+const universalItemMarkerTag = defineConstraintTag({
+  tagName: "universalItemMarker",
+  constraintName: "UniversalMarker",
+  parseValue: (raw) => raw,
+  isApplicableToType: (type) => type.kind === "primitive",
+});
+
+const universalMarkerExtension = defineExtension({
+  extensionId: "x-test/universal-marker",
+  constraints: [universalMarkerConstraint],
+  constraintTags: [universalMarkerTag, universalItemMarkerTag],
+});
+
 function moneyTypeNode(payload: number): CustomTypeNode {
   return {
     kind: "custom",
@@ -120,6 +168,35 @@ function displayCurrencyAnnotationNode(value: string): CustomAnnotationNode {
     annotationId: "x-stripe/money/DisplayCurrency",
     value,
     provenance: PROVENANCE,
+  };
+}
+
+function arrayMarkerConstraintNode(
+  payload: string,
+  path?: readonly string[]
+): CustomConstraintNode {
+  return {
+    kind: "constraint",
+    constraintKind: "custom",
+    constraintId: "x-test/array-marker/ArrayMarker",
+    payload,
+    compositionRule: "override",
+    provenance: { ...PROVENANCE, tagName: "@arrayMarker" },
+    ...(path === undefined ? {} : { path: { segments: path } }),
+  };
+}
+
+function universalMarkerConstraintNode(
+  payload: string,
+  tagName = "@universalMarker"
+): CustomConstraintNode {
+  return {
+    kind: "constraint",
+    constraintKind: "custom",
+    constraintId: "x-test/universal-marker/UniversalMarker",
+    payload,
+    compositionRule: "override",
+    provenance: { ...PROVENANCE, tagName },
   };
 }
 
@@ -156,6 +233,26 @@ describe("extension runtime integration", () => {
       "x-stripe-money-scale": 2,
       "x-stripe-currency": "USD",
       "x-stripe-display-currency": "USD",
+    });
+  });
+
+  it("emits custom constraints on array item schemas", () => {
+    const registry = createExtensionRegistry([moneyExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("currencyCodes", { kind: "array", items: STRING_TYPE }, [
+          currencyConstraintNode("USD"),
+        ]),
+      ]),
+      {
+        extensionRegistry: registry,
+        vendorPrefix: "x-stripe",
+      }
+    );
+
+    expect(schema.properties?.["currencyCodes"]).toEqual({
+      type: "array",
+      items: { type: "string", "x-stripe-currency": "USD" },
     });
   });
 
@@ -314,5 +411,197 @@ describe("extension runtime integration", () => {
     } finally {
       fs.rmSync(outDir, { recursive: true, force: true });
     }
+  });
+  it("places an array-only custom constraint on the direct array container", () => {
+    const registry = createExtensionRegistry([arrayMarkerExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("values", { kind: "array", items: STRING_TYPE }, [
+          arrayMarkerConstraintNode("yes"),
+        ]),
+      ]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+    expect(schema.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      "x-test-array-marker": "yes",
+    });
+  });
+
+  it("places a universally applicable custom constraint on the array container", () => {
+    const registry = createExtensionRegistry([universalMarkerExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("values", { kind: "array", items: STRING_TYPE }, [
+          universalMarkerConstraintNode("yes"),
+        ]),
+      ]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+
+    expect(schema.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      "x-test-universal-marker": "yes",
+    });
+  });
+
+  it("normalizes the governing tag before placing an array constraint", () => {
+    const registry = createExtensionRegistry([universalMarkerExtension]);
+    const schema = generateJsonSchemaFromIR(
+      makeIR([
+        makeField("values", { kind: "array", items: STRING_TYPE }, [
+          universalMarkerConstraintNode("yes", "@UniversalItemMarker"),
+        ]),
+      ]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+
+    expect(schema.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string", "x-test-universal-marker": "yes" },
+    });
+  });
+
+  it("places an array-only custom constraint on a path-targeted array property", () => {
+    const registry = createExtensionRegistry([arrayMarkerExtension]);
+    const objectType: TypeNode = {
+      kind: "object",
+      properties: [
+        {
+          optional: false,
+          provenance: PROVENANCE,
+          name: "values",
+          type: { kind: "array", items: STRING_TYPE },
+          constraints: [],
+          annotations: [],
+        },
+      ],
+    };
+    const schema = generateJsonSchemaFromIR(
+      makeIR([makeField("payload", objectType, [arrayMarkerConstraintNode("yes", ["values"])])]),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+    expect(schema.properties?.["payload"]?.properties?.["values"]).toEqual({
+      type: "array",
+      items: { type: "string" },
+      "x-test-array-marker": "yes",
+    });
+  });
+  it("routes a path constraint through referenced and nullable-referenced arrays into items", () => {
+    const registry = createExtensionRegistry([arrayMarkerExtension]);
+    const referencedArray: TypeNode = {
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          {
+            name: "value",
+            type: STRING_TYPE,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+      },
+    };
+    const typeRegistry: FormIR["typeRegistry"] = {
+      Values: { name: "Values", type: referencedArray, provenance: PROVENANCE },
+    };
+    const ref = { kind: "reference" as const, name: "Values", typeArguments: [] };
+    const constraint = arrayMarkerConstraintNode("yes", ["value"]);
+    const direct = generateJsonSchemaFromIR(
+      makeIR([makeField("values", ref, [constraint])], typeRegistry),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+    expect(direct.properties?.["values"]).toMatchObject({
+      $ref: "#/$defs/Values",
+      items: { properties: { value: { "x-test-array-marker": "yes" } } },
+    });
+
+    const nullable: TypeNode = {
+      kind: "union",
+      members: [ref, { kind: "primitive", primitiveKind: "null" }],
+    };
+    const nullableSchema = generateJsonSchemaFromIR(
+      makeIR([makeField("values", nullable, [constraint])], typeRegistry),
+      { extensionRegistry: registry, vendorPrefix: "x-test" }
+    );
+    expect(nullableSchema.properties?.["values"]?.oneOf?.[0]).toMatchObject({
+      items: { properties: { value: { "x-test-array-marker": "yes" } } },
+    });
+  });
+
+  it("builds referenced array item refinements without regenerating custom item schemas", () => {
+    let customTypeHookCalls = 0;
+    const countedMoneyExtension = defineExtension({
+      extensionId: "x-test/counted-money",
+      types: [
+        defineCustomType({
+          typeName: "CountedMoney",
+          toJsonSchema: (_payload, vendorPrefix) => {
+            customTypeHookCalls += 1;
+            return { type: "string", [`${vendorPrefix}-counted-money`]: true };
+          },
+        }),
+      ],
+      constraints: [currencyConstraint],
+    });
+    const countedMoneyType: CustomTypeNode = {
+      kind: "custom",
+      typeId: "x-test/counted-money/CountedMoney",
+      payload: null,
+    };
+    const referencedArray: TypeNode = {
+      kind: "array",
+      items: {
+        kind: "object",
+        properties: [
+          {
+            name: "amount",
+            type: countedMoneyType,
+            optional: false,
+            constraints: [],
+            annotations: [],
+            provenance: PROVENANCE,
+          },
+        ],
+      },
+    };
+    const typeRegistry: FormIR["typeRegistry"] = {
+      Values: { name: "Values", type: referencedArray, provenance: PROVENANCE },
+    };
+    const constraint: CustomConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/counted-money/Currency",
+      payload: "USD",
+      compositionRule: "override",
+      path: { segments: ["amount"] },
+      provenance: PROVENANCE,
+    };
+    const schema = generateJsonSchemaFromIR(
+      makeIR(
+        [
+          makeField("values", { kind: "reference", name: "Values", typeArguments: [] }, [
+            constraint,
+          ]),
+        ],
+        typeRegistry
+      ),
+      {
+        extensionRegistry: createExtensionRegistry([countedMoneyExtension]),
+        vendorPrefix: "x-test",
+      }
+    );
+
+    expect(customTypeHookCalls).toBe(1);
+    // Per design 003 §5.4, the `$ref` sibling contains only the use-site refinement.
+    expect(schema.properties?.["values"]).toEqual({
+      $ref: "#/$defs/Values",
+      items: { properties: { amount: { "x-test-currency": "USD" } } },
+    });
   });
 });

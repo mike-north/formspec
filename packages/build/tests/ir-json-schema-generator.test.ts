@@ -20,7 +20,7 @@ import type {
   ResolvedMetadata,
 } from "@formspec/core/internals";
 import { IR_VERSION } from "@formspec/core/internals";
-import { generateJsonSchemaFromIR } from "../src/json-schema/ir-generator.js";
+import { generateJsonSchemaFromIR, type JsonSchema2020 } from "../src/json-schema/ir-generator.js";
 
 // =============================================================================
 // TEST HELPERS
@@ -64,6 +64,10 @@ function makeField(
     annotations,
     provenance: PROVENANCE,
   };
+}
+
+function schemaProperty(schema: JsonSchema2020, name: string): JsonSchema2020 | undefined {
+  return schema.properties?.[name];
 }
 
 // =============================================================================
@@ -730,6 +734,140 @@ describe("generateJsonSchemaFromIR", () => {
 
       expect(prop["uniqueItems"]).toBe(true);
     });
+    it("routes direct item constraints under items while keeping container constraints on the array", () => {
+      const ir = makeIR([
+        makeField(
+          "amounts",
+          { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+          false,
+          [
+            { kind: "constraint", constraintKind: "minItems", value: 1, provenance: PROVENANCE },
+            {
+              kind: "constraint",
+              constraintKind: "uniqueItems",
+              value: true,
+              provenance: PROVENANCE,
+            },
+            { kind: "constraint", constraintKind: "minimum", value: 0, provenance: PROVENANCE },
+            { kind: "constraint", constraintKind: "const", value: 5, provenance: PROVENANCE },
+          ]
+        ),
+        makeField(
+          "labels",
+          { kind: "array", items: { kind: "primitive", primitiveKind: "string" } },
+          false,
+          [
+            { kind: "constraint", constraintKind: "minLength", value: 2, provenance: PROVENANCE },
+            {
+              kind: "constraint",
+              constraintKind: "pattern",
+              pattern: "^[a-z]+$",
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+
+      const schema = generateJsonSchemaFromIR(ir);
+      expect(schema.properties?.["amounts"]).toEqual({
+        type: "array",
+        minItems: 1,
+        uniqueItems: true,
+        items: { type: "number", minimum: 0, const: 5 },
+      });
+      expect(schema.properties?.["labels"]).toEqual({
+        type: "array",
+        items: { type: "string", minLength: 2, pattern: "^[a-z]+$" },
+      });
+    });
+
+    it("routes item constraints through nullable array wrappers", () => {
+      const ir = makeIR([
+        makeField(
+          "amounts",
+          {
+            kind: "union",
+            members: [
+              { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+              { kind: "primitive", primitiveKind: "null" },
+            ],
+          },
+          false,
+          [{ kind: "constraint", constraintKind: "minimum", value: 0, provenance: PROVENANCE }]
+        ),
+      ]);
+
+      expect(schemaProperty(generateJsonSchemaFromIR(ir), "amounts")).toEqual({
+        oneOf: [{ type: "array", items: { type: "number", minimum: 0 } }, { type: "null" }],
+      });
+    });
+
+    it("routes item constraints through referenced array aliases", () => {
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "amounts",
+            { kind: "reference", name: "AmountList", typeArguments: [] },
+            false,
+            [{ kind: "constraint", constraintKind: "minimum", value: 0, provenance: PROVENANCE }]
+          ),
+        ],
+        typeRegistry: {
+          AmountList: {
+            name: "AmountList",
+            type: { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+            provenance: PROVENANCE,
+          },
+        },
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      expect(schema.properties?.["amounts"]).toEqual({
+        $ref: "#/$defs/AmountList",
+        items: { minimum: 0 },
+      });
+      expect(schema.$defs?.["AmountList"]).toEqual({
+        type: "array",
+        items: { type: "number" },
+      });
+    });
+
+    it("routes a path-targeted constraint to an array property's items schema", () => {
+      const amountsProperty: ObjectProperty = {
+        name: "amounts",
+        type: { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+        optional: false,
+        constraints: [],
+        annotations: [],
+        provenance: PROVENANCE,
+      };
+      const ir = makeIR([
+        makeField(
+          "invoice",
+          { kind: "object", properties: [amountsProperty], additionalProperties: false },
+          false,
+          [
+            {
+              kind: "constraint",
+              constraintKind: "minimum",
+              value: 0,
+              path: { segments: ["amounts"] },
+              provenance: PROVENANCE,
+            },
+          ]
+        ),
+      ]);
+
+      expect(schemaProperty(generateJsonSchemaFromIR(ir), "invoice")).toMatchObject({
+        type: "object",
+        properties: {
+          amounts: { type: "array", items: { type: "number", minimum: 0 } },
+        },
+      });
+    });
   });
 
   // =============================================================================
@@ -780,6 +918,35 @@ describe("generateJsonSchemaFromIR", () => {
       expect((prop["properties"] as Record<string, unknown>)["zip"]).toEqual({ type: "string" });
       expect(prop["required"]).toEqual(["city", "street"]);
       expect(prop["required"]).not.toContain("zip");
+    });
+    it("routes inline array property constraints to container and immediate item schemas", () => {
+      const properties: ObjectProperty[] = [
+        {
+          name: "amounts",
+          type: { kind: "array", items: { kind: "primitive", primitiveKind: "number" } },
+          optional: false,
+          constraints: [
+            { kind: "constraint", constraintKind: "minimum", value: 0, provenance: PROVENANCE },
+            { kind: "constraint", constraintKind: "minItems", value: 1, provenance: PROVENANCE },
+          ],
+          annotations: [],
+          provenance: PROVENANCE,
+        },
+      ];
+
+      const schema = generateJsonSchemaFromIR(
+        makeIR([makeField("invoice", { kind: "object", properties, additionalProperties: false })])
+      );
+      const invoice = schemaProperty(schema, "invoice");
+
+      expect(invoice).toEqual({
+        type: "object",
+        properties: {
+          amounts: { type: "array", minItems: 1, items: { type: "number", minimum: 0 } },
+        },
+        required: ["amounts"],
+        additionalProperties: false,
+      });
     });
 
     it("emits additionalProperties:false when IR explicitly closes the object", () => {
@@ -2265,6 +2432,53 @@ describe("generateJsonSchemaFromIR", () => {
       };
       const schema = generateJsonSchemaFromIR(ir);
       expect((schema.properties as Record<string, unknown>)["total"]).toEqual({
+        $ref: "#/$defs/MonetaryAmount",
+        properties: { value: { minimum: 0 } },
+      });
+    });
+
+    it("routes path-targeted constraints carried by an object property", () => {
+      const priceProperty: ObjectProperty = {
+        name: "price",
+        type: { kind: "reference", name: "MonetaryAmount", typeArguments: [] },
+        optional: false,
+        constraints: [
+          {
+            kind: "constraint",
+            constraintKind: "minimum",
+            value: 0,
+            path: { segments: ["value"] },
+            provenance: {
+              surface: "tsdoc",
+              file: "/test.ts",
+              line: 1,
+              column: 0,
+              tagName: "@minimum",
+            },
+          },
+        ],
+        annotations: [],
+        provenance: PROVENANCE,
+      };
+      const ir: FormIR = {
+        kind: "form-ir",
+        irVersion: IR_VERSION,
+        elements: [
+          makeField(
+            "lineItem",
+            { kind: "object", properties: [priceProperty], additionalProperties: false },
+            true
+          ),
+        ],
+        typeRegistry: MONETARY_AMOUNT_REGISTRY,
+        provenance: PROVENANCE,
+      };
+
+      const schema = generateJsonSchemaFromIR(ir);
+      const lineItem = schema.properties?.["lineItem"];
+
+      // Per design 003 §5.4, the use-site refinement is a sibling of the reference.
+      expect(lineItem?.properties?.["price"]).toEqual({
         $ref: "#/$defs/MonetaryAmount",
         properties: { value: { minimum: 0 } },
       });

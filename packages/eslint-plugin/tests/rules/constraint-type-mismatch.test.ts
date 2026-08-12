@@ -111,6 +111,14 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
       `,
     },
 
+    {
+      code: `
+        class Form {
+          /** @minimum 0 */
+          values!: number[];
+        }
+      `,
+    },
     // -------------------------------------------------------------------------
     // @maximum on number fields
     // -------------------------------------------------------------------------
@@ -299,6 +307,14 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         }
       `,
     },
+    {
+      code: `
+        class Form {
+          /** @minLength 1 @maxLength 10 @pattern ^[a-z]+$ */
+          tags!: string[];
+        }
+      `,
+    },
 
     // -------------------------------------------------------------------------
     // @minItems on array fields
@@ -328,6 +344,14 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @uniqueItems */
           tags!: string[];
+        }
+      `,
+    },
+    {
+      code: `
+        class Form {
+          /** @const "USD" */
+          currencies!: string[];
         }
       `,
     },
@@ -653,6 +677,15 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
     },
     {
       code: `
+        class Form {
+          /** @Minimum 0 */
+          matrix!: number[][];
+        }
+      `,
+      errors: [{ messageId: "typeMismatch" }],
+    },
+    {
+      code: `
         export declare const __emailBrand: unique symbol;
 
         export type Email = string & {
@@ -823,15 +856,6 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
     },
     {
       code: `
-        class Form {
-          /** @MinLength 1 */
-          tags!: string[];
-        }
-      `,
-      errors: [{ messageId: "typeMismatch" }],
-    },
-    {
-      code: `
         export declare const __integerBrand: unique symbol;
 
         export type Integer = number & {
@@ -867,15 +891,6 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
       `,
       errors: [{ messageId: "typeMismatch" }],
     },
-    {
-      code: `
-        class Form {
-          /** @MaxLength 10 */
-          tags!: string[];
-        }
-      `,
-      errors: [{ messageId: "typeMismatch" }],
-    },
 
     // -------------------------------------------------------------------------
     // @pattern on non-string fields
@@ -894,15 +909,6 @@ ruleTester.run("tag-type-check", tagTypeCheck, {
         class Form {
           /** @Pattern true|false */
           active!: boolean;
-        }
-      `,
-      errors: [{ messageId: "typeMismatch" }],
-    },
-    {
-      code: `
-        class Form {
-          /** @Pattern ^[a-z]+$ */
-          tags!: string[];
         }
       `,
       errors: [{ messageId: "typeMismatch" }],

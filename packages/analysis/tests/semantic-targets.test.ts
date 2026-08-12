@@ -408,4 +408,456 @@ describe("semantic-targets", () => {
 
     expect(result.diagnostics).toEqual([]);
   });
+  it("validates numeric constraints against immediate array items", () => {
+    const valid = analyzeConstraintTargets(
+      "amounts",
+      { kind: "array", items: NUMBER_TYPE },
+      [minimum(0, 1)],
+      {}
+    );
+    const invalid = analyzeConstraintTargets(
+      "labels",
+      { kind: "array", items: { kind: "primitive", primitiveKind: "string" } },
+      [minimum(0, 1)],
+      {}
+    );
+
+    expect(valid.diagnostics).toEqual([]);
+    expect(invalid.diagnostics).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates enum constraints against immediate array items", () => {
+    const allowedMembers: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "allowedMembers",
+      members: ["draft"],
+      provenance: provenance(1, "allowedMembers"),
+    };
+    const enumType: TypeNode = {
+      kind: "enum",
+      members: [{ value: "draft" }, { value: "sent" }],
+    };
+
+    expect(
+      analyzeConstraintTargets("statuses", { kind: "array", items: enumType }, [allowedMembers], {})
+        .diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "labels",
+        { kind: "array", items: { kind: "primitive", primitiveKind: "string" } },
+        [allowedMembers],
+        {}
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates const constraints against immediate array items", () => {
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "array", items: NUMBER_TYPE },
+        [constValue(5, 1)],
+        {}
+      ).diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "array", items: NUMBER_TYPE },
+        [constValue("five", 1)],
+        {}
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("validates custom constraints against immediate array items", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/items/PrimitiveOnly",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "primitiveOnly"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "PrimitiveOnly",
+        applicableTypes: ["primitive"] as const,
+      }),
+      findConstraintTag: () => undefined,
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: { kind: "object", properties: [], additionalProperties: false } },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("targets explicitly array-applicable custom constraints at the container", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/arrays/ContainerOnly",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "containerOnly"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "ContainerOnly",
+        applicableTypes: ["array"] as const,
+      }),
+      findConstraintTag: () => undefined,
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+    expect(
+      analyzeConstraintTargets(
+        "value",
+        NUMBER_TYPE,
+        [customConstraint],
+        {},
+        {
+          extensionRegistry: registry,
+        }
+      ).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+    expect(
+      analyzeConstraintTargets(
+        "payload",
+        {
+          kind: "object",
+          properties: [
+            {
+              name: "values",
+              type: { kind: "array", items: NUMBER_TYPE },
+              optional: false,
+              constraints: [],
+              annotations: [],
+              provenance: provenance(3),
+            },
+          ],
+          additionalProperties: false,
+        },
+        [{ ...customConstraint, path: { segments: ["values"] } }],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("targets universally applicable custom constraints at the array container", () => {
+    const arrayType: TypeNode = { kind: "array", items: NUMBER_TYPE };
+    const observedTypes: TypeNode[] = [];
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/universal/Universal",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "universal"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "Universal",
+        applicableTypes: null,
+        isApplicableToType: (type: TypeNode) => {
+          observedTypes.push(type);
+          return true;
+        },
+      }),
+      findConstraintTag: () => undefined,
+    };
+
+    const result = analyzeConstraintTargets(
+      "values",
+      arrayType,
+      [customConstraint],
+      {},
+      {
+        extensionRegistry: registry,
+      }
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(observedTypes.length).toBeGreaterThan(0);
+    expect(observedTypes.every((type) => type.kind === "array")).toBe(true);
+  });
+
+  it("normalizes the governing tag before selecting the array target", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/universal/Universal",
+      payload: true,
+      compositionRule: "override",
+      provenance: { ...provenance(1), tagName: "@ItemOnly" },
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "Universal",
+        applicableTypes: null,
+      }),
+      findConstraintTag: (tagName: string) =>
+        tagName === "itemOnly"
+          ? {
+              extensionId: "x-test/universal",
+              registration: {
+                tagName,
+                constraintName: "Universal",
+                isApplicableToType: (type: TypeNode) => type.kind === "primitive",
+              },
+            }
+          : undefined,
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("ignores a same-name tag registration owned by another extension", () => {
+    const customConstraint: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/arrays/ContainerOnly",
+      payload: true,
+      compositionRule: "override",
+      provenance: provenance(1, "containerOnly"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "ContainerOnly",
+        applicableTypes: ["array"] as const,
+      }),
+      findConstraintTag: () => ({
+        extensionId: "x-other/arrays",
+        registration: {
+          tagName: "containerOnly",
+          constraintName: "ContainerOnly",
+          isApplicableToType: (type: TypeNode) => type.kind === "primitive",
+        },
+      }),
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "values",
+        { kind: "array", items: NUMBER_TYPE },
+        [customConstraint],
+        {},
+        { extensionRegistry: registry }
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("includes referenced immediate item constraints in contradiction analysis", () => {
+    const result = analyzeConstraintTargets(
+      "values",
+      { kind: "array", items: { kind: "reference", name: "Positive", typeArguments: [] } },
+      [maximum(5, 2)],
+      {
+        Positive: {
+          name: "Positive",
+          type: NUMBER_TYPE,
+          constraints: [minimum(10, 1)],
+          provenance: provenance(1, "minimum"),
+        },
+      }
+    );
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "CONTRADICTING_CONSTRAINTS",
+        primaryLocation: provenance(1, "minimum"),
+        relatedLocations: [provenance(2, "maximum")],
+      }),
+    ]);
+  });
+
+  it("keeps array container constraints on the resolved array", () => {
+    const minItems: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "minItems",
+      value: 1,
+      provenance: provenance(1, "minItems"),
+    };
+    const registry: AnalysisTypeRegistry = {
+      Amounts: {
+        name: "Amounts",
+        type: {
+          kind: "union",
+          members: [
+            { kind: "array", items: NUMBER_TYPE },
+            { kind: "primitive", primitiveKind: "null" },
+          ],
+        },
+        provenance: provenance(1),
+      },
+    };
+
+    expect(
+      analyzeConstraintTargets(
+        "amounts",
+        { kind: "reference", name: "Amounts", typeArguments: [] },
+        [minItems, minimum(0, 2)],
+        registry
+      ).diagnostics
+    ).toEqual([]);
+  });
+
+  it("does not recursively unwrap nested arrays", () => {
+    const nestedArray: TypeNode = {
+      kind: "array",
+      items: { kind: "array", items: NUMBER_TYPE },
+    };
+
+    expect(
+      analyzeConstraintTargets("matrix", nestedArray, [minimum(0, 1)], {}).diagnostics
+    ).toEqual([expect.objectContaining({ code: "TYPE_MISMATCH" })]);
+  });
+
+  it("falls back to immediate items when an array custom tag predicate rejects the container", () => {
+    const arrayType: TypeNode = {
+      kind: "array",
+      items: { kind: "primitive", primitiveKind: "number" },
+    };
+    const custom: ConstraintNode = {
+      kind: "constraint",
+      constraintKind: "custom",
+      constraintId: "x-test/bounded",
+      payload: 3,
+      compositionRule: "intersect",
+      provenance: provenance(1, "bounded"),
+    };
+    const registry = {
+      findConstraint: () => ({
+        constraintName: "bounded",
+        compositionRule: "intersect" as const,
+        applicableTypes: ["array", "primitive"] as const,
+        isApplicableToType: (type: TypeNode) => type.kind === "array" || type.kind === "primitive",
+      }),
+      findConstraintTag: () => ({
+        extensionId: "x-test",
+        registration: {
+          tagName: "bounded",
+          constraintName: "bounded",
+          isApplicableToType: (type: TypeNode) => type.kind !== "array",
+        },
+      }),
+    };
+
+    expect(
+      analyzeConstraintTargets("values", arrayType, [custom], {}, { extensionRegistry: registry })
+        .diagnostics
+    ).toEqual([]);
+  });
+
+  it("collects constraints through nullable immediate item references", () => {
+    const itemRef: ReferenceTypeNode = {
+      kind: "reference",
+      name: "BoundedNumber",
+      typeArguments: [],
+    };
+    const fieldType: TypeNode = {
+      kind: "array",
+      items: { kind: "union", members: [itemRef, { kind: "primitive", primitiveKind: "null" }] },
+    };
+    const result = analyzeConstraintTargets("values", fieldType, [], {
+      BoundedNumber: {
+        name: "BoundedNumber",
+        provenance: provenance(0),
+        type: { kind: "primitive", primitiveKind: "number" },
+        constraints: [minimum(10, 1), maximum(5, 2)],
+      },
+    });
+    expect(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "CONTRADICTING_CONSTRAINTS")
+    ).toHaveLength(1);
+  });
+
+  it("does not compare nested array container bounds at different depths", () => {
+    const inner: ReferenceTypeNode = { kind: "reference", name: "InnerValues", typeArguments: [] };
+    const result = analyzeConstraintTargets(
+      "values",
+      { kind: "array", items: inner },
+      [
+        {
+          kind: "constraint",
+          constraintKind: "maxItems",
+          value: 2,
+          provenance: provenance(2, "maxItems"),
+        },
+      ],
+      {
+        InnerValues: {
+          name: "InnerValues",
+          provenance: provenance(0),
+          type: { kind: "array", items: NUMBER_TYPE },
+          constraints: [
+            {
+              kind: "constraint",
+              constraintKind: "minItems",
+              value: 3,
+              provenance: provenance(1, "minItems"),
+            },
+          ],
+        },
+      }
+    );
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("does not flatten scalar constraints inherited from a referenced inner array", () => {
+    const inner: ReferenceTypeNode = { kind: "reference", name: "InnerStrings", typeArguments: [] };
+    const result = analyzeConstraintTargets("values", { kind: "array", items: inner }, [], {
+      InnerStrings: {
+        name: "InnerStrings",
+        provenance: provenance(0),
+        type: {
+          kind: "array",
+          items: { kind: "primitive", primitiveKind: "string" },
+        },
+        constraints: [
+          {
+            kind: "constraint",
+            constraintKind: "minLength",
+            value: 1,
+            provenance: provenance(1, "minLength"),
+          },
+        ],
+      },
+    });
+    // Per design 002 §4.3, the inner item constraint remains one array layer below this target.
+    expect(result.diagnostics).toEqual([]);
+  });
 });

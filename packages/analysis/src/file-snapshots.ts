@@ -4,6 +4,7 @@ import { _mapSetupDiagnosticCode, _validateExtensionSetup } from "./extension-se
 import { getMatchingTagSignatures } from "./tag-signature-matching.js";
 import {
   _capabilityLabel,
+  _getConstraintTargetType,
   _checkConstValueAgainstType,
   _supportsConstraintCapability,
 } from "./constraint-applicability.js";
@@ -50,12 +51,15 @@ import {
   type ConstraintTagParseRegistryLike,
 } from "./tag-value-parser.js";
 import {
+  getTagDefinition,
   normalizeFormSpecTagName,
   type ExtensionTagSource,
   type FormSpecPlacement,
+  type SemanticCapability,
 } from "./tag-registry.js";
 import {
   hasTypeSemanticCapability,
+  type ResolvedPathTargetType,
   resolveDeclarationPlacement,
   resolvePathTargetType,
   stripNullishUnion,
@@ -286,26 +290,59 @@ function findExtensionTypesByName(
   return matches;
 }
 
+/**
+ * Selects the registrations eligible to broaden a built-in tag at this
+ * terminal. A registered terminal is opaque: when none of its registrations
+ * broaden the tag, callers must not inspect an array item registration.
+ */
+function findBroadeningTargetTypes(
+  subjectType: ts.Type,
+  checker: ts.TypeChecker,
+  extensionDefinitions: readonly ExtensionDefinition[],
+  capability: SemanticCapability | undefined
+): NonNullable<ExtensionDefinition["types"]> {
+  const normalizedSubjectType = stripNullishUnion(subjectType);
+  const terminalMatches = findMatchingExtensionTypes(
+    normalizedSubjectType,
+    checker,
+    extensionDefinitions
+  );
+  if (terminalMatches.length > 0) {
+    return terminalMatches;
+  }
+
+  const effectiveType = stripNullishUnion(
+    _getConstraintTargetType(capability, normalizedSubjectType, checker)
+  );
+  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions);
+}
+
 function hasExtensionBroadening(
   tagName: string,
   subjectType: ts.Type,
   checker: ts.TypeChecker,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  capability: SemanticCapability | undefined
 ): boolean {
   if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
     return false;
   }
 
-  // Strip nullish union members (| null | undefined) before matching,
-  // consistent with how the build path strips before _isIntegerBrandedType.
-  // Uses the shared name-then-brand resolution: a name-only gate here paired
-  // with the name+brand resolver in resolveExtensionCustomTypeId let a
-  // brand-only registration produce a broadened fact AND a spurious
-  // TYPE_MISMATCH diagnostic for the same tag (issue #396 review finding).
-  const effectiveType = stripNullishUnion(subjectType);
-  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions).some((type) =>
-    (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
+  return findBroadeningTargetTypes(subjectType, checker, extensionDefinitions, capability).some(
+    (type) =>
+      (type.builtinConstraintBroadenings ?? []).some((broadening) => broadening.tagName === tagName)
   );
+}
+
+function findBroadeningTypeId(
+  types: NonNullable<ExtensionDefinition["types"]>,
+  constraintName: string
+): string | undefined {
+  return types.find((type) =>
+    (type.builtinConstraintBroadenings ?? []).some(
+      (broadening) => broadening.tagName === constraintName
+    )
+  )?.typeName;
 }
 
 /**
@@ -341,14 +378,21 @@ function hasExtensionBroadening(
 function resolveExtensionCustomTypeId(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  constraintName: string
 ): string | undefined {
   if (extensionDefinitions === undefined || extensionDefinitions.length === 0) {
     return undefined;
   }
 
-  const effectiveType = stripNullishUnion(subjectType);
-  return findMatchingExtensionTypes(effectiveType, checker, extensionDefinitions)[0]?.typeName;
+  const capability = getTagDefinition(constraintName)?.capabilities[0];
+  if (capability === undefined) {
+    return undefined;
+  }
+  return findBroadeningTypeId(
+    findBroadeningTargetTypes(subjectType, checker, extensionDefinitions, capability),
+    constraintName
+  );
 }
 
 /**
@@ -401,14 +445,20 @@ function resolvePathTargetCustomTypeId(
   subjectType: ts.Type,
   checker: ts.TypeChecker,
   pathSegments: readonly string[],
-  extensionDefinitions: readonly ExtensionDefinition[] | undefined
+  extensionDefinitions: readonly ExtensionDefinition[] | undefined,
+  constraintName: string
 ): string | undefined {
   const resolution = resolvePathTargetType(subjectType, checker, pathSegments);
   if (resolution.kind !== "resolved") {
     return undefined;
   }
 
-  return resolveExtensionCustomTypeId(resolution.type, checker, extensionDefinitions);
+  return resolveExtensionCustomTypeId(
+    resolution.type,
+    checker,
+    extensionDefinitions,
+    constraintName
+  );
 }
 
 function renderTargetLabel(targetPath: string | null): string {
@@ -764,20 +814,7 @@ function buildDeclarationSummary(
   const resolvedMetadata = toSerializedResolvedMetadata(metadataAnalysis?.resolvedMetadata);
   const metadataEntries = toSerializedMetadataEntries(metadataAnalysis?.entries ?? []);
   const constraintRegistry = createConstraintTagRegistry(extensionDefinitions);
-  // Issue #396: resolve the declaration's own type once, so direct-field
-  // builtin constraint tags can broaden into their custom-type constraint
-  // (e.g. `@minimum` on a `Decimal` field -> `DecimalMinimum`). Path-targeted
-  // tags resolve their own terminal type per-tag below, since the path
-  // varies per tag.
   const declarationSubjectType = getSubjectType(node, checker);
-  const directFieldTypeId =
-    declarationSubjectType === undefined
-      ? undefined
-      : resolveExtensionCustomTypeId(declarationSubjectType, checker, extensionDefinitions);
-  const directFieldType: CustomTypeNode | undefined =
-    directFieldTypeId === undefined
-      ? undefined
-      : { kind: "custom", typeId: directFieldTypeId, payload: null };
   const numericConstraints = new Map<string | null, NumericConstraintAccumulator>();
   const stringConstraints = new Map<string | null, StringConstraintAccumulator>();
   const arrayConstraints = new Map<string | null, ArrayConstraintAccumulator>();
@@ -789,6 +826,38 @@ function buildDeclarationSummary(
   );
   const blockTagIndexes = new Map<string, number>();
   const facts: FormSpecSerializedDeclarationFact[] = [];
+  let directContainerBroadeningTargets: NonNullable<ExtensionDefinition["types"]> | undefined;
+  let directItemBroadeningTargets: NonNullable<ExtensionDefinition["types"]> | undefined;
+  const resolveDirectFieldTypeId = (constraintName: string): string | undefined => {
+    if (
+      declarationSubjectType === undefined ||
+      extensionDefinitions === undefined ||
+      extensionDefinitions.length === 0
+    ) {
+      return undefined;
+    }
+
+    const capability = getTagDefinition(constraintName)?.capabilities[0];
+    if (capability === undefined) {
+      return undefined;
+    }
+
+    const targets =
+      capability === "array-like"
+        ? (directContainerBroadeningTargets ??= findBroadeningTargetTypes(
+            declarationSubjectType,
+            checker,
+            extensionDefinitions,
+            capability
+          ))
+        : (directItemBroadeningTargets ??= findBroadeningTargetTypes(
+            declarationSubjectType,
+            checker,
+            extensionDefinitions,
+            capability
+          ));
+    return findBroadeningTypeId(targets, constraintName);
+  };
 
   const takeBlockTagText = (tagName: string): string | null => {
     const values = blockTagTexts.get(tagName);
@@ -810,23 +879,32 @@ function buildDeclarationSummary(
 
   for (const tag of parsed.tags) {
     const payloadText = getTagPayloadText(parsed, tag);
+    const isBuiltinConstraintTag = isBuiltinConstraintName(tag.normalizedTagName);
     // Issue #396: thread both broadening inputs through to
     // `parseConstraintTagValue`, achieving parity with the build consumer
-    // (PR #398, issue #395) — direct-field tags broaden via `fieldType`
-    // (the declaration's own type); path-targeted tags broaden via
-    // `pathResolvedCustomTypeId` (the path's terminal type, resolved fresh
-    // per tag since the path varies tag-to-tag).
+    // (PR #398, issue #395). Direct-field target matching is cached once for
+    // container tags and once for item tags; path-targeted tags use
+    // `pathResolvedCustomTypeId`, resolved per tag because paths vary.
     const pathTarget =
       tag.target?.kind === "path" && tag.target.valid ? (tag.target.path ?? null) : null;
     const pathResolvedCustomTypeId =
-      pathTarget !== null && declarationSubjectType !== undefined
+      isBuiltinConstraintTag && pathTarget !== null && declarationSubjectType !== undefined
         ? resolvePathTargetCustomTypeId(
             declarationSubjectType,
             checker,
             pathTarget.segments,
-            extensionDefinitions
+            extensionDefinitions,
+            tag.normalizedTagName
           )
         : undefined;
+    const directFieldTypeId =
+      isBuiltinConstraintTag && pathTarget === null
+        ? resolveDirectFieldTypeId(tag.normalizedTagName)
+        : undefined;
+    const directFieldType: CustomTypeNode | undefined =
+      directFieldTypeId === undefined
+        ? undefined
+        : { kind: "custom", typeId: directFieldTypeId, payload: null };
     const constraint = parseConstraintTagValue(
       tag.normalizedTagName,
       payloadText,
@@ -1560,8 +1638,8 @@ function buildTagDiagnostics(
       //   - target === null: direct-field check only. Path-targeted fields use
       //     the path-resolved type, not the declared subject type, so the brand
       //     check does not apply to them.
-      //   - _isIntegerBrandedType(stripNullishUnion(subjectType)): detect the
-      //     integer brand after stripping | null / | undefined wrappers.
+      //   - _isIntegerBrandedType(stripNullishUnion(effective target)): detect
+      //     the integer brand after stripping array and nullish wrappers.
       //   - capabilities.includes("numeric-comparable"): only bypass numeric
       //     tags. @pattern on an integer type still emits TYPE_MISMATCH.
       //
@@ -1569,8 +1647,16 @@ function buildTagDiagnostics(
       // emit "bypass" on the structured log — identical to the build consumer.
       const isIntegerBypass =
         target === null &&
-        _isIntegerBrandedType(stripNullishUnion(subjectType)) &&
-        semantic.tagDefinition.capabilities[0] === "numeric-comparable";
+        semantic.tagDefinition.capabilities[0] === "numeric-comparable" &&
+        _isIntegerBrandedType(
+          stripNullishUnion(
+            _getConstraintTargetType(
+              semantic.tagDefinition.capabilities[0],
+              stripNullishUnion(subjectType),
+              checker
+            )
+          )
+        );
 
       if (isIntegerBypass) {
         // §8.3b — log "bypass" roleOutcome on the snapshot consumer channel,
@@ -1589,12 +1675,30 @@ function buildTagDiagnostics(
         continue;
       }
 
-      const hasExtBroadening = hasExtensionBroadening(
-        tag.normalizedTagName,
-        subjectType,
-        checker,
-        extensionDefinitions
-      );
+      // Resolve a valid path target once, after Role A and the builtin-tag guard,
+      // then share the result between broadening detection and Role B below.
+      const pathTargetResolution: ResolvedPathTargetType | null =
+        target?.kind === "path" &&
+        (tag.target?.kind === "path" || tag.target?.kind === "ambiguous") &&
+        tag.target.path !== null
+          ? resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
+          : null;
+      const broadeningSubjectType =
+        target === null
+          ? subjectType
+          : tag.target?.kind === "path" && pathTargetResolution?.kind === "resolved"
+            ? pathTargetResolution.type
+            : undefined;
+      const hasExtBroadening =
+        broadeningSubjectType === undefined
+          ? false
+          : hasExtensionBroadening(
+              tag.normalizedTagName,
+              broadeningSubjectType,
+              checker,
+              extensionDefinitions,
+              semantic.tagDefinition.capabilities[0]
+            );
 
       if (!hasExtBroadening) {
         // §5 Phase 5A — Role B capability guard (snapshot consumer).
@@ -1636,27 +1740,16 @@ function buildTagDiagnostics(
             let evaluatedType: ts.Type | null = null;
             let evaluatedTypeLabel = "";
             let pathRejection: { code: string; message: string } | null = null;
-            // `pathTargetResolution` is resolved lazily below only when
-            // `target.kind === "path"` — computing it earlier would pay the
-            // `resolvePathTargetType` cost for misplaced tags (rejected at
-            // Role A above) and non-constraint tags (which don't enter this
-            // block). Hoisted here (not inside the branch) because the later
-            // `pathRejection` diagnostic at line ~1512 reads its `kind` /
-            // `segment` to attach `missingPathSegment` data.
-            let pathTargetResolution: ReturnType<typeof resolvePathTargetType> | null = null;
+            // `pathTargetResolution` was computed once above after Role A and
+            // the builtin-tag guard. Broadening detection consumes a resolved
+            // terminal type; Role B also retains failures so diagnostics can
+            // attach `missingPathSegment` data.
 
             if (target === null) {
               evaluatedType = subjectType;
               evaluatedTypeLabel =
                 standaloneSubjectTypeText ?? typeToString(subjectType, checker) ?? "unknown";
             } else if (target.kind === "path") {
-              pathTargetResolution =
-                tag.target?.kind === "path" || tag.target?.kind === "ambiguous"
-                  ? tag.target.path === null
-                    ? null
-                    : resolvePathTargetType(declaredSubjectType, checker, tag.target.path.segments)
-                  : null;
-
               if (pathTargetResolution === null) {
                 // tag.target.path is null — the path target text failed to
                 // parse (e.g. `@minimum :invalid-syntax 0` where the segment
